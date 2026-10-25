@@ -112,6 +112,36 @@ function currentFlow() {
   return checked ? checked.value : null;
 }
 
+const KOFI_PAGE = "roncarmel";  // ko-fi.com/roncarmel
+
+function openSupport() {
+  // The Ko-fi frame is only created when someone asks for it, so Ko-fi is not contacted otherwise.
+  $("supportPanel").hidden = false;
+  if (!document.getElementById("kofiFrame")) {
+    const frame = document.createElement("iframe");
+    frame.id = "kofiFrame";
+    frame.src = `https://ko-fi.com/${KOFI_PAGE}/?hidefeed=true&widget=true&embed=true`;
+    frame.title = "Support Playlist Builder on Ko-fi";
+    frame.height = "712";
+    frame.loading = "lazy";
+    $("kofiHolder").appendChild(frame);
+  }
+  if ($("supportPanel").scrollIntoView) $("supportPanel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function addSupportPrompt() {
+  const row = document.createElement("div");
+  row.className = "support-prompt";
+  row.appendChild(document.createTextNode("If this saved you time, you can say thanks here: "));
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "linklike";
+  button.textContent = "Support this tool";
+  button.addEventListener("click", openSupport);
+  row.appendChild(button);
+  $("results").appendChild(row);
+}
+
 let reloadPage = () => location.reload();   // a separate function so tests can replace it
 
 function clearSavedData() {
@@ -513,6 +543,7 @@ async function createPlaylists() {
     }
     const notes = built.filter((b) => b.stopped).map((b) => `${b.key}: ${b.stopped}`);
     setOutput(`Done. Created ${created} playlist${created === 1 ? "" : "s"} in your Spotify account.` + (notes.length ? "\n\n" + notes.join("\n") : ""));
+    addSupportPrompt();
     await loadMyPlaylists();
   } catch (err) {
     setOutput((created ? `Stopped after creating ${created} of ${total} playlists.\n\n` : "Something went wrong:\n\n") + cleanError(err));
@@ -576,6 +607,8 @@ async function main() {
       setTimeout(() => { button.textContent = "Copy"; }, 2000);
     });
   }
+  $("supportFooter").addEventListener("click", openSupport);
+  $("supportClose").addEventListener("click", () => { $("supportPanel").hidden = true; });
   $("clearData").addEventListener("click", () => { $("clearConfirm").hidden = false; });
   $("clearNo").addEventListener("click", () => { $("clearConfirm").hidden = true; });
   $("clearYes").addEventListener("click", clearSavedData);

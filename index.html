@@ -40,6 +40,9 @@
   #results div { padding: 3px 0; }
   footer.debug { margin-top: 48px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 0.9rem; color: var(--muted); }
   footer.debug summary { cursor: pointer; }
+  button.linklike { background: none; border: none; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
+  #supportPanel { margin-top: 32px; }
+  #kofiHolder iframe { border: none; width: 100%; display: block; background: transparent; }
 </style>
 </head>
 <body>
@@ -153,7 +156,18 @@
   <pre id="output">Connect Spotify, then choose a format and click Preview plan.</pre>
   <div id="results"></div>
   </div>
+  <section id="supportPanel" class="card" hidden>
+    <h2 style="margin-top:0">Support this tool</h2>
+    <p>This tool is free, and it works the same for everyone. If it helped, you can send a one-time gift or choose ongoing support on Ko-fi.</p>
+    <div id="kofiHolder"></div>
+    <div class="row">
+      <a id="kofiLink" href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer">Open Ko-fi in a new tab</a>
+      <button id="supportClose" type="button">Close</button>
+    </div>
+  </section>
+
   <footer class="debug">
+    <p><button id="supportFooter" class="linklike" type="button">Support this tool</button></p>
     <details id="troubleshooting">
       <summary>Troubleshooting</summary>
       <p>If something looks stuck, you can make this page forget everything it saved in this browser: your Client ID, your formats, and your Spotify sign-in.
