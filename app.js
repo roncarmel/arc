@@ -215,7 +215,7 @@ async function startPython() {
       $("pythonStatus").textContent = `Loading Python ${version} (the first time takes a little while)...`;
       await loadScript(base + "pyodide.js");
       const pyodide = await loadPyodide({ indexURL: base });
-      const source = await (await fetch("engine.py")).text();
+      const source = await (await fetch("engine.py", { cache: "no-cache" })).text();
       await pyodide.runPythonAsync(source);
       const get = (name) => pyodide.globals.get(name);
       py = {
@@ -289,7 +289,8 @@ async function preview() {
     const parts = [];
     for (const { key } of plans) {
       try {
-        parts.push(py.planText(formatsText, key, JSON.stringify(tracks), 50, false));
+        const text = py.planText(formatsText, key, JSON.stringify(tracks), 50);
+        parts.push(text.replace(/\n*Preview only, nothing was created\.\s*$/, ""));
       } catch (err) {
         parts.push(`=== ${key} ===\nCould not plan this format: ${cleanError(err)}`);
       }

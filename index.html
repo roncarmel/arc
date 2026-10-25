@@ -42,17 +42,18 @@
       <p>This app works through a free Spotify developer app that belongs to you. Set it up once:</p>
       <ol>
         <li>
-          Open your <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify developer dashboard</a>
-          (it opens in a new tab) and log in. Click your app. If you do not have one yet, click <strong>Create app</strong>,
-          name it anything, and choose <strong>Web API</strong>.
+          Open the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify developer dashboard</a>
+          (it opens in a new tab), log in, and click <strong>Create app</strong>.
+          (If you already have an app, click it instead, then click <strong>Settings</strong>.)
         </li>
-        <li>Click <strong>Settings</strong>, then find the <strong>Redirect URIs</strong> box.</li>
         <li>
-          Copy this address and paste it into that box, exactly as shown:
+          Fill in the form. The name and description can be anything. For <strong>Redirect URI</strong>, copy this address,
+          paste it in exactly as shown, and click <strong>Add</strong>:
           <div class="address"><code id="redirect"></code> <button id="copyRedirect" type="button">Copy</button></div>
-          Click <strong>Add</strong>, then scroll down and click <strong>Save</strong>.
+          Under <strong>Which API/SDKs are you planning to use?</strong>, choose <strong>Web API</strong>. Agree to the terms and click <strong>Save</strong>.
+          (If you already have an app, add the address under <strong>Redirect URIs</strong> in its Settings, click <strong>Add</strong>, then <strong>Save</strong>.)
         </li>
-        <li>On the same Settings page, copy your app's <strong>Client ID</strong> and paste it here:
+        <li>Open your app's <strong>Settings</strong>, copy the <strong>Client ID</strong>, and paste it here:
           <input id="clientId" type="text" autocomplete="off" spellcheck="false" placeholder="Client ID">
         </li>
         <li>Click <strong>Connect Spotify</strong>. Spotify will ask you to approve read-only access, then bring you back to this page.</li>
