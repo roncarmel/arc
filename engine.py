@@ -35,16 +35,47 @@ def pick(tracks, minutes, used):
     target = minutes * 60_000
     pool = [t for t in tracks if t["uri"] not in used]
     random.shuffle(pool)
-    chosen, total = [], 0
+    chosen, rest, total = [], [], 0
     for t in pool:
         if target - total < 30_000:  # within 30 seconds, done
-            break
+            rest.append(t)
+            continue
         new = total + t["ms"]
         # take the song if it fits, or if overshooting lands closer to the target than stopping
         if new <= target or (new - target) < (target - total):
             chosen.append(t)
-            used.add(t["uri"])
             total = new
+        else:
+            rest.append(t)
+
+    # One pass can end a minute or two short, because songs come in lumps of several minutes.
+    # Polish: add, drop, or swap a song while that moves the total closer to the target.
+    while abs(total - target) > 30_000:
+        error = abs(total - target)
+        best = None  # (new error, new total, song to remove or None, song to add or None)
+        for r in rest:
+            candidate = abs(total + r["ms"] - target)
+            if candidate < error and (best is None or candidate < best[0]):
+                best = (candidate, total + r["ms"], None, r)
+        for c in chosen:
+            candidate = abs(total - c["ms"] - target)
+            if candidate < error and (best is None or candidate < best[0]):
+                best = (candidate, total - c["ms"], c, None)
+            for r in rest:
+                candidate = abs(total - c["ms"] + r["ms"] - target)
+                if candidate < error and (best is None or candidate < best[0]):
+                    best = (candidate, total - c["ms"] + r["ms"], c, r)
+        if best is None:
+            break
+        _, total, drop, add = best
+        if drop is not None:
+            chosen.remove(drop)
+            rest.append(drop)
+        if add is not None:
+            rest.remove(add)
+            chosen.append(add)
+    random.shuffle(chosen)
+    used.update(t["uri"] for t in chosen)
     return chosen, total
 
 
@@ -230,43 +261,98 @@ def match_playlists(names_json, playlists_json, me_id):
     return json.dumps({"found": found, "problems": problems})
 
 
+def name_pattern(template):
+    """Turn a naming template into a regex, e.g. "evocative {n}" matches "evocative 12"."""
+    esc = re.escape(template)
+    esc = esc.replace(re.escape("{n}"), r"\d+").replace(re.escape("{letter}"), "[a-z]+")
+    return re.compile("^" + esc + "$")
+
+
+def existing_matches(formats_text, keys_json, playlists_json, me_id):
+    """Playlists the user owns whose names match the naming templates of the given formats."""
+    formats = parse_formats(formats_text)
+    patterns = [name_pattern(formats[key]["name"]) for key in json.loads(keys_json)]
+    found = [
+        {"id": p["id"], "name": p["name"]}
+        for p in json.loads(playlists_json)
+        if p.get("owner") == me_id and any(pat.match(p["name"]) for pat in patterns)
+    ]
+    return json.dumps(found)
+
+
+def _run_format(fmt, cache, limit):
+    """Plan as many playlists as the songs allow. Returns (music, gaps, built, stopped, used)."""
+    music, gaps = plan_format(fmt)
+    used, built, stopped = set(), [], None
+    while len(built) < limit:
+        results, new_used, fail = build_one(cache, music, used)
+        if fail:
+            stopped = fail
+            break
+        used = new_used
+        n = len(built)
+        built.append((fmt["name"].format(n=n + 1, letter=letters(n)), results))
+    return music, gaps, built, stopped, used
+
+
+def _stop_message(stopped):
+    seg, src, wanted, found = stopped
+    return (f"Stopped: segment {seg} ('{src}') needed {wanted:g} min "
+            f"but only {found:.0f} min of unused songs were available.")
+
+
+def _cache_from(tracks_json):
+    return {norm(name): tracks for name, tracks in json.loads(tracks_json).items()}
+
+
 def plan_text(formats_text, key, tracks_json, max_n=None, footer=True):
     """Plan every playlist the format can make from the given songs. Nothing is created."""
     fmt = parse_formats(formats_text)[key]
-    music, gaps = plan_format(fmt)
-    tracks_by_name = json.loads(tracks_json)
-    cache = {norm(name): tracks for name, tracks in tracks_by_name.items()}
+    cache = _cache_from(tracks_json)
+    limit = int(max_n) if max_n else 200
+    music, gaps, built, stopped, used = _run_format(fmt, cache, limit)
 
     lines = [f"=== {key} ==="]
-    between = [label for _, label in gaps[1:-1]]
     if any(uris for uris, _ in gaps[1:-1]):
-        lines.append("Silence between segments: " + ", ".join(between))
+        lines.append("Silence between segments: " + ", ".join(label for _, label in gaps[1:-1]))
     if gaps[0][0]:
         lines.append("Silence at the start: " + gaps[0][1])
     if gaps[-1][0]:
         lines.append("Silence at the end: " + gaps[-1][1])
-
-    used, made = set(), 0
-    limit = int(max_n) if max_n else 200
-    while made < limit:
-        results, new_used, fail = build_one(cache, music, used)
-        if fail:
-            seg, src, wanted, found = fail
-            lines.append(f"Stopped: segment {seg} ('{src}') needed {wanted:g} min "
-                         f"but only {found:.0f} min of unused songs were available.")
-            break
-        used = new_used
-        name = fmt["name"].format(n=made + 1, letter=letters(made))
+    for name, results in built:
         total = sum(r[3] for r in results)
         songs = sum(len(r[2]) for r in results)
         minutes = ", ".join(f"{r[3] / 60000:.0f}" for r in results)
         lines.append(f"{name}: {songs} songs, {total / 60000:.0f} min  ({minutes})")
-        made += 1
-
-    lines.append(f"{key}: {made} playlist(s) planned.")
+    if stopped:
+        lines.append(_stop_message(stopped))
+    lines.append(f"{key}: {len(built)} playlist(s) planned.")
     lines.append("Left in source playlists after this format:")
     lines.append(leftover_report(cache, music, used))
     if footer:
         lines.append("")
         lines.append("Preview only, nothing was created.")
     return "\n".join(lines)
+
+
+def build_playlists(formats_text, key, tracks_json, max_n=None):
+    """Everything needed to create the playlists: names and the ordered song URIs, silence included."""
+    fmt = parse_formats(formats_text)[key]
+    cache = _cache_from(tracks_json)
+    limit = int(max_n) if max_n else 200
+    music, gaps, built, stopped, used = _run_format(fmt, cache, limit)
+    playlists = []
+    for name, results in built:
+        uris = []
+        for idx, r in enumerate(results):
+            uris += gaps[idx][0]            # silence before this segment (none before the first unless asked)
+            uris += [t["uri"] for t in r[2]]
+        uris += gaps[-1][0]                 # silence after the last segment (only if asked)
+        playlists.append({
+            "name": name,
+            "uris": uris,
+            "songs": sum(len(r[2]) for r in results),
+            "minutes": round(sum(r[3] for r in results) / 60000),
+        })
+    return json.dumps({"key": key, "playlists": playlists,
+                       "stopped": _stop_message(stopped) if stopped else None})

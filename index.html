@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Session Playlist Builder (preview)</title>
+<title>Session Playlist Builder</title>
 <style>
   :root { color-scheme: light dark; --bg: #ffffff; --fg: #1d1d1f; --muted: #6b6b70; --line: #d8d8dc; --card: #f5f5f7; --accent: #1a7f4b; }
   @media (prefers-color-scheme: dark) { :root { --bg: #161618; --fg: #f2f2f4; --muted: #9a9aa2; --line: #333338; --card: #202024; --accent: #3ccf84; } }
@@ -29,39 +29,66 @@
   .address { margin: 6px 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .address code { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; word-break: break-all; }
   a { color: var(--accent); }
+  .toggle { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 4px; }
+  .toggle label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+  details.help { margin-top: 14px; }
+  details.help summary { cursor: pointer; color: var(--accent); }
+  #confirmBox { margin: 12px 0; }
+  #confirmBox ul { margin: 6px 0 10px; padding-left: 20px; }
+  #results div { padding: 3px 0; }
 </style>
 </head>
 <body>
 <main>
   <h1>Session Playlist Builder</h1>
-  <p class="muted">Preview version. It reads your playlists and shows the plan. It does not create anything yet.</p>
+  <p class="muted">Builds session playlists in your Spotify account from your own playlists. Preview first, then create.</p>
 
   <section id="loginSection">
     <h2>1. Connect your Spotify app</h2>
     <div class="card">
-      <p>This app works through a free Spotify developer app that belongs to you. Set it up once:</p>
-      <ol>
+      <p>This tool works through a free Spotify developer app that belongs to you. Pick the option that fits:</p>
+      <div class="toggle" role="radiogroup" aria-label="Spotify app setup">
+        <label><input type="radio" name="flow" value="new" checked> I need to create a Spotify app for this</label>
+        <label><input type="radio" name="flow" value="existing"> I already created a Spotify app for this</label>
+      </div>
+      <p class="muted">Use an app made just for this tool. If you have a Spotify app from another project, leave it alone and create a new one.</p>
+
+      <ol id="flowNew">
         <li>
           Open the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify developer dashboard</a>
           (it opens in a new tab), log in, and click <strong>Create app</strong>.
-          (If you already have an app, click it instead, then click <strong>Settings</strong>.)
         </li>
         <li>
           Fill in the form. The name and description can be anything. For <strong>Redirect URI</strong>, copy this address,
           paste it in exactly as shown, and click <strong>Add</strong>:
-          <div class="address"><code id="redirect"></code> <button id="copyRedirect" type="button">Copy</button></div>
+          <div class="address"><code id="redirect" class="redirect-address"></code> <button id="copyRedirect" class="copy-redirect" type="button">Copy</button></div>
           Under <strong>Which API/SDKs are you planning to use?</strong>, choose <strong>Web API</strong>. Agree to the terms and click <strong>Save</strong>.
-          (If you already have an app, add the address under <strong>Redirect URIs</strong> in its Settings, click <strong>Add</strong>, then <strong>Save</strong>.)
         </li>
-        <li>Open your app's <strong>Settings</strong>, copy the <strong>Client ID</strong>, and paste it here:
-          <input id="clientId" type="text" autocomplete="off" spellcheck="false" placeholder="Client ID">
-        </li>
-        <li>Click <strong>Connect Spotify</strong>. Spotify will ask you to approve read-only access, then bring you back to this page.</li>
+        <li>Open your new app's <strong>Settings</strong> and copy the <strong>Client ID</strong>.</li>
       </ol>
+
+      <ol id="flowExisting" hidden>
+        <li>
+          Open the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify developer dashboard</a>
+          (it opens in a new tab), log in, and click the app you created for this tool.
+        </li>
+        <li>Open its <strong>Settings</strong> and copy the <strong>Client ID</strong>.</li>
+      </ol>
+
+      <p><strong>Paste your Client ID here, then connect:</strong></p>
+      <input id="clientId" type="text" autocomplete="off" spellcheck="false" placeholder="Client ID">
       <div class="row">
         <button id="connect" class="primary" type="button">Connect Spotify</button>
         <span id="loginMessage" class="error"></span>
       </div>
+
+      <details id="redirectHelp" class="help">
+        <summary>Spotify says "Invalid redirect URI"?</summary>
+        <p>This address is not registered with your app yet. In your app's <strong>Settings</strong>, paste it under <strong>Redirect URIs</strong>,
+        click <strong>Add</strong>, then scroll down and click <strong>Save</strong>. Then try Connect again.</p>
+        <div class="address"><code class="redirect-address"></code> <button class="copy-redirect" type="button">Copy</button></div>
+      </details>
+
       <p class="muted" style="margin-top:12px">Your Client ID is not a secret. It stays in this browser, and nothing is sent anywhere except to Spotify.</p>
     </div>
   </section>
@@ -82,13 +109,34 @@
     <span id="formatsMessage" class="error"></span>
   </div>
 
-  <h2>3. Preview</h2>
+  <h2>3. Preview and create</h2>
   <div class="row" style="margin-top:0">
     <select id="formatKey" style="max-width:260px"></select>
-    <button id="preview" class="primary" type="button" disabled>Preview plan</button>
+    <button id="preview" type="button" disabled>Preview plan</button>
+    <button id="create" class="primary" type="button" disabled>Create playlists</button>
+    <button id="removeOld" type="button" disabled>Remove earlier playlists</button>
   </div>
+  <div class="row">
+    <label for="maxPlaylists">Make at most</label>
+    <input id="maxPlaylists" type="number" min="1" step="1" placeholder="no limit" style="width:100px">
+    <span>playlists per format (leave blank for as many as possible)</span>
+  </div>
+  <p class="muted">Preview shows what is possible. Create makes private playlists in your Spotify account and asks first. Songs are picked at random each time, so created playlists will not match a preview exactly.</p>
+
+  <div id="confirmBox" class="card" hidden>
+    <p id="confirmText"></p>
+    <ul id="confirmList"></ul>
+    <p id="confirmMoreText"></p>
+    <ul id="confirmMoreList"></ul>
+    <div class="row">
+      <button id="confirmYes" class="primary" type="button">Yes</button>
+      <button id="confirmNo" type="button">Cancel</button>
+    </div>
+  </div>
+
   <p id="pythonStatus" class="muted"></p>
   <pre id="output">Connect Spotify, then choose a format and click Preview plan.</pre>
+  <div id="results"></div>
 </main>
 <script src="app.js"></script>
 </body>
