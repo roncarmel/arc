@@ -39,13 +39,14 @@
   #results div { padding: 3px 0; }
   footer.debug { margin-top: 48px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 0.9rem; color: var(--muted); }
   footer.debug summary { cursor: pointer; }
+  footer.debug h3 { font-size: 1rem; margin: 20px 0 6px; color: var(--fg); }
   button.linklike { background: none; border: none; padding: 0; color: var(--accent); font-weight: normal; text-decoration: underline; }
   #backupMessage { min-height: 1.5em; }
   #supportBox { position: fixed; right: 16px; bottom: 16px; z-index: 1001; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; max-width: min(240px, calc(100vw - 32px)); }
   #supportButton { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--button);
     background: var(--button); color: #fff; font-weight: 600; text-decoration: none; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28); }
   #supportButton img { width: 20px; height: 20px; display: block; }
-  #supportCaption { margin: 0; padding: 4px 8px; border-radius: 6px; background: var(--bg); color: var(--muted); font-size: 0.75rem; line-height: 1.35; text-align: right; }
+  #supportCaption { margin: 0; padding: 4px 8px; border-radius: 6px; background: var(--bg); color: var(--muted); font-size: 0.75rem; line-height: 1.35; text-align: right; text-wrap: balance; }
   @media (max-width: 520px) { #supportBox { right: 8px; bottom: 8px; } }
 </style>
 </head>
@@ -143,15 +144,16 @@
   <div class="row" style="margin-top:0">
     <select id="formatKey" style="max-width:260px"></select>
     <button id="preview" type="button" disabled>Preview plan</button>
-    <button id="create" class="primary" type="button" disabled>Create playlists</button>
-    <button id="removeOld" type="button" disabled>Remove earlier playlists</button>
   </div>
-  <div class="row">
-    <label for="maxPlaylists">Make at most</label>
-    <input id="maxPlaylists" type="number" min="1" step="1" placeholder="no limit" style="width:100px">
-    <span>playlists per format (leave blank for as many as possible)</span>
+  <p class="muted">Preview shows the playlists this would make, with songs picked at random. If it looks right, a Create button appears below the plan, and it creates exactly what you see.</p>
+
+  <p id="pythonStatus" class="muted"></p>
+  <pre id="output">Connect Spotify, then choose a format and click Preview plan.</pre>
+
+  <div id="createRow" class="row" hidden>
+    <button id="create" class="primary" type="button">Create playlists</button>
+    <button id="previewAgain" type="button" disabled>Preview again</button>
   </div>
-  <p class="muted">Preview shows what is possible. Create makes private playlists in your Spotify account and asks first. Songs are picked at random each time, so created playlists will not match a preview exactly.</p>
 
   <div id="confirmBox" class="card" hidden>
     <p id="confirmText"></p>
@@ -164,8 +166,6 @@
     </div>
   </div>
 
-  <p id="pythonStatus" class="muted"></p>
-  <pre id="output">Connect Spotify, then choose a format and click Preview plan.</pre>
   <div id="results"></div>
   </div>
   <div id="supportBox">
@@ -174,10 +174,26 @@
   </div>
 
   <footer class="debug">
-    <details id="troubleshooting">
-      <summary>Troubleshooting</summary>
-      <p>If something looks stuck, you can make this page forget everything it saved in this browser: your Client ID, your formats, and your Spotify sign-in.
-      Nothing in your Spotify account changes.</p>
+    <details id="moreOptions">
+      <summary>More options</summary>
+
+      <h3>Limit how many playlists are made</h3>
+      <p class="muted">By default, Preview plans as many playlists as your songs allow. To cap it, enter a number, then preview again.</p>
+      <div class="row">
+        <label for="maxPlaylists">Make at most</label>
+        <input id="maxPlaylists" type="number" min="1" step="1" placeholder="no limit" style="width:100px">
+        <span>playlists per format</span>
+      </div>
+
+      <h3>Remove earlier playlists</h3>
+      <p class="muted">Removes playlists from your Spotify library whose names match a format's naming pattern, for example "mix 1", "mix 2". It only touches playlists you own, and it asks before removing anything. It needs Spotify to be connected.</p>
+      <div class="row">
+        <select id="removeKey" style="max-width:260px"></select>
+        <button id="removeOld" type="button" disabled>Remove earlier playlists</button>
+      </div>
+
+      <h3>Clear saved data</h3>
+      <p class="muted">If something looks stuck, you can make this page forget everything it saved in this browser: your Client ID, your formats, and your Spotify sign-in. Nothing in your Spotify account changes.</p>
       <button id="clearData" type="button">Clear saved data</button>
       <div id="clearConfirm" hidden>
         <p><strong>Clear the saved Client ID, formats, and sign-in, and reload this page?</strong></p>

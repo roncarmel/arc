@@ -191,9 +191,18 @@ function showBackupMessage(text, undo = false) {
   }
 }
 
+let currentPlan = null;   // the plan from the last Preview: exactly what Create will make
+
+function invalidatePlan() {
+  // Anything that changes what a plan would be hides Create until the user previews again.
+  currentPlan = null;
+  $("createRow").hidden = true;
+}
+
 function setFormatsText(text) {
   $("formats").value = text;
   localStorage.setItem("formats", text);
+  invalidatePlan();
   refreshFormatKeys();
   refreshBackupStatus();
 }
@@ -264,7 +273,9 @@ function clearSavedData() {
 
 function updateButtons() {
   const ready = !!token && !!py && formatsValid && !busy;
-  for (const id of ["preview", "create", "removeOld"]) $(id).disabled = !ready;
+  for (const id of ["preview", "removeOld"]) $(id).disabled = !ready;
+  $("create").disabled = busy;
+  $("previewAgain").disabled = !ready;
 }
 
 function setBusy(flag) {
@@ -516,22 +527,29 @@ async function startPython() {
 }
 
 // ---------------------------------------------------------------- the formats box
+function fillFormatDropdown(select, keys, defaultToAll) {
+  const previous = select.value;
+  select.innerHTML = "";
+  for (const key of keys) select.add(new Option(key, key));
+  select.add(new Option("All formats", ALL_FORMATS));
+  if (keys.includes(previous) || previous === ALL_FORMATS) select.value = previous;
+  else if (defaultToAll) select.value = ALL_FORMATS;
+}
+
 function refreshFormatKeys() {
   if (!py) return;
-  const select = $("formatKey");
-  const previous = select.value;
   try {
     const keys = JSON.parse(py.formatKeys($("formats").value));
-    select.innerHTML = "";
-    for (const key of keys) select.add(new Option(key, key));
-    select.add(new Option("All formats", ALL_FORMATS));
-    if (keys.includes(previous) || previous === ALL_FORMATS) select.value = previous;
+    fillFormatDropdown($("formatKey"), keys, false);
+    fillFormatDropdown($("removeKey"), keys, true);
     $("formatsMessage").textContent = "";
     formatsValid = true;
   } catch (err) {
     showError($("formatsMessage"), err);
     setFormatPlaceholder("Fix the formats first");
+    $("removeKey").innerHTML = "";
     formatsValid = false;
+    invalidatePlan();
   }
   updateButtons();
 }
@@ -545,6 +563,13 @@ function selectedKeys() {
   const choice = $("formatKey").value;
   return choice === ALL_FORMATS ? JSON.parse(py.formatKeys($("formats").value)) : [choice];
 }
+
+function removeKeys() {
+  const choice = $("removeKey").value;
+  return choice === ALL_FORMATS ? JSON.parse(py.formatKeys($("formats").value)) : [choice];
+}
+
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 // ---------------------------------------------------------------- actions: preview, create, remove
 async function gatherInputs() {
@@ -574,22 +599,34 @@ async function gatherInputs() {
 }
 
 async function preview() {
+  // Plans the playlists and shows the plan. Create then makes exactly this plan, with these songs.
   setBusy(true);
   clearResults();
+  invalidatePlan();
   try {
     const inputs = await gatherInputs();
     if (!inputs) return;
     setOutput("Planning...");
+    const built = [];
     const parts = [];
     for (const key of inputs.keys) {
       try {
-        const text = py.planText(inputs.formatsText, key, JSON.stringify(inputs.tracks), playlistLimit() || 50);
-        parts.push(text.replace(/\n*Preview only, nothing was created\.\s*$/, ""));
+        const plan = JSON.parse(py.buildPlaylists(inputs.formatsText, key, JSON.stringify(inputs.tracks), playlistLimit()));
+        if (typeof plan.text !== "string") throw new Error("engine.py is out of date. Upload the newest engine.py, then reload the page.");
+        built.push(plan);
+        parts.push(plan.text);
       } catch (err) {
         parts.push(`=== ${key} ===\nCould not plan this format: ${cleanError(err)}`);
       }
     }
-    setOutput([...parts, ...inputs.failed].join("\n\n") + "\n\nPreview only, nothing was created.");
+    parts.push(...inputs.failed);
+    const total = built.reduce((n, plan) => n + plan.playlists.length, 0);
+    setOutput(parts.join("\n\n") + "\n\n" + (total ? "Nothing has been created yet." : "Nothing can be created from this plan."));
+    if (total) {
+      currentPlan = { formatsText: inputs.formatsText, keys: inputs.keys, built, total };
+      $("create").textContent = `Create ${plural(total, "playlist")}`;
+      $("createRow").hidden = false;
+    }
   } catch (err) {
     setOutput("Something went wrong:\n\n" + cleanError(err));
   } finally {
@@ -598,53 +635,32 @@ async function preview() {
 }
 
 async function createPlaylists() {
+  const plan = currentPlan;
+  if (!plan) return;
   setBusy(true);
   clearResults();
+  const planned = plan.built.flatMap((b) => b.playlists);
   let created = 0;
-  let total = 0;
   try {
-    const inputs = await gatherInputs();
-    if (!inputs) return;
-
-    setOutput("Planning...");
-    const built = [];
-    const problems = [...inputs.failed];
-    for (const key of inputs.keys) {
-      try {
-        built.push(JSON.parse(py.buildPlaylists(inputs.formatsText, key, JSON.stringify(inputs.tracks), playlistLimit())));
-      } catch (err) {
-        problems.push(`${key}: could not plan this format: ${cleanError(err)}`);
-      }
-    }
-    const planned = built.flatMap((b) => b.playlists);
-    total = planned.length;
-    if (!total) {
-      const why = built.map((b) => `${b.key}: ${b.stopped || "no playlists possible"}`).concat(problems);
-      setOutput("Nothing to create.\n\n" + why.join("\n"));
-      return;
-    }
-
-    const existing = JSON.parse(py.existingMatches(inputs.formatsText, JSON.stringify(inputs.keys), JSON.stringify(playlists), me.id));
-    const go = await confirmAction({
-      message: `Create ${total} playlist${total === 1 ? "" : "s"}? They will be private and appear in Your Library.`,
-      items: planned.map((p) => `${p.name} (${p.songs} songs, ${p.minutes} min)`),
-      moreMessage: existing.length
-        ? `First, these ${existing.length} earlier playlist${existing.length === 1 ? "" : "s"} that match the same names will be removed from your library:`
-        : "",
-      moreItems: existing.map((p) => p.name),
-      yes: `Create ${total} playlist${total === 1 ? "" : "s"}`,
-    });
-    if (!go) {
-      setOutput("Cancelled. Nothing was changed.");
-      return;
-    }
-
+    // Only ask when something would be deleted: earlier playlists that match these formats' names.
+    const existing = JSON.parse(py.existingMatches(plan.formatsText, JSON.stringify(plan.keys), JSON.stringify(playlists), me.id));
     if (existing.length) {
-      setOutput(`Removing ${existing.length} earlier playlist${existing.length === 1 ? "" : "s"}...`);
+      const go = await confirmAction({
+        message: `Replace ${plural(existing.length, "earlier playlist")}? These match the names this plan uses, and will be removed from your library first:`,
+        items: existing.map((p) => p.name),
+        moreMessage: `Then ${plural(planned.length, "new playlist")} will be created:`,
+        moreItems: planned.map((p) => `${p.name} (${p.songs} songs, ${p.minutes} min)`),
+        yes: `Remove them and create ${plural(planned.length, "playlist")}`,
+      });
+      if (!go) {
+        setOutput("Cancelled. Nothing was changed.");
+        return;
+      }
+      setOutput(`Removing ${plural(existing.length, "earlier playlist")}...`);
       await removePlaylists(existing.map((p) => p.id));
     }
     for (const p of planned) {
-      setOutput(`Creating ${created + 1} of ${total}: ${p.name}`);
+      setOutput(`Creating ${created + 1} of ${planned.length}: ${p.name}`);
       const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false } });
       for (let i = 0; i < p.uris.length; i += ADD_CHUNK) {
         await spotifyRequest("POST", `/playlists/${made.id}/items`, { json: { uris: p.uris.slice(i, i + ADD_CHUNK) } });
@@ -652,12 +668,14 @@ async function createPlaylists() {
       created += 1;
       addResult(p.name, made.external_urls && made.external_urls.spotify, `${p.songs} songs, ${p.minutes} min`);
     }
-    const notes = built.filter((b) => b.stopped).map((b) => `${b.key}: ${b.stopped}`);
-    setOutput(`Done. Created ${created} playlist${created === 1 ? "" : "s"} in your Spotify account.` + (notes.length ? "\n\n" + notes.join("\n") : ""));
+    const notes = plan.built.filter((b) => b.stopped).map((b) => `${b.key}: ${b.stopped}`);
+    setOutput(`Done. Created ${plural(created, "playlist")} in your Spotify account.` + (notes.length ? "\n\n" + notes.join("\n") : ""));
+    invalidatePlan();   // so a second click cannot make duplicates; preview again to run again
     addSupportPrompt();
     await loadMyPlaylists();
   } catch (err) {
-    setOutput((created ? `Stopped after creating ${created} of ${total} playlists.\n\n` : "Something went wrong:\n\n") + cleanError(err));
+    if (created) invalidatePlan();   // some playlists exist now, so creating the plan again would duplicate them
+    setOutput((created ? `Stopped after creating ${created} of ${planned.length} playlists.\n\n` : "Something went wrong:\n\n") + cleanError(err));
     try { await loadMyPlaylists(); } catch (ignore) { /* keep the original error showing */ }
   } finally {
     setBusy(false);
@@ -669,16 +687,16 @@ async function removeEarlier() {
   clearResults();
   try {
     const formatsText = $("formats").value;
-    const keys = selectedKeys();
+    const keys = removeKeys();
     const existing = JSON.parse(py.existingMatches(formatsText, JSON.stringify(keys), JSON.stringify(playlists), me.id));
     if (!existing.length) {
       setOutput("No playlists matching these formats' names were found.");
       return;
     }
     const go = await confirmAction({
-      message: `Remove ${existing.length} playlist${existing.length === 1 ? "" : "s"} from your library? They match the naming pattern of ${keys.join(", ")}.`,
+      message: `Remove ${plural(existing.length, "playlist")} from your library? They match the naming pattern of ${keys.join(", ")}.`,
       items: existing.map((p) => p.name),
-      yes: `Remove ${existing.length} playlist${existing.length === 1 ? "" : "s"}`,
+      yes: `Remove ${plural(existing.length, "playlist")}`,
     });
     if (!go) {
       setOutput("Cancelled. Nothing was changed.");
@@ -686,7 +704,7 @@ async function removeEarlier() {
     }
     setOutput("Removing...");
     await removePlaylists(existing.map((p) => p.id));
-    setOutput(`Removed ${existing.length} playlist${existing.length === 1 ? "" : "s"} from your library.`);
+    setOutput(`Removed ${plural(existing.length, "playlist")} from your library.`);
     await loadMyPlaylists();
   } catch (err) {
     setOutput("Something went wrong:\n\n" + cleanError(err));
@@ -724,8 +742,11 @@ async function main() {
   $("connect").addEventListener("click", startLogin);
   $("disconnect").addEventListener("click", disconnect);
   $("preview").addEventListener("click", preview);
+  $("previewAgain").addEventListener("click", preview);
   $("create").addEventListener("click", createPlaylists);
   $("removeOld").addEventListener("click", removeEarlier);
+  $("formatKey").addEventListener("change", invalidatePlan);
+  $("maxPlaylists").addEventListener("input", invalidatePlan);
   $("resetFormats").addEventListener("click", resetToExample);
   $("backupDownload").addEventListener("click", downloadBackup);
   $("backupRestore").addEventListener("click", () => $("restoreFile").click());
@@ -737,6 +758,7 @@ async function main() {
   let timer = null;
   $("formats").addEventListener("input", () => {
     localStorage.setItem("formats", $("formats").value);
+    invalidatePlan();
     undoText = null;
     $("backupMessage").textContent = "";   // an Undo offered earlier would now overwrite new edits
     refreshBackupStatus();
