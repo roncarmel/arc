@@ -49,7 +49,11 @@
   #supportBox { position: fixed; right: 16px; bottom: 16px; z-index: 1001; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; max-width: min(240px, calc(100vw - 32px)); }
   #supportButton { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--button);
     background: var(--button); color: #fff; font-weight: 600; text-decoration: none; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28); }
-  #supportButton img { width: 20px; height: 20px; display: block; }
+  #supportButton img { width: 22px; height: auto; aspect-ratio: 285 / 229; display: block; animation: kofi-wiggle 3s infinite; }
+  /* The same little wiggle Ko-fi's own button does: the cup rests, then grows and wiggles for a moment every 3 seconds. */
+  @keyframes kofi-wiggle { 0% { transform: rotate(0) scale(1); } 60% { transform: rotate(0) scale(1); } 75% { transform: rotate(0) scale(1.12); } 80% { transform: rotate(0) scale(1.1); }
+    84% { transform: rotate(-10deg) scale(1.1); } 88% { transform: rotate(10deg) scale(1.1); } 92% { transform: rotate(-10deg) scale(1.1); } 96% { transform: rotate(10deg) scale(1.1); } 100% { transform: rotate(0) scale(1); } }
+  @media (prefers-reduced-motion: reduce) { #supportButton img { animation: none; } }
   #supportCaption { margin: 0; padding: 4px 8px; border-radius: 6px; background: var(--bg); color: var(--muted); font-size: 0.75rem; line-height: 1.35; text-align: right; text-wrap: balance; }
   @media (max-width: 520px) { #supportBox { right: 8px; bottom: 8px; } }
 </style>
@@ -251,7 +255,7 @@
   <div id="results"></div>
   </div>
   <div id="supportBox">
-    <a id="supportButton" href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer" title="Opens Ko-fi in a new tab"><img src="kofi-cup.png" alt="" width="20" height="20"><span>Tip me</span></a>
+    <a id="supportButton" href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer" title="Opens Ko-fi in a new tab"><img src="cup-border.png" alt="" width="22" height="18"><span>Tip me</span></a>
     <p id="supportCaption">This app is free for everyone. Tipping is a gift, and nothing changes in the app.</p>
   </div>
 
