@@ -45,9 +45,11 @@
     background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28); }
   #supportPanel { position: fixed; right: 16px; bottom: 72px; z-index: 1000; width: min(380px, calc(100vw - 32px)); }
   #supportPanel[hidden] { display: none; }
-  #supportPanel .panel-card { background: var(--bg); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; box-shadow: 0 10px 36px rgba(0, 0, 0, 0.3); }
-  #kofiHolder iframe { height: min(640px, calc(100vh - 240px)); }
-  .panel-note { margin: 0; padding: 8px 14px 12px; font-size: 0.8rem; }
+  #supportPanel .panel-card { background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 36px rgba(0, 0, 0, 0.3); }
+  #kofiHolder { overflow: hidden; }
+  #kofiHolder iframe { display: block; box-sizing: border-box; border: none; padding: 4px; background: #f9f9f9; }
+  .panel-note { margin: 0; padding: 8px 14px 12px; font-size: 0.8rem; background: #fff; color: #555; }
+  .panel-note a { color: #1a7f4b; }
   .panel-close { position: absolute; top: -12px; right: -12px; z-index: 2; width: 34px; height: 34px; padding: 0; border-radius: 50%; font-size: 1.3rem; line-height: 1;
     background: var(--bg); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
   @media (max-width: 520px) { #supportPanel { right: 8px; width: calc(100vw - 16px); } #supportButton { right: 8px; } }
@@ -171,7 +173,7 @@
     <button id="supportClose" class="panel-close" type="button" aria-label="Close">&times;</button>
     <div class="panel-card">
       <div id="kofiHolder"></div>
-      <p class="muted panel-note">Free for everyone. Support is a gift, and nothing changes in the app.
+      <p id="supportNote" class="panel-note">Free for everyone. Support is a gift, and nothing changes in the app.
         Trouble loading? <a id="kofiLink" href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer">Open Ko-fi in a new tab</a>.</p>
     </div>
   </section>

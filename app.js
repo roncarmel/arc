@@ -13,6 +13,7 @@ const API = "https://api.spotify.com/v1";
 const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tightened some limits in 2026)
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
+const KOFI_FRAME_HEIGHT = 740;  // tall enough that Ko-fi's form does not need its own scrollbar
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
 
 const DEFAULT_FORMATS = `FORMATS = {
@@ -114,19 +115,34 @@ function currentFlow() {
 
 const KOFI_PAGE = "roncarmel";  // ko-fi.com/roncarmel
 
+function fitSupportFrame() {
+  // Show Ko-fi's form at full size without a scrollbar. On a short window, shrink it just enough to fit.
+  const frame = document.getElementById("kofiframe");
+  if (!frame) return;
+  const noteHeight = $("supportNote").offsetHeight || 64;
+  const room = window.innerHeight - 72 - noteHeight - 32;  // the button below, the note, and a margin above
+  const scale = Math.max(0.5, Math.min(1, room / KOFI_FRAME_HEIGHT));
+  frame.style.width = (100 / scale) + "%";
+  frame.style.height = KOFI_FRAME_HEIGHT + "px";
+  frame.style.transformOrigin = "top left";
+  frame.style.transform = scale < 1 ? `scale(${scale})` : "none";
+  $("kofiHolder").style.height = Math.round(KOFI_FRAME_HEIGHT * scale) + "px";
+}
+
 function openSupport() {
   // A floating panel. The Ko-fi frame is only created when someone asks for it, so Ko-fi is not contacted otherwise.
   $("supportPanel").hidden = false;
   $("supportButton").setAttribute("aria-expanded", "true");
-  if (!document.getElementById("kofiFrame")) {
+  if (!document.getElementById("kofiframe")) {
     const frame = document.createElement("iframe");
-    frame.id = "kofiFrame";
-    frame.src = `https://ko-fi.com/${KOFI_PAGE}/?hidefeed=true&widget=true&embed=true`;
+    frame.id = "kofiframe";  // same id and address as the embed code Ko-fi gives out
+    frame.src = `https://ko-fi.com/${KOFI_PAGE}/?hidefeed=true&widget=true&embed=true&preview=true`;
     frame.title = "Support Playlist Builder on Ko-fi";
-    frame.height = "640";
+    frame.height = String(KOFI_FRAME_HEIGHT);
     frame.loading = "lazy";
     $("kofiHolder").appendChild(frame);
   }
+  fitSupportFrame();
   $("supportClose").focus();
 }
 
@@ -620,6 +636,7 @@ async function main() {
     });
   }
   $("supportButton").addEventListener("click", toggleSupport);
+  window.addEventListener("resize", () => { if (!$("supportPanel").hidden) fitSupportFrame(); });
   $("supportClose").addEventListener("click", closeSupport);
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !$("supportPanel").hidden) closeSupport();
