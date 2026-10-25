@@ -13,7 +13,9 @@ const API = "https://api.spotify.com/v1";
 const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tightened some limits in 2026)
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
-const KOFI_FRAME_HEIGHT = 740;  // tall enough that Ko-fi's form does not need its own scrollbar
+// How tall Ko-fi's form is shown. Too small and the form gets its own scrollbar; too big and there is blank space
+// below it. Without a cover image the form is roughly 520-560 px tall; a cover image adds about 140 px.
+const KOFI_FRAME_HEIGHT = 620;
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
 
 const DEFAULT_FORMATS = `FORMATS = {
@@ -120,7 +122,8 @@ function fitSupportFrame() {
   const frame = document.getElementById("kofiframe");
   if (!frame) return;
   const noteHeight = $("supportNote").offsetHeight || 64;
-  const room = window.innerHeight - 72 - noteHeight - 32;  // the button below, the note, and a margin above
+  const gap = window.innerWidth <= 520 ? 8 : 16;  // the same gap the panel keeps from the side of the window
+  const room = window.innerHeight - 72 - noteHeight - gap;  // minus the button area below, the note, and the gap above
   const scale = Math.max(0.5, Math.min(1, room / KOFI_FRAME_HEIGHT));
   frame.style.width = (100 / scale) + "%";
   frame.style.height = KOFI_FRAME_HEIGHT + "px";
