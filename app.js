@@ -386,8 +386,8 @@ function renderResetWarning() {
   const state = backupState();
   const backedUp = state.kind === "current";
   $("resetWarningText").textContent = {
-    never: "Reset replaces your formats with the example. You haven't downloaded a backup, so they'll be gone for good once you leave this page.",
-    edited: "Reset replaces your formats with the example. Your formats have changed since your last backup, so those changes will be gone for good once you leave this page.",
+    never: "Reset replaces your formats with the example. You haven't downloaded a backup, so they'll be gone for good once you reset.",
+    edited: "Reset replaces your formats with the example. Your formats have changed since your last backup, so those changes will be gone for good once you reset.",
     current: "Your formats are backed up" + (state.date ? " (last backup: " + state.date + ")" : "") + ". Reset replaces them with the example, and Restore formats from backup can bring them back.",
     example: "Your formats already match the example.",
   }[state.kind];
