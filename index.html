@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session Playlist Builder (preview)</title>
+<style>
+  :root { color-scheme: light dark; --bg: #ffffff; --fg: #1d1d1f; --muted: #6b6b70; --line: #d8d8dc; --card: #f5f5f7; --accent: #1a7f4b; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #161618; --fg: #f2f2f4; --muted: #9a9aa2; --line: #333338; --card: #202024; --accent: #3ccf84; } }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  h2 { font-size: 1.05rem; margin: 28px 0 8px; }
+  p { margin: 6px 0; }
+  .muted { color: var(--muted); font-size: 0.9rem; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  input[type=text], select, textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+  textarea { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; min-height: 260px; }
+  code, pre { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+  pre { white-space: pre-wrap; word-break: break-word; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-height: 80px; }
+  button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+  .error { color: #c0392b; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Session Playlist Builder</h1>
+  <p class="muted">Preview version. It reads your playlists and shows the plan. It does not create anything yet.</p>
+
+  <section id="loginSection">
+    <h2>1. Connect your Spotify app</h2>
+    <div class="card">
+      <p>In your Spotify developer dashboard, add this exact address as a redirect URI and save:</p>
+      <p><code id="redirect"></code> <button id="copyRedirect" type="button">Copy</button></p>
+      <p style="margin-top:14px">Then paste your app's Client ID:</p>
+      <input id="clientId" type="text" autocomplete="off" spellcheck="false" placeholder="Client ID">
+      <div class="row">
+        <button id="connect" class="primary" type="button">Connect Spotify</button>
+        <span id="loginMessage" class="error"></span>
+      </div>
+    </div>
+  </section>
+
+  <section id="connectedSection" hidden>
+    <h2>1. Spotify</h2>
+    <div class="row" style="margin-top:0">
+      <span id="connectedMessage">Connecting...</span>
+      <button id="disconnect" type="button">Disconnect</button>
+    </div>
+  </section>
+
+  <h2>2. Your formats</h2>
+  <p class="muted">Same syntax as playlist_settings.py. Changes are saved in this browser.</p>
+  <textarea id="formats" spellcheck="false"></textarea>
+  <div class="row">
+    <button id="resetFormats" type="button">Reset to example</button>
+    <span id="formatsMessage" class="error"></span>
+  </div>
+
+  <h2>3. Preview</h2>
+  <div class="row" style="margin-top:0">
+    <select id="formatKey" style="max-width:260px"></select>
+    <button id="preview" class="primary" type="button" disabled>Preview plan</button>
+  </div>
+  <p id="pythonStatus" class="muted"></p>
+  <pre id="output">Connect Spotify, then choose a format and click Preview plan.</pre>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
