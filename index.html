@@ -41,7 +41,13 @@
   footer.debug { margin-top: 48px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 0.9rem; color: var(--muted); }
   footer.debug summary { cursor: pointer; }
   button.linklike { background: none; border: none; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
-  #supportPanel { margin-top: 32px; }
+  #supportPanel { position: fixed; right: 16px; bottom: 16px; z-index: 1000; width: min(420px, calc(100vw - 32px));
+    max-height: calc(100vh - 32px); overflow-y: auto; box-shadow: 0 10px 36px rgba(0, 0, 0, 0.28); border-radius: 12px; }
+  #supportPanel[hidden] { display: none; }
+  @media (max-width: 520px) { #supportPanel { left: 8px; right: 8px; bottom: 8px; width: auto; max-height: calc(100vh - 16px); } }
+  .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .panel-head h2 { margin: 0; }
+  .panel-close { font-size: 1.4rem; line-height: 1; padding: 2px 10px; }
   #kofiHolder iframe { border: none; width: 100%; display: block; background: transparent; }
 </style>
 </head>
@@ -156,14 +162,14 @@
   <pre id="output">Connect Spotify, then choose a format and click Preview plan.</pre>
   <div id="results"></div>
   </div>
-  <section id="supportPanel" class="card" hidden>
-    <h2 style="margin-top:0">Support this tool</h2>
+  <section id="supportPanel" class="card" role="dialog" aria-modal="false" aria-labelledby="supportTitle" hidden>
+    <div class="panel-head">
+      <h2 id="supportTitle">Support this tool</h2>
+      <button id="supportClose" class="panel-close" type="button" aria-label="Close">&times;</button>
+    </div>
     <p>This tool is free, and it works the same for everyone. If it helped, you can send a one-time gift or choose ongoing support on Ko-fi.</p>
     <div id="kofiHolder"></div>
-    <div class="row">
-      <a id="kofiLink" href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer">Open Ko-fi in a new tab</a>
-      <button id="supportClose" type="button">Close</button>
-    </div>
+    <p><a id="kofiLink" href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer">Open Ko-fi in a new tab</a></p>
   </section>
 
   <footer class="debug">

@@ -114,8 +114,11 @@ function currentFlow() {
 
 const KOFI_PAGE = "roncarmel";  // ko-fi.com/roncarmel
 
+let supportOpener = null;
+
 function openSupport() {
-  // The Ko-fi frame is only created when someone asks for it, so Ko-fi is not contacted otherwise.
+  // A floating panel. The Ko-fi frame is only created when someone asks for it, so Ko-fi is not contacted otherwise.
+  supportOpener = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
   $("supportPanel").hidden = false;
   if (!document.getElementById("kofiFrame")) {
     const frame = document.createElement("iframe");
@@ -126,7 +129,13 @@ function openSupport() {
     frame.loading = "lazy";
     $("kofiHolder").appendChild(frame);
   }
-  if ($("supportPanel").scrollIntoView) $("supportPanel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  $("supportClose").focus();
+}
+
+function closeSupport() {
+  $("supportPanel").hidden = true;
+  if (supportOpener && supportOpener.isConnected) supportOpener.focus();
+  supportOpener = null;
 }
 
 function addSupportPrompt() {
@@ -608,7 +617,10 @@ async function main() {
     });
   }
   $("supportFooter").addEventListener("click", openSupport);
-  $("supportClose").addEventListener("click", () => { $("supportPanel").hidden = true; });
+  $("supportClose").addEventListener("click", closeSupport);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !$("supportPanel").hidden) closeSupport();
+  });
   $("clearData").addEventListener("click", () => { $("clearConfirm").hidden = false; });
   $("clearNo").addEventListener("click", () => { $("clearConfirm").hidden = true; });
   $("clearYes").addEventListener("click", clearSavedData);
