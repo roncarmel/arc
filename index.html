@@ -41,19 +41,9 @@
   footer.debug { margin-top: 48px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 0.9rem; color: var(--muted); }
   footer.debug summary { cursor: pointer; }
   button.linklike { background: none; border: none; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
-  #supportButton { position: fixed; right: 16px; bottom: 16px; z-index: 1001; padding: 10px 18px; border: none; border-radius: 999px;
-    background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28); }
-  #supportPanel { position: fixed; right: 16px; bottom: 72px; z-index: 1000; width: min(380px, calc(100vw - 32px)); }
-  #supportPanel[hidden] { display: none; }
-  #supportPanel .panel-card { background: var(--bg); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; box-shadow: 0 10px 36px rgba(0, 0, 0, 0.3); }
-  #kofiHolder { overflow: hidden; }
-  #kofiHolder iframe { display: block; box-sizing: border-box; border: none; padding: 4px; background: var(--bg); }
-  .panel-note { margin: 0; padding: 8px 14px 12px; font-size: 0.8rem; background: var(--bg); color: var(--muted); }
-  .panel-note a { color: var(--accent); }
-  .panel-close { position: absolute; top: -12px; right: -12px; z-index: 2; width: 34px; height: 34px; padding: 0; border-radius: 50%; font-size: 1.3rem; line-height: 1;
-    background: var(--bg); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
-  @media (max-width: 520px) { #supportPanel { right: 8px; width: calc(100vw - 16px); } #supportButton { right: 8px; } }
-  #kofiHolder iframe { border: none; width: 100%; display: block; background: transparent; }
+  #supportButton { position: fixed; right: 16px; bottom: 16px; z-index: 1001; display: inline-block; padding: 10px 18px; border-radius: 999px;
+    background: var(--accent); color: #fff; font-weight: 600; text-decoration: none; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28); }
+  @media (max-width: 520px) { #supportButton { right: 8px; bottom: 8px; } }
 </style>
 </head>
 <body>
@@ -167,18 +157,10 @@
   <pre id="output">Connect Spotify, then choose a format and click Preview plan.</pre>
   <div id="results"></div>
   </div>
-  <button id="supportButton" type="button" aria-expanded="false" aria-controls="supportPanel">Support this tool</button>
-
-  <section id="supportPanel" role="dialog" aria-modal="false" aria-label="Support this tool" hidden>
-    <button id="supportClose" class="panel-close" type="button" aria-label="Close">&times;</button>
-    <div class="panel-card">
-      <div id="kofiHolder"></div>
-      <p id="supportNote" class="panel-note">Free for everyone. Support is a gift, and nothing changes in the app.
-        Trouble loading? <a id="kofiLink" href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer">Open Ko-fi in a new tab</a>.</p>
-    </div>
-  </section>
+  <a id="supportButton" href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer">Support this tool</a>
 
   <footer class="debug">
+    <p>Free for everyone. Support is a gift, and nothing changes in the app.</p>
     <details id="troubleshooting">
       <summary>Troubleshooting</summary>
       <p>If something looks stuck, you can make this page forget everything it saved in this browser: your Client ID, your formats, and your Spotify sign-in.

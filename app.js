@@ -13,9 +13,6 @@ const API = "https://api.spotify.com/v1";
 const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tightened some limits in 2026)
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
-// How tall Ko-fi's form is shown. Too small and the form gets its own scrollbar; too big and there is blank space
-// below it. Without a cover image the form is roughly 520-560 px tall; a cover image adds about 140 px.
-const KOFI_FRAME_HEIGHT = 620;
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
 
 const DEFAULT_FORMATS = `FORMATS = {
@@ -115,72 +112,18 @@ function currentFlow() {
   return checked ? checked.value : null;
 }
 
-const KOFI_PAGE = "roncarmel";  // ko-fi.com/roncarmel
-
-function fitSupportFrame() {
-  // Show Ko-fi's form without a scrollbar. On a short window, shrink the form to fit, and shrink the panel
-  // with it so the panel is exactly as wide as the form.
-  const frame = document.getElementById("kofiframe");
-  if (!frame) return;
-  const panel = $("supportPanel");
-  const gap = window.innerWidth <= 520 ? 8 : 16;                    // the gap kept from the edge of the window
-  const baseWidth = Math.min(380, window.innerWidth - 2 * gap);     // the form's natural width
-  let scale = 1;
-  for (let pass = 0; pass < 4; pass++) {
-    panel.style.width = Math.round(baseWidth * scale) + "px";       // the note below wraps to this width
-    const noteHeight = $("supportNote").offsetHeight || 64;
-    const room = window.innerHeight - 72 - noteHeight - gap;        // minus the button area, the note, and the gap above
-    const next = Math.max(0.55, Math.min(1, room / KOFI_FRAME_HEIGHT));
-    if (Math.abs(next - scale) < 0.005) break;
-    scale = next;
-  }
-  frame.style.width = baseWidth + "px";
-  frame.style.height = KOFI_FRAME_HEIGHT + "px";
-  frame.style.transformOrigin = "top left";
-  frame.style.transform = scale < 1 ? `scale(${scale})` : "none";
-  $("kofiHolder").style.width = Math.round(baseWidth * scale) + "px";
-  $("kofiHolder").style.height = Math.round(KOFI_FRAME_HEIGHT * scale) + "px";
-  panel.style.width = Math.round(baseWidth * scale) + "px";
-}
-
-function openSupport() {
-  // A floating panel. The Ko-fi frame is only created when someone asks for it, so Ko-fi is not contacted otherwise.
-  $("supportPanel").hidden = false;
-  $("supportButton").setAttribute("aria-expanded", "true");
-  if (!document.getElementById("kofiframe")) {
-    const frame = document.createElement("iframe");
-    frame.id = "kofiframe";  // same id and address as the embed code Ko-fi gives out
-    frame.src = `https://ko-fi.com/${KOFI_PAGE}/?hidefeed=true&widget=true&embed=true&preview=true`;
-    frame.title = "Support Playlist Builder on Ko-fi";
-    frame.height = String(KOFI_FRAME_HEIGHT);
-    frame.loading = "lazy";
-    $("kofiHolder").appendChild(frame);
-  }
-  fitSupportFrame();
-  $("supportClose").focus();
-}
-
-function closeSupport() {
-  $("supportPanel").hidden = true;
-  $("supportButton").setAttribute("aria-expanded", "false");
-  $("supportButton").focus();
-}
-
-function toggleSupport() {
-  if ($("supportPanel").hidden) openSupport();
-  else closeSupport();
-}
+const KOFI_URL = "https://ko-fi.com/roncarmel";
 
 function addSupportPrompt() {
   const row = document.createElement("div");
   row.className = "support-prompt";
   row.appendChild(document.createTextNode("If this saved you time, you can say thanks here: "));
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "linklike";
-  button.textContent = "Support this tool";
-  button.addEventListener("click", openSupport);
-  row.appendChild(button);
+  const link = document.createElement("a");
+  link.href = KOFI_URL;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.textContent = "Support this tool";
+  row.appendChild(link);
   $("results").appendChild(row);
 }
 
@@ -649,12 +592,6 @@ async function main() {
       setTimeout(() => { button.textContent = "Copy"; }, 2000);
     });
   }
-  $("supportButton").addEventListener("click", toggleSupport);
-  window.addEventListener("resize", () => { if (!$("supportPanel").hidden) fitSupportFrame(); });
-  $("supportClose").addEventListener("click", closeSupport);
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !$("supportPanel").hidden) closeSupport();
-  });
   $("clearData").addEventListener("click", () => { $("clearConfirm").hidden = false; });
   $("clearNo").addEventListener("click", () => { $("clearConfirm").hidden = true; });
   $("clearYes").addEventListener("click", clearSavedData);
