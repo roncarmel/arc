@@ -8,7 +8,7 @@
   :root { color-scheme: light dark; --bg: #ffffff; --fg: #1d1d1f; --muted: #6b6b70; --line: #d8d8dc; --card: #f5f5f7; --accent: #c2188f; --button: #ff38b8; }
   @media (prefers-color-scheme: dark) { :root { --bg: #161618; --fg: #f2f2f4; --muted: #9a9aa2; --line: #333338; --card: #202024; --accent: #ff38b8; --button: #ff38b8; } }
   body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-  main { max-width: 720px; margin: 0 auto; padding: 24px 16px 110px; }
+  main { max-width: 720px; margin: 0 auto; padding: 24px 16px 150px; }
   h1 { font-size: 1.5rem; margin: 0 0 4px; }
   h2 { font-size: 1.05rem; margin: 28px 0 8px; }
   p { margin: 6px 0; }
@@ -39,10 +39,14 @@
   #results div { padding: 3px 0; }
   footer.debug { margin-top: 48px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 0.9rem; color: var(--muted); }
   footer.debug summary { cursor: pointer; }
-  #supportButton { position: fixed; right: 16px; bottom: 16px; z-index: 1001; display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px;
-    border-radius: 8px; border: 1px solid var(--button); background: var(--button); color: #fff; font-weight: 600; text-decoration: none; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28); }
+  button.linklike { background: none; border: none; padding: 0; color: var(--accent); font-weight: normal; text-decoration: underline; }
+  #backupMessage { min-height: 1.5em; }
+  #supportBox { position: fixed; right: 16px; bottom: 16px; z-index: 1001; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; max-width: min(240px, calc(100vw - 32px)); }
+  #supportButton { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--button);
+    background: var(--button); color: #fff; font-weight: 600; text-decoration: none; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28); }
   #supportButton img { width: 20px; height: 20px; display: block; }
-  @media (max-width: 520px) { #supportButton { right: 8px; bottom: 8px; } }
+  #supportCaption { margin: 0; padding: 4px 8px; border-radius: 6px; background: var(--bg); color: var(--muted); font-size: 0.75rem; line-height: 1.35; text-align: right; }
+  @media (max-width: 520px) { #supportBox { right: 8px; bottom: 8px; } }
 </style>
 </head>
 <body>
@@ -120,12 +124,20 @@
 
   <div id="appSection" hidden>
   <h2>2. Your formats</h2>
-  <p class="muted">Same syntax as playlist_settings.py. Changes are saved in this browser.</p>
+  <p class="muted">Edit your formats here. They are saved in this browser as you type.</p>
   <textarea id="formats" spellcheck="false"></textarea>
   <div class="row">
-    <button id="resetFormats" type="button">Reset to example</button>
+    <button id="backupDownload" type="button">Download a backup</button>
+    <button id="backupRestore" type="button">Restore from a backup</button>
+    <button id="resetFormats" class="linklike" type="button">Reset to example</button>
     <span id="formatsMessage" class="error"></span>
   </div>
+  <input id="restoreFile" type="file" accept=".txt,text/plain" hidden>
+  <p id="backupMessage" aria-live="polite"></p>
+  <p id="backupStatus" class="muted" aria-live="polite"></p>
+  <p class="muted"><strong>Why back up?</strong> Your formats are saved in this browser as you type, but clearing your browser data erases them.
+  A backup file keeps a copy on your computer. Restore it if your formats ever disappear, or to use them on another computer.
+  It contains your formats only, not your Spotify sign-in.</p>
 
   <h2>3. Preview and create</h2>
   <div class="row" style="margin-top:0">
@@ -156,10 +168,12 @@
   <pre id="output">Connect Spotify, then choose a format and click Preview plan.</pre>
   <div id="results"></div>
   </div>
-  <a id="supportButton" href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer" title="Opens Ko-fi in a new tab"><img src="kofi-cup.png" alt="" width="20" height="20"><span>Tip me</span></a>
+  <div id="supportBox">
+    <a id="supportButton" href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer" title="Opens Ko-fi in a new tab"><img src="kofi-cup.png" alt="" width="20" height="20"><span>Tip me</span></a>
+    <p id="supportCaption">This app is free for everyone. Tipping is a gift, and nothing changes in the app.</p>
+  </div>
 
   <footer class="debug">
-    <p>Free for everyone. Support is a gift, and nothing changes in the app.</p>
     <details id="troubleshooting">
       <summary>Troubleshooting</summary>
       <p>If something looks stuck, you can make this page forget everything it saved in this browser: your Client ID, your formats, and your Spotify sign-in.

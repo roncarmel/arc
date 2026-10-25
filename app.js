@@ -127,6 +127,132 @@ function addSupportPrompt() {
   $("results").appendChild(row);
 }
 
+// ---------------------------------------------------------------- backing up and restoring formats
+let undoText = null;   // what the formats box held before the last restore or reset
+
+function saveFile(name, text) {
+  // Hands the browser a file to download. Kept separate so tests can replace it.
+  const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function readFileText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).replace(/^\uFEFF/, ""));
+    reader.onerror = () => reject(reader.error || new Error("The file could not be read."));
+    reader.readAsText(file);  // text files are read as UTF-8, so emoji in playlist names survive
+  });
+}
+
+function today() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function refreshBackupStatus() {
+  const text = $("formats").value;
+  const backedUp = localStorage.getItem("lastBackupText");
+  const when = localStorage.getItem("lastBackupAt");
+  let message = "";
+  if (backedUp === null) {
+    if (text !== DEFAULT_FORMATS) message = "You haven't downloaded a backup of your formats yet.";
+  } else if (text !== backedUp) {
+    message = "Your formats have been edited since your last backup.";
+  } else if (when) {
+    message = "Last backup: " + new Date(when).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) + ".";
+  }
+  $("backupStatus").textContent = message;
+}
+
+function markBackedUp(text, atMs) {
+  localStorage.setItem("lastBackupText", text);
+  localStorage.setItem("lastBackupAt", new Date(atMs || Date.now()).toISOString());
+}
+
+function showBackupMessage(text, undo = false) {
+  const box = $("backupMessage");
+  box.textContent = text;
+  if (undo) {
+    box.appendChild(document.createTextNode(" "));
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "linklike";
+    button.textContent = "Undo";
+    button.addEventListener("click", undoLastChange);
+    box.appendChild(button);
+  }
+}
+
+function setFormatsText(text) {
+  $("formats").value = text;
+  localStorage.setItem("formats", text);
+  refreshFormatKeys();
+  refreshBackupStatus();
+}
+
+function undoLastChange() {
+  if (undoText === null) return;
+  setFormatsText(undoText);
+  undoText = null;
+  showBackupMessage("Undone. Your formats are back as they were.");
+}
+
+function downloadBackup() {
+  const text = $("formats").value;
+  saveFile(`playlist-formats-${today()}.txt`, text);
+  markBackedUp(text);
+  undoText = null;
+  showBackupMessage("Backup downloaded. Look for it in your Downloads folder.");
+  refreshBackupStatus();
+}
+
+async function restoreFromFile(file) {
+  if (!file) return;
+  undoText = null;
+  if (file.size > 200000) {
+    showBackupMessage(`${file.name} is too large to be a formats backup, so nothing was changed.`);
+    return;
+  }
+  if (!py) {
+    showBackupMessage("The page is still getting ready. Try again in a moment.");
+    return;
+  }
+  let text;
+  let keys;
+  try {
+    text = await readFileText(file);
+    keys = JSON.parse(py.formatKeys(text));
+  } catch (err) {
+    showBackupMessage(`${file.name} doesn't look like a formats backup, so nothing was changed. (${cleanError(err)})`);
+    return;
+  }
+  const previous = $("formats").value;
+  setFormatsText(text);
+  markBackedUp(text, file.lastModified);   // the file matches what is now in the box
+  refreshBackupStatus();
+  undoText = previous;
+  showBackupMessage(`Restored ${keys.length} format${keys.length === 1 ? "" : "s"} from ${file.name}.`, true);
+}
+
+function resetToExample() {
+  const previous = $("formats").value;
+  if (previous === DEFAULT_FORMATS) {
+    showBackupMessage("Your formats already match the example.");
+    return;
+  }
+  setFormatsText(DEFAULT_FORMATS);
+  undoText = previous;
+  showBackupMessage("Reset to the example format.", true);
+}
+
 let reloadPage = () => location.reload();   // a separate function so tests can replace it
 
 function clearSavedData() {
@@ -600,17 +726,24 @@ async function main() {
   $("preview").addEventListener("click", preview);
   $("create").addEventListener("click", createPlaylists);
   $("removeOld").addEventListener("click", removeEarlier);
-  $("resetFormats").addEventListener("click", () => {
-    $("formats").value = DEFAULT_FORMATS;
-    localStorage.setItem("formats", DEFAULT_FORMATS);
-    refreshFormatKeys();
+  $("resetFormats").addEventListener("click", resetToExample);
+  $("backupDownload").addEventListener("click", downloadBackup);
+  $("backupRestore").addEventListener("click", () => $("restoreFile").click());
+  $("restoreFile").addEventListener("change", async (event) => {
+    const file = event.target.files && event.target.files[0];
+    event.target.value = "";   // so choosing the same file again still counts
+    await restoreFromFile(file);
   });
   let timer = null;
   $("formats").addEventListener("input", () => {
     localStorage.setItem("formats", $("formats").value);
+    undoText = null;
+    $("backupMessage").textContent = "";   // an Undo offered earlier would now overwrite new edits
+    refreshBackupStatus();
     clearTimeout(timer);
     timer = setTimeout(refreshFormatKeys, 300);
   });
+  refreshBackupStatus();
 
   try {
     await finishLoginIfReturning();
