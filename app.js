@@ -122,7 +122,7 @@ function addSupportPrompt() {
   link.href = KOFI_URL;
   link.target = "_blank";
   link.rel = "noopener noreferrer";
-  link.textContent = "Support this tool";
+  link.textContent = "Tip me";
   row.appendChild(link);
   $("results").appendChild(row);
 }

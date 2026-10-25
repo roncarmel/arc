@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Session Playlist Builder</title>
 <style>
-  :root { color-scheme: light dark; --bg: #ffffff; --fg: #1d1d1f; --muted: #6b6b70; --line: #d8d8dc; --card: #f5f5f7; --accent: #1a7f4b; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #161618; --fg: #f2f2f4; --muted: #9a9aa2; --line: #333338; --card: #202024; --accent: #3ccf84; } }
+  :root { color-scheme: light dark; --bg: #ffffff; --fg: #1d1d1f; --muted: #6b6b70; --line: #d8d8dc; --card: #f5f5f7; --accent: #c2188f; --button: #ff38b8; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #161618; --fg: #f2f2f4; --muted: #9a9aa2; --line: #333338; --card: #202024; --accent: #ff38b8; --button: #ff38b8; } }
   body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   main { max-width: 720px; margin: 0 auto; padding: 24px 16px 110px; }
   h1 { font-size: 1.5rem; margin: 0 0 4px; }
@@ -18,8 +18,7 @@
   textarea { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; min-height: 260px; }
   code, pre { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
   pre { white-space: pre-wrap; word-break: break-word; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-height: 80px; }
-  button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button { font: inherit; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--button); background: var(--button); color: #fff; cursor: pointer; }
   button:disabled { opacity: 0.5; cursor: default; }
   .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
   .error { color: #c0392b; font-size: 0.9rem; }
@@ -40,9 +39,9 @@
   #results div { padding: 3px 0; }
   footer.debug { margin-top: 48px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 0.9rem; color: var(--muted); }
   footer.debug summary { cursor: pointer; }
-  button.linklike { background: none; border: none; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
-  #supportButton { position: fixed; right: 16px; bottom: 16px; z-index: 1001; display: inline-block; padding: 10px 18px; border-radius: 999px;
-    background: var(--accent); color: #fff; font-weight: 600; text-decoration: none; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28); }
+  #supportButton { position: fixed; right: 16px; bottom: 16px; z-index: 1001; display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px;
+    border-radius: 8px; border: 1px solid var(--button); background: var(--button); color: #fff; font-weight: 600; text-decoration: none; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28); }
+  #supportButton img { width: 20px; height: 20px; display: block; }
   @media (max-width: 520px) { #supportButton { right: 8px; bottom: 8px; } }
 </style>
 </head>
@@ -157,7 +156,7 @@
   <pre id="output">Connect Spotify, then choose a format and click Preview plan.</pre>
   <div id="results"></div>
   </div>
-  <a id="supportButton" href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer">Support this tool</a>
+  <a id="supportButton" href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer" title="Opens Ko-fi in a new tab"><img src="kofi-cup.png" alt="" width="20" height="20"><span>Tip me</span></a>
 
   <footer class="debug">
     <p>Free for everyone. Support is a gift, and nothing changes in the app.</p>
