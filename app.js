@@ -14,15 +14,17 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
+const APP_VERSION = "2026-10-25";                    // change this whenever the page is updated
+const REPORT_FORM_URL = "https://tally.so/r/VppLZN"; // where problem reports go
 
 const DEFAULT_FORMATS = `FORMATS = {
     "format-1": {
-        "name": "Session {n}",
+        "name": "generated playlist {n}",
         "silence between segments": "30 sec",
         "segments": [
-            ("playlist 1", 30),
-            ("playlist 2", 60),
-            ("playlist 3", 30),
+            ("source playlist 1", 30),
+            ("source playlist 2", 60),
+            ("source playlist 3", 30),
         ],
     },
 }`;
@@ -82,6 +84,96 @@ function setActionMessage(text) {
 
 function setRemoveMessage(text) {
   $("removeMessage").textContent = text;   // progress and results of Remove, shown inside that section
+}
+
+// ---------------------------------------------------------------- problem reports
+// A report carries only a few technical details. It never carries the sign-in, the Client ID, playlist names,
+// song titles, or the formats text. Nothing is sent until the person submits the form in the new tab.
+let pythonVersion = "";
+let lastErrorText = "";
+const stepLog = [];   // the last few things that happened, in plain words, kept in memory only
+
+function logStep(text) {
+  stepLog.push(text);
+  if (stepLog.length > 10) stepLog.shift();
+}
+
+function scrubError(text) {
+  // Anything inside quotation marks could be a name the person typed, so it is replaced. The text is also shortened.
+  return String(text || "")
+    .replace(/(^|[\s(\[])'[^']*'(?=[\s).,:;\]]|$)/g, "$1...")
+    .replace(/"[^"]*"/g, "...")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 160);
+}
+
+function recordError(text) {
+  lastErrorText = scrubError(text);
+}
+
+function describeBrowser() {
+  const ua = navigator.userAgent || "";
+  const system = /Windows/.test(ua) ? "Windows" : /iPhone|iPad/.test(ua) ? "iOS" : /Android/.test(ua) ? "Android"
+    : /Mac OS X|Macintosh/.test(ua) ? "macOS" : /CrOS/.test(ua) ? "ChromeOS" : /Linux/.test(ua) ? "Linux" : "an unknown system";
+  let browser = "an unknown browser";
+  let m;
+  if ((m = ua.match(/Edg\/(\d+)/))) browser = "Edge " + m[1];
+  else if ((m = ua.match(/Firefox\/(\d+)/))) browser = "Firefox " + m[1];
+  else if ((m = ua.match(/Chrome\/(\d+)/))) browser = "Chrome " + m[1];
+  else if ((m = ua.match(/Version\/(\d+).*Safari/))) browser = "Safari " + m[1];
+  return `${browser} on ${system}`;
+}
+
+function reportDetails() {
+  return {
+    appVersion: APP_VERSION,
+    browser: describeBrowser(),
+    windowSize: `${window.innerWidth}x${window.innerHeight}`,
+    planner: py ? `ready (Python ${pythonVersion})` : "not loaded",
+    lastError: lastErrorText || "none",
+    recentSteps: stepLog.length ? stepLog.join(" > ") : "none",
+  };
+}
+
+function reportUrl() {
+  // The details travel in the link, so the person never copies or pastes anything.
+  const details = reportDetails();
+  const build = () => REPORT_FORM_URL + "?" + Object.entries(details).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+  let url = build();
+  while (url.length > 1800 && details.recentSteps.length > 40) {   // keep the link a safe length
+    details.recentSteps = details.recentSteps.slice(0, Math.floor(details.recentSteps.length * 0.8)) + "...";
+    url = build();
+  }
+  return url;
+}
+
+function refreshReportBox() {
+  const d = reportDetails();
+  $("reportPreview").textContent = [
+    `Version: ${d.appVersion}`,
+    `Browser: ${d.browser}`,
+    `Window size: ${d.windowSize}`,
+    `Planner: ${d.planner}`,
+    `Last error: ${d.lastError}`,
+    `Recent steps: ${d.recentSteps}`,
+  ].join("\n");
+  $("reportLink").href = reportUrl();
+}
+
+const REPORT_HINTS = ["mainReportHint", "removeReportHint", "loginReportHint"];
+
+function offerReport(hintId, rawError) {
+  // An unexpected problem: remember it and show a "Report this problem" link next to the message.
+  recordError(rawError);
+  logStep("problem: " + lastErrorText.slice(0, 60));
+  const link = $(hintId).querySelector("a");
+  link.href = reportUrl();
+  $(hintId).hidden = false;
+}
+
+function clearReportHints(...ids) {
+  for (const id of (ids.length ? ids : REPORT_HINTS)) $(id).hidden = true;
 }
 
 function clearResults() {
@@ -232,6 +324,7 @@ function downloadBackup() {
   saveFile(`playlist-formats-${today()}.txt`, text);
   markBackedUp(text);
   undoText = null;
+  logStep("backup downloaded");
   showBackupMessage("Backup downloaded. Look for it in your Downloads folder.");
   refreshBackupStatus();
 }
@@ -253,6 +346,8 @@ async function restoreFromFile(file) {
     text = await readFileText(file);
     keys = JSON.parse(py.formatKeys(text));
   } catch (err) {
+    recordError(cleanError(err));
+    logStep("restore: file rejected");
     showBackupMessage(`${file.name} doesn't look like a formats backup, so nothing was changed. (${cleanError(err)})`);
     return;
   }
@@ -261,6 +356,7 @@ async function restoreFromFile(file) {
   markBackedUp(text, file.lastModified);   // the file matches what is now in the box
   refreshBackupStatus();
   undoText = previous;
+  logStep(`restore: ${plural(keys.length, "format")} loaded`);
   showBackupMessage(`Restored ${keys.length} format${keys.length === 1 ? "" : "s"} from ${file.name}.`, true);
 }
 
@@ -271,6 +367,7 @@ function resetToExample() {
     return;
   }
   setFormatsText(DEFAULT_FORMATS);
+  logStep("formats reset to the example");
   undoText = previous;
   showBackupMessage("Reset to the example format.", true);
 }
@@ -346,6 +443,8 @@ async function startLogin() {
     return;
   }
   localStorage.setItem("clientId", clientId);
+  clearReportHints("loginReportHint");
+  logStep("sign-in started");
   const verifier = randomString(96);
   const state = randomString(24);
   sessionStorage.setItem("pkceVerifier", verifier);
@@ -393,6 +492,7 @@ async function finishLoginIfReturning() {
   if (!response.ok) {
     revealLoginProblem();
     setLoginMessage("Spotify refused the sign-in: " + (data.error_description || data.error || response.status));
+    offerReport("loginReportHint", "Spotify refused the sign-in: " + (data.error || response.status));
     return;
   }
   sessionStorage.setItem("token", JSON.stringify({
@@ -479,6 +579,8 @@ async function loadMyPlaylists() {
     owner: p.owner && p.owner.id,
     collaborative: !!p.collaborative,
   }));
+  // The count shown in Step 1 always matches the list, including after playlists are created or removed.
+  $("connectedMessage").textContent = `Connected as ${me.display_name || me.id}. ${plural(playlists.length, "playlist")} found.`;
 }
 
 async function loadTracks(id) {
@@ -541,6 +643,8 @@ async function startPython() {
         existingMatches: get("existing_matches"),
       };
       $("pythonStatus").textContent = `Ready. The planner is running in your browser (Python ${version}).`;
+      pythonVersion = version;
+      logStep("planner ready");
       return;
     } catch (err) {
       console.error("Python runtime " + version + " failed:", err);
@@ -571,6 +675,7 @@ function refreshFormatKeys() {
     formatsValid = true;
   } catch (err) {
     showError($("formatsMessage"), err);
+    recordError(cleanError(err));
     setFormatPlaceholder("Fix the formats first");
     $("removeKey").innerHTML = "";
     formatsValid = false;
@@ -612,6 +717,8 @@ async function gatherInputs() {
   const names = [...new Set(plans.flatMap((p) => p.names))];
   const match = JSON.parse(py.matchPlaylists(JSON.stringify(names), JSON.stringify(playlists), me.id));
   if (match.problems.length) {
+    recordError(`Preview blocked: ${plural(match.problems.length, "source playlist")} not found or not owned`);
+    logStep("preview blocked: source playlists");
     setOutput("Cannot plan yet:\n\n" + match.problems.map((p) => "- " + p).join("\n")
       + "\n\nCheck the playlist names in your formats against your Spotify playlists. Each name must match a playlist you own.");
     return null;
@@ -629,6 +736,8 @@ async function preview() {
   setBusy(true);
   clearResults();
   setActionMessage("");
+  clearReportHints("mainReportHint");
+  logStep("preview started");
   invalidatePlan(false);
   const startedWith = planSignature();
   try {
@@ -644,6 +753,7 @@ async function preview() {
         built.push(plan);
         parts.push(plan.text);
       } catch (err) {
+        recordError(cleanError(err));
         parts.push(`=== ${key} ===\nCould not plan this format: ${cleanError(err)}`);
       }
     }
@@ -653,6 +763,7 @@ async function preview() {
     }
     parts.push(...inputs.failed);
     const total = built.reduce((n, plan) => n + plan.playlists.length, 0);
+    logStep(total ? `preview: ${plural(total, "playlist")} planned` : "preview: nothing can be created");
     setOutput(parts.join("\n\n") + "\n\n" + (total ? "Nothing has been created yet." : "Nothing can be created from this plan."));
     if (total) {
       currentPlan = { formatsText: inputs.formatsText, keys: inputs.keys, built, total };
@@ -661,6 +772,7 @@ async function preview() {
     }
   } catch (err) {
     setOutput("Something went wrong:\n\n" + cleanError(err));
+    offerReport("mainReportHint", cleanError(err));
   } finally {
     setBusy(false);
   }
@@ -672,7 +784,9 @@ async function createPlaylists() {
   setBusy(true);
   clearResults();
   setActionMessage("");
+  clearReportHints("mainReportHint");
   const planned = plan.built.flatMap((b) => b.playlists);
+  logStep(`create started (${plural(planned.length, "playlist")})`);
   let created = 0;
   try {
     // Only ask when something would be deleted: earlier playlists that match these formats' names.
@@ -702,6 +816,7 @@ async function createPlaylists() {
       addResult(p.name, made.external_urls && made.external_urls.spotify, `${p.songs} songs, ${p.minutes} min`);
     }
     const notes = plan.built.filter((b) => b.stopped).map((b) => `${b.key}: ${b.stopped}`);
+    logStep(`create finished (${plural(created, "playlist")})`);
     invalidatePlan(true);   // the plan is used up, so a second click cannot make duplicates
     setActionMessage(`Done. Created ${plural(created, "playlist")} in your Spotify account.` + (notes.length ? "\n\n" + notes.join("\n") : ""));
     addSupportPrompt();
@@ -709,6 +824,8 @@ async function createPlaylists() {
   } catch (err) {
     if (created) invalidatePlan(true);   // some playlists exist now, so creating the plan again would duplicate them
     setActionMessage((created ? `Stopped after creating ${created} of ${planned.length} playlists.\n\n` : "Something went wrong:\n\n") + cleanError(err));
+    logStep(`create failed after ${created} of ${planned.length}`);
+    offerReport("mainReportHint", cleanError(err));
     try { await loadMyPlaylists(); } catch (ignore) { /* keep the original error showing */ }
   } finally {
     setBusy(false);
@@ -719,6 +836,8 @@ async function removeEarlier() {
   // Everything about removing, including the question and the result, stays inside the Remove section.
   setBusy(true);
   setRemoveMessage("");
+  clearReportHints("removeReportHint");
+  logStep("remove started");
   try {
     const formatsText = $("formats").value;
     const keys = removeKeys();
@@ -738,10 +857,12 @@ async function removeEarlier() {
     }
     setRemoveMessage("Removing...");
     await removePlaylists(existing.map((p) => p.id));
+    logStep(`remove finished (${plural(existing.length, "playlist")})`);
     setRemoveMessage(`Removed ${plural(existing.length, "playlist")} from your library.`);
     await loadMyPlaylists();
   } catch (err) {
     setRemoveMessage("Something went wrong: " + cleanError(err));
+    offerReport("removeReportHint", cleanError(err));
   } finally {
     setBusy(false);
   }
@@ -749,6 +870,9 @@ async function removeEarlier() {
 
 // ---------------------------------------------------------------- start up
 async function main() {
+  logStep("page opened");
+  $("appVersionLabel").textContent = APP_VERSION;
+  refreshReportBox();
   for (const el of document.querySelectorAll(".redirect-address")) el.textContent = redirectUri();
   $("clientId").value = localStorage.getItem("clientId") || "";
   $("formats").value = localStorage.getItem("formats") || DEFAULT_FORMATS;
@@ -773,6 +897,13 @@ async function main() {
       }
       setTimeout(() => { button.textContent = "Copy"; }, 2000);
     });
+  }
+  // problem reports: the link is rebuilt at the moment it is used, so it carries the latest details
+  $("reportLink").addEventListener("click", refreshReportBox);
+  $("moreOptions").addEventListener("toggle", () => { if ($("moreOptions").open) refreshReportBox(); });
+  for (const id of REPORT_HINTS) {
+    const link = $(id).querySelector("a");
+    link.addEventListener("click", () => { link.href = reportUrl(); });
   }
   $("clearData").addEventListener("click", () => { $("clearConfirm").hidden = false; });
   $("clearNo").addEventListener("click", () => { $("clearConfirm").hidden = true; });
@@ -809,6 +940,7 @@ async function main() {
     await finishLoginIfReturning();
   } catch (err) {
     setLoginMessage(String(err.message || err));
+    offerReport("loginReportHint", String(err.message || err));
   }
   token = loadStoredToken();
   if (!token && needsReconnect) {
@@ -823,9 +955,10 @@ async function main() {
     $("about").open = false;
     try {
       await loadMyPlaylists();
-      $("connectedMessage").textContent = `Connected as ${me.display_name || me.id}. ${playlists.length} playlists found.`;
+      logStep(`connected, ${plural(playlists.length, "playlist")} found`);
     } catch (err) {
       $("connectedMessage").textContent = String(err.message || err);
+      offerReport("mainReportHint", String(err.message || err));
     }
   }
 
@@ -837,6 +970,7 @@ async function main() {
   } catch (err) {
     $("pythonStatus").textContent = String(err.message || err);
     $("plannerNote").textContent = "The planner could not start, so Preview is unavailable. Check your internet connection and reload the page. Details are under More options.";
+    offerReport("mainReportHint", String(err.message || err));
   }
 }
 

@@ -18,6 +18,9 @@
   details.about { margin: 0 0 8px; }
   #setupDetails > summary { cursor: pointer; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
   #welcomeBack { margin-bottom: 10px; }
+  a.button-link { display: inline-block; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--button); background: var(--button); color: #fff; text-decoration: none; }
+  pre.report-preview { min-height: 0; font-size: 12.5px; margin: 6px 0; }
+  .report-hint { margin: 6px 0; }
   #welcomeBack p { margin-top: 0; }
   details.about summary { cursor: pointer; font-weight: 600; color: var(--accent); }
   details.about p { margin: 10px 0 0; }
@@ -95,7 +98,7 @@
       <li>Preview the plan, then create the playlists.</li>
     </ol>
     <p><strong>What you need.</strong> A Spotify Premium account (Spotify requires it for the free developer app) and some playlists of your own to draw from.</p>
-    <p><strong>Good to know.</strong> Your playlists are only read, never changed. New playlists are private. Everything runs in this browser, and nothing about your music goes anywhere except to Spotify.</p>
+    <p><strong>Good to know.</strong> Your playlists are only read, never changed. New playlists are private. Everything runs in this browser, and nothing about your music goes anywhere except to Spotify. A problem report is sent only if you choose to send one.</p>
   </details>
 
   <section id="loginSection">
@@ -108,6 +111,8 @@
           <span id="welcomeMessage" class="error"></span>
         </div>
       </div>
+
+      <p id="loginReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Report this problem</a></p>
 
       <details id="setupDetails" open>
         <summary>Spotify developer app setup</summary>
@@ -163,7 +168,7 @@
           <div class="address"><code class="redirect-address"></code> <button class="copy-redirect" type="button">Copy</button></div>
         </details>
 
-        <p class="muted" style="margin-top:12px">Your Client ID is not a secret. It stays in this browser, and nothing is sent anywhere except to Spotify.</p>
+        <p class="muted" style="margin-top:12px">Your Client ID is not a secret. It stays in this browser. Nothing is sent anywhere except to Spotify, unless you choose to send a problem report.</p>
       </div>
       </details>
     </div>
@@ -294,6 +299,7 @@
   </div>
 
   <p id="actionMessage" aria-live="polite"></p>
+  <p id="mainReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Report this problem</a></p>
   <div id="results"></div>
   </div>
   <div id="supportBox">
@@ -304,6 +310,13 @@
   <footer class="debug">
     <details id="moreOptions">
       <summary>More options</summary>
+
+      <h3>Report a problem</h3>
+      <p class="muted">Something not working? Send a report. A person reads these, but may not respond to all of them. The form opens in a new tab, and nothing is sent until you submit it there.</p>
+      <p><strong>Details attached to the report:</strong></p>
+      <pre id="reportPreview" class="report-preview"></pre>
+      <p class="muted">Your sign-in, Client ID, playlist names, and song titles are never included.</p>
+      <a id="reportLink" class="button-link" href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Open the report form</a>
 
       <h3>Limit how many playlists are made</h3>
       <p class="muted">By default, Preview plans as many playlists as your songs allow. To cap it, enter a number, then preview again.</p>
@@ -328,10 +341,12 @@
         </div>
       </div>
       <p id="removeMessage" aria-live="polite"></p>
+      <p id="removeReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Report this problem</a></p>
 
       <h3>Planner status</h3>
       <p class="muted">Your playlists are planned by a small Python program that runs inside your browser, so nothing about your music is sent to a server. If Preview stays unavailable, the reason shows here.</p>
       <p id="pythonStatus">Starting...</p>
+      <p class="muted">App version: <span id="appVersionLabel"></span></p>
 
       <h3>Clear saved data</h3>
       <p class="muted">If something looks stuck, you can make this page forget everything it saved in this browser: your Client ID, your formats, and your Spotify sign-in. Nothing in your Spotify account changes.</p>
