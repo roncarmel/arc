@@ -8,7 +8,7 @@
   :root { color-scheme: light dark; --bg: #ffffff; --fg: #1d1d1f; --muted: #6b6b70; --line: #d8d8dc; --card: #f5f5f7; --accent: #1a7f4b; }
   @media (prefers-color-scheme: dark) { :root { --bg: #161618; --fg: #f2f2f4; --muted: #9a9aa2; --line: #333338; --card: #202024; --accent: #3ccf84; } }
   body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-  main { max-width: 720px; margin: 0 auto; padding: 24px 16px 64px; }
+  main { max-width: 720px; margin: 0 auto; padding: 24px 16px 110px; }
   h1 { font-size: 1.5rem; margin: 0 0 4px; }
   h2 { font-size: 1.05rem; margin: 28px 0 8px; }
   p { margin: 6px 0; }
@@ -41,13 +41,16 @@
   footer.debug { margin-top: 48px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 0.9rem; color: var(--muted); }
   footer.debug summary { cursor: pointer; }
   button.linklike { background: none; border: none; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
-  #supportPanel { position: fixed; right: 16px; bottom: 16px; z-index: 1000; width: min(420px, calc(100vw - 32px));
-    max-height: calc(100vh - 32px); overflow-y: auto; box-shadow: 0 10px 36px rgba(0, 0, 0, 0.28); border-radius: 12px; }
+  #supportButton { position: fixed; right: 16px; bottom: 16px; z-index: 1001; padding: 10px 18px; border: none; border-radius: 999px;
+    background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28); }
+  #supportPanel { position: fixed; right: 16px; bottom: 72px; z-index: 1000; width: min(380px, calc(100vw - 32px)); }
   #supportPanel[hidden] { display: none; }
-  @media (max-width: 520px) { #supportPanel { left: 8px; right: 8px; bottom: 8px; width: auto; max-height: calc(100vh - 16px); } }
-  .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  .panel-head h2 { margin: 0; }
-  .panel-close { font-size: 1.4rem; line-height: 1; padding: 2px 10px; }
+  #supportPanel .panel-card { background: var(--bg); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; box-shadow: 0 10px 36px rgba(0, 0, 0, 0.3); }
+  #kofiHolder iframe { height: min(640px, calc(100vh - 240px)); }
+  .panel-note { margin: 0; padding: 8px 14px 12px; font-size: 0.8rem; }
+  .panel-close { position: absolute; top: -12px; right: -12px; z-index: 2; width: 34px; height: 34px; padding: 0; border-radius: 50%; font-size: 1.3rem; line-height: 1;
+    background: var(--bg); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
+  @media (max-width: 520px) { #supportPanel { right: 8px; width: calc(100vw - 16px); } #supportButton { right: 8px; } }
   #kofiHolder iframe { border: none; width: 100%; display: block; background: transparent; }
 </style>
 </head>
@@ -162,18 +165,18 @@
   <pre id="output">Connect Spotify, then choose a format and click Preview plan.</pre>
   <div id="results"></div>
   </div>
-  <section id="supportPanel" class="card" role="dialog" aria-modal="false" aria-labelledby="supportTitle" hidden>
-    <div class="panel-head">
-      <h2 id="supportTitle">Support this tool</h2>
-      <button id="supportClose" class="panel-close" type="button" aria-label="Close">&times;</button>
+  <button id="supportButton" type="button" aria-expanded="false" aria-controls="supportPanel">Support this tool</button>
+
+  <section id="supportPanel" role="dialog" aria-modal="false" aria-label="Support this tool" hidden>
+    <button id="supportClose" class="panel-close" type="button" aria-label="Close">&times;</button>
+    <div class="panel-card">
+      <div id="kofiHolder"></div>
+      <p class="muted panel-note">Free for everyone. Support is a gift, and nothing changes in the app.
+        Trouble loading? <a id="kofiLink" href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer">Open Ko-fi in a new tab</a>.</p>
     </div>
-    <p>This tool is free, and it works the same for everyone. If it helped, you can send a one-time gift or choose ongoing support on Ko-fi.</p>
-    <div id="kofiHolder"></div>
-    <p><a id="kofiLink" href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer">Open Ko-fi in a new tab</a></p>
   </section>
 
   <footer class="debug">
-    <p><button id="supportFooter" class="linklike" type="button">Support this tool</button></p>
     <details id="troubleshooting">
       <summary>Troubleshooting</summary>
       <p>If something looks stuck, you can make this page forget everything it saved in this browser: your Client ID, your formats, and your Spotify sign-in.

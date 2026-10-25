@@ -114,18 +114,16 @@ function currentFlow() {
 
 const KOFI_PAGE = "roncarmel";  // ko-fi.com/roncarmel
 
-let supportOpener = null;
-
 function openSupport() {
   // A floating panel. The Ko-fi frame is only created when someone asks for it, so Ko-fi is not contacted otherwise.
-  supportOpener = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
   $("supportPanel").hidden = false;
+  $("supportButton").setAttribute("aria-expanded", "true");
   if (!document.getElementById("kofiFrame")) {
     const frame = document.createElement("iframe");
     frame.id = "kofiFrame";
     frame.src = `https://ko-fi.com/${KOFI_PAGE}/?hidefeed=true&widget=true&embed=true`;
     frame.title = "Support Playlist Builder on Ko-fi";
-    frame.height = "712";
+    frame.height = "640";
     frame.loading = "lazy";
     $("kofiHolder").appendChild(frame);
   }
@@ -134,8 +132,13 @@ function openSupport() {
 
 function closeSupport() {
   $("supportPanel").hidden = true;
-  if (supportOpener && supportOpener.isConnected) supportOpener.focus();
-  supportOpener = null;
+  $("supportButton").setAttribute("aria-expanded", "false");
+  $("supportButton").focus();
+}
+
+function toggleSupport() {
+  if ($("supportPanel").hidden) openSupport();
+  else closeSupport();
 }
 
 function addSupportPrompt() {
@@ -616,7 +619,7 @@ async function main() {
       setTimeout(() => { button.textContent = "Copy"; }, 2000);
     });
   }
-  $("supportFooter").addEventListener("click", openSupport);
+  $("supportButton").addEventListener("click", toggleSupport);
   $("supportClose").addEventListener("click", closeSupport);
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !$("supportPanel").hidden) closeSupport();
