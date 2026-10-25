@@ -65,8 +65,10 @@
   #confirmBox ul, #removeConfirmBox ul { margin: 6px 0 10px; padding-left: 20px; }
   #actionMessage, #removeMessage { white-space: pre-line; }
   #results div { padding: 3px 0; }
-  footer.debug { margin-top: 48px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 0.9rem; color: var(--muted); }
-  footer.debug summary { cursor: pointer; }
+  footer.debug { margin-top: 32px; font-size: 0.95rem; }
+  details.card > summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+  details.help.card { margin: 8px 0; }
+  details.card .card, details.card pre, details.card figure.sample { background: var(--bg); }
   footer.debug h3 { font-size: 1rem; margin: 20px 0 6px; color: var(--fg); }
   button.linklike { background: none; border: none; padding: 0; color: var(--accent); font-weight: normal; text-decoration: underline; }
   #backupMessage { min-height: 1.5em; }
@@ -185,7 +187,7 @@
   <div id="appSection" hidden>
   <h2>2. Your formats</h2>
   <p class="muted">Your formats are saved in this browser as you type.</p>
-  <details id="formatHelp" class="help">
+  <details id="formatHelp" class="help card">
     <summary>How to edit formats</summary>
 
     <p>A format is a recipe for one kind of playlist: which of your playlists to draw from, in what order, and for how long. The editor below starts with a template. Replace its placeholder names, such as "source playlist 1", with the names of your own Spotify playlists. The shaded boxes in this help are samples to read, not places to type.</p>
@@ -308,7 +310,7 @@
   </div>
 
   <footer class="debug">
-    <details id="moreOptions">
+    <details id="moreOptions" class="card">
       <summary>More options</summary>
 
       <h3>Report a problem</h3>
