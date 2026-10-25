@@ -281,7 +281,16 @@ async function main() {
   $("clientId").value = localStorage.getItem("clientId") || "";
   $("formats").value = localStorage.getItem("formats") || DEFAULT_FORMATS;
 
-  $("copyRedirect").addEventListener("click", () => navigator.clipboard.writeText(redirectUri()));
+  $("copyRedirect").addEventListener("click", async () => {
+    const button = $("copyRedirect");
+    try {
+      await navigator.clipboard.writeText(redirectUri());
+      button.textContent = "Copied";
+    } catch (err) {
+      button.textContent = "Select and copy it by hand";
+    }
+    setTimeout(() => { button.textContent = "Copy"; }, 2000);
+  });
   $("connect").addEventListener("click", startLogin);
   $("disconnect").addEventListener("click", disconnect);
   $("preview").addEventListener("click", preview);

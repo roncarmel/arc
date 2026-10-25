@@ -23,6 +23,12 @@
   button:disabled { opacity: 0.5; cursor: default; }
   .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
   .error { color: #c0392b; font-size: 0.9rem; }
+  ol { margin: 8px 0 0; padding-left: 22px; }
+  li { margin: 0 0 12px; }
+  li input[type=text] { margin-top: 6px; }
+  .address { margin: 6px 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .address code { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; word-break: break-all; }
+  a { color: var(--accent); }
 </style>
 </head>
 <body>
@@ -33,14 +39,29 @@
   <section id="loginSection">
     <h2>1. Connect your Spotify app</h2>
     <div class="card">
-      <p>In your Spotify developer dashboard, add this exact address as a redirect URI and save:</p>
-      <p><code id="redirect"></code> <button id="copyRedirect" type="button">Copy</button></p>
-      <p style="margin-top:14px">Then paste your app's Client ID:</p>
-      <input id="clientId" type="text" autocomplete="off" spellcheck="false" placeholder="Client ID">
+      <p>This app works through a free Spotify developer app that belongs to you. Set it up once:</p>
+      <ol>
+        <li>
+          Open your <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify developer dashboard</a>
+          (it opens in a new tab) and log in. Click your app. If you do not have one yet, click <strong>Create app</strong>,
+          name it anything, and choose <strong>Web API</strong>.
+        </li>
+        <li>Click <strong>Settings</strong>, then find the <strong>Redirect URIs</strong> box.</li>
+        <li>
+          Copy this address and paste it into that box, exactly as shown:
+          <div class="address"><code id="redirect"></code> <button id="copyRedirect" type="button">Copy</button></div>
+          Click <strong>Add</strong>, then scroll down and click <strong>Save</strong>.
+        </li>
+        <li>On the same Settings page, copy your app's <strong>Client ID</strong> and paste it here:
+          <input id="clientId" type="text" autocomplete="off" spellcheck="false" placeholder="Client ID">
+        </li>
+        <li>Click <strong>Connect Spotify</strong>. Spotify will ask you to approve read-only access, then bring you back to this page.</li>
+      </ol>
       <div class="row">
         <button id="connect" class="primary" type="button">Connect Spotify</button>
         <span id="loginMessage" class="error"></span>
       </div>
+      <p class="muted" style="margin-top:12px">Your Client ID is not a secret. It stays in this browser, and nothing is sent anywhere except to Spotify.</p>
     </div>
   </section>
 
