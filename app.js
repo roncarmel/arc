@@ -118,18 +118,29 @@ function currentFlow() {
 const KOFI_PAGE = "roncarmel";  // ko-fi.com/roncarmel
 
 function fitSupportFrame() {
-  // Show Ko-fi's form at full size without a scrollbar. On a short window, shrink it just enough to fit.
+  // Show Ko-fi's form without a scrollbar. On a short window, shrink the form to fit, and shrink the panel
+  // with it so the panel is exactly as wide as the form.
   const frame = document.getElementById("kofiframe");
   if (!frame) return;
-  const noteHeight = $("supportNote").offsetHeight || 64;
-  const gap = window.innerWidth <= 520 ? 8 : 16;  // the same gap the panel keeps from the side of the window
-  const room = window.innerHeight - 72 - noteHeight - gap;  // minus the button area below, the note, and the gap above
-  const scale = Math.max(0.5, Math.min(1, room / KOFI_FRAME_HEIGHT));
-  frame.style.width = (100 / scale) + "%";
+  const panel = $("supportPanel");
+  const gap = window.innerWidth <= 520 ? 8 : 16;                    // the gap kept from the edge of the window
+  const baseWidth = Math.min(380, window.innerWidth - 2 * gap);     // the form's natural width
+  let scale = 1;
+  for (let pass = 0; pass < 4; pass++) {
+    panel.style.width = Math.round(baseWidth * scale) + "px";       // the note below wraps to this width
+    const noteHeight = $("supportNote").offsetHeight || 64;
+    const room = window.innerHeight - 72 - noteHeight - gap;        // minus the button area, the note, and the gap above
+    const next = Math.max(0.55, Math.min(1, room / KOFI_FRAME_HEIGHT));
+    if (Math.abs(next - scale) < 0.005) break;
+    scale = next;
+  }
+  frame.style.width = baseWidth + "px";
   frame.style.height = KOFI_FRAME_HEIGHT + "px";
   frame.style.transformOrigin = "top left";
   frame.style.transform = scale < 1 ? `scale(${scale})` : "none";
+  $("kofiHolder").style.width = Math.round(baseWidth * scale) + "px";
   $("kofiHolder").style.height = Math.round(KOFI_FRAME_HEIGHT * scale) + "px";
+  panel.style.width = Math.round(baseWidth * scale) + "px";
 }
 
 function openSupport() {
