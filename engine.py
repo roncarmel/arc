@@ -226,7 +226,7 @@ def parse_formats(text):
     except (ValueError, SyntaxError) as err:
         raise ValueError(f"Could not read the formats: {err}")
     if not isinstance(data, dict) or not data:
-        raise ValueError('The formats should look like { "my-format": { "name": ..., "segments": [...] } }.')
+        raise ValueError('The formats should look like { "format-1": { "name": ..., "segments": [...] } }.')
     return data
 
 

@@ -14,23 +14,17 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const PREVIEW_PROMPT = "Choose a format and click Preview plan.";
 
 const DEFAULT_FORMATS = `FORMATS = {
-    "b1-evocative": {
-        "name": "📕 evocative {n}",
+    "format-1": {
+        "name": "Session {n}",
         "silence between segments": "30 sec",
         "segments": [
-            ("☘️ intro / outro (soothing, familiar)", 30),
-            ("💗 spacious + gentle", 60),
-            ("💗💗 evocative", 60),
-            ("💗 spacious + gentle", 60),
-            ("☘️ intro / outro (soothing, familiar)", 30),
-            ("silence", "2 min"),
-            ("🛋 rest", 60),
+            ("playlist 1", 30),
+            ("playlist 2", 60),
+            ("playlist 3", 30),
         ],
     },
-    # Add more formats here, following the same pattern.
 }`;
 
 const $ = (id) => document.getElementById(id);
@@ -77,7 +71,9 @@ function showError(box, err) {
 }
 
 function setOutput(text) {
+  // The box exists only while there is something to show: progress, a plan, or a problem.
   $("output").textContent = text;
+  $("output").hidden = !text;
 }
 
 function setActionMessage(text) {
@@ -207,7 +203,7 @@ function invalidatePlan(resetOutput = !busy) {
   // Anything that could change what a plan would be clears the current preview, so the user has to preview again.
   currentPlan = null;
   $("createRow").hidden = true;
-  if (resetOutput) setOutput(PREVIEW_PROMPT);
+  if (resetOutput) setOutput("");
   updateButtons();
 }
 
@@ -346,7 +342,7 @@ function confirmAction({ message, items = [], moreMessage = "", moreItems = [], 
 async function startLogin() {
   const clientId = $("clientId").value.trim();
   if (!clientId) {
-    $("loginMessage").textContent = "Paste your Client ID first.";
+    setLoginMessage("Paste your Client ID first.");
     return;
   }
   localStorage.setItem("clientId", clientId);
@@ -373,13 +369,13 @@ async function finishLoginIfReturning() {
 
   if (params.has("error")) {
     revealLoginProblem();
-    $("loginMessage").textContent = "Spotify did not approve the sign-in: " + params.get("error");
+    setLoginMessage("Spotify did not approve the sign-in: " + params.get("error"));
     $("redirectHelp").open = true;
     return;
   }
   if (params.get("state") !== sessionStorage.getItem("pkceState")) {
     revealLoginProblem();
-    $("loginMessage").textContent = "The sign-in did not match this tab. Please try Connect again.";
+    setLoginMessage("The sign-in did not match this tab. Please try Connect again.");
     return;
   }
   const response = await fetch("https://accounts.spotify.com/api/token", {
@@ -396,7 +392,7 @@ async function finishLoginIfReturning() {
   const data = await response.json();
   if (!response.ok) {
     revealLoginProblem();
-    $("loginMessage").textContent = "Spotify refused the sign-in: " + (data.error_description || data.error || response.status);
+    setLoginMessage("Spotify refused the sign-in: " + (data.error_description || data.error || response.status));
     return;
   }
   sessionStorage.setItem("token", JSON.stringify({
@@ -406,8 +402,16 @@ async function finishLoginIfReturning() {
   }));
 }
 
+function setLoginMessage(text) {
+  // The message shows next to whichever Connect button is on screen.
+  $("loginMessage").textContent = text;
+  $("welcomeMessage").textContent = text;
+}
+
 function revealLoginProblem() {
+  // Open the setup steps so the fix (such as the redirect address help) is in view.
   if (!currentFlow()) showFlow("existing");
+  $("setupDetails").open = true;
 }
 
 function loadStoredToken() {
@@ -608,7 +612,8 @@ async function gatherInputs() {
   const names = [...new Set(plans.flatMap((p) => p.names))];
   const match = JSON.parse(py.matchPlaylists(JSON.stringify(names), JSON.stringify(playlists), me.id));
   if (match.problems.length) {
-    setOutput("Cannot plan yet:\n\n" + match.problems.map((p) => "- " + p).join("\n"));
+    setOutput("Cannot plan yet:\n\n" + match.problems.map((p) => "- " + p).join("\n")
+      + "\n\nCheck the playlist names in your formats against your Spotify playlists. Each name must match a playlist you own.");
     return null;
   }
   const tracks = {};
@@ -643,7 +648,7 @@ async function preview() {
       }
     }
     if (planSignature() !== startedWith) {   // the user edited something while this was planning
-      setOutput(PREVIEW_PROMPT);
+      setOutput("");
       return;
     }
     parts.push(...inputs.failed);
@@ -747,10 +752,13 @@ async function main() {
   for (const el of document.querySelectorAll(".redirect-address")) el.textContent = redirectUri();
   $("clientId").value = localStorage.getItem("clientId") || "";
   $("formats").value = localStorage.getItem("formats") || DEFAULT_FORMATS;
-  setOutput(PREVIEW_PROMPT);
+  setOutput("");
 
   // Start with no flow shown. People who already saved a Client ID have an app, so open that flow for them.
   showFlow($("clientId").value ? "existing" : null);
+  $("welcomeBack").hidden = !$("clientId").value;   // someone with a saved Client ID only needs to reconnect
+  $("setupDetails").open = !$("clientId").value;     // the setup steps stay one click away
+  $("about").open = !$("clientId").value;
   for (const radio of document.querySelectorAll('input[name="flow"]')) {
     radio.addEventListener("change", () => showFlow(radio.value));
   }
@@ -770,6 +778,7 @@ async function main() {
   $("clearNo").addEventListener("click", () => { $("clearConfirm").hidden = true; });
   $("clearYes").addEventListener("click", clearSavedData);
   $("connect").addEventListener("click", startLogin);
+  $("connectReturning").addEventListener("click", startLogin);
   $("disconnect").addEventListener("click", disconnect);
   $("preview").addEventListener("click", preview);
   $("create").addEventListener("click", createPlaylists);
@@ -799,18 +808,19 @@ async function main() {
   try {
     await finishLoginIfReturning();
   } catch (err) {
-    $("loginMessage").textContent = String(err.message || err);
+    setLoginMessage(String(err.message || err));
   }
   token = loadStoredToken();
   if (!token && needsReconnect) {
-    revealLoginProblem();
-    $("loginMessage").textContent = "Please connect again so this page can create playlists.";
+    if ($("welcomeBack").hidden) revealLoginProblem();
+    setLoginMessage("Please connect again so this page can create playlists.");
   }
 
   if (token) {
     $("loginSection").hidden = true;
     $("connectedSection").hidden = false;
     $("appSection").hidden = false;  // the formats and the Preview / Create buttons appear once connected
+    $("about").open = false;
     try {
       await loadMyPlaylists();
       $("connectedMessage").textContent = `Connected as ${me.display_name || me.id}. ${playlists.length} playlists found.`;

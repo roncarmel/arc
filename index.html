@@ -3,16 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Session Playlist Builder</title>
+<title>Ceremony Playlist Builder</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="favicon.ico" sizes="48x48">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
+  [hidden] { display: none !important; }
   :root { color-scheme: light dark; --bg: #ffffff; --fg: #1d1d1f; --muted: #6b6b70; --line: #d8d8dc; --card: #f5f5f7; --accent: #c2188f; --button: #ff38b8; }
   @media (prefers-color-scheme: dark) { :root { --bg: #161618; --fg: #f2f2f4; --muted: #9a9aa2; --line: #333338; --card: #202024; --accent: #ff38b8; --button: #ff38b8; } }
   body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   main { max-width: 720px; margin: 0 auto; padding: 24px 16px 150px; }
-  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; color: var(--button); }
+  .tagline { margin: 0 0 14px; }
+  details.about { margin: 0 0 8px; }
+  #setupDetails > summary { cursor: pointer; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
+  #welcomeBack { margin-bottom: 10px; }
+  #welcomeBack p { margin-top: 0; }
+  details.about summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+  details.about p { margin: 10px 0 0; }
+  details.about ol { margin: 6px 0 0; padding-left: 22px; }
   h2 { font-size: 1.05rem; margin: 28px 0 8px; }
   p { margin: 6px 0; }
   .muted { color: var(--muted); font-size: 0.9rem; }
@@ -71,17 +80,41 @@
 </head>
 <body>
 <main>
-  <h1>Session Playlist Builder</h1>
-  <p class="muted">Builds session playlists in your Spotify account from your own playlists. Preview first, then create.</p>
+  <h1>Ceremony Playlist Builder</h1>
+  <p class="tagline">Turn your Spotify playlists into structured playlists for ceremonies, sessions, and other long events.</p>
+
+  <details id="about" class="about card" open>
+    <summary>What is this?</summary>
+    <p><strong>What it does.</strong> Ceremony Playlist Builder makes long, ordered playlists from music already in your Spotify account. Describe the shape of an event, for example 30 minutes from one playlist, then 60 minutes from another, then 30 from a third. The app builds as many complete playlists as your music allows, with songs picked at random and no song repeated across the playlists made from one format. Each playlist is created in your Spotify account, ready to play.</p>
+    <p><strong>What it's good for.</strong> Ceremonies, sessions, workshops, classes, and any long event where the music should follow an arc, such as arriving, deepening, and landing. Instead of steering a shuffle during the event, set the structure once and get fresh, ordered playlists as many times as needed.</p>
+    <p><strong>How it works.</strong></p>
+    <ol>
+      <li>Connect Spotify through a free developer app. This takes a few minutes, once.</li>
+      <li>Write a format: which of your playlists to draw from, in what order, and for how long.</li>
+      <li>Preview the plan, then create the playlists.</li>
+    </ol>
+    <p><strong>What you need.</strong> A Spotify Premium account (Spotify requires it for the free developer app) and some playlists of your own to draw from.</p>
+    <p><strong>Good to know.</strong> Your playlists are only read, never changed. New playlists are private. Everything runs in this browser, and nothing about your music goes anywhere except to Spotify.</p>
+  </details>
 
   <section id="loginSection">
-    <h2>1. Connect your Spotify app</h2>
+    <h2>1. Connect to Spotify</h2>
     <div class="card">
-      <p>This tool works through a free Spotify developer app that belongs to you. Use an app made just for this tool.
-      If you have a Spotify app from another project, leave it alone and create a new one. Pick the option that fits:</p>
+      <div id="welcomeBack" hidden>
+        <p><strong>Welcome back.</strong> Your Spotify developer app is saved in this browser. Connect to Spotify to continue.</p>
+        <div class="row">
+          <button id="connectReturning" class="primary" type="button">Connect Spotify</button>
+          <span id="welcomeMessage" class="error"></span>
+        </div>
+      </div>
+
+      <details id="setupDetails" open>
+        <summary>Spotify developer app setup</summary>
+      <p>This page connects to Spotify through a free Spotify developer app that belongs to you. Use a developer app made just for Ceremony Playlist Builder.
+      If you have a developer app from another project, leave it alone and create a new one. Pick the option that fits:</p>
       <div class="toggle" role="radiogroup" aria-label="Spotify app setup">
-        <label><input type="radio" name="flow" value="new"> I need to create a Spotify app for this</label>
-        <label><input type="radio" name="flow" value="existing"> I already created a Spotify app for this</label>
+        <label><input type="radio" name="flow" value="new"> Create a new Spotify developer app</label>
+        <label><input type="radio" name="flow" value="existing"> Use a developer app already created for this</label>
       </div>
 
       <ol id="flowNew" hidden>
@@ -92,7 +125,7 @@
         <li>
           Fill in the form:
           <ul class="fields">
-            <li><strong>App name:</strong> type <code>Playlist Builder</code></li>
+            <li><strong>App name:</strong> type <code>Ceremony Playlist Builder</code></li>
             <li><strong>App description:</strong> leave it blank. (If Spotify will not let you continue without one, type anything.)</li>
             <li><strong>Website:</strong> leave it blank, if you see this box.</li>
             <li>
@@ -109,7 +142,7 @@
       <ol id="flowExisting" hidden>
         <li>
           Open the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify developer dashboard</a>
-          (it opens in a new tab), log in, and click the app you created for this tool.
+          (it opens in a new tab), log in, and click the developer app created for Ceremony Playlist Builder.
         </li>
         <li>Open its <strong>Settings</strong> and copy the <strong>Client ID</strong>.</li>
       </ol>
@@ -131,6 +164,7 @@
 
         <p class="muted" style="margin-top:12px">Your Client ID is not a secret. It stays in this browser, and nothing is sent anywhere except to Spotify.</p>
       </div>
+      </details>
     </div>
   </section>
 
@@ -148,11 +182,11 @@
   <details id="formatHelp" class="help">
     <summary>How to edit formats</summary>
 
-    <p>A format is a recipe for one kind of playlist: which of your playlists to draw from, in what order, and for how long. The editor below starts with a format built around my own playlists. Edit it to use yours. The shaded boxes in this help are samples to read, not places to type.</p>
+    <p>A format is a recipe for one kind of playlist: which of your playlists to draw from, in what order, and for how long. The editor below starts with a template. Replace its placeholder names, such as "playlist 1", with the names of your own Spotify playlists. The shaded boxes in this help are samples to read, not places to type.</p>
 
     <h3>The parts of a format</h3>
     <p>Here is a complete format. It makes 80-minute playlists: 20 minutes from a playlist called "Warm up", then 40 minutes from "Deep focus", then 20 more from "Warm up".</p>
-    <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>    "my-first-format": {
+    <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>    "warm-focus": {
         "name": "Warm focus {n}",
         "silence between segments": "30 sec",
         "segments": [
@@ -166,7 +200,7 @@
       <table class="parts">
         <thead><tr><th>Part</th><th>What it does</th><th>Example</th></tr></thead>
         <tbody>
-          <tr><td>The key</td><td>The format's short name. It appears in the dropdown under Preview. Use lowercase letters, numbers, and hyphens.</td><td><code>"my-first-format"</code></td></tr>
+          <tr><td>The key</td><td>The format's short name. It appears in the dropdown under Preview. Use lowercase letters, numbers, and hyphens.</td><td><code>"warm-focus"</code></td></tr>
           <tr><td><code>name</code></td><td>The template for the playlists this format creates. <code>{n}</code> becomes 1, 2, 3, and so on.</td><td><code>"Warm focus {n}"</code></td></tr>
           <tr><td><code>silence between segments</code></td><td>The default pause between segments.</td><td><code>"30 sec"</code></td></tr>
           <tr><td><code>segments</code></td><td>The list of playlists and minutes, played in order.</td><td><code>("Warm up", 20),</code></td></tr>
@@ -175,7 +209,7 @@
     </div>
 
     <h3>Name it</h3>
-    <p>Change the key to something short, such as <code>"my-first-format"</code>. Then change the <code>name</code> line to the pattern you want for your playlists. Keep <code>{n}</code>, which becomes 1, 2, 3, and so on (you can also use <code>{letter}</code>, which becomes a, b, c):</p>
+    <p>Change the key to something short, such as <code>"warm-focus"</code>. Then change the <code>name</code> line to the pattern you want for your playlists. Keep <code>{n}</code>, which becomes 1, 2, 3, and so on (you can also use <code>{letter}</code>, which becomes a, b, c):</p>
     <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>"name": "Warm focus {n}",</pre></figure>
     <p>That makes playlists named "Warm focus 1", "Warm focus 2", and so on. Pick a pattern that none of your other playlists match. When you create playlists again, this app treats playlists that match the pattern as its own and offers to replace them.</p>
 
@@ -200,10 +234,10 @@
     <h3>Add another format</h3>
     <p>Copy a whole format block, from its first line through its closing <code>},</code> line. Paste it directly below, before the closing <code>}</code> of the list. Give the copy a new key, a different name pattern, and its own segments. The list then looks like this:</p>
     <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>FORMATS = {
-    "my-first-format": {
+    "warm-focus": {
         ...
     },
-    "my-second-format": {
+    "evening-session": {
         ...
     },
 }</pre></figure>
@@ -240,7 +274,7 @@
   <p id="plannerNote" class="muted"></p>
   <p class="muted">Preview shows the playlists this would make, with songs picked at random. If it looks right, a Create button appears below the plan, and it creates exactly what you see. Changing anything above clears the preview, so you preview again.</p>
 
-  <pre id="output">Choose a format and click Preview plan.</pre>
+  <pre id="output" hidden></pre>
 
   <div id="createRow" class="row" hidden>
     <button id="create" class="primary" type="button">Create playlists</button>
