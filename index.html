@@ -57,6 +57,7 @@
   table.parts { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
   table.parts th, table.parts td { text-align: left; vertical-align: top; padding: 6px 10px; border-bottom: 1px solid var(--line); }
   table.parts th { font-weight: 600; }
+  table.parts th:last-child, table.parts td:last-child { white-space: nowrap; }
   #confirmBox, #removeConfirmBox { margin: 12px 0; }
   #confirmBox ul, #removeConfirmBox ul { margin: 6px 0 10px; padding-left: 20px; }
   #actionMessage, #removeMessage { white-space: pre-line; }
@@ -182,10 +183,10 @@
   <details id="formatHelp" class="help">
     <summary>How to edit formats</summary>
 
-    <p>A format is a recipe for one kind of playlist: which of your playlists to draw from, in what order, and for how long. The editor below starts with a template. Replace its placeholder names, such as "playlist 1", with the names of your own Spotify playlists. The shaded boxes in this help are samples to read, not places to type.</p>
+    <p>A format is a recipe for one kind of playlist: which of your playlists to draw from, in what order, and for how long. The editor below starts with a template. Replace its placeholder names, such as "source playlist 1", with the names of your own Spotify playlists. The shaded boxes in this help are samples to read, not places to type.</p>
 
     <h3>The parts of a format</h3>
-    <p>Here is a complete format. It makes 80-minute playlists: 20 minutes from a playlist called "Warm up", then 40 minutes from "Deep focus", then 20 more from "Warm up".</p>
+    <p>Here is an example of a complete format. It makes 80-minute playlists: 20 minutes from a playlist called "Warm up", then 40 minutes from "Deep focus", then 20 more from "Warm up".</p>
     <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>    "warm-focus": {
         "name": "Warm focus {n}",
         "silence between segments": "30 sec",
@@ -209,9 +210,9 @@
     </div>
 
     <h3>Name it</h3>
-    <p>Change the key to something short, such as <code>"warm-focus"</code>. Then change the <code>name</code> line to the pattern you want for your playlists. Keep <code>{n}</code>, which becomes 1, 2, 3, and so on (you can also use <code>{letter}</code>, which becomes a, b, c):</p>
+    <p>Change the key to something short, such as <code>"warm-focus"</code>. Then change the <code>name</code> line to the pattern you want for your playlists. Keep <code>{n}</code>, which becomes 1, 2, 3, and so on as the app creates each playlist. You can also use <code>{letter}</code>, which becomes a, b, c:</p>
     <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>"name": "Warm focus {n}",</pre></figure>
-    <p>That makes playlists named "Warm focus 1", "Warm focus 2", and so on. Pick a pattern that none of your other playlists match. When you create playlists again, this app treats playlists that match the pattern as its own and offers to replace them.</p>
+    <p>That makes playlists named "Warm focus 1", "Warm focus 2", and so on. Pick a pattern that none of your other playlists match. When you create playlists again from this format, the app treats playlists that match the pattern as its own and offers to replace them.</p>
 
     <h3>Point the segments at your playlists</h3>
     <p>Each line in <code>segments</code> is one stretch of music: a playlist name and a number of minutes. Replace the names and minutes with your own. Copy each playlist name from Spotify and paste it between the quotation marks. Capitalization and extra spaces at the ends don't matter, but spelling, punctuation, and emoji do. Only playlists you own can be used.</p>
@@ -223,12 +224,13 @@
     <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>("Warm up", 20),
 ("silence", "2 min"),
 ("Deep focus", 40),</pre></figure>
-    <p>Pauses are extra time on top of your segment minutes. If you remove both the default line and any silence lines, the segments play back to back.</p>
+    <p>Pauses are extra time on top of your segment minutes. If you remove both the default line and any silence lines, the segments play back to back. Silences can be used for effect, or simply as a marker that tells a facilitator the music has moved into a new segment.</p>
 
     <h3>Mix playlists within a segment</h3>
     <p>Put several playlist names in square brackets for an even mix (50/50 with two playlists, thirds with three):</p>
     <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>(["Warm up", "Deep focus"], 30),</pre></figure>
-    <p>For an uneven mix, use braces with a weight for each playlist. This makes a 30-minute segment of about 9 minutes of "Warm up" and 21 minutes of "Deep focus":</p>
+    <p>This makes a 30-minute segment of about 15 minutes (50%) of "Warm up" and 15 minutes (50%) of "Deep focus".</p>
+    <p>For an uneven mix, use braces with a weight for each playlist. This makes a 30-minute segment of about 9 minutes (30%) of "Warm up" and 21 minutes (70%) of "Deep focus":</p>
     <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>({"Warm up": 30, "Deep focus": 70}, 30),</pre></figure>
 
     <h3>Add another format</h3>
@@ -241,7 +243,7 @@
         ...
     },
 }</pre></figure>
-    <p>The dropdown under Preview lists every format, plus All formats.</p>
+    <p>The dropdown under Preview lists every format, plus All formats. That way, you can keep several independent formats and create playlists from each one individually or from all of them at once.</p>
 
     <h3>If something goes wrong</h3>
     <ul>
