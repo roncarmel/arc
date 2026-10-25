@@ -26,6 +26,8 @@
   ol { margin: 8px 0 0; padding-left: 22px; }
   li { margin: 0 0 12px; }
   li input[type=text] { margin-top: 6px; }
+  ul.fields { margin: 8px 0 0; padding-left: 20px; }
+  ul.fields li { margin: 0 0 8px; }
   .address { margin: 6px 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .address code { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; word-break: break-all; }
   a { color: var(--accent); }
@@ -36,6 +38,8 @@
   #confirmBox { margin: 12px 0; }
   #confirmBox ul { margin: 6px 0 10px; padding-left: 20px; }
   #results div { padding: 3px 0; }
+  footer.debug { margin-top: 48px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 0.9rem; color: var(--muted); }
+  footer.debug summary { cursor: pointer; }
 </style>
 </head>
 <body>
@@ -46,23 +50,31 @@
   <section id="loginSection">
     <h2>1. Connect your Spotify app</h2>
     <div class="card">
-      <p>This tool works through a free Spotify developer app that belongs to you. Pick the option that fits:</p>
+      <p>This tool works through a free Spotify developer app that belongs to you. Use an app made just for this tool.
+      If you have a Spotify app from another project, leave it alone and create a new one. Pick the option that fits:</p>
       <div class="toggle" role="radiogroup" aria-label="Spotify app setup">
-        <label><input type="radio" name="flow" value="new" checked> I need to create a Spotify app for this</label>
+        <label><input type="radio" name="flow" value="new"> I need to create a Spotify app for this</label>
         <label><input type="radio" name="flow" value="existing"> I already created a Spotify app for this</label>
       </div>
-      <p class="muted">Use an app made just for this tool. If you have a Spotify app from another project, leave it alone and create a new one.</p>
 
-      <ol id="flowNew">
+      <ol id="flowNew" hidden>
         <li>
           Open the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify developer dashboard</a>
           (it opens in a new tab), log in, and click <strong>Create app</strong>.
         </li>
         <li>
-          Fill in the form. The name and description can be anything. For <strong>Redirect URI</strong>, copy this address,
-          paste it in exactly as shown, and click <strong>Add</strong>:
-          <div class="address"><code id="redirect" class="redirect-address"></code> <button id="copyRedirect" class="copy-redirect" type="button">Copy</button></div>
-          Under <strong>Which API/SDKs are you planning to use?</strong>, choose <strong>Web API</strong>. Agree to the terms and click <strong>Save</strong>.
+          Fill in the form:
+          <ul class="fields">
+            <li><strong>App name:</strong> type <code>Playlist Builder</code></li>
+            <li><strong>App description:</strong> leave it blank. (If Spotify will not let you continue without one, type anything.)</li>
+            <li><strong>Website:</strong> leave it blank, if you see this box.</li>
+            <li>
+              <strong>Redirect URI:</strong> copy this address, paste it in exactly as shown, then click <strong>Add</strong>:
+              <div class="address"><code id="redirect" class="redirect-address"></code> <button id="copyRedirect" class="copy-redirect" type="button">Copy</button></div>
+            </li>
+            <li><strong>Which API/SDKs are you planning to use?</strong> Check <strong>Web API</strong> only. Leave the other boxes unchecked.</li>
+            <li>Check the box agreeing to Spotify's terms, then click <strong>Save</strong>.</li>
+          </ul>
         </li>
         <li>Open your new app's <strong>Settings</strong> and copy the <strong>Client ID</strong>.</li>
       </ol>
@@ -75,21 +87,23 @@
         <li>Open its <strong>Settings</strong> and copy the <strong>Client ID</strong>.</li>
       </ol>
 
-      <p><strong>Paste your Client ID here, then connect:</strong></p>
-      <input id="clientId" type="text" autocomplete="off" spellcheck="false" placeholder="Client ID">
-      <div class="row">
-        <button id="connect" class="primary" type="button">Connect Spotify</button>
-        <span id="loginMessage" class="error"></span>
+      <div id="connectBlock" hidden>
+        <p><strong>Paste your Client ID here, then connect:</strong></p>
+        <input id="clientId" type="text" autocomplete="off" spellcheck="false" placeholder="Client ID">
+        <div class="row">
+          <button id="connect" class="primary" type="button">Connect Spotify</button>
+          <span id="loginMessage" class="error"></span>
+        </div>
+
+        <details id="redirectHelp" class="help">
+          <summary>Spotify says "Invalid redirect URI"?</summary>
+          <p>This address is not registered with your app yet. In your app's <strong>Settings</strong>, paste it under <strong>Redirect URIs</strong>,
+          click <strong>Add</strong>, then scroll down and click <strong>Save</strong>. Then try Connect again.</p>
+          <div class="address"><code class="redirect-address"></code> <button class="copy-redirect" type="button">Copy</button></div>
+        </details>
+
+        <p class="muted" style="margin-top:12px">Your Client ID is not a secret. It stays in this browser, and nothing is sent anywhere except to Spotify.</p>
       </div>
-
-      <details id="redirectHelp" class="help">
-        <summary>Spotify says "Invalid redirect URI"?</summary>
-        <p>This address is not registered with your app yet. In your app's <strong>Settings</strong>, paste it under <strong>Redirect URIs</strong>,
-        click <strong>Add</strong>, then scroll down and click <strong>Save</strong>. Then try Connect again.</p>
-        <div class="address"><code class="redirect-address"></code> <button class="copy-redirect" type="button">Copy</button></div>
-      </details>
-
-      <p class="muted" style="margin-top:12px">Your Client ID is not a secret. It stays in this browser, and nothing is sent anywhere except to Spotify.</p>
     </div>
   </section>
 
@@ -101,6 +115,7 @@
     </div>
   </section>
 
+  <div id="appSection" hidden>
   <h2>2. Your formats</h2>
   <p class="muted">Same syntax as playlist_settings.py. Changes are saved in this browser.</p>
   <textarea id="formats" spellcheck="false"></textarea>
@@ -137,6 +152,22 @@
   <p id="pythonStatus" class="muted"></p>
   <pre id="output">Connect Spotify, then choose a format and click Preview plan.</pre>
   <div id="results"></div>
+  </div>
+  <footer class="debug">
+    <details id="troubleshooting">
+      <summary>Troubleshooting</summary>
+      <p>If something looks stuck, you can make this page forget everything it saved in this browser: your Client ID, your formats, and your Spotify sign-in.
+      Nothing in your Spotify account changes.</p>
+      <button id="clearData" type="button">Clear saved data</button>
+      <div id="clearConfirm" hidden>
+        <p><strong>Clear the saved Client ID, formats, and sign-in, and reload this page?</strong></p>
+        <div class="row">
+          <button id="clearYes" class="primary" type="button">Yes, clear it</button>
+          <button id="clearNo" type="button">Cancel</button>
+        </div>
+      </div>
+    </details>
+  </footer>
 </main>
 <script src="app.js"></script>
 </body>

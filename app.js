@@ -99,6 +99,28 @@ function addResult(name, url, detail) {
   $("results").appendChild(row);
 }
 
+function showFlow(flow) {
+  // flow is "new", "existing", or null (nothing chosen yet: show neither, and nothing below the choices).
+  $("flowNew").hidden = flow !== "new";
+  $("flowExisting").hidden = flow !== "existing";
+  $("connectBlock").hidden = !flow;
+  for (const radio of document.querySelectorAll('input[name="flow"]')) radio.checked = radio.value === flow;
+}
+
+function currentFlow() {
+  const checked = document.querySelector('input[name="flow"]:checked');
+  return checked ? checked.value : null;
+}
+
+let reloadPage = () => location.reload();   // a separate function so tests can replace it
+
+function clearSavedData() {
+  // Everything this page saves lives in this browser's storage for this address, so clearing it forgets it all.
+  localStorage.clear();
+  sessionStorage.clear();
+  reloadPage();
+}
+
 function updateButtons() {
   const ready = !!token && !!py && formatsValid && !busy;
   for (const id of ["preview", "create", "removeOld"]) $(id).disabled = !ready;
@@ -177,11 +199,13 @@ async function finishLoginIfReturning() {
   history.replaceState({}, "", redirectUri());  // tidy the address bar
 
   if (params.has("error")) {
+    revealLoginProblem();
     $("loginMessage").textContent = "Spotify did not approve the sign-in: " + params.get("error");
     $("redirectHelp").open = true;
     return;
   }
   if (params.get("state") !== sessionStorage.getItem("pkceState")) {
+    revealLoginProblem();
     $("loginMessage").textContent = "The sign-in did not match this tab. Please try Connect again.";
     return;
   }
@@ -198,6 +222,7 @@ async function finishLoginIfReturning() {
   });
   const data = await response.json();
   if (!response.ok) {
+    revealLoginProblem();
     $("loginMessage").textContent = "Spotify refused the sign-in: " + (data.error_description || data.error || response.status);
     return;
   }
@@ -206,6 +231,10 @@ async function finishLoginIfReturning() {
     expires: Date.now() + data.expires_in * 1000,
     scope: data.scope || "",
   }));
+}
+
+function revealLoginProblem() {
+  if (!currentFlow()) showFlow("existing");
 }
 
 function loadStoredToken() {
@@ -530,13 +559,8 @@ async function main() {
   $("clientId").value = localStorage.getItem("clientId") || "";
   $("formats").value = localStorage.getItem("formats") || DEFAULT_FORMATS;
 
-  // Which setup flow to show: people who already have a saved Client ID have an app, so start there.
-  const showFlow = (flow) => {
-    $("flowNew").hidden = flow !== "new";
-    $("flowExisting").hidden = flow !== "existing";
-    for (const radio of document.querySelectorAll('input[name="flow"]')) radio.checked = radio.value === flow;
-  };
-  showFlow($("clientId").value ? "existing" : "new");
+  // Start with no flow shown. People who already saved a Client ID have an app, so open that flow for them.
+  showFlow($("clientId").value ? "existing" : null);
   for (const radio of document.querySelectorAll('input[name="flow"]')) {
     radio.addEventListener("change", () => showFlow(radio.value));
   }
@@ -552,6 +576,9 @@ async function main() {
       setTimeout(() => { button.textContent = "Copy"; }, 2000);
     });
   }
+  $("clearData").addEventListener("click", () => { $("clearConfirm").hidden = false; });
+  $("clearNo").addEventListener("click", () => { $("clearConfirm").hidden = true; });
+  $("clearYes").addEventListener("click", clearSavedData);
   $("connect").addEventListener("click", startLogin);
   $("disconnect").addEventListener("click", disconnect);
   $("preview").addEventListener("click", preview);
@@ -576,12 +603,14 @@ async function main() {
   }
   token = loadStoredToken();
   if (!token && needsReconnect) {
+    revealLoginProblem();
     $("loginMessage").textContent = "Please connect again so this page can create playlists.";
   }
 
   if (token) {
     $("loginSection").hidden = true;
     $("connectedSection").hidden = false;
+    $("appSection").hidden = false;  // the formats and the Preview / Create buttons appear once connected
     try {
       await loadMyPlaylists();
       $("connectedMessage").textContent = `Connected as ${me.display_name || me.id}. ${playlists.length} playlists found.`;
