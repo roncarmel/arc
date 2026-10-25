@@ -151,6 +151,17 @@
     <p>A format is a recipe for one kind of playlist: which of your playlists to draw from, in what order, and for how long. The editor below starts with a format built around my own playlists. Edit it to use yours. The shaded boxes in this help are samples to read, not places to type.</p>
 
     <h3>The parts of a format</h3>
+    <p>Here is a complete format. It makes 80-minute playlists: 20 minutes from a playlist called "Warm up", then 40 minutes from "Deep focus", then 20 more from "Warm up".</p>
+    <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>    "my-first-format": {
+        "name": "Warm focus {n}",
+        "silence between segments": "30 sec",
+        "segments": [
+            ("Warm up", 20),
+            ("Deep focus", 40),
+            ("Warm up", 20),
+        ],
+    },</pre></figure>
+    <p>Each part does something different:</p>
     <div class="table-wrap">
       <table class="parts">
         <thead><tr><th>Part</th><th>What it does</th><th>Example</th></tr></thead>
@@ -170,16 +181,7 @@
 
     <h3>Point the segments at your playlists</h3>
     <p>Each line in <code>segments</code> is one stretch of music: a playlist name and a number of minutes. Replace the names and minutes with your own. Copy each playlist name from Spotify and paste it between the quotation marks. Capitalization and extra spaces at the ends don't matter, but spelling, punctuation, and emoji do. Only playlists you own can be used.</p>
-    <p>Add a segment by adding a line, and remove one by deleting its line. This format makes 80-minute playlists: 20 minutes from Warm up, 40 from Deep focus, then 20 more from Warm up.</p>
-    <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>    "my-first-format": {
-        "name": "Warm focus {n}",
-        "silence between segments": "30 sec",
-        "segments": [
-            ("Warm up", 20),
-            ("Deep focus", 40),
-            ("Warm up", 20),
-        ],
-    },</pre></figure>
+    <p>Add a segment by adding a line, and remove one by deleting its line. In the sample above, the three segments add up to 80 minutes of music per playlist.</p>
     <p>Each segment typically lands within about 30 seconds of its target. Keep the punctuation exactly as shown: quotation marks around each name, a comma after the minutes, and a comma after each closing parenthesis. A playlist can appear in more than one segment, but no song repeats across the playlists made from one format.</p>
 
     <h3>Silence</h3>
