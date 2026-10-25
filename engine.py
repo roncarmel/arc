@@ -230,7 +230,7 @@ def match_playlists(names_json, playlists_json, me_id):
     return json.dumps({"found": found, "problems": problems})
 
 
-def plan_text(formats_text, key, tracks_json, max_n=None):
+def plan_text(formats_text, key, tracks_json, max_n=None, footer=True):
     """Plan every playlist the format can make from the given songs. Nothing is created."""
     fmt = parse_formats(formats_text)[key]
     music, gaps = plan_format(fmt)
@@ -266,6 +266,7 @@ def plan_text(formats_text, key, tracks_json, max_n=None):
     lines.append(f"{key}: {made} playlist(s) planned.")
     lines.append("Left in source playlists after this format:")
     lines.append(leftover_report(cache, music, used))
-    lines.append("")
-    lines.append("Preview only, nothing was created.")
+    if footer:
+        lines.append("")
+        lines.append("Preview only, nothing was created.")
     return "\n".join(lines)

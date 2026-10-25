@@ -6,6 +6,8 @@ const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3",
 const SCOPES = "playlist-read-private playlist-read-collaborative";  // read-only for this preview
 const API = "https://api.spotify.com/v1";
 
+const ALL_FORMATS = "__all__";  // dropdown value that previews every format
+
 const DEFAULT_FORMATS = `FORMATS = {
     "b1-evocative": {
         "name": "📕 evocative {n}",
@@ -52,11 +54,15 @@ async function sha256(text) {
   return crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
 }
 
-function showError(box, err) {
-  // Python errors arrive with a long traceback. Show just the last line.
+function cleanError(err) {
+  // Python errors arrive with a long traceback. Keep just the last line.
   const lines = String(err && err.message ? err.message : err).split("\n").map((l) => l.trim()).filter(Boolean);
   const last = lines.length ? lines[lines.length - 1] : "Something went wrong.";
-  box.textContent = last.replace(/^(\w+\.)*\w*Error:\s*/, "");
+  return last.replace(/^(\w+\.)*\w*Error:\s*/, "");
+}
+
+function showError(box, err) {
+  box.textContent = cleanError(err);
 }
 
 function setOutput(text) {
@@ -238,7 +244,8 @@ function refreshFormatKeys() {
     const keys = JSON.parse(py.formatKeys($("formats").value));
     select.innerHTML = "";
     for (const key of keys) select.add(new Option(key, key));
-    if (keys.includes(previous)) select.value = previous;
+    select.add(new Option("All formats", ALL_FORMATS));
+    if (keys.includes(previous) || previous === ALL_FORMATS) select.value = previous;
     $("formatsMessage").textContent = "";
     $("preview").disabled = !token;
   } catch (err) {
@@ -252,8 +259,21 @@ async function preview() {
   $("preview").disabled = true;
   try {
     const formatsText = $("formats").value;
-    const key = $("formatKey").value;
-    const names = JSON.parse(py.neededSources(formatsText, key));
+    const choice = $("formatKey").value;
+    const keys = choice === ALL_FORMATS ? JSON.parse(py.formatKeys(formatsText)) : [choice];
+
+    // which source playlists does each format need?
+    const plans = [];
+    const failed = [];
+    for (const key of keys) {
+      try {
+        plans.push({ key, names: JSON.parse(py.neededSources(formatsText, key)) });
+      } catch (err) {
+        failed.push(`=== ${key} ===\nCould not plan this format: ${cleanError(err)}`);
+      }
+    }
+    const names = [...new Set(plans.flatMap((p) => p.names))];
+
     const match = JSON.parse(py.matchPlaylists(JSON.stringify(names), JSON.stringify(playlists), me.id));
     if (match.problems.length) {
       setOutput("Cannot plan yet:\n\n" + match.problems.map((p) => "- " + p).join("\n"));
@@ -264,12 +284,19 @@ async function preview() {
       setOutput(`Reading "${name}"...`);
       tracks[name] = await loadTracks(match.found[name]);
     }
+
     setOutput("Planning...");
-    setOutput(py.planText(formatsText, key, JSON.stringify(tracks), 50));
+    const parts = [];
+    for (const { key } of plans) {
+      try {
+        parts.push(py.planText(formatsText, key, JSON.stringify(tracks), 50, false));
+      } catch (err) {
+        parts.push(`=== ${key} ===\nCould not plan this format: ${cleanError(err)}`);
+      }
+    }
+    setOutput([...parts, ...failed].join("\n\n") + "\n\nPreview only, nothing was created.");
   } catch (err) {
-    const box = document.createElement("div");
-    showError(box, err);
-    setOutput("Something went wrong:\n\n" + box.textContent);
+    setOutput("Something went wrong:\n\n" + cleanError(err));
   } finally {
     $("preview").disabled = false;
   }
