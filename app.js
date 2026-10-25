@@ -14,6 +14,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
+const PREVIEW_PROMPT = "Choose a format and click Preview plan.";
 
 const DEFAULT_FORMATS = `FORMATS = {
     "b1-evocative": {
@@ -79,6 +80,14 @@ function setOutput(text) {
   $("output").textContent = text;
 }
 
+function setActionMessage(text) {
+  $("actionMessage").textContent = text;   // progress and results of Create
+}
+
+function setRemoveMessage(text) {
+  $("removeMessage").textContent = text;   // progress and results of Remove, shown inside that section
+}
+
 function clearResults() {
   $("results").textContent = "";
 }
@@ -117,13 +126,14 @@ const KOFI_URL = "https://ko-fi.com/roncarmel";
 function addSupportPrompt() {
   const row = document.createElement("div");
   row.className = "support-prompt";
-  row.appendChild(document.createTextNode("If this saved you time, you can say thanks here: "));
+  row.appendChild(document.createTextNode("If this app is useful to you, you can "));
   const link = document.createElement("a");
   link.href = KOFI_URL;
   link.target = "_blank";
   link.rel = "noopener noreferrer";
-  link.textContent = "Tip me";
+  link.textContent = "tip me";
   row.appendChild(link);
+  row.appendChild(document.createTextNode(" to say thanks."));
   $("results").appendChild(row);
 }
 
@@ -193,10 +203,17 @@ function showBackupMessage(text, undo = false) {
 
 let currentPlan = null;   // the plan from the last Preview: exactly what Create will make
 
-function invalidatePlan() {
-  // Anything that changes what a plan would be hides Create until the user previews again.
+function invalidatePlan(resetOutput = !busy) {
+  // Anything that could change what a plan would be clears the current preview, so the user has to preview again.
   currentPlan = null;
   $("createRow").hidden = true;
+  if (resetOutput) setOutput(PREVIEW_PROMPT);
+  updateButtons();
+}
+
+function planSignature() {
+  // What a preview depends on. If it changes while a preview is being made, that preview is thrown away.
+  return [$("formats").value, $("formatKey").value, $("maxPlaylists").value].join("\u0000");
 }
 
 function setFormatsText(text) {
@@ -273,9 +290,9 @@ function clearSavedData() {
 
 function updateButtons() {
   const ready = !!token && !!py && formatsValid && !busy;
-  for (const id of ["preview", "removeOld"]) $(id).disabled = !ready;
+  $("preview").disabled = !ready || currentPlan !== null;   // one preview at a time; changing anything clears it
+  $("removeOld").disabled = !ready;
   $("create").disabled = busy;
-  $("previewAgain").disabled = !ready;
 }
 
 function setBusy(flag) {
@@ -283,8 +300,12 @@ function setBusy(flag) {
   updateButtons();
 }
 
-// ---------------------------------------------------------------- confirmation panel
-function confirmAction({ message, items = [], moreMessage = "", moreItems = [], yes, no = "Cancel" }) {
+// ---------------------------------------------------------------- confirmation panels
+// Create asks under the Create button. Remove asks inside the Remove section, at the bottom of it.
+const CREATE_CONFIRM = { box: "confirmBox", text: "confirmText", list: "confirmList", moreText: "confirmMoreText", moreList: "confirmMoreList", yes: "confirmYes", no: "confirmNo" };
+const REMOVE_CONFIRM = { box: "removeConfirmBox", text: "removeConfirmText", list: "removeConfirmList", yes: "removeConfirmYes", no: "removeConfirmNo" };
+
+function confirmAction({ message, items = [], moreMessage = "", moreItems = [], yes, no = "Cancel" }, ui = CREATE_CONFIRM) {
   return new Promise((resolve) => {
     const fill = (listId, textId, text, list) => {
       $(textId).textContent = text;
@@ -303,21 +324,21 @@ function confirmAction({ message, items = [], moreMessage = "", moreItems = [], 
       }
       ul.hidden = list.length === 0;
     };
-    fill("confirmList", "confirmText", message, items);
-    fill("confirmMoreList", "confirmMoreText", moreMessage, moreItems);
-    $("confirmYes").textContent = yes;
-    $("confirmNo").textContent = no;
-    const box = $("confirmBox");
+    fill(ui.list, ui.text, message, items);
+    if (ui.moreList) fill(ui.moreList, ui.moreText, moreMessage, moreItems);
+    $(ui.yes).textContent = yes;
+    $(ui.no).textContent = no;
+    const box = $(ui.box);
     box.hidden = false;
     if (box.scrollIntoView) box.scrollIntoView({ behavior: "smooth", block: "nearest" });
     const finish = (answer) => {
       box.hidden = true;
-      $("confirmYes").onclick = null;
-      $("confirmNo").onclick = null;
+      $(ui.yes).onclick = null;
+      $(ui.no).onclick = null;
       resolve(answer);
     };
-    $("confirmYes").onclick = () => finish(true);
-    $("confirmNo").onclick = () => finish(false);
+    $(ui.yes).onclick = () => finish(true);
+    $(ui.no).onclick = () => finish(false);
   });
 }
 
@@ -501,7 +522,7 @@ async function startPython() {
   for (const version of PYODIDE_VERSIONS) {
     const base = `https://cdn.jsdelivr.net/pyodide/${version}/full/`;
     try {
-      $("pythonStatus").textContent = `Loading Python ${version} (the first time takes a little while)...`;
+      $("pythonStatus").textContent = `Loading the planner (Python ${version}). The first time takes a little while...`;
       await loadScript(base + "pyodide.js");
       const pyodide = await loadPyodide({ indexURL: base });
       const source = await (await fetch("engine.py", { cache: "no-cache" })).text();
@@ -515,7 +536,7 @@ async function startPython() {
         buildPlaylists: get("build_playlists"),
         existingMatches: get("existing_matches"),
       };
-      $("pythonStatus").textContent = `Python is ready (${version}).`;
+      $("pythonStatus").textContent = `Ready. The planner is running in your browser (Python ${version}).`;
       return;
     } catch (err) {
       console.error("Python runtime " + version + " failed:", err);
@@ -602,7 +623,9 @@ async function preview() {
   // Plans the playlists and shows the plan. Create then makes exactly this plan, with these songs.
   setBusy(true);
   clearResults();
-  invalidatePlan();
+  setActionMessage("");
+  invalidatePlan(false);
+  const startedWith = planSignature();
   try {
     const inputs = await gatherInputs();
     if (!inputs) return;
@@ -618,6 +641,10 @@ async function preview() {
       } catch (err) {
         parts.push(`=== ${key} ===\nCould not plan this format: ${cleanError(err)}`);
       }
+    }
+    if (planSignature() !== startedWith) {   // the user edited something while this was planning
+      setOutput(PREVIEW_PROMPT);
+      return;
     }
     parts.push(...inputs.failed);
     const total = built.reduce((n, plan) => n + plan.playlists.length, 0);
@@ -639,6 +666,7 @@ async function createPlaylists() {
   if (!plan) return;
   setBusy(true);
   clearResults();
+  setActionMessage("");
   const planned = plan.built.flatMap((b) => b.playlists);
   let created = 0;
   try {
@@ -653,14 +681,14 @@ async function createPlaylists() {
         yes: `Remove them and create ${plural(planned.length, "playlist")}`,
       });
       if (!go) {
-        setOutput("Cancelled. Nothing was changed.");
+        setActionMessage("Cancelled. Nothing was changed.");
         return;
       }
-      setOutput(`Removing ${plural(existing.length, "earlier playlist")}...`);
+      setActionMessage(`Removing ${plural(existing.length, "earlier playlist")}...`);
       await removePlaylists(existing.map((p) => p.id));
     }
     for (const p of planned) {
-      setOutput(`Creating ${created + 1} of ${planned.length}: ${p.name}`);
+      setActionMessage(`Creating ${created + 1} of ${planned.length}: ${p.name}`);
       const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false } });
       for (let i = 0; i < p.uris.length; i += ADD_CHUNK) {
         await spotifyRequest("POST", `/playlists/${made.id}/items`, { json: { uris: p.uris.slice(i, i + ADD_CHUNK) } });
@@ -669,13 +697,13 @@ async function createPlaylists() {
       addResult(p.name, made.external_urls && made.external_urls.spotify, `${p.songs} songs, ${p.minutes} min`);
     }
     const notes = plan.built.filter((b) => b.stopped).map((b) => `${b.key}: ${b.stopped}`);
-    setOutput(`Done. Created ${plural(created, "playlist")} in your Spotify account.` + (notes.length ? "\n\n" + notes.join("\n") : ""));
-    invalidatePlan();   // so a second click cannot make duplicates; preview again to run again
+    invalidatePlan(true);   // the plan is used up, so a second click cannot make duplicates
+    setActionMessage(`Done. Created ${plural(created, "playlist")} in your Spotify account.` + (notes.length ? "\n\n" + notes.join("\n") : ""));
     addSupportPrompt();
     await loadMyPlaylists();
   } catch (err) {
-    if (created) invalidatePlan();   // some playlists exist now, so creating the plan again would duplicate them
-    setOutput((created ? `Stopped after creating ${created} of ${planned.length} playlists.\n\n` : "Something went wrong:\n\n") + cleanError(err));
+    if (created) invalidatePlan(true);   // some playlists exist now, so creating the plan again would duplicate them
+    setActionMessage((created ? `Stopped after creating ${created} of ${planned.length} playlists.\n\n` : "Something went wrong:\n\n") + cleanError(err));
     try { await loadMyPlaylists(); } catch (ignore) { /* keep the original error showing */ }
   } finally {
     setBusy(false);
@@ -683,31 +711,32 @@ async function createPlaylists() {
 }
 
 async function removeEarlier() {
+  // Everything about removing, including the question and the result, stays inside the Remove section.
   setBusy(true);
-  clearResults();
+  setRemoveMessage("");
   try {
     const formatsText = $("formats").value;
     const keys = removeKeys();
     const existing = JSON.parse(py.existingMatches(formatsText, JSON.stringify(keys), JSON.stringify(playlists), me.id));
     if (!existing.length) {
-      setOutput("No playlists matching these formats' names were found.");
+      setRemoveMessage("No playlists matching these formats' names were found.");
       return;
     }
     const go = await confirmAction({
       message: `Remove ${plural(existing.length, "playlist")} from your library? They match the naming pattern of ${keys.join(", ")}.`,
       items: existing.map((p) => p.name),
       yes: `Remove ${plural(existing.length, "playlist")}`,
-    });
+    }, REMOVE_CONFIRM);
     if (!go) {
-      setOutput("Cancelled. Nothing was changed.");
+      setRemoveMessage("Cancelled. Nothing was changed.");
       return;
     }
-    setOutput("Removing...");
+    setRemoveMessage("Removing...");
     await removePlaylists(existing.map((p) => p.id));
-    setOutput(`Removed ${plural(existing.length, "playlist")} from your library.`);
+    setRemoveMessage(`Removed ${plural(existing.length, "playlist")} from your library.`);
     await loadMyPlaylists();
   } catch (err) {
-    setOutput("Something went wrong:\n\n" + cleanError(err));
+    setRemoveMessage("Something went wrong: " + cleanError(err));
   } finally {
     setBusy(false);
   }
@@ -718,6 +747,7 @@ async function main() {
   for (const el of document.querySelectorAll(".redirect-address")) el.textContent = redirectUri();
   $("clientId").value = localStorage.getItem("clientId") || "";
   $("formats").value = localStorage.getItem("formats") || DEFAULT_FORMATS;
+  setOutput(PREVIEW_PROMPT);
 
   // Start with no flow shown. People who already saved a Client ID have an app, so open that flow for them.
   showFlow($("clientId").value ? "existing" : null);
@@ -742,11 +772,10 @@ async function main() {
   $("connect").addEventListener("click", startLogin);
   $("disconnect").addEventListener("click", disconnect);
   $("preview").addEventListener("click", preview);
-  $("previewAgain").addEventListener("click", preview);
   $("create").addEventListener("click", createPlaylists);
   $("removeOld").addEventListener("click", removeEarlier);
-  $("formatKey").addEventListener("change", invalidatePlan);
-  $("maxPlaylists").addEventListener("input", invalidatePlan);
+  $("formatKey").addEventListener("change", () => invalidatePlan());
+  $("maxPlaylists").addEventListener("input", () => invalidatePlan());
   $("resetFormats").addEventListener("click", resetToExample);
   $("backupDownload").addEventListener("click", downloadBackup);
   $("backupRestore").addEventListener("click", () => $("restoreFile").click());
@@ -790,11 +819,14 @@ async function main() {
     }
   }
 
+  $("plannerNote").textContent = "Getting the planner ready. The first time takes a little while...";
   try {
     await startPython();
+    $("plannerNote").textContent = "";
     refreshFormatKeys();
   } catch (err) {
     $("pythonStatus").textContent = String(err.message || err);
+    $("plannerNote").textContent = "The planner could not start, so Preview is unavailable. Check your internet connection and reload the page. Details are under More options.";
   }
 }
 

@@ -34,8 +34,12 @@
   .toggle label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
   details.help { margin-top: 14px; }
   details.help summary { cursor: pointer; color: var(--accent); }
-  #confirmBox { margin: 12px 0; }
-  #confirmBox ul { margin: 6px 0 10px; padding-left: 20px; }
+  details.help h3 { font-size: 1rem; margin: 18px 0 6px; }
+  details.help ul { margin: 6px 0; padding-left: 20px; }
+  pre.example { min-height: 0; margin: 8px 0; font-size: 12.5px; overflow-x: auto; white-space: pre; word-break: normal; }
+  #confirmBox, #removeConfirmBox { margin: 12px 0; }
+  #confirmBox ul, #removeConfirmBox ul { margin: 6px 0 10px; padding-left: 20px; }
+  #actionMessage, #removeMessage { white-space: pre-line; }
   #results div { padding: 3px 0; }
   footer.debug { margin-top: 48px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 0.9rem; color: var(--muted); }
   footer.debug summary { cursor: pointer; }
@@ -126,6 +130,84 @@
   <div id="appSection" hidden>
   <h2>2. Your formats</h2>
   <p class="muted">Edit your formats here. They are saved in this browser as you type.</p>
+  <details id="formatHelp" class="help">
+    <summary>How to edit formats</summary>
+
+    <p>A format is a recipe for one kind of playlist: which of your playlists to draw from, in what order, and for how long. The box below starts with an example built around my own playlists. Edit it to use yours.</p>
+
+    <h3>The parts of a format</h3>
+    <pre class="example">    "b1-evocative": {
+        "name": "📕 evocative {n}",
+        "silence between segments": "30 sec",
+        "segments": [
+            ("☘️ intro / outro (soothing, familiar)", 30),
+            ("💗 spacious + gentle", 60),
+            ("💗💗 evocative", 60),
+            ("💗 spacious + gentle", 60),
+            ("☘️ intro / outro (soothing, familiar)", 30),
+            ("silence", "2 min"),
+            ("🛋 rest", 60),
+        ],
+    },</pre>
+    <ul>
+      <li>The key, <code>"b1-evocative"</code>, is the format's short name. It shows up in the dropdown under Preview.</li>
+      <li><code>name</code> is the template for the playlists this format creates.</li>
+      <li><code>silence between segments</code> is the default pause between segments.</li>
+      <li><code>segments</code> is the list of playlists and minutes, played in order.</li>
+    </ul>
+
+    <h3>Name it</h3>
+    <p>Change the key to something short, using lowercase letters, numbers, and hyphens, such as <code>"my-first-format"</code>. Then change the <code>name</code> line to the pattern you want for your playlists. Keep <code>{n}</code>, which becomes 1, 2, 3, and so on (you can also use <code>{letter}</code>, which becomes a, b, c):</p>
+    <pre class="example">"name": "Warm focus {n}",</pre>
+    <p>That makes playlists named "Warm focus 1", "Warm focus 2", and so on. Pick a pattern that none of your other playlists match. When you create playlists again, this app treats playlists that match the pattern as its own and offers to replace them.</p>
+
+    <h3>Point the segments at your playlists</h3>
+    <p>Each line in <code>segments</code> is one stretch of music: a playlist name and a number of minutes. Replace the names and minutes with your own. Copy each playlist name from Spotify and paste it between the quotation marks. Capitalization and extra spaces at the ends don't matter, but spelling, punctuation, and emoji do. Only playlists you own can be used.</p>
+    <p>Add a segment by adding a line, and remove one by deleting its line. This format makes 80-minute playlists: 20 minutes from Warm up, 40 from Deep focus, then 20 more from Warm up.</p>
+    <pre class="example">    "my-first-format": {
+        "name": "Warm focus {n}",
+        "silence between segments": "30 sec",
+        "segments": [
+            ("Warm up", 20),
+            ("Deep focus", 40),
+            ("Warm up", 20),
+        ],
+    },</pre>
+    <p>Each segment typically lands within about 30 seconds of its target. Keep the punctuation exactly as shown: quotation marks around each name, a comma after the minutes, and a comma after each closing parenthesis. A playlist can appear in more than one segment, but no song repeats across the playlists made from one format.</p>
+
+    <h3>Silence</h3>
+    <p>The <code>silence between segments</code> line sets the default pause between each pair of segments. Set it to <code>"none"</code> for no pause, or to any length in steps of 30 seconds, such as <code>"1 min"</code> or <code>"2.5 min"</code>. To use a different pause at one spot, add a silence line between two segments. It replaces the default there:</p>
+    <pre class="example">("Warm up", 20),
+("silence", "2 min"),
+("Deep focus", 40),</pre>
+    <p>Pauses are extra time on top of your segment minutes. If you remove both the default line and any silence lines, the segments play back to back.</p>
+
+    <h3>Mix playlists within a segment</h3>
+    <p>Put several playlist names in square brackets for an even mix (50/50 with two playlists, thirds with three):</p>
+    <pre class="example">(["Warm up", "Deep focus"], 30),</pre>
+    <p>For an uneven mix, use braces with a weight for each playlist. This makes a 30-minute segment of about 9 minutes of "Warm up" and 21 minutes of "Deep focus":</p>
+    <pre class="example">({"Warm up": 30, "Deep focus": 70}, 30),</pre>
+
+    <h3>Add another format</h3>
+    <p>Copy a whole format block, from its first line through its closing <code>},</code> line. Paste it directly below, before the closing <code>}</code> of the list. Give the copy a new key, a different name pattern, and its own segments. The list then looks like this:</p>
+    <pre class="example">FORMATS = {
+    "my-first-format": {
+        ...
+    },
+    "my-second-format": {
+        ...
+    },
+}</pre>
+    <p>The dropdown under Preview lists every format, plus All formats.</p>
+
+    <h3>If something goes wrong</h3>
+    <ul>
+      <li>A red message under the box means the formats couldn't be read. It's usually a missing comma, quotation mark, or bracket. Check the line it mentions and the one above it. Make sure the quotation marks are straight (") and not curly (“ ”), which can sneak in if you paste from a word processor.</li>
+      <li>A preview that says it could not find a playlist named something means that name doesn't match a playlist you own. Copy it again from Spotify, including any emoji.</li>
+      <li>Editing the formats clears any preview, so click Preview plan again afterward.</li>
+    </ul>
+  </details>
+
   <textarea id="formats" spellcheck="false"></textarea>
   <div class="row">
     <button id="backupDownload" type="button">Download a backup</button>
@@ -145,14 +227,13 @@
     <select id="formatKey" style="max-width:260px"></select>
     <button id="preview" type="button" disabled>Preview plan</button>
   </div>
-  <p class="muted">Preview shows the playlists this would make, with songs picked at random. If it looks right, a Create button appears below the plan, and it creates exactly what you see.</p>
+  <p id="plannerNote" class="muted"></p>
+  <p class="muted">Preview shows the playlists this would make, with songs picked at random. If it looks right, a Create button appears below the plan, and it creates exactly what you see. Changing anything above clears the preview, so you preview again.</p>
 
-  <p id="pythonStatus" class="muted"></p>
-  <pre id="output">Connect Spotify, then choose a format and click Preview plan.</pre>
+  <pre id="output">Choose a format and click Preview plan.</pre>
 
   <div id="createRow" class="row" hidden>
     <button id="create" class="primary" type="button">Create playlists</button>
-    <button id="previewAgain" type="button" disabled>Preview again</button>
   </div>
 
   <div id="confirmBox" class="card" hidden>
@@ -166,6 +247,7 @@
     </div>
   </div>
 
+  <p id="actionMessage" aria-live="polite"></p>
   <div id="results"></div>
   </div>
   <div id="supportBox">
@@ -191,6 +273,19 @@
         <select id="removeKey" style="max-width:260px"></select>
         <button id="removeOld" type="button" disabled>Remove earlier playlists</button>
       </div>
+      <div id="removeConfirmBox" class="card" hidden>
+        <p id="removeConfirmText"></p>
+        <ul id="removeConfirmList"></ul>
+        <div class="row">
+          <button id="removeConfirmYes" class="primary" type="button">Remove</button>
+          <button id="removeConfirmNo" type="button">Cancel</button>
+        </div>
+      </div>
+      <p id="removeMessage" aria-live="polite"></p>
+
+      <h3>Planner status</h3>
+      <p class="muted">Your playlists are planned by a small Python program that runs inside your browser, so nothing about your music is sent to a server. If Preview stays unavailable, the reason shows here.</p>
+      <p id="pythonStatus">Starting...</p>
 
       <h3>Clear saved data</h3>
       <p class="muted">If something looks stuck, you can make this page forget everything it saved in this browser: your Client ID, your formats, and your Spotify sign-in. Nothing in your Spotify account changes.</p>
