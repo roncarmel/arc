@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Session Playlist Builder</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
   :root { color-scheme: light dark; --bg: #ffffff; --fg: #1d1d1f; --muted: #6b6b70; --line: #d8d8dc; --card: #f5f5f7; --accent: #c2188f; --button: #ff38b8; }
   @media (prefers-color-scheme: dark) { :root { --bg: #161618; --fg: #f2f2f4; --muted: #9a9aa2; --line: #333338; --card: #202024; --accent: #ff38b8; --button: #ff38b8; } }
@@ -36,7 +39,15 @@
   details.help summary { cursor: pointer; color: var(--accent); }
   details.help h3 { font-size: 1rem; margin: 18px 0 6px; }
   details.help ul { margin: 6px 0; padding-left: 20px; }
-  pre.example { min-height: 0; margin: 8px 0; font-size: 12.5px; overflow-x: auto; white-space: pre; word-break: normal; }
+  .editor-label { display: block; font-weight: 600; margin: 18px 0 4px; }
+  #formats:focus { outline: 2px solid var(--button); outline-offset: 1px; }
+  figure.sample { margin: 10px 0; padding: 6px 12px 8px; border-left: 4px solid var(--accent); background: var(--card); border-radius: 0 8px 8px 0; }
+  figure.sample figcaption { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 2px; }
+  figure.sample pre { margin: 0; padding: 0; border: none; background: none; min-height: 0; font-size: 12px; overflow-x: auto; white-space: pre; word-break: normal; }
+  .table-wrap { overflow-x: auto; margin: 8px 0; }
+  table.parts { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+  table.parts th, table.parts td { text-align: left; vertical-align: top; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+  table.parts th { font-weight: 600; }
   #confirmBox, #removeConfirmBox { margin: 12px 0; }
   #confirmBox ul, #removeConfirmBox ul { margin: 6px 0 10px; padding-left: 20px; }
   #actionMessage, #removeMessage { white-space: pre-line; }
@@ -133,42 +144,34 @@
 
   <div id="appSection" hidden>
   <h2>2. Your formats</h2>
-  <p class="muted">Edit your formats here. They are saved in this browser as you type.</p>
+  <p class="muted">Your formats are saved in this browser as you type.</p>
   <details id="formatHelp" class="help">
     <summary>How to edit formats</summary>
 
-    <p>A format is a recipe for one kind of playlist: which of your playlists to draw from, in what order, and for how long. The box below starts with an example built around my own playlists. Edit it to use yours.</p>
+    <p>A format is a recipe for one kind of playlist: which of your playlists to draw from, in what order, and for how long. The editor below starts with a format built around my own playlists. Edit it to use yours. The shaded boxes in this help are samples to read, not places to type.</p>
 
     <h3>The parts of a format</h3>
-    <pre class="example">    "b1-evocative": {
-        "name": "📕 evocative {n}",
-        "silence between segments": "30 sec",
-        "segments": [
-            ("☘️ intro / outro (soothing, familiar)", 30),
-            ("💗 spacious + gentle", 60),
-            ("💗💗 evocative", 60),
-            ("💗 spacious + gentle", 60),
-            ("☘️ intro / outro (soothing, familiar)", 30),
-            ("silence", "2 min"),
-            ("🛋 rest", 60),
-        ],
-    },</pre>
-    <ul>
-      <li>The key, <code>"b1-evocative"</code>, is the format's short name. It shows up in the dropdown under Preview.</li>
-      <li><code>name</code> is the template for the playlists this format creates.</li>
-      <li><code>silence between segments</code> is the default pause between segments.</li>
-      <li><code>segments</code> is the list of playlists and minutes, played in order.</li>
-    </ul>
+    <div class="table-wrap">
+      <table class="parts">
+        <thead><tr><th>Part</th><th>What it does</th><th>Example</th></tr></thead>
+        <tbody>
+          <tr><td>The key</td><td>The format's short name. It appears in the dropdown under Preview. Use lowercase letters, numbers, and hyphens.</td><td><code>"my-first-format"</code></td></tr>
+          <tr><td><code>name</code></td><td>The template for the playlists this format creates. <code>{n}</code> becomes 1, 2, 3, and so on.</td><td><code>"Warm focus {n}"</code></td></tr>
+          <tr><td><code>silence between segments</code></td><td>The default pause between segments.</td><td><code>"30 sec"</code></td></tr>
+          <tr><td><code>segments</code></td><td>The list of playlists and minutes, played in order.</td><td><code>("Warm up", 20),</code></td></tr>
+        </tbody>
+      </table>
+    </div>
 
     <h3>Name it</h3>
-    <p>Change the key to something short, using lowercase letters, numbers, and hyphens, such as <code>"my-first-format"</code>. Then change the <code>name</code> line to the pattern you want for your playlists. Keep <code>{n}</code>, which becomes 1, 2, 3, and so on (you can also use <code>{letter}</code>, which becomes a, b, c):</p>
-    <pre class="example">"name": "Warm focus {n}",</pre>
+    <p>Change the key to something short, such as <code>"my-first-format"</code>. Then change the <code>name</code> line to the pattern you want for your playlists. Keep <code>{n}</code>, which becomes 1, 2, 3, and so on (you can also use <code>{letter}</code>, which becomes a, b, c):</p>
+    <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>"name": "Warm focus {n}",</pre></figure>
     <p>That makes playlists named "Warm focus 1", "Warm focus 2", and so on. Pick a pattern that none of your other playlists match. When you create playlists again, this app treats playlists that match the pattern as its own and offers to replace them.</p>
 
     <h3>Point the segments at your playlists</h3>
     <p>Each line in <code>segments</code> is one stretch of music: a playlist name and a number of minutes. Replace the names and minutes with your own. Copy each playlist name from Spotify and paste it between the quotation marks. Capitalization and extra spaces at the ends don't matter, but spelling, punctuation, and emoji do. Only playlists you own can be used.</p>
     <p>Add a segment by adding a line, and remove one by deleting its line. This format makes 80-minute playlists: 20 minutes from Warm up, 40 from Deep focus, then 20 more from Warm up.</p>
-    <pre class="example">    "my-first-format": {
+    <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>    "my-first-format": {
         "name": "Warm focus {n}",
         "silence between segments": "30 sec",
         "segments": [
@@ -176,42 +179,43 @@
             ("Deep focus", 40),
             ("Warm up", 20),
         ],
-    },</pre>
+    },</pre></figure>
     <p>Each segment typically lands within about 30 seconds of its target. Keep the punctuation exactly as shown: quotation marks around each name, a comma after the minutes, and a comma after each closing parenthesis. A playlist can appear in more than one segment, but no song repeats across the playlists made from one format.</p>
 
     <h3>Silence</h3>
     <p>The <code>silence between segments</code> line sets the default pause between each pair of segments. Set it to <code>"none"</code> for no pause, or to any length in steps of 30 seconds, such as <code>"1 min"</code> or <code>"2.5 min"</code>. To use a different pause at one spot, add a silence line between two segments. It replaces the default there:</p>
-    <pre class="example">("Warm up", 20),
+    <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>("Warm up", 20),
 ("silence", "2 min"),
-("Deep focus", 40),</pre>
+("Deep focus", 40),</pre></figure>
     <p>Pauses are extra time on top of your segment minutes. If you remove both the default line and any silence lines, the segments play back to back.</p>
 
     <h3>Mix playlists within a segment</h3>
     <p>Put several playlist names in square brackets for an even mix (50/50 with two playlists, thirds with three):</p>
-    <pre class="example">(["Warm up", "Deep focus"], 30),</pre>
+    <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>(["Warm up", "Deep focus"], 30),</pre></figure>
     <p>For an uneven mix, use braces with a weight for each playlist. This makes a 30-minute segment of about 9 minutes of "Warm up" and 21 minutes of "Deep focus":</p>
-    <pre class="example">({"Warm up": 30, "Deep focus": 70}, 30),</pre>
+    <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>({"Warm up": 30, "Deep focus": 70}, 30),</pre></figure>
 
     <h3>Add another format</h3>
     <p>Copy a whole format block, from its first line through its closing <code>},</code> line. Paste it directly below, before the closing <code>}</code> of the list. Give the copy a new key, a different name pattern, and its own segments. The list then looks like this:</p>
-    <pre class="example">FORMATS = {
+    <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>FORMATS = {
     "my-first-format": {
         ...
     },
     "my-second-format": {
         ...
     },
-}</pre>
+}</pre></figure>
     <p>The dropdown under Preview lists every format, plus All formats.</p>
 
     <h3>If something goes wrong</h3>
     <ul>
-      <li>A red message under the box means the formats couldn't be read. It's usually a missing comma, quotation mark, or bracket. Check the line it mentions and the one above it. Make sure the quotation marks are straight (") and not curly (“ ”), which can sneak in if you paste from a word processor.</li>
+      <li>A red message under the editor means the formats couldn't be read. It's usually a missing comma, quotation mark, or bracket. Check the line it mentions and the one above it. Make sure the quotation marks are straight (") and not curly (“ ”), which can sneak in if you paste from a word processor.</li>
       <li>A preview that says it could not find a playlist named something means that name doesn't match a playlist you own. Copy it again from Spotify, including any emoji.</li>
       <li>Editing the formats clears any preview, so click Preview plan again afterward.</li>
     </ul>
   </details>
 
+  <label for="formats" class="editor-label">Your formats (edit here)</label>
   <textarea id="formats" spellcheck="false"></textarea>
   <div class="row">
     <button id="backupDownload" type="button">Download a backup</button>
