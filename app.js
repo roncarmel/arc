@@ -255,19 +255,36 @@ function today() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-function refreshBackupStatus() {
+function backupState() {
   const text = $("formats").value;
   const backedUp = localStorage.getItem("lastBackupText");
   const when = localStorage.getItem("lastBackupAt");
-  let message = "";
-  if (backedUp === null) {
-    if (text !== DEFAULT_FORMATS) message = "You haven't downloaded a backup of your formats yet.";
-  } else if (text !== backedUp) {
-    message = "Your formats have been edited since your last backup.";
-  } else if (when) {
-    message = "Last backup: " + new Date(when).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) + ".";
-  }
-  $("backupStatus").textContent = message;
+  const date = when ? new Date(when).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
+  if (backedUp === null) return { kind: text === DEFAULT_FORMATS ? "example" : "never", date };
+  return { kind: text !== backedUp ? "edited" : "current", date };
+}
+
+function refreshBackupStatus() {
+  const state = backupState();
+  // Step 4: where the formats stand with regard to a backup.
+  $("backupStatus").textContent = {
+    example: "Your formats are still the starting example, so there is nothing to back up yet.",
+    never: "You haven't downloaded a backup of your formats yet.",
+    edited: "Your formats have been edited since your last backup.",
+    current: state.date ? "Last backup: " + state.date + "." : "Your formats are backed up.",
+  }[state.kind];
+  // Clear saved data: what would be lost, so a backup can be made first.
+  $("clearBackupNote").textContent = {
+    example: "Your formats are still the starting example, so there is nothing to lose.",
+    never: "You haven't downloaded a backup of your formats yet. Download one first, or they will be gone for good.",
+    edited: "Your formats have been edited since your last backup. Download a new backup first to keep the changes.",
+    current: "Your formats are backed up" + (state.date ? " (last backup: " + state.date + ")" : "") + ".",
+  }[state.kind];
+  // Under the editor: Reset only shows when the editor differs from the example, since resetting would do nothing otherwise.
+  const showingExample = $("formats").value === DEFAULT_FORMATS;   // true even when a backup of other formats exists
+  $("resetFormats").hidden = showingExample;
+  if (showingExample) closeResetWarning();
+  else if (!$("resetWarning").hidden) renderResetWarning();
 }
 
 function markBackedUp(text, atMs) {
@@ -325,7 +342,7 @@ function downloadBackup() {
   markBackedUp(text);
   undoText = null;
   logStep("backup downloaded");
-  showBackupMessage("Backup downloaded. Look for it in your Downloads folder.");
+  $("downloadMessage").textContent = "Backup downloaded. Look for it in your Downloads folder.";
   refreshBackupStatus();
 }
 
@@ -360,16 +377,57 @@ async function restoreFromFile(file) {
   showBackupMessage(`Restored ${keys.length} format${keys.length === 1 ? "" : "s"} from ${file.name}.`, true);
 }
 
-function resetToExample() {
+function closeResetWarning() {
+  $("resetWarning").hidden = true;
+}
+
+function renderResetWarning() {
+  // The warning says what would be lost, based on whether a backup exists right now.
+  const state = backupState();
+  const backedUp = state.kind === "current";
+  $("resetWarningText").textContent = {
+    never: "Reset replaces your formats with the example. You haven't downloaded a backup, so they'll be gone for good once you leave this page.",
+    edited: "Reset replaces your formats with the example. Your formats have changed since your last backup, so those changes will be gone for good once you leave this page.",
+    current: "Your formats are backed up" + (state.date ? " (last backup: " + state.date + ")" : "") + ". Reset replaces them with the example, and Restore formats from backup can bring them back.",
+    example: "Your formats already match the example.",
+  }[state.kind];
+  $("resetDownloadFirst").hidden = backedUp || state.kind === "example";   // nothing left to back up first
+  $("resetAnyway").textContent = backedUp ? "Reset to example" : "Reset anyway";
+}
+
+function requestReset() {
+  if ($("formats").value === DEFAULT_FORMATS) return;   // the Reset link is hidden then
+  const state = backupState();
+  if (state.kind === "current") { performReset(); return; }   // a current backup exists, so no warning is needed
+  renderResetWarning();
+  $("resetWarning").hidden = false;
+}
+
+function performReset() {
+  const state = backupState();   // what the situation was before resetting
   const previous = $("formats").value;
-  if (previous === DEFAULT_FORMATS) {
-    showBackupMessage("Your formats already match the example.");
-    return;
-  }
+  if (previous === DEFAULT_FORMATS) return;
+  closeResetWarning();
   setFormatsText(DEFAULT_FORMATS);
   logStep("formats reset to the example");
   undoText = previous;
-  showBackupMessage("Reset to the example format.", true);
+  const note = state.kind === "current" ? ` Your backup${state.date ? " from " + state.date : ""} can bring your formats back.` : "";
+  showBackupMessage("Reset to the example." + note, true);
+}
+
+function addBackupNudge() {
+  // After a successful create, if the formats are not safely backed up, point to the backup step once.
+  const kind = backupState().kind;
+  if (kind !== "never" && kind !== "edited") return;
+  const row = document.createElement("div");
+  row.className = "backup-nudge";
+  row.appendChild(document.createTextNode("Your formats worked. Back them up so they're safe: "));
+  const link = document.createElement("a");
+  link.href = "#backupSection";
+  link.textContent = "Step 4, Back up your formats";
+  row.appendChild(link);
+  row.appendChild(document.createTextNode("."));
+  $("results").appendChild(row);
 }
 
 let reloadPage = () => location.reload();   // a separate function so tests can replace it
@@ -819,6 +877,7 @@ async function createPlaylists() {
     logStep(`create finished (${plural(created, "playlist")})`);
     invalidatePlan(true);   // the plan is used up, so a second click cannot make duplicates
     setActionMessage(`Done. Created ${plural(created, "playlist")} in your Spotify account.` + (notes.length ? "\n\n" + notes.join("\n") : ""));
+    addBackupNudge();
     addSupportPrompt();
     await loadMyPlaylists();
   } catch (err) {
@@ -905,6 +964,10 @@ async function main() {
     const link = $(id).querySelector("a");
     link.addEventListener("click", () => { link.href = reportUrl(); });
   }
+  $("clearBackupDownload").addEventListener("click", () => {
+    downloadBackup();
+    $("clearBackupMessage").textContent = "Backup downloaded. Look for it in your Downloads folder.";
+  });
   $("clearData").addEventListener("click", () => { $("clearConfirm").hidden = false; });
   $("clearNo").addEventListener("click", () => { $("clearConfirm").hidden = true; });
   $("clearYes").addEventListener("click", clearSavedData);
@@ -916,7 +979,13 @@ async function main() {
   $("removeOld").addEventListener("click", removeEarlier);
   $("formatKey").addEventListener("change", () => invalidatePlan());
   $("maxPlaylists").addEventListener("input", () => invalidatePlan());
-  $("resetFormats").addEventListener("click", resetToExample);
+  $("resetFormats").addEventListener("click", requestReset);
+  $("resetDownloadFirst").addEventListener("click", () => {
+    downloadBackup();   // the warning then updates itself, because the formats are now backed up
+    $("resetWarningText").textContent = "Backup downloaded. " + $("resetWarningText").textContent;
+  });
+  $("resetAnyway").addEventListener("click", performReset);
+  $("resetCancel").addEventListener("click", closeResetWarning);
   $("backupDownload").addEventListener("click", downloadBackup);
   $("backupRestore").addEventListener("click", () => $("restoreFile").click());
   $("restoreFile").addEventListener("change", async (event) => {
@@ -930,6 +999,7 @@ async function main() {
     invalidatePlan();
     undoText = null;
     $("backupMessage").textContent = "";   // an Undo offered earlier would now overwrite new edits
+    closeResetWarning();
     refreshBackupStatus();
     clearTimeout(timer);
     timer = setTimeout(refreshFormatKeys, 300);
