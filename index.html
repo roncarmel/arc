@@ -291,7 +291,7 @@
     <select id="formatKey" style="max-width:260px"></select>
     <button id="preview" type="button" disabled><img class="btn-icon" src="icons/preview.svg" alt="" width="20" height="20"><span class="btn-label">Preview plan</span></button>
   </div>
-  <p id="plannerNote" class="muted"></p>
+  <p id="pythonNote" class="muted"></p>
   <p class="muted">Preview shows the playlists this would make, with songs picked at random. If it looks right, a Create button appears below the plan, and it creates exactly what you see. Changing anything above clears the preview, so you preview again.</p>
 
   <pre id="output" hidden></pre>
@@ -370,10 +370,9 @@
       <p id="removeMessage" aria-live="polite"></p>
       <p id="removeReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Report this problem</a></p>
 
-      <h3>Planner status</h3>
-      <p class="muted">Your playlists are planned by a small Python program that runs inside your browser, so nothing about your music is sent to a server. If Preview stays unavailable, the reason shows here.</p>
+      <h3>Python status</h3>
+      <p class="muted">The code that builds your playlists is written in Python and runs inside your browser, so nothing about your music is sent to a server. If Preview stays unavailable, the reason shows here.</p>
       <p id="pythonStatus">Starting...</p>
-      <p class="muted">App version: <span id="appVersionLabel"></span></p>
 
       <h3>Clear saved data</h3>
       <p class="muted">If something looks stuck, you can make this page forget everything it saved in this browser: your Client ID, your formats, and your Spotify sign-in. Nothing in your Spotify account changes.</p>
@@ -390,6 +389,7 @@
           <button id="clearNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
         </div>
       </div>
+    <p class="muted" style="margin-top:24px">App version: <span id="appVersionLabel"></span></p>
     </details>
   </footer>
 </main>

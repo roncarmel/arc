@@ -14,7 +14,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-25g";                    // change this whenever the page is updated
+const APP_VERSION = "2026-10-25i";                    // change this whenever the page is updated
 const REPORT_FORM_URL = "https://tally.so/r/VppLZN"; // where problem reports go
 
 const DEFAULT_FORMATS = `FORMATS = {
@@ -141,7 +141,7 @@ function reportDetails() {
     appVersion: APP_VERSION,
     browser: describeBrowser(),
     windowSize: `${window.innerWidth}x${window.innerHeight}`,
-    planner: py ? `ready (Python ${pythonVersion})` : "not loaded",
+    planner: py ? `ready (Python ${pythonVersion})` : "not loaded",   // the field is still called "planner" because the report form expects that name
     lastError: lastErrorText || "none",
     recentSteps: stepLog.length ? stepLog.join(" > ") : "none",
   };
@@ -165,7 +165,7 @@ function refreshReportBox() {
     `Version: ${d.appVersion}`,
     `Browser: ${d.browser}`,
     `Window size: ${d.windowSize}`,
-    `Planner: ${d.planner}`,
+    `Python: ${d.planner.replace("(Python ", "(")}`,
     `Last error: ${d.lastError}`,
     `Recent steps: ${d.recentSteps}`,
   ].join("\n");
@@ -232,7 +232,7 @@ function addSupportPrompt() {
   link.rel = "noopener noreferrer";
   link.textContent = "tip me";
   row.appendChild(link);
-  row.appendChild(document.createTextNode(" to say thanks."));
+  row.appendChild(document.createTextNode(" to say thanks. And you're welcome regardless!"));
   $("results").appendChild(row);
 }
 
@@ -708,7 +708,7 @@ async function startPython() {
   for (const version of PYODIDE_VERSIONS) {
     const base = `https://cdn.jsdelivr.net/pyodide/${version}/full/`;
     try {
-      $("pythonStatus").textContent = `Loading the planner (Python ${version}). The first time takes a little while...`;
+      $("pythonStatus").textContent = `Loading Python (${version}). The first time takes a little while...`;
       await loadScript(base + "pyodide.js");
       const pyodide = await loadPyodide({ indexURL: base });
       const source = await (await fetch("engine.py", { cache: "no-cache" })).text();
@@ -722,9 +722,9 @@ async function startPython() {
         buildPlaylists: get("build_playlists"),
         existingMatches: get("existing_matches"),
       };
-      $("pythonStatus").textContent = `Ready. The planner is running in your browser (Python ${version}).`;
+      $("pythonStatus").textContent = `Ready. Python ${version} is running in your browser.`;
       pythonVersion = version;
-      logStep("planner ready");
+      logStep("python ready");
       return;
     } catch (err) {
       console.error("Python runtime " + version + " failed:", err);
@@ -1057,14 +1057,14 @@ async function main() {
     }
   }
 
-  $("plannerNote").textContent = "Getting the planner ready. The first time takes a little while...";
+  $("pythonNote").textContent = "Getting Python ready. The first time takes a little while...";
   try {
     await startPython();
-    $("plannerNote").textContent = "";
+    $("pythonNote").textContent = "";
     refreshFormatKeys();
   } catch (err) {
     $("pythonStatus").textContent = String(err.message || err);
-    $("plannerNote").textContent = "The planner could not start, so Preview is unavailable. Check your internet connection and reload the page. Details are under More options.";
+    $("pythonNote").textContent = "Python could not start, so Preview is unavailable. Check your internet connection and reload the page. Details are under More options.";
     offerReport("mainReportHint", String(err.message || err));
   }
 }
