@@ -11,7 +11,7 @@
   [hidden] { display: none !important; }
   :root { color-scheme: light dark; --bg: #ffffff; --fg: #1d1d1f; --muted: #6b6b70; --line: #d8d8dc; --card: #f5f5f7; --accent: #c2188f; --button: #ff38b8; }
   @media (prefers-color-scheme: dark) { :root { --bg: #161618; --fg: #f2f2f4; --muted: #9a9aa2; --line: #333338; --card: #202024; --accent: #ff38b8; --button: #ff38b8; } }
-  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  body { margin: 0; background: var(--bg); color: var(--muted); font: 16px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   main { max-width: 720px; margin: 0 auto; padding: 24px 16px 150px; }
   h1 { font-size: clamp(1.9rem, 6vw, 2.5rem); line-height: 1.15; margin: 0 0 6px; color: var(--button); }
   .tagline { margin: 0 0 14px; }
@@ -174,10 +174,14 @@
   .fe-dialog .fe-danger-button { background: #d11f2e; border-color: #d11f2e; color: #fff; }
 
   /* names of buttons and links, so they are easy to spot in running text */
-  .ui { color: var(--fg); font-weight: 600; }
+  .ui { color: var(--fg); }
   /* body text in the two help boxes is gray; their headings and the names of controls stay bright */
   details.about, #formatHelp { color: var(--muted); }
   details.about strong, #formatHelp h3 { color: var(--fg); }
+
+  /* Standard text is gray. Headings, controls, results, and words that need a highlight (.ui) are white. */
+  h2, h3, label.choice, code, #output, #confirmBox, #removeConfirmBox, #clearConfirm { color: var(--fg); }
+  #formatEditor .fe-amount, #formatEditor .fe-pct { color: var(--fg); }
 </style>
 </head>
 <body>
@@ -203,7 +207,7 @@
     <h2>1. Connect to Spotify</h2>
     <div class="card">
       <div id="welcomeBack" hidden>
-        <p><strong>Welcome back.</strong> Your Spotify developer app is saved in this browser. Connect to Spotify to continue.</p>
+        <p><span class="ui">Welcome back.</span> Your Spotify developer app is saved in this browser. Connect to Spotify to continue.</p>
         <div class="row">
           <button id="connectReturning" class="primary" type="button"><img class="btn-icon" src="icons/connect.svg" alt="" width="20" height="20"><span class="btn-label">Connect Spotify</span></button>
           <span id="welcomeMessage" class="error"></span>
@@ -217,30 +221,30 @@
       <p>This page connects to Spotify through a free Spotify developer app that belongs to you. Use a developer app made just for Ceremony Playlist Builder.
       If you have a developer app from another project, leave it alone and create a new one. Pick the option that fits:</p>
       <div class="toggle" role="radiogroup" aria-label="Spotify app setup">
-        <label><input type="radio" name="flow" value="new"> Create a new Spotify developer app</label>
-        <label><input type="radio" name="flow" value="existing"> Use a developer app already created for this</label>
+        <label class="choice"><input type="radio" name="flow" value="new"> Create a new Spotify developer app</label>
+        <label class="choice"><input type="radio" name="flow" value="existing"> Use a developer app already created for this</label>
       </div>
 
       <ol id="flowNew" hidden>
         <li>
           Open the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify developer dashboard</a>
-          (it opens in a new tab), log in, and click <strong>Create app</strong>.
+          (it opens in a new tab), log in, and click <span class="ui">Create app</span>.
         </li>
         <li>
           Fill in the form:
           <ul class="fields">
-            <li><strong>App name:</strong> type <code>Ceremony Playlist Builder</code></li>
-            <li><strong>App description:</strong> leave it blank. (If Spotify will not let you continue without one, type anything.)</li>
-            <li><strong>Website:</strong> leave it blank, if you see this box.</li>
+            <li><span class="ui">App name:</span> type <code>Ceremony Playlist Builder</code></li>
+            <li><span class="ui">App description:</span> leave it blank. (If Spotify will not let you continue without one, type anything.)</li>
+            <li><span class="ui">Website:</span> leave it blank, if you see this box.</li>
             <li>
-              <strong>Redirect URI:</strong> copy this address, paste it in exactly as shown, then click <strong>Add</strong>:
+              <span class="ui">Redirect URI:</span> copy this address, paste it in exactly as shown, then click <span class="ui">Add</span>:
               <div class="address"><code id="redirect" class="redirect-address"></code> <button id="copyRedirect" class="copy-redirect" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div>
             </li>
-            <li><strong>Which API/SDKs are you planning to use?</strong> Check <strong>Web API</strong> only. Leave the other boxes unchecked.</li>
-            <li>Check the box agreeing to Spotify's terms, then click <strong>Save</strong>.</li>
+            <li><span class="ui">Which API/SDKs are you planning to use?</span> Check <span class="ui">Web API</span> only. Leave the other boxes unchecked.</li>
+            <li>Check the box agreeing to Spotify's terms, then click <span class="ui">Save</span>.</li>
           </ul>
         </li>
-        <li>Copy the <strong>Client ID</strong> shown on your new app's page.</li>
+        <li>Copy the <span class="ui">Client ID</span> shown on your new app's page.</li>
       </ol>
 
       <ol id="flowExisting" hidden>
@@ -248,11 +252,11 @@
           Open the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify developer dashboard</a>
           (it opens in a new tab), log in, and click the developer app created for Ceremony Playlist Builder.
         </li>
-        <li>Copy the <strong>Client ID</strong> shown on its page.</li>
+        <li>Copy the <span class="ui">Client ID</span> shown on its page.</li>
       </ol>
 
       <div id="connectBlock" hidden>
-        <p><strong>Paste your Client ID here, then connect:</strong></p>
+        <p><span class="ui">Paste your Client ID here, then connect:</span></p>
         <input id="clientId" type="text" autocomplete="off" spellcheck="false" placeholder="Client ID">
         <div class="row">
           <button id="connect" class="primary" type="button"><img class="btn-icon" src="icons/connect.svg" alt="" width="20" height="20"><span class="btn-label">Connect Spotify</span></button>
@@ -261,8 +265,8 @@
 
         <details id="redirectHelp" class="help">
           <summary>Spotify says "Invalid redirect URI"?</summary>
-          <p>This address is not registered with your app yet. In your app's <strong>Settings</strong>, paste it under <strong>Redirect URIs</strong>,
-          click <strong>Add</strong>, then scroll down and click <strong>Save</strong>. Then try Connect again.</p>
+          <p>This address is not registered with your app yet. In your app's <span class="ui">Settings</span>, paste it under <span class="ui">Redirect URIs</span>,
+          click <span class="ui">Add</span>, then scroll down and click <span class="ui">Save</span>. Then try Connect again.</p>
           <div class="address"><code class="redirect-address"></code> <button class="copy-redirect" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div>
         </details>
 
