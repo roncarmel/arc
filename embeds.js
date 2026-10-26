@@ -1,25 +1,29 @@
 // embeds.js: an optional layer that shows Ko-fi and Tally inside the page instead of in a new tab.
 //
-// It is OFF unless the page is opened with ?embeds=on (remembered for that browser tab; ?embeds=off turns it
-// off again). While it is off, this file does nothing at all. To remove the feature completely, delete the
-// <script src="embeds.js"> line in index.html.
+// It is OFF unless the page is opened with ?embeds=on or ?embeds=official (remembered for that browser tab;
+// ?embeds=off turns it off again). While it is off, this file does nothing at all. To remove the feature
+// completely, delete the <script src="embeds.js"> line in index.html.
 //
-// No code from Ko-fi or Tally is loaded into this page. Both are shown in frames, which the browser keeps
-// separate from the page, and the frames are only created when someone opens them. The small behaviors that
-// Ko-fi's and Tally's own scripts add around those frames (opening a panel, listening for "form submitted")
-// are written here instead.
+//   ?embeds=on        Our own versions. No code from Ko-fi or Tally is loaded into this page. Both are shown in
+//                     frames, which the browser keeps separate from the page, and only when someone opens them.
+//                     The small behaviors that Ko-fi's and Tally's scripts add around those frames (opening a
+//                     panel, listening for "form submitted") are written here instead.
+//   ?embeds=official  Ko-fi's and Tally's own scripts, used the way they are meant to be used. Those scripts run
+//                     inside this page, so they could in principle read what the page holds, including the
+//                     Spotify sign-in. This setting exists for comparison.
 (function () {
   "use strict";
 
   // ---- the switch
-  let on = false;
+  let mode = null;
   try {
-    const params = new URLSearchParams(location.search);
-    if (params.get("embeds") === "on") sessionStorage.setItem("embeds", "on");
-    if (params.get("embeds") === "off") sessionStorage.removeItem("embeds");
-    on = sessionStorage.getItem("embeds") === "on";
-  } catch (err) { on = false; }
-  if (!on) return;
+    const param = new URLSearchParams(location.search).get("embeds");
+    if (param === "on" || param === "official") sessionStorage.setItem("embeds", param);
+    if (param === "off") sessionStorage.removeItem("embeds");
+    mode = sessionStorage.getItem("embeds");
+  } catch (err) { mode = null; }
+  if (mode !== "on" && mode !== "official") return;
+  const official = mode === "official";
 
   const $ = (id) => document.getElementById(id);
   const REPORT_FRAME_HEIGHT = 640;       // how tall the report form frame is; the form scrolls inside if it needs more
@@ -63,16 +67,43 @@
 
   // ---- a visible reminder, so it is clear this tab is in embeds mode, and how to leave it
   const reminder = make("p", { id: "embedsNote", class: "muted" }, [
-    document.createTextNode("Integrated embeds are on for this tab (experimental). "),
+    document.createTextNode(official
+      ? "Ko-fi's and Tally's own scripts are on for this tab (experimental). They run inside this page and could in principle read your Spotify sign-in. "
+      : "Integrated embeds are on for this tab (experimental). "),
     make("a", { href: "?embeds=off", text: "Turn off" }),
   ]);
   const moreSummary = document.querySelector("#moreOptions > summary");
   if (moreSummary) moreSummary.insertAdjacentElement("afterend", reminder);
-  note("embeds on");
+  note(official ? "embeds official" : "embeds on");
 
-  // ---- Ko-fi: the Tip me button opens a panel in the page, with the same Ko-fi page the new tab would show
   const box = $("supportBox");
   const tipButton = $("supportButton");
+
+  // A script from Ko-fi or Tally, loaded only in "official" mode. A failure leaves the normal links working.
+  const loadScript = (src, onload, onerror) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.onload = onload;
+    script.onerror = onerror || (() => {});
+    document.head.appendChild(script);
+  };
+
+  if (official) {
+    // ---- Ko-fi, as its own instructions say: load overlay-widget.js, then draw the floating button
+    loadScript("https://storage.ko-fi.com/cdn/scripts/overlay-widget.js", () => {
+      if (typeof kofiWidgetOverlay === "undefined" && !window.kofiWidgetOverlay) return;
+      (window.kofiWidgetOverlay || kofiWidgetOverlay).draw(kofiHandle, {
+        "type": "floating-chat",
+        "floating-chat.donateButton.text": "Tip me",
+        "floating-chat.donateButton.background-color": "#ff38b8",
+        "floating-chat.donateButton.text-color": "#fff",
+      });
+      box.hidden = true;   // Ko-fi's button replaces ours, so there are not two
+      note("ko-fi widget drawn");
+    }, () => note("ko-fi widget blocked"));
+  } else {
+  // ---- Ko-fi: the Tip me button opens a panel in the page, with the same Ko-fi page the new tab would show
   let kofiFrame = null;
   const kofiClose = make("button", { type: "button", class: "close", "aria-label": "Close", text: "\u00d7" });
   const kofiHolder = make("div", { style: "flex:1; display:flex; flex-direction:column; min-height:0;" });
@@ -107,6 +138,7 @@
   kofiClose.addEventListener("click", closeKofi);
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !kofiPanel.hidden) closeKofi(); });
   window.addEventListener("resize", () => { if (!kofiPanel.hidden) openKofi(); });
+  }
 
   // ---- Tally: the report form appears inline in the Report a problem section, with the details already filled in
   let reportFrame = null;
@@ -125,7 +157,8 @@
   function tallyEmbedUrl() {
     // The same six details as the new-tab link, so one form serves both. The lengths are already kept safe by reportUrl().
     const search = new URL(reportUrl()).search;
-    return `${TALLY_ORIGIN}/embed/${tallyFormId}${search}&alignLeft=1&hideTitle=1`;
+    // Official mode uses the address Tally's own embed code uses, including transparent background and automatic height.
+    return `${TALLY_ORIGIN}/embed/${tallyFormId}${search}&alignLeft=1&hideTitle=1${official ? "&transparentBackground=1&dynamicHeight=1" : ""}`;
   }
   function openReport() {
     clearTimeout(closeTimer);
@@ -133,8 +166,17 @@
     reportStatus.textContent = "";
     reportNewTab.href = reportUrl();
     if (reportFrame) reportFrame.remove();
-    reportFrame = make("iframe", { src: tallyEmbedUrl(), title: "Report a problem", loading: "lazy", style: `height:${REPORT_FRAME_HEIGHT}px` });
-    reportFrameHolder.appendChild(reportFrame);
+    if (official) {
+      // Tally's own embed code: an iframe with data-tally-src, which Tally's script fills in and resizes.
+      reportFrame = make("iframe", { "data-tally-src": tallyEmbedUrl(), loading: "lazy", width: "100%", height: "300", frameborder: "0", marginheight: "0", marginwidth: "0", title: "Report a problem" });
+      reportFrameHolder.appendChild(reportFrame);
+      const start = () => { if (window.Tally && window.Tally.loadEmbeds) window.Tally.loadEmbeds(); };
+      if (window.Tally) start();
+      else loadScript(`${TALLY_ORIGIN}/widgets/embed.js`, start, () => { reportStatus.textContent = "Tally's script was blocked. Use the link above to open the form in a new tab."; });
+    } else {
+      reportFrame = make("iframe", { src: tallyEmbedUrl(), title: "Report a problem", loading: "lazy", style: `height:${REPORT_FRAME_HEIGHT}px` });
+      reportFrameHolder.appendChild(reportFrame);
+    }
     reportEmbed.hidden = false;
     if (reportEmbed.scrollIntoView) reportEmbed.scrollIntoView({ behavior: "smooth", block: "nearest" });
     note("report form opened");
@@ -152,7 +194,7 @@
   reportClose.addEventListener("click", closeReport);
 
   // Tally's frame announces events to the page that holds it. Only a message from that frame, from Tally, counts.
-  window.addEventListener("message", (event) => {
+  if (!official) window.addEventListener("message", (event) => {
     if (event.origin !== TALLY_ORIGIN || !reportFrame || event.source !== reportFrame.contentWindow) return;
     let data = event.data;
     if (typeof data === "string") { try { data = JSON.parse(data); } catch (err) { return; } }
