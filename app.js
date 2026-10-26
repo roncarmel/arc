@@ -14,7 +14,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-26c";                    // change this whenever the page is updated
+const APP_VERSION = "2026-10-26d";                    // change this whenever the page is updated
 const REPORT_FORM_URL = "https://tally.so/r/VppLZN"; // where problem reports go
 
 const DEFAULT_FORMATS = modelToText(defaultModel());   // one format with one segment waiting for a playlist
@@ -314,18 +314,21 @@ function showBackupMessage(text, undo = false) {
   }
 }
 
-let currentPlan = null;   // the plan from the last Preview: exactly what Create will make
+let openQuestion = null;   // finishes the "create these?" question while it is showing
+
+function closeQuestion(answer) {
+  if (openQuestion) openQuestion(answer);
+}
 
 function invalidatePlan(resetOutput = !busy) {
-  // Anything that could change what a plan would be clears the current preview, so the user has to preview again.
-  currentPlan = null;
-  $("createRow").hidden = true;
+  // Anything that could change what a plan would be closes a question that is waiting on it.
+  closeQuestion("stale");
   if (resetOutput) setOutput("");
   updateButtons();
 }
 
 function planSignature() {
-  // What a preview depends on. If it changes while a preview is being made, that preview is thrown away.
+  // What a plan depends on. If it changes while a plan is being made, that plan is thrown away.
   return [$("formats").value, $("formatKey").value, $("maxPlaylists").value].join("\u0000");
 }
 
@@ -393,9 +396,8 @@ function clearSavedData() {
 
 function updateButtons() {
   const ready = !!token && !!py && formatsValid && !busy;
-  $("preview").disabled = !ready || currentPlan !== null;   // one preview at a time; changing anything clears it
+  $("create").disabled = !ready;
   $("removeOld").disabled = !ready;
-  $("create").disabled = busy;
 }
 
 function setBusy(flag) {
@@ -404,29 +406,30 @@ function setBusy(flag) {
 }
 
 // ---------------------------------------------------------------- confirmation panels
-// Create asks under the Create button. Remove asks inside the Remove section, at the bottom of it.
-const CREATE_CONFIRM = { box: "confirmBox", text: "confirmText", list: "confirmList", moreText: "confirmMoreText", moreList: "confirmMoreList", yes: "confirmYes", no: "confirmNo" };
+// Create asks under the Create button (askToCreate). Remove asks inside the Remove section, at the bottom of it.
 const REMOVE_CONFIRM = { box: "removeConfirmBox", text: "removeConfirmText", list: "removeConfirmList", yes: "removeConfirmYes", no: "removeConfirmNo" };
 
-function confirmAction({ message, items = [], moreMessage = "", moreItems = [], yes, no = "Cancel" }, ui = CREATE_CONFIRM) {
+function fillConfirmList(listId, textId, text, list) {
+  $(textId).textContent = text;
+  $(textId).hidden = !text;
+  const ul = $(listId);
+  ul.textContent = "";
+  for (const item of list.slice(0, 8)) {
+    const li = document.createElement("li");
+    li.textContent = item;
+    ul.appendChild(li);
+  }
+  if (list.length > 8) {
+    const li = document.createElement("li");
+    li.textContent = `...and ${list.length - 8} more`;
+    ul.appendChild(li);
+  }
+  ul.hidden = list.length === 0;
+}
+
+function confirmAction({ message, items = [], moreMessage = "", moreItems = [], yes, no = "Cancel" }, ui) {
   return new Promise((resolve) => {
-    const fill = (listId, textId, text, list) => {
-      $(textId).textContent = text;
-      $(textId).hidden = !text;
-      const ul = $(listId);
-      ul.textContent = "";
-      for (const item of list.slice(0, 8)) {
-        const li = document.createElement("li");
-        li.textContent = item;
-        ul.appendChild(li);
-      }
-      if (list.length > 8) {
-        const li = document.createElement("li");
-        li.textContent = `...and ${list.length - 8} more`;
-        ul.appendChild(li);
-      }
-      ul.hidden = list.length === 0;
-    };
+    const fill = fillConfirmList;
     fill(ui.list, ui.text, message, items);
     if (ui.moreList) fill(ui.moreList, ui.moreText, moreMessage, moreItems);
     setLabel($(ui.yes), yes);
@@ -725,33 +728,35 @@ function removeKeys() {
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-// ---------------------------------------------------------------- actions: preview, create, remove
+// ---------------------------------------------------------------- actions: create, remove
 async function gatherInputs() {
   // Works out which source playlists the chosen formats need and reads their songs.
   const formatsText = $("formats").value;
   const wanted = selectedKeys();
   const blanks = blankSegmentReport(wanted);
   if (blanks.length) {
-    recordError("Preview blocked: a segment has no playlist chosen");
-    logStep("preview blocked: empty segment");
+    recordError("Create blocked: a segment has no playlist chosen");
+    logStep("plan blocked: empty segment");
     setOutput("Choose a playlist for every segment first:\n\n"
       + blanks.map((b) => `- ${b.title}: ${b.count === 1 ? "1 segment has" : b.count + " segments have"} no playlist yet`).join("\n"));
     return null;
   }
   const plans = [];
   const failed = [];
+  const failedNotes = [];
   for (const key of wanted) {
     try {
       plans.push({ key, names: JSON.parse(py.neededSources(formatsText, key)) });
     } catch (err) {
       failed.push(`=== ${formatLabel(key)} ===\nCould not plan this format: ${cleanError(err)}`);
+      failedNotes.push(`${formatLabel(key)} could not be planned: ${cleanError(err)}`);
     }
   }
   const names = [...new Set(plans.flatMap((p) => p.names))];
   const match = JSON.parse(py.matchPlaylists(JSON.stringify(names), JSON.stringify(playlists), me.id));
   if (match.problems.length) {
-    recordError(`Preview blocked: ${plural(match.problems.length, "source playlist")} not found or not owned`);
-    logStep("preview blocked: source playlists");
+    recordError(`Create blocked: ${plural(match.problems.length, "source playlist")} not found or not owned`);
+    logStep("plan blocked: source playlists");
     setOutput("Cannot plan yet:\n\n" + match.problems.map((p) => "- " + p).join("\n")
       + "\n\nCheck the playlist names in your formats against your Spotify playlists. Each name must match a playlist you own.");
     return null;
@@ -761,47 +766,111 @@ async function gatherInputs() {
     setOutput(`Reading "${name}"...`);
     tracks[name] = await loadTracks(match.found[name]);
   }
-  return { formatsText, keys: plans.map((p) => p.key), failed, tracks };
+  return { formatsText, keys: plans.map((p) => p.key), failed, failedNotes, tracks };
 }
 
-async function preview() {
-  // Plans the playlists and shows the plan. Create then makes exactly this plan, with these songs.
+async function planSelected(startedWith) {
+  // Works out the playlists for the chosen formats. Returns the plan, or null after saying why there isn't one.
+  const inputs = await gatherInputs();
+  if (!inputs) return null;
+  setOutput("Planning...");
+  const built = [];
+  const parts = [];
+  const problems = [];
+  for (const key of inputs.keys) {
+    try {
+      const plan = JSON.parse(py.buildPlaylists(inputs.formatsText, key, JSON.stringify(inputs.tracks), playlistLimit()));
+      if (typeof plan.text !== "string") throw new Error("engine.py is out of date. Upload the newest engine.py, then reload the page.");
+      built.push(plan);
+      parts.push(plan.text);
+    } catch (err) {
+      recordError(cleanError(err));
+      parts.push(`=== ${formatLabel(key)} ===\nCould not plan this format: ${cleanError(err)}`);
+      problems.push(`${formatLabel(key)} could not be planned: ${cleanError(err)}`);
+    }
+  }
+  if (planSignature() !== startedWith) {   // the user edited something while this was planning
+    setOutput("");
+    return null;
+  }
+  parts.push(...inputs.failed);
+  problems.push(...inputs.failedNotes);
+  const total = built.reduce((n, plan) => n + plan.playlists.length, 0);
+  logStep(total ? `plan: ${plural(total, "playlist")} planned` : "plan: nothing can be created");
+  if (!total) {
+    setOutput(parts.join("\n\n") + "\n\nNothing can be created from this plan.");
+    return null;
+  }
+  setOutput("");
+  return { formatsText: inputs.formatsText, keys: inputs.keys, built, total, text: parts.join("\n\n") + "\n\nNothing has been created yet.", problems };
+}
+
+function askToCreate(plan, existing) {
+  // Shows what the plan found and waits: "create", "cancel", "redraw", or "stale" if something was edited meanwhile.
+  return new Promise((resolve) => {
+    const lines = plan.built.map((b) => {
+      const minutes = b.playlists.map((p) => p.minutes);
+      const average = Math.round(minutes.reduce((n, m) => n + m, 0) / minutes.length);
+      return `${formatLabel(b.key)}: ${plural(b.playlists.length, "playlist")}, about ${average} min each`;
+    });
+    const notes = [...plan.built.filter((b) => b.stopped).map((b) => `${formatLabel(b.key)}: ${b.stopped}`), ...plan.problems].map((n) => "Note: " + n);
+    fillConfirmList("confirmList", "confirmText", `Ready to create ${plural(plan.total, "playlist")}.`, lines.concat(notes));
+    const replacing = existing.length > 0;
+    fillConfirmList("confirmMoreList", "confirmMoreText",
+      replacing ? `Replace ${plural(existing.length, "earlier playlist")}? These match the names this plan uses, and will be removed from your library first:` : "",
+      replacing ? existing.map((p) => p.name) : []);
+    setLabel($("confirmYes"), replacing ? `Remove them and create ${plural(plan.total, "playlist")}` : `Create ${plural(plan.total, "playlist")}`);
+    setLabel($("confirmNo"), "Cancel");
+    $("planText").textContent = plan.text;
+    $("planText").hidden = true;
+    $("planToggle").textContent = "See the full plan";
+    const box = $("confirmBox");
+    box.hidden = false;
+    if (box.scrollIntoView) box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    const finish = (answer) => {
+      openQuestion = null;
+      box.hidden = true;
+      $("planText").textContent = "";
+      for (const id of ["confirmYes", "confirmNo", "redraw", "planToggle"]) $(id).onclick = null;
+      resolve(answer);
+    };
+    openQuestion = finish;
+    $("confirmYes").onclick = () => finish("create");
+    $("confirmNo").onclick = () => finish("cancel");
+    $("redraw").onclick = () => finish("redraw");
+    $("planToggle").onclick = () => {
+      $("planText").hidden = !$("planText").hidden;
+      $("planToggle").textContent = $("planText").hidden ? "See the full plan" : "Hide the full plan";
+    };
+  });
+}
+
+async function startCreate() {
+  // One button: plan, show what was found, ask, then create exactly that plan.
   setBusy(true);
   clearResults();
   setActionMessage("");
   clearReportHints("mainReportHint");
-  logStep("preview started");
+  logStep("plan started");
   invalidatePlan(false);
   const startedWith = planSignature();
   try {
-    const inputs = await gatherInputs();
-    if (!inputs) return;
-    setOutput("Planning...");
-    const built = [];
-    const parts = [];
-    for (const key of inputs.keys) {
-      try {
-        const plan = JSON.parse(py.buildPlaylists(inputs.formatsText, key, JSON.stringify(inputs.tracks), playlistLimit()));
-        if (typeof plan.text !== "string") throw new Error("engine.py is out of date. Upload the newest engine.py, then reload the page.");
-        built.push(plan);
-        parts.push(plan.text);
-      } catch (err) {
-        recordError(cleanError(err));
-        parts.push(`=== ${formatLabel(key)} ===\nCould not plan this format: ${cleanError(err)}`);
+    let plan = await planSelected(startedWith);
+    while (plan) {
+      const existing = JSON.parse(py.existingMatches(plan.formatsText, JSON.stringify(plan.keys), JSON.stringify(playlists), me.id));
+      const answer = await askToCreate(plan, existing);
+      if (answer === "stale") return;
+      if (answer === "cancel") {
+        setActionMessage("Cancelled. Nothing was changed.");
+        return;
       }
-    }
-    if (planSignature() !== startedWith) {   // the user edited something while this was planning
-      setOutput("");
+      if (answer === "redraw") {
+        logStep("plan: drawing again");
+        plan = await planSelected(startedWith);
+        continue;
+      }
+      await createFromPlan(plan, existing);
       return;
-    }
-    parts.push(...inputs.failed);
-    const total = built.reduce((n, plan) => n + plan.playlists.length, 0);
-    logStep(total ? `preview: ${plural(total, "playlist")} planned` : "preview: nothing can be created");
-    setOutput(parts.join("\n\n") + "\n\n" + (total ? "Nothing has been created yet." : "Nothing can be created from this plan."));
-    if (total) {
-      currentPlan = { formatsText: inputs.formatsText, keys: inputs.keys, built, total };
-      setLabel($("create"), `Create ${plural(total, "playlist")}`);
-      $("createRow").hidden = false;
     }
   } catch (err) {
     setOutput("Something went wrong:\n\n" + cleanError(err));
@@ -811,31 +880,12 @@ async function preview() {
   }
 }
 
-async function createPlaylists() {
-  const plan = currentPlan;
-  if (!plan) return;
-  setBusy(true);
-  clearResults();
-  setActionMessage("");
-  clearReportHints("mainReportHint");
+async function createFromPlan(plan, existing) {
   const planned = plan.built.flatMap((b) => b.playlists);
   logStep(`create started (${plural(planned.length, "playlist")})`);
   let created = 0;
   try {
-    // Only ask when something would be deleted: earlier playlists that match these formats' names.
-    const existing = JSON.parse(py.existingMatches(plan.formatsText, JSON.stringify(plan.keys), JSON.stringify(playlists), me.id));
     if (existing.length) {
-      const go = await confirmAction({
-        message: `Replace ${plural(existing.length, "earlier playlist")}? These match the names this plan uses, and will be removed from your library first:`,
-        items: existing.map((p) => p.name),
-        moreMessage: `Then ${plural(planned.length, "new playlist")} will be created:`,
-        moreItems: planned.map((p) => `${p.name} (${p.songs} songs, ${p.minutes} min)`),
-        yes: `Remove them and create ${plural(planned.length, "playlist")}`,
-      });
-      if (!go) {
-        setActionMessage("Cancelled. Nothing was changed.");
-        return;
-      }
       setActionMessage(`Removing ${plural(existing.length, "earlier playlist")}...`);
       await removePlaylists(existing.map((p) => p.id));
     }
@@ -848,9 +898,9 @@ async function createPlaylists() {
       created += 1;
       addResult(p.name, made.external_urls && made.external_urls.spotify, `${p.songs} songs, ${p.minutes} min`);
     }
-    const notes = plan.built.filter((b) => b.stopped).map((b) => `${b.key}: ${b.stopped}`);
+    const notes = plan.built.filter((b) => b.stopped).map((b) => `${formatLabel(b.key)}: ${b.stopped}`);
     logStep(`create finished (${plural(created, "playlist")})`);
-    invalidatePlan(true);   // the plan is used up, so a second click cannot make duplicates
+    invalidatePlan(true);
     setActionMessage(`Done. Created ${plural(created, "playlist")} in your Spotify account.` + (notes.length ? "\n\n" + notes.join("\n") : ""));
     addSupportPrompt();
     await loadMyPlaylists();
@@ -860,8 +910,6 @@ async function createPlaylists() {
     logStep(`create failed after ${created} of ${planned.length}`);
     offerReport("mainReportHint", cleanError(err));
     try { await loadMyPlaylists(); } catch (ignore) { /* keep the original error showing */ }
-  } finally {
-    setBusy(false);
   }
 }
 
@@ -902,6 +950,27 @@ async function removeEarlier() {
 }
 
 // ---------------------------------------------------------------- start up
+function initThemeChooser() {
+  const select = $("themeChoice");
+  const current = chosenColors();
+  for (const t of THEMES) select.add(new Option(t.name, t.id));
+  if (current.custom) {
+    select.add(new Option("Custom colors", "custom"));
+    select.value = "custom";
+    $("themeNote").textContent = "These colors came from the address (?accent and ?neutral). Choose a theme above, or add ?theme=reset to the address, to go back.";
+    $("themeNote").hidden = false;
+  } else {
+    select.value = current.id;
+  }
+  select.addEventListener("change", () => {
+    if (select.value === "custom") return;
+    setTheme(select.value);
+    $("themeNote").hidden = true;
+    for (const opt of Array.from(select.options)) if (opt.value === "custom") opt.remove();
+    editorThemeChanged();
+  });
+}
+
 async function main() {
   logStep("page opened");
   $("appVersionLabel").textContent = APP_VERSION;
@@ -909,6 +978,7 @@ async function main() {
   for (const el of document.querySelectorAll(".redirect-address")) el.textContent = redirectUri();
   $("clientId").value = localStorage.getItem("clientId") || "";
   $("formats").value = localStorage.getItem("formats") || DEFAULT_FORMATS;
+  initThemeChooser();
   initEditor();
   refreshFormatKeys();
   setOutput("");
@@ -917,7 +987,6 @@ async function main() {
   showFlow($("clientId").value ? "existing" : null);
   $("welcomeBack").hidden = !$("clientId").value;   // someone with a saved Client ID only needs to reconnect
   $("setupDetails").open = !$("clientId").value;     // the setup steps stay one click away
-  $("about").open = !$("clientId").value;
   for (const radio of document.querySelectorAll('input[name="flow"]')) {
     radio.addEventListener("change", () => showFlow(radio.value));
   }
@@ -953,8 +1022,7 @@ async function main() {
   $("connect").addEventListener("click", startLogin);
   $("connectReturning").addEventListener("click", startLogin);
   $("disconnect").addEventListener("click", disconnect);
-  $("preview").addEventListener("click", preview);
-  $("create").addEventListener("click", createPlaylists);
+  $("create").addEventListener("click", startCreate);
   $("removeOld").addEventListener("click", removeEarlier);
   $("formatKey").addEventListener("change", () => invalidatePlan());
   $("maxPlaylists").addEventListener("input", () => invalidatePlan());
@@ -990,8 +1058,7 @@ async function main() {
   if (token) {
     $("loginSection").hidden = true;
     $("connectedSection").hidden = false;
-    $("appSection").hidden = false;  // the formats and the Preview / Create buttons appear once connected
-    $("about").open = false;
+    $("appSection").hidden = false;  // the formats and the Create button appear once connected
     try {
       await loadMyPlaylists();
       logStep(`connected, ${plural(playlists.length, "playlist")} found`);
@@ -1008,7 +1075,7 @@ async function main() {
     refreshFormatKeys();
   } catch (err) {
     $("pythonStatus").textContent = String(err.message || err);
-    $("pythonNote").textContent = "Python could not start, so Preview is unavailable. Check your internet connection and reload the page. Details are under More options.";
+    $("pythonNote").textContent = "Python could not start, so creating is unavailable. Check your internet connection and reload the page. Details are under More options.";
     offerReport("mainReportHint", String(err.message || err));
   }
 }

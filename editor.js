@@ -5,8 +5,7 @@
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
 
-const FE_PINK = "#ff38b8";        // the one color of the editor: pink
-const FE_PINK_DEEP = "#a8217c";   // a deeper shade of it, for the second stripe of a mix
+// The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 56;
 const FE_ROW_GAP = 6;
 
@@ -66,7 +65,7 @@ function feIcon(name) {
 // diagonal stripes running from lower left to upper right; each stripe is as thick as its share of the mix
 function feStripes(shareA, period) {
   const a = Math.max(1.5, Math.round(period * shareA * 10) / 10);
-  return `repeating-linear-gradient(135deg, ${FE_PINK} 0, ${FE_PINK} ${a}px, ${FE_PINK_DEEP} ${a}px, ${FE_PINK_DEEP} ${period}px)`;
+  return `repeating-linear-gradient(135deg, var(--button) 0, var(--button) ${a}px, var(--accent-deep) ${a}px, var(--accent-deep) ${period}px)`;
 }
 
 // Point at (or tap) a row or a piece of the bar, and the other one lights up.
@@ -166,6 +165,8 @@ function focusSearchBox() {
   const box = document.querySelector("#feRows .fe-search");
   if (fine && box && box.focus) { try { box.focus({ preventScroll: true }); } catch (err) { box.focus(); } }
 }
+
+function editorThemeChanged() { /* every color in the editor is a CSS variable, so there is nothing to redraw */ }
 
 function editorPlaylistsChanged() {
   if (editor.model) renderRows();

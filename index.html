@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script src="theme.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -19,8 +20,8 @@
   #setupDetails > summary { cursor: pointer; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
   #welcomeBack { margin-bottom: 10px; }
   button:not(.linklike), a.button-link { display: inline-flex; align-items: center; gap: 8px; }
-  .btn-icon { width: 20px; height: 20px; display: block; flex: none; }
-  a.button-link { display: inline-flex; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--button); background: var(--button); color: #fff; text-decoration: none; }
+  .btn-icon { width: 20px; height: 20px; display: block; flex: none; filter: var(--icon-filter, none); }
+  a.button-link { display: inline-flex; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--button); background: var(--button); color: var(--on-button, #fff); text-decoration: none; }
   pre.report-preview { min-height: 0; font-size: 12.5px; margin: 6px 0; }
   .report-hint { margin: 6px 0; }
   #welcomeBack p { margin-top: 0; }
@@ -35,7 +36,7 @@
   textarea { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; min-height: 260px; }
   code, pre { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
   pre { white-space: pre-wrap; word-break: break-word; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-height: 80px; }
-  button { font: inherit; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--button); background: var(--button); color: #fff; cursor: pointer; }
+  button { font: inherit; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--button); background: var(--button); color: var(--on-button, #fff); cursor: pointer; }
   button:disabled { opacity: 0.5; cursor: default; }
   .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
   .error { color: #c0392b; font-size: 0.9rem; }
@@ -76,12 +77,13 @@
   #moreOptions { color: var(--muted); }
   #moreOptions input, #moreOptions select { color: var(--fg); }
   #moreOptions #removeConfirmBox, #moreOptions #clearConfirm { color: var(--fg); }
+  .plan-links { margin: 8px 0 0; }
   #moreOptions pre.report-preview { color: var(--muted); }
   button.linklike { background: none; border: none; padding: 0; color: var(--accent); font-weight: normal; text-decoration: underline; }
   #backupMessage { min-height: 1.5em; }
   #supportBox { position: fixed; right: 16px; bottom: 16px; z-index: 1001; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; max-width: min(240px, calc(100vw - 32px)); }
   #supportButton { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--button);
-    background: var(--button); color: #fff; font-weight: 600; text-decoration: none; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28); }
+    background: var(--button); color: var(--on-button, #fff); font-weight: 600; text-decoration: none; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28); }
   #supportButton img { width: 22px; height: auto; aspect-ratio: 285 / 229; display: block; animation: kofi-wiggle 3s infinite; }
   /* The same little wiggle Ko-fi's own button does: the cup rests, then grows and wiggles for a moment every 3 seconds. */
   @keyframes kofi-wiggle { 0% { transform: rotate(0) scale(1); } 60% { transform: rotate(0) scale(1); } 75% { transform: rotate(0) scale(1.12); } 80% { transform: rotate(0) scale(1.1); }
@@ -91,12 +93,12 @@
   @media (max-width: 520px) { #supportBox { right: 8px; bottom: 8px; } }
 
   /* the format editor */
-  :root { --warn: #b45309; --danger: #d11f2e; --cover: #3a3a42; }
+  :root { --warn: #b45309; --danger: #d11f2e; --cover: #3a3a42; --on-button: #fff; --accent-deep: #a8217c; --accent-tint: rgba(255, 56, 184, 0.15); --accent-tint-border: rgba(255, 56, 184, 0.5); --accent-wash: rgba(255, 56, 184, 0.22); --silence-line: #8a8a92; --icon-filter: none; }
   @media (prefers-color-scheme: dark) { :root { --warn: #f2b45a; --danger: #ff7a85; } }
   #formatEditor { margin: 8px 0 12px; }
   #formatEditor .fe-tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
   #formatEditor .fe-tab { min-height: 44px; padding: 0 18px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--fg); }
-  #formatEditor .fe-tab[aria-pressed="true"] { background: var(--button); border-color: var(--button); color: #fff; }
+  #formatEditor .fe-tab[aria-pressed="true"] { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
   #formatEditor .fe-newformat, #formatEditor .fe-add { background: transparent; border: 1px dashed var(--muted); color: var(--fg); justify-content: center; }
   #formatEditor .fe-newformat { min-height: 44px; padding: 0 16px; border-radius: 999px; }
   #formatEditor .fe-add { min-height: 48px; width: 100%; border-radius: 16px; }
@@ -111,7 +113,7 @@
   #formatEditor .fe-warn { margin: 6px 0 0; font-size: 0.82rem; color: var(--warn); }
   #formatEditor .fe-bar { display: flex; gap: 3px; height: 24px; border-radius: 9px; overflow: hidden; background: var(--bg); border: 1px solid var(--line); padding: 3px; box-sizing: border-box; }
   #formatEditor .fe-piece { display: block; min-width: 6px; padding: 0; border: none; border-radius: 6px; background: var(--button); cursor: pointer; }
-  #formatEditor .fe-piece-silence { background: #000; border: 1.5px solid #8a8a92; box-sizing: border-box; }
+  #formatEditor .fe-piece-silence { background: #000; border: 1.5px solid var(--silence-line, #8a8a92); box-sizing: border-box; }
   #formatEditor .fe-bar.fe-hasHl .fe-piece:not(.fe-hl) { opacity: 0.35; }
   #formatEditor .fe-piece.fe-hl { outline: 2px solid var(--fg); outline-offset: 1px; }
   #formatEditor .fe-caption { font-size: 0.78rem; color: var(--muted); margin-top: 3px; }
@@ -120,16 +122,16 @@
   #formatEditor .fe-row.fe-open { z-index: 20; }
   #formatEditor .fe-row.fe-dragging { z-index: 10; transition: none; }
   #formatEditor .fe-still { transition: none !important; }
-  #formatEditor .fe-rowcard { display: flex; align-items: center; gap: 6px; box-sizing: border-box; height: 56px; padding: 0 4px 0 0; background: rgba(255, 56, 184, 0.15); border: 1px solid rgba(255, 56, 184, 0.5); border-radius: 16px; }
+  #formatEditor .fe-rowcard { display: flex; align-items: center; gap: 6px; box-sizing: border-box; height: 56px; padding: 0 4px 0 0; background: var(--accent-tint, rgba(255, 56, 184, 0.15)); border: 1px solid var(--accent-tint-border, rgba(255, 56, 184, 0.5)); border-radius: 16px; }
   #formatEditor .fe-rowcard-silence { background: var(--bg); border-color: var(--line); }
   #formatEditor .fe-row.fe-hl .fe-rowcard { box-shadow: 0 0 0 2px var(--fg); }
   #formatEditor .fe-row.fe-dragging .fe-rowcard { box-shadow: 0 0 0 2px var(--button), 0 16px 32px rgba(0, 0, 0, 0.45); }
   #formatEditor .fe-grip { touch-action: none; cursor: grab; width: 26px; height: 44px; flex: none; padding: 0; background: none; border: none; color: var(--muted); justify-content: center; }
   #formatEditor .fe-main { flex: 1 1 0; min-width: 0; height: 44px; padding: 0 8px 0 4px; background: rgba(127, 127, 127, 0.14); border: 1px solid rgba(127, 127, 127, 0.28); border-radius: 12px; color: var(--fg); text-align: left; gap: 8px; font-weight: 400; }
   #formatEditor .fe-main > .fe-icon { flex: none; color: var(--muted); }
-  #formatEditor .fe-cover { width: 34px; height: 34px; border-radius: 9px; flex: none; background: var(--cover); color: #9a9aa2; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  #formatEditor .fe-cover { width: 34px; height: 34px; border-radius: 9px; flex: none; background: var(--cover); color: var(--muted); display: flex; align-items: center; justify-content: center; overflow: hidden; }
   #formatEditor .fe-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  #formatEditor .fe-cover-silence { background: #000; border: 2px solid #8a8a92; box-sizing: border-box; color: #b4b4bb; }
+  #formatEditor .fe-cover-silence { background: #000; border: 2px solid var(--silence-line, #8a8a92); box-sizing: border-box; color: var(--muted); }
   #formatEditor .fe-text { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; line-height: 1.15; text-align: left; }
   #formatEditor .fe-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #formatEditor .fe-main-empty .fe-title { color: var(--muted); font-weight: 500; }
@@ -161,7 +163,7 @@
   #formatEditor .fe-search { width: 100%; height: 40px; padding: 0 12px; margin-bottom: 4px; border-radius: 12px; background: var(--card); color: var(--fg); border: 1px solid var(--line); font: inherit; box-sizing: border-box; }
   #formatEditor .fe-options { max-height: 270px; overflow: auto; }
   #formatEditor .fe-option { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 4px 10px 4px 6px; border: none; border-radius: 12px; background: transparent; color: var(--fg); text-align: left; font-weight: 400; box-sizing: border-box; }
-  #formatEditor .fe-option-on { background: rgba(255, 56, 184, 0.22); }
+  #formatEditor .fe-option-on { background: var(--accent-wash, rgba(255, 56, 184, 0.22)); }
   #formatEditor .fe-option:disabled { opacity: 0.45; }
   .fe-overlay { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 100; background: rgba(0, 0, 0, 0.65); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
   .fe-dialog { width: 100%; max-width: 360px; box-sizing: border-box; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 20px; padding: 18px; box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5); }
@@ -179,24 +181,29 @@
   details.about strong, #formatHelp h3 { color: var(--fg); }
 
   /* Standard text is gray. Headings, controls, results, and words that need a highlight (.ui) are white. */
-  h2, h3, label.choice, code, #output, #confirmBox, #removeConfirmBox, #clearConfirm { color: var(--fg); }
+  h2, h3, label.choice, code, #output, #planText, #confirmBox, #removeConfirmBox, #clearConfirm { color: var(--fg); }
   #formatEditor .fe-amount, #formatEditor .fe-pct { color: var(--fg); }
+
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .app-icon { width: clamp(2.1rem, 7vw, 2.8rem); height: clamp(2.1rem, 7vw, 2.8rem); border-radius: 22%; flex: none; }
+  .headrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 40px 0 10px; }
+  .headrow h2 { margin: 0; }
 </style>
 </head>
 <body>
 <main>
-  <h1>Ceremony Playlist Builder</h1>
+  <h1 class="brand"><img class="app-icon" src="favicon.svg" alt="" width="44" height="44"><span>Ceremony Playlist Builder</span></h1>
   <p class="tagline">Turn your Spotify playlists into structured playlists for ceremonies, retreats, and other long events.</p>
 
-  <details id="about" class="about card" open>
-    <summary>What is this app?</summary>
+  <details id="about" class="about card">
+    <summary>More about this app</summary>
     <p><strong>What it does</strong><br>Ceremony Playlist Builder makes long playlists from your existing Spotify playlists. Describe the structure of the playlists you want to create, and the app builds as many complete playlists as your music allows, with songs picked at random and no song repeated across the playlists made from one format. Each playlist is created in your Spotify account, ready to play.</p>
     <p><strong>What it's good for</strong><br>Ceremonies, retreats, workshops, and any long event where the music should follow an arc, such as arriving, deepening, and landing. Instead of steering a shuffle during the event or manually building a playlist ahead of time for each event, set the structure once and get multiple fresh, non-overlapping playlists. You can then use these playlists for subsequent events without ever repeating the same music.</p>
     <p><strong>How it works</strong></p>
     <ol>
       <li>Connect Spotify through a free developer app. This takes a few minutes to set up, but you’ll only need to do it once.</li>
       <li>Define your format(s): which of your playlists to draw from, in what order, and for how long.</li>
-      <li>Preview the plan, then create the playlists.</li>
+      <li>Create the playlists. The app shows you what it found and asks before it makes anything.</li>
     </ol>
     <p><strong>What you need</strong><br>A Spotify Premium account (Spotify requires it for the free developer app) and some playlists of your own to draw from.</p>
     <p><strong>Good to know</strong><br>Your existing Spotify playlists are only read, never changed. Playlists created by this app are private. Everything runs in this browser, and nothing about your music goes anywhere except to you and Spotify. If you run into a problem you can report it in the <span class="ui">More options</span> section at the bottom of this page.</p>
@@ -276,11 +283,11 @@
   </section>
 
   <section id="connectedSection" hidden>
-    <h2>1. Connect to Spotify</h2>
-    <div class="row" style="margin-top:0">
-      <span id="connectedMessage">Connecting...</span>
+    <div class="headrow">
+      <h2>1. Connect to Spotify</h2>
       <button id="disconnect" type="button"><img class="btn-icon" src="icons/disconnect.svg" alt="" width="20" height="20"><span class="btn-label">Disconnect</span></button>
     </div>
+    <p id="connectedMessage" style="margin:0">Connecting...</p>
   </section>
 
   <div id="appSection" hidden>
@@ -312,23 +319,18 @@
     <ul>
       <li>A row that says "Not found in your playlists" names a playlist that was renamed or deleted. Tap it and choose the playlist again.</li>
       <li>Spotify only lets this app read playlists you own, so those are the ones you can choose.</li>
-      <li>Changing a format clears any preview, so click <span class="ui">Preview plan</span> again afterward.</li>
     </ul>
   </details>
 
-  <h2>3. Preview and create</h2>
+  <h2>3. Create playlists</h2>
   <div class="row" style="margin-top:0">
     <select id="formatKey" style="max-width:260px"></select>
-    <button id="preview" type="button" disabled><img class="btn-icon" src="icons/preview.svg" alt="" width="20" height="20"><span class="btn-label">Preview plan</span></button>
+    <button id="create" class="primary" type="button" disabled><img class="btn-icon" src="icons/create.svg" alt="" width="20" height="20"><span class="btn-label">Create playlists</span></button>
   </div>
   <p id="pythonNote" class="muted"></p>
-  <p class="muted">Preview shows the playlists this would make, with songs picked at random. If it looks right, a <span class="ui">Create</span> button appears below the plan, and it creates exactly what you see. Changing anything above clears the preview, so you preview again.</p>
+  <p class="muted">Choose a format, or all of them. The app plans the playlists with songs picked at random, shows you what it found, and asks before it creates anything. Changing anything above closes the question, so you start again.</p>
 
   <pre id="output" hidden></pre>
-
-  <div id="createRow" class="row" hidden>
-    <button id="create" class="primary" type="button"><img class="btn-icon" src="icons/create.svg" alt="" width="20" height="20"><span class="btn-label">Create playlists</span></button>
-  </div>
 
   <div id="confirmBox" class="card" hidden>
     <p id="confirmText"></p>
@@ -336,16 +338,18 @@
     <p id="confirmMoreText"></p>
     <ul id="confirmMoreList"></ul>
     <div class="row">
-      <button id="confirmYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Yes</span></button>
+      <button id="confirmYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Create</span></button>
       <button id="confirmNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
     </div>
+    <p class="plan-links"><button id="planToggle" class="linklike" type="button">See the full plan</button> <button id="redraw" class="linklike" type="button">Draw again</button></p>
+    <pre id="planText" hidden></pre>
   </div>
 
   <p id="actionMessage" aria-live="polite"></p>
   <p id="mainReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Report this problem</a></p>
   <div id="results"></div>
 
-  <h2 id="backupSection">4. Back up your formats</h2>
+  <h2 id="backupSection">4. Back up your formats (optional)</h2>
   <p>Your formats are saved only in this browser. Clearing your browser data erases them. A backup file keeps a copy on your computer so you can restore them if needed.</p>
   <div class="row">
     <button id="backupDownload" type="button"><img class="btn-icon" src="icons/download.svg" alt="" width="20" height="20"><span class="btn-label">Download a backup</span></button>
@@ -370,7 +374,7 @@
       <a id="reportLink" class="button-link" href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer"><img class="btn-icon" src="icons/report.svg" alt="" width="20" height="20"><span class="btn-label">Open the report form</span></a>
 
       <h3>Limit how many playlists are made</h3>
-      <p class="muted">By default, <span class="ui">Preview</span> plans as many playlists as your songs allow. To cap it, enter a number, then preview again.</p>
+      <p class="muted">By default, the app plans as many playlists as your songs allow. To cap it, enter a number before you create.</p>
       <div class="row">
         <label for="maxPlaylists">Make at most</label>
         <input id="maxPlaylists" type="number" min="1" step="1" placeholder="no limit" style="width:100px">
@@ -394,8 +398,15 @@
       <p id="removeMessage" aria-live="polite"></p>
       <p id="removeReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Report this problem</a></p>
 
+      <h3>Color theme</h3>
+      <p class="muted">Choose the colors this page uses. A theme is two colors: one for actions and highlights, and one for everything else.</p>
+      <div class="row" style="margin-top:0">
+        <select id="themeChoice" aria-label="Color theme" style="max-width:260px"></select>
+      </div>
+      <p id="themeNote" class="muted" hidden></p>
+
       <h3>Python status</h3>
-      <p class="muted">The code that builds your playlists is written in Python and runs inside your browser, so nothing about your music is sent to a server. If <span class="ui">Preview</span> stays unavailable, the reason shows here.</p>
+      <p class="muted">The code that builds your playlists is written in Python and runs inside your browser, so nothing about your music is sent to a server. If <span class="ui">Create playlists</span> stays unavailable, the reason shows here.</p>
       <p id="pythonStatus">Starting...</p>
 
       <h3>Clear saved data</h3>
