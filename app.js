@@ -14,7 +14,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-25f";                    // change this whenever the page is updated
+const APP_VERSION = "2026-10-25g";                    // change this whenever the page is updated
 const REPORT_FORM_URL = "https://tally.so/r/VppLZN"; // where problem reports go
 
 const DEFAULT_FORMATS = `FORMATS = {
@@ -269,13 +269,21 @@ function fileStamp() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
 }
 
+function formatBackupTime(iso) {
+  // The day and the time of day, in the person's own style, such as "Oct 25, 2026 at 2:05 PM".
+  const d = new Date(iso);
+  const day = d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return `${day} at ${time}`;
+}
+
 function backupState() {
   const text = $("formats").value;
   const backedUp = localStorage.getItem("lastBackupText");
-  const when = localStorage.getItem("lastBackupAt");
-  const date = when ? new Date(when).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
-  if (backedUp === null) return { kind: text === DEFAULT_FORMATS ? "example" : "never", date };
-  return { kind: text !== backedUp ? "edited" : "current", date };
+  const at = localStorage.getItem("lastBackupAt");
+  const when = at ? formatBackupTime(at) : "";
+  if (backedUp === null) return { kind: text === DEFAULT_FORMATS ? "example" : "never", when };
+  return { kind: text !== backedUp ? "edited" : "current", when };
 }
 
 function refreshBackupStatus() {
@@ -285,14 +293,14 @@ function refreshBackupStatus() {
     example: "Your formats are still the starting example, so there is nothing to back up yet.",
     never: "You haven't downloaded a backup of your formats yet.",
     edited: "Your formats have been edited since your last backup.",
-    current: state.date ? "Last backup: " + state.date + "." : "Your formats are backed up.",
+    current: state.when ? "Last backup: " + state.when + "." : "Your formats are backed up.",
   }[state.kind];
   // Clear saved data: what would be lost, so a backup can be made first.
   $("clearBackupNote").textContent = {
     example: "Your formats are still the starting example, so there is nothing to lose.",
     never: "You haven't downloaded a backup of your formats yet. Download one first, or they will be gone for good.",
     edited: "Your formats have been edited since your last backup. Download a new backup first to keep the changes.",
-    current: "Your formats are backed up" + (state.date ? " (last backup: " + state.date + ")" : "") + ".",
+    current: "Your formats are backed up" + (state.when ? " (last backup: " + state.when + ")" : "") + ".",
   }[state.kind];
   // Under the editor: Reset only shows when the editor differs from the example, since resetting would do nothing otherwise.
   const showingExample = $("formats").value === DEFAULT_FORMATS;   // true even when a backup of other formats exists
@@ -402,7 +410,7 @@ function renderResetWarning() {
   $("resetWarningText").textContent = {
     never: "Reset replaces your formats with the example. You haven't downloaded a backup, so they'll be gone for good once you reset.",
     edited: "Reset replaces your formats with the example. Your formats have changed since your last backup, so those changes will be gone for good once you reset.",
-    current: "Your formats are backed up" + (state.date ? " (last backup: " + state.date + ")" : "") + ". Reset replaces them with the example, and Restore formats from backup can bring them back.",
+    current: "Your formats are backed up" + (state.when ? " (last backup: " + state.when + ")" : "") + ". Reset replaces them with the example, and Restore formats from backup can bring them back.",
     example: "Your formats already match the example.",
   }[state.kind];
   $("resetDownloadFirst").hidden = backedUp || state.kind === "example";   // nothing left to back up first
@@ -425,7 +433,7 @@ function performReset() {
   setFormatsText(DEFAULT_FORMATS);
   logStep("formats reset to the example");
   undoText = previous;
-  const note = state.kind === "current" ? ` Your backup${state.date ? " from " + state.date : ""} can bring your formats back.` : "";
+  const note = state.kind === "current" ? ` Your backup${state.when ? " from " + state.when : ""} can bring your formats back.` : "";
   showBackupMessage("Reset to the example." + note, true);
 }
 
