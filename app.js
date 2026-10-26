@@ -72,6 +72,17 @@ function showError(box, err) {
   box.textContent = cleanError(err);
 }
 
+function setLabel(button, text) {
+  // Buttons have an icon followed by a label. Only the label changes, so the icon stays.
+  (button.querySelector(".btn-label") || button).textContent = text;
+}
+
+function setIcon(button, name) {
+  // Swaps a button's icon for another file in the icons folder.
+  const img = button.querySelector("img.btn-icon");
+  if (img) img.setAttribute("src", `icons/${name}.svg`);
+}
+
 function setOutput(text) {
   // The box exists only while there is something to show: progress, a plan, or a problem.
   $("output").textContent = text;
@@ -392,7 +403,7 @@ function renderResetWarning() {
     example: "Your formats already match the example.",
   }[state.kind];
   $("resetDownloadFirst").hidden = backedUp || state.kind === "example";   // nothing left to back up first
-  $("resetAnyway").textContent = backedUp ? "Reset to example" : "Reset anyway";
+  setLabel($("resetAnyway"), backedUp ? "Reset to example" : "Reset anyway");
 }
 
 function requestReset() {
@@ -477,8 +488,8 @@ function confirmAction({ message, items = [], moreMessage = "", moreItems = [], 
     };
     fill(ui.list, ui.text, message, items);
     if (ui.moreList) fill(ui.moreList, ui.moreText, moreMessage, moreItems);
-    $(ui.yes).textContent = yes;
-    $(ui.no).textContent = no;
+    setLabel($(ui.yes), yes);
+    setLabel($(ui.no), no);
     const box = $(ui.box);
     box.hidden = false;
     if (box.scrollIntoView) box.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -825,7 +836,7 @@ async function preview() {
     setOutput(parts.join("\n\n") + "\n\n" + (total ? "Nothing has been created yet." : "Nothing can be created from this plan."));
     if (total) {
       currentPlan = { formatsText: inputs.formatsText, keys: inputs.keys, built, total };
-      $("create").textContent = `Create ${plural(total, "playlist")}`;
+      setLabel($("create"), `Create ${plural(total, "playlist")}`);
       $("createRow").hidden = false;
     }
   } catch (err) {
@@ -950,11 +961,12 @@ async function main() {
     button.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(redirectUri());
-        button.textContent = "Copied";
+        setLabel(button, "Copied");
+        setIcon(button, "confirm");   // the one icon change: a check shows the copy worked
       } catch (err) {
-        button.textContent = "Select and copy it by hand";
+        setLabel(button, "Select and copy it by hand");
       }
-      setTimeout(() => { button.textContent = "Copy"; }, 2000);
+      setTimeout(() => { setLabel(button, "Copy"); setIcon(button, "copy"); }, 2000);
     });
   }
   // problem reports: the link is rebuilt at the moment it is used, so it carries the latest details
@@ -964,10 +976,6 @@ async function main() {
     const link = $(id).querySelector("a");
     link.addEventListener("click", () => { link.href = reportUrl(); });
   }
-  $("clearBackupDownload").addEventListener("click", () => {
-    downloadBackup();
-    $("clearBackupMessage").textContent = "Backup downloaded. Look for it in your Downloads folder.";
-  });
   $("clearData").addEventListener("click", () => { $("clearConfirm").hidden = false; });
   $("clearNo").addEventListener("click", () => { $("clearConfirm").hidden = true; });
   $("clearYes").addEventListener("click", clearSavedData);

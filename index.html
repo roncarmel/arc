@@ -18,7 +18,9 @@
   details.about { margin: 0 0 8px; }
   #setupDetails > summary { cursor: pointer; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
   #welcomeBack { margin-bottom: 10px; }
-  a.button-link { display: inline-block; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--button); background: var(--button); color: #fff; text-decoration: none; }
+  button:not(.linklike), a.button-link { display: inline-flex; align-items: center; gap: 8px; }
+  .btn-icon { width: 20px; height: 20px; display: block; flex: none; }
+  a.button-link { display: inline-flex; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--button); background: var(--button); color: #fff; text-decoration: none; }
   pre.report-preview { min-height: 0; font-size: 12.5px; margin: 6px 0; }
   .report-hint { margin: 6px 0; }
   #welcomeBack p { margin-top: 0; }
@@ -90,17 +92,17 @@
   <p class="tagline">Turn your Spotify playlists into structured playlists for ceremonies, retreats, and other long events.</p>
 
   <details id="about" class="about card" open>
-    <summary>What is this?</summary>
-    <p><strong>What it does.</strong> Ceremony Playlist Builder makes long, ordered playlists from music already in your Spotify account. Describe the shape of an event, for example 30 minutes from one playlist, then 60 minutes from another, then 30 from a third. The app builds as many complete playlists as your music allows, with songs picked at random and no song repeated across the playlists made from one format. Each playlist is created in your Spotify account, ready to play.</p>
-    <p><strong>What it's good for.</strong> Ceremonies, retreats, workshops, classes, and any long event where the music should follow an arc, such as arriving, deepening, and landing. Instead of steering a shuffle during the event, set the structure once and get fresh, ordered playlists as many times as needed.</p>
-    <p><strong>How it works.</strong></p>
+    <summary>What is this app?</summary>
+    <p><strong>What it does</strong><br>Ceremony Playlist Builder makes long, ordered playlists from music already in your Spotify account. Describe the shape of an event, for example 30 minutes from one playlist, then 60 minutes from another, then 30 from a third. The app builds as many complete playlists as your music allows, with songs picked at random and no song repeated across the playlists made from one format. Each playlist is created in your Spotify account, ready to play.</p>
+    <p><strong>What it's good for</strong><br>Ceremonies, retreats, workshops, classes, and any long event where the music should follow an arc, such as arriving, deepening, and landing. Instead of steering a shuffle during the event, set the structure once and get fresh, ordered playlists as many times as needed.</p>
+    <p><strong>How it works</strong></p>
     <ol>
       <li>Connect Spotify through a free developer app. This takes a few minutes, once.</li>
       <li>Write a format: which of your playlists to draw from, in what order, and for how long.</li>
       <li>Preview the plan, then create the playlists.</li>
     </ol>
-    <p><strong>What you need.</strong> A Spotify Premium account (Spotify requires it for the free developer app) and some playlists of your own to draw from.</p>
-    <p><strong>Good to know.</strong> Your playlists are only read, never changed. New playlists are private. Everything runs in this browser, and nothing about your music goes anywhere except to Spotify. A problem report is sent only if you choose to send one.</p>
+    <p><strong>What you need</strong><br>A Spotify Premium account (Spotify requires it for the free developer app) and some playlists of your own to draw from.</p>
+    <p><strong>Good to know</strong><br>Your playlists are only read, never changed. New playlists are private. Everything runs in this browser, and nothing about your music goes anywhere except to Spotify. A problem report is sent only if you choose to send one.</p>
   </details>
 
   <section id="loginSection">
@@ -109,7 +111,7 @@
       <div id="welcomeBack" hidden>
         <p><strong>Welcome back.</strong> Your Spotify developer app is saved in this browser. Connect to Spotify to continue.</p>
         <div class="row">
-          <button id="connectReturning" class="primary" type="button">Connect Spotify</button>
+          <button id="connectReturning" class="primary" type="button"><img class="btn-icon" src="icons/connect.svg" alt="" width="20" height="20"><span class="btn-label">Connect Spotify</span></button>
           <span id="welcomeMessage" class="error"></span>
         </div>
       </div>
@@ -138,7 +140,7 @@
             <li><strong>Website:</strong> leave it blank, if you see this box.</li>
             <li>
               <strong>Redirect URI:</strong> copy this address, paste it in exactly as shown, then click <strong>Add</strong>:
-              <div class="address"><code id="redirect" class="redirect-address"></code> <button id="copyRedirect" class="copy-redirect" type="button">Copy</button></div>
+              <div class="address"><code id="redirect" class="redirect-address"></code> <button id="copyRedirect" class="copy-redirect" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div>
             </li>
             <li><strong>Which API/SDKs are you planning to use?</strong> Check <strong>Web API</strong> only. Leave the other boxes unchecked.</li>
             <li>Check the box agreeing to Spotify's terms, then click <strong>Save</strong>.</li>
@@ -159,7 +161,7 @@
         <p><strong>Paste your Client ID here, then connect:</strong></p>
         <input id="clientId" type="text" autocomplete="off" spellcheck="false" placeholder="Client ID">
         <div class="row">
-          <button id="connect" class="primary" type="button">Connect Spotify</button>
+          <button id="connect" class="primary" type="button"><img class="btn-icon" src="icons/connect.svg" alt="" width="20" height="20"><span class="btn-label">Connect Spotify</span></button>
           <span id="loginMessage" class="error"></span>
         </div>
 
@@ -167,7 +169,7 @@
           <summary>Spotify says "Invalid redirect URI"?</summary>
           <p>This address is not registered with your app yet. In your app's <strong>Settings</strong>, paste it under <strong>Redirect URIs</strong>,
           click <strong>Add</strong>, then scroll down and click <strong>Save</strong>. Then try Connect again.</p>
-          <div class="address"><code class="redirect-address"></code> <button class="copy-redirect" type="button">Copy</button></div>
+          <div class="address"><code class="redirect-address"></code> <button class="copy-redirect" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div>
         </details>
 
         <p class="muted" style="margin-top:12px">Your Client ID is not a secret. It stays in this browser. Nothing is sent anywhere except to Spotify, unless you choose to send a problem report.</p>
@@ -180,7 +182,7 @@
     <h2>1. Connect to Spotify</h2>
     <div class="row" style="margin-top:0">
       <span id="connectedMessage">Connecting...</span>
-      <button id="disconnect" type="button">Disconnect</button>
+      <button id="disconnect" type="button"><img class="btn-icon" src="icons/disconnect.svg" alt="" width="20" height="20"><span class="btn-label">Disconnect</span></button>
     </div>
   </section>
 
@@ -273,9 +275,9 @@
   <div id="resetWarning" class="card" hidden>
     <p id="resetWarningText"></p>
     <div class="row">
-      <button id="resetDownloadFirst" type="button">Download a backup first</button>
-      <button id="resetAnyway" class="primary" type="button">Reset anyway</button>
-      <button id="resetCancel" type="button">Cancel</button>
+      <button id="resetDownloadFirst" type="button"><img class="btn-icon" src="icons/download.svg" alt="" width="20" height="20"><span class="btn-label">Download a backup first</span></button>
+      <button id="resetAnyway" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Reset anyway</span></button>
+      <button id="resetCancel" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
     </div>
   </div>
   <p id="backupMessage" aria-live="polite"></p>
@@ -283,7 +285,7 @@
   <h2>3. Preview and create</h2>
   <div class="row" style="margin-top:0">
     <select id="formatKey" style="max-width:260px"></select>
-    <button id="preview" type="button" disabled>Preview plan</button>
+    <button id="preview" type="button" disabled><img class="btn-icon" src="icons/preview.svg" alt="" width="20" height="20"><span class="btn-label">Preview plan</span></button>
   </div>
   <p id="plannerNote" class="muted"></p>
   <p class="muted">Preview shows the playlists this would make, with songs picked at random. If it looks right, a Create button appears below the plan, and it creates exactly what you see. Changing anything above clears the preview, so you preview again.</p>
@@ -291,7 +293,7 @@
   <pre id="output" hidden></pre>
 
   <div id="createRow" class="row" hidden>
-    <button id="create" class="primary" type="button">Create playlists</button>
+    <button id="create" class="primary" type="button"><img class="btn-icon" src="icons/create.svg" alt="" width="20" height="20"><span class="btn-label">Create playlists</span></button>
   </div>
 
   <div id="confirmBox" class="card" hidden>
@@ -300,8 +302,8 @@
     <p id="confirmMoreText"></p>
     <ul id="confirmMoreList"></ul>
     <div class="row">
-      <button id="confirmYes" class="primary" type="button">Yes</button>
-      <button id="confirmNo" type="button">Cancel</button>
+      <button id="confirmYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Yes</span></button>
+      <button id="confirmNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
     </div>
   </div>
 
@@ -318,7 +320,7 @@
     <li>before switching to another browser or computer.</li>
   </ul>
   <div class="row">
-    <button id="backupDownload" type="button">Download a backup</button>
+    <button id="backupDownload" type="button"><img class="btn-icon" src="icons/download.svg" alt="" width="20" height="20"><span class="btn-label">Download a backup</span></button>
   </div>
   <p id="downloadMessage" aria-live="polite"></p>
   <p id="backupStatus" class="muted" aria-live="polite"></p>
@@ -338,7 +340,7 @@
       <p id="reportLabel" style="margin-bottom:0">Details attached to the report:</p>
       <pre id="reportPreview" class="report-preview"></pre>
       <p class="muted">Your sign-in, Client ID, playlist names, and song titles are never included.</p>
-      <a id="reportLink" class="button-link" href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Open the report form</a>
+      <a id="reportLink" class="button-link" href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer"><img class="btn-icon" src="icons/report.svg" alt="" width="20" height="20"><span class="btn-label">Open the report form</span></a>
 
       <h3>Limit how many playlists are made</h3>
       <p class="muted">By default, Preview plans as many playlists as your songs allow. To cap it, enter a number, then preview again.</p>
@@ -352,14 +354,14 @@
       <p class="muted">Removes playlists from your Spotify library whose names match a format's naming pattern, for example "mix 1", "mix 2". It only touches playlists you own, and it asks before removing anything. It needs Spotify to be connected.</p>
       <div class="row">
         <select id="removeKey" style="max-width:260px"></select>
-        <button id="removeOld" type="button" disabled>Remove earlier playlists</button>
+        <button id="removeOld" type="button" disabled><img class="btn-icon" src="icons/remove.svg" alt="" width="20" height="20"><span class="btn-label">Remove earlier playlists</span></button>
       </div>
       <div id="removeConfirmBox" class="card" hidden>
         <p id="removeConfirmText"></p>
         <ul id="removeConfirmList"></ul>
         <div class="row">
-          <button id="removeConfirmYes" class="primary" type="button">Remove</button>
-          <button id="removeConfirmNo" type="button">Cancel</button>
+          <button id="removeConfirmYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Remove</span></button>
+          <button id="removeConfirmNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
         </div>
       </div>
       <p id="removeMessage" aria-live="polite"></p>
@@ -372,19 +374,17 @@
 
       <h3>Clear saved data</h3>
       <p class="muted">If something looks stuck, you can make this page forget everything it saved in this browser: your Client ID, your formats, and your Spotify sign-in. Nothing in your Spotify account changes.</p>
-      <p class="muted">Your formats are erased too. To get them back afterward, connect to Spotify again, then use Restore formats from backup under the editor in Step 2 and choose your backup file. If you haven't downloaded a backup, do that first.</p>
+      <p class="muted">Your formats are erased too. To get them back afterward, connect to Spotify again, then use Restore formats from backup under the editor in Step 2 and choose your backup file. If you haven't downloaded a backup, do that first in Step 4.</p>
       <p id="clearBackupNote"></p>
       <div class="row">
-        <button id="clearBackupDownload" type="button">Download a backup</button>
-        <button id="clearData" type="button">Clear saved data</button>
+        <button id="clearData" type="button"><img class="btn-icon" src="icons/clear.svg" alt="" width="20" height="20"><span class="btn-label">Clear saved data</span></button>
       </div>
-      <p id="clearBackupMessage" aria-live="polite"></p>
       <div id="clearConfirm" hidden>
         <p><strong>Clear the saved Client ID, formats, and sign-in, and reload this page?</strong></p>
         <p class="muted">Your formats will be erased from this browser. To get them back, connect to Spotify again, then use Restore formats from backup under the editor in Step 2 and choose your backup file.</p>
         <div class="row">
-          <button id="clearYes" class="primary" type="button">Yes, clear it</button>
-          <button id="clearNo" type="button">Cancel</button>
+          <button id="clearYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Yes, clear it</span></button>
+          <button id="clearNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
         </div>
       </div>
     </details>
