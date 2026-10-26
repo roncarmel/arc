@@ -3,7 +3,6 @@
 // The text is the same Python-style text the engine reads (engine.py). The editor never asks people to
 // type it; it only keeps it up to date. Nothing in this file touches the page.
 
-const FORMAT_COLOR_COUNT = 6;     // row colors in the editor
 // Silence lengths the editor steps through, in seconds: 30 sec, 1 to 10 min by the minute, then 15, 20, 25 and 30 min
 const SILENCE_STEPS = [30, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 900, 1200, 1500, 1800];
 let ROW_SEQ = 0;
@@ -172,7 +171,7 @@ function normName(s) {
 
 // ---------------------------------------------------------------- the text and the editor's list
 // A format here is { id, title, items: [...] }. An item is either
-//   { id, kind: "seg", lists: [{ name, weight }], minutes, color }  or  { id, kind: "silence", seconds }.
+//   { id, kind: "seg", lists: [{ name, weight }], minutes }  or  { id, kind: "silence", seconds }.
 // The title is what people see; the playlists made from it are called "<title> 1", "<title> 2", and so on.
 
 function cleanTitle(title) {
@@ -199,11 +198,9 @@ function textToModel(text, allowEmpty) {
     if (!(fmt instanceof PyDict)) throw new Error(`The format "${key}" should look like { "name": ..., "segments": [...] }.`);
     const segments = fmt.get("segments");
     if (!Array.isArray(segments)) throw new Error(`The format "${key}" needs a segments list.`);
-    const colors = Array.isArray(fmt.get("colors")) ? fmt.get("colors") : [];
     const defaultSilence = fmt.has("silence between segments") ? parseSilenceSeconds(fmt.get("silence between segments")) : 0;
     const items = [];
-    let segCount = 0;
-    segments.forEach((entry, index) => {
+    segments.forEach((entry) => {
       if (!Array.isArray(entry) || entry.length !== 2) {
         throw new Error('Each entry in segments must be (source, minutes) or ("silence", "5 min").');
       }
@@ -218,10 +215,7 @@ function textToModel(text, allowEmpty) {
       if (spec instanceof PyDict) lists = spec.pairs.map(([name, weight]) => ({ name: String(name), weight: Number(weight) || 1 }));
       else if (Array.isArray(spec)) lists = spec.map((name) => ({ name: String(name), weight: 1 }));
       else lists = [{ name: String(spec), weight: 1 }];
-      const stored = colors[index];
-      const color = Number.isInteger(stored) ? stored % FORMAT_COLOR_COUNT : segCount % FORMAT_COLOR_COUNT;
-      segCount += 1;
-      items.push({ id: `r${++ROW_SEQ}`, kind: "seg", lists, minutes, color });
+      items.push({ id: `r${++ROW_SEQ}`, kind: "seg", lists, minutes });
     });
     // The old "silence between segments" setting becomes real silence rows, so nothing is hidden.
     if (defaultSilence > 0) {
@@ -259,7 +253,6 @@ function modelToText(model) {
       }
     }
     out.push("        ],");
-    out.push(`        "colors": [${fmt.items.map((item) => (item.kind === "seg" ? item.color : "None")).join(", ")}],`);
     out.push("    },");
   }
   out.push("}");
@@ -274,12 +267,12 @@ function newFormatId(model) {
 }
 
 function newBlankFormat(model, title) {
-  return { id: newFormatId(model), title, items: [{ id: `r${++ROW_SEQ}`, kind: "seg", lists: [{ name: "", weight: 1 }], minutes: 30, color: 0 }] };
+  return { id: newFormatId(model), title, items: [{ id: `r${++ROW_SEQ}`, kind: "seg", lists: [{ name: "", weight: 1 }], minutes: 30 }] };
 }
 
 // The model for a first visit: one format with one segment waiting for a playlist.
 function defaultModel() {
-  return { formats: [{ id: "format-1", title: "Generated playlist", items: [{ id: `r${++ROW_SEQ}`, kind: "seg", lists: [{ name: "", weight: 1 }], minutes: 30, color: 0 }] }] };
+  return { formats: [{ id: "format-1", title: "Generated playlist", items: [{ id: `r${++ROW_SEQ}`, kind: "seg", lists: [{ name: "", weight: 1 }], minutes: 30 }] }] };
 }
 
 // How much of a two-playlist mix is the first playlist, as a whole percent.

@@ -110,17 +110,20 @@
   #formatEditor .fe-iconbtn { width: 44px; height: 44px; padding: 0; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); color: var(--fg); justify-content: center; }
   #formatEditor .fe-warn { margin: 6px 0 0; font-size: 0.82rem; color: var(--warn); }
   #formatEditor .fe-bar { display: flex; gap: 3px; height: 24px; border-radius: 9px; overflow: hidden; background: var(--bg); border: 1px solid var(--line); padding: 3px; box-sizing: border-box; }
-  #formatEditor .fe-piece { min-width: 6px; border-radius: 6px; }
+  #formatEditor .fe-piece { display: block; min-width: 6px; padding: 0; border: none; border-radius: 6px; background: var(--button); cursor: pointer; }
   #formatEditor .fe-piece-silence { background: #000; border: 1.5px solid #8a8a92; box-sizing: border-box; }
+  #formatEditor .fe-bar.fe-hasHl .fe-piece:not(.fe-hl) { opacity: 0.35; }
+  #formatEditor .fe-piece.fe-hl { outline: 2px solid var(--fg); outline-offset: 1px; }
   #formatEditor .fe-caption { font-size: 0.78rem; color: var(--muted); margin-top: 3px; }
   #formatEditor .fe-rows { position: relative; display: flex; flex-direction: column; gap: 6px; }
   #formatEditor .fe-row { position: relative; height: 56px; transition: transform 160ms ease; }
   #formatEditor .fe-row.fe-open { z-index: 20; }
   #formatEditor .fe-row.fe-dragging { z-index: 10; transition: none; }
-  #formatEditor .fe-row.fe-dragging .fe-rowcard { box-shadow: 0 0 0 2px var(--button), 0 16px 32px rgba(0, 0, 0, 0.45); }
   #formatEditor .fe-still { transition: none !important; }
-  #formatEditor .fe-rowcard { display: flex; align-items: center; gap: 6px; box-sizing: border-box; height: 56px; padding: 0 4px 0 0; border: 1px solid var(--line); border-radius: 16px; }
-  #formatEditor .fe-rowcard-silence { background: var(--bg); }
+  #formatEditor .fe-rowcard { display: flex; align-items: center; gap: 6px; box-sizing: border-box; height: 56px; padding: 0 4px 0 0; background: rgba(255, 56, 184, 0.15); border: 1px solid rgba(255, 56, 184, 0.5); border-radius: 16px; }
+  #formatEditor .fe-rowcard-silence { background: var(--bg); border-color: var(--line); }
+  #formatEditor .fe-row.fe-hl .fe-rowcard { box-shadow: 0 0 0 2px var(--fg); }
+  #formatEditor .fe-row.fe-dragging .fe-rowcard { box-shadow: 0 0 0 2px var(--button), 0 16px 32px rgba(0, 0, 0, 0.45); }
   #formatEditor .fe-grip { touch-action: none; cursor: grab; width: 26px; height: 44px; flex: none; padding: 0; background: none; border: none; color: var(--muted); justify-content: center; }
   #formatEditor .fe-main { flex: 1 1 0; min-width: 0; height: 44px; padding: 0 8px 0 4px; background: rgba(127, 127, 127, 0.14); border: 1px solid rgba(127, 127, 127, 0.28); border-radius: 12px; color: var(--fg); text-align: left; gap: 8px; font-weight: 400; }
   #formatEditor .fe-main > .fe-icon { flex: none; color: var(--muted); }
@@ -145,10 +148,6 @@
   #formatEditor .fe-rule { height: 1px; background: var(--line); margin: 2px 6px; }
   #formatEditor .fe-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 12px; border: none; border-radius: 12px; background: transparent; color: var(--fg); text-align: left; box-sizing: border-box; }
   #formatEditor .fe-danger { color: var(--danger); }
-  #formatEditor .fe-swatches { display: flex; padding: 0 4px 2px; }
-  #formatEditor .fe-swatchbtn { width: 40px; height: 44px; padding: 0; background: none; border: none; justify-content: center; }
-  #formatEditor .fe-swatch { width: 28px; height: 28px; border-radius: 999px; box-shadow: 0 0 0 2px rgba(127, 127, 127, 0.4); }
-  #formatEditor .fe-swatch-on { box-shadow: 0 0 0 3px var(--button); }
   #formatEditor .fe-mixline { display: flex; align-items: center; gap: 8px; padding: 0 6px; }
   #formatEditor .fe-minipick { flex: 1 1 0; min-width: 0; height: 42px; padding: 0 8px 0 4px; gap: 8px; background: rgba(127, 127, 127, 0.14); border: 1px solid rgba(127, 127, 127, 0.28); border-radius: 12px; color: var(--fg); font-weight: 600; text-align: left; }
   #formatEditor .fe-minipick-name { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -298,13 +297,13 @@
     <p>A format is a recipe for one kind of playlist: which of your playlists to draw from, in what order, and for how long. The app makes as many playlists from a format as your songs allow, and no song repeats between them.</p>
 
     <h3>Segments</h3>
-    <p>Each row is one stretch of music. Tap the playlist to choose it, and use the minus and plus buttons to set how many minutes it fills. Drag the dotted handle to change the order. Each segment typically lands within about 30 seconds of its target. Add another with <span class="ui">New segment</span>.</p>
+    <p>Each row is one stretch of music. Tap the playlist to choose it, and use the minus and plus buttons to set how many minutes it fills. Drag the dotted handle to change the order. Each segment typically lands within about 30 seconds of its target. Point at a row, or tap a piece of the bar at the top, to see which belongs to which. Add another with <span class="ui">New segment</span>.</p>
 
     <h3>Silence</h3>
     <p>Choose <span class="ui">Silence</span> at the top of a row's playlist list to turn that row into quiet time. Silence can go between segments, or before or after the music, and it adds time on top of your segment minutes. It can be used for effect, or simply as a marker that tells a facilitator the music has moved into a new segment.</p>
 
     <h3>Mixes</h3>
-    <p>To blend two playlists in one segment, tap the three dots on that row and choose <span class="ui">Add a mix</span>. Pick the second playlist, then use the slider to set how much of each. In the bar at the top, a mixed segment shows as diagonal stripes in two shades of the segment's color.</p>
+    <p>To blend two playlists in one segment, tap the three dots on that row and choose <span class="ui">Add a mix</span>. Pick the second playlist, then use the slider to set how much of each. In the bar at the top, a mixed segment shows as diagonal stripes in two shades of pink.</p>
 
     <h3>Names</h3>
     <p>The name of a format is also the name of the playlists it makes: a format called "Warm focus" makes "Warm focus 1", "Warm focus 2", and so on. Give every format a different name. When you create playlists again, this app treats playlists that match a format's name as its own and offers to replace them.</p>

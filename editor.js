@@ -5,7 +5,8 @@
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
 
-const FE_COLORS = ["#f2b45a", "#6f93e8", "#b78be0", "#ee7e87", "#7fc4b0", "#a3acbb"];
+const FE_PINK = "#ff38b8";        // the one color of the editor: pink
+const FE_PINK_DEEP = "#a8217c";   // a deeper shade of it, for the second stripe of a mix
 const FE_ROW_HEIGHT = 56;
 const FE_ROW_GAP = 6;
 
@@ -18,6 +19,8 @@ const editor = {
   internal: false,    // true while the editor itself is writing the text
   drag: null,
   search: "",
+  hover: null,        // the row or bar piece under the pointer
+  pinned: null,       // the row or bar piece last tapped, or the row whose menu or list is open
 };
 
 // ---------------------------------------------------------------- small helpers
@@ -60,23 +63,20 @@ function feIcon(name) {
   return holder;
 }
 
-function feRgba(hex, alpha) {
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
-}
-
-// the same hue, a little darker
-function feDarken(hex) {
-  const n = parseInt(hex.slice(1), 16);
-  const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => Math.round(v * 0.72));
-  return `rgb(${c[0]},${c[1]},${c[2]})`;
-}
-
 // diagonal stripes running from lower left to upper right; each stripe is as thick as its share of the mix
-function feStripes(hex, shareA, period) {
+function feStripes(shareA, period) {
   const a = Math.max(1.5, Math.round(period * shareA * 10) / 10);
-  const dark = feDarken(hex);
-  return `repeating-linear-gradient(135deg, ${hex} 0, ${hex} ${a}px, ${dark} ${a}px, ${dark} ${period}px)`;
+  return `repeating-linear-gradient(135deg, ${FE_PINK} 0, ${FE_PINK} ${a}px, ${FE_PINK_DEEP} ${a}px, ${FE_PINK_DEEP} ${period}px)`;
+}
+
+// Point at (or tap) a row or a piece of the bar, and the other one lights up.
+function applyHighlight() {
+  const id = editor.hover || editor.pinned;
+  const bar = $("feBar");
+  if (bar) bar.classList.toggle("fe-hasHl", !!id);
+  document.querySelectorAll("#feBar .fe-piece, #feRows .fe-row").forEach((el) => {
+    el.classList.toggle("fe-hl", !!id && el.getAttribute("data-id") === id);
+  });
 }
 
 function activeFormat() {
@@ -154,6 +154,7 @@ function initEditor() {
 
 function closePanels() {
   editor.panel = null;
+  editor.pinned = null;
   editor.cardMenu = false;
   renderHead();
   renderRows();
@@ -175,6 +176,8 @@ function renderEditor() {
   const root = $("formatEditor");
   if (!root) return;
   root.innerHTML = "";
+  editor.hover = null;
+  editor.pinned = null;
   if (editor.broken) { root.appendChild(brokenView()); return; }
   root.appendChild(feEl("div", { class: "fe-tabs", id: "feTabs" }));
   renderTabs();
@@ -273,17 +276,22 @@ function renderTimeline() {
   if (!f || !bar) return;
   bar.innerHTML = "";
   for (const item of f.items) {
-    if (item.kind === "silence") {
-      bar.appendChild(feEl("div", { class: "fe-piece fe-piece-silence", style: `flex:${Math.max(item.seconds / 60, 0.7)} 1 0` }));
-    } else {
-      const hex = FE_COLORS[item.color % FE_COLORS.length];
-      const mixed = item.lists.length > 1;
-      bar.appendChild(feEl("div", { class: "fe-piece", style: `flex:${item.minutes} 1 0;` + (mixed ? `background-image:${feStripes(hex, mixPercentA(item) / 100, 16)}` : `background:${hex}`) }));
-    }
+    const silence = item.kind === "silence";
+    const mixed = !silence && item.lists.length > 1;
+    const label = silence ? `Silence, ${describeSeconds(item.seconds)}` : `${item.lists.map((l) => l.name || "No playlist yet").join(" + ")}, ${Math.round(item.minutes * 10) / 10} min`;
+    const piece = feEl("button", {
+      type: "button", class: "fe-piece" + (silence ? " fe-piece-silence" : ""), "data-id": item.id, "aria-label": label,
+      style: silence ? `flex:${Math.max(item.seconds / 60, 0.7)} 1 0` : `flex:${item.minutes} 1 0;` + (mixed ? `background-image:${feStripes(mixPercentA(item) / 100, 16)}` : ""),
+    });
+    piece.addEventListener("mouseenter", () => { editor.hover = item.id; applyHighlight(); });
+    piece.addEventListener("mouseleave", () => { editor.hover = null; applyHighlight(); });
+    piece.addEventListener("click", () => { editor.pinned = editor.pinned === item.id ? null : item.id; applyHighlight(); });
+    bar.appendChild(piece);
   }
   const music = f.items.filter((i) => i.kind === "seg").reduce((n, i) => n + i.minutes, 0);
   const quiet = f.items.filter((i) => i.kind === "silence").reduce((n, i) => n + i.seconds, 0);
   caption.textContent = `${Math.round(music * 10) / 10} min of music` + (quiet ? ` + ${describeSeconds(quiet)} of silence` : "");
+  applyHighlight();
 }
 
 function renderRows(settle) {
@@ -298,15 +306,17 @@ function renderRows(settle) {
   });
   holder.appendChild(feEl("button", { type: "button", class: "fe-add", id: "feAddSegment", onClick: addSegment }, feIcon("plus"), "New segment"));
   if (settle) applySettle(holder, settle);
+  applyHighlight();
 }
 
 function rowEl(f, item, index, startsAt) {
   const seg = item.kind === "seg";
   const mixed = seg && item.lists.length > 1;
-  const hex = seg ? FE_COLORS[item.color % FE_COLORS.length] : "#8a8a92";
   const open = editor.panel && editor.panel.id === item.id ? editor.panel.mode : null;
   const wrap = feEl("div", { class: "fe-row" + (open ? " fe-open" : ""), "data-id": item.id, "data-index": String(index) });
-  const card = feEl("div", { class: "fe-rowcard" + (seg ? "" : " fe-rowcard-silence"), style: seg ? `background:${feRgba(hex, 0.17)};border-color:${feRgba(hex, 0.55)}` : "" });
+  wrap.addEventListener("mouseenter", () => { editor.hover = item.id; applyHighlight(); });
+  wrap.addEventListener("mouseleave", () => { editor.hover = null; applyHighlight(); });
+  const card = feEl("div", { class: "fe-rowcard" + (seg ? "" : " fe-rowcard-silence") });
 
   const grip = feEl("button", { type: "button", class: "fe-grip", "aria-label": "Drag to reorder" }, feIcon("grip"));
   grip.addEventListener("pointerdown", (event) => startDrag(event, grip, item.id, index));
@@ -325,7 +335,7 @@ function rowEl(f, item, index, startsAt) {
     title = "Silence";
     sub = `starts at ${describeClock(startsAt)}`;
   } else if (mixed) {
-    cover = feEl("span", { class: "fe-cover", style: `background-image:${feStripes(hex, mixPercentA(item) / 100, 12)}` });
+    cover = feEl("span", { class: "fe-cover", style: `background-image:${feStripes(mixPercentA(item) / 100, 12)}` });
     title = item.lists.map((l) => l.name || "…").join(" + ");
     sub = item.lists.length === 2 ? `${mixPercentA(item)}% / ${100 - mixPercentA(item)}% mix` : `${item.lists.length}-playlist mix`;
   } else {
@@ -367,6 +377,7 @@ function rowEl(f, item, index, startsAt) {
 // ---------------------------------------------------------------- panels
 function setPanel(id, mode) {
   editor.panel = mode ? { id, mode } : null;
+  editor.pinned = mode ? id : null;
   editor.cardMenu = false;
   editor.search = "";
   renderHead();
@@ -379,16 +390,6 @@ function menuPanel(f, item) {
   const mixed = seg && item.lists.length > 1;
   const pop = feEl("div", { class: "fe-pop fe-menu" });
   if (seg) {
-    pop.appendChild(feEl("div", { class: "fe-poplabel", text: "Color" }));
-    const swatches = feEl("div", { class: "fe-swatches" });
-    FE_COLORS.forEach((hex, k) => {
-      swatches.appendChild(feEl("button", {
-        type: "button", class: "fe-swatchbtn", "aria-label": `Color ${k + 1}`, "aria-pressed": String(item.color === k),
-        onClick: () => { item.color = k; editor.panel = null; commit(); renderRows(); renderTimeline(); },
-      }, feEl("span", { class: "fe-swatch" + (item.color === k ? " fe-swatch-on" : ""), style: `background:${hex}` })));
-    });
-    pop.appendChild(swatches);
-    pop.appendChild(feEl("div", { class: "fe-rule" }));
     if (!mixed) {
       pop.appendChild(feEl("button", {
         type: "button", class: "fe-item", id: "feAddMix",
@@ -420,7 +421,6 @@ function removeMix(item) {
 }
 
 function mixPanel(item, rowCover) {
-  const hex = FE_COLORS[item.color % FE_COLORS.length];
   const two = item.lists.length === 2;
   const pctA = feEl("span", { class: "fe-pct", id: "fePctA", text: `${mixPercentA(item)}%` });
   const pctB = feEl("span", { class: "fe-pct", id: "fePctB", text: `${100 - mixPercentA(item)}%` });
@@ -440,7 +440,7 @@ function mixPanel(item, rowCover) {
       item.lists[1].weight = 100 - a;
       pctA.textContent = `${a}%`;
       pctB.textContent = `${100 - a}%`;
-      if (rowCover) rowCover.style.backgroundImage = feStripes(hex, a / 100, 12);
+      if (rowCover) rowCover.style.backgroundImage = feStripes(a / 100, 12);
       const subline = document.querySelector(`#feRows .fe-row[data-id="${item.id}"] .fe-sub`);
       if (subline) subline.textContent = `${a}% / ${100 - a}% mix`;
       commit();
@@ -470,7 +470,7 @@ function listPanel(item, slot) {
       replaceRow(item, { id: item.id, kind: "silence", seconds: 120 });
       editor.panel = null;
     } else if (!seg) {                                     // a silence row becomes a playlist
-      replaceRow(item, { id: item.id, kind: "seg", lists: [{ name, weight: 1 }], minutes: 20, color: nextColor(activeFormat()) });
+      replaceRow(item, { id: item.id, kind: "seg", lists: [{ name, weight: 1 }], minutes: 20 });
       editor.panel = null;
     } else {
       item.lists[slot].name = name;
@@ -512,11 +512,6 @@ function replaceRow(item, replacement) {
   f.items = f.items.map((x) => (x.id === item.id ? replacement : x));
 }
 
-function nextColor(f) {
-  const used = f.items.filter((i) => i.kind === "seg").length;
-  return used % FE_COLORS.length;
-}
-
 // ---------------------------------------------------------------- changing things
 function stepItem(item, direction) {
   if (item.kind === "seg") {
@@ -534,7 +529,7 @@ function stepItem(item, direction) {
 function addSegment() {
   const f = activeFormat();
   if (!f) return;
-  const item = { id: `r${++ROW_SEQ}`, kind: "seg", lists: [{ name: "", weight: 1 }], minutes: 20, color: nextColor(f) };
+  const item = { id: `r${++ROW_SEQ}`, kind: "seg", lists: [{ name: "", weight: 1 }], minutes: 20 };
   f.items.push(item);
   editor.panel = { id: item.id, mode: "list-a" };
   editor.search = "";
