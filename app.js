@@ -14,7 +14,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-25i";                    // change this whenever the page is updated
+const APP_VERSION = "2026-10-25j";                    // change this whenever the page is updated
 const REPORT_FORM_URL = "https://tally.so/r/VppLZN"; // where problem reports go
 
 const DEFAULT_FORMATS = `FORMATS = {
@@ -141,7 +141,7 @@ function reportDetails() {
     appVersion: APP_VERSION,
     browser: describeBrowser(),
     windowSize: `${window.innerWidth}x${window.innerHeight}`,
-    planner: py ? `ready (Python ${pythonVersion})` : "not loaded",   // the field is still called "planner" because the report form expects that name
+    python: py ? `ready (Python ${pythonVersion})` : "not loaded",
     lastError: lastErrorText || "none",
     recentSteps: stepLog.length ? stepLog.join(" > ") : "none",
   };
@@ -165,7 +165,7 @@ function refreshReportBox() {
     `Version: ${d.appVersion}`,
     `Browser: ${d.browser}`,
     `Window size: ${d.windowSize}`,
-    `Python: ${d.planner.replace("(Python ", "(")}`,
+    `Python: ${d.python.replace("(Python ", "(")}`,
     `Last error: ${d.lastError}`,
     `Recent steps: ${d.recentSteps}`,
   ].join("\n");
