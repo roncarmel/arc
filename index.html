@@ -88,6 +88,89 @@
   @media (prefers-reduced-motion: reduce) { #supportButton img { animation: none; } }
   #supportCaption { margin: 0; padding: 4px 8px; border-radius: 6px; background: var(--bg); color: var(--muted); font-size: 0.75rem; line-height: 1.35; text-align: right; text-wrap: balance; }
   @media (max-width: 520px) { #supportBox { right: 8px; bottom: 8px; } }
+
+  /* the format editor */
+  :root { --warn: #b45309; --danger: #d11f2e; --cover: #3a3a42; }
+  @media (prefers-color-scheme: dark) { :root { --warn: #f2b45a; --danger: #ff7a85; } }
+  #formatEditor { margin: 8px 0 12px; }
+  #formatEditor .fe-tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+  #formatEditor .fe-tab { min-height: 44px; padding: 0 18px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--fg); }
+  #formatEditor .fe-tab[aria-pressed="true"] { background: var(--button); border-color: var(--button); color: #fff; }
+  #formatEditor .fe-newformat, #formatEditor .fe-add { background: transparent; border: 1px dashed var(--muted); color: var(--fg); justify-content: center; }
+  #formatEditor .fe-newformat { min-height: 44px; padding: 0 16px; border-radius: 999px; }
+  #formatEditor .fe-add { min-height: 48px; width: 100%; border-radius: 16px; }
+  #formatEditor .fe-card, #formatEditor .fe-empty { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+  #formatEditor .fe-empty { align-items: center; text-align: center; padding: 24px 16px; }
+  #formatEditor .fe-empty p { margin: 0; }
+  #formatEditor .fe-headrow { display: flex; align-items: flex-end; gap: 8px; }
+  #formatEditor .fe-namefield { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 3px; font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+  #formatEditor .fe-namefield input { height: 44px; padding: 0 12px; border-radius: 12px; color: var(--fg); font-weight: 400; }
+  #formatEditor .fe-menuwrap { position: relative; flex: none; }
+  #formatEditor .fe-iconbtn { width: 44px; height: 44px; padding: 0; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); color: var(--fg); justify-content: center; }
+  #formatEditor .fe-warn { margin: 6px 0 0; font-size: 0.82rem; color: var(--warn); }
+  #formatEditor .fe-bar { display: flex; gap: 3px; height: 24px; border-radius: 9px; overflow: hidden; background: var(--bg); border: 1px solid var(--line); padding: 3px; box-sizing: border-box; }
+  #formatEditor .fe-piece { min-width: 6px; border-radius: 6px; }
+  #formatEditor .fe-piece-silence { background: #000; border: 1.5px solid #8a8a92; box-sizing: border-box; }
+  #formatEditor .fe-caption { font-size: 0.78rem; color: var(--muted); margin-top: 3px; }
+  #formatEditor .fe-rows { position: relative; display: flex; flex-direction: column; gap: 6px; }
+  #formatEditor .fe-row { position: relative; height: 56px; transition: transform 160ms ease; }
+  #formatEditor .fe-row.fe-open { z-index: 20; }
+  #formatEditor .fe-row.fe-dragging { z-index: 10; transition: none; }
+  #formatEditor .fe-row.fe-dragging .fe-rowcard { box-shadow: 0 0 0 2px var(--button), 0 16px 32px rgba(0, 0, 0, 0.45); }
+  #formatEditor .fe-still { transition: none !important; }
+  #formatEditor .fe-rowcard { display: flex; align-items: center; gap: 6px; box-sizing: border-box; height: 56px; padding: 0 4px 0 0; border: 1px solid var(--line); border-radius: 16px; }
+  #formatEditor .fe-rowcard-silence { background: var(--bg); }
+  #formatEditor .fe-grip { touch-action: none; cursor: grab; width: 26px; height: 44px; flex: none; padding: 0; background: none; border: none; color: var(--muted); justify-content: center; }
+  #formatEditor .fe-main { flex: 1 1 0; min-width: 0; height: 44px; padding: 0 8px 0 4px; background: rgba(127, 127, 127, 0.14); border: 1px solid rgba(127, 127, 127, 0.28); border-radius: 12px; color: var(--fg); text-align: left; gap: 8px; font-weight: 400; }
+  #formatEditor .fe-main > .fe-icon { flex: none; color: var(--muted); }
+  #formatEditor .fe-cover { width: 34px; height: 34px; border-radius: 9px; flex: none; background: var(--cover); color: #9a9aa2; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  #formatEditor .fe-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #formatEditor .fe-cover-silence { background: #000; border: 2px solid #8a8a92; box-sizing: border-box; color: #b4b4bb; }
+  #formatEditor .fe-text { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; line-height: 1.15; text-align: left; }
+  #formatEditor .fe-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #formatEditor .fe-main-empty .fe-title { color: var(--muted); font-weight: 500; }
+  #formatEditor .fe-sub { font-size: 0.74rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #formatEditor .fe-sub:empty { display: none; }
+  #formatEditor .fe-sub-warn { color: var(--warn); }
+  #formatEditor .fe-stepper { display: flex; align-items: center; flex: none; background: rgba(127, 127, 127, 0.14); border: 1px solid rgba(127, 127, 127, 0.28); border-radius: 12px; height: 44px; padding: 0 1px; box-sizing: border-box; }
+  #formatEditor .fe-step { width: 36px; height: 40px; padding: 0; background: none; border: none; color: var(--fg); justify-content: center; }
+  #formatEditor .fe-amount { min-width: 48px; text-align: center; font-weight: 600; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+  #formatEditor .fe-more { width: 36px; height: 44px; flex: none; padding: 0; background: none; border: none; color: var(--fg); justify-content: center; }
+  #formatEditor .fe-pop { position: absolute; z-index: 30; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35); padding: 4px; box-sizing: border-box; }
+  #formatEditor .fe-menu { right: 0; top: 60px; width: 270px; max-width: 100%; }
+  #formatEditor .fe-mixpanel, #formatEditor .fe-listpanel { left: 24px; right: 0; top: 60px; }
+  #formatEditor .fe-cardmenu { right: 0; top: 48px; width: 230px; }
+  #formatEditor .fe-poplabel { padding: 6px 10px 0; font-size: 0.76rem; font-weight: 600; color: var(--muted); }
+  #formatEditor .fe-rule { height: 1px; background: var(--line); margin: 2px 6px; }
+  #formatEditor .fe-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 12px; border: none; border-radius: 12px; background: transparent; color: var(--fg); text-align: left; box-sizing: border-box; }
+  #formatEditor .fe-danger { color: var(--danger); }
+  #formatEditor .fe-swatches { display: flex; padding: 0 4px 2px; }
+  #formatEditor .fe-swatchbtn { width: 40px; height: 44px; padding: 0; background: none; border: none; justify-content: center; }
+  #formatEditor .fe-swatch { width: 28px; height: 28px; border-radius: 999px; box-shadow: 0 0 0 2px rgba(127, 127, 127, 0.4); }
+  #formatEditor .fe-swatch-on { box-shadow: 0 0 0 3px var(--button); }
+  #formatEditor .fe-mixline { display: flex; align-items: center; gap: 8px; padding: 0 6px; }
+  #formatEditor .fe-minipick { flex: 1 1 0; min-width: 0; height: 42px; padding: 0 8px 0 4px; gap: 8px; background: rgba(127, 127, 127, 0.14); border: 1px solid rgba(127, 127, 127, 0.28); border-radius: 12px; color: var(--fg); font-weight: 600; text-align: left; }
+  #formatEditor .fe-minipick-name { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #formatEditor .fe-pct { width: 44px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+  #formatEditor .fe-sliderline { padding: 0 10px; }
+  #formatEditor .fe-sliderline input { width: 100%; height: 30px; margin: 0; padding: 0; accent-color: var(--button); background: none; border: none; }
+  #formatEditor .fe-popbuttons { display: flex; gap: 8px; padding: 6px 6px 4px; }
+  #formatEditor .fe-popbuttons button { flex: 1 1 0; min-height: 44px; justify-content: center; }
+  #formatEditor .fe-popbuttons button:not(.primary) { background: transparent; color: var(--fg); border-color: var(--line); }
+  #formatEditor .fe-listpanel { padding: 6px; }
+  #formatEditor .fe-search { width: 100%; height: 40px; padding: 0 12px; margin-bottom: 4px; border-radius: 12px; background: var(--card); color: var(--fg); border: 1px solid var(--line); font: inherit; box-sizing: border-box; }
+  #formatEditor .fe-options { max-height: 270px; overflow: auto; }
+  #formatEditor .fe-option { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 4px 10px 4px 6px; border: none; border-radius: 12px; background: transparent; color: var(--fg); text-align: left; font-weight: 400; box-sizing: border-box; }
+  #formatEditor .fe-option-on { background: rgba(255, 56, 184, 0.22); }
+  #formatEditor .fe-option:disabled { opacity: 0.45; }
+  .fe-overlay { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 100; background: rgba(0, 0, 0, 0.65); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+  .fe-dialog { width: 100%; max-width: 360px; box-sizing: border-box; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 20px; padding: 18px; box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5); }
+  .fe-dialog h3 { margin: 0 0 8px; font-size: 1.1rem; line-height: 1.25; }
+  .fe-dialog p { margin: 0 0 12px; }
+  .fe-dialog .row { margin-top: 4px; }
+  .fe-dialog .row button { flex: 1 1 0; min-height: 44px; justify-content: center; }
+  .fe-dialog .row button:not(.fe-danger-button) { background: transparent; color: var(--fg); border-color: var(--line); }
+  .fe-dialog .fe-danger-button { background: #d11f2e; border-color: #d11f2e; color: #fff; }
 </style>
 </head>
 <body>
@@ -193,86 +276,37 @@
   <div id="appSection" hidden>
   <h2>2. Edit your formats</h2>
   <p class="muted">Your formats are saved in this browser as you type.</p>
-  <label for="formats" class="editor-label">Your formats (edit here)</label>
-  <textarea id="formats" spellcheck="false"></textarea>
-  <p id="formatsMessage" class="error" aria-live="polite" style="margin:4px 0"></p>
+  <div id="formatEditor"></div>
+  <textarea id="formats" spellcheck="false" hidden aria-hidden="true" tabindex="-1"></textarea>
 
   <details id="formatHelp" class="help card">
-    <summary>How to edit formats</summary>
+    <summary>How formats work</summary>
 
-    <p>A format is a recipe for one kind of playlist: which of your playlists to draw from, in what order, and for how long. The editor above starts with a template. Replace its placeholder names, such as "source playlist 1", with the names of your own Spotify playlists. The shaded boxes in this help are samples to read, not places to type.</p>
+    <p>A format is a recipe for one kind of playlist: which of your playlists to draw from, in what order, and for how long. The app makes as many playlists from a format as your songs allow, and no song repeats between them.</p>
 
-    <h3>The parts of a format</h3>
-    <p>Here is an example of a complete format. It makes 80-minute playlists: 20 minutes from a playlist called "Warm up", then 40 minutes from "Deep focus", then 20 more from "Warm up".</p>
-    <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>    "warm-focus": {
-        "name": "Warm focus {n}",
-        "silence between segments": "30 sec",
-        "segments": [
-            ("Warm up", 20),
-            ("Deep focus", 40),
-            ("Warm up", 20),
-        ],
-    },</pre></figure>
-    <p>Each part does something different:</p>
-    <div class="table-wrap">
-      <table class="parts">
-        <thead><tr><th>Part</th><th>What it does</th><th>Example</th></tr></thead>
-        <tbody>
-          <tr><td>The key</td><td>The format's short name. It appears in the dropdown under Preview. Use lowercase letters, numbers, and hyphens.</td><td><code>"warm-focus"</code></td></tr>
-          <tr><td><code>name</code></td><td>The template for the playlists this format creates. <code>{n}</code> becomes 1, 2, 3, and so on.</td><td><code>"Warm focus {n}"</code></td></tr>
-          <tr><td><code>silence between segments</code></td><td>The default pause between segments.</td><td><code>"30 sec"</code></td></tr>
-          <tr><td><code>segments</code></td><td>The list of playlists and minutes, played in order.</td><td><code>("Warm up", 20),</code></td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h3>Name it</h3>
-    <p>Change the key to something short, such as <code>"warm-focus"</code>. Then change the <code>name</code> line to the pattern you want for your playlists. Keep <code>{n}</code>, which becomes 1, 2, 3, and so on as the app creates each playlist. You can also use <code>{letter}</code>, which becomes a, b, c:</p>
-    <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>"name": "Warm focus {n}",</pre></figure>
-    <p>That makes playlists named "Warm focus 1", "Warm focus 2", and so on. Pick a pattern that none of your other playlists match. When you create playlists again from this format, the app treats playlists that match the pattern as its own and offers to replace them.</p>
-
-    <h3>Point the segments at your playlists</h3>
-    <p>Each line in <code>segments</code> is one stretch of music: a playlist name and a number of minutes. Replace the names and minutes with your own. Copy each playlist name from Spotify and paste it between the quotation marks. Capitalization and extra spaces at the ends don't matter, but spelling, punctuation, and emoji do. Only playlists you own can be used.</p>
-    <p>Add a segment by adding a line, and remove one by deleting its line. In the sample above, the three segments add up to 80 minutes of music per playlist.</p>
-    <p>Each segment typically lands within about 30 seconds of its target. Keep the punctuation exactly as shown: quotation marks around each name, a comma after the minutes, and a comma after each closing parenthesis. A playlist can appear in more than one segment, but no song repeats across the playlists made from one format.</p>
+    <h3>Segments</h3>
+    <p>Each row is one stretch of music. Tap the playlist to choose it, and use the minus and plus buttons to set how many minutes it fills. Drag the dotted handle to change the order. Each segment typically lands within about 30 seconds of its target. Add another with New segment.</p>
 
     <h3>Silence</h3>
-    <p>The <code>silence between segments</code> line sets the default pause between each pair of segments. Set it to <code>"none"</code> for no pause, or to any length in steps of 30 seconds, such as <code>"1 min"</code> or <code>"2.5 min"</code>. To use a different pause at one spot, add a silence line between two segments. It replaces the default there:</p>
-    <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>("Warm up", 20),
-("silence", "2 min"),
-("Deep focus", 40),</pre></figure>
-    <p>Pauses are extra time on top of your segment minutes. If you remove both the default line and any silence lines, the segments play back to back. Silences can be used for effect, or simply as a marker that tells a facilitator the music has moved into a new segment.</p>
+    <p>Choose Silence at the top of a row's playlist list to turn that row into quiet time. Silence can go between segments, or before or after the music, and it adds time on top of your segment minutes. It can be used for effect, or simply as a marker that tells a facilitator the music has moved into a new segment.</p>
 
-    <h3>Mix playlists within a segment</h3>
-    <p>Put several playlist names in square brackets for an even mix (50/50 with two playlists, thirds with three):</p>
-    <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>(["Warm up", "Deep focus"], 30),</pre></figure>
-    <p>This makes a 30-minute segment of about 15 minutes (50%) of "Warm up" and 15 minutes (50%) of "Deep focus".</p>
-    <p>For an uneven mix, use braces with a weight for each playlist. This makes a 30-minute segment of about 9 minutes (30%) of "Warm up" and 21 minutes (70%) of "Deep focus":</p>
-    <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>({"Warm up": 30, "Deep focus": 70}, 30),</pre></figure>
+    <h3>Mixes</h3>
+    <p>To blend two playlists in one segment, tap the three dots on that row and choose Add a mix. Pick the second playlist, then use the slider to set how much of each. In the bar at the top, a mixed segment shows as diagonal stripes in two shades of the segment's color.</p>
 
-    <h3>Add another format</h3>
-    <p>Copy a whole format block, from its first line through its closing <code>},</code> line. Paste it directly below, before the closing <code>}</code> of the list. Give the copy a new key, a different name pattern, and its own segments. The list then looks like this:</p>
-    <figure class="sample"><figcaption>Sample, not editable</figcaption><pre>FORMATS = {
-    "warm-focus": {
-        ...
-    },
-    "cool-down": {
-        ...
-    },
-}</pre></figure>
-    <p>The dropdown under Preview lists every format, plus All formats. That way, you can keep several independent formats and create playlists from each one individually or from all of them at once.</p>
+    <h3>Names</h3>
+    <p>The name of a format is also the name of the playlists it makes: a format called "Warm focus" makes "Warm focus 1", "Warm focus 2", and so on. Give every format a different name. When you create playlists again, this app treats playlists that match a format's name as its own and offers to replace them.</p>
 
     <h3>If something goes wrong</h3>
     <ul>
-      <li>A red message under the editor means the formats couldn't be read. It's usually a missing comma, quotation mark, or bracket. Check the line it mentions and the one above it. Make sure the quotation marks are straight (") and not curly (“ ”), which can sneak in if you paste from a word processor.</li>
-      <li>A preview that says it could not find a playlist named something means that name doesn't match a playlist you own. Copy it again from Spotify, including any emoji.</li>
-      <li>Editing the formats clears any preview, so click Preview plan again afterward.</li>
+      <li>A row that says "Not found in your playlists" names a playlist that was renamed or deleted. Tap it and choose the playlist again.</li>
+      <li>Spotify only lets this app read playlists you own, so those are the ones you can choose.</li>
+      <li>Changing a format clears any preview, so click Preview plan again afterward.</li>
     </ul>
   </details>
 
   <div class="row">
     <button id="backupRestore" class="linklike" type="button">Restore formats from backup</button>
-    <button id="resetFormats" class="linklike" type="button" hidden>Reset to example</button>
+    <button id="resetFormats" class="linklike" type="button" hidden>Start over</button>
   </div>
   <input id="restoreFile" type="file" accept=".txt,text/plain" hidden>
 
@@ -393,6 +427,8 @@
     </details>
   </footer>
 </main>
+<script src="formats.js"></script>
+<script src="editor.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

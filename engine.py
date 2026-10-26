@@ -305,31 +305,23 @@ def _cache_from(tracks_json):
     return {norm(name): tracks for name, tracks in json.loads(tracks_json).items()}
 
 
-def _plan_lines(key, fmt, cache, music, gaps, built, stopped, used):
-    """The human-readable plan, built from the same playlists that will be created."""
-    lines = [f"=== {key} ==="]
-    if any(uris for uris, _ in gaps[1:-1]):
-        lines.append("Silence between segments: " + ", ".join(label for _, label in gaps[1:-1]))
-    if gaps[0][0]:
-        lines.append("Silence at the start: " + gaps[0][1])
-    if gaps[-1][0]:
-        lines.append("Silence at the end: " + gaps[-1][1])
-    for name, results in built:
-        total = sum(r[3] for r in results)
-        songs = sum(len(r[2]) for r in results)
-        minutes = ", ".join(f"{r[3] / 60000:.0f}" for r in results)
-        lines.append(f"{name}: {songs} songs, {total / 60000:.0f} min  ({minutes})")
-    if stopped:
-        lines.append(_stop_message(stopped))
-    lines.append(f"{key}: {len(built)} playlist(s) planned.")
-    lines.append("Left in source playlists after this format:")
-    lines.append(leftover_report(cache, music, used))
-    return "\n".join(lines)
+def format_label(key, fmt):
+    """What people call a format: its title, else its name without the trailing number placeholder, else its key."""
+    if not isinstance(fmt, dict):
+        return key
+    title = fmt.get("title")
+    if isinstance(title, str) and title.strip():
+        return title
+    name = fmt.get("name")
+    if isinstance(name, str) and name.endswith(" {n}") and "{" not in name[:-4] and name[:-4].strip():
+        return name[:-4]
+    return key
 
 
-def _plan_lines(key, music, gaps, built, stopped, used, cache):
+def _plan_lines(key, music, gaps, built, stopped, used, cache, label=None):
     """The text shown in a preview, from one planning run."""
-    lines = [f"=== {key} ==="]
+    label = label or key
+    lines = [f"=== {label} ==="]
     if any(uris for uris, _ in gaps[1:-1]):
         lines.append("Silence between segments: " + ", ".join(label for _, label in gaps[1:-1]))
     if gaps[0][0]:
@@ -343,7 +335,7 @@ def _plan_lines(key, music, gaps, built, stopped, used, cache):
         lines.append(f"{name}: {songs} songs, {total / 60000:.0f} min  ({minutes})")
     if stopped:
         lines.append(_stop_message(stopped))
-    lines.append(f"{key}: {len(built)} playlist(s) planned.")
+    lines.append(f"{label}: {len(built)} playlist(s) planned.")
     lines.append("Left in source playlists after this format:")
     lines.append(leftover_report(cache, music, used))
     return lines
@@ -355,7 +347,7 @@ def plan_text(formats_text, key, tracks_json, max_n=None, footer=True):
     cache = _cache_from(tracks_json)
     limit = int(max_n) if max_n else 200
     music, gaps, built, stopped, used = _run_format(fmt, cache, limit)
-    lines = _plan_lines(key, music, gaps, built, stopped, used, cache)
+    lines = _plan_lines(key, music, gaps, built, stopped, used, cache, format_label(key, fmt))
     if footer:
         lines.append("")
         lines.append("Preview only, nothing was created.")
@@ -384,4 +376,4 @@ def build_playlists(formats_text, key, tracks_json, max_n=None):
         })
     return json.dumps({"key": key, "playlists": playlists,
                        "stopped": _stop_message(stopped) if stopped else None,
-                       "text": "\n".join(_plan_lines(key, music, gaps, built, stopped, used, cache))})
+                       "text": "\n".join(_plan_lines(key, music, gaps, built, stopped, used, cache, format_label(key, fmt)))})

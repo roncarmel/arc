@@ -14,20 +14,10 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-25j";                    // change this whenever the page is updated
+const APP_VERSION = "2026-10-26a";                    // change this whenever the page is updated
 const REPORT_FORM_URL = "https://tally.so/r/VppLZN"; // where problem reports go
 
-const DEFAULT_FORMATS = `FORMATS = {
-    "format-1": {
-        "name": "generated playlist {n}",
-        "silence between segments": "30 sec",
-        "segments": [
-            ("source playlist 1", 30),
-            ("source playlist 2", 60),
-            ("source playlist 3", 30),
-        ],
-    },
-}`;
+const DEFAULT_FORMATS = modelToText(defaultModel());   // one format with one segment waiting for a playlist
 
 const $ = (id) => document.getElementById(id);
 let py = null;          // the Python functions, once loaded
@@ -35,6 +25,7 @@ let token = null;       // Spotify access token (kept in this tab only)
 let me = null;          // the signed-in Spotify user
 let playlists = [];     // the user's playlists
 let formatsValid = false;
+let currentFormats = [];   // { id, title } for each format, used by the dropdowns and messages
 let busy = false;
 let needsReconnect = false;
 const trackCache = new Map();  // playlist id -> songs, so repeat runs are fast
@@ -290,19 +281,19 @@ function refreshBackupStatus() {
   const state = backupState();
   // Step 4: where the formats stand with regard to a backup.
   $("backupStatus").textContent = {
-    example: "Your formats are still the starting example, so there is nothing to back up yet.",
+    example: "You haven't made any formats yet, so there is nothing to back up.",
     never: "You haven't downloaded a backup of your formats yet.",
     edited: "Your formats have been edited since your last backup.",
     current: state.when ? "Last backup: " + state.when + "." : "Your formats are backed up.",
   }[state.kind];
   // Clear saved data: what would be lost, so a backup can be made first.
   $("clearBackupNote").textContent = {
-    example: "Your formats are still the starting example, so there is nothing to lose.",
+    example: "You haven't made any formats yet, so there is nothing to lose.",
     never: "You haven't downloaded a backup of your formats yet. Download one first, or they will be gone for good.",
     edited: "Your formats have been edited since your last backup. Download a new backup first to keep the changes.",
     current: "Your formats are backed up" + (state.when ? " (last backup: " + state.when + ")" : "") + ".",
   }[state.kind];
-  // Under the editor: Reset only shows when the editor differs from the example, since resetting would do nothing otherwise.
+  // Under the editor: Start over only shows when the formats differ from a fresh start, since it would do nothing otherwise.
   const showingExample = $("formats").value === DEFAULT_FORMATS;   // true even when a backup of other formats exists
   $("resetFormats").hidden = showingExample;
   if (showingExample) closeResetWarning();
@@ -349,6 +340,7 @@ function setFormatsText(text) {
   invalidatePlan();
   refreshFormatKeys();
   refreshBackupStatus();
+  syncEditorFromText();
 }
 
 function undoLastChange() {
@@ -375,15 +367,11 @@ async function restoreFromFile(file) {
     showBackupMessage(`${file.name} is too large to be a formats backup, so nothing was changed.`);
     return;
   }
-  if (!py) {
-    showBackupMessage("The page is still getting ready. Try again in a moment.");
-    return;
-  }
   let text;
-  let keys;
+  let formatCount;
   try {
     text = await readFileText(file);
-    keys = JSON.parse(py.formatKeys(text));
+    formatCount = textToModel(text).formats.length;
   } catch (err) {
     recordError(cleanError(err));
     logStep("restore: file rejected");
@@ -395,8 +383,8 @@ async function restoreFromFile(file) {
   markBackedUp(text, file.lastModified);   // the file matches what is now in the box
   refreshBackupStatus();
   undoText = previous;
-  logStep(`restore: ${plural(keys.length, "format")} loaded`);
-  showBackupMessage(`Restored ${keys.length} format${keys.length === 1 ? "" : "s"} from ${file.name}.`, true);
+  logStep(`restore: ${plural(formatCount, "format")} loaded`);
+  showBackupMessage(`Restored ${formatCount} format${formatCount === 1 ? "" : "s"} from ${file.name}.`, true);
 }
 
 function closeResetWarning() {
@@ -408,13 +396,13 @@ function renderResetWarning() {
   const state = backupState();
   const backedUp = state.kind === "current";
   $("resetWarningText").textContent = {
-    never: "Reset replaces your formats with the example. You haven't downloaded a backup, so they'll be gone for good once you reset.",
-    edited: "Reset replaces your formats with the example. Your formats have changed since your last backup, so those changes will be gone for good once you reset.",
-    current: "Your formats are backed up" + (state.when ? " (last backup: " + state.when + ")" : "") + ". Reset replaces them with the example, and Restore formats from backup can bring them back.",
-    example: "Your formats already match the example.",
+    never: "Starting over replaces your formats with one empty format. You haven't downloaded a backup, so they'll be gone for good once you start over.",
+    edited: "Starting over replaces your formats with one empty format. Your formats have changed since your last backup, so those changes will be gone for good once you start over.",
+    current: "Your formats are backed up" + (state.when ? " (last backup: " + state.when + ")" : "") + ". Starting over replaces them with one empty format, and Restore formats from backup can bring them back.",
+    example: "You haven't made any formats yet.",
   }[state.kind];
   $("resetDownloadFirst").hidden = backedUp || state.kind === "example";   // nothing left to back up first
-  setLabel($("resetAnyway"), backedUp ? "Reset to example" : "Reset anyway");
+  setLabel($("resetAnyway"), backedUp ? "Start over" : "Start over anyway");
 }
 
 function requestReset() {
@@ -431,10 +419,10 @@ function performReset() {
   if (previous === DEFAULT_FORMATS) return;
   closeResetWarning();
   setFormatsText(DEFAULT_FORMATS);
-  logStep("formats reset to the example");
+  logStep("formats started over");
   undoText = previous;
   const note = state.kind === "current" ? ` Your backup${state.when ? " from " + state.when : ""} can bring your formats back.` : "";
-  showBackupMessage("Reset to the example." + note, true);
+  showBackupMessage("Started over." + note, true);
 }
 
 function addBackupNudge() {
@@ -658,9 +646,12 @@ async function loadMyPlaylists() {
     name: p.name,
     owner: p.owner && p.owner.id,
     collaborative: !!p.collaborative,
+    image: Array.isArray(p.images) && p.images.length ? p.images[p.images.length - 1].url : null,   // Spotify lists the largest first
+    count: p.tracks && typeof p.tracks.total === "number" ? p.tracks.total : (p.items && typeof p.items.total === "number" ? p.items.total : null),
   }));
   // The count shown in Step 1 always matches the list, including after playlists are created or removed.
   $("connectedMessage").textContent = `Connected as ${me.display_name || me.id}. ${plural(playlists.length, "playlist")} found.`;
+  if (typeof editorPlaylistsChanged === "function") editorPlaylistsChanged();
 }
 
 async function loadTracks(id) {
@@ -736,25 +727,36 @@ async function startPython() {
 }
 
 // ---------------------------------------------------------------- the formats box
-function fillFormatDropdown(select, keys, defaultToAll) {
+function fillFormatDropdown(select, formats, defaultToAll) {
   const previous = select.value;
   select.innerHTML = "";
-  for (const key of keys) select.add(new Option(key, key));
+  for (const f of formats) select.add(new Option(f.title, f.id));
   select.add(new Option("All formats", ALL_FORMATS));
-  if (keys.includes(previous) || previous === ALL_FORMATS) select.value = previous;
+  if (formats.some((f) => f.id === previous) || previous === ALL_FORMATS) select.value = previous;
   else if (defaultToAll) select.value = ALL_FORMATS;
 }
 
+function formatLabel(key) {
+  const f = currentFormats.find((x) => x.id === key);
+  return f ? f.title : key;
+}
+
 function refreshFormatKeys() {
-  if (!py) return;
   try {
-    const keys = JSON.parse(py.formatKeys($("formats").value));
-    fillFormatDropdown($("formatKey"), keys, false);
-    fillFormatDropdown($("removeKey"), keys, true);
-    $("formatsMessage").textContent = "";
-    formatsValid = true;
+    const model = textToModel($("formats").value, true);
+    currentFormats = model.formats.map((f) => ({ id: f.id, title: f.title.trim() || "Untitled" }));
+    if (!currentFormats.length) {
+      setFormatPlaceholder("No formats yet");
+      $("removeKey").innerHTML = "";
+      formatsValid = false;
+      invalidatePlan();
+    } else {
+      fillFormatDropdown($("formatKey"), currentFormats, false);
+      fillFormatDropdown($("removeKey"), currentFormats, true);
+      formatsValid = true;
+    }
   } catch (err) {
-    showError($("formatsMessage"), err);
+    currentFormats = [];
     recordError(cleanError(err));
     setFormatPlaceholder("Fix the formats first");
     $("removeKey").innerHTML = "";
@@ -771,12 +773,12 @@ function playlistLimit() {
 
 function selectedKeys() {
   const choice = $("formatKey").value;
-  return choice === ALL_FORMATS ? JSON.parse(py.formatKeys($("formats").value)) : [choice];
+  return choice === ALL_FORMATS ? currentFormats.map((f) => f.id) : [choice];
 }
 
 function removeKeys() {
   const choice = $("removeKey").value;
-  return choice === ALL_FORMATS ? JSON.parse(py.formatKeys($("formats").value)) : [choice];
+  return choice === ALL_FORMATS ? currentFormats.map((f) => f.id) : [choice];
 }
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -785,13 +787,22 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 async function gatherInputs() {
   // Works out which source playlists the chosen formats need and reads their songs.
   const formatsText = $("formats").value;
+  const wanted = selectedKeys();
+  const blanks = blankSegmentReport(wanted);
+  if (blanks.length) {
+    recordError("Preview blocked: a segment has no playlist chosen");
+    logStep("preview blocked: empty segment");
+    setOutput("Choose a playlist for every segment first:\n\n"
+      + blanks.map((b) => `- ${b.title}: ${b.count === 1 ? "1 segment has" : b.count + " segments have"} no playlist yet`).join("\n"));
+    return null;
+  }
   const plans = [];
   const failed = [];
-  for (const key of selectedKeys()) {
+  for (const key of wanted) {
     try {
       plans.push({ key, names: JSON.parse(py.neededSources(formatsText, key)) });
     } catch (err) {
-      failed.push(`=== ${key} ===\nCould not plan this format: ${cleanError(err)}`);
+      failed.push(`=== ${formatLabel(key)} ===\nCould not plan this format: ${cleanError(err)}`);
     }
   }
   const names = [...new Set(plans.flatMap((p) => p.names))];
@@ -834,7 +845,7 @@ async function preview() {
         parts.push(plan.text);
       } catch (err) {
         recordError(cleanError(err));
-        parts.push(`=== ${key} ===\nCould not plan this format: ${cleanError(err)}`);
+        parts.push(`=== ${formatLabel(key)} ===\nCould not plan this format: ${cleanError(err)}`);
       }
     }
     if (planSignature() !== startedWith) {   // the user edited something while this was planning
@@ -928,7 +939,7 @@ async function removeEarlier() {
       return;
     }
     const go = await confirmAction({
-      message: `Remove ${plural(existing.length, "playlist")} from your library? They match the naming pattern of ${keys.join(", ")}.`,
+      message: `Remove ${plural(existing.length, "playlist")} from your library? They match the naming pattern of ${keys.map(formatLabel).join(", ")}.`,
       items: existing.map((p) => p.name),
       yes: `Remove ${plural(existing.length, "playlist")}`,
     }, REMOVE_CONFIRM);
@@ -957,6 +968,8 @@ async function main() {
   for (const el of document.querySelectorAll(".redirect-address")) el.textContent = redirectUri();
   $("clientId").value = localStorage.getItem("clientId") || "";
   $("formats").value = localStorage.getItem("formats") || DEFAULT_FORMATS;
+  initEditor();
+  refreshFormatKeys();
   setOutput("");
 
   // Start with no flow shown. People who already saved a Client ID have an app, so open that flow for them.
@@ -1018,7 +1031,6 @@ async function main() {
     event.target.value = "";   // so choosing the same file again still counts
     await restoreFromFile(file);
   });
-  let timer = null;
   $("formats").addEventListener("input", () => {
     localStorage.setItem("formats", $("formats").value);
     invalidatePlan();
@@ -1026,8 +1038,7 @@ async function main() {
     $("backupMessage").textContent = "";   // an Undo offered earlier would now overwrite new edits
     closeResetWarning();
     refreshBackupStatus();
-    clearTimeout(timer);
-    timer = setTimeout(refreshFormatKeys, 300);
+    refreshFormatKeys();
   });
   refreshBackupStatus();
 
