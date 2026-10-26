@@ -72,6 +72,10 @@
   details.help.card { margin: 8px 0; }
   details.card .card, details.card pre, details.card figure.sample { background: var(--bg); }
   footer.debug h3 { font-size: 1rem; margin: 20px 0 6px; color: var(--fg); }
+  /* More options: body text is gray, so the headings, buttons, links and widgets are what stand out. */
+  #moreOptions { color: var(--muted); }
+  #moreOptions input, #moreOptions select { color: var(--fg); }
+  #moreOptions pre, #moreOptions #removeConfirmBox, #moreOptions #clearConfirm { color: var(--fg); }
   button.linklike { background: none; border: none; padding: 0; color: var(--accent); font-weight: normal; text-decoration: underline; }
   #backupMessage { min-height: 1.5em; }
   #supportBox { position: fixed; right: 16px; bottom: 16px; z-index: 1001; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; max-width: min(240px, calc(100vw - 32px)); }
@@ -146,7 +150,7 @@
             <li>Check the box agreeing to Spotify's terms, then click <strong>Save</strong>.</li>
           </ul>
         </li>
-        <li>Open your new app's <strong>Settings</strong> and copy the <strong>Client ID</strong>.</li>
+        <li>Copy the <strong>Client ID</strong> shown on your new app's page.</li>
       </ol>
 
       <ol id="flowExisting" hidden>
@@ -154,7 +158,7 @@
           Open the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify developer dashboard</a>
           (it opens in a new tab), log in, and click the developer app created for Ceremony Playlist Builder.
         </li>
-        <li>Open its <strong>Settings</strong> and copy the <strong>Client ID</strong>.</li>
+        <li>Copy the <strong>Client ID</strong> shown on its page.</li>
       </ol>
 
       <div id="connectBlock" hidden>
