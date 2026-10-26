@@ -14,7 +14,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-26a";                    // change this whenever the page is updated
+const APP_VERSION = "2026-10-26b";                    // change this whenever the page is updated
 const REPORT_FORM_URL = "https://tally.so/r/VppLZN"; // where problem reports go
 
 const DEFAULT_FORMATS = modelToText(defaultModel());   // one format with one segment waiting for a playlist
@@ -293,11 +293,6 @@ function refreshBackupStatus() {
     edited: "Your formats have been edited since your last backup. Download a new backup first to keep the changes.",
     current: "Your formats are backed up" + (state.when ? " (last backup: " + state.when + ")" : "") + ".",
   }[state.kind];
-  // Under the editor: Start over only shows when the formats differ from a fresh start, since it would do nothing otherwise.
-  const showingExample = $("formats").value === DEFAULT_FORMATS;   // true even when a backup of other formats exists
-  $("resetFormats").hidden = showingExample;
-  if (showingExample) closeResetWarning();
-  else if (!$("resetWarning").hidden) renderResetWarning();
 }
 
 function markBackedUp(text, atMs) {
@@ -385,59 +380,6 @@ async function restoreFromFile(file) {
   undoText = previous;
   logStep(`restore: ${plural(formatCount, "format")} loaded`);
   showBackupMessage(`Restored ${formatCount} format${formatCount === 1 ? "" : "s"} from ${file.name}.`, true);
-}
-
-function closeResetWarning() {
-  $("resetWarning").hidden = true;
-}
-
-function renderResetWarning() {
-  // The warning says what would be lost, based on whether a backup exists right now.
-  const state = backupState();
-  const backedUp = state.kind === "current";
-  $("resetWarningText").textContent = {
-    never: "Starting over replaces your formats with one empty format. You haven't downloaded a backup, so they'll be gone for good once you start over.",
-    edited: "Starting over replaces your formats with one empty format. Your formats have changed since your last backup, so those changes will be gone for good once you start over.",
-    current: "Your formats are backed up" + (state.when ? " (last backup: " + state.when + ")" : "") + ". Starting over replaces them with one empty format, and Restore formats from backup can bring them back.",
-    example: "You haven't made any formats yet.",
-  }[state.kind];
-  $("resetDownloadFirst").hidden = backedUp || state.kind === "example";   // nothing left to back up first
-  setLabel($("resetAnyway"), backedUp ? "Start over" : "Start over anyway");
-}
-
-function requestReset() {
-  if ($("formats").value === DEFAULT_FORMATS) return;   // the Reset link is hidden then
-  const state = backupState();
-  if (state.kind === "current") { performReset(); return; }   // a current backup exists, so no warning is needed
-  renderResetWarning();
-  $("resetWarning").hidden = false;
-}
-
-function performReset() {
-  const state = backupState();   // what the situation was before resetting
-  const previous = $("formats").value;
-  if (previous === DEFAULT_FORMATS) return;
-  closeResetWarning();
-  setFormatsText(DEFAULT_FORMATS);
-  logStep("formats started over");
-  undoText = previous;
-  const note = state.kind === "current" ? ` Your backup${state.when ? " from " + state.when : ""} can bring your formats back.` : "";
-  showBackupMessage("Started over." + note, true);
-}
-
-function addBackupNudge() {
-  // After a successful create, if the formats are not safely backed up, point to the backup step once.
-  const kind = backupState().kind;
-  if (kind !== "never" && kind !== "edited") return;
-  const row = document.createElement("div");
-  row.className = "backup-nudge";
-  row.appendChild(document.createTextNode("Your formats worked. Back them up so they're safe: "));
-  const link = document.createElement("a");
-  link.href = "#backupSection";
-  link.textContent = "Step 4, Back up your formats";
-  row.appendChild(link);
-  row.appendChild(document.createTextNode("."));
-  $("results").appendChild(row);
 }
 
 let reloadPage = () => location.reload();   // a separate function so tests can replace it
@@ -910,7 +852,6 @@ async function createPlaylists() {
     logStep(`create finished (${plural(created, "playlist")})`);
     invalidatePlan(true);   // the plan is used up, so a second click cannot make duplicates
     setActionMessage(`Done. Created ${plural(created, "playlist")} in your Spotify account.` + (notes.length ? "\n\n" + notes.join("\n") : ""));
-    addBackupNudge();
     addSupportPrompt();
     await loadMyPlaylists();
   } catch (err) {
@@ -1017,13 +958,6 @@ async function main() {
   $("removeOld").addEventListener("click", removeEarlier);
   $("formatKey").addEventListener("change", () => invalidatePlan());
   $("maxPlaylists").addEventListener("input", () => invalidatePlan());
-  $("resetFormats").addEventListener("click", requestReset);
-  $("resetDownloadFirst").addEventListener("click", () => {
-    downloadBackup();   // the warning then updates itself, because the formats are now backed up
-    $("resetWarningText").textContent = "Backup downloaded. " + $("resetWarningText").textContent;
-  });
-  $("resetAnyway").addEventListener("click", performReset);
-  $("resetCancel").addEventListener("click", closeResetWarning);
   $("backupDownload").addEventListener("click", downloadBackup);
   $("backupRestore").addEventListener("click", () => $("restoreFile").click());
   $("restoreFile").addEventListener("change", async (event) => {
@@ -1036,7 +970,6 @@ async function main() {
     invalidatePlan();
     undoText = null;
     $("backupMessage").textContent = "";   // an Undo offered earlier would now overwrite new edits
-    closeResetWarning();
     refreshBackupStatus();
     refreshFormatKeys();
   });
