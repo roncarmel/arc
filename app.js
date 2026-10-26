@@ -14,7 +14,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-25c";                    // change this whenever the page is updated
+const APP_VERSION = "2026-10-25e";                    // change this whenever the page is updated
 const REPORT_FORM_URL = "https://tally.so/r/VppLZN"; // where problem reports go
 
 const DEFAULT_FORMATS = `FORMATS = {
@@ -260,10 +260,13 @@ function readFileText(file) {
   });
 }
 
-function today() {
+function fileStamp() {
+  // Local date and 24-hour time, such as 2026-10-25_14-05-09. File names sort in the order they were made,
+  // and two backups on the same day never share a name. (Colons are not allowed in file names on Windows,
+  // so the time uses hyphens.)
   const d = new Date();
   const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
 }
 
 function backupState() {
@@ -349,7 +352,7 @@ function undoLastChange() {
 
 function downloadBackup() {
   const text = $("formats").value;
-  saveFile(`playlist-formats-${today()}.txt`, text);
+  saveFile(`playlist-formats-${fileStamp()}.txt`, text);
   markBackedUp(text);
   undoText = null;
   logStep("backup downloaded");
