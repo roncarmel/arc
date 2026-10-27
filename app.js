@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-26n";
+const APP_VERSION = "2026-10-26o";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -412,10 +412,12 @@ function setBusy(flag) {
 // is asking and once it is done (the Close button, a click outside it, or Escape), but not while
 // the app is reading or creating.
 let createStage = "closed";   // closed, planning, question, creating or done
+let createSucceeded = false;  // the playlists were all made, so the popup may offer Donate
 
 function setCreateStage(stage) {
   createStage = stage;
   $("createCloseRow").hidden = stage !== "done";
+  $("createDonate").hidden = stage !== "done" || !createSucceeded;   // only after a success, never beside an error or a problem
 }
 
 function openCreateDialog() {
@@ -898,6 +900,7 @@ async function startCreate() {
   setActionMessage("");
   clearReportHints("mainReportHint");
   setOutput("");
+  createSucceeded = false;
   openCreateDialog();
   logStep("plan started");
   invalidatePlan(false);
@@ -981,6 +984,7 @@ async function createFromPlan(plan) {
     if (coverBlocked) notes.push("Note: the cover art was not added, because your Spotify sign-in does not include permission to upload images. Click Disconnect, then Connect again to allow it. Playlists you create after that will get the cover.");
     else if (coverUnloaded) notes.push("Note: the cover art could not be loaded, so the playlists have Spotify's default cover.");
     else if (coverFailed) notes.push(`Note: Spotify would not accept the cover art for ${plural(coverFailed, "playlist")}.`);
+    createSucceeded = created > 0;
     const doneText = `Done. Created ${plural(created, "playlist")} in your Spotify account.` + (notes.length ? "\n\n" + notes.join("\n\n") : "");
     setActionMessage(doneText);
     addSupportPrompt();
