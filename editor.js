@@ -20,7 +20,6 @@ const editor = {
   search: "",
   gapPanel: null,     // the silence (by its place, 1 to the number of segments) whose card is open
   hover: null,        // the row, silence or bar piece under the pointer
-  pinned: null,       // the row or bar piece last tapped, or the row whose menu or list is open
 };
 
 // ---------------------------------------------------------------- small helpers
@@ -72,7 +71,7 @@ function feStripes(shareA, period) {
 
 // Point at (or tap) a row or a piece of the bar, and the other one lights up.
 function applyHighlight() {
-  const id = editor.hover || editor.pinned;
+  const id = editor.hover;   // only while the pointer is over a row, a silence or a piece of the bar; nothing stays selected
   const bar = $("feBar");
   if (bar) bar.classList.toggle("fe-hasHl", !!id);
   document.querySelectorAll("#feBar .fe-piece, #feRows .fe-row, #feRows .fe-tag").forEach((el) => {
@@ -157,7 +156,6 @@ function initEditor() {
 function closePanels() {
   editor.panel = null;
   editor.gapPanel = null;
-  editor.pinned = null;
   editor.cardMenu = false;
   renderHead();
   renderRows();
@@ -182,7 +180,6 @@ function renderEditor() {
   if (!root) return;
   root.innerHTML = "";
   editor.hover = null;
-  editor.pinned = null;
   editor.gapPanel = null;
   if (editor.broken) { root.appendChild(brokenView()); return; }
   root.appendChild(feEl("div", { class: "fe-tabs", id: "feTabs" }));
@@ -294,12 +291,12 @@ function renderTimeline() {
   const bar = $("feBar");
   const caption = $("feCaption");
   if (!f || !bar) return;
+  editor.hover = null;
   bar.innerHTML = "";
   const addPiece = (key, label, style, silence) => {
-    const piece = feEl("button", { type: "button", class: "fe-piece" + (silence ? " fe-piece-silence" : ""), "data-id": key, "aria-label": label, style });
+    const piece = feEl("div", { role: "img", class: "fe-piece" + (silence ? " fe-piece-silence" : ""), "data-id": key, "aria-label": label, style });
     piece.addEventListener("mouseenter", () => { editor.hover = key; applyHighlight(); });
     piece.addEventListener("mouseleave", () => { editor.hover = null; applyHighlight(); });
-    piece.addEventListener("click", () => { editor.pinned = editor.pinned === key ? null : key; applyHighlight(); });
     bar.appendChild(piece);
   };
   let quiet = 0;
@@ -323,6 +320,7 @@ function renderRows(settle) {
   const f = activeFormat();
   const holder = $("feRows");
   if (!f || !holder) return;
+  editor.hover = null;   // the old elements are gone, so whatever was under the pointer no longer is
   holder.innerHTML = "";
   f.items.forEach((item, index) => holder.appendChild(rowEl(f, item, index)));
   holder.appendChild(feEl("button", { type: "button", class: "fe-add", id: "feAddSegment", onClick: addSegment }, feIcon("plus"), "New segment"));
@@ -408,7 +406,7 @@ function tagEl(f, g) {
   const button = feEl("button", {
     type: "button", class: `fe-tag fe-trigger fe-tag-${kind}`, "data-id": key, "aria-expanded": String(open),
     "aria-label": `${where}: ${info.zero ? "none" : describeSeconds(info.sec)}. Tap to change.`,
-    onClick: () => { editor.gapPanel = open ? null : g; editor.panel = null; editor.cardMenu = false; editor.pinned = null; editor.search = ""; renderHead(); renderRows(); },
+    onClick: () => { editor.gapPanel = open ? null : g; editor.panel = null; editor.cardMenu = false; editor.search = ""; renderHead(); renderRows(); },
   }, feIcon("mute"), feEl("span", { class: "fe-tag-text", text: shortSeconds(info.sec) }));
   button.addEventListener("mouseenter", () => { editor.hover = key; applyHighlight(); });
   button.addEventListener("mouseleave", () => { editor.hover = null; applyHighlight(); });
@@ -485,7 +483,6 @@ function resetAllGaps() {
 function setPanel(id, mode) {
   editor.panel = mode ? { id, mode } : null;
   editor.gapPanel = null;
-  editor.pinned = mode ? id : null;
   editor.cardMenu = false;
   editor.search = "";
   renderHead();
@@ -515,7 +512,7 @@ function menuPanel(f, item, index) {
   if (!gapInfo(f, index + 1).show) {
     pop.appendChild(feEl("button", {
       type: "button", class: "fe-item", id: "feAddSilence",
-      onClick: () => { ensureGaps(f); f.gaps[index + 1] = 30; editor.panel = null; editor.pinned = null; afterGapChange(); },
+      onClick: () => { ensureGaps(f); f.gaps[index + 1] = 30; editor.panel = null; afterGapChange(); },
     }, feIcon("mute"), "Add silence after"));
   }
   pop.appendChild(feEl("div", { class: "fe-rule" }));
