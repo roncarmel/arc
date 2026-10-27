@@ -6,7 +6,7 @@
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
-const FE_ROW_HEIGHT = 56;
+const FE_ROW_HEIGHT = 52;
 const FE_ROW_GAP = 6;
 
 const editor = {
@@ -296,7 +296,7 @@ function renderHead(rebuildInput) {
   let input = $("feName");
   if (rebuildInput || !input) {
     head.innerHTML = "";
-    input = feEl("input", { type: "text", id: "feName", value: f.title, autocomplete: "off" });
+    input = feEl("input", { type: "text", id: "feName", value: f.title, autocomplete: "off", "aria-label": "Name of format" });
     input.value = f.title;
     input.addEventListener("input", () => {
       const cleaned = cleanTitle(input.value);
@@ -307,7 +307,7 @@ function renderHead(rebuildInput) {
       renderClash();
     });
     head.appendChild(feEl("div", { class: "fe-headrow" },
-      feEl("label", { class: "fe-namefield" }, feEl("span", { text: "Name of format" }), input),
+      feEl("div", { class: "fe-namefield" }, input),
       feEl("div", { class: "fe-menuwrap" },
         feEl("button", { type: "button", class: "fe-iconbtn fe-trigger", id: "feCardMenuButton", "aria-label": "Format options", "aria-expanded": String(editor.cardMenu), onClick: toggleCardMenu }, feIcon("dots")),
         feEl("div", { id: "feCardMenuSlot" }))));
@@ -422,7 +422,7 @@ function rowEl(f, item, index) {
     sub = item.lists.length === 2 ? `${mixPercentA(item)}% / ${100 - mixPercentA(item)}% mix` : `${item.lists.length}-playlist mix`;
   } else {
     const name = item.lists[0].name;
-    cover = coverEl(name, 34);
+    cover = coverEl(name, 30);
     title = name || "Choose a playlist";
     sub = playlistSub(name);
     warn = !!name && !playlistInfo(name) && playlists.length > 0;
