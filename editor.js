@@ -19,6 +19,7 @@ const editor = {
   drag: null,
   search: "",
   gapPanel: null,     // the silence (by its place, 1 to the number of segments) whose card is open
+  appMenu: false,     // the app-level menu beside the format tabs
   hover: null,        // the row, silence or bar piece under the pointer
 };
 
@@ -34,6 +35,10 @@ const FE_ICONS = {
   copy: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a1 1 0 0 1 1-1h9"/></svg>',
   trash: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M9 7V5h6v2M7 7l1 12h8l1-12"/></svg>',
   sliders: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"/><circle cx="16" cy="8" r="2"/><circle cx="8" cy="16" r="2"/></svg>',
+  download: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>',
+  restore: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V5M7 9l5-5 5 5M5 20h14"/></svg>',
+  unplug: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3v5M15 3v5M7 8h10v4a5 5 0 0 1-10 0V8zM12 17v4"/></svg>',
+  check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
   reset: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg>',
   warn: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17.5v.1"/></svg>',
 };
@@ -145,11 +150,12 @@ function initEditor() {
   $("formats").addEventListener("input", () => { if (!editor.internal) syncEditorFromText(); });
   // tapping anywhere else, or pressing Escape, closes an open menu or list
   document.addEventListener("click", (event) => {
-    if (!editor.panel && !editor.cardMenu && editor.gapPanel === null) return;
+    if (!editor.panel && !editor.cardMenu && editor.gapPanel === null && !editor.appMenu) return;
     if (event.target.closest && event.target.closest(".fe-pop, .fe-trigger")) return;
     closePanels();
   }, true);
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && (editor.panel || editor.cardMenu || editor.gapPanel !== null)) closePanels(); });
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && (editor.panel || editor.cardMenu || editor.gapPanel !== null || editor.appMenu)) closePanels(); });
+  applyMinimalMode();
   syncEditorFromText();
 }
 
@@ -157,6 +163,8 @@ function closePanels() {
   editor.panel = null;
   editor.gapPanel = null;
   editor.cardMenu = false;
+  editor.appMenu = false;
+  renderAppMenu();
   renderHead();
   renderRows();
 }
@@ -182,8 +190,9 @@ function renderEditor() {
   editor.hover = null;
   editor.gapPanel = null;
   if (editor.broken) { root.appendChild(brokenView()); return; }
-  root.appendChild(feEl("div", { class: "fe-tabs", id: "feTabs" }));
+  root.appendChild(feEl("div", { class: "fe-toprow" }, feEl("div", { class: "fe-tabs", id: "feTabs" }), feEl("div", { class: "fe-appmenuwrap", id: "feAppMenu" })));
   renderTabs();
+  renderAppMenu();
   const format = activeFormat();
   if (!format) {
     root.appendChild(feEl("div", { class: "fe-empty" },
@@ -212,6 +221,54 @@ function brokenView() {
       feEl("button", { type: "button", class: "primary", id: "feStartOver", onClick: () => { setFormatsText(DEFAULT_FORMATS); } }, "Start over")));
 }
 
+// ---------------------------------------------------------------- the app-level menu
+// Minimalist mode is a saved setting (more of the page will respond to it over time); for now it only records the choice and puts "minimal" on the page.
+function minimalMode() {
+  try { return localStorage.getItem("minimalMode") === "1"; } catch (err) { return false; }
+}
+
+function applyMinimalMode() {
+  document.body.classList.toggle("minimal", minimalMode());
+}
+
+function toggleMinimal() {
+  try { localStorage.setItem("minimalMode", minimalMode() ? "0" : "1"); } catch (err) { /* the choice just does not last */ }
+  applyMinimalMode();
+  renderAppMenu();   // the menu stays open, so the checkbox shows the new state
+}
+
+function toggleAppMenu() {
+  editor.appMenu = !editor.appMenu;
+  editor.panel = null;
+  editor.gapPanel = null;
+  editor.cardMenu = false;
+  renderAppMenu();
+  renderHead();
+  renderRows();
+}
+
+function renderAppMenu() {
+  const slot = $("feAppMenu");
+  if (!slot) return;
+  slot.innerHTML = "";
+  slot.appendChild(feEl("button", {
+    type: "button", class: "fe-iconbtn fe-trigger", id: "feAppMenuButton", "aria-label": "App menu", "aria-haspopup": "menu", "aria-expanded": String(editor.appMenu),
+    onClick: toggleAppMenu,
+  }, feIcon("dots")));
+  if (!editor.appMenu) return;
+  const choose = (action) => () => { editor.appMenu = false; renderAppMenu(); action(); };
+  const on = minimalMode();
+  const box = feEl("span", { class: "fe-check" + (on ? " fe-check-on" : ""), "aria-hidden": "true" });
+  if (on) box.appendChild(feIcon("check"));
+  slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" },
+    feEl("button", { type: "button", class: "fe-item", id: "feMinimal", role: "menuitemcheckbox", "aria-checked": String(on), onClick: toggleMinimal }, box, "Minimalist mode"),
+    feEl("div", { class: "fe-rule" }),
+    feEl("button", { type: "button", class: "fe-item", id: "feBackup", role: "menuitem", onClick: choose(() => downloadBackup()) }, feIcon("download"), "Download a backup"),
+    feEl("button", { type: "button", class: "fe-item", id: "feRestore", role: "menuitem", onClick: choose(() => $("restoreFile").click()) }, feIcon("restore"), "Restore from backup"),
+    feEl("div", { class: "fe-rule" }),
+    feEl("button", { type: "button", class: "fe-item", id: "feDisconnect", role: "menuitem", onClick: choose(() => disconnect()) }, feIcon("unplug"), "Disconnect Spotify")));
+}
+
 function renderTabs() {
   const tabs = $("feTabs");
   if (!tabs) return;
@@ -219,7 +276,7 @@ function renderTabs() {
   for (const f of editor.model.formats) {
     tabs.appendChild(feEl("button", {
       type: "button", class: "fe-tab", "aria-pressed": String(f.id === editor.activeId), "data-id": f.id,
-      onClick: () => { editor.activeId = f.id; editor.panel = null; editor.gapPanel = null; editor.cardMenu = false; renderEditor(); },
+      onClick: () => { editor.activeId = f.id; editor.panel = null; editor.gapPanel = null; editor.cardMenu = false; editor.appMenu = false; renderEditor(); },
     }, f.title.trim() || "Untitled"));
   }
   tabs.appendChild(feEl("button", { type: "button", class: "fe-newformat", id: "feNewFormat", onClick: addFormat }, feIcon("plus"), "New format"));
@@ -406,7 +463,7 @@ function tagEl(f, g) {
   const button = feEl("button", {
     type: "button", class: `fe-tag fe-trigger fe-tag-${kind}`, "data-id": key, "aria-expanded": String(open),
     "aria-label": `${where}: ${info.zero ? "none" : describeSeconds(info.sec)}. Tap to change.`,
-    onClick: () => { editor.gapPanel = open ? null : g; editor.panel = null; editor.cardMenu = false; editor.search = ""; renderHead(); renderRows(); },
+    onClick: () => { editor.gapPanel = open ? null : g; editor.panel = null; editor.cardMenu = false; editor.appMenu = false; editor.search = ""; renderAppMenu(); renderHead(); renderRows(); },
   }, feIcon("mute"), feEl("span", { class: "fe-tag-text", text: shortSeconds(info.sec) }));
   button.addEventListener("mouseenter", () => { editor.hover = key; applyHighlight(); });
   button.addEventListener("mouseleave", () => { editor.hover = null; applyHighlight(); });
@@ -484,6 +541,8 @@ function setPanel(id, mode) {
   editor.panel = mode ? { id, mode } : null;
   editor.gapPanel = null;
   editor.cardMenu = false;
+  editor.appMenu = false;
+  renderAppMenu();
   editor.search = "";
   renderHead();
   renderRows();
@@ -667,6 +726,8 @@ function toggleCardMenu() {
   editor.cardMenu = !editor.cardMenu;
   editor.panel = null;
   editor.gapPanel = null;
+  editor.appMenu = false;
+  renderAppMenu();
   renderHead();
   renderRows();
 }
