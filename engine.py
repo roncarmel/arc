@@ -280,18 +280,24 @@ def existing_matches(formats_text, keys_json, playlists_json, me_id):
     return json.dumps(found)
 
 
-def _run_format(fmt, cache, limit):
-    """Plan as many playlists as the songs allow. Returns (music, gaps, built, stopped, used)."""
+def _run_format(fmt, cache, limit, reserved=frozenset()):
+    """Plan as many playlists as the songs allow. Returns (music, gaps, built, stopped, used).
+    Names already in use (reserved) are skipped, so a new playlist never shares a name with one that stays."""
     music, gaps = plan_format(fmt)
     used, built, stopped = set(), [], None
+    counter = 0
     while len(built) < limit:
         results, new_used, fail = build_one(cache, music, used)
         if fail:
             stopped = fail
             break
         used = new_used
-        n = len(built)
-        built.append((fmt["name"].format(n=n + 1, letter=letters(n)), results))
+        while True:
+            name = fmt["name"].format(n=counter + 1, letter=letters(counter))
+            counter += 1
+            if norm(name) not in reserved:
+                break
+        built.append((name, results))
     return music, gaps, built, stopped, used
 
 
@@ -354,13 +360,14 @@ def plan_text(formats_text, key, tracks_json, max_n=None, footer=True):
     return "\n".join(lines)
 
 
-def build_playlists(formats_text, key, tracks_json, max_n=None):
+def build_playlists(formats_text, key, tracks_json, max_n=None, reserved_json="[]"):
     """One planning run that gives both the preview text and everything needed to create the playlists:
     names and ordered song URIs, silence included. Creating from this result makes exactly what was previewed."""
     fmt = parse_formats(formats_text)[key]
     cache = _cache_from(tracks_json)
     limit = int(max_n) if max_n else 200
-    music, gaps, built, stopped, used = _run_format(fmt, cache, limit)
+    reserved = {norm(name) for name in json.loads(reserved_json or "[]")}
+    music, gaps, built, stopped, used = _run_format(fmt, cache, limit, reserved)
     playlists = []
     for name, results in built:
         uris = []

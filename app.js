@@ -14,7 +14,11 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-26e";                    // change this whenever the page is updated
+const APP_VERSION = "2026-10-26f";
+
+// Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
+// own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
+const APP_MARKER = "Made by Ceremony Playlist Builder";                    // change this whenever the page is updated
 const REPORT_FORM_URL = "https://tally.so/r/VppLZN"; // where problem reports go
 
 const DEFAULT_FORMATS = modelToText(defaultModel());   // one format with one segment waiting for a playlist
@@ -593,7 +597,9 @@ async function loadMyPlaylists() {
     collaborative: !!p.collaborative,
     image: Array.isArray(p.images) && p.images.length ? p.images[p.images.length - 1].url : null,   // Spotify lists the largest first
     count: p.tracks && typeof p.tracks.total === "number" ? p.tracks.total : (p.items && typeof p.items.total === "number" ? p.items.total : null),
+    description: typeof p.description === "string" ? p.description : null,
   }));
+  for (const p of playlists) p.madeByApp = typeof p.description === "string" && p.description.startsWith(APP_MARKER);
   // The count shown in Step 1 always matches the list, including after playlists are created or removed.
   $("connectedMessage").textContent = `Connected as ${me.display_name || me.id}. ${plural(playlists.length, "playlist")} found.`;
   if (typeof editorPlaylistsChanged === "function") editorPlaylistsChanged();
@@ -773,13 +779,19 @@ async function planSelected(startedWith) {
   // Works out the playlists for the chosen formats. Returns the plan, or null after saying why there isn't one.
   const inputs = await gatherInputs();
   if (!inputs) return null;
+  // Earlier playlists with names this plan would use: the ones this app made get replaced, the others are left alone and their names skipped.
+  const matching = JSON.parse(py.existingMatches(inputs.formatsText, JSON.stringify(inputs.keys), JSON.stringify(playlists), me.id));
+  const madeByApp = new Set(playlists.filter((p) => p.madeByApp).map((p) => p.id));
+  const ours = matching.filter((p) => madeByApp.has(p.id));
+  const others = matching.filter((p) => !madeByApp.has(p.id));
+  const reserved = JSON.stringify(others.map((p) => p.name));
   setOutput("Planning...");
   const built = [];
   const parts = [];
   const problems = [];
   for (const key of inputs.keys) {
     try {
-      const plan = JSON.parse(py.buildPlaylists(inputs.formatsText, key, JSON.stringify(inputs.tracks), playlistLimit()));
+      const plan = JSON.parse(py.buildPlaylists(inputs.formatsText, key, JSON.stringify(inputs.tracks), playlistLimit(), reserved));
       if (typeof plan.text !== "string") throw new Error("engine.py is out of date. Upload the newest engine.py, then reload the page.");
       built.push(plan);
       parts.push(plan.text);
@@ -802,10 +814,10 @@ async function planSelected(startedWith) {
     return null;
   }
   setOutput("");
-  return { formatsText: inputs.formatsText, keys: inputs.keys, built, total, text: parts.join("\n\n") + "\n\nNothing has been created yet.", problems };
+  return { formatsText: inputs.formatsText, keys: inputs.keys, built, total, ours, others, text: parts.join("\n\n") + "\n\nNothing has been created yet.", problems };
 }
 
-function askToCreate(plan, existing) {
+function askToCreate(plan) {
   // Shows what the plan found and waits: "create", "cancel", "redraw", or "stale" if something was edited meanwhile.
   return new Promise((resolve) => {
     const lines = plan.built.map((b) => {
@@ -815,10 +827,14 @@ function askToCreate(plan, existing) {
     });
     const notes = [...plan.built.filter((b) => b.stopped).map((b) => `${formatLabel(b.key)}: ${b.stopped}`), ...plan.problems].map((n) => "Note: " + n);
     fillConfirmList("confirmList", "confirmText", `Ready to create ${plural(plan.total, "playlist")}.`, lines.concat(notes));
+    const existing = plan.ours;
     const replacing = existing.length > 0;
     fillConfirmList("confirmMoreList", "confirmMoreText",
-      replacing ? `Replace ${plural(existing.length, "earlier playlist")}? These match the names this plan uses, and will be removed from your library first:` : "",
+      replacing ? `Replace ${plural(existing.length, "earlier playlist")} made by this app? These match the names this plan uses, and will be removed from your library first:` : "",
       replacing ? existing.map((p) => p.name) : []);
+    fillConfirmList("confirmKeepList", "confirmKeepText",
+      plan.others.length ? `${plural(plan.others.length, "playlist")} with matching names ${plan.others.length === 1 ? "was" : "were"} not made by this app, so ${plan.others.length === 1 ? "it" : "they"} will not be touched, and the new playlists skip ${plan.others.length === 1 ? "that name" : "those names"}:` : "",
+      plan.others.map((p) => p.name));
     setLabel($("confirmYes"), replacing ? `Remove them and create ${plural(plan.total, "playlist")}` : `Create ${plural(plan.total, "playlist")}`);
     setLabel($("confirmNo"), "Cancel");
     $("planText").textContent = plan.text;
@@ -857,8 +873,7 @@ async function startCreate() {
   try {
     let plan = await planSelected(startedWith);
     while (plan) {
-      const existing = JSON.parse(py.existingMatches(plan.formatsText, JSON.stringify(plan.keys), JSON.stringify(playlists), me.id));
-      const answer = await askToCreate(plan, existing);
+      const answer = await askToCreate(plan);
       if (answer === "stale") return;
       if (answer === "cancel") {
         setActionMessage("Cancelled. Nothing was changed.");
@@ -869,7 +884,7 @@ async function startCreate() {
         plan = await planSelected(startedWith);
         continue;
       }
-      await createFromPlan(plan, existing);
+      await createFromPlan(plan);
       return;
     }
   } catch (err) {
@@ -880,10 +895,12 @@ async function startCreate() {
   }
 }
 
-async function createFromPlan(plan, existing) {
-  const planned = plan.built.flatMap((b) => b.playlists);
+async function createFromPlan(plan) {
+  const existing = plan.ours;
+  const planned = plan.built.flatMap((b) => b.playlists.map((p) => ({ ...p, label: formatLabel(b.key) })));
   logStep(`create started (${plural(planned.length, "playlist")})`);
   let created = 0;
+  const createdIds = [];
   try {
     if (existing.length) {
       setActionMessage(`Removing ${plural(existing.length, "earlier playlist")}...`);
@@ -891,7 +908,8 @@ async function createFromPlan(plan, existing) {
     }
     for (const p of planned) {
       setActionMessage(`Creating ${created + 1} of ${planned.length}: ${p.name}`);
-      const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false } });
+      const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: `${APP_MARKER} from the format "${p.label}".` } });
+      createdIds.push(made.id);
       for (let i = 0; i < p.uris.length; i += ADD_CHUNK) {
         await spotifyRequest("POST", `/playlists/${made.id}/items`, { json: { uris: p.uris.slice(i, i + ADD_CHUNK) } });
       }
@@ -901,9 +919,16 @@ async function createFromPlan(plan, existing) {
     const notes = plan.built.filter((b) => b.stopped).map((b) => `${formatLabel(b.key)}: ${b.stopped}`);
     logStep(`create finished (${plural(created, "playlist")})`);
     invalidatePlan(true);
-    setActionMessage(`Done. Created ${plural(created, "playlist")} in your Spotify account.` + (notes.length ? "\n\n" + notes.join("\n") : ""));
+    const doneText = `Done. Created ${plural(created, "playlist")} in your Spotify account.` + (notes.length ? "\n\n" + notes.join("\n") : "");
+    setActionMessage(doneText);
     addSupportPrompt();
     await loadMyPlaylists();
+    // The mark in the description is how this app finds its own playlists later. If Spotify's list does not show it, say so.
+    const marked = new Set(playlists.filter((p) => p.madeByApp).map((p) => p.id));
+    if (createdIds.length && createdIds.every((id) => !marked.has(id))) {
+      logStep("create: description mark not returned");
+      setActionMessage(doneText + "\n\nNote: Spotify's playlist list did not show the description this app puts on its playlists (or has not updated yet), so the app may not recognize them later.");
+    }
   } catch (err) {
     if (created) invalidatePlan(true);   // some playlists exist now, so creating the plan again would duplicate them
     setActionMessage((created ? `Stopped after creating ${created} of ${planned.length} playlists.\n\n` : "Something went wrong:\n\n") + cleanError(err));

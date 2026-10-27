@@ -86,13 +86,13 @@ function activeFormat() {
 
 // ---------------------------------------------------------------- the playlists people can choose from
 function readablePlaylists() {
-  // playlists the app is allowed to read, leaving out the ones this app made from the formats
+  // playlists the app is allowed to read, leaving out the ones this app made (marked when created, or named like a format's playlists), since those may be removed later
   const titles = editor.model ? editor.model.formats.map((f) => nameFromTitle(f.title)) : [];
   const patterns = titles.map((name) => {
     const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\\\{n\\\}/g, "\\d+").replace(/\\\{letter\\\}/g, "[a-z]+");
     return new RegExp("^" + esc + "$", "i");
   });
-  return playlists.filter((p) => (p.owner === (me && me.id) || p.collaborative) && !patterns.some((re) => re.test(p.name)));
+  return playlists.filter((p) => (p.owner === (me && me.id) || p.collaborative) && !p.madeByApp && !patterns.some((re) => re.test(p.name)));
 }
 
 function playlistInfo(name) {

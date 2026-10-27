@@ -21,17 +21,14 @@ const THEMES = [
   { id: "oranges-and-stones", name: "Orange", accent: "#ff8a3d", neutral: "#8f8680" },
   { id: "coppers-and-browns", name: "Copper", accent: "#d97745", neutral: "#8d8078" },
   { id: "ambers-and-umbers", name: "Amber", accent: "#ffb020", neutral: "#8a8070" },
-  { id: "golds-and-taupes", name: "Gold", accent: "#f5b301", neutral: "#8c887a" },
   { id: "limes-and-olives", name: "Lime", accent: "#a3e635", neutral: "#858a78" },
   { id: "greens-and-sages", name: "Green", accent: "#3ecf8e", neutral: "#7d8a80" },
   { id: "mints-and-slates", name: "Mint", accent: "#5eead4", neutral: "#7b8b88" },
   { id: "teals-and-grays", name: "Teal", accent: "#19b9b2", neutral: "#7a8a8a" },
   { id: "aquas-and-blues", name: "Aqua", accent: "#22d3ee", neutral: "#78909c" },
   { id: "skies-and-steels", name: "Sky", accent: "#38bdf8", neutral: "#7e8a96" },
-  { id: "blues-and-slates", name: "Blue", accent: "#3b9eff", neutral: "#7b8794" },
   { id: "indigos-and-steels", name: "Indigo", accent: "#6366f1", neutral: "#7f8096" },
   { id: "violets-and-navies", name: "Violet", accent: "#8b5cf6", neutral: "#78809c" },
-  { id: "purples-and-mauves", name: "Purple", accent: "#a78bfa", neutral: "#85829a" },
   { id: "silvers-and-grays", name: "Silver", accent: "#c4c4d0", neutral: "#8a8a92" },
 ];
 
