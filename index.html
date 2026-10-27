@@ -14,7 +14,7 @@
   :root { color-scheme: light dark; --bg: #ffffff; --fg: #1d1d1f; --muted: #6b6b70; --line: #d8d8dc; --card: #f5f5f7; --accent: #c2188f; --button: #ff38b8; }
   @media (prefers-color-scheme: dark) { :root { --bg: #161618; --fg: #f2f2f4; --muted: #9a9aa2; --line: #333338; --card: #202024; --accent: #ff38b8; --button: #ff38b8; } }
   body { margin: 0; background: var(--bg); color: var(--muted); font: 16px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-  main { max-width: 720px; margin: 0 auto; padding: 24px 16px 150px; }
+  main { max-width: 720px; margin: 0 auto; padding: 24px 16px 24px; }
   h1 { font-size: clamp(1.9rem, 6vw, 2.5rem); line-height: 1.15; margin: 0 0 6px; color: var(--accent); }
   .tagline { margin: 0 0 14px; }
   details.about { margin: 0 0 8px; }
@@ -96,6 +96,7 @@
   @media (max-width: 520px) { #supportBox { right: 8px; bottom: 8px; } }
   /* When the corner would reach the app (the page is 720px wide, and silence tags hang out of its right edge), the button and note go in a strip along the bottom instead. */
   @media (max-width: 1059px) {
+    main { padding-bottom: calc(var(--tip-h, 96px) + 4px); }   /* the strip's own height, so the last thing on the page sits just above it */
     #supportBox { left: 0; right: 0; bottom: 0; width: auto; box-sizing: border-box; max-width: none; flex-direction: row-reverse; align-items: center; justify-content: flex-start; gap: 12px; padding: 40px 12px calc(10px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, var(--bg) 0%, var(--bg) 55%, transparent 100%); pointer-events: none; }
     #supportBox > * { pointer-events: auto; }
     #supportButton { flex: none; white-space: nowrap; }
@@ -271,6 +272,19 @@
   #formatEditor .fe-appicon { display: none; }
   body.minimal #formatEditor .fe-appicon { display: block; width: 44px; height: 44px; flex: none; border-radius: 22%; }
   body.minimal #feAppMenuButton { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
+  /* the popup that holds everything after a click on Create: the plan, the question, the progress, and the result */
+  .app-overlay { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 1100; background: rgba(0, 0, 0, 0.65); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+  .app-dialog { width: 100%; max-width: 560px; max-height: calc(100vh - 32px); overflow: auto; box-sizing: border-box; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 20px; padding: 18px; box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5); outline: none; }
+  .app-dialog > :first-child { margin-top: 0; }
+  #createDialog #confirmBox { border: none; background: none; padding: 0; margin: 0; }
+  #createDialog #actionMessage { color: var(--fg); white-space: pre-wrap; margin: 0 0 8px; }
+  #createDialog pre#output { margin: 0 0 8px; }
+  #createDialog .dialog-actions { margin-top: 12px; }
+  #createDialog .dialog-actions button { flex: 1 1 0; min-height: 44px; justify-content: center; }
+  .theme-list.theme-up { top: auto; bottom: calc(100% + 4px); }
+  /* a menu or list too close to the bottom of the screen opens upward instead */
+  #formatEditor .fe-pop.fe-up { top: auto; bottom: calc(100% + 4px); }
+  #formatEditor .fe-tagpanel.fe-up { top: auto; bottom: calc(100% - 39px); }
 </style>
 </head>
 <body>
@@ -407,27 +421,34 @@
   <p id="pythonNote" class="muted"></p>
   <p id="createNote" class="muted">Choose a format, or all of them. The app plans the playlists with songs picked at random, shows you what it found, and asks before it creates anything. Changing anything above closes the question, so you start again.</p>
 
-  <pre id="output" hidden></pre>
+  <div id="createOverlay" class="app-overlay" hidden>
+    <div id="createDialog" class="app-dialog" role="dialog" aria-modal="true" aria-label="Create playlists" tabindex="-1">
+      <pre id="output" hidden></pre>
 
-  <div id="confirmBox" class="card" hidden>
-    <p id="confirmText"></p>
-    <ul id="confirmList"></ul>
-    <p id="confirmMoreText"></p>
-    <ul id="confirmMoreList"></ul>
-    <p id="confirmKeepText"></p>
-    <ul id="confirmKeepList"></ul>
-    <label id="confirmKeepToggleRow" class="choice-row" hidden><input type="checkbox" id="confirmKeepToggle"> <span id="confirmKeepToggleLabel"></span></label>
-    <div class="row">
-      <button id="confirmYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Create</span></button>
-      <button id="confirmNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
+      <div id="confirmBox" class="card" hidden>
+        <p id="confirmText"></p>
+        <ul id="confirmList"></ul>
+        <p id="confirmMoreText"></p>
+        <ul id="confirmMoreList"></ul>
+        <p id="confirmKeepText"></p>
+        <ul id="confirmKeepList"></ul>
+        <label id="confirmKeepToggleRow" class="choice-row" hidden><input type="checkbox" id="confirmKeepToggle"> <span id="confirmKeepToggleLabel"></span></label>
+        <div class="row">
+          <button id="confirmYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Create</span></button>
+          <button id="confirmNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
+        </div>
+        <p class="plan-links"><button id="planToggle" class="linklike" type="button">See the full plan</button></p>
+        <pre id="planText" hidden></pre>
+      </div>
+
+      <p id="actionMessage" aria-live="polite"></p>
+      <p id="mainReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Report this problem</a></p>
+      <div id="results"></div>
+      <div id="createCloseRow" class="row dialog-actions" hidden>
+        <button id="createClose" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Close</span></button>
+      </div>
     </div>
-    <p class="plan-links"><button id="planToggle" class="linklike" type="button">See the full plan</button></p>
-    <pre id="planText" hidden></pre>
   </div>
-
-  <p id="actionMessage" aria-live="polite"></p>
-  <p id="mainReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Report this problem</a></p>
-  <div id="results"></div>
 
   <div id="backupBlock">
   <h2 id="backupSection">4. Back up your formats (optional)</h2>

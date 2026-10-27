@@ -276,6 +276,23 @@ function renderAppMenu() {
     feEl("button", { type: "button", class: "fe-item", id: "feDisconnect", role: "menuitem", onClick: choose(() => disconnect()) }, feIcon("unplug"), "Disconnect Spotify")));
 }
 
+// A menu, list or card that would run off the bottom of the screen opens upward instead (or, if there is no more room above,
+// stays below and is scrolled into view).
+function fitPops() {
+  const margin = 8;
+  document.querySelectorAll("#formatEditor .fe-pop").forEach((pop) => {
+    pop.classList.remove("fe-up");
+    const down = pop.getBoundingClientRect();
+    if (!down.height || down.bottom <= window.innerHeight - margin) return;   // not laid out, or it fits
+    pop.classList.add("fe-up");
+    const up = pop.getBoundingClientRect();
+    const overflowDown = down.bottom - (window.innerHeight - margin);
+    const overflowUp = margin - up.top;
+    if (overflowUp > 0 && overflowUp >= overflowDown) pop.classList.remove("fe-up");   // no better above
+    if (pop.scrollIntoView && (overflowUp > 0 || overflowDown > 0) && Math.min(overflowUp, overflowDown) > 0) pop.scrollIntoView({ block: "nearest" });
+  });
+}
+
 function renderTabs() {
   const tabs = $("feTabs");
   if (!tabs) return;
@@ -392,6 +409,7 @@ function renderRows(settle) {
   if (rootEl) rootEl.classList.toggle("fe-hastags", f.items.some((x, index) => gapInfo(f, index + 1).show));
   if (settle) applySettle(holder, settle);
   applyHighlight();
+  fitPops();
 }
 
 function rowEl(f, item, index) {

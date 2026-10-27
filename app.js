@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-26h";
+const APP_VERSION = "2026-10-26i";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -412,6 +412,38 @@ function setBusy(flag) {
 
 // ---------------------------------------------------------------- confirmation panels
 // Create asks under the Create button (askToCreate). Remove asks inside the Remove section, at the bottom of it.
+
+// ---------------------------------------------------------------- the popup for Create
+// One popup holds everything after a click on Create, and each step replaces the one before it:
+// planning, then the question, then the progress, then the result. It can be dismissed while it
+// is asking and once it is done (the Close button, a click outside it, or Escape), but not while
+// the app is reading or creating.
+let createStage = "closed";   // closed, planning, question, creating or done
+
+function setCreateStage(stage) {
+  createStage = stage;
+  $("createCloseRow").hidden = stage !== "done";
+}
+
+function openCreateDialog() {
+  $("createOverlay").hidden = false;
+  document.body.style.overflow = "hidden";
+  setCreateStage("planning");
+  $("createDialog").focus();
+}
+
+function closeCreateDialog() {
+  if ($("createOverlay").hidden) return;
+  $("createOverlay").hidden = true;
+  document.body.style.overflow = "";
+  createStage = "closed";
+  closeQuestion("cancel");   // dismissing the question is the same as cancelling it
+  $("create").focus();
+}
+
+function dismissCreateDialog() {
+  if (createStage === "question" || createStage === "done") closeCreateDialog();
+}
 
 function fillConfirmList(listId, textId, text, list) {
   $(textId).textContent = text;
@@ -844,13 +876,15 @@ function askToCreate(plan) {
     $("planToggle").textContent = "See the full plan";
     const box = $("confirmBox");
     box.hidden = false;
-    if (box.scrollIntoView) box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    setCreateStage("question");
     const finish = (answer) => {
       openQuestion = null;
       box.hidden = true;
       $("planText").textContent = "";
       for (const id of ["confirmYes", "confirmNo", "planToggle"]) $(id).onclick = null;
       $("confirmKeepToggle").onchange = null;
+      if (answer === "create") setCreateStage("creating");   // from this moment it cannot be dismissed
+      else if (answer === "include" || answer === "exclude") setCreateStage("planning");
       resolve(answer);
     };
     openQuestion = finish;
@@ -870,6 +904,8 @@ async function startCreate() {
   clearResults();
   setActionMessage("");
   clearReportHints("mainReportHint");
+  setOutput("");
+  openCreateDialog();
   logStep("plan started");
   invalidatePlan(false);
   const startedWith = planSignature();
@@ -879,9 +915,10 @@ async function startCreate() {
     let plan = await planSelected(startedWith, includeOthers);
     while (plan) {
       const answer = await askToCreate(plan);
-      if (answer === "stale") return;
+      if (answer === "stale") { closeCreateDialog(); return; }
       if (answer === "cancel") {
         setActionMessage("Cancelled. Nothing was changed.");
+        closeCreateDialog();
         return;
       }
       if (answer === "include" || answer === "exclude") {
@@ -898,10 +935,12 @@ async function startCreate() {
     offerReport("mainReportHint", cleanError(err));
   } finally {
     setBusy(false);
+    if (!$("createOverlay").hidden) setCreateStage("done");
   }
 }
 
 async function createFromPlan(plan) {
+  setCreateStage("creating");
   const existing = plan.ours;
   const planned = plan.built.flatMap((b) => b.playlists.map((p) => ({ ...p, label: formatLabel(b.key) })));
   logStep(`create started (${plural(planned.length, "playlist")})`);
@@ -1041,6 +1080,16 @@ async function removeEarlier() {
 }
 
 // ---------------------------------------------------------------- start up
+function trackTipHeight() {
+  // In the bottom strip the page needs exactly that much room at its end, so nothing is hidden behind it and nothing more is left empty.
+  const box = $("supportBox");
+  if (!box) return;
+  const set = () => document.documentElement.style.setProperty("--tip-h", box.offsetHeight + "px");
+  set();
+  window.addEventListener("resize", set);
+  if (window.ResizeObserver) new ResizeObserver(set).observe(box);
+}
+
 function initThemeChooser() {
   const button = $("themeButton");
   const list = $("themeList");
@@ -1090,6 +1139,9 @@ function initThemeChooser() {
   }
   const open = () => {
     list.hidden = false;
+    list.classList.remove("theme-up");
+    const room = list.getBoundingClientRect();
+    if (room.height && room.bottom > window.innerHeight - 8 && button.getBoundingClientRect().top > room.height + 8) list.classList.add("theme-up");   // too near the bottom: open upward
     button.setAttribute("aria-expanded", "true");
     const chosen = options().find((o) => o.dataset.id === selected) || options()[0];
     if (chosen) { chosen.focus({ preventScroll: true }); if (chosen.scrollIntoView) chosen.scrollIntoView({ block: "nearest" }); }
@@ -1162,6 +1214,10 @@ async function main() {
   $("connectReturning").addEventListener("click", startLogin);
   $("disconnect").addEventListener("click", disconnect);
   $("create").addEventListener("click", startCreate);
+  $("createClose").addEventListener("click", closeCreateDialog);
+  $("createOverlay").addEventListener("click", (event) => { if (event.target === $("createOverlay")) dismissCreateDialog(); });
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !$("createOverlay").hidden) dismissCreateDialog(); });
+  trackTipHeight();
   $("removeOld").addEventListener("click", removeEarlier);
   $("formatKey").addEventListener("change", () => invalidatePlan());
   $("maxPlaylists").addEventListener("input", () => invalidatePlan());
