@@ -84,7 +84,7 @@
   #moreOptions pre.report-preview { color: var(--muted); }
   button.linklike { background: none; border: none; padding: 0; color: var(--accent); font-weight: normal; text-decoration: underline; }
   #backupMessage { min-height: 1.5em; }
-  #supportBox { position: fixed; right: 16px; bottom: 16px; z-index: 1001; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; max-width: min(240px, calc(100vw - 32px)); }
+  #supportBox { position: fixed; right: 16px; bottom: 16px; z-index: 1001; display: flex; flex-direction: column-reverse; align-items: stretch; gap: 8px; width: max-content; max-width: min(240px, calc(100vw - 32px)); }
   #supportButton { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--button);
     background: var(--button); color: var(--on-button, #fff); font-weight: 600; text-decoration: none; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28); }
   #supportButton img { width: 22px; height: auto; aspect-ratio: 285 / 229; display: block; animation: kofi-wiggle 3s infinite; }
@@ -92,13 +92,14 @@
   @keyframes kofi-wiggle { 0% { transform: rotate(0) scale(1); } 60% { transform: rotate(0) scale(1); } 75% { transform: rotate(0) scale(1.12); } 80% { transform: rotate(0) scale(1.1); }
     84% { transform: rotate(-10deg) scale(1.1); } 88% { transform: rotate(10deg) scale(1.1); } 92% { transform: rotate(-10deg) scale(1.1); } 96% { transform: rotate(10deg) scale(1.1); } 100% { transform: rotate(0) scale(1); } }
   @media (prefers-reduced-motion: reduce) { #supportButton img { animation: none; } }
-  #supportCaption { margin: 0; padding: 4px 8px; border-radius: 6px; background: var(--bg); color: var(--muted); font-size: 0.75rem; line-height: 1.35; text-align: right; text-wrap: balance; }
+  #supportCaption { margin: 0; width: 0; min-width: 100%; box-sizing: border-box; padding: 4px 8px; border-radius: 6px; background: var(--bg); color: var(--muted); font-size: 0.75rem; line-height: 1.35; text-align: center; text-wrap: balance; }   /* wraps to the width of the button, above it */
   @media (max-width: 520px) { #supportBox { right: 8px; bottom: 8px; } }
-  @media (max-width: 599px) {
+  /* When the corner would reach the app (the page is 720px wide, and silence tags hang out of its right edge), the button and note go in a strip along the bottom instead. */
+  @media (max-width: 1099px) {
     #supportBox { left: 0; right: 0; bottom: 0; max-width: none; flex-direction: row-reverse; align-items: center; justify-content: space-between; gap: 12px; padding: 40px 12px calc(10px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, var(--bg) 0%, var(--bg) 55%, transparent 100%); pointer-events: none; }
     #supportBox > * { pointer-events: auto; }
     #supportButton { flex: none; white-space: nowrap; }
-    #supportCaption { flex: 1 1 0; min-width: 0; padding: 0; background: none; text-align: left; text-wrap: pretty; }
+    #supportCaption { flex: 1 1 0; width: auto; min-width: 0; padding: 0; background: none; text-align: left; text-wrap: pretty; }
   }
 
   /* the format editor */
@@ -122,7 +123,7 @@
   #formatEditor .fe-iconbtn { width: 44px; height: 44px; padding: 0; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); color: var(--fg); justify-content: center; }
   #formatEditor .fe-warn { margin: 6px 0 0; font-size: 0.82rem; color: var(--warn); }
   #formatEditor .fe-bar { display: flex; gap: 3px; height: 24px; border-radius: 9px; overflow: hidden; background: var(--bg); border: 1px solid var(--line); padding: 3px; box-sizing: border-box; }
-  #formatEditor .fe-piece { display: block; min-width: 6px; padding: 0; border: none; border-radius: 6px; background: var(--button); cursor: pointer; }
+  #formatEditor .fe-piece { display: block; min-width: 6px; padding: 0; border: none; border-radius: 6px; background: var(--button); }
   #formatEditor .fe-piece-silence { background: #000; border: 1.5px solid var(--silence-line, #8a8a92); box-sizing: border-box; }
   #formatEditor .fe-bar.fe-hasHl .fe-piece:not(.fe-hl) { opacity: 0.35; }
   #formatEditor .fe-piece.fe-hl { outline: 2px solid var(--fg); outline-offset: 1px; }
