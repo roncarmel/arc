@@ -7,32 +7,32 @@
 // variables (--bg, --fg, --button, and so on). The styles in index.html only ever use those variables, so
 // giving this file two different colors changes the whole look.
 //
-// To add a theme, add a line to THEMES. To try two colors without changing any file, open the page with
+// To add a theme, add a line to THEMES (the id is only for remembering the choice, so keep it the same once people may have chosen it; the name is what the list shows). To try two colors without changing any file, open the page with
 // ?accent=0a84ff&neutral=8a8a92 on the end of the address (hex colors; ?theme=reset goes back).
 // This file runs first, in the <head>, so the colors are in place before anything is drawn.
 
 const THEMES = [
-  { id: "pinks-and-grays", name: "Pinks and grays", accent: "#ff38b8", neutral: "#8a8a92" },
-  { id: "blues-and-slates", name: "Blues and slates", accent: "#3b9eff", neutral: "#7b8794" },
-  { id: "greens-and-sages", name: "Greens and sages", accent: "#3ecf8e", neutral: "#7d8a80" },
-  { id: "oranges-and-stones", name: "Oranges and stones", accent: "#ff8a3d", neutral: "#8f8680" },
-  { id: "purples-and-mauves", name: "Purples and mauves", accent: "#a78bfa", neutral: "#85829a" },
-  { id: "teals-and-grays", name: "Teals and grays", accent: "#19b9b2", neutral: "#7a8a8a" },
-  { id: "golds-and-taupes", name: "Golds and taupes", accent: "#f5b301", neutral: "#8c887a" },
-  { id: "reds-and-charcoals", name: "Reds and charcoals", accent: "#ef4444", neutral: "#86868a" },
-  { id: "corals-and-sands", name: "Corals and sands", accent: "#ff7b72", neutral: "#8f8780" },
-  { id: "mints-and-slates", name: "Mints and slates", accent: "#5eead4", neutral: "#7b8b88" },
-  { id: "indigos-and-steels", name: "Indigos and steels", accent: "#6366f1", neutral: "#7f8096" },
-  { id: "magentas-and-plums", name: "Magentas and plums", accent: "#d946ef", neutral: "#8a7f90" },
-  { id: "skies-and-steels", name: "Skies and steels", accent: "#38bdf8", neutral: "#7e8a96" },
-  { id: "limes-and-olives", name: "Limes and olives", accent: "#a3e635", neutral: "#858a78" },
-  { id: "coppers-and-browns", name: "Coppers and browns", accent: "#d97745", neutral: "#8d8078" },
-  { id: "violets-and-navies", name: "Violets and navies", accent: "#8b5cf6", neutral: "#78809c" },
-  { id: "aquas-and-blues", name: "Aquas and blues", accent: "#22d3ee", neutral: "#78909c" },
-  { id: "roses-and-mauves", name: "Roses and mauves", accent: "#f472b6", neutral: "#8a8088" },
-  { id: "ambers-and-umbers", name: "Ambers and umbers", accent: "#ffb020", neutral: "#8a8070" },
-  { id: "silvers-and-grays", name: "Silvers and grays", accent: "#c4c4d0", neutral: "#8a8a92" },
-  { id: "crimsons-and-wines", name: "Crimsons and wines", accent: "#dc2660", neutral: "#8a7f84" },
+  { id: "pinks-and-grays", name: "Pink", accent: "#ff38b8", neutral: "#8a8a92" },
+  { id: "roses-and-mauves", name: "Rose", accent: "#f472b6", neutral: "#8a8088" },
+  { id: "magentas-and-plums", name: "Magenta", accent: "#d946ef", neutral: "#8a7f90" },
+  { id: "crimsons-and-wines", name: "Crimson", accent: "#dc2660", neutral: "#8a7f84" },
+  { id: "reds-and-charcoals", name: "Red", accent: "#ef4444", neutral: "#86868a" },
+  { id: "corals-and-sands", name: "Coral", accent: "#ff7b72", neutral: "#8f8780" },
+  { id: "oranges-and-stones", name: "Orange", accent: "#ff8a3d", neutral: "#8f8680" },
+  { id: "coppers-and-browns", name: "Copper", accent: "#d97745", neutral: "#8d8078" },
+  { id: "ambers-and-umbers", name: "Amber", accent: "#ffb020", neutral: "#8a8070" },
+  { id: "golds-and-taupes", name: "Gold", accent: "#f5b301", neutral: "#8c887a" },
+  { id: "limes-and-olives", name: "Lime", accent: "#a3e635", neutral: "#858a78" },
+  { id: "greens-and-sages", name: "Green", accent: "#3ecf8e", neutral: "#7d8a80" },
+  { id: "mints-and-slates", name: "Mint", accent: "#5eead4", neutral: "#7b8b88" },
+  { id: "teals-and-grays", name: "Teal", accent: "#19b9b2", neutral: "#7a8a8a" },
+  { id: "aquas-and-blues", name: "Aqua", accent: "#22d3ee", neutral: "#78909c" },
+  { id: "skies-and-steels", name: "Sky", accent: "#38bdf8", neutral: "#7e8a96" },
+  { id: "blues-and-slates", name: "Blue", accent: "#3b9eff", neutral: "#7b8794" },
+  { id: "indigos-and-steels", name: "Indigo", accent: "#6366f1", neutral: "#7f8096" },
+  { id: "violets-and-navies", name: "Violet", accent: "#8b5cf6", neutral: "#78809c" },
+  { id: "purples-and-mauves", name: "Purple", accent: "#a78bfa", neutral: "#85829a" },
+  { id: "silvers-and-grays", name: "Silver", accent: "#c4c4d0", neutral: "#8a8a92" },
 ];
 
 // ---------------------------------------------------------------- color math

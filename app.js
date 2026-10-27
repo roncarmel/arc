@@ -951,24 +951,72 @@ async function removeEarlier() {
 
 // ---------------------------------------------------------------- start up
 function initThemeChooser() {
-  const select = $("themeChoice");
+  const button = $("themeButton");
+  const list = $("themeList");
   const current = chosenColors();
-  for (const t of THEMES) select.add(new Option(t.name, t.id));
+  const entries = THEMES.map((t) => ({ id: t.id, name: t.name, accent: t.accent }));
   if (current.custom) {
-    select.add(new Option("Custom colors", "custom"));
-    select.value = "custom";
+    entries.push({ id: "custom", name: "Custom colors", accent: current.accent });
     $("themeNote").textContent = "These colors came from the address (?accent and ?neutral). Choose a theme above, or add ?theme=reset to the address, to go back.";
     $("themeNote").hidden = false;
-  } else {
-    select.value = current.id;
   }
-  select.addEventListener("change", () => {
-    if (select.value === "custom") return;
-    setTheme(select.value);
-    $("themeNote").hidden = true;
-    for (const opt of Array.from(select.options)) if (opt.value === "custom") opt.remove();
-    editorThemeChanged();
+  let selected = current.custom ? "custom" : current.id;
+
+  const options = () => Array.from(list.querySelectorAll(".theme-option"));
+  const close = (refocus) => { list.hidden = true; button.setAttribute("aria-expanded", "false"); if (refocus) button.focus(); };
+  const show = () => {
+    const entry = entries.find((e) => e.id === selected) || entries[0];
+    $("themeSwatch").style.background = entry.accent;
+    $("themeName").textContent = entry.name;
+    for (const option of options()) option.setAttribute("aria-selected", String(option.dataset.id === selected));
+  };
+  const choose = (id) => {
+    if (id !== "custom") {
+      setTheme(id);
+      selected = id;
+      $("themeNote").hidden = true;
+      const at = entries.findIndex((e) => e.id === "custom");
+      if (at >= 0) { entries.splice(at, 1); list.querySelector('[data-id="custom"]').remove(); }
+      editorThemeChanged();
+    }
+    show();
+    close(true);
+  };
+  for (const entry of entries) {
+    const option = document.createElement("li");
+    option.className = "theme-option";
+    option.setAttribute("role", "option");
+    option.tabIndex = -1;
+    option.dataset.id = entry.id;
+    const swatch = document.createElement("span");
+    swatch.className = "swatch";
+    swatch.style.background = entry.accent;
+    const name = document.createElement("span");
+    name.textContent = entry.name;
+    option.append(swatch, name);
+    option.addEventListener("click", () => choose(entry.id));
+    list.appendChild(option);
+  }
+  const open = () => {
+    list.hidden = false;
+    button.setAttribute("aria-expanded", "true");
+    const chosen = options().find((o) => o.dataset.id === selected) || options()[0];
+    if (chosen) { chosen.focus({ preventScroll: true }); if (chosen.scrollIntoView) chosen.scrollIntoView({ block: "nearest" }); }
+  };
+  button.addEventListener("click", () => (list.hidden ? open() : close(false)));
+  button.addEventListener("keydown", (event) => { if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); if (list.hidden) open(); } });
+  list.addEventListener("keydown", (event) => {
+    const all = options();
+    const at = all.indexOf(document.activeElement);
+    if (event.key === "Escape") { event.preventDefault(); close(true); }
+    else if (event.key === "ArrowDown") { event.preventDefault(); all[Math.min(all.length - 1, at + 1)].focus(); }
+    else if (event.key === "ArrowUp") { event.preventDefault(); all[Math.max(0, at - 1)].focus(); }
+    else if (event.key === "Home") { event.preventDefault(); all[0].focus(); }
+    else if (event.key === "End") { event.preventDefault(); all[all.length - 1].focus(); }
+    else if ((event.key === "Enter" || event.key === " ") && at >= 0) { event.preventDefault(); choose(all[at].dataset.id); }
   });
+  document.addEventListener("click", (event) => { if (!list.hidden && !(event.target.closest && event.target.closest(".theme-picker"))) close(false); });
+  show();
 }
 
 async function main() {
