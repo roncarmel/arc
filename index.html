@@ -114,11 +114,15 @@
   #formatEditor .fe-itemnote { width: 0; min-width: 100%; box-sizing: border-box; padding: 0 12px 6px 40px; margin-top: -4px; font-size: 0.78rem; color: var(--muted); line-height: 1.3; }   /* the last-backup label, under its item, wrapping inside the menu */
   #formatEditor .fe-check { width: 20px; height: 20px; flex: none; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border: 2px solid var(--muted); border-radius: 5px; }
   #formatEditor .fe-check-on { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
-  #formatEditor .fe-tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
-  #formatEditor .fe-tab { min-height: 44px; padding: 0 18px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--fg); }
+  #formatEditor .fe-tabs { position: relative; display: flex; gap: 8px; flex-wrap: nowrap; align-items: center; margin-bottom: 10px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch; }   /* one row, scrolling sideways */
+  #formatEditor .fe-tabs::-webkit-scrollbar { display: none; }
+  #formatEditor .fe-tabs.fe-fade-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+  #formatEditor .fe-tabs.fe-fade-left { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent); }
+  #formatEditor .fe-tabs.fe-fade-left.fe-fade-right { -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); }
+  #formatEditor .fe-tab { flex: none; white-space: nowrap; min-height: 44px; padding: 0 18px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--fg); }
   #formatEditor .fe-tab[aria-pressed="true"] { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
   #formatEditor .fe-newformat, #formatEditor .fe-add { background: transparent; border: 1px dashed var(--muted); color: var(--fg); justify-content: center; }
-  #formatEditor .fe-newformat { min-height: 44px; padding: 0 16px; border-radius: 999px; }
+  #formatEditor .fe-newformat { flex: none; width: 44px; height: 44px; padding: 0; border-radius: 999px; }   /* just a plus, always in view beside the menu */
   #formatEditor .fe-add { min-height: 48px; width: 100%; border-radius: 16px; }
   #formatEditor .fe-card, #formatEditor .fe-empty { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
   #formatEditor .fe-empty { align-items: center; text-align: center; padding: 24px 16px; }

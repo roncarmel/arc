@@ -194,7 +194,9 @@ function renderEditor() {
   root.appendChild(feEl("div", { class: "fe-toprow" },
     feEl("img", { class: "fe-appicon", src: "apple-touch-icon.png", alt: "", width: "44", height: "44" }),
     feEl("div", { class: "fe-tabs", id: "feTabs" }),
+    feEl("button", { type: "button", class: "fe-newformat", id: "feNewFormat", "aria-label": "New format", title: "New format", onClick: addFormat }, feIcon("plus")),
     feEl("div", { class: "fe-appmenuwrap", id: "feAppMenu" })));
+  $("feTabs").addEventListener("scroll", updateTabFade);
   renderTabs();
   renderAppMenu();
   const format = activeFormat();
@@ -233,6 +235,7 @@ function minimalMode() {
 
 function applyMinimalMode() {
   document.body.classList.toggle("minimal", minimalMode());
+  if (typeof updateTabFade === "function") updateTabFade();   // the icon changes how much room the tabs have
 }
 
 function toggleMinimal() {
@@ -303,7 +306,25 @@ function renderTabs() {
       onClick: () => { editor.activeId = f.id; editor.panel = null; editor.gapPanel = null; editor.cardMenu = false; editor.appMenu = false; renderEditor(); },
     }, f.title.trim() || "Untitled"));
   }
-  tabs.appendChild(feEl("button", { type: "button", class: "fe-newformat", id: "feNewFormat", onClick: addFormat }, feIcon("plus"), "New format"));
+  scrollSelectedTab();
+  updateTabFade();
+}
+
+// The tabs are one row that scrolls sideways. The selected one is kept in view, and a soft fade on an edge says there is more that way.
+function scrollSelectedTab() {
+  const strip = $("feTabs");
+  const tab = strip && strip.querySelector('.fe-tab[aria-pressed="true"]');
+  if (!tab) return;
+  const room = 28;
+  if (tab.offsetLeft - room < strip.scrollLeft) strip.scrollLeft = Math.max(0, tab.offsetLeft - room);
+  else if (tab.offsetLeft + tab.offsetWidth + room > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = tab.offsetLeft + tab.offsetWidth + room - strip.clientWidth;
+}
+
+function updateTabFade() {
+  const strip = $("feTabs");
+  if (!strip) return;
+  strip.classList.toggle("fe-fade-left", strip.scrollLeft > 2);
+  strip.classList.toggle("fe-fade-right", strip.scrollLeft + strip.clientWidth < strip.scrollWidth - 2);
 }
 
 function renderHead(rebuildInput) {
