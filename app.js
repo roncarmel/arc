@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-26k";
+const APP_VERSION = "2026-10-26l";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -216,19 +216,12 @@ function currentFlow() {
   return checked ? checked.value : null;
 }
 
-const KOFI_URL = "https://ko-fi.com/roncarmel";
 
 function addSupportPrompt() {
+  // A thank-you line after the playlists are made. No link: the Donate button is right there.
   const row = document.createElement("div");
   row.className = "support-prompt";
-  row.appendChild(document.createTextNode("If this app is helpful to you, you can "));
-  const link = document.createElement("a");
-  link.href = KOFI_URL;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-  link.textContent = "donate whatever feels good";
-  row.appendChild(link);
-  row.appendChild(document.createTextNode(" to say thanks. And you\u2019re welcome regardless!"));
+  row.textContent = "If you're finding this app helpful, you can donate any amount that feels good to you as a way of saying thanks. And you\u2019re welcome regardless!";
   $("results").appendChild(row);
 }
 

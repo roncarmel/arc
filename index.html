@@ -298,7 +298,6 @@
   .app-overlay, #kofiDim, #kofiPanel { opacity: 1; transition: opacity 0.25s linear, display 0.25s linear allow-discrete; }
   .app-overlay[hidden], #kofiDim[hidden], #kofiPanel[hidden] { opacity: 0; pointer-events: none; }
   @starting-style { .app-overlay, #kofiDim, #kofiPanel { opacity: 0; } }
-  #createClose { background: transparent; color: var(--fg); border-color: var(--line); }
 </style>
 </head>
 <body>
@@ -460,7 +459,7 @@
       <div id="results"></div>
       <div id="createCloseRow" class="row dialog-actions" hidden>
         <button id="createClose" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Close</span></button>
-        <button id="createDonate" class="primary" type="button"><img src="cup-border.png" alt="" width="22" height="18"><span class="btn-label">Donate</span></button>
+        <button id="createDonate" type="button"><img src="cup-border.png" alt="" width="22" height="18"><span class="btn-label">Donate</span></button>
       </div>
     </div>
   </div>
