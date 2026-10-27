@@ -152,9 +152,9 @@
   #formatEditor .fe-pop { position: absolute; z-index: 30; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35); padding: 4px; box-sizing: border-box; }
   #formatEditor .fe-menu { right: 0; top: 60px; width: 270px; max-width: 100%; }
   #formatEditor .fe-mixpanel, #formatEditor .fe-listpanel { left: 24px; right: 0; top: 60px; }
-  #formatEditor .fe-cardmenu { right: 0; top: 48px; width: 232px; }
+  #formatEditor .fe-cardmenu { right: 0; top: 48px; width: max-content; max-width: min(260px, calc(100vw - 48px)); }
   #formatEditor .fe-gapsetting { padding: 2px 6px 8px 8px; }
-  #formatEditor .fe-gapnote { padding: 0 10px 8px; font-size: 0.78rem; color: var(--muted); line-height: 1.3; }
+  #formatEditor .fe-gapnote { width: 0; min-width: 100%; box-sizing: border-box; padding: 0 10px 8px; font-size: 0.78rem; color: var(--muted); line-height: 1.3; }   /* wraps inside the menu instead of widening it */
   #formatEditor .fe-poplabel { padding: 6px 10px 0; font-size: 0.76rem; font-weight: 600; color: var(--muted); }
   #formatEditor .fe-rule { height: 1px; background: var(--line); margin: 2px 6px; }
   #formatEditor .fe-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 12px; border: none; border-radius: 12px; background: transparent; color: var(--fg); text-align: left; box-sizing: border-box; }
@@ -265,7 +265,7 @@
       <li>Create the playlists. The app shows you what it found and asks before it makes anything.</li>
     </ol>
     <p><strong>What you need</strong><br>A Spotify Premium account (Spotify requires it for the free developer app) and some playlists of your own to draw from.</p>
-    <p><strong>Good to know</strong><br>Your existing Spotify playlists are only read, never changed. Playlists created by this app are private. Everything runs in this browser, and nothing about your music goes anywhere except to you and Spotify. If you run into a problem you can report it in the <span class="ui">More options</span> section at the bottom of this page.</p>
+    <p><strong>Good to know</strong><br>Your existing Spotify playlists are only read, never changed. Playlists created by this app stay off your Spotify profile and out of search, though anyone with a playlist's link can still open it. To change that, use Make private in the Spotify app. Everything runs in this browser, and nothing about your music goes anywhere except to you and Spotify. If you run into a problem you can report it in the <span class="ui">More options</span> section at the bottom of this page.</p>
   </details>
 
   <section id="loginSection">

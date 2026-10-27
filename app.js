@@ -924,7 +924,7 @@ async function createFromPlan(plan) {
       setActionMessage(`Creating ${created + 1} of ${planned.length}: ${p.name}`);
       const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: `${APP_MARKER} from the format "${p.label}". Please leave this description as it is: the app uses it to recognize the playlists it made.` } });
       createdIds.push(made.id);
-      if (made.public !== false) {   // asked for private; make sure, since the playlist is meant to be for you alone
+      if (made.public !== false) {   // asked to keep it off the profile; make sure
         try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); }
         catch (err) { stillPublic.push(p.name); logStep("create: could not make a playlist private"); }
       }
@@ -945,7 +945,7 @@ async function createFromPlan(plan) {
     logStep(`create finished (${plural(created, "playlist")})`);
     invalidatePlan(true);
     const notes = [];
-    if (stillPublic.length) notes.push(`Note: Spotify kept ${plural(stillPublic.length, "playlist")} public and would not let this app change that. You can make ${stillPublic.length === 1 ? "it" : "them"} private in Spotify.`);
+    if (stillPublic.length) notes.push(`Note: Spotify kept ${plural(stillPublic.length, "playlist")} on your profile and would not let this app change that. You can change that in the Spotify app.`);
     if (coverBlocked) notes.push("Note: the cover art was not added, because your Spotify sign-in does not include permission to upload images. Click Disconnect, then Connect again to allow it. Playlists you create after that will get the cover.");
     else if (coverUnloaded) notes.push("Note: the cover art could not be loaded, so the playlists have Spotify's default cover.");
     else if (coverFailed) notes.push(`Note: Spotify would not accept the cover art for ${plural(coverFailed, "playlist")}.`);
