@@ -5,6 +5,8 @@
 
 // Silence lengths the editor steps through, in seconds: 30 sec, 1 to 10 min by the minute, then 15, 20, 25 and 30 min, then 40, 50 and 60 min
 const SILENCE_STEPS = [30, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 900, 1200, 1500, 1800, 2400, 3000, 3600];
+// The default silence between segments, in seconds: none, then 30 sec, then 1 to 10 min by the minute
+const GAP_STEPS = [0, 30, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600];
 let ROW_SEQ = 0;
 
 // ---------------------------------------------------------------- reading Python-style literals
@@ -170,9 +172,44 @@ function normName(s) {
 }
 
 // ---------------------------------------------------------------- the text and the editor's list
-// A format here is { id, title, items: [...] }. An item is either
-//   { id, kind: "seg", lists: [{ name, weight }], minutes }  or  { id, kind: "silence", seconds }.
+// A format here is { id, title, gap, gaps, lead, items: [...] }.
+//   items   the segments: { id, kind: "seg", lists: [{ name, weight }], minutes }
+//   gap     the default silence between every two segments, in seconds (0 is none)
+//   gaps    one entry per place a silence can go: gaps[g] is the silence between segment g-1 and segment g, and
+//           gaps[items.length] is the silence after the last one (gaps[0] is not used).
+//           undefined: follows the default (between segments) or no silence (after the last one)
+//           0: no silence here, although the default says there should be one
+//           a number of seconds: a silence of its own
+//   lead    a silence before the first segment, kept only so formats that already have one keep playing the same
+//           (the editor does not show it)
 // The title is what people see; the playlists made from it are called "<title> 1", "<title> 2", and so on.
+
+// What is in gap g: its length, whether the editor draws a tag for it, and how it relates to the default.
+function gapInfo(f, g) {
+  const n = f.items.length;
+  const interior = g > 0 && g < n;
+  const hasDefault = interior && f.gap > 0;
+  if (g <= 0 || g > n) return { sec: 0, show: false, zero: false, custom: false, interior: false, hasDefault: false };
+  const raw = f.gaps[g];
+  if (raw === undefined) return { sec: interior ? f.gap : 0, show: hasDefault, zero: false, custom: false, interior, hasDefault };
+  if (raw === 0) return { sec: 0, show: hasDefault, zero: true, custom: true, interior, hasDefault };   // only worth showing where there is a default to override
+  return { sec: raw, show: true, zero: false, custom: true, interior, hasDefault };
+}
+
+function shortSeconds(sec) {
+  return sec < 60 ? `${sec}s` : `${+(sec / 60).toFixed(1)}m`;
+}
+
+function ensureGaps(f) {
+  const want = f.items.length + 1;
+  const gaps = Array.isArray(f.gaps) ? f.gaps.slice(0, want) : [];
+  while (gaps.length < want) gaps.push(undefined);
+  gaps[0] = undefined;
+  f.gaps = gaps;
+  if (typeof f.gap !== "number" || f.gap < 0) f.gap = 0;
+  if (typeof f.lead !== "number" || f.lead < 0) f.lead = 0;
+  return f;
+}
 
 function cleanTitle(title) {
   // Braces mean something to the engine, so only the two naming placeholders may stay.
@@ -198,15 +235,18 @@ function textToModel(text, allowEmpty) {
     if (!(fmt instanceof PyDict)) throw new Error(`The format "${key}" should look like { "name": ..., "segments": [...] }.`);
     const segments = fmt.get("segments");
     if (!Array.isArray(segments)) throw new Error(`The format "${key}" needs a segments list.`);
-    const defaultSilence = fmt.has("silence between segments") ? parseSilenceSeconds(fmt.get("silence between segments")) : 0;
+    const gap = fmt.has("silence between segments") ? parseSilenceSeconds(fmt.get("silence between segments")) : 0;
     const items = [];
+    const gaps = [undefined];
+    let lead = 0;
+    let pending = null;   // seconds of silence written since the last segment, or null when there was none
     segments.forEach((entry) => {
       if (!Array.isArray(entry) || entry.length !== 2) {
         throw new Error('Each entry in segments must be (source, minutes) or ("silence", "5 min").');
       }
       const [spec, amount] = entry;
       if (spec === "silence" && typeof amount === "string") {
-        items.push({ id: `r${++ROW_SEQ}`, kind: "silence", seconds: parseSilenceSeconds(amount) });
+        pending = (pending || 0) + parseSilenceSeconds(amount);
         return;
       }
       const minutes = Number(amount);
@@ -215,19 +255,16 @@ function textToModel(text, allowEmpty) {
       if (spec instanceof PyDict) lists = spec.pairs.map(([name, weight]) => ({ name: String(name), weight: Number(weight) || 1 }));
       else if (Array.isArray(spec)) lists = spec.map((name) => ({ name: String(name), weight: 1 }));
       else lists = [{ name: String(spec), weight: 1 }];
+      if (items.length === 0) lead = pending || 0;
+      else gaps[items.length] = pending === null ? undefined : pending;
+      pending = null;
       items.push({ id: `r${++ROW_SEQ}`, kind: "seg", lists, minutes });
     });
-    // The old "silence between segments" setting becomes real silence rows, so nothing is hidden.
-    if (defaultSilence > 0) {
-      for (let k = items.length - 1; k > 0; k -= 1) {
-        if (items[k].kind === "seg" && items[k - 1].kind === "seg") {
-          items.splice(k, 0, { id: `r${++ROW_SEQ}`, kind: "silence", seconds: defaultSilence });
-        }
-      }
-    }
+    if (!items.length) throw new Error(`The format "${key}" needs at least one segment with a playlist.`);
+    gaps[items.length] = pending && pending > 0 ? pending : undefined;
     const rawTitle = fmt.get("title");
     const title = typeof rawTitle === "string" ? rawTitle : titleFromName(fmt.get("name"), String(key));
-    return { id: String(key), title, items };
+    return ensureGaps({ id: String(key), title, gap, gaps, lead, items });
   });
   return { formats };
 }
@@ -237,21 +274,29 @@ function pyString(s) { return JSON.stringify(String(s)); }
 function modelToText(model) {
   const out = ["FORMATS = {"];
   for (const fmt of model.formats) {
+    ensureGaps(fmt);
+    const n = fmt.items.length;
     out.push(`    ${pyString(fmt.id)}: {`);
     out.push(`        "title": ${pyString(cleanTitle(fmt.title))},`);
     out.push(`        "name": ${pyString(nameFromTitle(fmt.title))},`);
-    out.push('        "silence between segments": "none",');
+    out.push(`        "silence between segments": ${fmt.gap > 0 ? pyString(formatSilenceText(fmt.gap)) : '"none"'},`);
     out.push('        "segments": [');
-    for (const item of fmt.items) {
-      if (item.kind === "silence") {
-        out.push(`            ("silence", ${pyString(formatSilenceText(item.seconds))}),`);
-      } else if (item.lists.length === 1) {
+    if (fmt.lead > 0) out.push(`            ("silence", ${pyString(formatSilenceText(fmt.lead))}),`);
+    fmt.items.forEach((item, index) => {
+      if (item.lists.length === 1) {
         out.push(`            (${pyString(item.lists[0].name)}, ${item.minutes}),`);
       } else {
         const pairs = item.lists.map((l) => `${pyString(l.name)}: ${l.weight}`).join(", ");
         out.push(`            ({${pairs}}, ${item.minutes}),`);
       }
-    }
+      const g = index + 1;
+      const raw = fmt.gaps[g];
+      if (g < n) {
+        if (raw !== undefined && !(raw === 0 && fmt.gap === 0)) out.push(`            ("silence", ${raw === 0 ? '"none"' : pyString(formatSilenceText(raw))}),`);
+      } else if (raw > 0) {
+        out.push(`            ("silence", ${pyString(formatSilenceText(raw))}),`);
+      }
+    });
     out.push("        ],");
     out.push("    },");
   }
@@ -267,12 +312,12 @@ function newFormatId(model) {
 }
 
 function newBlankFormat(model, title) {
-  return { id: newFormatId(model), title, items: [{ id: `r${++ROW_SEQ}`, kind: "seg", lists: [{ name: "", weight: 1 }], minutes: 30 }] };
+  return ensureGaps({ id: newFormatId(model), title, gap: 0, gaps: [], lead: 0, items: [{ id: `r${++ROW_SEQ}`, kind: "seg", lists: [{ name: "", weight: 1 }], minutes: 30 }] });
 }
 
 // The model for a first visit: one format with one segment waiting for a playlist.
 function defaultModel() {
-  return { formats: [{ id: "format-1", title: "Generated playlist", items: [{ id: `r${++ROW_SEQ}`, kind: "seg", lists: [{ name: "", weight: 1 }], minutes: 30 }] }] };
+  return { formats: [ensureGaps({ id: "format-1", title: "Generated playlist", gap: 0, gaps: [], lead: 0, items: [{ id: `r${++ROW_SEQ}`, kind: "seg", lists: [{ name: "", weight: 1 }], minutes: 30 }] })] };
 }
 
 // How much of a two-playlist mix is the first playlist, as a whole percent.

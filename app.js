@@ -14,7 +14,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-26d";                    // change this whenever the page is updated
+const APP_VERSION = "2026-10-26e";                    // change this whenever the page is updated
 const REPORT_FORM_URL = "https://tally.so/r/VppLZN"; // where problem reports go
 
 const DEFAULT_FORMATS = modelToText(defaultModel());   // one format with one segment waiting for a playlist

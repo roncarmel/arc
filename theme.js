@@ -13,6 +13,26 @@
 
 const THEMES = [
   { id: "pinks-and-grays", name: "Pinks and grays", accent: "#ff38b8", neutral: "#8a8a92" },
+  { id: "blues-and-slates", name: "Blues and slates", accent: "#3b9eff", neutral: "#7b8794" },
+  { id: "greens-and-sages", name: "Greens and sages", accent: "#3ecf8e", neutral: "#7d8a80" },
+  { id: "oranges-and-stones", name: "Oranges and stones", accent: "#ff8a3d", neutral: "#8f8680" },
+  { id: "purples-and-mauves", name: "Purples and mauves", accent: "#a78bfa", neutral: "#85829a" },
+  { id: "teals-and-grays", name: "Teals and grays", accent: "#19b9b2", neutral: "#7a8a8a" },
+  { id: "golds-and-taupes", name: "Golds and taupes", accent: "#f5b301", neutral: "#8c887a" },
+  { id: "reds-and-charcoals", name: "Reds and charcoals", accent: "#ef4444", neutral: "#86868a" },
+  { id: "corals-and-sands", name: "Corals and sands", accent: "#ff7b72", neutral: "#8f8780" },
+  { id: "mints-and-slates", name: "Mints and slates", accent: "#5eead4", neutral: "#7b8b88" },
+  { id: "indigos-and-steels", name: "Indigos and steels", accent: "#6366f1", neutral: "#7f8096" },
+  { id: "magentas-and-plums", name: "Magentas and plums", accent: "#d946ef", neutral: "#8a7f90" },
+  { id: "skies-and-steels", name: "Skies and steels", accent: "#38bdf8", neutral: "#7e8a96" },
+  { id: "limes-and-olives", name: "Limes and olives", accent: "#a3e635", neutral: "#858a78" },
+  { id: "coppers-and-browns", name: "Coppers and browns", accent: "#d97745", neutral: "#8d8078" },
+  { id: "violets-and-navies", name: "Violets and navies", accent: "#8b5cf6", neutral: "#78809c" },
+  { id: "aquas-and-blues", name: "Aquas and blues", accent: "#22d3ee", neutral: "#78909c" },
+  { id: "roses-and-mauves", name: "Roses and mauves", accent: "#f472b6", neutral: "#8a8088" },
+  { id: "ambers-and-umbers", name: "Ambers and umbers", accent: "#ffb020", neutral: "#8a8070" },
+  { id: "silvers-and-grays", name: "Silvers and grays", accent: "#c4c4d0", neutral: "#8a8a92" },
+  { id: "crimsons-and-wines", name: "Crimsons and wines", accent: "#dc2660", neutral: "#8a7f84" },
 ];
 
 // ---------------------------------------------------------------- color math
@@ -87,7 +107,13 @@ function themeVariables(accent, neutral, dark) {
     ? { bg: tone(0.087), card: tone(0.127), line: tone(0.205), fg: tone(0.955), muted: tone(0.62), cover: tone(0.24) }
     : { bg: tone(1), card: tone(0.965), line: tone(0.86), fg: tone(0.12), muted: tone(0.43), cover: tone(0.82) };
   const whiteText = contrastRatio(accent, "#ffffff") >= 3;
-  const deep = rgbToHex(hexToRgb(accent).map((v) => v * 0.66));
+  // a deeper shade of the accent, dark enough that either white or near-black text is readable on it
+  let deepRgb = hexToRgb(accent).map((v) => v * 0.66);
+  let deep = rgbToHex(deepRgb);
+  for (let i = 0; i < 12 && contrastRatio(deep, "#ffffff") < 4.5 && contrastRatio(deep, "#111111") < 4.5; i += 1) {
+    deepRgb = deepRgb.map((v) => v * 0.88);
+    deep = rgbToHex(deepRgb);
+  }
   return {
     "--bg": ramp.bg,
     "--card": ramp.card,
@@ -101,6 +127,9 @@ function themeVariables(accent, neutral, dark) {
     "--icon-filter": whiteText ? "none" : "invert(1)",   // the button icons are white drawings
     "--accent": readableAccent(accent, ramp.bg, dark),
     "--accent-deep": deep,
+    "--on-deep": contrastRatio(deep, "#ffffff") >= 4.5 ? "#ffffff" : "#111111",
+    "--tag": dark ? tone(0.27) : tone(0.8),
+    "--tag-off": dark ? tone(0.14) : tone(0.9),
     "--accent-tint": withAlpha(accent, 0.15),
     "--accent-tint-border": withAlpha(accent, 0.5),
     "--accent-wash": withAlpha(accent, 0.22),

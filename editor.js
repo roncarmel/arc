@@ -18,7 +18,8 @@ const editor = {
   internal: false,    // true while the editor itself is writing the text
   drag: null,
   search: "",
-  hover: null,        // the row or bar piece under the pointer
+  gapPanel: null,     // the silence (by its place, 1 to the number of segments) whose card is open
+  hover: null,        // the row, silence or bar piece under the pointer
   pinned: null,       // the row or bar piece last tapped, or the row whose menu or list is open
 };
 
@@ -34,6 +35,7 @@ const FE_ICONS = {
   copy: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a1 1 0 0 1 1-1h9"/></svg>',
   trash: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M9 7V5h6v2M7 7l1 12h8l1-12"/></svg>',
   sliders: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"/><circle cx="16" cy="8" r="2"/><circle cx="8" cy="16" r="2"/></svg>',
+  reset: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg>',
   warn: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17.5v.1"/></svg>',
 };
 
@@ -73,7 +75,7 @@ function applyHighlight() {
   const id = editor.hover || editor.pinned;
   const bar = $("feBar");
   if (bar) bar.classList.toggle("fe-hasHl", !!id);
-  document.querySelectorAll("#feBar .fe-piece, #feRows .fe-row").forEach((el) => {
+  document.querySelectorAll("#feBar .fe-piece, #feRows .fe-row, #feRows .fe-tag").forEach((el) => {
     el.classList.toggle("fe-hl", !!id && el.getAttribute("data-id") === id);
   });
 }
@@ -135,6 +137,7 @@ function syncEditorFromText() {
     editor.activeId = editor.model.formats.length ? editor.model.formats[0].id : null;
   }
   editor.panel = null;
+  editor.gapPanel = null;
   editor.cardMenu = false;
   renderEditor();
 }
@@ -143,16 +146,17 @@ function initEditor() {
   $("formats").addEventListener("input", () => { if (!editor.internal) syncEditorFromText(); });
   // tapping anywhere else, or pressing Escape, closes an open menu or list
   document.addEventListener("click", (event) => {
-    if (!editor.panel && !editor.cardMenu) return;
+    if (!editor.panel && !editor.cardMenu && editor.gapPanel === null) return;
     if (event.target.closest && event.target.closest(".fe-pop, .fe-trigger")) return;
     closePanels();
   }, true);
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && (editor.panel || editor.cardMenu)) closePanels(); });
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && (editor.panel || editor.cardMenu || editor.gapPanel !== null)) closePanels(); });
   syncEditorFromText();
 }
 
 function closePanels() {
   editor.panel = null;
+  editor.gapPanel = null;
   editor.pinned = null;
   editor.cardMenu = false;
   renderHead();
@@ -179,6 +183,7 @@ function renderEditor() {
   root.innerHTML = "";
   editor.hover = null;
   editor.pinned = null;
+  editor.gapPanel = null;
   if (editor.broken) { root.appendChild(brokenView()); return; }
   root.appendChild(feEl("div", { class: "fe-tabs", id: "feTabs" }));
   renderTabs();
@@ -217,7 +222,7 @@ function renderTabs() {
   for (const f of editor.model.formats) {
     tabs.appendChild(feEl("button", {
       type: "button", class: "fe-tab", "aria-pressed": String(f.id === editor.activeId), "data-id": f.id,
-      onClick: () => { editor.activeId = f.id; editor.panel = null; editor.cardMenu = false; renderEditor(); },
+      onClick: () => { editor.activeId = f.id; editor.panel = null; editor.gapPanel = null; editor.cardMenu = false; renderEditor(); },
     }, f.title.trim() || "Untitled"));
   }
   tabs.appendChild(feEl("button", { type: "button", class: "fe-newformat", id: "feNewFormat", onClick: addFormat }, feIcon("plus"), "New format"));
@@ -254,9 +259,23 @@ function renderHead(rebuildInput) {
   if (slot) {
     slot.innerHTML = "";
     if (editor.cardMenu) {
-      slot.appendChild(feEl("div", { class: "fe-pop fe-cardmenu", id: "feCardMenu" },
-        feEl("button", { type: "button", class: "fe-item", id: "feDuplicate", onClick: duplicateFormat }, feIcon("copy"), "Duplicate format"),
-        feEl("button", { type: "button", class: "fe-item fe-danger", id: "feDelete", onClick: askDeleteFormat }, feIcon("trash"), "Delete format")));
+      const pop = feEl("div", { class: "fe-pop fe-cardmenu", id: "feCardMenu" });
+      pop.appendChild(feEl("div", { class: "fe-poplabel", text: "Silence between segments" }));
+      pop.appendChild(feEl("div", { class: "fe-gapsetting" }, stepperBox({
+        shorterId: "feGapShorter", longerId: "feGapLonger", valueId: "feGapValue", inline: true, width: 62,
+        text: f.gap ? describeSeconds(f.gap) : "None", shorterLabel: "Shorter silence between segments", longerLabel: "Longer silence between segments",
+        onShorter: () => { const lower = GAP_STEPS.filter((s) => s < f.gap); f.gap = lower.length ? lower[lower.length - 1] : 0; afterGapChange(); },
+        onLonger: () => { const higher = GAP_STEPS.filter((s) => s > f.gap); f.gap = higher.length ? higher[0] : GAP_STEPS[GAP_STEPS.length - 1]; afterGapChange(); },
+      })));
+      const own = ownSilenceCount(f);
+      if (own) {
+        pop.appendChild(feEl("div", { class: "fe-gapnote", id: "feGapNote", text: own === 1 ? "1 silence was changed individually, so it keeps its own setting." : `${own} silences were changed individually, so they keep their own settings.` }));
+        pop.appendChild(feEl("button", { type: "button", class: "fe-item", id: "feGapResetAll", onClick: resetAllGaps }, feIcon("reset"), "Reset all to default"));
+      }
+      pop.appendChild(feEl("div", { class: "fe-rule" }));
+      pop.appendChild(feEl("button", { type: "button", class: "fe-item", id: "feDuplicate", onClick: duplicateFormat }, feIcon("copy"), "Duplicate format"));
+      pop.appendChild(feEl("button", { type: "button", class: "fe-item fe-danger", id: "feDelete", onClick: askDeleteFormat }, feIcon("trash"), "Delete format"));
+      slot.appendChild(pop);
     }
   }
 }
@@ -276,21 +295,26 @@ function renderTimeline() {
   const caption = $("feCaption");
   if (!f || !bar) return;
   bar.innerHTML = "";
-  for (const item of f.items) {
-    const silence = item.kind === "silence";
-    const mixed = !silence && item.lists.length > 1;
-    const label = silence ? `Silence, ${describeSeconds(item.seconds)}` : `${item.lists.map((l) => l.name || "No playlist yet").join(" + ")}, ${Math.round(item.minutes * 10) / 10} min`;
-    const piece = feEl("button", {
-      type: "button", class: "fe-piece" + (silence ? " fe-piece-silence" : ""), "data-id": item.id, "aria-label": label,
-      style: silence ? `flex:${Math.max(item.seconds / 60, 0.7)} 1 0` : `flex:${item.minutes} 1 0;` + (mixed ? `background-image:${feStripes(mixPercentA(item) / 100, 16)}` : ""),
-    });
-    piece.addEventListener("mouseenter", () => { editor.hover = item.id; applyHighlight(); });
+  const addPiece = (key, label, style, silence) => {
+    const piece = feEl("button", { type: "button", class: "fe-piece" + (silence ? " fe-piece-silence" : ""), "data-id": key, "aria-label": label, style });
+    piece.addEventListener("mouseenter", () => { editor.hover = key; applyHighlight(); });
     piece.addEventListener("mouseleave", () => { editor.hover = null; applyHighlight(); });
-    piece.addEventListener("click", () => { editor.pinned = editor.pinned === item.id ? null : item.id; applyHighlight(); });
+    piece.addEventListener("click", () => { editor.pinned = editor.pinned === key ? null : key; applyHighlight(); });
     bar.appendChild(piece);
-  }
-  const music = f.items.filter((i) => i.kind === "seg").reduce((n, i) => n + i.minutes, 0);
-  const quiet = f.items.filter((i) => i.kind === "silence").reduce((n, i) => n + i.seconds, 0);
+  };
+  let quiet = 0;
+  if (f.lead > 0) { addPiece("lead", `Silence before the first segment, ${describeSeconds(f.lead)}`, `flex:${Math.max(f.lead / 60, 0.7)} 1 0`, true); quiet += f.lead; }
+  f.items.forEach((item, index) => {
+    const mixed = item.lists.length > 1;
+    addPiece(item.id, `${item.lists.map((l) => l.name || "No playlist yet").join(" + ")}, ${Math.round(item.minutes * 10) / 10} min`,
+      `flex:${item.minutes} 1 0;` + (mixed ? `background-image:${feStripes(mixPercentA(item) / 100, 16)}` : ""), false);
+    const info = gapInfo(f, index + 1);
+    if (info.show && !info.zero) {
+      addPiece(`gap${index + 1}`, `Silence, ${describeSeconds(info.sec)}`, `flex:${Math.max(info.sec / 60, 0.5)} 1 0`, true);
+      quiet += info.sec;
+    }
+  });
+  const music = f.items.reduce((n, i) => n + i.minutes, 0);
   caption.textContent = `${Math.round(music * 10) / 10} min of music` + (quiet ? ` + ${describeSeconds(quiet)} of silence` : "");
   applyHighlight();
 }
@@ -300,24 +324,23 @@ function renderRows(settle) {
   const holder = $("feRows");
   if (!f || !holder) return;
   holder.innerHTML = "";
-  let clock = 0;
-  f.items.forEach((item, index) => {
-    holder.appendChild(rowEl(f, item, index, clock));
-    clock += item.kind === "seg" ? item.minutes : item.seconds / 60;
-  });
+  f.items.forEach((item, index) => holder.appendChild(rowEl(f, item, index)));
   holder.appendChild(feEl("button", { type: "button", class: "fe-add", id: "feAddSegment", onClick: addSegment }, feIcon("plus"), "New segment"));
+  const card = $("feCard");
+  if (card) card.classList.toggle("fe-hastags", f.items.some((x, index) => gapInfo(f, index + 1).show));
   if (settle) applySettle(holder, settle);
   applyHighlight();
 }
 
-function rowEl(f, item, index, startsAt) {
-  const seg = item.kind === "seg";
-  const mixed = seg && item.lists.length > 1;
+function rowEl(f, item, index) {
+  const mixed = item.lists.length > 1;
   const open = editor.panel && editor.panel.id === item.id ? editor.panel.mode : null;
-  const wrap = feEl("div", { class: "fe-row" + (open ? " fe-open" : ""), "data-id": item.id, "data-index": String(index) });
+  const g = index + 1;
+  const tag = gapInfo(f, g);
+  const wrap = feEl("div", { class: "fe-row" + (open || (tag.show && editor.gapPanel === g) ? " fe-open" : ""), "data-id": item.id, "data-index": String(index) });
   wrap.addEventListener("mouseenter", () => { editor.hover = item.id; applyHighlight(); });
   wrap.addEventListener("mouseleave", () => { editor.hover = null; applyHighlight(); });
-  const card = feEl("div", { class: "fe-rowcard" + (seg ? "" : " fe-rowcard-silence") });
+  const card = feEl("div", { class: "fe-rowcard" });
 
   const grip = feEl("button", { type: "button", class: "fe-grip", "aria-label": "Drag to reorder" }, feIcon("grip"));
   grip.addEventListener("pointerdown", (event) => startDrag(event, grip, item.id, index));
@@ -326,18 +349,14 @@ function rowEl(f, item, index, startsAt) {
   grip.addEventListener("pointercancel", endDrag);
   card.appendChild(grip);
 
-  // the playlist (or silence) button
+  // the playlist button
   let cover;
   let title;
   let sub;
   let warn = false;
-  if (!seg) {
-    cover = feEl("span", { class: "fe-cover fe-cover-silence" }, feIcon("mute"));
-    title = "Silence";
-    sub = `starts at ${describeClock(startsAt)}`;
-  } else if (mixed) {
+  if (mixed) {
     cover = feEl("span", { class: "fe-cover", style: `background-image:${feStripes(mixPercentA(item) / 100, 12)}` });
-    title = item.lists.map((l) => l.name || "…").join(" + ");
+    title = item.lists.map((l) => l.name || "\u2026").join(" + ");
     sub = item.lists.length === 2 ? `${mixPercentA(item)}% / ${100 - mixPercentA(item)}% mix` : `${item.lists.length}-playlist mix`;
   } else {
     const name = item.lists[0].name;
@@ -347,7 +366,7 @@ function rowEl(f, item, index, startsAt) {
     warn = !!name && !playlistInfo(name) && playlists.length > 0;
   }
   const main = feEl("button", {
-    type: "button", class: "fe-main fe-trigger" + (seg && !item.lists[0].name && !mixed ? " fe-main-empty" : ""),
+    type: "button", class: "fe-main fe-trigger" + (!item.lists[0].name && !mixed ? " fe-main-empty" : ""),
     "aria-expanded": String(open === "list-a" || open === "mix"), "aria-label": `Playlist: ${title}`,
     onClick: () => setPanel(item.id, open ? null : (mixed ? "mix" : "list-a")),
   }, cover,
@@ -356,11 +375,10 @@ function rowEl(f, item, index, startsAt) {
   card.appendChild(main);
 
   // the length
-  const unit = seg ? "min" : "";
-  const amount = seg ? `${Math.round(item.minutes * 10) / 10} min` : describeSeconds(item.seconds);
+  const minutes = Math.round(item.minutes * 10) / 10;
   card.appendChild(feEl("div", { class: "fe-stepper" },
     feEl("button", { type: "button", class: "fe-step fe-dec", "aria-label": "Shorter", onClick: () => stepItem(item, -1) }, feIcon("minus")),
-    feEl("span", { class: "fe-amount", text: amount, "data-unit": unit }),
+    feEl("span", { class: "fe-amount", text: `${minutes} min`, "data-short": `${minutes}m` }),
     feEl("button", { type: "button", class: "fe-step fe-inc", "aria-label": "Longer", onClick: () => stepItem(item, 1) }, feIcon("plus"))));
 
   card.appendChild(feEl("button", {
@@ -369,15 +387,104 @@ function rowEl(f, item, index, startsAt) {
   }, feIcon("dots")));
   wrap.appendChild(card);
 
-  if (open === "menu") wrap.appendChild(menuPanel(f, item));
+  if (tag.show) {
+    wrap.appendChild(tagEl(f, g));
+    if (editor.gapPanel === g) wrap.appendChild(tagPanel(f, g));
+  }
+  if (open === "menu") wrap.appendChild(menuPanel(f, item, index));
   if (open === "mix") wrap.appendChild(mixPanel(item, cover));
   if (open === "list-a" || open === "list-b") wrap.appendChild(listPanel(item, open === "list-b" ? 1 : 0));
   return wrap;
 }
 
+// ---------------------------------------------------------------- silences
+// A silence is a small bookmark-shaped tag hanging off the right side of the rows, its point aimed at the gap it belongs to.
+function tagEl(f, g) {
+  const info = gapInfo(f, g);
+  const key = `gap${g}`;
+  const kind = info.zero ? "zero" : info.custom ? "custom" : "default";
+  const where = info.interior ? "Silence between these segments" : "Silence after the last segment";
+  const open = editor.gapPanel === g;
+  const button = feEl("button", {
+    type: "button", class: `fe-tag fe-trigger fe-tag-${kind}`, "data-id": key, "aria-expanded": String(open),
+    "aria-label": `${where}: ${info.zero ? "none" : describeSeconds(info.sec)}. Tap to change.`,
+    onClick: () => { editor.gapPanel = open ? null : g; editor.panel = null; editor.cardMenu = false; editor.pinned = null; editor.search = ""; renderHead(); renderRows(); },
+  }, feIcon("mute"), feEl("span", { class: "fe-tag-text", text: shortSeconds(info.sec) }));
+  button.addEventListener("mouseenter", () => { editor.hover = key; applyHighlight(); });
+  button.addEventListener("mouseleave", () => { editor.hover = null; applyHighlight(); });
+  return button;
+}
+
+function stepperBox({ text, onShorter, onLonger, shorterLabel, longerLabel, shorterId, longerId, valueId, inline, width }) {
+  return feEl("div", { class: "fe-stepper" + (inline ? " fe-stepper-inline" : "") },
+    feEl("button", { type: "button", class: "fe-step", id: shorterId, "aria-label": shorterLabel, onClick: onShorter }, feIcon("minus")),
+    feEl("span", { class: "fe-amount", id: valueId, text, style: `min-width:${width}px` }),
+    feEl("button", { type: "button", class: "fe-step", id: longerId, "aria-label": longerLabel, onClick: onLonger }, feIcon("plus")));
+}
+
+function tagPanel(f, g) {
+  const info = gapInfo(f, g);
+  // landing back on the default length means following the default again
+  const keep = (sec) => setGap(g, info.hasDefault && sec === f.gap ? undefined : sec);
+  const lower = SILENCE_STEPS.filter((s) => s < info.sec);
+  const higher = SILENCE_STEPS.filter((s) => s > info.sec);
+  const shorter = () => {
+    if (info.zero) return;
+    if (lower.length) keep(lower[lower.length - 1]);
+    else if (info.hasDefault) setGap(g, 0);   // below the shortest length is none
+  };
+  const longer = () => (info.zero ? keep(SILENCE_STEPS[0]) : keep(higher.length ? higher[0] : SILENCE_STEPS[SILENCE_STEPS.length - 1]));
+  // beside the length: Reset where there is a default to go back to, Remove where there is not, and a quiet "(default)" while it matches
+  const slot = feEl("div", { class: "fe-tagslot" + (info.hasDefault ? " fe-tagslot-default" : "") });
+  if (info.hasDefault && info.custom) {
+    slot.appendChild(feEl("button", { type: "button", class: "fe-linkbutton", id: "feTagReset", "aria-label": `Reset to the default, ${describeSeconds(f.gap)}`, onClick: () => { editor.gapPanel = null; setGap(g, undefined); } }, feIcon("reset"), "Reset"));
+  } else if (info.hasDefault) {
+    slot.appendChild(feEl("span", { class: "fe-tagdefault", id: "feTagDefault", text: "(default)" }));
+  } else {
+    slot.appendChild(feEl("button", { type: "button", class: "fe-linkbutton", id: "feTagRemove", "aria-label": "Remove this silence", onClick: () => { editor.gapPanel = null; setGap(g, undefined); } }, feIcon("trash"), "Remove"));
+  }
+  return feEl("div", { class: "fe-pop fe-tagpanel", id: "feTagPanel" },
+    feEl("div", { class: "fe-tagtitle", text: "Silence for\u2026" }),
+    feEl("div", { class: "fe-tagrow" },
+      stepperBox({ shorterId: "feTagShorter", longerId: "feTagLonger", valueId: "feTagDuration", inline: true, width: 54,
+        text: info.zero ? "None" : describeSeconds(info.sec), shorterLabel: "Shorter silence", longerLabel: "Longer silence", onShorter: shorter, onLonger: longer }),
+      slot));
+}
+
+function setGap(g, value) {
+  const f = activeFormat();
+  if (!f) return;
+  ensureGaps(f);
+  f.gaps[g] = value;
+  afterGapChange();
+}
+
+function afterGapChange() {
+  commit();
+  renderHead();
+  renderRows();
+  renderTimeline();
+}
+
+function ownSilenceCount(f) {
+  // silences between segments that have a setting of their own
+  let count = 0;
+  for (let g = 1; g < f.items.length; g += 1) { const info = gapInfo(f, g); if (info.custom && info.show) count += 1; }
+  return count;
+}
+
+function resetAllGaps() {
+  const f = activeFormat();
+  if (!f) return;
+  for (let g = 1; g < f.items.length; g += 1) f.gaps[g] = undefined;
+  editor.cardMenu = false;
+  afterGapChange();
+}
+
 // ---------------------------------------------------------------- panels
 function setPanel(id, mode) {
   editor.panel = mode ? { id, mode } : null;
+  editor.gapPanel = null;
   editor.pinned = mode ? id : null;
   editor.cardMenu = false;
   editor.search = "";
@@ -386,33 +493,49 @@ function setPanel(id, mode) {
   if (mode === "list-a" || mode === "list-b") focusSearchBox();
 }
 
-function menuPanel(f, item) {
-  const seg = item.kind === "seg";
-  const mixed = seg && item.lists.length > 1;
+function menuPanel(f, item, index) {
+  const mixed = item.lists.length > 1;
   const pop = feEl("div", { class: "fe-pop fe-menu" });
-  if (seg) {
-    if (!mixed) {
-      pop.appendChild(feEl("button", {
-        type: "button", class: "fe-item", id: "feAddMix",
-        onClick: () => {
-          const used = item.lists[0].name;
-          const other = readablePlaylists().find((p) => normName(p.name) !== normName(used));
-          item.lists = [{ name: used, weight: 50 }, { name: other ? other.name : "", weight: 50 }];
-          editor.panel = { id: item.id, mode: "mix" };
-          commit(); renderRows(); renderTimeline();
-        },
-      }, feIcon("plus"), "Add a mix"));
-    } else {
-      pop.appendChild(feEl("button", { type: "button", class: "fe-item", id: "feEditMix", onClick: () => setPanel(item.id, "mix") }, feIcon("sliders"), "Edit mix"));
-      pop.appendChild(feEl("button", { type: "button", class: "fe-item", id: "feRemoveMix", onClick: () => removeMix(item) }, feIcon("minus"), "Remove mix"));
-    }
-    pop.appendChild(feEl("div", { class: "fe-rule" }));
+  if (!mixed) {
+    pop.appendChild(feEl("button", {
+      type: "button", class: "fe-item", id: "feAddMix",
+      onClick: () => {
+        const used = item.lists[0].name;
+        const other = readablePlaylists().find((p) => normName(p.name) !== normName(used));
+        item.lists = [{ name: used, weight: 50 }, { name: other ? other.name : "", weight: 50 }];
+        editor.panel = { id: item.id, mode: "mix" };
+        commit(); renderRows(); renderTimeline();
+      },
+    }, feIcon("plus"), "Add a mix"));
+  } else {
+    pop.appendChild(feEl("button", { type: "button", class: "fe-item", id: "feEditMix", onClick: () => setPanel(item.id, "mix") }, feIcon("sliders"), "Edit mix"));
+    pop.appendChild(feEl("button", { type: "button", class: "fe-item", id: "feRemoveMix", onClick: () => removeMix(item) }, feIcon("minus"), "Remove mix"));
   }
+  // a silence can be added after this segment wherever there is none yet
+  if (!gapInfo(f, index + 1).show) {
+    pop.appendChild(feEl("button", {
+      type: "button", class: "fe-item", id: "feAddSilence",
+      onClick: () => { ensureGaps(f); f.gaps[index + 1] = 30; editor.panel = null; editor.pinned = null; afterGapChange(); },
+    }, feIcon("mute"), "Add silence after"));
+  }
+  pop.appendChild(feEl("div", { class: "fe-rule" }));
   pop.appendChild(feEl("button", {
     type: "button", class: "fe-item fe-danger", id: "feRemoveRow",
-    onClick: () => { f.items = f.items.filter((x) => x.id !== item.id); editor.panel = null; commit(); renderRows(); renderTimeline(); },
-  }, feIcon("trash"), seg ? "Remove segment" : "Remove silence"));
+    onClick: () => { removeSegment(f, index); },
+  }, feIcon("trash"), "Remove segment"));
   return pop;
+}
+
+function removeSegment(f, index) {
+  ensureGaps(f);
+  const last = f.items.length === 1;
+  f.items.splice(index, 1);
+  f.gaps.splice(index, 1);   // the silence before the removed segment goes with it
+  if (last) { f.items.push({ id: `r${++ROW_SEQ}`, kind: "seg", lists: [{ name: "", weight: 1 }], minutes: 30 }); }
+  ensureGaps(f);
+  editor.panel = null;
+  editor.gapPanel = null;
+  commit(); renderRows(); renderTimeline();
 }
 
 function removeMix(item) {
@@ -458,25 +581,16 @@ function mixPanel(item, rowCover) {
 }
 
 function listPanel(item, slot) {
-  const seg = item.kind === "seg";
-  const mixed = seg && item.lists.length > 1;
-  const current = seg ? normName(item.lists[slot] ? item.lists[slot].name : "") : "";
+  const mixed = item.lists.length > 1;
+  const current = normName(item.lists[slot] ? item.lists[slot].name : "");
   const other = mixed ? normName(item.lists[slot === 0 ? 1 : 0].name) : "";
   const list = feEl("div", { class: "fe-options", id: "feOptions" });
   const search = feEl("input", { type: "search", class: "fe-search", id: "feSearch", placeholder: "Search your playlists", "aria-label": "Search your playlists", autocomplete: "off" });
   search.value = editor.search;
 
   const choose = (name) => {
-    if (name === null) {                                   // silence
-      replaceRow(item, { id: item.id, kind: "silence", seconds: 120 });
-      editor.panel = null;
-    } else if (!seg) {                                     // a silence row becomes a playlist
-      replaceRow(item, { id: item.id, kind: "seg", lists: [{ name, weight: 1 }], minutes: 20 });
-      editor.panel = null;
-    } else {
-      item.lists[slot].name = name;
-      editor.panel = mixed ? { id: item.id, mode: "mix" } : null;
-    }
+    item.lists[slot].name = name;
+    editor.panel = mixed ? { id: item.id, mode: "mix" } : null;
     editor.search = "";
     commit(); renderRows(); renderTimeline();
   };
@@ -484,11 +598,6 @@ function listPanel(item, slot) {
   const draw = () => {
     list.innerHTML = "";
     const query = normName(search.value);
-    if (!mixed && (!query || "silence".includes(query))) {
-      list.appendChild(feEl("button", { type: "button", class: "fe-option" + (!seg ? " fe-option-on" : ""), id: "feOptionSilence", onClick: () => choose(null) },
-        feEl("span", { class: "fe-cover fe-cover-silence", style: "width:32px;height:32px" }, feIcon("mute")),
-        feEl("span", { class: "fe-text" }, feEl("span", { class: "fe-title", text: "Silence" }), feEl("span", { class: "fe-sub", text: "No music" }))));
-    }
     let shown = 0;
     for (const p of readablePlaylists()) {
       if (query && !normName(p.name).includes(query)) continue;
@@ -508,20 +617,9 @@ function listPanel(item, slot) {
   return feEl("div", { class: "fe-pop fe-listpanel" }, search, list);
 }
 
-function replaceRow(item, replacement) {
-  const f = activeFormat();
-  f.items = f.items.map((x) => (x.id === item.id ? replacement : x));
-}
-
 // ---------------------------------------------------------------- changing things
 function stepItem(item, direction) {
-  if (item.kind === "seg") {
-    item.minutes = direction < 0 ? Math.max(1, item.minutes - 5) : Math.min(600, item.minutes + 5);
-  } else {
-    const steps = SILENCE_STEPS;
-    if (direction < 0) { const lower = steps.filter((s) => s < item.seconds); item.seconds = lower.length ? lower[lower.length - 1] : steps[0]; }
-    else { const higher = steps.filter((s) => s > item.seconds); item.seconds = higher.length ? higher[0] : steps[steps.length - 1]; }
-  }
+  item.minutes = direction < 0 ? Math.max(1, item.minutes - 5) : Math.min(600, item.minutes + 5);
   commit();
   renderRows();
   renderTimeline();
@@ -530,9 +628,12 @@ function stepItem(item, direction) {
 function addSegment() {
   const f = activeFormat();
   if (!f) return;
+  ensureGaps(f);
   const item = { id: `r${++ROW_SEQ}`, kind: "seg", lists: [{ name: "", weight: 1 }], minutes: 20 };
   f.items.push(item);
+  f.gaps.push(undefined);
   editor.panel = { id: item.id, mode: "list-a" };
+  editor.gapPanel = null;
   editor.search = "";
   commit();
   renderRows();
@@ -548,6 +649,7 @@ function addFormat() {
   editor.model.formats.push(fresh);
   editor.activeId = fresh.id;
   editor.panel = null;
+  editor.gapPanel = null;
   editor.cardMenu = false;
   commit();
   renderEditor();
@@ -556,7 +658,7 @@ function addFormat() {
 function duplicateFormat() {
   const f = activeFormat();
   if (!f) return;
-  const copy = { id: newFormatId(editor.model), title: f.title + " copy", items: f.items.map((i) => ({ ...JSON.parse(JSON.stringify(i)), id: `r${++ROW_SEQ}` })) };
+  const copy = ensureGaps({ id: newFormatId(editor.model), title: f.title + " copy", gap: f.gap, gaps: f.gaps.slice(), lead: f.lead, items: f.items.map((i) => ({ ...JSON.parse(JSON.stringify(i)), id: `r${++ROW_SEQ}` })) });
   editor.model.formats.push(copy);
   editor.activeId = copy.id;
   editor.cardMenu = false;
@@ -567,6 +669,7 @@ function duplicateFormat() {
 function toggleCardMenu() {
   editor.cardMenu = !editor.cardMenu;
   editor.panel = null;
+  editor.gapPanel = null;
   renderHead();
   renderRows();
 }
@@ -600,8 +703,9 @@ function askDeleteFormat() {
 // ---------------------------------------------------------------- dragging rows
 function startDrag(event, grip, id, index) {
   if (event.button !== undefined && event.button > 0) return;
-  if (editor.panel || editor.cardMenu) {
+  if (editor.panel || editor.cardMenu || editor.gapPanel !== null) {
     editor.panel = null;
+    editor.gapPanel = null;
     editor.cardMenu = false;
     renderHead();
     renderRows();
@@ -613,6 +717,7 @@ function startDrag(event, grip, id, index) {
   if (grip.setPointerCapture) { try { grip.setPointerCapture(event.pointerId); } catch (err) { /* not every browser needs it */ } }
   editor.drag = { id, from: index, to: index, startY: event.clientY, dy: 0, step, rows, count: rows.length };
   rows[index].classList.add("fe-dragging");
+  $("feRows").classList.add("fe-dragging-any");   // the silence tags step aside while a row is being moved
 }
 
 function moveDrag(event) {
@@ -637,6 +742,8 @@ function endDrag() {
   if (!d) return;
   editor.drag = null;
   const f = activeFormat();
+  const holder = $("feRows");
+  if (holder) holder.classList.remove("fe-dragging-any");
   if (d.to === d.from || !f) {
     d.rows.forEach((row) => { row.style.transform = ""; row.classList.remove("fe-dragging"); });
     return;
@@ -671,7 +778,7 @@ function blankSegmentReport(keys) {
   const model = textToModel($("formats").value, true);
   for (const f of model.formats) {
     if (keys && !keys.includes(f.id)) continue;
-    const blanks = f.items.filter((i) => i.kind === "seg" && i.lists.some((l) => !l.name.trim())).length;
+    const blanks = f.items.filter((i) => i.lists.some((l) => !l.name.trim())).length;
     if (blanks) report.push({ title: f.title.trim() || "Untitled", count: blanks });
   }
   return report;

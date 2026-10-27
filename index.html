@@ -5,8 +5,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="favicon-16.png" type="image/png" sizes="16x16">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
   [hidden] { display: none !important; }
@@ -14,7 +15,7 @@
   @media (prefers-color-scheme: dark) { :root { --bg: #161618; --fg: #f2f2f4; --muted: #9a9aa2; --line: #333338; --card: #202024; --accent: #ff38b8; --button: #ff38b8; } }
   body { margin: 0; background: var(--bg); color: var(--muted); font: 16px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   main { max-width: 720px; margin: 0 auto; padding: 24px 16px 150px; }
-  h1 { font-size: clamp(1.9rem, 6vw, 2.5rem); line-height: 1.15; margin: 0 0 6px; color: var(--button); }
+  h1 { font-size: clamp(1.9rem, 6vw, 2.5rem); line-height: 1.15; margin: 0 0 6px; color: var(--accent); }
   .tagline { margin: 0 0 14px; }
   details.about { margin: 0 0 8px; }
   #setupDetails > summary { cursor: pointer; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
@@ -93,7 +94,7 @@
   @media (max-width: 520px) { #supportBox { right: 8px; bottom: 8px; } }
 
   /* the format editor */
-  :root { --warn: #b45309; --danger: #d11f2e; --cover: #3a3a42; --on-button: #fff; --accent-deep: #a8217c; --accent-tint: rgba(255, 56, 184, 0.15); --accent-tint-border: rgba(255, 56, 184, 0.5); --accent-wash: rgba(255, 56, 184, 0.22); --silence-line: #8a8a92; --icon-filter: none; }
+  :root { --warn: #b45309; --danger: #d11f2e; --cover: #3a3a42; --on-button: #fff; --accent-deep: #a8217c; --accent-tint: rgba(255, 56, 184, 0.15); --accent-tint-border: rgba(255, 56, 184, 0.5); --accent-wash: rgba(255, 56, 184, 0.22); --silence-line: #8a8a92; --icon-filter: none; --on-deep: #fff; --tag: #43434d; --tag-off: #26262b; }
   @media (prefers-color-scheme: dark) { :root { --warn: #f2b45a; --danger: #ff7a85; } }
   #formatEditor { margin: 8px 0 12px; }
   #formatEditor .fe-tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
@@ -123,7 +124,6 @@
   #formatEditor .fe-row.fe-dragging { z-index: 10; transition: none; }
   #formatEditor .fe-still { transition: none !important; }
   #formatEditor .fe-rowcard { display: flex; align-items: center; gap: 6px; box-sizing: border-box; height: 56px; padding: 0 4px 0 0; background: var(--accent-tint, rgba(255, 56, 184, 0.15)); border: 1px solid var(--accent-tint-border, rgba(255, 56, 184, 0.5)); border-radius: 16px; }
-  #formatEditor .fe-rowcard-silence { background: var(--bg); border-color: var(--line); }
   #formatEditor .fe-row.fe-hl .fe-rowcard { box-shadow: 0 0 0 2px var(--fg); }
   #formatEditor .fe-row.fe-dragging .fe-rowcard { box-shadow: 0 0 0 2px var(--button), 0 16px 32px rgba(0, 0, 0, 0.45); }
   #formatEditor .fe-grip { touch-action: none; cursor: grab; width: 26px; height: 44px; flex: none; padding: 0; background: none; border: none; color: var(--muted); justify-content: center; }
@@ -131,7 +131,6 @@
   #formatEditor .fe-main > .fe-icon { flex: none; color: var(--muted); }
   #formatEditor .fe-cover { width: 34px; height: 34px; border-radius: 9px; flex: none; background: var(--cover); color: var(--muted); display: flex; align-items: center; justify-content: center; overflow: hidden; }
   #formatEditor .fe-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  #formatEditor .fe-cover-silence { background: #000; border: 2px solid var(--silence-line, #8a8a92); box-sizing: border-box; color: var(--muted); }
   #formatEditor .fe-text { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; line-height: 1.15; text-align: left; }
   #formatEditor .fe-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #formatEditor .fe-main-empty .fe-title { color: var(--muted); font-weight: 500; }
@@ -145,7 +144,9 @@
   #formatEditor .fe-pop { position: absolute; z-index: 30; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35); padding: 4px; box-sizing: border-box; }
   #formatEditor .fe-menu { right: 0; top: 60px; width: 270px; max-width: 100%; }
   #formatEditor .fe-mixpanel, #formatEditor .fe-listpanel { left: 24px; right: 0; top: 60px; }
-  #formatEditor .fe-cardmenu { right: 0; top: 48px; width: 230px; }
+  #formatEditor .fe-cardmenu { right: 0; top: 48px; width: 232px; }
+  #formatEditor .fe-gapsetting { padding: 2px 6px 8px 8px; }
+  #formatEditor .fe-gapnote { padding: 0 10px 8px; font-size: 0.78rem; color: var(--muted); line-height: 1.3; }
   #formatEditor .fe-poplabel { padding: 6px 10px 0; font-size: 0.76rem; font-weight: 600; color: var(--muted); }
   #formatEditor .fe-rule { height: 1px; background: var(--line); margin: 2px 6px; }
   #formatEditor .fe-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 12px; border: none; border-radius: 12px; background: transparent; color: var(--fg); text-align: left; box-sizing: border-box; }
@@ -165,6 +166,37 @@
   #formatEditor .fe-option { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 4px 10px 4px 6px; border: none; border-radius: 12px; background: transparent; color: var(--fg); text-align: left; font-weight: 400; box-sizing: border-box; }
   #formatEditor .fe-option-on { background: var(--accent-wash, rgba(255, 56, 184, 0.22)); }
   #formatEditor .fe-option:disabled { opacity: 0.45; }
+  /* silences: bookmark-shaped tags hanging off the right side of the rows, pointed at their gap */
+  #formatEditor .fe-tag { position: absolute; left: calc(100% - 5px); top: 47px; z-index: 6; height: 24px; width: 36px; display: flex; align-items: center; justify-content: center; gap: 3px; padding: 0 5px 0 9px; box-sizing: border-box; border: none; border-radius: 0 999px 999px 0; clip-path: polygon(0 50%, 11px 0, 100% 0, 100% 100%, 11px 100%); font-size: 0.64rem; font-weight: 700; line-height: 1; white-space: nowrap; background: var(--tag, #43434d); color: var(--fg); }
+  #formatEditor .fe-tag .fe-icon { display: none; }
+  #formatEditor .fe-tag .fe-icon svg { width: 12px; height: 12px; }
+  #formatEditor .fe-tag-custom { background: var(--accent-deep); color: var(--on-deep, #fff); }
+  #formatEditor .fe-tag-zero { background: var(--tag-off, #26262b); color: var(--muted); }
+  #formatEditor .fe-tag.fe-hl { background: var(--fg); color: var(--bg); }
+  #formatEditor .fe-rows.fe-dragging-any .fe-tag { display: none; }
+  #formatEditor .fe-tagpanel { right: 0; top: 73px; width: max-content; min-width: 150px; max-width: calc(100% - 6px); }
+  #formatEditor .fe-tagtitle { padding: 8px 10px; font-weight: 600; }
+  #formatEditor .fe-tagrow { display: flex; align-items: center; gap: 4px; padding: 0 6px 4px 8px; }
+  #formatEditor .fe-tagslot { min-width: 84px; display: flex; align-items: center; }
+  #formatEditor .fe-tagslot-default { min-width: 74px; }
+  #formatEditor .fe-linkbutton { min-height: 44px; padding: 0 6px 0 4px; background: none; border: none; color: var(--accent); font-weight: 600; gap: 5px; }
+  #formatEditor .fe-tagdefault { padding: 0 6px 0 4px; color: var(--muted); font-size: 0.9rem; }
+  #formatEditor .fe-stepper-inline .fe-step { width: 36px; }
+  @media (max-width: 859px) { #formatEditor .fe-card.fe-hastags { margin-right: 8px; } }
+  @media (min-width: 860px) {
+    #formatEditor .fe-tag { width: 58px; padding: 0 7px 0 11px; font-size: 0.68rem; }
+    #formatEditor .fe-tag .fe-icon { display: inline-flex; }
+  }
+  /* on a phone the rows give the playlist name as much room as they can */
+  @media (max-width: 599px) {
+    #formatEditor .fe-card { padding: 8px; }
+    #formatEditor .fe-rowcard { gap: 4px; }
+    #formatEditor .fe-grip { width: 22px; }
+    #formatEditor .fe-step { width: 30px; }
+    #formatEditor .fe-stepper:not(.fe-stepper-inline) .fe-amount { font-size: 0; min-width: 30px; }
+    #formatEditor .fe-stepper:not(.fe-stepper-inline) .fe-amount::before { content: attr(data-short); font-size: 0.95rem; }
+    #formatEditor .fe-more { width: 32px; }
+  }
   .fe-overlay { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 100; background: rgba(0, 0, 0, 0.65); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
   .fe-dialog { width: 100%; max-width: 360px; box-sizing: border-box; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 20px; padding: 18px; box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5); }
   .fe-dialog h3 { margin: 0 0 8px; font-size: 1.1rem; line-height: 1.25; }
@@ -192,7 +224,7 @@
 </head>
 <body>
 <main>
-  <h1 class="brand"><img class="app-icon" src="favicon.svg" alt="" width="44" height="44"><span>Ceremony Playlist Builder</span></h1>
+  <h1 class="brand"><img class="app-icon" src="app-icon.png" alt="" width="44" height="44"><span>Ceremony Playlist Builder</span></h1>
   <p class="tagline">Turn your Spotify playlists into structured playlists for ceremonies, retreats, and other long events.</p>
 
   <details id="about" class="about card">
@@ -307,10 +339,10 @@
     <p>Each row is one stretch of music. Tap the playlist to choose it, and use the minus and plus buttons to set how many minutes it fills. Drag the dotted handle to change the order. Each segment typically lands within about 30 seconds of its target. Point at a row, or tap a piece of the bar at the top, to see which belongs to which. Add another with <span class="ui">New segment</span>.</p>
 
     <h3>Silence</h3>
-    <p>Choose <span class="ui">Silence</span> at the top of a row's playlist list to turn that row into quiet time. Silence can go between segments, or before or after the music, and it adds time on top of your segment minutes. It can be used for effect, or simply as a marker that tells a facilitator the music has moved into a new segment.</p>
+    <p>The small tags hanging off the right side of the rows are silences. A silence adds time on top of your segment minutes, and can be used for effect or simply to tell a facilitator the music has moved into a new segment. To put the same silence between every two segments, open the format's three dots and set <span class="ui">Silence between segments</span>. Tap a tag to change that one silence. A tag with its own length is a deeper color, and <span class="ui">Reset</span> returns it to the default. To add a silence where there is none, use a segment's three dots.</p>
 
     <h3>Mixes</h3>
-    <p>To blend two playlists in one segment, tap the three dots on that row and choose <span class="ui">Add a mix</span>. Pick the second playlist, then use the slider to set how much of each. In the bar at the top, a mixed segment shows as diagonal stripes in two shades of pink.</p>
+    <p>To blend two playlists in one segment, tap the three dots on that row and choose <span class="ui">Add a mix</span>. Pick the second playlist, then use the slider to set how much of each. In the bar at the top, a mixed segment shows as diagonal stripes in two shades of the accent color.</p>
 
     <h3>Names</h3>
     <p>The name of a format is also the name of the playlists it makes: a format called "Warm focus" makes "Warm focus 1", "Warm focus 2", and so on. Give every format a different name. When you create playlists again, this app treats playlists that match a format's name as its own and offers to replace them.</p>
