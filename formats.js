@@ -3,10 +3,10 @@
 // The text is the same Python-style text the engine reads (engine.py). The editor never asks people to
 // type it; it only keeps it up to date. Nothing in this file touches the page.
 
-// Silence lengths the editor steps through, in seconds: 30 sec, 1 to 10 min by the minute, then 15, 20, 25 and 30 min, then 40, 50 and 60 min
-const SILENCE_STEPS = [30, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 900, 1200, 1500, 1800, 2400, 3000, 3600];
-// The default silence between segments, in seconds: none, then 30 sec, then 1 to 10 min by the minute
-const GAP_STEPS = [0, 30, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600];
+// Silence lengths the editor steps through, in seconds: 30 sec, 1 to 10 min by the minute, then every 5 min up to 60 min
+const SILENCE_STEPS = [30, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 900, 1200, 1500, 1800, 2100, 2400, 2700, 3000, 3300, 3600];
+// The default silence between segments, in seconds: none, then the same lengths as any other silence
+const GAP_STEPS = [0].concat(SILENCE_STEPS);
 let ROW_SEQ = 0;
 
 // ---------------------------------------------------------------- reading Python-style literals
