@@ -95,7 +95,8 @@
   @media (max-width: 599px) {
     #supportBox { left: 0; right: 0; bottom: 0; max-width: none; flex-direction: row-reverse; align-items: center; justify-content: space-between; gap: 12px; padding: 40px 12px calc(10px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, var(--bg) 0%, var(--bg) 55%, transparent 100%); pointer-events: none; }
     #supportBox > * { pointer-events: auto; }
-    #supportCaption { flex: 1 1 auto; padding: 0; background: none; text-align: left; text-wrap: pretty; }
+    #supportButton { flex: none; white-space: nowrap; }
+    #supportCaption { flex: 1 1 0; min-width: 0; padding: 0; background: none; text-align: left; text-wrap: pretty; }
   }
 
   /* the format editor */
@@ -176,7 +177,11 @@
   #formatEditor .fe-tag .fe-icon { display: none; }
   #formatEditor .fe-tag .fe-icon svg { width: 12px; height: 12px; }
   #formatEditor .fe-tag-custom { background: var(--accent-deep); color: var(--on-deep, #fff); }
-  #formatEditor .fe-tag-zero { background: var(--tag-off, #26262b); color: var(--muted); }
+  /* a silence set to none: a dark tag with an outline in the default tags' color, drawn as a slightly smaller dark copy of the shape on top of a default-colored one */
+  #formatEditor .fe-tag-zero { background: var(--tag, #43434d); color: var(--muted); }
+  #formatEditor .fe-tag-zero::before { content: ""; position: absolute; inset: 1.5px; border-radius: 0 999px 999px 0; clip-path: polygon(0 50%, 10px 0, 100% 0, 100% 100%, 10px 100%); background: var(--tag-off, #26262b); }
+  #formatEditor .fe-tag-zero > * { position: relative; }
+  #formatEditor .fe-tag-zero.fe-hl::before { background: var(--fg); }
   #formatEditor .fe-tag.fe-hl { background: var(--fg); color: var(--bg); }
   #formatEditor .fe-rows.fe-dragging-any .fe-tag { display: none; }
   #formatEditor .fe-tagpanel { right: 0; top: 73px; width: max-content; min-width: 150px; max-width: calc(100% - 6px); }
