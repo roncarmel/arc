@@ -7,14 +7,15 @@ const SCOPES = [
   "playlist-read-private", "playlist-read-collaborative",   // read your playlists
   "playlist-modify-private", "playlist-modify-public",      // create playlists
   "user-library-modify",                                    // Spotify's generic endpoint for removing playlists
+  "ugc-image-upload",                                       // the cover art on the playlists it creates
 ].join(" ");
-const REQUIRED_SCOPES = ["playlist-modify-private", "playlist-modify-public"];
+const REQUIRED_SCOPES = ["playlist-modify-private", "playlist-modify-public"];   // cover art is optional, so an older sign-in without it keeps working
 const API = "https://api.spotify.com/v1";
 const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tightened some limits in 2026)
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-26g";
+const APP_VERSION = "2026-10-26h";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -529,15 +530,15 @@ function disconnect() {
 }
 
 // ---------------------------------------------------------------- talking to Spotify
-async function spotifyRequest(method, path, { params, json } = {}) {
+async function spotifyRequest(method, path, { params, json, body, contentType } = {}) {
   let url = path.startsWith("http") ? path : API + path;
   if (params) url += (url.includes("?") ? "&" : "?") + new URLSearchParams(params).toString();
   const what = `${method} ${path.split("?")[0]}`;
   for (let attempt = 0; attempt < 5; attempt++) {
     const response = await fetch(url, {
       method,
-      headers: { Authorization: "Bearer " + token, ...(json ? { "Content-Type": "application/json" } : {}) },
-      body: json ? JSON.stringify(json) : undefined,
+      headers: { Authorization: "Bearer " + token, ...(json ? { "Content-Type": "application/json" } : (contentType ? { "Content-Type": contentType } : {})) },
+      body: json ? JSON.stringify(json) : body,
     });
     if (response.status === 429) {
       await new Promise((r) => setTimeout(r, (Number(response.headers.get("Retry-After")) || 2) * 1000 + 500));
@@ -555,6 +556,26 @@ async function spotifyRequest(method, path, { params, json } = {}) {
 }
 
 const spotify = (path) => spotifyRequest("GET", path);
+
+function hasScope(name) {
+  // Whether this sign-in was approved for a permission (the app asks for cover art as an extra, so older sign-ins may lack it).
+  try {
+    const saved = JSON.parse(sessionStorage.getItem("token") || "null");
+    return !!saved && String(saved.scope || "").split(/\s+/).includes(name);
+  } catch (err) { return false; }
+}
+
+let coverImage = null;   // the app's icon as a JPEG in base64, which is how Spotify takes cover art
+async function loadCover() {
+  if (coverImage) return coverImage;
+  const response = await fetch("playlist-cover.jpg");
+  if (!response.ok) throw new Error("The cover image could not be loaded.");
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  coverImage = btoa(binary);
+  return coverImage;
+}
 
 async function pagedItems(path) {
   const items = [];
@@ -887,6 +908,13 @@ async function createFromPlan(plan) {
   let created = 0;
   const createdIds = [];
   const stillPublic = [];
+  let cover = null;
+  let coverBlocked = !hasScope("ugc-image-upload");   // this sign-in was not approved for uploading images
+  let coverUnloaded = false;
+  let coverFailed = 0;
+  if (!coverBlocked) {
+    try { cover = await loadCover(); } catch (err) { coverUnloaded = true; logStep("create: cover image not loaded"); }
+  }
   try {
     if (existing.length) {
       setActionMessage(`Removing ${plural(existing.length, "earlier playlist")}...`);
@@ -903,12 +931,25 @@ async function createFromPlan(plan) {
       for (let i = 0; i < p.uris.length; i += ADD_CHUNK) {
         await spotifyRequest("POST", `/playlists/${made.id}/items`, { json: { uris: p.uris.slice(i, i + ADD_CHUNK) } });
       }
+      if (cover && !coverBlocked) {   // the app's icon as the cover; a problem here never stops the playlists
+        try { await spotifyRequest("PUT", `/playlists/${made.id}/images`, { body: cover, contentType: "image/jpeg" }); }
+        catch (err) {
+          coverFailed += 1;
+          logStep("create: cover not accepted");
+          if (/did not allow|sign-in expired/.test(err.message)) coverBlocked = true;   // no point asking again
+        }
+      }
       created += 1;
       addResult(p.name, made.external_urls && made.external_urls.spotify, `${p.songs} songs, ${p.minutes} min`);
     }
     logStep(`create finished (${plural(created, "playlist")})`);
     invalidatePlan(true);
-    const doneText = `Done. Created ${plural(created, "playlist")} in your Spotify account.` + (stillPublic.length ? `\n\nNote: Spotify kept ${plural(stillPublic.length, "playlist")} public and would not let this app change that. You can make ${stillPublic.length === 1 ? "it" : "them"} private in Spotify.` : "");
+    const notes = [];
+    if (stillPublic.length) notes.push(`Note: Spotify kept ${plural(stillPublic.length, "playlist")} public and would not let this app change that. You can make ${stillPublic.length === 1 ? "it" : "them"} private in Spotify.`);
+    if (coverBlocked) notes.push("Note: the cover art was not added, because your Spotify sign-in does not include permission to upload images. Click Disconnect, then Connect again to allow it. Playlists you create after that will get the cover.");
+    else if (coverUnloaded) notes.push("Note: the cover art could not be loaded, so the playlists have Spotify's default cover.");
+    else if (coverFailed) notes.push(`Note: Spotify would not accept the cover art for ${plural(coverFailed, "playlist")}.`);
+    const doneText = `Done. Created ${plural(created, "playlist")} in your Spotify account.` + (notes.length ? "\n\n" + notes.join("\n\n") : "");
     setActionMessage(doneText);
     addSupportPrompt();
     await loadMyPlaylists();
