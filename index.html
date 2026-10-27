@@ -286,13 +286,19 @@
   #formatEditor .fe-pop.fe-up { top: auto; bottom: calc(100% + 4px); }
   #formatEditor .fe-tagpanel.fe-up { top: auto; bottom: calc(100% - 39px); }
   /* the donation panel: Ko-fi's own page in a frame, above the button, so nothing of Ko-fi's code runs in this page */
-  #kofiPanel { position: fixed; right: 16px; width: 328px; max-width: calc(100vw - 32px); z-index: 1002; display: flex; flex-direction: column; background: #fff; color: #444; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 36px rgba(0, 0, 0, 0.3); }
+  #kofiDim { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 1002; background: rgba(0, 0, 0, 0.65); }
+  #kofiPanel { position: fixed; right: 16px; bottom: 16px; width: 328px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); z-index: 1003; display: flex; flex-direction: column; background: #fff; color: #444; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 36px rgba(0, 0, 0, 0.3); }
   #kofiPanel .kofi-bar { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px 6px 14px; font-size: 0.85rem; }
   #kofiPanel .kofi-bar a { color: #444; }
   #kofiPanel .kofi-bar button { background: none; border: none; color: #444; font-size: 1.4rem; line-height: 1; padding: 0 6px; min-height: 36px; font-weight: normal; }
   #kofiFrameHolder { flex: 1; display: flex; flex-direction: column; min-height: 0; }
   #kofiFrameHolder iframe { flex: 1; width: 100%; border: none; background: #fff; }
-  @media (max-width: 520px) { #kofiPanel { right: 8px; max-width: calc(100vw - 16px); } }
+  @media (max-width: 520px) { #kofiPanel { right: 8px; bottom: 8px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); } }
+  /* the popups and the dimming behind them fade in and out, quickly and evenly (a quarter of a second) */
+  .app-overlay, #kofiDim, #kofiPanel { opacity: 1; transition: opacity 0.25s linear, display 0.25s linear allow-discrete; }
+  .app-overlay[hidden], #kofiDim[hidden], #kofiPanel[hidden] { opacity: 0; pointer-events: none; }
+  @starting-style { .app-overlay, #kofiDim, #kofiPanel { opacity: 0; } }
+  #createClose { background: transparent; color: var(--fg); border-color: var(--line); }
 </style>
 </head>
 <body>
@@ -454,6 +460,7 @@
       <div id="results"></div>
       <div id="createCloseRow" class="row dialog-actions" hidden>
         <button id="createClose" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Close</span></button>
+        <button id="createDonate" class="primary" type="button"><img src="cup-border.png" alt="" width="22" height="18"><span class="btn-label">Donate</span></button>
       </div>
     </div>
   </div>
@@ -472,6 +479,7 @@
     <a id="supportButton" href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer" title="Donate on Ko-fi" aria-haspopup="dialog" aria-expanded="false"><img src="cup-border.png" alt="" width="22" height="18"><span>Donate</span></a>
     <p id="supportCaption">This app is freely available to everyone. Donating is an optional gift if you want to say thanks.</p>
   </div>
+  <div id="kofiDim" hidden></div>
   <div id="kofiPanel" role="dialog" aria-label="Donate on Ko-fi" hidden>
     <div class="kofi-bar"><a href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer">ko-fi.com/roncarmel</a><button id="kofiClose" type="button" aria-label="Close">&times;</button></div>
     <div id="kofiFrameHolder"></div>

@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-26j";
+const APP_VERSION = "2026-10-26k";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1080,6 +1080,8 @@ async function removeEarlier() {
 }
 
 // ---------------------------------------------------------------- start up
+let openDonatePanel = () => {};   // set once the page is ready; the Create popup's Donate button uses it
+
 function initDonatePanel() {
   // The Donate button opens Ko-fi's page in a frame above it, instead of leaving this page. Only a frame is used, so none of
   // Ko-fi's code runs here, and the frame is created only when someone first opens the panel. The link to Ko-fi in a new
@@ -1089,14 +1091,14 @@ function initDonatePanel() {
   const button = $("supportButton");
   const box = $("supportBox");
   const panel = $("kofiPanel");
+  const dim = $("kofiDim");
   if (!button || !panel) return;
   const handle = new URL(button.href).pathname.replace(/^\//, "");
   const frameUrl = `https://ko-fi.com/${handle}/?hidefeed=true&widget=true&embed=true`;
   let frame = null;
   const place = () => {
-    const top = box.getBoundingClientRect().top;
-    panel.style.height = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, Math.round(top - 60))) + "px";
-    panel.style.bottom = Math.max(8, window.innerHeight - top + 8) + "px";
+    // It sits in the corner, over the button and its note, and takes as much of the height as Ko-fi's page needs.
+    panel.style.height = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, window.innerHeight - 32)) + "px";
   };
   const open = () => {
     place();
@@ -1106,21 +1108,27 @@ function initDonatePanel() {
       frame.title = "Donate on Ko-fi";
       $("kofiFrameHolder").appendChild(frame);
     }
+    dim.hidden = false;
     panel.hidden = false;
     button.setAttribute("aria-expanded", "true");
+    $("kofiClose").focus();
     logStep("donate panel opened");
   };
   const close = () => {
+    if (panel.hidden) return;
+    dim.hidden = true;
     panel.hidden = true;
     button.setAttribute("aria-expanded", "false");
+    button.focus();
   };
+  openDonatePanel = () => { if (panel.hidden) open(); };
   button.addEventListener("click", (event) => {
     event.preventDefault();
     if (panel.hidden) open(); else close();
   });
   $("kofiClose").addEventListener("click", close);
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !panel.hidden) close(); });
-  document.addEventListener("click", (event) => { if (!panel.hidden && !panel.contains(event.target) && !button.contains(event.target)) close(); });
+  document.addEventListener("click", (event) => { if (!panel.hidden && !panel.contains(event.target) && !button.contains(event.target) && !(event.target.closest && event.target.closest("#createDonate"))) close(); });   // the Create popup's Donate button opens it, so that click must not close it again
   window.addEventListener("resize", () => { if (!panel.hidden) place(); });
 }
 
@@ -1259,6 +1267,7 @@ async function main() {
   $("disconnect").addEventListener("click", disconnect);
   $("create").addEventListener("click", startCreate);
   $("createClose").addEventListener("click", closeCreateDialog);
+  $("createDonate").addEventListener("click", () => { closeCreateDialog(); openDonatePanel(); });
   $("createOverlay").addEventListener("click", (event) => { if (event.target === $("createOverlay")) dismissCreateDialog(); });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !$("createOverlay").hidden) dismissCreateDialog(); });
   trackTipHeight();
