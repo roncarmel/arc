@@ -262,7 +262,7 @@ function renderHead(rebuildInput) {
       const pop = feEl("div", { class: "fe-pop fe-cardmenu", id: "feCardMenu" });
       pop.appendChild(feEl("div", { class: "fe-poplabel", text: "Silence between segments" }));
       pop.appendChild(feEl("div", { class: "fe-gapsetting" }, stepperBox({
-        shorterId: "feGapShorter", longerId: "feGapLonger", valueId: "feGapValue", inline: true, width: 62,
+        shorterId: "feGapShorter", longerId: "feGapLonger", valueId: "feGapValue", inline: true, width: 46,
         text: f.gap ? describeSeconds(f.gap) : "None", shorterLabel: "Shorter silence between segments", longerLabel: "Longer silence between segments",
         onShorter: () => { const lower = GAP_STEPS.filter((s) => s < f.gap); f.gap = lower.length ? lower[lower.length - 1] : 0; afterGapChange(); },
         onLonger: () => { const higher = GAP_STEPS.filter((s) => s > f.gap); f.gap = higher.length ? higher[0] : GAP_STEPS[GAP_STEPS.length - 1]; afterGapChange(); },
