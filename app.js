@@ -14,7 +14,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-26f";
+const APP_VERSION = "2026-10-26g";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -411,7 +411,6 @@ function setBusy(flag) {
 
 // ---------------------------------------------------------------- confirmation panels
 // Create asks under the Create button (askToCreate). Remove asks inside the Remove section, at the bottom of it.
-const REMOVE_CONFIRM = { box: "removeConfirmBox", text: "removeConfirmText", list: "removeConfirmList", yes: "removeConfirmYes", no: "removeConfirmNo" };
 
 function fillConfirmList(listId, textId, text, list) {
   $(textId).textContent = text;
@@ -431,26 +430,6 @@ function fillConfirmList(listId, textId, text, list) {
   ul.hidden = list.length === 0;
 }
 
-function confirmAction({ message, items = [], moreMessage = "", moreItems = [], yes, no = "Cancel" }, ui) {
-  return new Promise((resolve) => {
-    const fill = fillConfirmList;
-    fill(ui.list, ui.text, message, items);
-    if (ui.moreList) fill(ui.moreList, ui.moreText, moreMessage, moreItems);
-    setLabel($(ui.yes), yes);
-    setLabel($(ui.no), no);
-    const box = $(ui.box);
-    box.hidden = false;
-    if (box.scrollIntoView) box.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    const finish = (answer) => {
-      box.hidden = true;
-      $(ui.yes).onclick = null;
-      $(ui.no).onclick = null;
-      resolve(answer);
-    };
-    $(ui.yes).onclick = () => finish(true);
-    $(ui.no).onclick = () => finish(false);
-  });
-}
 
 // ---------------------------------------------------------------- Spotify sign-in (PKCE, no server)
 async function startLogin() {
@@ -775,16 +754,17 @@ async function gatherInputs() {
   return { formatsText, keys: plans.map((p) => p.key), failed, failedNotes, tracks };
 }
 
-async function planSelected(startedWith) {
+async function planSelected(startedWith, includeOthers = false) {
   // Works out the playlists for the chosen formats. Returns the plan, or null after saying why there isn't one.
   const inputs = await gatherInputs();
   if (!inputs) return null;
   // Earlier playlists with names this plan would use: the ones this app made get replaced, the others are left alone and their names skipped.
   const matching = JSON.parse(py.existingMatches(inputs.formatsText, JSON.stringify(inputs.keys), JSON.stringify(playlists), me.id));
   const madeByApp = new Set(playlists.filter((p) => p.madeByApp).map((p) => p.id));
-  const ours = matching.filter((p) => madeByApp.has(p.id));
+  const marked = matching.filter((p) => madeByApp.has(p.id));
   const others = matching.filter((p) => !madeByApp.has(p.id));
-  const reserved = JSON.stringify(others.map((p) => p.name));
+  const ours = includeOthers ? matching : marked;   // what gets removed first
+  const reserved = JSON.stringify(includeOthers ? [] : others.map((p) => p.name));
   setOutput("Planning...");
   const built = [];
   const parts = [];
@@ -814,27 +794,28 @@ async function planSelected(startedWith) {
     return null;
   }
   setOutput("");
-  return { formatsText: inputs.formatsText, keys: inputs.keys, built, total, ours, others, text: parts.join("\n\n") + "\n\nNothing has been created yet.", problems };
+  return { formatsText: inputs.formatsText, keys: inputs.keys, built, total, ours, marked, others, includeOthers, text: parts.join("\n\n") + "\n\nNothing has been created yet.", problems };
 }
 
 function askToCreate(plan) {
-  // Shows what the plan found and waits: "create", "cancel", "redraw", or "stale" if something was edited meanwhile.
+  // Shows what the plan found and waits: "create", "cancel", "include"/"exclude" (the switch for playlists the app did not mark), or "stale" if something was edited meanwhile.
   return new Promise((resolve) => {
-    const lines = plan.built.map((b) => {
-      const minutes = b.playlists.map((p) => p.minutes);
-      const average = Math.round(minutes.reduce((n, m) => n + m, 0) / minutes.length);
-      return `${formatLabel(b.key)}: ${plural(b.playlists.length, "playlist")}, about ${average} min each`;
-    });
-    const notes = [...plan.built.filter((b) => b.stopped).map((b) => `${formatLabel(b.key)}: ${b.stopped}`), ...plan.problems].map((n) => "Note: " + n);
-    fillConfirmList("confirmList", "confirmText", `Ready to create ${plural(plan.total, "playlist")}.`, lines.concat(notes));
-    const existing = plan.ours;
-    const replacing = existing.length > 0;
+    // A plan with nothing to warn about is one sentence. Playlists that would be replaced or left alone, and formats that could not be planned, get lines of their own.
+    const problems = plan.problems.map((n) => "Note: " + n);
+    fillConfirmList("confirmList", "confirmText", `Ready to create ${plural(plan.total, "playlist")}.`, problems);
+    const replacing = plan.ours.length > 0;
+    const many = plan.others.length !== 1;
     fillConfirmList("confirmMoreList", "confirmMoreText",
-      replacing ? `Replace ${plural(existing.length, "earlier playlist")} made by this app? These match the names this plan uses, and will be removed from your library first:` : "",
-      replacing ? existing.map((p) => p.name) : []);
+      plan.marked.length ? `Replace ${plural(plan.marked.length, "earlier playlist")} made by this app? These match the names this plan uses, and will be removed from your library first:` : "",
+      plan.marked.map((p) => p.name));
     fillConfirmList("confirmKeepList", "confirmKeepText",
-      plan.others.length ? `${plural(plan.others.length, "playlist")} with matching names ${plan.others.length === 1 ? "was" : "were"} not made by this app, so ${plan.others.length === 1 ? "it" : "they"} will not be touched, and the new playlists skip ${plan.others.length === 1 ? "that name" : "those names"}:` : "",
+      !plan.others.length ? ""
+        : plan.includeOthers ? `${plural(plan.others.length, "playlist")} with matching names ${many ? "were" : "was"} not made by this app, and will be removed too because you chose to replace ${many ? "them" : "it"}:`
+        : `${plural(plan.others.length, "playlist")} with matching names ${many ? "were" : "was"} not made by this app, so ${many ? "they" : "it"} will not be touched, and the new playlists skip ${many ? "those names" : "that name"}:`,
       plan.others.map((p) => p.name));
+    $("confirmKeepToggleRow").hidden = plan.others.length === 0;
+    $("confirmKeepToggle").checked = plan.includeOthers;
+    $("confirmKeepToggleLabel").textContent = `Replace ${many ? "them" : "it"} too`;
     setLabel($("confirmYes"), replacing ? `Remove them and create ${plural(plan.total, "playlist")}` : `Create ${plural(plan.total, "playlist")}`);
     setLabel($("confirmNo"), "Cancel");
     $("planText").textContent = plan.text;
@@ -847,13 +828,14 @@ function askToCreate(plan) {
       openQuestion = null;
       box.hidden = true;
       $("planText").textContent = "";
-      for (const id of ["confirmYes", "confirmNo", "redraw", "planToggle"]) $(id).onclick = null;
+      for (const id of ["confirmYes", "confirmNo", "planToggle"]) $(id).onclick = null;
+      $("confirmKeepToggle").onchange = null;
       resolve(answer);
     };
     openQuestion = finish;
     $("confirmYes").onclick = () => finish("create");
     $("confirmNo").onclick = () => finish("cancel");
-    $("redraw").onclick = () => finish("redraw");
+    $("confirmKeepToggle").onchange = () => finish($("confirmKeepToggle").checked ? "include" : "exclude");
     $("planToggle").onclick = () => {
       $("planText").hidden = !$("planText").hidden;
       $("planToggle").textContent = $("planText").hidden ? "See the full plan" : "Hide the full plan";
@@ -871,7 +853,9 @@ async function startCreate() {
   invalidatePlan(false);
   const startedWith = planSignature();
   try {
-    let plan = await planSelected(startedWith);
+    await loadMyPlaylists();   // what is in Spotify now, including anything changed there since this page loaded
+    let includeOthers = false;
+    let plan = await planSelected(startedWith, includeOthers);
     while (plan) {
       const answer = await askToCreate(plan);
       if (answer === "stale") return;
@@ -879,9 +863,10 @@ async function startCreate() {
         setActionMessage("Cancelled. Nothing was changed.");
         return;
       }
-      if (answer === "redraw") {
-        logStep("plan: drawing again");
-        plan = await planSelected(startedWith);
+      if (answer === "include" || answer === "exclude") {
+        includeOthers = answer === "include";
+        logStep(`plan: ${includeOthers ? "replacing" : "keeping"} playlists the app did not mark`);
+        plan = await planSelected(startedWith, includeOthers);
         continue;
       }
       await createFromPlan(plan);
@@ -901,6 +886,7 @@ async function createFromPlan(plan) {
   logStep(`create started (${plural(planned.length, "playlist")})`);
   let created = 0;
   const createdIds = [];
+  const stillPublic = [];
   try {
     if (existing.length) {
       setActionMessage(`Removing ${plural(existing.length, "earlier playlist")}...`);
@@ -908,18 +894,21 @@ async function createFromPlan(plan) {
     }
     for (const p of planned) {
       setActionMessage(`Creating ${created + 1} of ${planned.length}: ${p.name}`);
-      const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: `${APP_MARKER} from the format "${p.label}".` } });
+      const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: `${APP_MARKER} from the format "${p.label}". Please leave this description as it is: the app uses it to recognize the playlists it made.` } });
       createdIds.push(made.id);
+      if (made.public !== false) {   // asked for private; make sure, since the playlist is meant to be for you alone
+        try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); }
+        catch (err) { stillPublic.push(p.name); logStep("create: could not make a playlist private"); }
+      }
       for (let i = 0; i < p.uris.length; i += ADD_CHUNK) {
         await spotifyRequest("POST", `/playlists/${made.id}/items`, { json: { uris: p.uris.slice(i, i + ADD_CHUNK) } });
       }
       created += 1;
       addResult(p.name, made.external_urls && made.external_urls.spotify, `${p.songs} songs, ${p.minutes} min`);
     }
-    const notes = plan.built.filter((b) => b.stopped).map((b) => `${formatLabel(b.key)}: ${b.stopped}`);
     logStep(`create finished (${plural(created, "playlist")})`);
     invalidatePlan(true);
-    const doneText = `Done. Created ${plural(created, "playlist")} in your Spotify account.` + (notes.length ? "\n\n" + notes.join("\n") : "");
+    const doneText = `Done. Created ${plural(created, "playlist")} in your Spotify account.` + (stillPublic.length ? `\n\nNote: Spotify kept ${plural(stillPublic.length, "playlist")} public and would not let this app change that. You can make ${stillPublic.length === 1 ? "it" : "them"} private in Spotify.` : "");
     setActionMessage(doneText);
     addSupportPrompt();
     await loadMyPlaylists();
@@ -938,6 +927,44 @@ async function createFromPlan(plan) {
   }
 }
 
+function askToRemove(marked, others, label) {
+  // Resolves with the playlists to remove, or null when cancelled.
+  return new Promise((resolve) => {
+    const box = $("removeConfirmBox");
+    let include = false;
+    const many = others.length !== 1;
+    const draw = () => {
+      const total = marked.length + (include ? others.length : 0);
+      fillConfirmList("removeConfirmList", "removeConfirmText",
+        marked.length ? `Remove ${plural(marked.length, "playlist")} made by this app from your library? They match the naming pattern of ${label}.` : `No playlists made by this app match the naming pattern of ${label}.`,
+        marked.map((p) => p.name));
+      fillConfirmList("removeConfirmMoreList", "removeConfirmMoreText",
+        !others.length ? ""
+          : include ? `${plural(others.length, "playlist")} with matching names ${many ? "were" : "was"} not made by this app, and will be removed too because you chose to remove ${many ? "them" : "it"}:`
+          : `${plural(others.length, "playlist")} with matching names ${many ? "were" : "was"} not made by this app (older ones, or ones whose description was changed), so ${many ? "they" : "it"} will not be touched:`,
+        others.map((p) => p.name));
+      $("removeToggleRow").hidden = others.length === 0;
+      $("removeToggle").checked = include;
+      $("removeToggleLabel").textContent = `Remove ${many ? "them" : "it"} too`;
+      setLabel($("removeConfirmYes"), total ? `Remove ${plural(total, "playlist")}` : "Nothing to remove");
+      $("removeConfirmYes").disabled = total === 0;
+      setLabel($("removeConfirmNo"), "Cancel");
+    };
+    const finish = (value) => {
+      box.hidden = true;
+      $("removeConfirmYes").onclick = null;
+      $("removeConfirmNo").onclick = null;
+      $("removeToggle").onchange = null;
+      resolve(value);
+    };
+    draw();
+    box.hidden = false;
+    $("removeConfirmYes").onclick = () => finish(include ? marked.concat(others) : marked);
+    $("removeConfirmNo").onclick = () => finish(null);
+    $("removeToggle").onchange = () => { include = $("removeToggle").checked; draw(); };
+  });
+}
+
 async function removeEarlier() {
   // Everything about removing, including the question and the result, stays inside the Remove section.
   setBusy(true);
@@ -945,6 +972,7 @@ async function removeEarlier() {
   clearReportHints("removeReportHint");
   logStep("remove started");
   try {
+    await loadMyPlaylists();   // what is in Spotify now, including anything changed there since this page loaded
     const formatsText = $("formats").value;
     const keys = removeKeys();
     const existing = JSON.parse(py.existingMatches(formatsText, JSON.stringify(keys), JSON.stringify(playlists), me.id));
@@ -952,19 +980,16 @@ async function removeEarlier() {
       setRemoveMessage("No playlists matching these formats' names were found.");
       return;
     }
-    const go = await confirmAction({
-      message: `Remove ${plural(existing.length, "playlist")} from your library? They match the naming pattern of ${keys.map(formatLabel).join(", ")}.`,
-      items: existing.map((p) => p.name),
-      yes: `Remove ${plural(existing.length, "playlist")}`,
-    }, REMOVE_CONFIRM);
-    if (!go) {
+    const madeByApp = new Set(playlists.filter((p) => p.madeByApp).map((p) => p.id));
+    const chosen = await askToRemove(existing.filter((p) => madeByApp.has(p.id)), existing.filter((p) => !madeByApp.has(p.id)), keys.map(formatLabel).join(", "));
+    if (!chosen) {
       setRemoveMessage("Cancelled. Nothing was changed.");
       return;
     }
     setRemoveMessage("Removing...");
-    await removePlaylists(existing.map((p) => p.id));
-    logStep(`remove finished (${plural(existing.length, "playlist")})`);
-    setRemoveMessage(`Removed ${plural(existing.length, "playlist")} from your library.`);
+    await removePlaylists(chosen.map((p) => p.id));
+    logStep(`remove finished (${plural(chosen.length, "playlist")})`);
+    setRemoveMessage(`Removed ${plural(chosen.length, "playlist")} from your library.`);
     await loadMyPlaylists();
   } catch (err) {
     setRemoveMessage("Something went wrong: " + cleanError(err));

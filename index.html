@@ -67,6 +67,8 @@
   table.parts th:last-child, table.parts td:last-child { white-space: nowrap; }
   #confirmBox, #removeConfirmBox { margin: 12px 0; }
   #confirmBox ul, #removeConfirmBox ul { margin: 6px 0 10px; padding-left: 20px; }
+  .choice-row { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 0 0 8px; cursor: pointer; }
+  .choice-row input { width: 20px; height: 20px; accent-color: var(--button); flex: none; }
   #actionMessage, #removeMessage { white-space: pre-line; }
   #results div { padding: 3px 0; }
   footer.debug { margin-top: 32px; font-size: 0.95rem; }
@@ -390,11 +392,12 @@
     <ul id="confirmMoreList"></ul>
     <p id="confirmKeepText"></p>
     <ul id="confirmKeepList"></ul>
+    <label id="confirmKeepToggleRow" class="choice-row" hidden><input type="checkbox" id="confirmKeepToggle"> <span id="confirmKeepToggleLabel"></span></label>
     <div class="row">
       <button id="confirmYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Create</span></button>
       <button id="confirmNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
     </div>
-    <p class="plan-links"><button id="planToggle" class="linklike" type="button">See the full plan</button> <button id="redraw" class="linklike" type="button">Draw again</button></p>
+    <p class="plan-links"><button id="planToggle" class="linklike" type="button">See the full plan</button></p>
     <pre id="planText" hidden></pre>
   </div>
 
@@ -443,6 +446,9 @@
       <div id="removeConfirmBox" class="card" hidden>
         <p id="removeConfirmText"></p>
         <ul id="removeConfirmList"></ul>
+        <p id="removeConfirmMoreText"></p>
+        <ul id="removeConfirmMoreList"></ul>
+        <label id="removeToggleRow" class="choice-row" hidden><input type="checkbox" id="removeToggle"> <span id="removeToggleLabel"></span></label>
         <div class="row">
           <button id="removeConfirmYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Remove</span></button>
           <button id="removeConfirmNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
