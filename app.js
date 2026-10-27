@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-26i";
+const APP_VERSION = "2026-10-26j";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -221,14 +221,14 @@ const KOFI_URL = "https://ko-fi.com/roncarmel";
 function addSupportPrompt() {
   const row = document.createElement("div");
   row.className = "support-prompt";
-  row.appendChild(document.createTextNode("If this app is useful to you, you can "));
+  row.appendChild(document.createTextNode("If this app is helpful to you, you can "));
   const link = document.createElement("a");
   link.href = KOFI_URL;
   link.target = "_blank";
   link.rel = "noopener noreferrer";
-  link.textContent = "tip me";
+  link.textContent = "donate whatever feels good";
   row.appendChild(link);
-  row.appendChild(document.createTextNode(" to say thanks. And you're welcome regardless!"));
+  row.appendChild(document.createTextNode(" to say thanks. And you\u2019re welcome regardless!"));
   $("results").appendChild(row);
 }
 
@@ -1080,6 +1080,50 @@ async function removeEarlier() {
 }
 
 // ---------------------------------------------------------------- start up
+function initDonatePanel() {
+  // The Donate button opens Ko-fi's page in a frame above it, instead of leaving this page. Only a frame is used, so none of
+  // Ko-fi's code runs here, and the frame is created only when someone first opens the panel. The link to Ko-fi in a new
+  // tab stays on the button as the fallback.
+  const MIN_HEIGHT = 400;   // the limits Ko-fi's own widget uses for its panel
+  const MAX_HEIGHT = 690;
+  const button = $("supportButton");
+  const box = $("supportBox");
+  const panel = $("kofiPanel");
+  if (!button || !panel) return;
+  const handle = new URL(button.href).pathname.replace(/^\//, "");
+  const frameUrl = `https://ko-fi.com/${handle}/?hidefeed=true&widget=true&embed=true`;
+  let frame = null;
+  const place = () => {
+    const top = box.getBoundingClientRect().top;
+    panel.style.height = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, Math.round(top - 60))) + "px";
+    panel.style.bottom = Math.max(8, window.innerHeight - top + 8) + "px";
+  };
+  const open = () => {
+    place();
+    if (!frame) {
+      frame = document.createElement("iframe");
+      frame.src = frameUrl;
+      frame.title = "Donate on Ko-fi";
+      $("kofiFrameHolder").appendChild(frame);
+    }
+    panel.hidden = false;
+    button.setAttribute("aria-expanded", "true");
+    logStep("donate panel opened");
+  };
+  const close = () => {
+    panel.hidden = true;
+    button.setAttribute("aria-expanded", "false");
+  };
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    if (panel.hidden) open(); else close();
+  });
+  $("kofiClose").addEventListener("click", close);
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !panel.hidden) close(); });
+  document.addEventListener("click", (event) => { if (!panel.hidden && !panel.contains(event.target) && !button.contains(event.target)) close(); });
+  window.addEventListener("resize", () => { if (!panel.hidden) place(); });
+}
+
 function trackTipHeight() {
   // In the bottom strip the page needs exactly that much room at its end, so nothing is hidden behind it and nothing more is left empty.
   const box = $("supportBox");
@@ -1218,6 +1262,7 @@ async function main() {
   $("createOverlay").addEventListener("click", (event) => { if (event.target === $("createOverlay")) dismissCreateDialog(); });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !$("createOverlay").hidden) dismissCreateDialog(); });
   trackTipHeight();
+  initDonatePanel();
   $("removeOld").addEventListener("click", removeEarlier);
   $("formatKey").addEventListener("change", () => invalidatePlan());
   $("maxPlaylists").addEventListener("input", () => invalidatePlan());
