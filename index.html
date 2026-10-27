@@ -288,8 +288,7 @@
   /* the donation panel: Ko-fi's own page in a frame, above the button, so nothing of Ko-fi's code runs in this page */
   #kofiDim { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 1002; background: rgba(0, 0, 0, 0.65); }
   #kofiPanel { position: fixed; right: 16px; bottom: 16px; width: 328px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); z-index: 1003; display: flex; flex-direction: column; background: #fff; color: #444; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 36px rgba(0, 0, 0, 0.3); }
-  #kofiPanel .kofi-bar { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px 6px 14px; font-size: 0.85rem; }
-  #kofiPanel .kofi-bar a { color: #444; }
+  #kofiPanel .kofi-bar { display: flex; justify-content: flex-end; align-items: center; padding: 6px 10px 6px 14px; font-size: 0.85rem; }   /* nothing but the x for now; there is room for a line of text at the left */
   #kofiPanel .kofi-bar button { background: none; border: none; color: #444; font-size: 1.4rem; line-height: 1; padding: 0 6px; min-height: 36px; font-weight: normal; }
   #kofiFrameHolder { flex: 1; display: flex; flex-direction: column; min-height: 0; }
   #kofiFrameHolder iframe { flex: 1; width: 100%; border: none; background: #fff; }
@@ -480,7 +479,7 @@
   </div>
   <div id="kofiDim" hidden></div>
   <div id="kofiPanel" role="dialog" aria-label="Donate on Ko-fi" hidden>
-    <div class="kofi-bar"><a href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer">ko-fi.com/roncarmel</a><button id="kofiClose" type="button" aria-label="Close">&times;</button></div>
+    <div class="kofi-bar"><button id="kofiClose" type="button" aria-label="Close">&times;</button></div>
     <div id="kofiFrameHolder"></div>
   </div>
 
