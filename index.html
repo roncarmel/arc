@@ -100,16 +100,18 @@
     #supportBox > * { pointer-events: auto; }
     #supportButton { flex: none; white-space: nowrap; }
     #supportCaption { flex: 0 1 auto; width: auto; min-width: 0; padding: 0; background: none; box-shadow: none; text-align: right; text-wrap: balance; }
+    #supportCaption span { display: block; }   /* one sentence to a line, so the note is always at least two lines */
   }
 
   /* the format editor */
   :root { --warn: #b45309; --danger: #d11f2e; --cover: #3a3a42; --on-button: #fff; --accent-deep: #a8217c; --accent-tint: rgba(255, 56, 184, 0.15); --accent-tint-border: rgba(255, 56, 184, 0.5); --accent-wash: rgba(255, 56, 184, 0.22); --silence-line: #8a8a92; --icon-filter: none; --on-deep: #fff; --tag: #43434d; --tag-off: #26262b; }
   @media (prefers-color-scheme: dark) { :root { --warn: #f2b45a; --danger: #ff7a85; } }
   #formatEditor { margin: 8px 0 12px; }
-  #formatEditor .fe-toprow { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+  #formatEditor .fe-toprow { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; padding-right: 13px; }   /* the card's padding and border, so the two menu buttons are level */
   #formatEditor .fe-toprow .fe-tabs { flex: 1 1 0; min-width: 0; margin-bottom: 0; }
   #formatEditor .fe-appmenuwrap { position: relative; flex: none; }
   #formatEditor .fe-appmenu { right: 0; top: 48px; width: max-content; max-width: min(300px, calc(100vw - 32px)); }
+  #formatEditor .fe-itemnote { width: 0; min-width: 100%; box-sizing: border-box; padding: 0 12px 6px 40px; margin-top: -4px; font-size: 0.78rem; color: var(--muted); line-height: 1.3; }   /* the last-backup label, under its item, wrapping inside the menu */
   #formatEditor .fe-check { width: 20px; height: 20px; flex: none; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border: 2px solid var(--muted); border-radius: 5px; }
   #formatEditor .fe-check-on { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
   #formatEditor .fe-tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
@@ -203,7 +205,7 @@
   #formatEditor .fe-tagdefault { padding: 0 6px 0 4px; color: var(--muted); font-size: 0.9rem; }
   #formatEditor .fe-stepper-inline { display: inline-flex; }   /* the frame hugs its − value + instead of stretching across the menu */
   #formatEditor .fe-stepper-inline .fe-step { width: 36px; }
-  @media (max-width: 859px) { #formatEditor .fe-card.fe-hastags { margin-right: 8px; } }
+  @media (max-width: 859px) { #formatEditor.fe-hastags { margin-right: 8px; } }
   @media (min-width: 860px) {
     #formatEditor .fe-tag { width: 58px; padding: 0 7px 0 11px; font-size: 0.68rem; }
     #formatEditor .fe-tag .fe-icon { display: inline-flex; }
@@ -211,6 +213,7 @@
   /* on a phone the rows give the playlist name as much room as they can */
   @media (max-width: 599px) {
     #formatEditor .fe-card { padding: 8px; }
+    #formatEditor .fe-toprow { padding-right: 9px; }
     #formatEditor .fe-rowcard { gap: 4px; }
     #formatEditor .fe-grip { width: 22px; }
     #formatEditor .fe-step { width: 30px; }
@@ -256,6 +259,10 @@
   .theme-option:hover, .theme-option:focus { background: rgba(127, 127, 127, 0.18); outline: none; }
   .theme-option[aria-selected="true"] { background: var(--accent-wash, rgba(255, 56, 184, 0.22)); }
   .swatch { width: 18px; height: 18px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.55); }
+  /* minimalist mode: the page with only what is needed. The headings and explanations of the steps, the "more about" box, the Spotify
+     connection once it is made, and the backup step all go; the app menu has the backup and sign-out. */
+  body.minimal .tagline, body.minimal #about, body.minimal #connectedSection, body.minimal #editHeading, body.minimal #savedNote,
+  body.minimal #createHeading, body.minimal #createNote, body.minimal #backupBlock { display: none; }
 </style>
 </head>
 <body>
@@ -359,8 +366,8 @@
   </section>
 
   <div id="appSection" hidden>
-  <h2>2. Edit your formats</h2>
-  <p class="muted">Your formats are saved in this browser as you type. You can <button id="backupRestore" class="linklike" type="button">restore your formats from a backup</button> any time.</p>
+  <h2 id="editHeading">2. Edit your formats</h2>
+  <p id="savedNote" class="muted">Your formats are saved in this browser as you type. You can <button id="backupRestore" class="linklike" type="button">restore your formats from a backup</button> any time.</p>
   <input id="restoreFile" type="file" accept=".txt,text/plain" hidden>
   <p id="backupMessage" aria-live="polite"></p>
   <div id="formatEditor"></div>
@@ -384,13 +391,13 @@
     <p>The name of a format is also the name of the playlists it makes: a format called "Warm focus" makes "Warm focus 1", "Warm focus 2", and so on. Give every format a different name. When you create playlists again, this app treats playlists that match a format's name as its own and offers to replace them.</p>
   </details>
 
-  <h2>3. Create playlists</h2>
+  <h2 id="createHeading">3. Create playlists</h2>
   <div class="row" style="margin-top:0">
     <select id="formatKey" style="max-width:260px"></select>
     <button id="create" class="primary" type="button" disabled><img class="btn-icon" src="icons/create.svg" alt="" width="20" height="20"><span class="btn-label">Create playlists</span></button>
   </div>
   <p id="pythonNote" class="muted"></p>
-  <p class="muted">Choose a format, or all of them. The app plans the playlists with songs picked at random, shows you what it found, and asks before it creates anything. Changing anything above closes the question, so you start again.</p>
+  <p id="createNote" class="muted">Choose a format, or all of them. The app plans the playlists with songs picked at random, shows you what it found, and asks before it creates anything. Changing anything above closes the question, so you start again.</p>
 
   <pre id="output" hidden></pre>
 
@@ -414,6 +421,7 @@
   <p id="mainReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Report this problem</a></p>
   <div id="results"></div>
 
+  <div id="backupBlock">
   <h2 id="backupSection">4. Back up your formats (optional)</h2>
   <p>Your formats are saved only in this browser. Clearing your browser data erases them. A backup file keeps a copy on your computer so you can restore them if needed.</p>
   <div class="row">
@@ -422,9 +430,10 @@
   <p id="downloadMessage" aria-live="polite"></p>
   <p id="backupStatus" class="muted" aria-live="polite"></p>
   </div>
+  </div>
   <div id="supportBox">
     <a id="supportButton" href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer" title="Opens Ko-fi in a new tab"><img src="cup-border.png" alt="" width="22" height="18"><span>Tip me</span></a>
-    <p id="supportCaption">This app is free for everyone. Tipping is an optional gift if you want to say thanks.</p>
+    <p id="supportCaption"><span>This app is free for everyone.</span> <span>Tipping is an optional gift if you want to say thanks.</span></p>
   </div>
 
   <footer class="debug">

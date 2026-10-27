@@ -37,7 +37,7 @@ const FE_ICONS = {
   sliders: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"/><circle cx="16" cy="8" r="2"/><circle cx="8" cy="16" r="2"/></svg>',
   download: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>',
   restore: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V5M7 9l5-5 5 5M5 20h14"/></svg>',
-  unplug: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3v5M15 3v5M7 8h10v4a5 5 0 0 1-10 0V8zM12 17v4"/></svg>',
+  unplug: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/><path d="M4 4l16 16"/></svg>',
   check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
   reset: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg>',
   warn: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17.5v.1"/></svg>',
@@ -258,12 +258,14 @@ function renderAppMenu() {
   if (!editor.appMenu) return;
   const choose = (action) => () => { editor.appMenu = false; renderAppMenu(); action(); };
   const on = minimalMode();
+  const backupLabel = ($("backupStatus") && $("backupStatus").textContent) || "";   // the same label as in the backup step, which minimalist mode hides
   const box = feEl("span", { class: "fe-check" + (on ? " fe-check-on" : ""), "aria-hidden": "true" });
   if (on) box.appendChild(feIcon("check"));
   slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" },
     feEl("button", { type: "button", class: "fe-item", id: "feMinimal", role: "menuitemcheckbox", "aria-checked": String(on), onClick: toggleMinimal }, box, "Minimalist mode"),
     feEl("div", { class: "fe-rule" }),
-    feEl("button", { type: "button", class: "fe-item", id: "feBackup", role: "menuitem", onClick: choose(() => downloadBackup()) }, feIcon("download"), "Download a backup"),
+    feEl("button", { type: "button", class: "fe-item", id: "feBackup", role: "menuitem", onClick: choose(() => { downloadBackup(); showBackupMessage("Backup downloaded. Look for it in your Downloads folder."); }) }, feIcon("download"), "Download a backup"),
+    ...(backupLabel ? [feEl("div", { class: "fe-itemnote", id: "feBackupStatus", text: backupLabel })] : []),
     feEl("button", { type: "button", class: "fe-item", id: "feRestore", role: "menuitem", onClick: choose(() => $("restoreFile").click()) }, feIcon("restore"), "Restore from backup"),
     feEl("div", { class: "fe-rule" }),
     feEl("button", { type: "button", class: "fe-item", id: "feDisconnect", role: "menuitem", onClick: choose(() => disconnect()) }, feIcon("unplug"), "Disconnect Spotify")));
@@ -381,8 +383,8 @@ function renderRows(settle) {
   holder.innerHTML = "";
   f.items.forEach((item, index) => holder.appendChild(rowEl(f, item, index)));
   holder.appendChild(feEl("button", { type: "button", class: "fe-add", id: "feAddSegment", onClick: addSegment }, feIcon("plus"), "New segment"));
-  const card = $("feCard");
-  if (card) card.classList.toggle("fe-hastags", f.items.some((x, index) => gapInfo(f, index + 1).show));
+  const rootEl = $("formatEditor");
+  if (rootEl) rootEl.classList.toggle("fe-hastags", f.items.some((x, index) => gapInfo(f, index + 1).show));
   if (settle) applySettle(holder, settle);
   applyHighlight();
 }
