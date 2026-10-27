@@ -18,7 +18,6 @@ const THEMES = [
   { id: "crimsons-and-wines", name: "Crimson", accent: "#dc2660", neutral: "#8a7f84" },
   { id: "reds-and-charcoals", name: "Red", accent: "#ef4444", neutral: "#86868a" },
   { id: "corals-and-sands", name: "Coral", accent: "#ff7b72", neutral: "#8f8780" },
-  { id: "oranges-and-stones", name: "Orange", accent: "#ff8a3d", neutral: "#8f8680" },
   { id: "coppers-and-browns", name: "Copper", accent: "#d97745", neutral: "#8d8078" },
   { id: "ambers-and-umbers", name: "Amber", accent: "#ffb020", neutral: "#8a8070" },
   { id: "limes-and-olives", name: "Lime", accent: "#a3e635", neutral: "#858a78" },
