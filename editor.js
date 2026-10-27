@@ -190,7 +190,11 @@ function renderEditor() {
   editor.hover = null;
   editor.gapPanel = null;
   if (editor.broken) { root.appendChild(brokenView()); return; }
-  root.appendChild(feEl("div", { class: "fe-toprow" }, feEl("div", { class: "fe-tabs", id: "feTabs" }), feEl("div", { class: "fe-appmenuwrap", id: "feAppMenu" })));
+  // In minimalist mode the page's title goes and the app's icon takes the first place in this row, as tall as the tabs.
+  root.appendChild(feEl("div", { class: "fe-toprow" },
+    feEl("img", { class: "fe-appicon", src: "apple-touch-icon.png", alt: "", width: "44", height: "44" }),
+    feEl("div", { class: "fe-tabs", id: "feTabs" }),
+    feEl("div", { class: "fe-appmenuwrap", id: "feAppMenu" })));
   renderTabs();
   renderAppMenu();
   const format = activeFormat();
@@ -234,7 +238,8 @@ function applyMinimalMode() {
 function toggleMinimal() {
   try { localStorage.setItem("minimalMode", minimalMode() ? "0" : "1"); } catch (err) { /* the choice just does not last */ }
   applyMinimalMode();
-  renderAppMenu();   // the menu stays open, so the checkbox shows the new state
+  editor.appMenu = false;   // the menu closes; the checkbox shows the new state the next time it opens
+  renderAppMenu();
 }
 
 function toggleAppMenu() {

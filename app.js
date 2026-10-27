@@ -1198,6 +1198,7 @@ async function main() {
     $("loginSection").hidden = true;
     $("connectedSection").hidden = false;
     $("appSection").hidden = false;  // the formats and the Create button appear once connected
+    document.body.classList.add("connected");   // lets minimalist mode drop the title only when the editor is there to take its place
     try {
       await loadMyPlaylists();
       logStep(`connected, ${plural(playlists.length, "playlist")} found`);

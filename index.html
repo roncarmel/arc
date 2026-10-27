@@ -99,8 +99,7 @@
     #supportBox { left: 0; right: 0; bottom: 0; width: auto; box-sizing: border-box; max-width: none; flex-direction: row-reverse; align-items: center; justify-content: flex-start; gap: 12px; padding: 40px 12px calc(10px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, var(--bg) 0%, var(--bg) 55%, transparent 100%); pointer-events: none; }
     #supportBox > * { pointer-events: auto; }
     #supportButton { flex: none; white-space: nowrap; }
-    #supportCaption { flex: 0 1 auto; width: auto; min-width: 0; padding: 0; background: none; box-shadow: none; text-align: right; text-wrap: balance; }
-    #supportCaption span { display: block; }   /* one sentence to a line, so the note is always at least two lines */
+    #supportCaption { flex: 0 1 auto; width: auto; min-width: 0; max-width: 44ch; padding: 0; background: none; box-shadow: none; text-align: right; text-wrap: balance; }   /* lines of about the same length, and never one long line */
   }
 
   /* the format editor */
@@ -262,7 +261,12 @@
   /* minimalist mode: the page with only what is needed. The headings and explanations of the steps, the "more about" box, the Spotify
      connection once it is made, and the backup step all go; the app menu has the backup and sign-out. */
   body.minimal .tagline, body.minimal #about, body.minimal #connectedSection, body.minimal #editHeading, body.minimal #savedNote,
-  body.minimal #createHeading, body.minimal #createNote, body.minimal #backupBlock { display: none; }
+  body.minimal #createHeading, body.minimal #createNote, body.minimal #backupBlock, body.minimal #formatHelp, body.minimal #moreOptions { display: none; }
+  /* the page's title goes (once the editor is there), and the icon takes its place at the left of the tabs, as tall as they are */
+  body.minimal.connected h1.brand { display: none; }
+  #formatEditor .fe-appicon { display: none; }
+  body.minimal #formatEditor .fe-appicon { display: block; width: 44px; height: 44px; flex: none; border-radius: 22%; }
+  body.minimal #feAppMenuButton { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
 </style>
 </head>
 <body>
@@ -433,7 +437,7 @@
   </div>
   <div id="supportBox">
     <a id="supportButton" href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer" title="Opens Ko-fi in a new tab"><img src="cup-border.png" alt="" width="22" height="18"><span>Tip me</span></a>
-    <p id="supportCaption"><span>This app is free for everyone.</span> <span>Tipping is an optional gift if you want to say thanks.</span></p>
+    <p id="supportCaption">This app is free for everyone. Tipping is an optional gift if you want to say thanks.</p>
   </div>
 
   <footer class="debug">
