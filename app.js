@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-26o";
+const APP_VERSION = "2026-10-26p";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -28,6 +28,9 @@ const $ = (id) => document.getElementById(id);
 let py = null;          // the Python functions, once loaded
 let token = null;       // Spotify access token (kept in this tab only)
 let me = null;          // the signed-in Spotify user
+// Where the connection to Spotify stands: "none" (not signed in), "connecting", "ready" (the profile and playlists were read), or
+// "problem" (signed in, but Spotify could not be reached or would not answer). Only "ready" allows anything that needs Spotify.
+let connection = "none";
 let playlists = [];     // the user's playlists
 let formatsValid = false;
 let currentFormats = [];   // { id, title } for each format, used by the dropdowns and messages
@@ -168,7 +171,7 @@ function refreshReportBox() {
   $("reportLink").href = reportUrl();
 }
 
-const REPORT_HINTS = ["mainReportHint", "removeReportHint", "loginReportHint"];
+const REPORT_HINTS = ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"];
 
 function offerReport(hintId, rawError) {
   // An unexpected problem: remember it and show a "Report this problem" link next to the message.
@@ -393,9 +396,41 @@ function clearSavedData() {
 }
 
 function updateButtons() {
-  const ready = !!token && !!py && formatsValid && !busy;
+  const ready = !!token && connection === "ready" && !!py && formatsValid && !busy;
   $("create").disabled = !ready;
   $("removeOld").disabled = !ready;
+  const waiting = !!token && connection !== "ready";   // signed in, but Spotify is not answering (yet)
+  $("spotifyNote").hidden = !waiting;
+  $("removeNote").hidden = !waiting;
+}
+
+function setConnection(state, message = "") {
+  connection = state;
+  $("connectedSection").hidden = !(state === "connecting" || state === "ready");
+  $("disconnect").hidden = state !== "ready";   // there is nothing to disconnect from unless the connection works
+  $("connectionProblem").hidden = state !== "problem";
+  if (state === "problem") $("connectionMessage").textContent = message;
+  updateButtons();
+  if (typeof renderAppMenu === "function") renderAppMenu();
+  if (typeof editorPlaylistsChanged === "function") editorPlaylistsChanged();
+}
+
+async function connectToSpotify() {
+  // Reads the profile and the playlists. Until that works the app does not present itself as connected.
+  setConnection("connecting");
+  $("connectedMessage").textContent = "Connecting...";
+  clearReportHints("connectionReportHint");
+  try {
+    await loadMyPlaylists();
+    setConnection("ready");
+    logStep(`connected, ${plural(playlists.length, "playlist")} found`);
+  } catch (err) {
+    const message = String(err.message || err);
+    recordError(message);
+    logStep("connection failed");
+    setConnection("problem", message);
+    offerReport("connectionReportHint", message);
+  }
 }
 
 function setBusy(flag) {
@@ -562,17 +597,28 @@ async function spotifyRequest(method, path, { params, json, body, contentType } 
   if (params) url += (url.includes("?") ? "&" : "?") + new URLSearchParams(params).toString();
   const what = `${method} ${path.split("?")[0]}`;
   for (let attempt = 0; attempt < 5; attempt++) {
-    const response = await fetch(url, {
-      method,
-      headers: { Authorization: "Bearer " + token, ...(json ? { "Content-Type": "application/json" } : (contentType ? { "Content-Type": contentType } : {})) },
-      body: json ? JSON.stringify(json) : body,
-    });
+    let response;
+    try {
+      response = await fetch(url, {
+        method,
+        headers: { Authorization: "Bearer " + token, ...(json ? { "Content-Type": "application/json" } : (contentType ? { "Content-Type": contentType } : {})) },
+        body: json ? JSON.stringify(json) : body,
+      });
+    } catch (err) {
+      throw new Error("Could not reach Spotify. Check your internet connection and try again.");
+    }
     if (response.status === 429) {
-      await new Promise((r) => setTimeout(r, (Number(response.headers.get("Retry-After")) || 2) * 1000 + 500));
+      const wait = Number(response.headers.get("Retry-After")) || 2;
+      if (wait > 30) throw new Error(`Spotify is rate limiting requests. Try again in about ${waitWords(wait)}.`);   // not worth sitting through
+      await new Promise((r) => setTimeout(r, wait * 1000 + 500));
       continue;
     }
-    if (response.status === 401) throw new Error("Your Spotify sign-in expired. Click Disconnect, then Connect again.");
-    if (response.status === 403) {
+    if (response.status === 401) {
+      const message = "Your Spotify sign-in expired. Click Connect again.";
+      if (connection === "ready") setConnection("problem", message);   // from here on nothing that needs Spotify is offered
+      throw new Error(message);
+    }
+    if (response.status === 403) {   // one refused request (a playlist you cannot read, a missing permission) does not mean the connection is lost
       throw new Error(`Spotify did not allow this (${what}). Click Disconnect, then Connect again and approve every permission it asks for.`);
     }
     if (!response.ok) throw new Error(`Spotify returned ${response.status} for ${what}`);
@@ -583,6 +629,12 @@ async function spotifyRequest(method, path, { params, json, body, contentType } 
 }
 
 const spotify = (path) => spotifyRequest("GET", path);
+
+function waitWords(seconds) {
+  if (seconds < 90) return `${Math.max(1, Math.round(seconds))} seconds`;
+  if (seconds < 5400) return `${Math.round(seconds / 60)} minutes`;
+  return `${Math.round(seconds / 3600)} hours`;
+}
 
 function hasScope(name) {
   // Whether this sign-in was approved for a permission (the app asks for cover art as an extra, so older sign-ins may lack it).
@@ -1263,6 +1315,8 @@ async function main() {
   $("connect").addEventListener("click", startLogin);
   $("connectReturning").addEventListener("click", startLogin);
   $("disconnect").addEventListener("click", disconnect);
+  $("connectionRetry").addEventListener("click", connectToSpotify);
+  $("connectionReconnect").addEventListener("click", startLogin);
   $("create").addEventListener("click", startCreate);
   $("createClose").addEventListener("click", closeCreateDialog);
   $("createDonate").addEventListener("click", () => { closeCreateDialog(); openDonatePanel(); });
@@ -1304,16 +1358,9 @@ async function main() {
 
   if (token) {
     $("loginSection").hidden = true;
-    $("connectedSection").hidden = false;
-    $("appSection").hidden = false;  // the formats and the Create button appear once connected
+    $("appSection").hidden = false;  // the formats are there to edit from the moment someone is signed in
     document.body.classList.add("connected");   // lets minimalist mode drop the title only when the editor is there to take its place
-    try {
-      await loadMyPlaylists();
-      logStep(`connected, ${plural(playlists.length, "playlist")} found`);
-    } catch (err) {
-      $("connectedMessage").textContent = String(err.message || err);
-      offerReport("mainReportHint", String(err.message || err));
-    }
+    await connectToSpotify();   // and the app only calls itself connected, and offers Create, once Spotify has answered
   }
 
   $("pythonNote").textContent = "Getting Python ready. The first time takes a little while...";

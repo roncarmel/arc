@@ -275,8 +275,7 @@ function renderAppMenu() {
     feEl("button", { type: "button", class: "fe-item", id: "feBackup", role: "menuitem", onClick: choose(() => { downloadBackup(); showBackupMessage("Backup downloaded. Look for it in your Downloads folder."); }) }, feIcon("download"), "Download a backup"),
     ...(backupLabel ? [feEl("div", { class: "fe-itemnote", id: "feBackupStatus", text: backupLabel })] : []),
     feEl("button", { type: "button", class: "fe-item", id: "feRestore", role: "menuitem", onClick: choose(() => $("restoreFile").click()) }, feIcon("restore"), "Restore from backup"),
-    feEl("div", { class: "fe-rule" }),
-    feEl("button", { type: "button", class: "fe-item", id: "feDisconnect", role: "menuitem", onClick: choose(() => disconnect()) }, feIcon("unplug"), "Disconnect Spotify")));
+    ...(connection === "ready" ? [feEl("div", { class: "fe-rule" }), feEl("button", { type: "button", class: "fe-item", id: "feDisconnect", role: "menuitem", onClick: choose(() => disconnect()) }, feIcon("unplug"), "Disconnect Spotify")] : [])));
 }
 
 // A menu, list or card that would run off the bottom of the screen opens upward instead (or, if there is no more room above,
@@ -712,7 +711,7 @@ function listPanel(item, slot) {
       feEl("span", { class: "fe-text" }, feEl("span", { class: "fe-title", text: p.name }),
         feEl("span", { class: "fe-sub", text: taken ? "Already in this mix" : (typeof p.count === "number" ? `${p.count} songs` : "") }))));
     }
-    if (!shown) list.appendChild(feEl("p", { class: "muted", style: "margin:8px", text: playlists.length ? "No playlists match." : "Your playlists are still loading." }));
+    if (!shown) list.appendChild(feEl("p", { class: "muted", style: "margin:8px", text: playlists.length ? "No playlists match." : (connection === "problem" ? "Your playlists could not be loaded. See Step 1." : "Your playlists are still loading.") }));
   };
   search.addEventListener("input", () => { editor.search = search.value; draw(); });
   draw();

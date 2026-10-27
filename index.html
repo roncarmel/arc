@@ -402,6 +402,15 @@
     </div>
     <p id="connectedMessage" style="margin:0">Connecting...</p>
   </section>
+  <section id="connectionProblem" hidden>
+    <h2>1. Connect to Spotify</h2>
+    <p id="connectionMessage"></p>
+    <div class="row">
+      <button id="connectionRetry" type="button"><img class="btn-icon" src="icons/connect.svg" alt="" width="20" height="20"><span class="btn-label">Try again</span></button>
+      <button id="connectionReconnect" type="button"><img class="btn-icon" src="icons/connect.svg" alt="" width="20" height="20"><span class="btn-label">Connect again</span></button>
+    </div>
+    <p id="connectionReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Report this problem</a></p>
+  </section>
 
   <div id="appSection" hidden>
   <h2 id="editHeading">2. Edit your formats</h2>
@@ -435,6 +444,7 @@
     <button id="create" class="primary" type="button" disabled><img class="btn-icon" src="icons/create.svg" alt="" width="20" height="20"><span class="btn-label">Create playlists</span></button>
   </div>
   <p id="pythonNote" class="muted"></p>
+  <p id="spotifyNote" class="muted" hidden>Creating playlists needs a working connection to Spotify. See Step 1.</p>
   <p id="createNote" class="muted">Choose a format, or all of them. The app plans the playlists with songs picked at random, shows you what it found, and asks before it creates anything. Changing anything above closes the question, so you start again.</p>
 
   <div id="createOverlay" class="app-overlay" hidden>
@@ -508,6 +518,7 @@
         <select id="removeKey" style="max-width:260px"></select>
         <button id="removeOld" type="button" disabled><img class="btn-icon" src="icons/remove.svg" alt="" width="20" height="20"><span class="btn-label">Remove earlier playlists</span></button>
       </div>
+      <p id="removeNote" class="muted" hidden>Removing playlists needs a working connection to Spotify.</p>
       <div id="removeConfirmBox" class="card" hidden>
         <p id="removeConfirmText"></p>
         <ul id="removeConfirmList"></ul>
