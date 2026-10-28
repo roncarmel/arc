@@ -215,11 +215,12 @@ function renderEditor() {
     return;
   }
   const card = feEl("div", { class: "fe-card", id: "feCard" },
-    feEl("div", { id: "feHead" }),
+    feEl("p", { class: "fe-warn", id: "feClash", hidden: true }),   // about the name, so it stays at the top, near the tab
     feEl("div", { class: "fe-barwrap" },
       feEl("div", { class: "fe-bar", id: "feBar", role: "img", "aria-label": "Shape of one playlist" }),
       feEl("div", { class: "fe-caption", id: "feCaption" })),
-    feEl("div", { class: "fe-rows", id: "feRows" }));
+    feEl("div", { class: "fe-rows", id: "feRows" }),
+    feEl("div", { id: "feHead" }));   // the silence between segments, Duplicate and Delete: settings for the whole format, below the segments
   root.appendChild(card);
   renderHead(true);
   renderTimeline();
@@ -432,7 +433,6 @@ function renderHead(rebuild) {
         })),
       feEl("button", { type: "button", class: "fe-iconbtn", id: "feDuplicate", "aria-label": "Duplicate format", title: "Duplicate format", onClick: askDuplicateFormat }, feIcon("copy")),
       feEl("button", { type: "button", class: "fe-iconbtn fe-danger", id: "feDelete", "aria-label": "Delete format", title: "Delete format", onClick: askDeleteFormat }, feIcon("trash"))));
-    head.appendChild(feEl("p", { class: "fe-warn", id: "feClash", hidden: true }));
     renderClash();
   }
   $("feGapValue").textContent = f.gap ? describeSeconds(f.gap) : "None";
