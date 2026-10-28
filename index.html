@@ -23,6 +23,7 @@
   #welcomeBack { margin-bottom: 10px; }
   button:not(.linklike), a.button-link { display: inline-flex; align-items: center; gap: 8px; }
   .btn-icon { width: 20px; height: 20px; display: block; flex: none; filter: var(--icon-filter, none); }
+  img.btn-icon[src="icons/build.svg"] { width: 24px; height: 24px; }   /* the sparkles are drawn small within their box, so this one icon is shown 20% larger than the rest */
   a.button-link { display: inline-flex; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--button); background: var(--button); color: var(--on-button, #fff); text-decoration: none; }
   pre.report-preview { min-height: 0; font-size: 12.5px; margin: 6px 0; }
   .report-hint { margin: 6px 0; }
@@ -542,7 +543,7 @@
 
   <h2 id="createHeading">3. Build playlists</h2>
   <div class="row" style="margin-top:0">
-    <button id="create" class="primary" type="button" disabled><img class="btn-icon" src="icons/build.svg" alt="" width="20" height="20"><span class="btn-label"><span class="build-verb">Build playlists</span></span></button>
+    <button id="create" class="primary" type="button" disabled><img class="btn-icon" src="icons/build.svg" alt="" width="24" height="24"><span class="btn-label"><span class="build-verb">Build playlists</span></span></button>
   </div>
   <p id="pythonNote" class="muted"></p>
   <p id="spotifyNote" class="muted" hidden>Building playlists needs a working connection to Spotify. See Step 1.</p>
@@ -653,7 +654,7 @@
       <h3>Build all formats</h3>
       <p class="muted">Builds, or rebuilds, the playlists for every format at once. It shows what it found and asks first, as it does for one format.</p>
       <div class="row">
-        <button id="buildAll" type="button" disabled><img class="btn-icon" src="icons/build.svg" alt="" width="20" height="20"><span class="btn-label">Build all formats</span></button>
+        <button id="buildAll" type="button" disabled><img class="btn-icon" src="icons/build.svg" alt="" width="24" height="24"><span class="btn-label">Build all formats</span></button>
       </div>
 
       <h3>Remove earlier playlists</h3>
