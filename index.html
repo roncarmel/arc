@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-27e">
-<script src="theme.js?v=2026-10-27e"></script>
+<meta name="app-version" content="2026-10-27f">
+<script src="theme.js?v=2026-10-27f"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -269,6 +269,7 @@
   body.minimal.has-editor h1.brand { display: none; }
   body.minimal.has-editor main { padding-top: 10px; }   /* the same gap as between the tabs and the card */
   body.minimal #backupMessage:empty { display: none; }
+  #formatEditor .fe-emptynote { margin: 8px 0 0; }
   #formatEditor .fe-appicon { display: none; }
   @media (min-width: 760px) {
     body.minimal #formatEditor .fe-appicon { display: block; width: 44px; height: 44px; flex: none; border-radius: 22%; }   /* narrow screens need the room for the tabs */
@@ -310,7 +311,7 @@
   /* the New format button: just a plus beside the menu while there are formats and the screen is narrow, and the full button otherwise */
   #formatEditor .fe-newformat .fe-newformat-label { display: none; }
   #formatEditor .fe-newformat.fe-big, #formatEditor .fe-toprow.fe-noformats .fe-newformat { width: auto; padding: 0 16px; gap: 8px; }
-  #formatEditor .fe-toprow.fe-noformats .fe-newformat { order: -1; background: var(--button); color: var(--on-button, #fff); border: 1px solid var(--button); }
+  #formatEditor .fe-toprow.fe-noformats .fe-newformat { order: -1; }
   #formatEditor .fe-toprow.fe-noformats .fe-appicon { order: -2; }
   #formatEditor .fe-toprow.fe-noformats .fe-newformat .fe-newformat-label { display: inline; }
   @media (min-width: 760px) {
@@ -320,11 +321,11 @@
   /* the bottom strip and the corner note catch clicks only on the button and the words, never on the empty space around them */
   #supportBox { pointer-events: none; }
   #supportBox > * { pointer-events: auto; }
-  /* the card's header: the silence between segments, then Duplicate and Delete (Delete far to the right) */
+  /* the card's header: the silence between segments, then Duplicate and Delete together at the right */
   #formatEditor .fe-silence { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
   #formatEditor .fe-silence > .fe-icon { color: var(--muted); }
   #formatEditor .fe-silence-label { display: none; color: var(--muted); font-size: 0.9rem; white-space: nowrap; }
-  #formatEditor #feDelete { margin-left: auto; }
+  #formatEditor #feDuplicate { margin-left: auto; }   /* Duplicate and Delete sit together at the right */
   /* the selected tab: a pencil, a notch pointing down at the card, and the name edited in place */
   #formatEditor .fe-toprow { margin-bottom: 0; }
   #formatEditor .fe-tabs { padding-bottom: 10px; margin-bottom: 0; }   /* room under the tabs for the notch */
@@ -375,7 +376,7 @@
     <ol>
       <li>Connect Spotify through a free developer app. This takes a few minutes to set up, but you’ll only need to do it once.</li>
       <li>Define your format(s): which of your playlists to draw from, in what order, and for how long.</li>
-      <li>Create the playlists. The app shows you what it found and asks before it makes anything.</li>
+      <li>Build the playlists. The app shows you what it found and asks before it builds anything.</li>
     </ol>
     <p><strong>What you need</strong><br>A Spotify Premium account (Spotify requires it for the free developer app) and some playlists of your own to draw from.</p>
     <p><strong>Reporting problems</strong><br>If you run into a problem you can report it in the <span class="ui">More options</span> section at the bottom of this page.</p>
@@ -490,13 +491,13 @@
     <p>Each row is one stretch of music. Tap the playlist to choose it, and use the minus and plus buttons to set how many minutes it fills. Drag the dotted handle to change the order. Each segment typically lands within about 30 seconds of its target. Point at a row, or tap a piece of the bar at the top, to see which belongs to which. Add another with <span class="ui">New segment</span>.</p>
 
     <h3>Silence</h3>
-    <p>The small tags hanging off the right side of the rows are silences. A silence adds time on top of your segment minutes, and can be used for effect or simply to tell a facilitator the music has moved into a new segment. To put the same silence between every two segments, open the format's three dots and set <span class="ui">Silence between segments</span>. Tap a tag to change that one silence. A tag with its own length is a deeper color, and <span class="ui">Reset</span> returns it to the default. To add a silence where there is none, use a segment's three dots.</p>
+    <p>The small tags hanging off the right side of the rows are silences. A silence adds time on top of your segment minutes, and can be used for effect or simply to tell a facilitator the music has moved into a new segment. To put the same silence between every two segments, set <span class="ui">Silence between segments</span> at the top of the format. Tap a tag to change that one silence. A tag with its own length is a deeper color, and <span class="ui">Default</span> puts it back to the default. To add a silence where there is none, use a segment's three dots.</p>
 
     <h3>Mixes</h3>
     <p>To blend two playlists in one segment, tap the three dots on that row and choose <span class="ui">Add a mix</span>. Pick the second playlist, then use the slider to set how much of each. In the bar at the top, a mixed segment shows as diagonal stripes in two shades of the accent color.</p>
 
     <h3>Names</h3>
-    <p>The name of a format is also the name of the playlists it makes: a format called "Warm focus" makes "Warm focus 1", "Warm focus 2", and so on. Give every format a different name. When you create playlists again, this app treats playlists that match a format's name as its own and offers to replace them.</p>
+    <p>The name of a format is also the name of the playlists it makes: a format called "Warm focus" makes "Warm focus 1", "Warm focus 2", and so on. Give every format a different name. When you build playlists again, this app treats playlists that match a format's name as its own and offers to replace them.</p>
   </details>
 
   <h2 id="createHeading">3. Build playlists</h2>
@@ -505,7 +506,7 @@
   </div>
   <p id="pythonNote" class="muted"></p>
   <p id="spotifyNote" class="muted" hidden>Building playlists needs a working connection to Spotify. See Step 1.</p>
-  <p id="createNote" class="muted">This builds the playlists for the format you are editing. The app plans them with songs picked at random, shows you what it found, and asks before it creates anything. Changing anything above closes the question, so you start again.</p>
+  <p id="createNote" class="muted">This builds the playlists for the format you are editing. The app plans them with songs picked at random, shows you what it found, and asks before it builds anything. Changing anything above closes the question, so you start again.</p>
 
   <div id="createOverlay" class="app-overlay" hidden>
     <div id="createDialog" class="app-dialog" role="dialog" aria-modal="true" aria-label="Build playlists" tabindex="-1">
@@ -636,7 +637,7 @@
       <p id="themeNote" class="muted" hidden></p>
 
       <h3>Python status</h3>
-      <p class="muted">The code that builds your playlists is written in Python and runs inside your browser, so nothing about your music is sent to a server. If <span class="ui">Create playlists</span> stays unavailable, the reason shows here.</p>
+      <p class="muted">The code that builds your playlists is written in Python and runs inside your browser, so nothing about your music is sent to a server. If <span class="ui">Build playlists</span> stays unavailable, the reason shows here.</p>
       <p id="pythonStatus">Starting...</p>
 
       <h3>Clear saved data</h3>
@@ -658,8 +659,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-27e"></script>
-<script src="editor.js?v=2026-10-27e"></script>
-<script src="app.js?v=2026-10-27e"></script>
+<script src="formats.js?v=2026-10-27f"></script>
+<script src="editor.js?v=2026-10-27f"></script>
+<script src="app.js?v=2026-10-27f"></script>
 </body>
 </html>

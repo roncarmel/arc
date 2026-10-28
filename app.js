@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-27e";
+const APP_VERSION = "2026-10-27f";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -128,7 +128,7 @@ async function refreshSongsFor(names) {
   const ids = names.map((name) => (playlists.find((p) => normName(p.name) === normName(name)) || {}).id).filter(Boolean);
   for (const id of ids) trackCache.delete(id);
   await forgetSongs(ids);
-  $("editorNote").textContent = "Songs will be read again from Spotify the next time you create.";
+  $("editorNote").textContent = "Songs will be read again from Spotify the next time you build.";
 }
 
 // ---------------------------------------------------------------- small helpers
@@ -1027,7 +1027,7 @@ async function gatherInputs() {
   const wanted = selectedKeys();
   const blanks = blankSegmentReport(wanted);
   if (blanks.length) {
-    recordError("Create blocked: a segment has no playlist chosen");
+    recordError("Build blocked: a segment has no playlist chosen");
     logStep("plan blocked: empty segment");
     setOutput("Choose a playlist for every segment first:\n\n"
       + blanks.map((b) => `- ${b.title}: ${b.count === 1 ? "1 segment has" : b.count + " segments have"} no playlist yet`).join("\n"));
@@ -1047,7 +1047,7 @@ async function gatherInputs() {
   const names = [...new Set(plans.flatMap((p) => p.names))];
   const match = JSON.parse(py.matchPlaylists(JSON.stringify(names), JSON.stringify(playlists), me.id));
   if (match.problems.length) {
-    recordError(`Create blocked: ${plural(match.problems.length, "source playlist")} not found or not owned`);
+    recordError(`Build blocked: ${plural(match.problems.length, "source playlist")} not found or not owned`);
     logStep("plan blocked: source playlists");
     setOutput("Cannot plan yet:\n\n" + match.problems.map((p) => "- " + p).join("\n")
       + "\n\nCheck the playlist names in your formats against your Spotify playlists. Each name must match a playlist you own.");
@@ -1097,11 +1097,11 @@ async function planSelected(startedWith, includeOthers = false) {
   const total = built.reduce((n, plan) => n + plan.playlists.length, 0);
   logStep(total ? `plan: ${plural(total, "playlist")} planned` : "plan: nothing can be created");
   if (!total) {
-    setOutput(parts.join("\n\n") + "\n\nNothing can be created from this plan.");
+    setOutput(parts.join("\n\n") + "\n\nNothing can be built from this plan.");
     return null;
   }
   setOutput("");
-  return { formatsText: inputs.formatsText, keys: inputs.keys, built, total, ours, marked, others, includeOthers, text: parts.join("\n\n") + "\n\nNothing has been created yet.", problems };
+  return { formatsText: inputs.formatsText, keys: inputs.keys, built, total, ours, marked, others, includeOthers, text: parts.join("\n\n") + "\n\nNothing has been built yet.", problems };
 }
 
 function askToCreate(plan) {
@@ -1115,7 +1115,7 @@ function askToCreate(plan) {
     const replacing = plan.ours.length > 0;
     const many = plan.others.length !== 1;
     fillConfirmList("confirmMoreList", "confirmMoreText",
-      plan.marked.length ? `Replace ${plural(plan.marked.length, "earlier playlist")} made by this app? These match the names this plan uses, and will be removed from your library first:` : "",
+      plan.marked.length ? `Replace ${plural(plan.marked.length, "earlier playlist")} made by this app? They share names with the playlists about to be built, and will be removed from your library first:` : "",
       plan.marked.map((p) => p.name));
     fillConfirmList("confirmKeepList", "confirmKeepText",
       !plan.others.length ? ""
@@ -1222,7 +1222,7 @@ async function createFromPlan(plan) {
       await removePlaylists(existing.map((p) => p.id));
     }
     for (const p of planned) {
-      setActionMessage(`Creating ${created + 1} of ${planned.length}: ${p.name}`);
+      setActionMessage(`Building ${created + 1} of ${planned.length}: ${p.name}`);
       const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: `${APP_MARKER} from the format "${p.label}". Please leave this description as it is: the app uses it to recognize the playlists it made.` } });
       createdIds.push(made.id);
       if (made.public !== false) {   // asked to keep it off the profile; make sure
@@ -1247,12 +1247,12 @@ async function createFromPlan(plan) {
     invalidatePlan(true);
     const notes = [];
     if (stillPublic.length) notes.push(`Note: Spotify kept ${plural(stillPublic.length, "playlist")} on your profile and would not let this app change that. You can change that in the Spotify app.`);
-    if (coverBlocked) notes.push("Note: the cover art was not added, because your Spotify sign-in does not include permission to upload images. Click Disconnect, then Connect again to allow it. Playlists you create after that will get the cover.");
+    if (coverBlocked) notes.push("Note: the cover art was not added, because your Spotify sign-in does not include permission to upload images. Click Disconnect, then Connect again to allow it. Playlists you build after that will get the cover.");
     else if (coverUnloaded) notes.push("Note: the cover art could not be loaded, so the playlists have Spotify's default cover.");
     else if (coverFailed) notes.push(`Note: Spotify would not accept the cover art for ${plural(coverFailed, "playlist")}.`);
     createSucceeded = created > 0;
     if (created > 0) countEvent("playlists-created", String(created));
-    const doneText = `Done. Created ${plural(created, "playlist")} in your Spotify account.` + (notes.length ? "\n\n" + notes.join("\n\n") : "");
+    const doneText = `Done. Built ${plural(created, "playlist")} in your Spotify account.` + (notes.length ? "\n\n" + notes.join("\n\n") : "");
     setActionMessage(doneText);
     addSupportPrompt();
     await loadMyPlaylists();
@@ -1264,7 +1264,7 @@ async function createFromPlan(plan) {
     }
   } catch (err) {
     if (created) invalidatePlan(true);   // some playlists exist now, so creating the plan again would duplicate them
-    setActionMessage((created ? `Stopped after creating ${created} of ${planned.length} playlists.\n\n` : "Something went wrong:\n\n") + cleanError(err));
+    setActionMessage((created ? `Stopped after building ${created} of ${planned.length} playlists.\n\n` : "Something went wrong:\n\n") + cleanError(err));
     logStep(`create failed after ${created} of ${planned.length}`);
     offerReport("mainReportHint", cleanError(err));
     try { await loadMyPlaylists(); } catch (ignore) { /* keep the original error showing */ }
@@ -1577,7 +1577,7 @@ async function main() {
   token = loadStoredToken();
   if (!token && needsReconnect) {
     if ($("welcomeBack").hidden) revealLoginProblem();
-    setLoginMessage("Please connect again so this page can create playlists.");
+    setLoginMessage("Please connect again so this page can build playlists.");
   }
 
   startupDone = true;
@@ -1602,7 +1602,7 @@ async function main() {
     refreshFormatKeys();
   } catch (err) {
     $("pythonStatus").textContent = String(err.message || err);
-    $("pythonNote").textContent = "Python could not start, so creating is unavailable. Check your internet connection and reload the page. Details are under More options.";
+    $("pythonNote").textContent = "Python could not start, so building is unavailable. Check your internet connection and reload the page. Details are under More options.";
     offerReport("mainReportHint", String(err.message || err));
   }
 }

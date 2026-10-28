@@ -159,6 +159,7 @@ function initEditor() {
     closePanels();
   }, true);
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && (editor.panel || editor.cardMenu || editor.gapPanel !== null || editor.appMenu)) closePanels(); });
+  window.addEventListener("resize", equalizeAmounts);   // the widget changes size when the page goes between phone and wide layouts
   applyMinimalMode();
   syncEditorFromText();
 }
@@ -205,7 +206,8 @@ function renderEditor() {
   $("feTabs").addEventListener("scroll", updateTabFade);
   renderTabs();
   renderAppMenu();
-  if (!format) {   // no formats: only the big New format button
+  if (!format) {   // no formats: the New format button, and what to do with it
+    root.appendChild(feEl("p", { class: "muted fe-emptynote", id: "feEmptyNote", text: "Tap New format to create your first format, then add as many segments to it as you like." }));
     if (typeof updateButtons === "function") updateButtons();
     return;
   }
@@ -424,7 +426,7 @@ function renderHead(rebuild) {
           onShorter: () => { const lower = GAP_STEPS.filter((s) => s < f.gap); f.gap = lower.length ? lower[lower.length - 1] : 0; afterGapChange(); },
           onLonger: () => { const higher = GAP_STEPS.filter((s) => s > f.gap); f.gap = higher.length ? higher[0] : GAP_STEPS[GAP_STEPS.length - 1]; afterGapChange(); },
         })),
-      feEl("button", { type: "button", class: "fe-iconbtn", id: "feDuplicate", "aria-label": "Duplicate format", title: "Duplicate format", onClick: duplicateFormat }, feIcon("copy")),
+      feEl("button", { type: "button", class: "fe-iconbtn", id: "feDuplicate", "aria-label": "Duplicate format", title: "Duplicate format", onClick: askDuplicateFormat }, feIcon("copy")),
       feEl("button", { type: "button", class: "fe-iconbtn fe-danger", id: "feDelete", "aria-label": "Delete format", title: "Delete format", onClick: askDeleteFormat }, feIcon("trash"))));
     head.appendChild(feEl("p", { class: "fe-warn", id: "feClash", hidden: true }));
     renderClash();
@@ -471,6 +473,16 @@ function renderTimeline() {
   applyHighlight();
 }
 
+// Every length widget in a format is as wide as the widest one: they all grow when one needs more room, and shrink again when it does not.
+function equalizeAmounts() {
+  const spans = Array.from(document.querySelectorAll("#feRows .fe-rowamount"));
+  if (!spans.length) return;
+  for (const el of spans) el.style.minWidth = "";
+  let widest = 0;
+  for (const el of spans) widest = Math.max(widest, el.getBoundingClientRect().width);
+  if (widest > 0) for (const el of spans) el.style.minWidth = Math.ceil(widest) + "px";
+}
+
 function renderRows(settle) {
   const f = activeFormat();
   const holder = $("feRows");
@@ -478,6 +490,7 @@ function renderRows(settle) {
   editor.hover = null;   // the old elements are gone, so whatever was under the pointer no longer is
   holder.innerHTML = "";
   f.items.forEach((item, index) => holder.appendChild(rowEl(f, item, index)));
+  equalizeAmounts();
   holder.appendChild(feEl("button", { type: "button", class: "fe-add", id: "feAddSegment", onClick: addSegment }, feIcon("plus"), "New segment"));
   const rootEl = $("formatEditor");
   if (rootEl) rootEl.classList.toggle("fe-hastags", f.items.some((x, index) => gapInfo(f, index + 1).show));
@@ -532,7 +545,7 @@ function rowEl(f, item, index) {
   const minutes = Math.round(item.minutes * 10) / 10;
   card.appendChild(feEl("div", { class: "fe-stepper" },
     feEl("button", { type: "button", class: "fe-step fe-dec", "aria-label": "Shorter", onClick: () => stepItem(item, -1) }, feIcon("minus")),
-    feEl("span", { class: "fe-amount", text: `${minutes} min`, "data-short": `${minutes}m` }),
+    feEl("span", { class: "fe-amount fe-rowamount", text: `${minutes} min`, "data-short": `${minutes}m` }),
     feEl("button", { type: "button", class: "fe-step fe-inc", "aria-label": "Longer", onClick: () => stepItem(item, 1) }, feIcon("plus"))));
 
   card.appendChild(feEl("button", {
@@ -588,10 +601,10 @@ function tagPanel(f, g) {
     else if (info.hasDefault) setGap(g, 0);   // below the shortest length is none
   };
   const longer = () => (info.zero ? keep(SILENCE_STEPS[0]) : keep(higher.length ? higher[0] : SILENCE_STEPS[SILENCE_STEPS.length - 1]));
-  // beside the length: Reset where there is a default to go back to, Remove where there is not, and a quiet "(default)" while it matches
+  // beside the length: Default (back to the default) where there is one, Remove where there is not, and a quiet "(default)" while it matches
   const slot = feEl("div", { class: "fe-tagslot" + (info.hasDefault ? " fe-tagslot-default" : "") });
   if (info.hasDefault && info.custom) {
-    slot.appendChild(feEl("button", { type: "button", class: "fe-linkbutton", id: "feTagReset", "aria-label": `Reset to the default, ${describeSeconds(f.gap)}`, onClick: () => { editor.gapPanel = null; setGap(g, undefined); } }, feIcon("reset"), "Reset"));
+    slot.appendChild(feEl("button", { type: "button", class: "fe-linkbutton", id: "feTagReset", "aria-label": `Set to the default, ${describeSeconds(f.gap)}`, onClick: () => { editor.gapPanel = null; setGap(g, undefined); } }, feIcon("reset"), "Default"));
   } else if (info.hasDefault) {
     slot.appendChild(feEl("span", { class: "fe-tagdefault", id: "feTagDefault", text: "(default)" }));
   } else {
@@ -809,9 +822,10 @@ function askNewFormat() {
 }
 
 function addFormat() {
-  let title = "New format";
   const taken = new Set(editor.model.formats.map((f) => normName(f.title)));
-  for (let n = 2; taken.has(normName(title)); n += 1) title = `New format ${n}`;
+  let number = 1;
+  while (taken.has(normName(`Format ${number}`))) number += 1;
+  const title = `Format ${number}`;
   const fresh = newBlankFormat(editor.model, title);
   editor.model.formats.push(fresh);
   editor.activeId = fresh.id;
@@ -820,6 +834,24 @@ function addFormat() {
   editor.cardMenu = false;
   commit();
   renderEditor();
+}
+
+function askDuplicateFormat() {
+  const f = activeFormat();
+  if (!f) return;
+  closePanels();
+  const close = () => { overlay.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = (event) => { if (event.key === "Escape") close(); };
+  const cancel = feEl("button", { type: "button", id: "feDuplicateCancel", onClick: close }, "Cancel");
+  const confirm = feEl("button", { type: "button", class: "primary", id: "feDuplicateConfirm", onClick: () => { close(); duplicateFormat(); } }, "Duplicate format");
+  const overlay = feEl("div", { class: "fe-overlay", id: "feDuplicateDialog", onClick: close },
+    feEl("div", { class: "fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": "Duplicate format", onClick: (event) => event.stopPropagation() },
+      feEl("h3", { text: "Duplicate this format?" }),
+      feEl("p", { text: `A copy of \u201c${f.title.trim() || "Untitled"}\u201d is added, with the same segments and silences, ready to rename.` }),
+      feEl("div", { class: "row" }, cancel, confirm)));
+  document.body.appendChild(overlay);
+  document.addEventListener("keydown", onKey);
+  confirm.focus();
 }
 
 function duplicateFormat() {
