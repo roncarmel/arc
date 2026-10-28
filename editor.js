@@ -719,7 +719,7 @@ function listPanel(item, slot) {
       feEl("span", { class: "fe-text" }, feEl("span", { class: "fe-title", text: p.name }),
         feEl("span", { class: "fe-sub", text: taken ? "Already in this mix" : (typeof p.count === "number" ? `${p.count} songs` : "") }))));
     }
-    if (!shown) list.appendChild(feEl("p", { class: "muted", style: "margin:8px", text: playlists.length ? "No playlists match." : (connection === "problem" ? "Your playlists could not be loaded. See Step 1." : "Your playlists are still loading.") }));
+    if (!shown) list.appendChild(feEl("p", { class: "muted", style: "margin:8px", text: playlists.length ? "No playlists match." : (connection === "problem" ? "Your playlists could not be loaded. See Step 1." : connection === "none" ? "Connect to Spotify in Step 1 to see your playlists." : "Your playlists are still loading.") }));
   };
   search.addEventListener("input", () => { editor.search = search.value; draw(); });
   draw();

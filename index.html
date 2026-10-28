@@ -270,8 +270,8 @@
   body.minimal .tagline, body.minimal #about, body.minimal #connectedSection, body.minimal #editHeading, body.minimal #savedNote,
   body.minimal #createHeading, body.minimal #createNote, body.minimal #backupBlock, body.minimal #formatHelp, body.minimal #moreOptions { display: none; }
   /* the page's title goes (once the editor is there), and the icon takes its place at the left of the tabs, as tall as they are */
-  body.minimal.connected h1.brand { display: none; }
-  body.minimal.connected main { padding-top: 10px; }   /* the same gap as between the tabs and the card */
+  body.minimal.has-editor h1.brand { display: none; }
+  body.minimal.has-editor main { padding-top: 10px; }   /* the same gap as between the tabs and the card */
   body.minimal #backupMessage:empty { display: none; }
   #formatEditor .fe-appicon { display: none; }
   body.minimal #formatEditor .fe-appicon { display: block; width: 44px; height: 44px; flex: none; border-radius: 22%; }
@@ -406,7 +406,7 @@
     <h2>1. Connect to Spotify</h2>
     <p id="connectionMessage"></p>
     <div class="row">
-      <button id="connectionRetry" type="button"><img class="btn-icon" src="icons/connect.svg" alt="" width="20" height="20"><span class="btn-label">Try again</span></button>
+      <button id="connectionRetry" type="button"><img class="btn-icon" src="icons/retry.svg" alt="" width="20" height="20"><span class="btn-label">Try again</span></button>
       <button id="connectionReconnect" type="button"><img class="btn-icon" src="icons/connect.svg" alt="" width="20" height="20"><span class="btn-label">Connect again</span></button>
     </div>
     <p id="connectionReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Report this problem</a></p>

@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-26r";
+const APP_VERSION = "2026-10-26s";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -451,17 +451,21 @@ function updateButtons() {
   const ready = !!token && connection === "ready" && !!py && formatsValid && !busy;
   $("create").disabled = !ready;
   $("removeOld").disabled = !ready;
-  const waiting = !!token && connection !== "ready";   // signed in, but Spotify is not answering (yet)
-  $("spotifyNote").hidden = !waiting;
-  $("removeNote").hidden = !waiting;
+  // The notes appear when Create cannot work because there is no connection, not while the app is still connecting.
+  const noConnection = !$("appSection").hidden && (connection === "problem" || connection === "none");
+  $("spotifyNote").hidden = !noConnection;
+  $("removeNote").hidden = !noConnection;
 }
 
-function setConnection(state, message = "") {
+function setConnection(state, message = "", kind = "retry") {
+  // kind says what can fix a problem: "retry" (waiting, or the network) or "reconnect" (the sign-in itself)
   connection = state;
   $("connectedSection").hidden = !(state === "connecting" || state === "ready");
   $("disconnect").hidden = state !== "ready";   // there is nothing to disconnect from unless the connection works
   $("connectionProblem").hidden = state !== "problem";
   if (state === "problem") $("connectionMessage").textContent = message;
+  $("connectionRetry").hidden = state === "problem" && kind === "reconnect";
+  $("connectionReconnect").hidden = state === "problem" && kind !== "reconnect";
   updateButtons();
   if (typeof renderAppMenu === "function") renderAppMenu();
   if (typeof editorPlaylistsChanged === "function") editorPlaylistsChanged();
@@ -480,7 +484,7 @@ async function connectToSpotify() {
     const message = String(err.message || err);
     recordError(message);
     logStep("connection failed");
-    setConnection("problem", message);
+    setConnection("problem", message, /sign-in expired|did not allow/.test(message) ? "reconnect" : "retry");
     offerReport("connectionReportHint", message);
   }
 }
@@ -645,10 +649,26 @@ async function disconnect() {
 }
 
 // ---------------------------------------------------------------- talking to Spotify
+const RETRY_BUDGET_MS = 30000;   // the most the app will spend waiting out short rate limits in one request
+let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function rateLimitError(wait, reason) {
+  // wait: seconds Spotify asked for, or null when the page could not read it (browsers only show a page the headers a server lists as readable)
+  const message = reason === "QUOTA_EXCEEDED"
+    ? (wait ? `Spotify has reached its quota limit for this app. Waiting is the only fix: try again in about ${waitText(wait)}.` : "Spotify has reached its quota limit for this app. Waiting is the only fix, and Spotify did not say how long to wait.")
+    : (wait ? `Spotify is rate limiting requests. Try again in about ${waitText(wait)}.` : "Spotify is rate limiting requests and did not say how long to wait. Try again in a few minutes.");
+  const error = new Error(message);
+  error.retryAfter = wait;
+  error.reason = reason;
+  return error;
+}
+
 async function spotifyRequest(method, path, { params, json, body, contentType } = {}) {
   let url = path.startsWith("http") ? path : API + path;
   if (params) url += (url.includes("?") ? "&" : "?") + new URLSearchParams(params).toString();
   const what = `${method} ${path.split("?")[0]}`;
+  let waitedMs = 0;
+  let lastWait = null;   // the last wait Spotify gave that could be read
   for (let attempt = 0; attempt < 5; attempt++) {
     let response;
     try {
@@ -661,23 +681,22 @@ async function spotifyRequest(method, path, { params, json, body, contentType } 
       throw new Error("Could not reach Spotify. Check your internet connection and try again.");
     }
     if (response.status === 429) {
-      const wait = Number(response.headers.get("Retry-After")) || 2;
-      if (wait > 60) {   // not worth sitting through: stop at once and say how long it will be
-        let reason = "";
-        try { const data = JSON.parse(await response.text()); reason = (data && data.error && data.error.reason) || ""; } catch (err) { /* no body, or not JSON */ }
-        const error = new Error(reason === "QUOTA_EXCEEDED"
-          ? `Spotify has reached its quota limit for this app. Waiting is the only fix: try again in about ${waitText(wait)}.`
-          : `Spotify is rate limiting requests. Try again in about ${waitText(wait)}.`);
-        error.retryAfter = wait;
-        error.reason = reason;
-        throw error;
-      }
-      await new Promise((r) => setTimeout(r, wait * 1000 + 500));
+      const header = Number(response.headers.get("Retry-After"));
+      const wait = header > 0 ? header : null;
+      if (wait) lastWait = wait;
+      let reason = "";
+      try { const data = JSON.parse(await response.text()); reason = (data && data.error && data.error.reason) || ""; } catch (err) { /* no body, or not JSON */ }
+      // A quota limit, or a wait over a minute, is not worth sitting through: stop at once and say what is known.
+      if (reason === "QUOTA_EXCEEDED" || (wait && wait > 60)) throw rateLimitError(wait || lastWait, reason);
+      const pause = (wait || 2) * 1000 + 500;
+      if (waitedMs + pause > RETRY_BUDGET_MS) break;
+      await retrySleep(pause);
+      waitedMs += pause;
       continue;
     }
     if (response.status === 401) {
       const message = "Your Spotify sign-in expired. Click Connect again.";
-      if (connection === "ready") setConnection("problem", message);   // from here on nothing that needs Spotify is offered
+      if (connection === "ready") setConnection("problem", message, "reconnect");   // from here on nothing that needs Spotify is offered
       throw new Error(message);
     }
     if (response.status === 403) {   // one refused request (a playlist you cannot read, a missing permission) does not mean the connection is lost
@@ -687,7 +706,7 @@ async function spotifyRequest(method, path, { params, json, body, contentType } 
     const text = await response.text();
     return text ? JSON.parse(text) : {};
   }
-  throw new Error("Spotify is rate limiting requests. Wait a minute and try again.");
+  throw rateLimitError(lastWait, "");
 }
 
 const spotify = (path) => spotifyRequest("GET", path);
@@ -1433,11 +1452,17 @@ async function main() {
     setLoginMessage("Please connect again so this page can create playlists.");
   }
 
+  const hasOwnFormats = localStorage.getItem("formats") !== null && localStorage.getItem("formats") !== DEFAULT_FORMATS;
   if (token) {
     $("loginSection").hidden = true;
     $("appSection").hidden = false;  // the formats are there to edit from the moment someone is signed in
-    document.body.classList.add("connected");   // lets minimalist mode drop the title only when the editor is there to take its place
+    document.body.classList.add("connected", "has-editor");   // lets minimalist mode drop the title only when the editor is there to take its place
     await connectToSpotify();   // and the app only calls itself connected, and offers Create, once Spotify has answered
+  } else if (hasOwnFormats) {
+    // Someone who has been here before has formats worth editing, and a backup worth restoring, whether or not Spotify is connected yet.
+    $("appSection").hidden = false;
+    document.body.classList.add("has-editor");
+    updateButtons();
   }
 
   $("pythonNote").textContent = "Getting Python ready. The first time takes a little while...";
