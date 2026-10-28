@@ -84,7 +84,7 @@
   #moreOptions pre.report-preview { color: var(--muted); }
   button.linklike { background: none; border: none; padding: 0; color: var(--accent); font-weight: normal; text-decoration: underline; }
   #backupMessage { min-height: 1.5em; }
-  #supportBox { position: fixed; right: 16px; bottom: 16px; z-index: 1001; display: flex; flex-direction: column-reverse; align-items: stretch; gap: 8px; width: max-content; max-width: min(240px, calc(100vw - 32px)); }
+  #supportBox { position: fixed; right: 16px; bottom: 16px; z-index: 1001; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 8px; width: max-content; max-width: min(240px, calc(100vw - 32px)); }
   #supportButton { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--button);
     background: var(--button); color: var(--on-button, #fff); font-weight: 600; text-decoration: none; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28); }
   #supportButton img { width: 22px; height: auto; aspect-ratio: 285 / 229; display: block; animation: kofi-wiggle 3s infinite; }
@@ -92,7 +92,7 @@
   @keyframes kofi-wiggle { 0% { transform: rotate(0) scale(1); } 60% { transform: rotate(0) scale(1); } 75% { transform: rotate(0) scale(1.12); } 80% { transform: rotate(0) scale(1.1); }
     84% { transform: rotate(-10deg) scale(1.1); } 88% { transform: rotate(10deg) scale(1.1); } 92% { transform: rotate(-10deg) scale(1.1); } 96% { transform: rotate(10deg) scale(1.1); } 100% { transform: rotate(0) scale(1); } }
   @media (prefers-reduced-motion: reduce) { #supportButton img { animation: none; } }
-  #supportCaption { margin: 0; width: 0; min-width: 100%; box-sizing: border-box; padding: 0; color: var(--muted); font-size: 0.75rem; line-height: 1.35; text-align: right; text-wrap: pretty; }   /* above the button, as wide as the button, its left edge level with the button's */
+  #supportCaption { margin: 0 0 0 auto; width: max-content; max-width: 210px; box-sizing: border-box; padding: 0; color: var(--muted); font-size: 0.72rem; line-height: 1.35; text-align: right; text-wrap: balance; }   /* above the button, its right edge level with the button's, and wide enough for three lines or so */
   @media (max-width: 520px) { #supportBox { right: 8px; bottom: 8px; } }
   /* When the corner would reach the app (the page is 720px wide, and silence tags hang out of its right edge), the button and note go in a strip along the bottom instead. */
   @media (max-width: 1059px) {
@@ -100,7 +100,7 @@
     #supportBox { left: 0; right: 0; bottom: 0; width: auto; box-sizing: border-box; max-width: none; flex-direction: row-reverse; align-items: center; justify-content: flex-start; gap: 12px; padding: 40px 12px calc(10px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, var(--bg) 0%, var(--bg) 55%, transparent 100%); pointer-events: none; }
     #supportBox > * { pointer-events: auto; }
     #supportButton { flex: none; white-space: nowrap; }
-    #supportCaption { flex: 0 1 auto; width: auto; min-width: 0; max-width: 44ch; padding: 0; background: none; box-shadow: none; text-align: right; text-wrap: balance; }   /* lines of about the same length, and never one long line */
+    #supportCaption { flex: 0 1 auto; width: auto; min-width: 0; max-width: 52ch; padding: 0; background: none; box-shadow: none; text-align: right; text-wrap: balance; }   /* lines of about the same length, and never one long line */
   }
 
   /* the format editor */

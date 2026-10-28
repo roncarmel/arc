@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-26s";
+const APP_VERSION = "2026-10-26u";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -467,6 +467,7 @@ function setConnection(state, message = "", kind = "retry") {
   $("connectionRetry").hidden = state === "problem" && kind === "reconnect";
   $("connectionReconnect").hidden = state === "problem" && kind !== "reconnect";
   updateButtons();
+  if (typeof applyMinimalMode === "function") applyMinimalMode();   // minimalist mode steps aside while Step 1 has a problem to show
   if (typeof renderAppMenu === "function") renderAppMenu();
   if (typeof editorPlaylistsChanged === "function") editorPlaylistsChanged();
 }
@@ -485,7 +486,8 @@ async function connectToSpotify() {
     recordError(message);
     logStep("connection failed");
     setConnection("problem", message, /sign-in expired|did not allow/.test(message) ? "reconnect" : "retry");
-    offerReport("connectionReportHint", message);
+    // A report link is for something unexpected. A rate limit, a quota, no internet and a lapsed sign-in are known, and nothing here can fix them.
+    if (!/rate limiting|request quota|Could not reach Spotify|sign-in expired|did not allow/.test(message)) offerReport("connectionReportHint", message);
   }
 }
 
@@ -655,7 +657,7 @@ let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function rateLimitError(wait, reason) {
   // wait: seconds Spotify asked for, or null when the page could not read it (browsers only show a page the headers a server lists as readable)
   const message = reason === "QUOTA_EXCEEDED"
-    ? (wait ? `Spotify has reached its quota limit for this app. Waiting is the only fix: try again in about ${waitText(wait)}.` : "Spotify has reached its quota limit for this app. Waiting is the only fix, and Spotify did not say how long to wait.")
+    ? (wait ? `Spotify has reached the request quota for your developer account. Waiting is the only fix: try again in about ${waitText(wait)}.` : "Spotify has reached the request quota for your developer account. Waiting is the only fix, and Spotify did not say how long to wait.")
     : (wait ? `Spotify is rate limiting requests. Try again in about ${waitText(wait)}.` : "Spotify is rate limiting requests and did not say how long to wait. Try again in a few minutes.");
   const error = new Error(message);
   error.retryAfter = wait;
