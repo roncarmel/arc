@@ -302,6 +302,11 @@
   .app-overlay[hidden], #kofiDim[hidden], #kofiPanel[hidden] { opacity: 0; pointer-events: none; }
   @starting-style { .app-overlay, #kofiDim, #kofiPanel { opacity: 0; } }
 </style>
+<script>
+  // Anonymous visit counts (see Privacy). The page is always counted as "/", and coming back from Spotify's sign-in is not counted again.
+  window.goatcounter = { path: "/", no_onload: /[?&](code|error)=/.test(location.search) };
+</script>
+<script data-goatcounter="https://roncarmel.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </head>
 <body>
 <main>
@@ -319,7 +324,7 @@
       <li>Create the playlists. The app shows you what it found and asks before it makes anything.</li>
     </ol>
     <p><strong>What you need</strong><br>A Spotify Premium account (Spotify requires it for the free developer app) and some playlists of your own to draw from.</p>
-    <p><strong>Privacy</strong><br>Your existing Spotify playlists are only read, never changed. Playlists created by this app stay off your Spotify profile and out of search, though anyone with a playlist's link can still open it. To change that, use Make private in the Spotify app. Everything runs in this browser, and nothing about your music goes anywhere except to you and Spotify. If you run into a problem you can report it in the <span class="ui">More options</span> section at the bottom of this page. A problem report is sent only if you choose to send it, and it goes only to me, the developer of this app.</p>
+    <p><strong>Privacy</strong><br>Your existing Spotify playlists are only read, never changed. Everything runs in this browser, and nothing about your music, such as playlist names or songs, goes anywhere except to you and Spotify. If you run into a problem you can report it in the <span class="ui">More options</span> section at the bottom of this page. For the full details, see <a href="#privacySection" class="privacy-link">Privacy</a> at the bottom of this page.</p>
   </details>
 
   <section id="loginSection">
@@ -389,7 +394,7 @@
           <div class="address"><code class="redirect-address"></code> <button class="copy-redirect" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div>
         </details>
 
-        <p class="muted" style="margin-top:12px">Your Client ID is not a secret. It stays in this browser. Nothing is sent anywhere except to Spotify, unless you choose to send a problem report, which goes only to me, the developer of this app.</p>
+        <p class="muted" style="margin-top:12px">Your Client ID is not a secret. It stays in this browser, and goes only to Spotify. For everything else the page sends, see <a href="#privacySection" class="privacy-link">Privacy</a> at the bottom of this page.</p>
       </div>
       </details>
     </div>
@@ -499,6 +504,32 @@
   </div>
 
   <footer class="debug">
+    <details id="privacySection" class="card">
+      <summary>Privacy</summary>
+
+      <h3>What stays in this browser</h3>
+      <p>Your Client ID, your formats, your color choice, and a copy of the songs from your playlists are saved in this browser, and nowhere else. The copy of your songs lets the app skip asking Spotify for them again. Disconnect removes your Spotify sign-in and the saved songs. <span class="ui">Clear saved data</span>, in <span class="ui">More options</span>, removes everything.</p>
+
+      <h3>Your Spotify account</h3>
+      <p>You sign in on Spotify's own page, and this app never sees your Spotify password. It asks Spotify for permission to read your playlists, create playlists, remove playlists, and set their cover images. Your existing playlists are only read, never changed. Removing only touches the playlists this app made, unless you choose to remove others too.</p>
+      <p>Playlists created by this app stay off your Spotify profile and out of search, though anyone with a playlist's link can still open it. To change that, use Make private in the Spotify app.</p>
+
+      <h3>Who the page talks to</h3>
+      <p>Spotify, for everything about your music. The page's code comes from GitHub, and the Python it runs comes from a public code host (jsDelivr). Ko-fi's page loads only if you open Donate, and the report form opens only if you choose to report a problem.</p>
+
+      <h3>Anonymous visit counts</h3>
+      <p>The page counts visits with GoatCounter, a service that uses no cookies and does not use unique identifiers to follow people around the web. It records that the page was opened, with the browser, screen size, country, and the site you came from, but not who you are. It also counts a few actions: the first time a browser connects to Spotify, how many playlists get created, when Donate is opened, and the kind of connection problem that happened. It never receives playlist names, formats, song titles, or your Client ID. A small marker in this browser remembers that your first connection was counted, so it is counted once.</p>
+
+      <h3>Donations</h3>
+      <p>Donations are handled entirely by Ko-fi and its payment providers. This app never sees any payment details.</p>
+
+      <h3>Problem reports</h3>
+      <p>A problem report is sent only if you choose to send it, and it goes only to me, the developer of this app. The form opens in a new tab, and nothing is sent until you submit it there. The details attached are shown in <span class="ui">More options</span> first: the app version, browser, window size, last error, and recent steps. Your sign-in, Client ID, playlist names, and song titles are never included.</p>
+
+      <h3>Accounts and ads</h3>
+      <p>There are no accounts and no ads.</p>
+    </details>
+
     <details id="moreOptions" class="card">
       <summary>More options</summary>
 

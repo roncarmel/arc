@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-26w";
+const APP_VERSION = "2026-10-26x";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -481,11 +481,13 @@ async function connectToSpotify() {
     await loadMyPlaylists();
     setConnection("ready");
     logStep(`connected, ${plural(playlists.length, "playlist")} found`);
+    if (!localStorage.getItem("counted") && countEvent("first-connection")) localStorage.setItem("counted", "1");   // once per browser
   } catch (err) {
     const message = String(err.message || err);
     recordError(message);
     logStep("connection failed");
     setConnection("problem", message, /sign-in expired|did not allow/.test(message) ? "reconnect" : "retry");
+    countEvent("connection-problem", problemKind(message));
     // A report link is for something unexpected. A rate limit, a quota, no internet and a lapsed sign-in are known, and nothing here can fix them.
     if (!/rate limiting|request quota|Could not reach Spotify|sign-in expired|did not allow/.test(message)) offerReport("connectionReportHint", message);
   }
@@ -653,6 +655,27 @@ async function disconnect() {
 // ---------------------------------------------------------------- talking to Spotify
 const RETRY_BUDGET_MS = 30000;   // the most the app will spend waiting out short rate limits in one request
 let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ---------------------------------------------------------------- anonymous counts (see Privacy)
+function countEvent(name, title) {
+  // Sends GoatCounter an event name and, at most, a number or a short kind. Never a name, a format, a song, or an ID.
+  // Returns whether it was sent: nothing is sent when the counter is blocked or has not loaded.
+  try {
+    if (window.goatcounter && typeof window.goatcounter.count === "function") {
+      window.goatcounter.count({ path: name, title: title || name, event: true });
+      return true;
+    }
+  } catch (err) { /* counting must never get in the way */ }
+  return false;
+}
+
+function problemKind(message) {
+  if (/request quota/.test(message)) return "quota";
+  if (/rate limiting/.test(message)) return "rate-limit";
+  if (/Could not reach Spotify/.test(message)) return "network";
+  if (/sign-in expired|did not allow/.test(message)) return "sign-in";
+  return "other";
+}
 
 function rateLimitError(wait, reason) {
   // wait: seconds Spotify asked for, or null when the page could not read it (browsers only show a page the headers a server lists as readable)
@@ -1135,6 +1158,7 @@ async function createFromPlan(plan) {
     else if (coverUnloaded) notes.push("Note: the cover art could not be loaded, so the playlists have Spotify's default cover.");
     else if (coverFailed) notes.push(`Note: Spotify would not accept the cover art for ${plural(coverFailed, "playlist")}.`);
     createSucceeded = created > 0;
+    if (created > 0) countEvent("playlists-created", String(created));
     const doneText = `Done. Created ${plural(created, "playlist")} in your Spotify account.` + (notes.length ? "\n\n" + notes.join("\n\n") : "");
     setActionMessage(doneText);
     addSupportPrompt();
@@ -1261,6 +1285,7 @@ function initDonatePanel() {
     button.setAttribute("aria-expanded", "true");
     $("kofiClose").focus();
     logStep("donate panel opened");
+    countEvent("donate-opened");
   };
   const close = () => {
     if (panel.hidden) return;
@@ -1416,6 +1441,13 @@ async function main() {
   $("connectionRetry").addEventListener("click", connectToSpotify);
   $("connectionReconnect").addEventListener("click", startLogin);
   $("create").addEventListener("click", startCreate);
+  for (const link of document.querySelectorAll(".privacy-link")) {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      $("privacySection").open = true;
+      $("privacySection").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
   $("createClose").addEventListener("click", closeCreateDialog);
   $("createDonate").addEventListener("click", () => { closeCreateDialog(); openDonatePanel(); });
   $("createOverlay").addEventListener("click", (event) => { if (event.target === $("createOverlay")) dismissCreateDialog(); });
