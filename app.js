@@ -15,12 +15,15 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-27j";
+const APP_VERSION = "2026-10-27l";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
 const APP_MARKER = "Made by Ceremony Playlist Builder";                    // change this whenever the page is updated
 const REPORT_FORM_URL = "https://tally.so/r/VppLZN"; // where problem reports go
+// The questions and feedback form (Tally). It collects only what someone types, so nothing is attached to its address. While this is empty,
+// the section and the matching lines in Privacy stay hidden.
+const FEEDBACK_FORM_URL = "";
 
 const DEFAULT_FORMATS = modelToText({ formats: [] });   // a new visitor starts with no formats at all, and a big New format button
 
@@ -1549,6 +1552,10 @@ async function main() {
   on("connectionRetry", "click", connectToSpotify);
   on("connectionReconnect", "click", startLogin);
   on("create", "click", () => startCreate());
+  if (FEEDBACK_FORM_URL) {
+    $("feedbackLink").href = FEEDBACK_FORM_URL;
+    for (const id of ["feedbackSection", "privacyFeedback", "privacyFeedbackWho"]) $(id).hidden = false;
+  }
   for (const link of document.querySelectorAll(".privacy-link")) {
     link.addEventListener("click", (event) => {
       event.preventDefault();

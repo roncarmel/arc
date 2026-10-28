@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-27j">
-<script src="theme.js?v=2026-10-27j"></script>
+<meta name="app-version" content="2026-10-27l">
+<script src="theme.js?v=2026-10-27l"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -354,6 +354,20 @@
   /* the card has the same soft pink outline as a segment, which ties it to the selected tab; its settings sit below the segments, set off by a line */
   #formatEditor .fe-card { border-color: var(--accent-tint-border, rgba(255, 56, 184, 0.5)); }
   #formatEditor #feHead { border-top: 1px solid var(--line); padding-top: 10px; }
+  /* every button reacts to a mouse pointer: a little brighter, with a ring a shade lighter than its color (not on touch screens, where a hover would stick) */
+  @media (hover: hover) {
+    button:not(:disabled):hover, a.button-link:hover, #supportButton:hover { filter: brightness(1.08); outline: 2px solid var(--accent); outline-offset: 1px; }
+    @supports (color: color-mix(in srgb, red 50%, white)) {
+      button:not(:disabled):hover, a.button-link:hover, #supportButton:hover { outline-color: color-mix(in srgb, var(--button) 60%, #fff); }
+    }
+    #formatEditor .fe-tab:not(:disabled):hover, #formatEditor .fe-step:not(:disabled):hover { outline-offset: -2px; }   /* inside, where a strip or a frame would cut a ring off */
+    button.linklike:hover { outline: none; filter: brightness(1.25); text-decoration-thickness: 2px; }
+    #formatEditor .fe-item:hover, #formatEditor .fe-option:hover { outline: none; filter: none; background: rgba(127, 127, 127, 0.18); }
+    #kofiPanel .kofi-bar button:hover { outline: none; filter: none; background: rgba(0, 0, 0, 0.08); }
+    details > summary:hover { filter: brightness(1.2); }
+    /* the pencil on the selected tab lights up, since pressing the tab renames the format */
+    #formatEditor .fe-tab[aria-pressed="true"]:hover .fe-icon { background: rgba(255, 255, 255, 0.3); box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3); border-radius: 50%; }
+  }
 </style>
 <script>
   // If the page's own script never starts (a file that did not load, an old copy kept by the browser, an error), the page says so,
@@ -588,7 +602,7 @@
       <p>Playlists created by this app stay off your Spotify profile and out of search, though anyone with a playlist's link can still open it. To change that, use Make private in the Spotify app.</p>
 
       <h3>Who the page talks to</h3>
-      <p>Spotify, for everything about your music. The page's code comes from GitHub, and the Python it runs comes from a public code host (jsDelivr). Ko-fi's page loads only if you open Donate, and the report form opens only if you choose to report a problem.</p>
+      <p>Spotify, for everything about your music. The page's code comes from GitHub, and the Python it runs comes from a public code host (jsDelivr). Ko-fi's page loads only if you open Donate, and the report form opens only if you choose to report a problem<span id="privacyFeedbackWho" hidden>, and the feedback form only if you choose to send feedback</span>.</p>
 
       <h3>Anonymous visit counts</h3>
       <p>The page counts visits with GoatCounter, a service that uses no cookies and does not use unique identifiers to follow people around the web. It records that the page was opened, with the browser, screen size, country, and the site you came from, but not who you are. It also counts a few actions: the first time a browser connects to Spotify, how many playlists get created, when Donate is opened, and the kind of connection problem that happened. It never receives playlist names, formats, song titles, or your Client ID. A small marker in this browser remembers that your first connection was counted, so it is counted once.</p>
@@ -598,6 +612,11 @@
 
       <h3>Problem reports</h3>
       <p>A problem report is sent only if you choose to send it, and it goes only to me, the developer of this app. The form opens in a new tab, and nothing is sent until you submit it there. The details attached are shown in <span class="ui">More options</span> first: the app version, browser, window size, last error, and recent steps. Your sign-in, Client ID, playlist names, and song titles are never included.</p>
+
+      <div id="privacyFeedback" hidden>
+        <h3>Questions and feedback</h3>
+        <p>The form sends only what you type, and nothing else is attached. An email address is included only if you choose to enter one, and it is used only to respond to you. The form opens in a new tab, and nothing is sent until you submit it there.</p>
+      </div>
 
       <h3>Accounts and ads</h3>
       <p>There are no accounts and no ads.</p>
@@ -612,6 +631,12 @@
       <pre id="reportPreview" class="report-preview"></pre>
       <p class="muted">Your sign-in, Client ID, playlist names, and song titles are never included.</p>
       <a id="reportLink" class="button-link" href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer"><img class="btn-icon" src="icons/report.svg" alt="" width="20" height="20"><span class="btn-label">Open the report form</span></a>
+
+      <div id="feedbackSection" hidden>
+        <h3>Questions and feedback</h3>
+        <p class="muted">Have a question, an idea, or something else to say about the app? One form takes either. It sends only what you type. There is an optional email field: enter an email there if you want me to be able to respond. The form opens in a new tab, and nothing is sent until you submit it there.</p>
+        <a id="feedbackLink" class="button-link" href="" target="_blank" rel="noopener noreferrer"><img class="btn-icon" src="icons/feedback.svg" alt="" width="20" height="20"><span class="btn-label">Open the feedback form</span></a>
+      </div>
 
       <h3>Limit how many playlists are made</h3>
       <p class="muted">By default, the app makes as many playlists as your songs allow, but here you can cap how many playlists get created per format:</p>
@@ -677,8 +702,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-27j"></script>
-<script src="editor.js?v=2026-10-27j"></script>
-<script src="app.js?v=2026-10-27j"></script>
+<script src="formats.js?v=2026-10-27l"></script>
+<script src="editor.js?v=2026-10-27l"></script>
+<script src="app.js?v=2026-10-27l"></script>
 </body>
 </html>
