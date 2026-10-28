@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-27m">
-<script src="theme.js?v=2026-10-27m"></script>
+<meta name="app-version" content="2026-10-27o">
+<script src="theme.js?v=2026-10-27o"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -354,16 +354,22 @@
   /* the card has the same soft pink outline as a segment, which ties it to the selected tab; its settings sit below the segments, set off by a line */
   #formatEditor .fe-card { border-color: var(--accent-tint-border, rgba(255, 56, 184, 0.5)); }
   #formatEditor #feHead { border-top: 1px solid var(--line); padding-top: 10px; }
-  /* every button reacts to a mouse pointer: a little brighter, with a ring a shade lighter than its color (not on touch screens, where a hover would stick) */
+  /* every button reacts to a mouse pointer, quietly (not on touch screens, where a hover would stick):
+     filled buttons get a little brighter; plain and dashed controls keep their color and get a stronger outline;
+     small controls grow a touch; and the playlist name in a segment does nothing of its own, because the whole segment lights up */
   @media (hover: hover) {
-    button:not(:disabled):hover, a.button-link:hover, #supportButton:hover { filter: brightness(1.08); outline: 2px solid var(--accent); outline-offset: 1px; }
+    #formatEditor .fe-step, #formatEditor .fe-more, #formatEditor .fe-grip { transition: transform 0.12s ease; }
+    button:not(:disabled):hover, a.button-link:hover, #supportButton:hover { filter: brightness(1.1); }
+    #formatEditor .fe-iconbtn:not(:disabled):hover, #formatEditor .fe-tab[aria-pressed="false"]:hover, #formatEditor .fe-newformat:hover, #formatEditor .fe-add:hover, .theme-button:hover, .fe-dialog .row button:not(.primary):not(.fe-danger-button):hover { filter: none; border-color: var(--muted); }
     @supports (color: color-mix(in srgb, red 50%, white)) {
-      button:not(:disabled):hover, a.button-link:hover, #supportButton:hover { outline-color: color-mix(in srgb, var(--button) 60%, #fff); }
+      #formatEditor .fe-iconbtn:not(:disabled):hover, #formatEditor .fe-tab[aria-pressed="false"]:hover, #formatEditor .fe-newformat:hover, #formatEditor .fe-add:hover, .theme-button:hover, .fe-dialog .row button:not(.primary):not(.fe-danger-button):hover { border-color: color-mix(in srgb, var(--line) 45%, var(--fg)); }
     }
-    #formatEditor .fe-tab:not(:disabled):hover, #formatEditor .fe-step:not(:disabled):hover { outline-offset: -2px; }   /* inside, where a strip or a frame would cut a ring off */
-    button.linklike:hover { outline: none; filter: brightness(1.25); text-decoration-thickness: 2px; }
-    #formatEditor .fe-item:hover, #formatEditor .fe-option:hover { outline: none; filter: none; background: rgba(127, 127, 127, 0.18); }
-    #kofiPanel .kofi-bar button:hover { outline: none; filter: none; background: rgba(0, 0, 0, 0.08); }
+    body.minimal #feAppMenuButton:hover { border-color: var(--button); filter: brightness(1.1); }   /* pink in minimalist mode, so it brightens like the other filled buttons */
+    #formatEditor .fe-step:not(:disabled):hover, #formatEditor .fe-more:hover, #formatEditor .fe-grip:hover { filter: none; transform: scale(1.12); }
+    #formatEditor .fe-main:hover { filter: none; }
+    button.linklike:hover { filter: brightness(1.25); text-decoration-thickness: 2px; }
+    #formatEditor .fe-item:hover, #formatEditor .fe-option:hover { filter: none; background: rgba(127, 127, 127, 0.18); }
+    #kofiPanel .kofi-bar button:hover { filter: none; background: rgba(0, 0, 0, 0.08); }
     details > summary:hover { filter: brightness(1.2); }
     /* the pencil on the selected tab lights up, since pressing the tab renames the format */
     #formatEditor .fe-tab[aria-pressed="true"]:hover .fe-icon { background: rgba(255, 255, 255, 0.3); box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3); border-radius: 50%; }
@@ -679,10 +685,6 @@
       </div>
       <p id="themeNote" class="muted" hidden></p>
 
-      <h3>Python status</h3>
-      <p class="muted">The code that builds your playlists is written in Python and runs inside your browser, so nothing about your music is sent to a server. If <span class="ui">Build playlists</span> stays unavailable, the reason shows here.</p>
-      <p id="pythonStatus">Starting...</p>
-
       <h3>Clear saved data</h3>
       <p class="muted">You can make this page forget everything it saved in this browser: your Client ID, your formats, your Spotify sign-in, and the songs it keeps from your playlists. Nothing in your Spotify account changes.</p>
       <p class="muted">Your formats are erased too. To get them back afterward, connect to Spotify again, then use the <span class="ui">restore your formats from a backup</span> link in Step 2 and choose your backup file. If you haven't downloaded a backup, do that first in Step 4.</p>
@@ -698,12 +700,17 @@
           <button id="clearNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
         </div>
       </div>
+
+      <h3>Python status</h3>
+      <p class="muted">The code that builds your playlists is written in Python and runs inside your browser, so nothing about your music is sent to a server. If <span class="ui">Build playlists</span> stays unavailable, the reason shows here.</p>
+      <p id="pythonStatus">Starting...</p>
+
     <p class="muted" style="margin-top:24px">App version: <span id="appVersionLabel"></span></p>
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-27m"></script>
-<script src="editor.js?v=2026-10-27m"></script>
-<script src="app.js?v=2026-10-27m"></script>
+<script src="formats.js?v=2026-10-27o"></script>
+<script src="editor.js?v=2026-10-27o"></script>
+<script src="app.js?v=2026-10-27o"></script>
 </body>
 </html>
