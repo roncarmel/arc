@@ -206,6 +206,9 @@ function renderEditor() {
   $("feTabs").addEventListener("scroll", updateTabFade);
   renderTabs();
   renderAppMenu();
+  // the menu button was not there yet when the tabs were drawn, so the tabs have less room than they were scrolled for
+  scrollSelectedTab();
+  updateTabFade();
   if (!format) {   // no formats: the New format button, and what to do with it
     root.appendChild(feEl("p", { class: "muted fe-emptynote", id: "feEmptyNote", text: "Tap New format to create your first format, then add as many segments to it as you like." }));
     if (typeof updateButtons === "function") updateButtons();
@@ -252,7 +255,8 @@ function minimalActive() {
 
 function applyMinimalMode() {
   document.body.classList.toggle("minimal", minimalActive());
-  if (typeof updateTabFade === "function") updateTabFade();   // the icon changes how much room the tabs have
+  if (typeof scrollSelectedTab === "function") scrollSelectedTab();   // the icon changes how much room the tabs have, so keep the selected one in view
+  if (typeof updateTabFade === "function") updateTabFade();
   if (typeof updateButtons === "function") updateButtons();   // Create turns into a connect button while minimal and not connected
 }
 
