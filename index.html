@@ -269,7 +269,7 @@
   /* minimalist mode: the page with only what is needed. The headings and explanations of the steps, the "more about" box, the Spotify
      connection once it is made, and the backup step all go; the app menu has the backup and sign-out. */
   body.minimal .tagline, body.minimal #about, body.minimal #connectedSection, body.minimal #editHeading, body.minimal #savedNote,
-  body.minimal #createHeading, body.minimal #createNote, body.minimal #backupBlock, body.minimal #formatHelp, body.minimal #moreOptions, body.minimal #privacySection { display: none; }
+  body.minimal #createHeading, body.minimal #createNote, body.minimal #backupBlock, body.minimal #formatHelp, body.minimal #moreOptions, body.minimal #privacySection, body.minimal #loginSection, body.minimal #connectionProblem { display: none; }
   /* the page's title goes (once the editor is there), and the icon takes its place at the left of the tabs, as tall as they are */
   body.minimal.has-editor h1.brand { display: none; }
   body.minimal.has-editor main { padding-top: 10px; }   /* the same gap as between the tabs and the card */
@@ -277,6 +277,8 @@
   #formatEditor .fe-appicon { display: none; }
   body.minimal #formatEditor .fe-appicon { display: block; width: 44px; height: 44px; flex: none; border-radius: 22%; }
   #privacySection { margin-bottom: 14px; }   /* a little room between Privacy and More options */
+  #formatEditor .fe-iconbtn.fe-alert { position: relative; }
+  #formatEditor .fe-iconbtn.fe-alert::after { content: ""; position: absolute; top: 5px; right: 5px; width: 8px; height: 8px; border-radius: 50%; background: #ffcc00; border: 2px solid var(--bg); }   /* a Spotify problem, seen without opening the menu */
   body.minimal #feAppMenuButton { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
   /* the popup that holds everything after a click on Create: the plan, the question, the progress, and the result */
   .app-overlay { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 1100; background: rgba(0, 0, 0, 0.65); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }

@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-26x";
+const APP_VERSION = "2026-10-27a";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -31,6 +31,7 @@ let me = null;          // the signed-in Spotify user
 // Where the connection to Spotify stands: "none" (not signed in), "connecting", "ready" (the profile and playlists were read), or
 // "problem" (signed in, but Spotify could not be reached or would not answer). Only "ready" allows anything that needs Spotify.
 let connection = "none";
+let connectionKind = "retry";   // what can fix a problem: "retry" (waiting, the network) or "reconnect" (the sign-in)
 let playlists = [];     // the user's playlists
 let formatsValid = false;
 let currentFormats = [];   // { id, title } for each format, used by the dropdowns and messages
@@ -449,15 +450,42 @@ async function clearSavedData() {
 
 function updateButtons() {
   const ready = !!token && connection === "ready" && !!py && formatsValid && !busy;
-  $("create").disabled = !ready;
+  const action = connectionAction();
+  if (action) {
+    const again = connection === "problem";
+    setLabel($("create"), again ? (connectionKind === "reconnect" ? "Connect again" : "Try again") : "Connect Spotify");
+    setIcon($("create"), again && connectionKind !== "reconnect" ? "retry" : "connect");
+    $("create").disabled = busy;
+  } else {
+    setLabel($("create"), "Create playlists");
+    setIcon($("create"), "create");
+    $("create").disabled = !ready;
+  }
   $("removeOld").disabled = !ready;
   // The notes appear when Create cannot work because there is no connection, not while the app is still connecting.
   const noConnection = !$("appSection").hidden && (connection === "problem" || connection === "none");
-  $("spotifyNote").hidden = !noConnection;
+  if (noConnection && minimalActive()) {
+    // The button says what to do; the note says what went wrong.
+    $("spotifyNote").textContent = connection === "problem" ? $("connectionMessage").textContent : CREATE_NEEDS_SPOTIFY;
+    $("spotifyNote").hidden = connection !== "problem";
+  } else {
+    $("spotifyNote").textContent = CREATE_NEEDS_SPOTIFY;
+    $("spotifyNote").hidden = !noConnection;
+  }
   $("removeNote").hidden = !noConnection;
 }
 
+function connectionAction() {
+  // In minimalist mode Step 1 is hidden, so while Spotify is not connected the Create button becomes the way to connect.
+  if (!minimalActive() || connection === "ready" || connection === "connecting") return null;
+  if (connection === "problem") return connectionKind === "reconnect" ? startLogin : connectToSpotify;
+  return localStorage.getItem("clientId") ? startLogin : null;
+}
+
+const CREATE_NEEDS_SPOTIFY = "Creating playlists needs a working connection to Spotify. See Step 1.";
+
 function setConnection(state, message = "", kind = "retry") {
+  connectionKind = kind;
   // kind says what can fix a problem: "retry" (waiting, or the network) or "reconnect" (the sign-in itself)
   connection = state;
   $("connectedSection").hidden = !(state === "connecting" || state === "ready");
@@ -479,6 +507,7 @@ async function connectToSpotify() {
   clearReportHints("connectionReportHint");
   try {
     await loadMyPlaylists();
+    localStorage.setItem("connectedBefore", "1");   // from now on minimalist mode is available
     setConnection("ready");
     logStep(`connected, ${plural(playlists.length, "playlist")} found`);
     if (!localStorage.getItem("counted") && countEvent("first-connection")) localStorage.setItem("counted", "1");   // once per browser
@@ -1066,6 +1095,8 @@ function askToCreate(plan) {
 }
 
 async function startCreate() {
+  const connect = connectionAction();   // in minimalist mode, when not connected, this button connects instead
+  if (connect) { connect(); return; }
   // One button: plan, show what was found, ask, then create exactly that plan.
   setBusy(true);
   clearResults();
@@ -1496,7 +1527,7 @@ async function main() {
     // Someone who has been here before has formats worth editing, and a backup worth restoring, whether or not Spotify is connected yet.
     $("appSection").hidden = false;
     document.body.classList.add("has-editor");
-    updateButtons();
+    applyMinimalMode();   // and updates the buttons
   }
 
   $("pythonNote").textContent = "Getting Python ready. The first time takes a little while...";

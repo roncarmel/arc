@@ -35,6 +35,8 @@ const FE_ICONS = {
   copy: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a1 1 0 0 1 1-1h9"/></svg>',
   trash: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M9 7V5h6v2M7 7l1 12h8l1-12"/></svg>',
   sliders: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"/><circle cx="16" cy="8" r="2"/><circle cx="8" cy="16" r="2"/></svg>',
+  link: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
+  retry: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg>',
   download: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>',
   restore: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V5M7 9l5-5 5 5M5 20h14"/></svg>',
   unplug: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/><path d="M4 4l16 16"/></svg>',
@@ -194,7 +196,7 @@ function renderEditor() {
   root.appendChild(feEl("div", { class: "fe-toprow" },
     feEl("img", { class: "fe-appicon", src: "apple-touch-icon.png", alt: "", width: "44", height: "44" }),
     feEl("div", { class: "fe-tabs", id: "feTabs" }),
-    feEl("button", { type: "button", class: "fe-newformat", id: "feNewFormat", "aria-label": "New format", title: "New format", onClick: addFormat }, feIcon("plus")),
+    feEl("button", { type: "button", class: "fe-newformat", id: "feNewFormat", "aria-label": "New format", title: "New format", onClick: askNewFormat }, feIcon("plus")),
     feEl("div", { class: "fe-appmenuwrap", id: "feAppMenu" })));
   $("feTabs").addEventListener("scroll", updateTabFade);
   renderTabs();
@@ -233,12 +235,25 @@ function minimalMode() {
   try { return localStorage.getItem("minimalMode") === "1"; } catch (err) { return false; }
 }
 
+// Minimalist mode becomes available once Spotify has connected for the first time, and it applies whenever the editor is on the page.
+// Step 1 stays hidden then, whether or not Spotify is connected: connecting, trying again and connecting again are done from the
+// app menu and the Create button instead.
+function hasConnectedBefore() {
+  try { return localStorage.getItem("connectedBefore") === "1"; } catch (err) { return false; }
+}
+
+function minimalActive() {
+  return minimalMode() && hasConnectedBefore() && document.body.classList.contains("has-editor");
+}
+
 function applyMinimalMode() {
-  document.body.classList.toggle("minimal", minimalMode());
+  document.body.classList.toggle("minimal", minimalActive());
   if (typeof updateTabFade === "function") updateTabFade();   // the icon changes how much room the tabs have
+  if (typeof updateButtons === "function") updateButtons();   // Create turns into a connect button while minimal and not connected
 }
 
 function toggleMinimal() {
+  if (!hasConnectedBefore()) return;
   try { localStorage.setItem("minimalMode", minimalMode() ? "0" : "1"); } catch (err) { /* the choice just does not last */ }
   applyMinimalMode();
   editor.appMenu = false;   // the menu closes; the checkbox shows the new state the next time it opens
@@ -260,17 +275,33 @@ function renderAppMenu() {
   if (!slot) return;
   slot.innerHTML = "";
   slot.appendChild(feEl("button", {
-    type: "button", class: "fe-iconbtn fe-trigger", id: "feAppMenuButton", "aria-label": "App menu", "aria-haspopup": "menu", "aria-expanded": String(editor.appMenu),
+    type: "button", class: "fe-iconbtn fe-trigger" + (connection === "problem" ? " fe-alert" : ""), id: "feAppMenuButton",
+    "aria-label": connection === "problem" ? "App menu, there is a Spotify problem" : "App menu", "aria-haspopup": "menu", "aria-expanded": String(editor.appMenu),
     onClick: toggleAppMenu,
   }, feIcon("dots")));
   if (!editor.appMenu) return;
   const choose = (action) => () => { editor.appMenu = false; renderAppMenu(); action(); };
   const on = minimalMode();
   const backupLabel = ($("backupStatus") && $("backupStatus").textContent) || "";   // the same label as in the backup step, which minimalist mode hides
+  const available = hasConnectedBefore();
   const box = feEl("span", { class: "fe-check" + (on ? " fe-check-on" : ""), "aria-hidden": "true" });
   if (on) box.appendChild(feIcon("check"));
+  // Connecting from the menu: with a saved Client ID, Connect Spotify; and, in minimalist mode where Step 1 is hidden, the way out of a problem.
+  const reconnect = connectionKind === "reconnect";
+  const connectItems = [];
+  if (connection === "none" && localStorage.getItem("clientId")) {
+    connectItems.push(feEl("button", { type: "button", class: "fe-item", id: "feConnect", role: "menuitem", onClick: choose(() => startLogin()) }, feIcon("link"), "Connect Spotify"));
+  } else if (connection === "problem" && minimalActive()) {
+    connectItems.push(feEl("button", { type: "button", class: "fe-item", id: reconnect ? "feReconnect" : "feRetry", role: "menuitem", onClick: choose(() => (reconnect ? startLogin() : connectToSpotify())) }, feIcon(reconnect ? "link" : "retry"), reconnect ? "Connect again" : "Try again"));
+    connectItems.push(feEl("div", { class: "fe-itemnote", id: "feConnectionNote", text: $("connectionMessage").textContent }));
+  }
+  const minimalButton = feEl("button", { type: "button", class: "fe-item", id: "feMinimal", role: "menuitemcheckbox", "aria-checked": String(on), onClick: toggleMinimal }, box, "Minimalist mode");
+  if (!available) minimalButton.disabled = true;
   slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" },
-    feEl("button", { type: "button", class: "fe-item", id: "feMinimal", role: "menuitemcheckbox", "aria-checked": String(on), onClick: toggleMinimal }, box, "Minimalist mode"),
+    ...connectItems,
+    ...(connectItems.length ? [feEl("div", { class: "fe-rule" })] : []),
+    minimalButton,
+    ...(!available ? [feEl("div", { class: "fe-itemnote", id: "feMinimalNote", text: "Available after you first connect to Spotify." })] : []),
     feEl("div", { class: "fe-rule" }),
     feEl("button", { type: "button", class: "fe-item", id: "feBackup", role: "menuitem", onClick: choose(() => { downloadBackup(); showBackupMessage("Backup downloaded. Look for it in your Downloads folder."); }) }, feIcon("download"), "Download a backup"),
     ...(backupLabel ? [feEl("div", { class: "fe-itemnote", id: "feBackupStatus", text: backupLabel })] : []),
@@ -748,6 +779,23 @@ function addSegment() {
   renderRows();
   renderTimeline();
   focusSearchBox();
+}
+
+// The + button asks first, since it sits close to the menu button and a stray tap would otherwise add a format.
+function askNewFormat() {
+  closePanels();
+  const close = () => { overlay.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = (event) => { if (event.key === "Escape") close(); };
+  const cancel = feEl("button", { type: "button", id: "feNewFormatCancel", onClick: close }, "Cancel");
+  const confirm = feEl("button", { type: "button", class: "primary", id: "feNewFormatConfirm", onClick: () => { close(); addFormat(); } }, "Create format");
+  const overlay = feEl("div", { class: "fe-overlay", id: "feNewFormatDialog", onClick: close },
+    feEl("div", { class: "fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": "New format", onClick: (e) => e.stopPropagation() },
+      feEl("h3", { text: "Create a new format?" }),
+      feEl("p", { text: "It starts with one empty segment, ready to rename and fill in." }),
+      feEl("div", { class: "row" }, cancel, confirm)));
+  document.body.appendChild(overlay);
+  document.addEventListener("keydown", onKey);
+  confirm.focus();
 }
 
 function addFormat() {
