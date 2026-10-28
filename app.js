@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-26p";
+const APP_VERSION = "2026-10-26r";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -36,7 +36,58 @@ let formatsValid = false;
 let currentFormats = [];   // { id, title } for each format, used by the dropdowns and messages
 let busy = false;
 let needsReconnect = false;
-const trackCache = new Map();  // playlist id -> songs, so repeat runs are fast
+const trackCache = new Map();  // playlist id -> songs, for the life of this page
+
+// ---------------------------------------------------------------- saved songs
+// The songs of each playlist are also kept in this browser (IndexedDB), by playlist id, so a normal run does not ask Spotify for
+// them again, even after the page is reloaded. A playlist's snapshot id, when Spotify gives one, says whether it has changed.
+// Everything here is best effort: if the browser will not keep songs, the app simply asks Spotify, as it did before.
+const SONGS_DB = "ceremony-playlist-builder";
+const SONGS_STORE = "songs";
+let songsDb = null;
+
+function openSongsDb() {
+  if (songsDb) return songsDb;
+  songsDb = new Promise((resolve) => {
+    try {
+      if (typeof indexedDB === "undefined" || !indexedDB) return resolve(null);
+      const request = indexedDB.open(SONGS_DB, 1);
+      request.onupgradeneeded = () => request.result.createObjectStore(SONGS_STORE, { keyPath: "id" });
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => resolve(null);
+      request.onblocked = () => resolve(null);
+    } catch (err) { resolve(null); }
+  });
+  return songsDb;
+}
+
+async function songsStore(mode, work) {
+  // Runs work(store) in one transaction and gives back its request's result, or null when nothing can be kept or read.
+  const db = await openSongsDb();
+  if (!db) return null;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(SONGS_STORE, mode);
+      const request = work(tx.objectStore(SONGS_STORE));
+      tx.oncomplete = () => resolve(request && request.result !== undefined ? request.result : null);
+      tx.onerror = () => resolve(null);
+      tx.onabort = () => resolve(null);
+    } catch (err) { resolve(null); }
+  });
+}
+
+const savedSongs = (id) => songsStore("readonly", (store) => store.get(id));
+const saveSongs = (entry) => songsStore("readwrite", (store) => store.put(entry));
+const forgetSongs = (ids) => songsStore("readwrite", (store) => { let last; for (const id of ids) last = store.delete(id); return last; });
+const forgetAllSongs = () => songsStore("readwrite", (store) => store.clear());
+
+async function refreshSongsFor(names) {
+  // For playlists whose snapshot Spotify does not report: forget the saved songs, so the next run reads them again.
+  const ids = names.map((name) => (playlists.find((p) => normName(p.name) === normName(name)) || {}).id).filter(Boolean);
+  for (const id of ids) trackCache.delete(id);
+  await forgetSongs(ids);
+  $("editorNote").textContent = "Songs will be read again from Spotify the next time you create.";
+}
 
 // ---------------------------------------------------------------- small helpers
 function redirectUri() {
@@ -388,10 +439,11 @@ async function restoreFromFile(file) {
 
 let reloadPage = () => location.reload();   // a separate function so tests can replace it
 
-function clearSavedData() {
+async function clearSavedData() {
   // Everything this page saves lives in this browser's storage for this address, so clearing it forgets it all.
   localStorage.clear();
   sessionStorage.clear();
+  await Promise.race([forgetAllSongs(), new Promise((r) => setTimeout(r, 1500))]);
   reloadPage();
 }
 
@@ -586,8 +638,9 @@ function loadStoredToken() {
   return null;
 }
 
-function disconnect() {
+async function disconnect() {
   sessionStorage.removeItem("token");
+  await Promise.race([forgetAllSongs(), new Promise((r) => setTimeout(r, 1500))]);   // the songs kept from this account go with the sign-in
   location.reload();
 }
 
@@ -609,7 +662,16 @@ async function spotifyRequest(method, path, { params, json, body, contentType } 
     }
     if (response.status === 429) {
       const wait = Number(response.headers.get("Retry-After")) || 2;
-      if (wait > 30) throw new Error(`Spotify is rate limiting requests. Try again in about ${waitWords(wait)}.`);   // not worth sitting through
+      if (wait > 60) {   // not worth sitting through: stop at once and say how long it will be
+        let reason = "";
+        try { const data = JSON.parse(await response.text()); reason = (data && data.error && data.error.reason) || ""; } catch (err) { /* no body, or not JSON */ }
+        const error = new Error(reason === "QUOTA_EXCEEDED"
+          ? `Spotify has reached its quota limit for this app. Waiting is the only fix: try again in about ${waitText(wait)}.`
+          : `Spotify is rate limiting requests. Try again in about ${waitText(wait)}.`);
+        error.retryAfter = wait;
+        error.reason = reason;
+        throw error;
+      }
       await new Promise((r) => setTimeout(r, wait * 1000 + 500));
       continue;
     }
@@ -630,10 +692,14 @@ async function spotifyRequest(method, path, { params, json, body, contentType } 
 
 const spotify = (path) => spotifyRequest("GET", path);
 
-function waitWords(seconds) {
-  if (seconds < 90) return `${Math.max(1, Math.round(seconds))} seconds`;
-  if (seconds < 5400) return `${Math.round(seconds / 60)} minutes`;
-  return `${Math.round(seconds / 3600)} hours`;
+function waitText(seconds) {
+  // A wait as hours and minutes, rounded up to the next minute: 14689 seconds is "4 hours and 5 minutes".
+  const total = Math.max(1, Math.ceil(seconds / 60));
+  const hours = Math.floor(total / 60);
+  const minutes = total % 60;
+  const part = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  if (!hours) return part(minutes, "minute");
+  return minutes ? `${part(hours, "hour")} and ${part(minutes, "minute")}` : part(hours, "hour");
 }
 
 function hasScope(name) {
@@ -677,6 +743,7 @@ async function loadMyPlaylists() {
     image: Array.isArray(p.images) && p.images.length ? p.images[p.images.length - 1].url : null,   // Spotify lists the largest first
     count: p.tracks && typeof p.tracks.total === "number" ? p.tracks.total : (p.items && typeof p.items.total === "number" ? p.items.total : null),
     description: typeof p.description === "string" ? p.description : null,
+    snapshot: typeof p.snapshot_id === "string" && p.snapshot_id ? p.snapshot_id : null,   // changes whenever the playlist does
   }));
   for (const p of playlists) p.madeByApp = typeof p.description === "string" && p.description.startsWith(APP_MARKER);
   // The count shown in Step 1 always matches the list, including after playlists are created or removed.
@@ -686,6 +753,14 @@ async function loadMyPlaylists() {
 
 async function loadTracks(id) {
   if (trackCache.has(id)) return trackCache.get(id);
+  const info = playlists.find((p) => p.id === id);
+  const snapshot = info && info.snapshot ? info.snapshot : null;
+  const saved = await savedSongs(id);
+  // Saved songs are used when Spotify reports no snapshot to compare (the refresh control covers that case), or when the snapshot is the same.
+  if (saved && Array.isArray(saved.tracks) && (!snapshot || saved.snapshot === snapshot)) {
+    trackCache.set(id, saved.tracks);
+    return saved.tracks;
+  }
   const entries = await pagedItems(`/playlists/${id}/items?limit=50`);
   const tracks = [];
   for (const entry of entries) {
@@ -695,6 +770,7 @@ async function loadTracks(id) {
     tracks.push({ uri: t.uri, ms: t.duration_ms, label: `${artist} - ${t.name}` });
   }
   trackCache.set(id, tracks);
+  await saveSongs({ id, snapshot, tracks, savedAt: Date.now() });
   return tracks;
 }
 
@@ -952,6 +1028,7 @@ async function startCreate() {
   setActionMessage("");
   clearReportHints("mainReportHint");
   setOutput("");
+  $("editorNote").textContent = "";
   createSucceeded = false;
   openCreateDialog();
   logStep("plan started");

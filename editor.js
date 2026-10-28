@@ -612,6 +612,14 @@ function menuPanel(f, item, index) {
     pop.appendChild(feEl("button", { type: "button", class: "fe-item", id: "feEditMix", onClick: () => setPanel(item.id, "mix") }, feIcon("sliders"), "Edit mix"));
     pop.appendChild(feEl("button", { type: "button", class: "fe-item", id: "feRemoveMix", onClick: () => removeMix(item) }, feIcon("minus"), "Remove mix"));
   }
+  // When Spotify gives no snapshot for a playlist, the app cannot tell that its songs changed, so the saved songs can be refreshed by hand.
+  const unwatched = item.lists.filter((l) => { const p = l.name && playlistInfo(l.name); return p && !p.snapshot; });
+  if (unwatched.length) {
+    pop.appendChild(feEl("button", {
+      type: "button", class: "fe-item", id: "feRefreshSongs",
+      onClick: () => { editor.panel = null; renderRows(); refreshSongsFor(unwatched.map((l) => l.name)); },
+    }, feIcon("reset"), "Refresh songs from Spotify"));
+  }
   // a silence can be added after this segment wherever there is none yet
   if (!gapInfo(f, index + 1).show) {
     pop.appendChild(feEl("button", {
