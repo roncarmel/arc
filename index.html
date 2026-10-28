@@ -92,10 +92,10 @@
   @keyframes kofi-wiggle { 0% { transform: rotate(0) scale(1); } 60% { transform: rotate(0) scale(1); } 75% { transform: rotate(0) scale(1.12); } 80% { transform: rotate(0) scale(1.1); }
     84% { transform: rotate(-10deg) scale(1.1); } 88% { transform: rotate(10deg) scale(1.1); } 92% { transform: rotate(-10deg) scale(1.1); } 96% { transform: rotate(10deg) scale(1.1); } 100% { transform: rotate(0) scale(1); } }
   @media (prefers-reduced-motion: reduce) { #supportButton img { animation: none; } }
-  #supportCaption { margin: 0 0 0 auto; width: max-content; max-width: 210px; box-sizing: border-box; padding: 0; color: var(--muted); font-size: 0.72rem; line-height: 1.35; text-align: right; text-wrap: balance; }   /* above the button, its right edge level with the button's, and wide enough for three lines or so */
+  #supportCaption { margin: 0 0 0 auto; width: max-content; max-width: 160px; box-sizing: border-box; padding: 0; color: var(--muted); font-size: 0.72rem; line-height: 1.35; text-align: right; text-wrap: balance; }   /* above the button, its right edge level with the button's, and four lines at most, narrow enough to stay clear of the silence tags that hang out of the page */
   @media (max-width: 520px) { #supportBox { right: 8px; bottom: 8px; } }
   /* When the corner would reach the app (the page is 720px wide, and silence tags hang out of its right edge), the button and note go in a strip along the bottom instead. */
-  @media (max-width: 1059px) {
+  @media (max-width: 1183px) {
     main { padding-bottom: calc(var(--tip-h, 96px) + 4px); }   /* the strip's own height, so the last thing on the page sits just above it */
     #supportBox { left: 0; right: 0; bottom: 0; width: auto; box-sizing: border-box; max-width: none; flex-direction: row-reverse; align-items: center; justify-content: flex-start; gap: 12px; padding: 40px 12px calc(10px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, var(--bg) 0%, var(--bg) 55%, transparent 100%); pointer-events: none; }
     #supportBox > * { pointer-events: auto; }
