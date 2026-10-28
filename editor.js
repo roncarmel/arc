@@ -15,6 +15,7 @@ const editor = {
   activeId: null,
   panel: null,        // { id, mode } mode: "menu" | "mix" | "list-a" | "list-b"
   cardMenu: false,
+  renaming: null,     // the format whose name is being edited in its tab
   internal: false,    // true while the editor itself is writing the text
   drag: null,
   search: "",
@@ -35,6 +36,7 @@ const FE_ICONS = {
   copy: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a1 1 0 0 1 1-1h9"/></svg>',
   trash: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M9 7V5h6v2M7 7l1 12h8l1-12"/></svg>',
   sliders: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"/><circle cx="16" cy="8" r="2"/><circle cx="8" cy="16" r="2"/></svg>',
+  pencil: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>',
   link: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
   retry: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg>',
   download: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>',
@@ -191,6 +193,7 @@ function renderEditor() {
   root.innerHTML = "";
   editor.hover = null;
   editor.gapPanel = null;
+  editor.renaming = null;
   if (editor.broken) { root.appendChild(brokenView()); return; }
   // In minimalist mode the page's title goes and the app's icon takes the first place in this row, as tall as the tabs.
   const format = activeFormat();
@@ -330,13 +333,62 @@ function renderTabs() {
   if (!tabs) return;
   tabs.innerHTML = "";
   for (const f of editor.model.formats) {
-    tabs.appendChild(feEl("button", {
-      type: "button", class: "fe-tab", "aria-pressed": String(f.id === editor.activeId), "data-id": f.id,
-      onClick: () => { editor.activeId = f.id; editor.panel = null; editor.gapPanel = null; editor.cardMenu = false; editor.appMenu = false; renderEditor(); },
-    }, f.title.trim() || "Untitled"));
+    const selected = f.id === editor.activeId;
+    if (selected && editor.renaming === f.id) {
+      tabs.appendChild(renameTab(f));
+    } else if (selected) {
+      // the selected tab carries a pencil, and pressing it renames the format where it is
+      tabs.appendChild(feEl("button", {
+        type: "button", class: "fe-tab", "aria-pressed": "true", "data-id": f.id, title: "Rename format", onClick: startRename,
+      }, f.title.trim() || "Untitled", feIcon("pencil")));
+    } else {
+      tabs.appendChild(feEl("button", {
+        type: "button", class: "fe-tab", "aria-pressed": "false", "data-id": f.id,
+        onClick: () => { editor.activeId = f.id; editor.panel = null; editor.gapPanel = null; editor.cardMenu = false; editor.appMenu = false; renderEditor(); },
+      }, f.title.trim() || "Untitled"));
+    }
   }
   scrollSelectedTab();
   updateTabFade();
+}
+
+function renameTab(f) {
+  const input = feEl("input", { type: "text", id: "feName", class: "fe-tab-input", value: f.title, autocomplete: "off", "aria-label": "Name of format", enterkeyhint: "done" });
+  input.value = f.title;
+  const fit = () => { input.style.width = Math.max(6, input.value.length + 1) + "ch"; };
+  fit();
+  input.addEventListener("input", () => {
+    const cleaned = cleanTitle(input.value);
+    if (cleaned !== input.value) input.value = cleaned;
+    f.title = cleaned;
+    commit();
+    renderClash();
+    fit();
+  });
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") { event.preventDefault(); finishRename(false); }
+    else if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); finishRename(true); }
+  });
+  input.addEventListener("blur", () => { if (editor.renaming === f.id) finishRename(false); });
+  return feEl("div", { class: "fe-tab fe-tab-editing", "aria-pressed": "true", "data-id": f.id }, input);
+}
+
+function startRename() {
+  const f = activeFormat();
+  if (!f) return;
+  editor.renaming = f.id;
+  editor.renameFrom = f.title;
+  renderTabs();
+  const input = $("feName");
+  if (input) { input.focus(); input.select(); }
+}
+
+function finishRename(cancel) {
+  const f = activeFormat();
+  if (f && cancel && editor.renameFrom !== undefined) { f.title = editor.renameFrom; commit(); renderClash(); }
+  editor.renaming = null;
+  editor.renameFrom = undefined;
+  renderTabs();
 }
 
 // The tabs are one row that scrolls sideways. The selected one is kept in view, and a soft fade on an edge says there is more that way.
@@ -356,56 +408,28 @@ function updateTabFade() {
   strip.classList.toggle("fe-fade-right", strip.scrollLeft + strip.clientWidth < strip.scrollWidth - 2);
 }
 
-function renderHead(rebuildInput) {
+function renderHead(rebuild) {
   const head = $("feHead");
   const f = activeFormat();
   if (!head || !f) return;
-  let input = $("feName");
-  if (rebuildInput || !input) {
+  if (rebuild || !$("feGapValue")) {
     head.innerHTML = "";
-    input = feEl("input", { type: "text", id: "feName", value: f.title, autocomplete: "off", "aria-label": "Name of format" });
-    input.value = f.title;
-    input.addEventListener("input", () => {
-      const cleaned = cleanTitle(input.value);
-      if (cleaned !== input.value) input.value = cleaned;
-      f.title = cleaned;
-      commit();
-      renderTabs();
-      renderClash();
-    });
     head.appendChild(feEl("div", { class: "fe-headrow" },
-      feEl("div", { class: "fe-namefield" }, input),
-      feEl("div", { class: "fe-menuwrap" },
-        feEl("button", { type: "button", class: "fe-iconbtn fe-trigger", id: "feCardMenuButton", "aria-label": "Format options", "aria-expanded": String(editor.cardMenu), onClick: toggleCardMenu }, feIcon("dots")),
-        feEl("div", { id: "feCardMenuSlot" }))));
+      feEl("div", { class: "fe-silence", title: "Silence between segments" },
+        feIcon("mute"),
+        feEl("span", { class: "fe-silence-label", text: "Silence between segments" }),
+        stepperBox({
+          shorterId: "feGapShorter", longerId: "feGapLonger", valueId: "feGapValue", inline: true, width: 46,
+          text: f.gap ? describeSeconds(f.gap) : "None", shorterLabel: "Shorter silence between segments", longerLabel: "Longer silence between segments",
+          onShorter: () => { const lower = GAP_STEPS.filter((s) => s < f.gap); f.gap = lower.length ? lower[lower.length - 1] : 0; afterGapChange(); },
+          onLonger: () => { const higher = GAP_STEPS.filter((s) => s > f.gap); f.gap = higher.length ? higher[0] : GAP_STEPS[GAP_STEPS.length - 1]; afterGapChange(); },
+        })),
+      feEl("button", { type: "button", class: "fe-iconbtn", id: "feDuplicate", "aria-label": "Duplicate format", title: "Duplicate format", onClick: duplicateFormat }, feIcon("copy")),
+      feEl("button", { type: "button", class: "fe-iconbtn fe-danger", id: "feDelete", "aria-label": "Delete format", title: "Delete format", onClick: askDeleteFormat }, feIcon("trash"))));
     head.appendChild(feEl("p", { class: "fe-warn", id: "feClash", hidden: true }));
     renderClash();
   }
-  const button = $("feCardMenuButton");
-  if (button) button.setAttribute("aria-expanded", String(editor.cardMenu));
-  const slot = $("feCardMenuSlot");
-  if (slot) {
-    slot.innerHTML = "";
-    if (editor.cardMenu) {
-      const pop = feEl("div", { class: "fe-pop fe-cardmenu", id: "feCardMenu" });
-      pop.appendChild(feEl("div", { class: "fe-poplabel", text: "Silence between segments" }));
-      pop.appendChild(feEl("div", { class: "fe-gapsetting" }, stepperBox({
-        shorterId: "feGapShorter", longerId: "feGapLonger", valueId: "feGapValue", inline: true, width: 46,
-        text: f.gap ? describeSeconds(f.gap) : "None", shorterLabel: "Shorter silence between segments", longerLabel: "Longer silence between segments",
-        onShorter: () => { const lower = GAP_STEPS.filter((s) => s < f.gap); f.gap = lower.length ? lower[lower.length - 1] : 0; afterGapChange(); },
-        onLonger: () => { const higher = GAP_STEPS.filter((s) => s > f.gap); f.gap = higher.length ? higher[0] : GAP_STEPS[GAP_STEPS.length - 1]; afterGapChange(); },
-      })));
-      const own = ownSilenceCount(f);
-      if (own) {
-        pop.appendChild(feEl("div", { class: "fe-gapnote", id: "feGapNote", text: own === 1 ? "1 silence was changed individually, so it keeps its own setting." : `${own} silences were changed individually, so they keep their own settings.` }));
-        pop.appendChild(feEl("button", { type: "button", class: "fe-item", id: "feGapResetAll", onClick: resetAllGaps }, feIcon("reset"), "Reset all to default"));
-      }
-      pop.appendChild(feEl("div", { class: "fe-rule" }));
-      pop.appendChild(feEl("button", { type: "button", class: "fe-item", id: "feDuplicate", onClick: duplicateFormat }, feIcon("copy"), "Duplicate format"));
-      pop.appendChild(feEl("button", { type: "button", class: "fe-item fe-danger", id: "feDelete", onClick: askDeleteFormat }, feIcon("trash"), "Delete format"));
-      slot.appendChild(pop);
-    }
-  }
+  $("feGapValue").textContent = f.gap ? describeSeconds(f.gap) : "None";
 }
 
 function renderClash() {
@@ -596,20 +620,6 @@ function afterGapChange() {
   renderTimeline();
 }
 
-function ownSilenceCount(f) {
-  // silences between segments that have a setting of their own
-  let count = 0;
-  for (let g = 1; g < f.items.length; g += 1) { const info = gapInfo(f, g); if (info.custom && info.show) count += 1; }
-  return count;
-}
-
-function resetAllGaps() {
-  const f = activeFormat();
-  if (!f) return;
-  for (let g = 1; g < f.items.length; g += 1) f.gaps[g] = undefined;
-  editor.cardMenu = false;
-  afterGapChange();
-}
 
 // ---------------------------------------------------------------- panels
 function setPanel(id, mode) {
@@ -823,15 +833,6 @@ function duplicateFormat() {
   renderEditor();
 }
 
-function toggleCardMenu() {
-  editor.cardMenu = !editor.cardMenu;
-  editor.panel = null;
-  editor.gapPanel = null;
-  editor.appMenu = false;
-  renderAppMenu();
-  renderHead();
-  renderRows();
-}
 
 function askDeleteFormat() {
   const f = activeFormat();
