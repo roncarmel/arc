@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-27h">
-<script src="theme.js?v=2026-10-27h"></script>
+<meta name="app-version" content="2026-10-27i">
+<script src="theme.js?v=2026-10-27i"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -344,6 +344,13 @@
     #connectedSection #connectedMessage { order: 2; }
     #connectedSection #disconnect { order: 3; margin-top: 12px; }
   }
+  /* the full plan: each line hangs under its own start when it wraps, and on a phone the text is smaller and the popup's margins are tighter */
+  #planText .pl { padding-left: 2ch; text-indent: -2ch; min-height: 1.45em; }
+  @media (max-width: 759px) {
+    .app-overlay { padding: 8px; }
+    .app-dialog { padding: 14px 12px; max-height: calc(100vh - 16px); }
+    #planText { font-size: 11.5px; line-height: 1.45; padding: 10px; overflow-wrap: anywhere; }
+  }
 </style>
 <script>
   // If the page's own script never starts (a file that did not load, an old copy kept by the browser, an error), the page says so,
@@ -667,8 +674,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-27h"></script>
-<script src="editor.js?v=2026-10-27h"></script>
-<script src="app.js?v=2026-10-27h"></script>
+<script src="formats.js?v=2026-10-27i"></script>
+<script src="editor.js?v=2026-10-27i"></script>
+<script src="app.js?v=2026-10-27i"></script>
 </body>
 </html>

@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-27h";
+const APP_VERSION = "2026-10-27i";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1104,6 +1104,20 @@ async function planSelected(startedWith, includeOthers = false) {
   return { formatsText: inputs.formatsText, keys: inputs.keys, built, total, ours, marked, others, includeOthers, text: parts.join("\n\n") + "\n\nNothing has been built yet.", problems };
 }
 
+function setPlanText(text) {
+  // One block per line, so a line that has to wrap hangs under its own start and the lines stay easy to tell apart.
+  // The text itself is exactly what it was: each block ends with the line break that was there.
+  const box = $("planText");
+  box.textContent = "";
+  const lines = String(text).split("\n");
+  lines.forEach((line, i) => {
+    const row = document.createElement("div");
+    row.className = "pl";
+    row.textContent = line + (i < lines.length - 1 ? "\n" : "");
+    box.appendChild(row);
+  });
+}
+
 function askToCreate(plan) {
   // Shows what the plan found and waits: "create", "cancel", "include"/"exclude" (the switch for playlists the app did not mark), or "stale" if something was edited meanwhile.
   return new Promise((resolve) => {
@@ -1127,7 +1141,7 @@ function askToCreate(plan) {
     $("confirmKeepToggleLabel").textContent = `Replace ${many ? "them" : "it"} too`;
     setLabel($("confirmYes"), replacing ? `Remove them and build ${plural(plan.total, "playlist")}` : `Build ${plural(plan.total, "playlist")}`);
     setLabel($("confirmNo"), "Cancel");
-    $("planText").textContent = plan.text;
+    setPlanText(plan.text);
     $("planText").hidden = true;
     $("planToggle").textContent = "See the full plan";
     const box = $("confirmBox");
