@@ -15,14 +15,14 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-27a";
+const APP_VERSION = "2026-10-27b";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
 const APP_MARKER = "Made by Ceremony Playlist Builder";                    // change this whenever the page is updated
 const REPORT_FORM_URL = "https://tally.so/r/VppLZN"; // where problem reports go
 
-const DEFAULT_FORMATS = modelToText(defaultModel());   // one format with one segment waiting for a playlist
+const DEFAULT_FORMATS = modelToText({ formats: [] });   // a new visitor starts with no formats at all, and a big New format button
 
 const $ = (id) => document.getElementById(id);
 let py = null;          // the Python functions, once loaded
@@ -382,7 +382,7 @@ function invalidatePlan(resetOutput = !busy) {
 
 function planSignature() {
   // What a plan depends on. If it changes while a plan is being made, that plan is thrown away.
-  return [$("formats").value, $("formatKey").value, $("maxPlaylists").value].join("\u0000");
+  return [$("formats").value, selectedKeys().join(","), $("maxPlaylists").value].join("\u0000");
 }
 
 function setFormatsText(text) {
@@ -449,7 +449,7 @@ async function clearSavedData() {
 }
 
 function updateButtons() {
-  const ready = !!token && connection === "ready" && !!py && formatsValid && !busy;
+  const ready = !!token && connection === "ready" && !!py && formatsValid && !busy && !!activeKey();
   const action = connectionAction();
   if (action) {
     const again = connection === "problem";
@@ -457,10 +457,25 @@ function updateButtons() {
     setIcon($("create"), again && connectionKind !== "reconnect" ? "retry" : "connect");
     $("create").disabled = busy;
   } else {
-    setLabel($("create"), "Create playlists");
-    setIcon($("create"), "create");
+    // Build playlists, followed by the name of the format being edited, which is cut short if it does not fit
+    const label = $("create").querySelector(".btn-label");
+    label.textContent = "";
+    const verb = document.createElement("span");
+    verb.className = "build-verb";
+    verb.textContent = "Build playlists";
+    label.appendChild(verb);
+    const active = currentFormats.find((f) => f.id === activeKey());
+    if (active) {
+      label.appendChild(document.createTextNode(" "));   // so screen readers, and the text itself, read "Build playlists from ..."
+      const name = document.createElement("span");
+      name.className = "build-name";
+      name.textContent = `from \u201c${active.title}\u201d`;
+      label.appendChild(name);
+    }
+    setIcon($("create"), "build");
     $("create").disabled = !ready;
   }
+  $("buildAll").disabled = !(!!token && connection === "ready" && !!py && formatsValid && !busy && currentFormats.length > 0);
   $("removeOld").disabled = !ready;
   // The notes appear when Create cannot work because there is no connection, not while the app is still connecting.
   const noConnection = !$("appSection").hidden && (connection === "problem" || connection === "none");
@@ -482,7 +497,7 @@ function connectionAction() {
   return localStorage.getItem("clientId") ? startLogin : null;
 }
 
-const CREATE_NEEDS_SPOTIFY = "Creating playlists needs a working connection to Spotify. See Step 1.";
+const CREATE_NEEDS_SPOTIFY = "Building playlists needs a working connection to Spotify. See Step 1.";
 
 function setConnection(state, message = "", kind = "retry") {
   connectionKind = kind;
@@ -866,14 +881,7 @@ function loadScript(src) {
   });
 }
 
-function setFormatPlaceholder(text) {
-  const select = $("formatKey");
-  select.innerHTML = "";
-  select.add(new Option(text, ""));
-}
-
 async function startPython() {
-  setFormatPlaceholder("Loading Python...");
   let lastError = null;
   for (const version of PYODIDE_VERSIONS) {
     const base = `https://cdn.jsdelivr.net/pyodide/${version}/full/`;
@@ -901,7 +909,6 @@ async function startPython() {
       lastError = err;
     }
   }
-  setFormatPlaceholder("Python did not load");
   throw new Error("Could not load Python from the internet. Check your connection, then reload. Details are in the browser console. (" + (lastError && lastError.message ? lastError.message.split("\n")[0] : "unknown error") + ")");
 }
 
@@ -925,19 +932,16 @@ function refreshFormatKeys() {
     const model = textToModel($("formats").value, true);
     currentFormats = model.formats.map((f) => ({ id: f.id, title: f.title.trim() || "Untitled" }));
     if (!currentFormats.length) {
-      setFormatPlaceholder("No formats yet");
       $("removeKey").innerHTML = "";
       formatsValid = false;
       invalidatePlan();
     } else {
-      fillFormatDropdown($("formatKey"), currentFormats, false);
       fillFormatDropdown($("removeKey"), currentFormats, true);
       formatsValid = true;
     }
   } catch (err) {
     currentFormats = [];
     recordError(cleanError(err));
-    setFormatPlaceholder("Fix the formats first");
     $("removeKey").innerHTML = "";
     formatsValid = false;
     invalidatePlan();
@@ -950,9 +954,17 @@ function playlistLimit() {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
+let buildScope = null;   // the formats a build in progress is for, when it is not just the one being edited
+
+function activeKey() {
+  return typeof editor !== "undefined" && editor.activeId && currentFormats.some((f) => f.id === editor.activeId) ? editor.activeId : null;
+}
+
 function selectedKeys() {
-  const choice = $("formatKey").value;
-  return choice === ALL_FORMATS ? currentFormats.map((f) => f.id) : [choice];
+  // The format being edited, unless the build is for all of them.
+  if (buildScope) return buildScope;
+  const key = activeKey();
+  return key ? [key] : [];
 }
 
 function removeKeys() {
@@ -1051,7 +1063,9 @@ function askToCreate(plan) {
   return new Promise((resolve) => {
     // A plan with nothing to warn about is one sentence. Playlists that would be replaced or left alone, and formats that could not be planned, get lines of their own.
     const problems = plan.problems.map((n) => "Note: " + n);
-    fillConfirmList("confirmList", "confirmText", `Ready to create ${plural(plan.total, "playlist")}.`, problems);
+    const names = plan.keys.map((k) => (currentFormats.find((f) => f.id === k) || {}).title).filter(Boolean);
+    const from = names.length === 1 ? ` from \u201c${names[0]}\u201d` : names.length > 1 ? ` from ${plural(names.length, "format")}` : "";
+    fillConfirmList("confirmList", "confirmText", `Ready to build ${plural(plan.total, "playlist")}${from}.`, problems);
     const replacing = plan.ours.length > 0;
     const many = plan.others.length !== 1;
     fillConfirmList("confirmMoreList", "confirmMoreText",
@@ -1065,7 +1079,7 @@ function askToCreate(plan) {
     $("confirmKeepToggleRow").hidden = plan.others.length === 0;
     $("confirmKeepToggle").checked = plan.includeOthers;
     $("confirmKeepToggleLabel").textContent = `Replace ${many ? "them" : "it"} too`;
-    setLabel($("confirmYes"), replacing ? `Remove them and create ${plural(plan.total, "playlist")}` : `Create ${plural(plan.total, "playlist")}`);
+    setLabel($("confirmYes"), replacing ? `Remove them and build ${plural(plan.total, "playlist")}` : `Build ${plural(plan.total, "playlist")}`);
     setLabel($("confirmNo"), "Cancel");
     $("planText").textContent = plan.text;
     $("planText").hidden = true;
@@ -1094,9 +1108,10 @@ function askToCreate(plan) {
   });
 }
 
-async function startCreate() {
-  const connect = connectionAction();   // in minimalist mode, when not connected, this button connects instead
+async function startCreate(keys = null) {
+  const connect = keys ? null : connectionAction();   // in minimalist mode, when not connected, this button connects instead
   if (connect) { connect(); return; }
+  buildScope = Array.isArray(keys) && keys.length ? keys : null;
   // One button: plan, show what was found, ask, then create exactly that plan.
   setBusy(true);
   clearResults();
@@ -1134,6 +1149,7 @@ async function startCreate() {
     setOutput("Something went wrong:\n\n" + cleanError(err));
     offerReport("mainReportHint", cleanError(err));
   } finally {
+    buildScope = null;
     setBusy(false);
     if (!$("createOverlay").hidden) setCreateStage("done");
   }
@@ -1471,7 +1487,7 @@ async function main() {
   $("disconnect").addEventListener("click", disconnect);
   $("connectionRetry").addEventListener("click", connectToSpotify);
   $("connectionReconnect").addEventListener("click", startLogin);
-  $("create").addEventListener("click", startCreate);
+  $("create").addEventListener("click", () => startCreate());
   for (const link of document.querySelectorAll(".privacy-link")) {
     link.addEventListener("click", (event) => {
       event.preventDefault();
@@ -1486,7 +1502,7 @@ async function main() {
   trackTipHeight();
   initDonatePanel();
   $("removeOld").addEventListener("click", removeEarlier);
-  $("formatKey").addEventListener("change", () => invalidatePlan());
+  $("buildAll").addEventListener("click", () => startCreate(currentFormats.map((f) => f.id)));
   $("maxPlaylists").addEventListener("input", () => invalidatePlan());
   $("backupDownload").addEventListener("click", downloadBackup);
   $("backupRestore").addEventListener("click", () => $("restoreFile").click());

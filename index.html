@@ -305,6 +305,21 @@
   .app-overlay, #kofiDim, #kofiPanel { opacity: 1; transition: opacity 0.25s linear, display 0.25s linear allow-discrete; }
   .app-overlay[hidden], #kofiDim[hidden], #kofiPanel[hidden] { opacity: 0; pointer-events: none; }
   @starting-style { .app-overlay, #kofiDim, #kofiPanel { opacity: 0; } }
+  /* the Build button carries the name of the format it will build, cut short with an ellipsis when it does not fit */
+  #create { max-width: 100%; min-width: 0; }
+  #create .btn-label { display: inline-flex; min-width: 0; gap: 0.35em; align-items: baseline; }
+  #create .build-verb { flex: none; white-space: nowrap; }
+  #create .build-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; opacity: 0.9; }
+  /* the New format button: just a plus beside the menu while there are formats and the screen is narrow, and the full button otherwise */
+  #formatEditor .fe-newformat .fe-newformat-label { display: none; }
+  #formatEditor .fe-newformat.fe-big, #formatEditor .fe-toprow.fe-noformats .fe-newformat { width: auto; padding: 0 16px; gap: 8px; }
+  #formatEditor .fe-toprow.fe-noformats .fe-newformat { order: -1; background: var(--button); color: var(--on-button, #fff); border: 1px solid var(--button); }
+  #formatEditor .fe-toprow.fe-noformats .fe-appicon { order: -2; }
+  #formatEditor .fe-toprow.fe-noformats .fe-newformat .fe-newformat-label { display: inline; }
+  @media (min-width: 760px) {
+    #formatEditor .fe-newformat { width: auto; padding: 0 16px; gap: 8px; }
+    #formatEditor .fe-newformat .fe-newformat-label { display: inline; }
+  }
 </style>
 <script>
   // Anonymous visit counts (see Privacy). The page is always counted as "/", and coming back from Spotify's sign-in is not counted again.
@@ -449,17 +464,16 @@
     <p>The name of a format is also the name of the playlists it makes: a format called "Warm focus" makes "Warm focus 1", "Warm focus 2", and so on. Give every format a different name. When you create playlists again, this app treats playlists that match a format's name as its own and offers to replace them.</p>
   </details>
 
-  <h2 id="createHeading">3. Create playlists</h2>
+  <h2 id="createHeading">3. Build playlists</h2>
   <div class="row" style="margin-top:0">
-    <select id="formatKey" style="max-width:260px"></select>
-    <button id="create" class="primary" type="button" disabled><img class="btn-icon" src="icons/create.svg" alt="" width="20" height="20"><span class="btn-label">Create playlists</span></button>
+    <button id="create" class="primary" type="button" disabled><img class="btn-icon" src="icons/build.svg" alt="" width="20" height="20"><span class="btn-label"><span class="build-verb">Build playlists</span></span></button>
   </div>
   <p id="pythonNote" class="muted"></p>
-  <p id="spotifyNote" class="muted" hidden>Creating playlists needs a working connection to Spotify. See Step 1.</p>
-  <p id="createNote" class="muted">Choose a format, or all of them. The app plans the playlists with songs picked at random, shows you what it found, and asks before it creates anything. Changing anything above closes the question, so you start again.</p>
+  <p id="spotifyNote" class="muted" hidden>Building playlists needs a working connection to Spotify. See Step 1.</p>
+  <p id="createNote" class="muted">This builds the playlists for the format you are editing. The app plans them with songs picked at random, shows you what it found, and asks before it creates anything. Changing anything above closes the question, so you start again.</p>
 
   <div id="createOverlay" class="app-overlay" hidden>
-    <div id="createDialog" class="app-dialog" role="dialog" aria-modal="true" aria-label="Create playlists" tabindex="-1">
+    <div id="createDialog" class="app-dialog" role="dialog" aria-modal="true" aria-label="Build playlists" tabindex="-1">
       <pre id="output" hidden></pre>
 
       <div id="confirmBox" class="card" hidden>
@@ -548,6 +562,12 @@
       <h3>Limit how many playlists are made</h3>
       <p class="muted">By default, the app makes as many playlists as your songs allow, but here you can cap how many playlists get created per format:</p>
       <select id="maxPlaylists" aria-label="Most playlists per format"><option value="">No limit</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select>
+
+      <h3>Build all formats</h3>
+      <p class="muted">Builds, or rebuilds, the playlists for every format at once. It shows what it found and asks first, as it does for one format.</p>
+      <div class="row">
+        <button id="buildAll" type="button" disabled><img class="btn-icon" src="icons/build.svg" alt="" width="20" height="20"><span class="btn-label">Build all formats</span></button>
+      </div>
 
       <h3>Remove earlier playlists</h3>
       <p class="muted">Removes playlists made earlier by a format from your Spotify library, for example "mix 1" and "mix 2". It only touches playlists you own whose name matches the format you specify, and it asks before removing anything. It needs Spotify to be connected.</p>

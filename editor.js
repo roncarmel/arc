@@ -193,19 +193,17 @@ function renderEditor() {
   editor.gapPanel = null;
   if (editor.broken) { root.appendChild(brokenView()); return; }
   // In minimalist mode the page's title goes and the app's icon takes the first place in this row, as tall as the tabs.
-  root.appendChild(feEl("div", { class: "fe-toprow" },
+  const format = activeFormat();
+  root.appendChild(feEl("div", { class: "fe-toprow" + (format ? "" : " fe-noformats") },
     feEl("img", { class: "fe-appicon", src: "apple-touch-icon.png", alt: "", width: "44", height: "44" }),
     feEl("div", { class: "fe-tabs", id: "feTabs" }),
-    feEl("button", { type: "button", class: "fe-newformat", id: "feNewFormat", "aria-label": "New format", title: "New format", onClick: askNewFormat }, feIcon("plus")),
+    feEl("button", { type: "button", class: "fe-newformat", id: "feNewFormat", "aria-label": "New format", title: "New format", onClick: askNewFormat }, feIcon("plus"), feEl("span", { class: "fe-newformat-label", text: "New format" })),
     feEl("div", { class: "fe-appmenuwrap", id: "feAppMenu" })));
   $("feTabs").addEventListener("scroll", updateTabFade);
   renderTabs();
   renderAppMenu();
-  const format = activeFormat();
-  if (!format) {
-    root.appendChild(feEl("div", { class: "fe-empty" },
-      feEl("p", { text: "You don't have any formats yet." }),
-      feEl("button", { type: "button", class: "primary", id: "feCreateFirst", onClick: addFormat }, "Create a format")));
+  if (!format) {   // no formats: only the big New format button
+    if (typeof updateButtons === "function") updateButtons();
     return;
   }
   const card = feEl("div", { class: "fe-card", id: "feCard" },
@@ -218,6 +216,7 @@ function renderEditor() {
   renderHead(true);
   renderTimeline();
   renderRows();
+  if (typeof updateButtons === "function") updateButtons();   // the Build button names the format being edited
 }
 
 function brokenView() {
@@ -784,6 +783,7 @@ function addSegment() {
 // The + button asks first, since it sits close to the menu button and a stray tap would otherwise add a format.
 function askNewFormat() {
   closePanels();
+  if (!editor.model.formats.length) { addFormat(); return; }   // nothing to mistake it for when there are no formats
   const close = () => { overlay.remove(); document.removeEventListener("keydown", onKey); };
   const onKey = (event) => { if (event.key === "Escape") close(); };
   const cancel = feEl("button", { type: "button", id: "feNewFormatCancel", onClick: close }, "Cancel");
