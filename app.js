@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-27b";
+const APP_VERSION = "2026-10-27d";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -25,6 +25,47 @@ const REPORT_FORM_URL = "https://tally.so/r/VppLZN"; // where problem reports go
 const DEFAULT_FORMATS = modelToText({ formats: [] });   // a new visitor starts with no formats at all, and a big New format button
 
 const $ = (id) => document.getElementById(id);
+
+// Things that did not start properly are collected here and shown in a banner, so a half-started page says so instead of just not responding.
+const startupProblems = [];
+let startupDone = false;
+
+function on(id, type, handler) {
+  const el = $(id);
+  if (!el) { startupProblems.push(`missing element ${id}`); return; }
+  el.addEventListener(type, handler);
+}
+
+function guarded(name, work) {
+  // A step of starting up that fails must not stop the steps after it.
+  try { return work(); } catch (err) { startupProblems.push(`${name}: ${String((err && err.message) || err)}`); return undefined; }
+}
+
+function showStartupProblems() {
+  const box = $("startupProblem");
+  if (!box || !startupProblems.length) return;
+  try { recordError("Startup: " + startupProblems.join("; ").slice(0, 300)); } catch (err) { /* the banner matters more */ }
+  box.hidden = false;
+  const link = box.querySelector("a");
+  if (link) { try { link.href = reportUrl(); } catch (err) { /* the plain link still works */ } }
+}
+
+function startupFailed(err) {
+  startupProblems.push(`startup stopped: ${String((err && err.message) || err)}`);
+  showStartupProblems();
+}
+
+function startFlowChoice() {
+  // The two choices at the top of Step 1 are wired first of all, for the whole page at once, so they work whatever else goes wrong.
+  // The capture phase catches the change even from a browser or a script that does not let it bubble, and the click covers a browser that
+  // reports a radio button's choice only that way.
+  const choose = (event) => {
+    const radio = event.target;
+    if (radio && radio.type === "radio" && radio.name === "flow") showFlow(radio.value);
+  };
+  document.addEventListener("change", choose, true);
+  document.addEventListener("click", choose, true);
+}
 let py = null;          // the Python functions, once loaded
 let token = null;       // Spotify access token (kept in this tab only)
 let me = null;          // the signed-in Spotify user
@@ -449,6 +490,10 @@ async function clearSavedData() {
 }
 
 function updateButtons() {
+  try { updateButtonsNow(); } catch (err) { startupProblems.push(`buttons: ${String((err && err.message) || err)}`); if (startupDone) showStartupProblems(); }
+}
+
+function updateButtonsNow() {
   const ready = !!token && connection === "ready" && !!py && formatsValid && !busy && !!activeKey();
   const action = connectionAction();
   if (action) {
@@ -475,7 +520,8 @@ function updateButtons() {
     setIcon($("create"), "build");
     $("create").disabled = !ready;
   }
-  $("buildAll").disabled = !(!!token && connection === "ready" && !!py && formatsValid && !busy && currentFormats.length > 0);
+  const buildAll = $("buildAll");   // a page older than this script may not have it, and that must not stop the rest
+  if (buildAll) buildAll.disabled = !(!!token && connection === "ready" && !!py && formatsValid && !busy && currentFormats.length > 0);
   $("removeOld").disabled = !ready;
   // The notes appear when Create cannot work because there is no connection, not while the app is still connecting.
   const noConnection = !$("appSection").hidden && (connection === "problem" || connection === "none");
@@ -1346,7 +1392,7 @@ function initDonatePanel() {
     event.preventDefault();
     if (panel.hidden) open(); else close();
   });
-  $("kofiClose").addEventListener("click", close);
+  on("kofiClose", "click", close);
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !panel.hidden) close(); });
   document.addEventListener("click", (event) => { if (!panel.hidden && !panel.contains(event.target) && !button.contains(event.target) && !(event.target.closest && event.target.closest("#createDonate"))) close(); });   // the Create popup's Donate button opens it, so that click must not close it again
   window.addEventListener("resize", () => { if (!panel.hidden) place(); });
@@ -1435,24 +1481,25 @@ function initThemeChooser() {
 }
 
 async function main() {
+  if (window.pageStart) window.pageStart.started = true;   // tells the page's watchdog that this script is running
+  startFlowChoice();
   logStep("page opened");
+  const pageVersion = (document.querySelector('meta[name="app-version"]') || {}).content;
+  if (pageVersion !== APP_VERSION) startupProblems.push(`page version ${pageVersion || "unknown"} and script version ${APP_VERSION} differ`);
   $("appVersionLabel").textContent = APP_VERSION;
-  refreshReportBox();
+  guarded("report details", () => refreshReportBox());
   for (const el of document.querySelectorAll(".redirect-address")) el.textContent = redirectUri();
   $("clientId").value = localStorage.getItem("clientId") || "";
   $("formats").value = localStorage.getItem("formats") || DEFAULT_FORMATS;
-  initThemeChooser();
-  initEditor();
-  refreshFormatKeys();
-  setOutput("");
+  guarded("color choice", () => initThemeChooser());
+  guarded("editor", () => initEditor());
+  guarded("formats", () => refreshFormatKeys());
+  guarded("output", () => setOutput(""));
 
   // Start with no flow shown. People who already saved a Client ID have an app, so open that flow for them.
   showFlow($("clientId").value ? "existing" : null);
   $("welcomeBack").hidden = !$("clientId").value;   // someone with a saved Client ID only needs to reconnect
   $("setupDetails").open = !$("clientId").value;     // the setup steps stay one click away
-  for (const radio of document.querySelectorAll('input[name="flow"]')) {
-    radio.addEventListener("change", () => showFlow(radio.value));
-  }
 
   for (const button of document.querySelectorAll(".copy-redirect")) {
     button.addEventListener("click", async () => {
@@ -1467,27 +1514,27 @@ async function main() {
     });
   }
   // problem reports: the link is rebuilt at the moment it is used, so it carries the latest details
-  $("reportLink").addEventListener("click", refreshReportBox);
-  $("moreOptions").addEventListener("toggle", () => { if ($("moreOptions").open) refreshReportBox(); });
+  on("reportLink", "click", refreshReportBox);
+  on("moreOptions", "toggle", () => { if ($("moreOptions").open) refreshReportBox(); });
   for (const id of REPORT_HINTS) {
     const link = $(id).querySelector("a");
     link.addEventListener("click", () => { link.href = reportUrl(); });
   }
-  $("clearData").addEventListener("click", () => {
+  on("clearData", "click", () => {
     $("clearConfirm").hidden = false;
     $("clearData").disabled = true;    // the question is already open, so the button that opened it waits
   });
-  $("clearNo").addEventListener("click", () => {
+  on("clearNo", "click", () => {
     $("clearConfirm").hidden = true;
     $("clearData").disabled = false;
   });
-  $("clearYes").addEventListener("click", clearSavedData);
-  $("connect").addEventListener("click", startLogin);
-  $("connectReturning").addEventListener("click", startLogin);
-  $("disconnect").addEventListener("click", disconnect);
-  $("connectionRetry").addEventListener("click", connectToSpotify);
-  $("connectionReconnect").addEventListener("click", startLogin);
-  $("create").addEventListener("click", () => startCreate());
+  on("clearYes", "click", clearSavedData);
+  on("connect", "click", startLogin);
+  on("connectReturning", "click", startLogin);
+  on("disconnect", "click", disconnect);
+  on("connectionRetry", "click", connectToSpotify);
+  on("connectionReconnect", "click", startLogin);
+  on("create", "click", () => startCreate());
   for (const link of document.querySelectorAll(".privacy-link")) {
     link.addEventListener("click", (event) => {
       event.preventDefault();
@@ -1495,23 +1542,23 @@ async function main() {
       $("privacySection").scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
-  $("createClose").addEventListener("click", closeCreateDialog);
-  $("createDonate").addEventListener("click", () => { closeCreateDialog(); openDonatePanel(); });
-  $("createOverlay").addEventListener("click", (event) => { if (event.target === $("createOverlay")) dismissCreateDialog(); });
+  on("createClose", "click", closeCreateDialog);
+  on("createDonate", "click", () => { closeCreateDialog(); openDonatePanel(); });
+  on("createOverlay", "click", (event) => { if (event.target === $("createOverlay")) dismissCreateDialog(); });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !$("createOverlay").hidden) dismissCreateDialog(); });
-  trackTipHeight();
-  initDonatePanel();
-  $("removeOld").addEventListener("click", removeEarlier);
-  $("buildAll").addEventListener("click", () => startCreate(currentFormats.map((f) => f.id)));
-  $("maxPlaylists").addEventListener("input", () => invalidatePlan());
-  $("backupDownload").addEventListener("click", downloadBackup);
-  $("backupRestore").addEventListener("click", () => $("restoreFile").click());
-  $("restoreFile").addEventListener("change", async (event) => {
+  guarded("tip note", () => trackTipHeight());
+  guarded("donation panel", () => initDonatePanel());
+  on("removeOld", "click", removeEarlier);
+  on("buildAll", "click", () => startCreate(currentFormats.map((f) => f.id)));
+  on("maxPlaylists", "input", () => invalidatePlan());
+  on("backupDownload", "click", downloadBackup);
+  on("backupRestore", "click", () => $("restoreFile").click());
+  on("restoreFile", "change", async (event) => {
     const file = event.target.files && event.target.files[0];
     event.target.value = "";   // so choosing the same file again still counts
     await restoreFromFile(file);
   });
-  $("formats").addEventListener("input", () => {
+  on("formats", "input", () => {
     localStorage.setItem("formats", $("formats").value);
     invalidatePlan();
     undoText = null;
@@ -1533,6 +1580,8 @@ async function main() {
     setLoginMessage("Please connect again so this page can create playlists.");
   }
 
+  startupDone = true;
+  showStartupProblems();
   const hasOwnFormats = localStorage.getItem("formats") !== null && localStorage.getItem("formats") !== DEFAULT_FORMATS;
   if (token) {
     $("loginSection").hidden = true;
@@ -1558,4 +1607,4 @@ async function main() {
   }
 }
 
-main();
+main().catch(startupFailed);
