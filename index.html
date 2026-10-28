@@ -355,24 +355,40 @@
   /* the card has the same soft pink outline as a segment, which ties it to the selected tab; its settings sit below the segments, set off by a line */
   #formatEditor .fe-card { border-color: var(--accent-tint-border, rgba(255, 56, 184, 0.5)); }
   #formatEditor #feHead { border-top: 1px solid var(--line); padding-top: 10px; }
-  /* every button reacts to a mouse pointer, quietly (not on touch screens, where a hover would stick):
-     filled buttons get a little brighter; plain and dashed controls keep their color and get a stronger outline;
+  /* every button reacts to a mouse pointer (not on touch screens, where a hover would stick):
+     pink buttons get brighter and a lighter outline in their own color, so the change is easy to see;
+     plain buttons and the other tabs keep their color, with a stronger outline and a slightly different fill;
      small controls grow a touch; and the playlist name in a segment does nothing of its own, because the whole segment lights up */
   @media (hover: hover) {
     #formatEditor .fe-step, #formatEditor .fe-more, #formatEditor .fe-grip { transition: transform 0.12s ease; }
-    button:not(:disabled):hover, a.button-link:hover, #supportButton:hover { filter: brightness(1.1); }
-    #formatEditor .fe-iconbtn:not(:disabled):hover, #formatEditor .fe-tab[aria-pressed="false"]:hover, .theme-button:hover, .fe-dialog .row button:not(.primary):not(.fe-danger-button):hover { filter: none; border-color: var(--muted); }
+    button:not(:disabled):hover, a.button-link:hover, #supportButton:hover { filter: brightness(1.12); outline: 1px solid var(--button); outline-offset: -1px; }
     @supports (color: color-mix(in srgb, red 50%, white)) {
-      #formatEditor .fe-iconbtn:not(:disabled):hover, #formatEditor .fe-tab[aria-pressed="false"]:hover, .theme-button:hover, .fe-dialog .row button:not(.primary):not(.fe-danger-button):hover { border-color: color-mix(in srgb, var(--line) 45%, var(--fg)); }
+      button:not(:disabled):hover, a.button-link:hover, #supportButton:hover { outline-color: color-mix(in srgb, var(--button) 50%, #fff); }
+    }
+    /* the selected tab: its own 1px border turns lighter, flush with its edge, and so do the sides of the arrow under it, drawn inside the arrow's own shape, so nothing gets bigger */
+    #formatEditor .fe-tab[aria-pressed="true"]:hover { outline: none; --ring: var(--button); border-color: var(--ring); }
+    @supports (color: color-mix(in srgb, red 50%, white)) {
+      #formatEditor .fe-tab[aria-pressed="true"]:hover { --ring: color-mix(in srgb, var(--button) 50%, #fff); }
+    }
+    #formatEditor .fe-tab[aria-pressed="true"]:hover::before { content: ""; position: absolute; left: 50%; top: 100%; width: 16px; height: 10px; margin-left: -8px; background: var(--ring); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+    #formatEditor .fe-tab[aria-pressed="true"]:hover::after { clip-path: polygon(1.28px 0, 14.72px 0, 8px 8.4px); }
+    #formatEditor .fe-iconbtn:not(:disabled):hover, #formatEditor .fe-tab[aria-pressed="false"]:hover, .theme-button:hover, .fe-dialog .row button:not(.primary):not(.fe-danger-button):hover { filter: none; outline: none; border-color: var(--muted); }
+    @supports (color: color-mix(in srgb, red 50%, white)) {
+      #formatEditor .fe-iconbtn:not(:disabled):hover, .theme-button:hover, .fe-dialog .row button:not(.primary):not(.fe-danger-button):hover { border-color: color-mix(in srgb, var(--line) 45%, var(--fg)); background-color: color-mix(in srgb, var(--bg) 88%, var(--fg)); }
+      #formatEditor .fe-tab[aria-pressed="false"]:hover { border-color: color-mix(in srgb, var(--line) 45%, var(--fg)); background-color: color-mix(in srgb, var(--card) 88%, var(--fg)); }
     }
     /* the dashed buttons already have a strong outline, so the strongest one is the text color, with a faint fill */
-    #formatEditor .fe-newformat:hover, #formatEditor .fe-add:hover { filter: none; border-color: var(--fg); background: rgba(127, 127, 127, 0.1); }
-    body.minimal #feAppMenuButton:hover { border-color: var(--button); filter: brightness(1.1); }   /* pink in minimalist mode, so it brightens like the other filled buttons */
-    #formatEditor .fe-step:not(:disabled):hover, #formatEditor .fe-more:hover, #formatEditor .fe-grip:hover { filter: none; transform: scale(1.12); }
+    #formatEditor .fe-newformat:hover, #formatEditor .fe-add:hover { filter: none; outline: none; border-color: var(--fg); background: rgba(127, 127, 127, 0.1); }
+    @supports (color: color-mix(in srgb, red 50%, white)) {
+      #formatEditor .fe-newformat:hover { background-color: color-mix(in srgb, var(--bg) 88%, var(--fg)); }
+      #formatEditor .fe-add:hover { background-color: color-mix(in srgb, var(--card) 88%, var(--fg)); }
+    }
+    #formatEditor .fe-step:not(:disabled):hover, #formatEditor .fe-more:hover, #formatEditor .fe-grip:hover { filter: none; outline: none; transform: scale(1.12); }
+    #formatEditor .fe-main:hover, #formatEditor .fe-tag:hover { outline: none; }
     #formatEditor .fe-main:hover { filter: none; }
-    button.linklike:hover { filter: brightness(1.25); text-decoration-thickness: 2px; }
-    #formatEditor .fe-item:hover, #formatEditor .fe-option:hover { filter: none; background: rgba(127, 127, 127, 0.18); }
-    #kofiPanel .kofi-bar button:hover { filter: none; background: rgba(0, 0, 0, 0.08); }
+    button.linklike:hover, #formatEditor .fe-linkbutton:hover { outline: none; filter: brightness(1.25); text-decoration-thickness: 2px; }
+    #formatEditor .fe-item:hover, #formatEditor .fe-option:hover { filter: none; outline: none; background: rgba(127, 127, 127, 0.18); }
+    #kofiPanel .kofi-bar button:hover { filter: none; outline: none; background: rgba(0, 0, 0, 0.08); }
     details > summary:hover { filter: brightness(1.2); }
     /* the pencil on the selected tab lights up, since pressing the tab renames the format */
     #formatEditor .fe-tab[aria-pressed="true"]:hover .fe-icon { background: rgba(255, 255, 255, 0.3); box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3); border-radius: 50%; }
