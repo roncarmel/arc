@@ -235,6 +235,7 @@
   .fe-dialog .row button { flex: 1 1 0; min-height: 44px; justify-content: center; }
   .fe-dialog .row button:not(.fe-danger-button) { background: transparent; color: var(--fg); border-color: var(--line); }
   .fe-dialog .fe-danger-button { background: #d11f2e; border-color: #d11f2e; color: #fff; }
+  .fe-dialog .row button.primary { background: var(--button); color: var(--on-button, #fff); border-color: var(--button); }
 
   /* names of buttons and links, so they are easy to spot in running text */
   .ui { color: var(--fg); }
@@ -268,13 +269,14 @@
   /* minimalist mode: the page with only what is needed. The headings and explanations of the steps, the "more about" box, the Spotify
      connection once it is made, and the backup step all go; the app menu has the backup and sign-out. */
   body.minimal .tagline, body.minimal #about, body.minimal #connectedSection, body.minimal #editHeading, body.minimal #savedNote,
-  body.minimal #createHeading, body.minimal #createNote, body.minimal #backupBlock, body.minimal #formatHelp, body.minimal #moreOptions { display: none; }
+  body.minimal #createHeading, body.minimal #createNote, body.minimal #backupBlock, body.minimal #formatHelp, body.minimal #moreOptions, body.minimal #privacySection { display: none; }
   /* the page's title goes (once the editor is there), and the icon takes its place at the left of the tabs, as tall as they are */
   body.minimal.has-editor h1.brand { display: none; }
   body.minimal.has-editor main { padding-top: 10px; }   /* the same gap as between the tabs and the card */
   body.minimal #backupMessage:empty { display: none; }
   #formatEditor .fe-appicon { display: none; }
   body.minimal #formatEditor .fe-appicon { display: block; width: 44px; height: 44px; flex: none; border-radius: 22%; }
+  #privacySection { margin-bottom: 14px; }   /* a little room between Privacy and More options */
   body.minimal #feAppMenuButton { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
   /* the popup that holds everything after a click on Create: the plan, the question, the progress, and the result */
   .app-overlay { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 1100; background: rgba(0, 0, 0, 0.65); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
@@ -324,7 +326,8 @@
       <li>Create the playlists. The app shows you what it found and asks before it makes anything.</li>
     </ol>
     <p><strong>What you need</strong><br>A Spotify Premium account (Spotify requires it for the free developer app) and some playlists of your own to draw from.</p>
-    <p><strong>Privacy</strong><br>Your existing Spotify playlists are only read, never changed. Everything runs in this browser, and nothing about your music, such as playlist names or songs, goes anywhere except to you and Spotify. If you run into a problem you can report it in the <span class="ui">More options</span> section at the bottom of this page. For the full details, see <a href="#privacySection" class="privacy-link">Privacy</a> at the bottom of this page.</p>
+    <p><strong>Reporting problems</strong><br>If you run into a problem you can report it in the <span class="ui">More options</span> section at the bottom of this page.</p>
+    <p><strong>Privacy</strong><br>Your existing Spotify playlists are only read, never changed. Everything runs in this browser, and nothing about your music, such as playlist names or songs, goes anywhere except to you and Spotify. For the full details, see <a href="#privacySection" class="privacy-link">Privacy</a> at the bottom of this page.</p>
   </details>
 
   <section id="loginSection">
@@ -499,7 +502,7 @@
   </div>
   <div id="kofiDim" hidden></div>
   <div id="kofiPanel" role="dialog" aria-label="Donate on Ko-fi" hidden>
-    <div class="kofi-bar"><span id="kofiPrompt">Choose an amount that feels good to you.</span><button id="kofiClose" type="button" aria-label="Close">&times;</button></div>
+    <div class="kofi-bar"><span id="kofiPrompt">Choose any amount that feels good to you.</span><button id="kofiClose" type="button" aria-label="Close">&times;</button></div>
     <div id="kofiFrameHolder"></div>
   </div>
 
