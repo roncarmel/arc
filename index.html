@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-27g">
-<script src="theme.js?v=2026-10-27g"></script>
+<meta name="app-version" content="2026-10-27h">
+<script src="theme.js?v=2026-10-27h"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -336,6 +336,14 @@
   @media (min-width: 760px) {
     #formatEditor .fe-silence-label { display: inline; }
   }
+  /* on a phone, Disconnect sits below the status line, so the heading keeps the whole width and does not wrap */
+  @media (max-width: 759px) {
+    #connectedSection { display: flex; flex-direction: column; align-items: flex-start; }
+    #connectedSection .headrow { display: contents; }
+    #connectedSection .headrow h2 { order: 1; margin: 40px 0 10px; }
+    #connectedSection #connectedMessage { order: 2; }
+    #connectedSection #disconnect { order: 3; margin-top: 12px; }
+  }
 </style>
 <script>
   // If the page's own script never starts (a file that did not load, an old copy kept by the browser, an error), the page says so,
@@ -365,7 +373,7 @@
 <body>
 <main>
   <h1 class="brand"><img class="app-icon" src="apple-touch-icon.png" alt="" width="44" height="44"><span class="brand-text"><span>Ceremony</span> <span>Playlist</span> <span>Builder</span></span></h1>
-  <p class="tagline">Turn your Spotify playlists into structured playlists for ceremonies, retreats, and other long events.</p>
+  <p class="tagline">New playlists for ceremonies and retreats, built from the ones you already have.</p>
   <p id="startupProblem" class="report-hint" role="alert" hidden>Part of this page did not start. Try reloading it with Command-Shift-R on a Mac, or Ctrl-F5 on Windows. If this message stays, <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">report this problem</a>.</p>
 
   <details id="about" class="about card">
@@ -659,8 +667,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-27g"></script>
-<script src="editor.js?v=2026-10-27g"></script>
-<script src="app.js?v=2026-10-27g"></script>
+<script src="formats.js?v=2026-10-27h"></script>
+<script src="editor.js?v=2026-10-27h"></script>
+<script src="app.js?v=2026-10-27h"></script>
 </body>
 </html>
