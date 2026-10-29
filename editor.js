@@ -636,20 +636,23 @@ function tagPanel(f, g) {
   // under the length: a pink link, Reset to default, once it has been changed, and a quiet gray (default) while it matches; with no default to go back to,
   // a Remove button beside the length instead
   const below = feEl("div", { class: "fe-tagbelow" });
-  const slot = feEl("div", { class: "fe-tagslot" });
   if (info.hasDefault && info.custom) {
     below.appendChild(feEl("button", { type: "button", class: "linklike", id: "feTagReset", "aria-label": `Reset to default, ${describeSeconds(f.gap)}`, onClick: () => { editor.gapPanel = null; setGap(g, undefined); } }, "Reset to default"));
   } else if (info.hasDefault) {
     below.appendChild(feEl("span", { class: "fe-tagdefault", id: "feTagDefault", text: "(default)" }));
   } else {
-    slot.appendChild(feEl("button", { type: "button", class: "fe-linkbutton", id: "feTagRemove", "aria-label": "Remove this silence", onClick: () => { editor.gapPanel = null; setGap(g, undefined); } }, feIcon("trash"), "Remove"));
+    below.appendChild(feEl("button", { type: "button", class: "fe-linkbutton", id: "feTagRemove", "aria-label": "Remove this silence", onClick: () => { editor.gapPanel = null; setGap(g, undefined); } }, feIcon("trash"), "Remove"));
   }
-  const stepper = stepperBox({ shorterId: "feTagShorter", longerId: "feTagLonger", valueId: "feTagDuration", inline: true, width: 54,
-    text: info.zero ? "0 sec" : describeSeconds(info.sec), shorterLabel: "Shorter silence", longerLabel: "Longer silence", onShorter: shorter, onLonger: longer });
-  // the title above the length, and the link or the gray (default) under it, all centered on the length; a Remove button, when there is one, sits beside it
-  const column = feEl("div", { class: "fe-tagcol" }, feEl("div", { class: "fe-tagtitle", text: "Silence for" }), stepper, ...(below.childNodes.length ? [below] : []));
-  const row = feEl("div", { class: "fe-tagrow" }, column, ...(slot.childNodes.length ? [slot] : []));
-  return feEl("div", { class: "fe-pop fe-tagpanel", id: "feTagPanel" }, row);
+  // one widget: the length and its caption on two lines, between the minus and the plus ("30 sec of" over "silence")
+  const stepper = stepperBox({ shorterId: "feTagShorter", longerId: "feTagLonger", valueId: "feTagAmount", inline: true, width: 66,
+    text: "", shorterLabel: "Shorter silence", longerLabel: "Longer silence", onShorter: shorter, onLonger: longer });
+  const amount = stepper.querySelector(".fe-amount");
+  amount.classList.add("fe-amount-two");
+  amount.appendChild(feEl("span", { class: "fe-line" }, feEl("span", { id: "feTagDuration", text: info.zero ? "0 sec" : describeSeconds(info.sec) }), " of"));
+  amount.appendChild(feEl("span", { class: "fe-line", text: "silence" }));
+  // the link, the gray (default) or the Remove button sits right under the widget, centered on it
+  const column = feEl("div", { class: "fe-tagcol" }, stepper, ...(below.childNodes.length ? [below] : []));
+  return feEl("div", { class: "fe-pop fe-tagpanel", id: "feTagPanel" }, feEl("div", { class: "fe-tagrow" }, column));
 }
 
 function setGap(g, value) {

@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-29c">
-<script src="theme.js?v=2026-10-29c"></script>
+<meta name="app-version" content="2026-10-29d">
+<script src="theme.js?v=2026-10-29d"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -199,9 +199,9 @@
   #formatEditor .fe-tag.fe-hl { background: var(--fg); color: var(--bg); }
   #formatEditor .fe-rows.fe-dragging-any .fe-tag { display: none; }
   #formatEditor .fe-tagpanel { right: 8px; top: 55px; transform: translateY(calc(-50% + var(--shift, 0px))); width: max-content; min-width: 150px; max-width: calc(100% - 8px); }   /* centered on its marker, just left of it */
-  #formatEditor .fe-tagtitle { padding: 4px 0 2px; font-weight: 600; text-align: center; }
-  #formatEditor .fe-tagrow { display: flex; align-items: flex-end; gap: 4px; padding: 6px 8px 4px 8px; }
-  #formatEditor .fe-tagslot { min-width: 84px; display: flex; align-items: center; }
+  #formatEditor .fe-amount-two { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.15; white-space: nowrap; }
+  #formatEditor .fe-amount-two .fe-line { display: block; }
+  #formatEditor .fe-tagrow { display: flex; justify-content: center; padding: 6px 8px 4px 8px; }
   #formatEditor .fe-tagcol { display: flex; flex-direction: column; align-items: center; gap: 2px; }
   #formatEditor .fe-tagbelow { font-size: 0.95rem; text-align: center; }
   #formatEditor .fe-tagbelow .linklike { min-height: 28px; font: inherit; font-weight: 400; }
@@ -407,6 +407,10 @@
   .notice strong { display: block; margin-bottom: 2px; font-size: 1.1rem; }
   /* the Donate button, its note, and the Donate button in the Build popup, for someone who chose to hide them */
   .donate-hidden #supportBox, .donate-hidden #createDonate { display: none !important; }
+  /* popups that are not dialogs: in dark mode a black shadow on a near-black page cannot be seen, so they also get a faint light edge and a surface a touch lighter than the page */
+  @media (prefers-color-scheme: dark) {
+    #formatEditor .fe-pop, .theme-list { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 6px 14px rgba(0, 0, 0, 0.5), 0 18px 40px rgba(0, 0, 0, 0.6); background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)); }
+  }
 </style>
 <script>
   // If the page's own script never starts (a file that did not load, an old copy kept by the browser, an error), the page says so,
@@ -753,8 +757,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-29c"></script>
-<script src="editor.js?v=2026-10-29c"></script>
-<script src="app.js?v=2026-10-29c"></script>
+<script src="formats.js?v=2026-10-29d"></script>
+<script src="editor.js?v=2026-10-29d"></script>
+<script src="app.js?v=2026-10-29d"></script>
 </body>
 </html>
