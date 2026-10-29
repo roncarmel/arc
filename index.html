@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-27t">
-<script src="theme.js?v=2026-10-27t"></script>
+<meta name="app-version" content="2026-10-27u">
+<script src="theme.js?v=2026-10-27u"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -129,7 +129,7 @@
   #formatEditor .fe-card, #formatEditor .fe-empty { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
   #formatEditor .fe-empty { align-items: center; text-align: center; padding: 24px 16px; }
   #formatEditor .fe-empty p { margin: 0; }
-  #formatEditor .fe-headrow { display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; row-gap: 4px; }
+  #formatEditor .fe-headrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   /* the format's name is the card's title, so it is set larger and bolder than the segment names beneath it */
   #formatEditor .fe-icon { display: inline-flex; align-items: center; justify-content: center; line-height: 0; }   /* an icon is a box the size of its drawing, so it sits in the middle of its button */
   #formatEditor .fe-icon svg { display: block; }
@@ -323,8 +323,8 @@
   #supportBox { pointer-events: none; }
   #supportBox > * { pointer-events: auto; }
   /* the card's header: the silence between segments, then Duplicate and Delete together at the right */
-  #formatEditor .fe-silence { display: contents; }   /* on a phone its parts join the row directly: the words on a line of their own, then the length, with Duplicate and Delete beside it */
-  #formatEditor .fe-silence-title { flex: 1 1 100%; color: var(--muted); font-size: 0.9rem; }
+  #formatEditor .fe-silence { display: flex; flex: 0 1 auto; align-items: center; gap: 8px; min-width: 0; }   /* the length and its words stay together; Duplicate and Delete sit beside them, or drop below on a very narrow screen */
+  #formatEditor .fe-silence-short { color: var(--muted); font-size: 0.9rem; }
   #formatEditor .fe-silence-label { display: none; color: var(--muted); font-size: 0.9rem; }
   #formatEditor #feDuplicate { margin-left: auto; }   /* Duplicate and Delete sit together at the right */
   /* the selected tab: a pencil, a notch pointing down at the card, and the name edited in place */
@@ -334,9 +334,11 @@
   #formatEditor .fe-tab[aria-pressed="true"]::after { content: ""; position: absolute; left: 50%; top: 100%; width: 16px; height: 10px; margin-left: -8px; background: var(--button); clip-path: polygon(0 0, 100% 0, 50% 100%); }
   #formatEditor .fe-tab-editing { display: inline-flex; align-items: center; flex: none; min-height: 44px; box-sizing: border-box; padding: 0 16px; border-radius: 999px; background: var(--button); }
   #formatEditor .fe-tab-input { background: transparent; border: none; outline: none; padding: 0; margin: 0; min-width: 6ch; max-width: 60vw; width: auto; font: inherit; font-weight: 700; color: var(--on-button, #fff); }
+  @media (max-width: 359px) {
+    #formatEditor .fe-silence { flex: 1 1 100%; }   /* too narrow for everything on one line: Duplicate and Delete go below together */
+  }
   @media (min-width: 760px) {
-    #formatEditor .fe-silence { display: flex; flex: 0 1 auto; align-items: center; gap: 8px; min-width: 0; }   /* wide: one row, a sentence, with Duplicate and Delete at the right */
-    #formatEditor .fe-silence-title { display: none; }
+    #formatEditor .fe-silence-short { display: none; }   /* wide: a whole sentence instead of the short word */
     #formatEditor .fe-silence-label { display: inline; flex: 0 1 auto; white-space: nowrap; }
   }
   /* on a phone, Disconnect sits below the status line, so the heading keeps the whole width and does not wrap */
@@ -562,7 +564,7 @@
     <p>Each row is one stretch of music. Tap the playlist to choose it, and use the minus and plus buttons to set how many minutes it fills. Drag the dotted handle to change the order. Each segment typically lands within about 30 seconds of its target. Point at a row, or tap a piece of the bar at the top, to see which belongs to which. Add another with <span class="ui">New segment</span>.</p>
 
     <h3>Silence</h3>
-    <p>The small tags hanging off the right side of the rows are silences. A silence adds time on top of your segment minutes, and can be used for effect or simply to tell a facilitator the music has moved into a new segment. To put the same silence between every two segments, set the length at the bottom of the format, where it says <span class="ui">silence between segments</span>. Tap a tag to change that one silence. A tag with its own length is a deeper color, and <span class="ui">Default</span> puts it back to the default. To add a silence where there is none, use a segment's three dots.</p>
+    <p>The small tags hanging off the right side of the rows are silences. A silence adds time on top of your segment minutes, and can be used for effect or simply to tell a facilitator the music has moved into a new segment. To put the same silence between every two segments, set the length at the bottom of the format, beside Duplicate and Delete. Tap a tag to change that one silence. A tag with its own length is a deeper color, and <span class="ui">Default</span> puts it back to the default. To add a silence where there is none, use a segment's three dots.</p>
 
     <h3>Mixes</h3>
     <p>To blend two playlists in one segment, tap the three dots on that row and choose <span class="ui">Add a mix</span>. Pick the second playlist, then use the slider to set how much of each. In the bar at the top, a mixed segment shows as diagonal stripes in two shades of the accent color.</p>
@@ -742,8 +744,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-27t"></script>
-<script src="editor.js?v=2026-10-27t"></script>
-<script src="app.js?v=2026-10-27t"></script>
+<script src="formats.js?v=2026-10-27u"></script>
+<script src="editor.js?v=2026-10-27u"></script>
+<script src="app.js?v=2026-10-27u"></script>
 </body>
 </html>
