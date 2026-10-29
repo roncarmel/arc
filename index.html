@@ -86,6 +86,9 @@
   #moreOptions pre.report-preview { color: var(--muted); }
   /* A quick second tap on a button (the plus and minus, for example) must not zoom the page. Pinching to zoom still works, and scrolling too. */
   * { touch-action: manipulation; }
+  /* in minimalist mode the Build button is the main thing on the page, so it sits in the middle, with any message under it */
+  body.minimal #buildRow { justify-content: center; }
+  body.minimal #pythonNote, body.minimal #spotifyNote { text-align: center; }
   button.linklike { background: none; border: none; padding: 0; color: var(--accent); font-weight: normal; text-decoration: underline; }
   #backupMessage { min-height: 1.5em; }
   #supportBox { position: fixed; right: 16px; bottom: 16px; z-index: 1001; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 8px; width: max-content; max-width: min(240px, calc(100vw - 32px)); }
@@ -580,7 +583,7 @@
 
   <h2 id="createHeading">3. Build playlists</h2>
   <p id="createNote" class="muted">Builds playlists from the selected format. You can see the plan first, and nothing is built until you confirm.</p>
-  <div class="row" style="margin-top:0">
+  <div id="buildRow" class="row" style="margin-top:0">
     <button id="create" class="primary" type="button" disabled><img class="btn-icon" src="icons/build.svg" alt="" width="24" height="24"><span class="btn-label"><span class="build-verb">Build playlists</span></span></button>
   </div>
   <p id="pythonNote" class="muted"></p>
