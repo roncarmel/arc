@@ -371,11 +371,16 @@
       #formatEditor .fe-tab[aria-pressed="true"]:hover { --ring: color-mix(in srgb, var(--button) 50%, #fff); }
     }
     #formatEditor .fe-tab[aria-pressed="true"]:hover::before { content: ""; position: absolute; left: 50%; top: 100%; width: 16px; height: 10px; margin-left: -8px; background: var(--ring); clip-path: polygon(0 0, 100% 0, 50% 100%); }
-    #formatEditor .fe-tab[aria-pressed="true"]:hover::after { clip-path: polygon(1.28px 0, 14.72px 0, 8px 8.4px); }
+    #formatEditor .fe-tab[aria-pressed="true"]:hover::after { top: calc(100% - 1px); height: 11px; clip-path: polygon(1.28px 0, 14.72px 0, 14.72px 1px, 8px 9.4px, 1.28px 1px); }   /* starts one pixel up inside the pill, so no seam can show where the arrow joins it */
     #formatEditor .fe-iconbtn:not(:disabled):hover, #formatEditor .fe-tab[aria-pressed="false"]:hover, .theme-button:hover, .fe-dialog .row button:not(.primary):not(.fe-danger-button):hover { filter: none; outline: none; border-color: var(--muted); }
     @supports (color: color-mix(in srgb, red 50%, white)) {
       #formatEditor .fe-iconbtn:not(:disabled):hover, .theme-button:hover, .fe-dialog .row button:not(.primary):not(.fe-danger-button):hover { border-color: color-mix(in srgb, var(--line) 45%, var(--fg)); background-color: color-mix(in srgb, var(--bg) 88%, var(--fg)); }
       #formatEditor .fe-tab[aria-pressed="false"]:hover { border-color: color-mix(in srgb, var(--line) 45%, var(--fg)); background-color: color-mix(in srgb, var(--card) 88%, var(--fg)); }
+    }
+    /* in minimalist mode the app menu button is a pink one, so it reacts like the other pink buttons and not like the plain ones */
+    body.minimal #feAppMenuButton:not(:disabled):hover { filter: brightness(1.12); outline: 1px solid var(--button); outline-offset: -1px; border-color: var(--button); background-color: var(--button); }
+    @supports (color: color-mix(in srgb, red 50%, white)) {
+      body.minimal #feAppMenuButton:not(:disabled):hover { outline-color: color-mix(in srgb, var(--button) 50%, #fff); }
     }
     /* the dashed buttons already have a strong outline, so the strongest one is the text color, with a faint fill */
     #formatEditor .fe-newformat:hover, #formatEditor .fe-add:hover { filter: none; outline: none; border-color: var(--fg); background: rgba(127, 127, 127, 0.1); }
@@ -558,12 +563,12 @@
   </details>
 
   <h2 id="createHeading">3. Build playlists</h2>
+  <p id="createNote" class="muted">Builds playlists from the format you are editing, with songs picked at random. You see the plan first, and nothing is built until you confirm.</p>
   <div class="row" style="margin-top:0">
     <button id="create" class="primary" type="button" disabled><img class="btn-icon" src="icons/build.svg" alt="" width="24" height="24"><span class="btn-label"><span class="build-verb">Build playlists</span></span></button>
   </div>
   <p id="pythonNote" class="muted"></p>
   <p id="spotifyNote" class="muted" hidden>Building playlists needs a working connection to Spotify. See Step 1.</p>
-  <p id="createNote" class="muted">This builds the playlists for the format you are editing. The app plans them with songs picked at random, shows you what it found, and asks before it builds anything. Changing anything above closes the question, so you start again.</p>
 
   <div id="createOverlay" class="app-overlay" hidden>
     <div id="createDialog" class="app-dialog" role="dialog" aria-modal="true" aria-label="Build playlists" tabindex="-1">
