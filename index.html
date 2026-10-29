@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-27z">
-<script src="theme.js?v=2026-10-27z"></script>
+<meta name="app-version" content="2026-10-29a">
+<script src="theme.js?v=2026-10-29a"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -196,18 +196,14 @@
   #formatEditor .fe-tag .fe-icon { display: none; }
   #formatEditor .fe-tag .fe-icon svg { width: 12px; height: 12px; }
   #formatEditor .fe-tag-custom { background: var(--accent-deep); color: var(--on-deep, #fff); }
-  /* a silence set to none: a dark tag with an outline in the default tags' color, drawn as a slightly smaller dark copy of the shape on top of a default-colored one */
-  #formatEditor .fe-tag-zero { background: var(--tag, #43434d); color: var(--muted); }
-  #formatEditor .fe-tag-zero::before { content: ""; position: absolute; inset: 1.5px; border-radius: 0 999px 999px 0; clip-path: polygon(0 50%, 10px 0, 100% 0, 100% 100%, 10px 100%); background: var(--tag-off, #26262b); }
-  #formatEditor .fe-tag-zero > * { position: relative; }
-  #formatEditor .fe-tag-zero.fe-hl::before { background: var(--fg); }
   #formatEditor .fe-tag.fe-hl { background: var(--fg); color: var(--bg); }
   #formatEditor .fe-rows.fe-dragging-any .fe-tag { display: none; }
-  #formatEditor .fe-tagpanel { right: 0; top: 69px; width: max-content; min-width: 150px; max-width: calc(100% - 6px); }
+  #formatEditor .fe-tagpanel { right: 8px; top: 55px; transform: translateY(-50%); width: max-content; min-width: 150px; max-width: calc(100% - 8px); }   /* centered on its marker, just left of it */
   #formatEditor .fe-tagtitle { padding: 8px 10px; font-weight: 600; }
   #formatEditor .fe-tagrow { display: flex; align-items: center; gap: 4px; padding: 0 6px 4px 8px; }
   #formatEditor .fe-tagslot { min-width: 84px; display: flex; align-items: center; }
-  #formatEditor .fe-tagslot-default { min-width: 74px; }
+  #formatEditor .fe-tagbelow { padding: 0 10px 8px 12px; font-size: 0.95rem; }
+  #formatEditor .fe-tagbelow .linklike { min-height: 28px; font: inherit; font-weight: 400; }
   #formatEditor .fe-linkbutton { min-height: 44px; padding: 0 6px 0 4px; background: none; border: none; color: var(--accent); font-weight: 600; gap: 5px; }
   #formatEditor .fe-tagdefault { padding: 0 6px 0 4px; color: var(--muted); font-size: 0.9rem; }
   #formatEditor .fe-stepper-inline { display: inline-flex; }   /* the frame hugs its − value + instead of stretching across the menu */
@@ -295,7 +291,6 @@
   .theme-list.theme-up { top: auto; bottom: calc(100% + 4px); }
   /* a menu or list too close to the bottom of the screen opens upward instead */
   #formatEditor .fe-pop.fe-up { top: auto; bottom: calc(100% + 4px); }
-  #formatEditor .fe-tagpanel.fe-up { top: auto; bottom: calc(100% - 39px); }
   /* the donation panel: Ko-fi's own page in a frame, above the button, so nothing of Ko-fi's code runs in this page */
   #kofiDim { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 1002; background: rgba(0, 0, 0, 0.65); }
   #kofiPanel { position: fixed; right: 16px; bottom: 16px; width: 328px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); z-index: 1003; display: flex; flex-direction: column; background: #fff; color: #444; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 36px rgba(0, 0, 0, 0.3); }
@@ -572,7 +567,7 @@
     <p>Each row is one stretch of music. Tap the playlist to choose it, and use the minus and plus buttons to set how many minutes it fills. Drag the dotted handle to change the order. Each segment typically lands within about 30 seconds of its target. Point at a row, or tap a piece of the bar at the top, to see which belongs to which. Add another with <span class="ui">New segment</span>.</p>
 
     <h3>Silence</h3>
-    <p>The small tags hanging off the right side of the rows are silences. A silence adds time on top of your segment minutes, and can be used for effect or simply to tell a facilitator the music has moved into a new segment. To put the same silence between every two segments, set the length at the bottom of the format, beside Duplicate and Delete. Tap a tag to change that one silence. A tag with its own length is a deeper color, and <span class="ui">Default</span> puts it back to the default. To add a silence where there is none, use a segment's three dots.</p>
+    <p>The small tags hanging off the right side of the rows are silences. A silence adds time on top of your segment minutes, and can be used for effect or simply to tell a facilitator the music has moved into a new segment. To put the same silence between every two segments, set the length at the bottom of the format, beside Duplicate and Delete. Tap a tag to change that one silence. A tag with a changed length is pink, and <span class="ui">Reset to default</span> puts it back. To add a silence where there is none, use a segment's three dots.</p>
 
     <h3>Mixes</h3>
     <p>To blend two playlists in one segment, tap the three dots on that row and choose <span class="ui">Add a mix</span>. Pick the second playlist, then use the slider to set how much of each. In the bar at the top, a mixed segment shows as diagonal stripes in two shades of the accent color.</p>
@@ -757,8 +752,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-27z"></script>
-<script src="editor.js?v=2026-10-27z"></script>
-<script src="app.js?v=2026-10-27z"></script>
+<script src="formats.js?v=2026-10-29a"></script>
+<script src="editor.js?v=2026-10-29a"></script>
+<script src="app.js?v=2026-10-29a"></script>
 </body>
 </html>

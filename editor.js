@@ -324,6 +324,12 @@ function fitPops() {
   const margin = 8;
   document.querySelectorAll("#formatEditor .fe-pop").forEach((pop) => {
     pop.classList.remove("fe-up");
+    if (pop.classList.contains("fe-tagpanel")) {
+      // a silence's card is centered on its marker, so it has no up or down: if it runs off the screen, scroll it into view
+      const r = pop.getBoundingClientRect();
+      if (r.height && (r.bottom > window.innerHeight - margin || r.top < margin) && pop.scrollIntoView) pop.scrollIntoView({ block: "nearest" });
+      return;
+    }
     const down = pop.getBoundingClientRect();
     if (!down.height || down.bottom <= window.innerHeight - margin) return;   // not laid out, or it fits
     pop.classList.add("fe-up");
@@ -580,12 +586,12 @@ function rowEl(f, item, index) {
 function tagEl(f, g) {
   const info = gapInfo(f, g);
   const key = `gap${g}`;
-  const kind = info.zero ? "zero" : info.custom ? "custom" : "default";
+  const kind = info.custom ? "custom" : "default";   // a silence set to 0 is a changed one, like any other: pink
   const where = info.interior ? "Silence between these segments" : "Silence after the last segment";
   const open = editor.gapPanel === g;
   const button = feEl("button", {
     type: "button", class: `fe-tag fe-trigger fe-tag-${kind}`, "data-id": key, "aria-expanded": String(open),
-    "aria-label": `${where}: ${info.zero ? "none" : describeSeconds(info.sec)}. Tap to change.`,
+    "aria-label": `${where}: ${info.zero ? "0 sec" : describeSeconds(info.sec)}. Tap to change.`,
     onClick: () => { editor.gapPanel = open ? null : g; editor.panel = null; editor.cardMenu = false; editor.appMenu = false; editor.search = ""; renderAppMenu(); renderHead(); renderRows(); },
   }, feIcon("mute"), feEl("span", { class: "fe-tag-text", text: shortSeconds(info.sec) }));
   button.addEventListener("mouseenter", () => { editor.hover = key; applyHighlight(); });
@@ -612,21 +618,26 @@ function tagPanel(f, g) {
     else if (info.hasDefault) setGap(g, 0);   // below the shortest length is none
   };
   const longer = () => (info.zero ? keep(SILENCE_STEPS[0]) : keep(higher.length ? higher[0] : SILENCE_STEPS[SILENCE_STEPS.length - 1]));
-  // beside the length: Default (back to the default) where there is one, Remove where there is not, and a quiet "(default)" while it matches
-  const slot = feEl("div", { class: "fe-tagslot" + (info.hasDefault ? " fe-tagslot-default" : "") });
+  // under the length: a pink link, Reset to default, once it has been changed, and a quiet gray (default) while it matches; with no default to go back to,
+  // a Remove button beside the length instead
+  const below = feEl("div", { class: "fe-tagbelow" });
+  const slot = feEl("div", { class: "fe-tagslot" });
   if (info.hasDefault && info.custom) {
-    slot.appendChild(feEl("button", { type: "button", class: "fe-linkbutton", id: "feTagReset", "aria-label": `Set to the default, ${describeSeconds(f.gap)}`, onClick: () => { editor.gapPanel = null; setGap(g, undefined); } }, feIcon("reset"), "Default"));
+    below.appendChild(feEl("button", { type: "button", class: "linklike", id: "feTagReset", "aria-label": `Reset to default, ${describeSeconds(f.gap)}`, onClick: () => { editor.gapPanel = null; setGap(g, undefined); } }, "Reset to default"));
   } else if (info.hasDefault) {
-    slot.appendChild(feEl("span", { class: "fe-tagdefault", id: "feTagDefault", text: "(default)" }));
+    below.appendChild(feEl("span", { class: "fe-tagdefault", id: "feTagDefault", text: "(default)" }));
   } else {
     slot.appendChild(feEl("button", { type: "button", class: "fe-linkbutton", id: "feTagRemove", "aria-label": "Remove this silence", onClick: () => { editor.gapPanel = null; setGap(g, undefined); } }, feIcon("trash"), "Remove"));
   }
-  return feEl("div", { class: "fe-pop fe-tagpanel", id: "feTagPanel" },
+  const parts = [
     feEl("div", { class: "fe-tagtitle", text: "Silence for\u2026" }),
     feEl("div", { class: "fe-tagrow" },
       stepperBox({ shorterId: "feTagShorter", longerId: "feTagLonger", valueId: "feTagDuration", inline: true, width: 54,
-        text: info.zero ? "None" : describeSeconds(info.sec), shorterLabel: "Shorter silence", longerLabel: "Longer silence", onShorter: shorter, onLonger: longer }),
-      slot));
+        text: info.zero ? "0 sec" : describeSeconds(info.sec), shorterLabel: "Shorter silence", longerLabel: "Longer silence", onShorter: shorter, onLonger: longer }),
+      ...(slot.childNodes.length ? [slot] : [])),
+  ];
+  if (below.childNodes.length) parts.push(below);
+  return feEl("div", { class: "fe-pop fe-tagpanel", id: "feTagPanel" }, ...parts);
 }
 
 function setGap(g, value) {
