@@ -84,6 +84,8 @@
   #moreOptions #removeConfirmBox, #moreOptions #clearConfirm { color: var(--fg); }
   .plan-links { margin: 8px 0 0; }
   #moreOptions pre.report-preview { color: var(--muted); }
+  /* A quick second tap on a button (the plus and minus, for example) must not zoom the page. Pinching to zoom still works, and scrolling too. */
+  * { touch-action: manipulation; }
   button.linklike { background: none; border: none; padding: 0; color: var(--accent); font-weight: normal; text-decoration: underline; }
   #backupMessage { min-height: 1.5em; }
   #supportBox { position: fixed; right: 16px; bottom: 16px; z-index: 1001; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 8px; width: max-content; max-width: min(240px, calc(100vw - 32px)); }
