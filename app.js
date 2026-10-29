@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-27q";
+const APP_VERSION = "2026-10-27r";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1558,7 +1558,9 @@ async function main() {
   on("connectionRetry", "click", connectToSpotify);
   on("connectionReconnect", "click", startLogin);
   on("create", "click", () => startCreate());
-  $("premiumNotice").hidden = !!localStorage.getItem("connectedBefore");   // the notice is for people still setting up
+  // Both lines about Premium are for people who have not made their developer app yet: no saved Client ID. Connecting needs one, so this also means
+  // not connected. Someone with a Client ID who is refused gets the Premium message instead, where it matters.
+  for (const id of ["premiumNotice", "taglinePremium"]) $(id).hidden = !!localStorage.getItem("clientId");
   if (FEEDBACK_FORM_URL) {
     $("feedbackLink").href = FEEDBACK_FORM_URL;
     for (const id of ["feedbackSection", "privacyFeedback", "privacyFeedbackWho"]) $(id).hidden = false;
