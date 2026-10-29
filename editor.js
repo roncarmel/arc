@@ -325,9 +325,24 @@ function fitPops() {
   document.querySelectorAll("#formatEditor .fe-pop").forEach((pop) => {
     pop.classList.remove("fe-up");
     if (pop.classList.contains("fe-tagpanel")) {
-      // a silence's card is centered on its marker, so it has no up or down: if it runs off the screen, scroll it into view
+      // a silence's card is centered on its marker, so it has no up or down: if that would put part of it off the screen, it slides up or down
+      // just far enough to be fully on screen (and clear of the tip strip along the bottom, when there is one)
+      pop.style.removeProperty("--shift");
       const r = pop.getBoundingClientRect();
-      if (r.height && (r.bottom > window.innerHeight - margin || r.top < margin) && pop.scrollIntoView) pop.scrollIntoView({ block: "nearest" });
+      if (!r.height) return;
+      const vv = window.visualViewport;
+      const topEdge = (vv ? vv.offsetTop : 0) + margin;
+      let bottomEdge = (vv ? vv.offsetTop + vv.height : window.innerHeight) - margin;
+      const tip = document.getElementById("supportBox");
+      if (tip && getComputedStyle(tip).display !== "none") {   // (a fixed box has no offsetParent, so it is not used here)
+        const t = tip.getBoundingClientRect();
+        if (t.width > window.innerWidth * 0.6 && t.top > 0 && t.top < bottomEdge + margin) bottomEdge = t.top - margin;   // a strip across the whole bottom of the screen
+      }
+      let shift = 0;
+      if (r.bottom > bottomEdge) shift = bottomEdge - r.bottom;
+      if (r.top + shift < topEdge) shift = topEdge - r.top;   // too tall for the screen: its top wins
+      if (shift) pop.style.setProperty("--shift", Math.round(shift) + "px");
+      if (r.height > bottomEdge - topEdge && pop.scrollIntoView) pop.scrollIntoView({ block: "nearest" });
       return;
     }
     const down = pop.getBoundingClientRect();
@@ -629,15 +644,13 @@ function tagPanel(f, g) {
   } else {
     slot.appendChild(feEl("button", { type: "button", class: "fe-linkbutton", id: "feTagRemove", "aria-label": "Remove this silence", onClick: () => { editor.gapPanel = null; setGap(g, undefined); } }, feIcon("trash"), "Remove"));
   }
-  const parts = [
-    feEl("div", { class: "fe-tagtitle", text: "Silence for\u2026" }),
-    feEl("div", { class: "fe-tagrow" },
-      stepperBox({ shorterId: "feTagShorter", longerId: "feTagLonger", valueId: "feTagDuration", inline: true, width: 54,
-        text: info.zero ? "0 sec" : describeSeconds(info.sec), shorterLabel: "Shorter silence", longerLabel: "Longer silence", onShorter: shorter, onLonger: longer }),
-      ...(slot.childNodes.length ? [slot] : [])),
-  ];
-  if (below.childNodes.length) parts.push(below);
-  return feEl("div", { class: "fe-pop fe-tagpanel", id: "feTagPanel" }, ...parts);
+  const stepper = stepperBox({ shorterId: "feTagShorter", longerId: "feTagLonger", valueId: "feTagDuration", inline: true, width: 54,
+    text: info.zero ? "0 sec" : describeSeconds(info.sec), shorterLabel: "Shorter silence", longerLabel: "Longer silence", onShorter: shorter, onLonger: longer });
+  // the link or the gray (default) sits right under the length and is centered on it
+  const row = below.childNodes.length
+    ? feEl("div", { class: "fe-tagrow" }, feEl("div", { class: "fe-tagcol" }, stepper, below))
+    : feEl("div", { class: "fe-tagrow" }, stepper, slot);
+  return feEl("div", { class: "fe-pop fe-tagpanel", id: "feTagPanel" }, feEl("div", { class: "fe-tagtitle", text: "Silence for\u2026" }), row);
 }
 
 function setGap(g, value) {

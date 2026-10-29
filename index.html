@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-29a">
-<script src="theme.js?v=2026-10-29a"></script>
+<meta name="app-version" content="2026-10-29b">
+<script src="theme.js?v=2026-10-29b"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -198,11 +198,12 @@
   #formatEditor .fe-tag-custom { background: var(--accent-deep); color: var(--on-deep, #fff); }
   #formatEditor .fe-tag.fe-hl { background: var(--fg); color: var(--bg); }
   #formatEditor .fe-rows.fe-dragging-any .fe-tag { display: none; }
-  #formatEditor .fe-tagpanel { right: 8px; top: 55px; transform: translateY(-50%); width: max-content; min-width: 150px; max-width: calc(100% - 8px); }   /* centered on its marker, just left of it */
+  #formatEditor .fe-tagpanel { right: 8px; top: 55px; transform: translateY(calc(-50% + var(--shift, 0px))); width: max-content; min-width: 150px; max-width: calc(100% - 8px); }   /* centered on its marker, just left of it */
   #formatEditor .fe-tagtitle { padding: 8px 10px; font-weight: 600; }
   #formatEditor .fe-tagrow { display: flex; align-items: center; gap: 4px; padding: 0 6px 4px 8px; }
   #formatEditor .fe-tagslot { min-width: 84px; display: flex; align-items: center; }
-  #formatEditor .fe-tagbelow { padding: 0 10px 8px 12px; font-size: 0.95rem; }
+  #formatEditor .fe-tagcol { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  #formatEditor .fe-tagbelow { font-size: 0.95rem; text-align: center; }
   #formatEditor .fe-tagbelow .linklike { min-height: 28px; font: inherit; font-weight: 400; }
   #formatEditor .fe-linkbutton { min-height: 44px; padding: 0 6px 0 4px; background: none; border: none; color: var(--accent); font-weight: 600; gap: 5px; }
   #formatEditor .fe-tagdefault { padding: 0 6px 0 4px; color: var(--muted); font-size: 0.9rem; }
@@ -752,8 +753,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-29a"></script>
-<script src="editor.js?v=2026-10-29a"></script>
-<script src="app.js?v=2026-10-29a"></script>
+<script src="formats.js?v=2026-10-29b"></script>
+<script src="editor.js?v=2026-10-29b"></script>
+<script src="app.js?v=2026-10-29b"></script>
 </body>
 </html>
