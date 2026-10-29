@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-27y";
+const APP_VERSION = "2026-10-27z";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -515,10 +515,10 @@ function updateButtonsNow() {
     label.appendChild(verb);
     const active = currentFormats.find((f) => f.id === activeKey());
     if (active) {
-      label.appendChild(document.createTextNode(" "));   // so screen readers, and the text itself, read "Build playlists from ..."
+      label.appendChild(document.createTextNode(" "));   // so screen readers, and the text itself, read "Build playlists for ..."
       const name = document.createElement("span");
       name.className = "build-name";
-      name.textContent = `from \u201c${active.title}\u201d`;
+      name.textContent = `for \u201c${active.title}\u201d`;
       label.appendChild(name);
     }
     setIcon($("create"), "build");
@@ -1134,8 +1134,8 @@ function askToCreate(plan) {
     // A plan with nothing to warn about is one sentence. Playlists that would be replaced or left alone, and formats that could not be planned, get lines of their own.
     const problems = plan.problems.map((n) => "Note: " + n);
     const names = plan.keys.map((k) => (currentFormats.find((f) => f.id === k) || {}).title).filter(Boolean);
-    const from = names.length === 1 ? ` from \u201c${names[0]}\u201d` : names.length > 1 ? ` from ${plural(names.length, "format")}` : "";
-    fillConfirmList("confirmList", "confirmText", `Ready to build ${plural(plan.total, "playlist")}${from}.`, problems);
+    const forWhat = names.length === 1 ? ` for \u201c${names[0]}\u201d` : names.length > 1 ? ` for ${plural(names.length, "format")}` : "";
+    fillConfirmList("confirmList", "confirmText", `Ready to build ${plural(plan.total, "playlist")}${forWhat}.`, problems);
     const replacing = plan.ours.length > 0;
     const many = plan.others.length !== 1;
     fillConfirmList("confirmMoreList", "confirmMoreText",
