@@ -646,11 +646,10 @@ function tagPanel(f, g) {
   }
   const stepper = stepperBox({ shorterId: "feTagShorter", longerId: "feTagLonger", valueId: "feTagDuration", inline: true, width: 54,
     text: info.zero ? "0 sec" : describeSeconds(info.sec), shorterLabel: "Shorter silence", longerLabel: "Longer silence", onShorter: shorter, onLonger: longer });
-  // the link or the gray (default) sits right under the length and is centered on it
-  const row = below.childNodes.length
-    ? feEl("div", { class: "fe-tagrow" }, feEl("div", { class: "fe-tagcol" }, stepper, below))
-    : feEl("div", { class: "fe-tagrow" }, stepper, slot);
-  return feEl("div", { class: "fe-pop fe-tagpanel", id: "feTagPanel" }, feEl("div", { class: "fe-tagtitle", text: "Silence for\u2026" }), row);
+  // the title above the length, and the link or the gray (default) under it, all centered on the length; a Remove button, when there is one, sits beside it
+  const column = feEl("div", { class: "fe-tagcol" }, feEl("div", { class: "fe-tagtitle", text: "Silence for" }), stepper, ...(below.childNodes.length ? [below] : []));
+  const row = feEl("div", { class: "fe-tagrow" }, column, ...(slot.childNodes.length ? [slot] : []));
+  return feEl("div", { class: "fe-pop fe-tagpanel", id: "feTagPanel" }, row);
 }
 
 function setGap(g, value) {
