@@ -422,20 +422,27 @@ function renderHead(rebuild) {
   if (rebuild || !$("feGapValue")) {
     head.innerHTML = "";
     head.appendChild(feEl("div", { class: "fe-headrow" },
-      feEl("div", { class: "fe-silence", title: "Silence between segments" },
-        feIcon("mute"),
-        feEl("span", { class: "fe-silence-label", text: "Silence between segments" }),
+      feEl("div", { class: "fe-silence" },
+        feEl("span", { class: "fe-silence-title", text: "Silence between segments:" }),   // a phone shows this above the length
         stepperBox({
           shorterId: "feGapShorter", longerId: "feGapLonger", valueId: "feGapValue", inline: true, width: 46,
-          text: f.gap ? describeSeconds(f.gap) : "None", shorterLabel: "Shorter silence between segments", longerLabel: "Longer silence between segments",
+          text: f.gap ? describeSeconds(f.gap) : "No", shorterLabel: "Shorter silence between segments", longerLabel: "Longer silence between segments",
           onShorter: () => { const lower = GAP_STEPS.filter((s) => s < f.gap); f.gap = lower.length ? lower[lower.length - 1] : 0; afterGapChange(); },
           onLonger: () => { const higher = GAP_STEPS.filter((s) => s > f.gap); f.gap = higher.length ? higher[0] : GAP_STEPS[GAP_STEPS.length - 1]; afterGapChange(); },
-        })),
+        }),
+        feEl("span", { class: "fe-silence-label", id: "feSilenceLabel", text: silenceLabel(f.gap) })),   // a wide screen shows this after it
       feEl("button", { type: "button", class: "fe-iconbtn", id: "feDuplicate", "aria-label": "Duplicate format", title: "Duplicate format", onClick: askDuplicateFormat }, feIcon("copy")),
       feEl("button", { type: "button", class: "fe-iconbtn fe-danger", id: "feDelete", "aria-label": "Delete format", title: "Delete format", onClick: askDeleteFormat }, feIcon("trash"))));
     renderClash();
   }
-  $("feGapValue").textContent = f.gap ? describeSeconds(f.gap) : "None";
+  $("feGapValue").textContent = f.gap ? describeSeconds(f.gap) : "No";
+  $("feSilenceLabel").textContent = silenceLabel(f.gap);
+}
+
+// On a wide screen the row reads as a sentence: "[ - 30 sec + ] of silence between segments", and with none: "[ - No + ] silence between segments".
+// On a phone the words go above the length instead: "Silence between segments:".
+function silenceLabel(gap) {
+  return gap ? "of silence between segments" : "silence between segments";
 }
 
 function renderClash() {
