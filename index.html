@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-29d">
-<script src="theme.js?v=2026-10-29d"></script>
+<meta name="app-version" content="2026-10-29g">
+<script src="theme.js?v=2026-10-29g"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -113,7 +113,8 @@
   /* the format editor */
   :root { --warn: #b45309; --danger: #d11f2e; --cover: #3a3a42; --on-button: #fff; --accent-deep: #a8217c; --accent-tint: rgba(255, 56, 184, 0.15); --accent-tint-border: rgba(255, 56, 184, 0.5); --accent-wash: rgba(255, 56, 184, 0.22); --silence-line: #8a8a92; --icon-filter: none; --on-deep: #fff; --tag: #43434d; --tag-off: #26262b; }
   @media (prefers-color-scheme: dark) { :root { --warn: #f2b45a; --danger: #ff7a85; } }
-  #formatEditor { margin: 8px 0 12px; }
+  #formatEditor { margin: 8px 0 12px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }   /* holding or dragging on a row must not select its text */
+  #formatEditor input, #formatEditor textarea { -webkit-user-select: text; user-select: text; }   /* but typing in a field still works */
   #formatEditor .fe-toprow { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }   /* the app menu button ends where the card does */
   #formatEditor .fe-toprow .fe-tabs { flex: 1 1 0; min-width: 0; margin-bottom: 0; }
   #formatEditor .fe-appmenuwrap { position: relative; flex: none; }
@@ -198,13 +199,20 @@
   #formatEditor .fe-tag-custom { background: var(--accent-deep); color: var(--on-deep, #fff); }
   #formatEditor .fe-tag.fe-hl { background: var(--fg); color: var(--bg); }
   #formatEditor .fe-rows.fe-dragging-any .fe-tag { display: none; }
-  #formatEditor .fe-tagpanel { right: 8px; top: 55px; transform: translateY(calc(-50% + var(--shift, 0px))); width: max-content; min-width: 150px; max-width: calc(100% - 8px); }   /* centered on its marker, just left of it */
+  #formatEditor .fe-tagpanel { right: 8px; top: 55px; transform: translateY(calc(-50% + var(--shift, 0px))); width: max-content; max-width: calc(100% - 8px); padding: 11px; }   /* centered on its marker, just left of it; 12 px from the edge to the widget on every side, and to the text under it */
   #formatEditor .fe-amount-two { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.15; white-space: nowrap; }
   #formatEditor .fe-amount-two .fe-line { display: block; }
-  #formatEditor .fe-tagrow { display: flex; justify-content: center; padding: 6px 8px 4px 8px; }
-  #formatEditor .fe-tagcol { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-  #formatEditor .fe-tagbelow { font-size: 0.95rem; text-align: center; }
-  #formatEditor .fe-tagbelow .linklike { min-height: 28px; font: inherit; font-weight: 400; }
+  #formatEditor .fe-tagrow { display: flex; justify-content: center; }
+  #formatEditor .fe-tagcol { display: flex; flex-direction: column; align-items: center; }
+  #formatEditor .fe-tagbelow { display: flex; justify-content: center; font-size: 0.95rem; line-height: 1; text-align: center; margin-top: 8px; }
+  #formatEditor .fe-tagbelow .linklike, #formatEditor .fe-tagbelow .fe-linkbutton { position: relative; min-height: 0; padding: 0 8px; font: inherit; line-height: inherit; }
+  #formatEditor .fe-tagbelow .linklike { font-weight: 400; }
+  #formatEditor .fe-tagbelow .fe-linkbutton { font-weight: 600; }
+  #formatEditor .fe-tagbelow .linklike::after, #formatEditor .fe-tagbelow .fe-linkbutton::after { content: ""; position: absolute; left: 0; right: 0; top: -2px; bottom: -10px; }   /* a bigger target to tap, reaching into the margin below */
+  #formatEditor .fe-tagbelow .fe-tagdefault { padding: 0; font-size: inherit; }
+  /* the three kinds of text end at slightly different heights inside their boxes, so each is nudged to end exactly 12 px from the card's bottom edge, like the 12 px at the top, left and right */
+  #formatEditor .fe-tagbelow-link { margin-bottom: -1px; }
+  #formatEditor .fe-tagbelow-remove { margin-bottom: -3px; }
   #formatEditor .fe-linkbutton { min-height: 44px; padding: 0 6px 0 4px; background: none; border: none; color: var(--accent); font-weight: 600; gap: 5px; }
   #formatEditor .fe-tagdefault { padding: 0 6px 0 4px; color: var(--muted); font-size: 0.9rem; }
   #formatEditor .fe-stepper-inline { display: inline-flex; }   /* the frame hugs its − value + instead of stretching across the menu */
@@ -222,7 +230,8 @@
     #formatEditor .fe-step { width: 30px; }
     #formatEditor .fe-stepper:not(.fe-stepper-inline) .fe-amount { font-size: 0; min-width: 30px; }
     #formatEditor .fe-stepper:not(.fe-stepper-inline) .fe-amount::before { content: attr(data-short); font-size: 0.95rem; }
-    #formatEditor .fe-more { width: 32px; }
+    #formatEditor .fe-more { width: 22px; position: relative; }   /* only as wide as the drag handle beside it, to leave the room to the playlist */
+    #formatEditor .fe-more::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; right: -4px; }   /* a little more to tap on, reaching into the card's edge */
   }
   .fe-overlay { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 100; background: rgba(0, 0, 0, 0.65); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
   .fe-dialog { width: 100%; max-width: 360px; box-sizing: border-box; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 20px; padding: 18px; box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5); }
@@ -757,8 +766,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-29d"></script>
-<script src="editor.js?v=2026-10-29d"></script>
-<script src="app.js?v=2026-10-29d"></script>
+<script src="formats.js?v=2026-10-29g"></script>
+<script src="editor.js?v=2026-10-29g"></script>
+<script src="app.js?v=2026-10-29g"></script>
 </body>
 </html>

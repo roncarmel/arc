@@ -637,10 +637,13 @@ function tagPanel(f, g) {
   // a Remove button beside the length instead
   const below = feEl("div", { class: "fe-tagbelow" });
   if (info.hasDefault && info.custom) {
+    below.classList.add("fe-tagbelow-link");
     below.appendChild(feEl("button", { type: "button", class: "linklike", id: "feTagReset", "aria-label": `Reset to default, ${describeSeconds(f.gap)}`, onClick: () => { editor.gapPanel = null; setGap(g, undefined); } }, "Reset to default"));
   } else if (info.hasDefault) {
+    below.classList.add("fe-tagbelow-default");
     below.appendChild(feEl("span", { class: "fe-tagdefault", id: "feTagDefault", text: "(default)" }));
   } else {
+    below.classList.add("fe-tagbelow-remove");
     below.appendChild(feEl("button", { type: "button", class: "fe-linkbutton", id: "feTagRemove", "aria-label": "Remove this silence", onClick: () => { editor.gapPanel = null; setGap(g, undefined); } }, feIcon("trash"), "Remove"));
   }
   // one widget: the length and its caption on two lines, between the minus and the plus ("30 sec of" over "silence")

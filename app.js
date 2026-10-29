@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-29d";
+const APP_VERSION = "2026-10-29g";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -28,6 +28,16 @@ const FEEDBACK_FORM_URL = "https://tally.so/r/4aayDd";
 const DEFAULT_FORMATS = modelToText({ formats: [] });   // a new visitor starts with no formats at all, and a big New format button
 
 const $ = (id) => document.getElementById(id);
+
+// Double-tapping an empty spot zooms the page on an iPhone, and the CSS rule that stops it only covers the widgets. So a second tap within 300 ms
+// that does not land on a control is cancelled. Taps on controls are left alone, so tapping + or - quickly still counts every tap, and pinching still zooms.
+let lastBareTap = 0;
+document.addEventListener("touchend", (e) => {
+  if (e.target && e.target.closest && e.target.closest("button, a, input, select, textarea, label, summary, [role='button'], [tabindex]")) return;
+  const now = Date.now();
+  if (now - lastBareTap < 300 && e.cancelable) e.preventDefault();
+  lastBareTap = now;
+}, { passive: false });
 
 // Things that did not start properly are collected here and shown in a banner, so a half-started page says so instead of just not responding.
 const startupProblems = [];
