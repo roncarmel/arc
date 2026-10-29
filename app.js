@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-27w";
+const APP_VERSION = "2026-10-27y";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -321,7 +321,7 @@ function addSupportPrompt() {
   if (donateHiddenChoice()) return;   // someone who hid the Donate button is not asked again
   const row = document.createElement("div");
   row.className = "support-prompt";
-  row.textContent = "If you're finding this app helpful, you can donate any amount that feels good to you as a way of saying thanks. And you\u2019re welcome regardless!";
+  row.textContent = "If you're finding this app helpful, you can donate any amount that feels good to you as a way of saying thanks.";
   $("results").appendChild(row);
 }
 
@@ -452,7 +452,7 @@ function downloadBackup() {
   markBackedUp(text);
   undoText = null;
   logStep("backup downloaded");
-  $("downloadMessage").textContent = "Backup downloaded. Look for it in your Downloads folder.";
+  $("downloadMessage").textContent = "Backup downloaded. Find it in Downloads, or in the Files app on a phone.";
   refreshBackupStatus();
 }
 
@@ -1612,6 +1612,7 @@ async function main() {
   on("maxPlaylists", "input", () => invalidatePlan());
   on("backupDownload", "click", downloadBackup);
   on("backupRestore", "click", () => $("restoreFile").click());
+  on("backupDownloadLink", "click", () => { downloadBackup(); showBackupMessage("Backup downloaded. Find it in Downloads, or in the Files app on a phone."); });   // the same as the menu's Download a backup
   on("restoreFile", "change", async (event) => {
     const file = event.target.files && event.target.files[0];
     event.target.value = "";   // so choosing the same file again still counts
