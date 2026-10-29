@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-27p";
+const APP_VERSION = "2026-10-27q";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -546,6 +546,8 @@ function connectionAction() {
   return localStorage.getItem("clientId") ? startLogin : null;
 }
 
+// Spotify's free developer app now needs Premium on the account that owns it. Without it, Spotify refuses requests with a 403 that says so.
+const PREMIUM_REQUIRED_MESSAGE = "Spotify says the account that owns this Client ID needs Premium. A free Spotify account will not work. Once that account has Premium, try again.";
 const CREATE_NEEDS_SPOTIFY = "Building playlists needs a working connection to Spotify. See Step 1.";
 
 function setConnection(state, message = "", kind = "retry") {
@@ -582,7 +584,7 @@ async function connectToSpotify() {
     setConnection("problem", message, /sign-in expired|did not allow/.test(message) ? "reconnect" : "retry");
     countEvent("connection-problem", problemKind(message));
     // A report link is for something unexpected. A rate limit, a quota, no internet and a lapsed sign-in are known, and nothing here can fix them.
-    if (!/rate limiting|request quota|Could not reach Spotify|sign-in expired|did not allow/.test(message)) offerReport("connectionReportHint", message);
+    if (!/rate limiting|request quota|Could not reach Spotify|sign-in expired|did not allow|needs Premium/.test(message)) offerReport("connectionReportHint", message);
   }
 }
 
@@ -767,6 +769,7 @@ function problemKind(message) {
   if (/rate limiting/.test(message)) return "rate-limit";
   if (/Could not reach Spotify/.test(message)) return "network";
   if (/sign-in expired|did not allow/.test(message)) return "sign-in";
+  if (/needs Premium/.test(message)) return "premium";
   return "other";
 }
 
@@ -818,6 +821,9 @@ async function spotifyRequest(method, path, { params, json, body, contentType } 
       throw new Error(message);
     }
     if (response.status === 403) {   // one refused request (a playlist you cannot read, a missing permission) does not mean the connection is lost
+      let body = "";
+      try { body = await response.text(); } catch (err) { /* no body */ }
+      if (/premium/i.test(body)) throw new Error(PREMIUM_REQUIRED_MESSAGE);   // reconnecting cannot fix this, so it gets its own message
       throw new Error(`Spotify did not allow this (${what}). Click Disconnect, then Connect again and approve every permission it asks for.`);
     }
     if (!response.ok) throw new Error(`Spotify returned ${response.status} for ${what}`);
@@ -1552,6 +1558,7 @@ async function main() {
   on("connectionRetry", "click", connectToSpotify);
   on("connectionReconnect", "click", startLogin);
   on("create", "click", () => startCreate());
+  $("premiumNotice").hidden = !!localStorage.getItem("connectedBefore");   // the notice is for people still setting up
   if (FEEDBACK_FORM_URL) {
     $("feedbackLink").href = FEEDBACK_FORM_URL;
     for (const id of ["feedbackSection", "privacyFeedback", "privacyFeedbackWho"]) $(id).hidden = false;
