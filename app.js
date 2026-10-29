@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-27u";
+const APP_VERSION = "2026-10-27w";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -318,6 +318,7 @@ function currentFlow() {
 
 function addSupportPrompt() {
   // A thank-you line after the playlists are made. No link: the Donate button is right there.
+  if (donateHiddenChoice()) return;   // someone who hid the Donate button is not asked again
   const row = document.createElement("div");
   row.className = "support-prompt";
   row.textContent = "If you're finding this app helpful, you can donate any amount that feels good to you as a way of saying thanks. And you\u2019re welcome regardless!";
@@ -1367,6 +1368,33 @@ async function removeEarlier() {
 }
 
 // ---------------------------------------------------------------- start up
+// ---------------------------------------------------------------- hiding the Donate button
+// For people who have donated, on the honor system: one checkbox, nothing checked. The choice is kept in this browser only and never sent anywhere.
+// It hides the Donate button, its note, the Donate button in the Build popup, and the thank-you line after a build.
+// (An earlier version also saved "declined"; any saved value still means hidden.)
+const DONATE_KEY = "donateHidden";
+
+function donateHiddenChoice() {
+  try { return localStorage.getItem(DONATE_KEY) || ""; } catch (err) { return ""; }
+}
+
+function applyDonateChoice() {
+  const hidden = !!donateHiddenChoice();
+  document.documentElement.classList.toggle("donate-hidden", hidden);
+  $("donateHideBox").checked = hidden;
+  $("donateHiddenMessage").hidden = !hidden;
+}
+
+function setDonateChoice(choice) {
+  try { if (choice) localStorage.setItem(DONATE_KEY, choice); else localStorage.removeItem(DONATE_KEY); } catch (err) { /* it just stays as it was */ }
+  applyDonateChoice();
+}
+
+function initDonateChoice() {
+  on("donateHideBox", "change", () => setDonateChoice($("donateHideBox").checked ? "donated" : ""));
+  applyDonateChoice();
+}
+
 let openDonatePanel = () => {};   // set once the page is ready; the Create popup's Donate button uses it
 
 function initDonatePanel() {
@@ -1578,6 +1606,7 @@ async function main() {
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !$("createOverlay").hidden) dismissCreateDialog(); });
   guarded("tip note", () => trackTipHeight());
   guarded("donation panel", () => initDonatePanel());
+  guarded("hiding the Donate button", () => initDonateChoice());
   on("removeOld", "click", removeEarlier);
   on("buildAll", "click", () => startCreate(currentFormats.map((f) => f.id)));
   on("maxPlaylists", "input", () => invalidatePlan());

@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-27u">
-<script src="theme.js?v=2026-10-27u"></script>
+<meta name="app-version" content="2026-10-27w">
+<script src="theme.js?v=2026-10-27w"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -109,7 +109,7 @@
   :root { --warn: #b45309; --danger: #d11f2e; --cover: #3a3a42; --on-button: #fff; --accent-deep: #a8217c; --accent-tint: rgba(255, 56, 184, 0.15); --accent-tint-border: rgba(255, 56, 184, 0.5); --accent-wash: rgba(255, 56, 184, 0.22); --silence-line: #8a8a92; --icon-filter: none; --on-deep: #fff; --tag: #43434d; --tag-off: #26262b; }
   @media (prefers-color-scheme: dark) { :root { --warn: #f2b45a; --danger: #ff7a85; } }
   #formatEditor { margin: 8px 0 12px; }
-  #formatEditor .fe-toprow { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; padding-right: 13px; }   /* the card's padding and border, so the two menu buttons are level */
+  #formatEditor .fe-toprow { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }   /* the app menu button ends where the card does */
   #formatEditor .fe-toprow .fe-tabs { flex: 1 1 0; min-width: 0; margin-bottom: 0; }
   #formatEditor .fe-appmenuwrap { position: relative; flex: none; }
   #formatEditor .fe-appmenu { right: 0; top: 48px; width: max-content; max-width: min(300px, calc(100vw - 32px)); }
@@ -215,7 +215,6 @@
   /* on a phone the rows give the playlist name as much room as they can */
   @media (max-width: 599px) {
     #formatEditor .fe-card { padding: 8px; }
-    #formatEditor .fe-toprow { padding-right: 9px; }
     #formatEditor .fe-rowcard { gap: 4px; }
     #formatEditor .fe-grip { width: 22px; }
     #formatEditor .fe-step { width: 30px; }
@@ -405,11 +404,15 @@
   /* a notice that must not be missed: a pink outline, the same weight all around, and a faint pink fill */
   .notice { margin: 0 0 14px; padding: 12px 16px; border: 1px solid var(--accent-tint-border, rgba(255, 56, 184, 0.5)); border-radius: 12px; background: rgba(255, 56, 184, 0.08); color: var(--fg); }
   .notice strong { display: block; margin-bottom: 2px; font-size: 1.1rem; }
+  /* the Donate button, its note, and the Donate button in the Build popup, for someone who chose to hide them */
+  .donate-hidden #supportBox, .donate-hidden #createDonate { display: none !important; }
 </style>
 <script>
   // If the page's own script never starts (a file that did not load, an old copy kept by the browser, an error), the page says so,
   // with the first error, instead of leaving buttons that do nothing. The script marks itself started as the first thing it does.
   window.pageStart = { started: false, errors: [] };
+  // A person who hid the Donate button should not see it flash up while the page loads (see "Hiding the Donate button" in More options).
+  try { if (localStorage.getItem("donateHidden")) document.documentElement.classList.add("donate-hidden"); } catch (e) { /* no saved choice to read */ }
   window.addEventListener("error", function (e) {
     var t = e.target;
     var file = function (s) { return String(s).split("/").pop().split("?")[0]; };
@@ -649,7 +652,7 @@
       <p>The page counts visits with GoatCounter, a service that uses no cookies and does not use unique identifiers to follow people around the web. It records that the page was opened, with the browser, screen size, country, and the site you came from, but not who you are. It also counts a few actions: the first time a browser connects to Spotify, how many playlists get created, when Donate is opened, and the kind of connection problem that happened. It never receives playlist names, formats, song titles, or your Client ID. A small marker in this browser remembers that your first connection was counted, so it is counted once.</p>
 
       <h3>Donations</h3>
-      <p>Donations are handled entirely by Ko-fi and its payment providers. This app never sees any payment details.</p>
+      <p>Donations are handled entirely by Ko-fi and its payment providers. This app never sees any payment details. If you check the box to hide the Donate button, that choice is saved in this browser and goes nowhere else.</p>
 
       <h3>Problem reports</h3>
       <p>A problem report is sent only if you choose to send it, and it goes only to me, the developer of this app. The form opens in a new tab, and nothing is sent until you submit it there. The details attached are shown in <span class="ui">More options</span> first: the app version, browser, window size, last error, and recent steps. Your sign-in, Client ID, playlist names, and song titles are never included.</p>
@@ -720,6 +723,11 @@
       </div>
       <p id="themeNote" class="muted" hidden></p>
 
+      <h3>Hiding the Donate button</h3>
+      <p class="muted">The Donate button stays until you have donated. If this app has been useful to you, please give whatever feels right to you. Already did? Thank you! Check the box and the button will leave you alone. This runs on the honor system, so nothing is checked, and the button waits patiently for everyone else.</p>
+      <label class="choice-row"><input type="checkbox" id="donateHideBox"> <span>I have donated. Hide the Donate button.</span></label>
+      <p id="donateHiddenMessage" class="muted" hidden>The Donate button is hidden. Thank you for donating!</p>
+
       <h3>Clear saved data</h3>
       <p class="muted">You can make this page forget everything it saved in this browser: your Client ID, your formats, your Spotify sign-in, and the songs it keeps from your playlists. Nothing in your Spotify account changes.</p>
       <p class="muted">Your formats are erased too. To get them back afterward, connect to Spotify again, then use the <span class="ui">restore your formats from a backup</span> link in Step 2 and choose your backup file. If you haven't downloaded a backup, do that first in Step 4.</p>
@@ -744,8 +752,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-27u"></script>
-<script src="editor.js?v=2026-10-27u"></script>
-<script src="app.js?v=2026-10-27u"></script>
+<script src="formats.js?v=2026-10-27w"></script>
+<script src="editor.js?v=2026-10-27w"></script>
+<script src="app.js?v=2026-10-27w"></script>
 </body>
 </html>
