@@ -124,8 +124,6 @@ function themeVariables(accent, neutral, dark) {
     "--accent": readableAccent(accent, ramp.bg, dark),
     "--accent-deep": deep,
     "--on-deep": contrastRatio(deep, "#ffffff") >= 4.5 ? "#ffffff" : "#111111",
-    "--tag": dark ? tone(0.27) : tone(0.8),
-    "--tag-off": dark ? tone(0.14) : tone(0.9),
     "--accent-tint": withAlpha(accent, 0.15),
     "--accent-tint-border": withAlpha(accent, 0.5),
     "--accent-wash": withAlpha(accent, 0.22),
