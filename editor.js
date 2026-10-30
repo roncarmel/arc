@@ -41,6 +41,7 @@ const FE_ICONS = {
   retry: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg>',
   cloud: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 19h9a4.2 4.2 0 0 0 .5-8.37A5.6 5.6 0 0 0 6.3 11.7 3.7 3.7 0 0 0 7.5 19z"/><path d="M12 16.5v-5M9.7 13.7 12 11.4l2.3 2.3"/></svg>',
   device: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
+  info: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
   download: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>',
   restore: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V5M7 9l5-5 5 5M5 20h14"/></svg>',
   unplug: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/><path d="M4 4l16 16"/></svg>',
@@ -335,7 +336,7 @@ function renderEditor() {
   // In minimalist mode the page's title goes and the app's icon takes the first place in this row, as tall as the tabs.
   const format = activeFormat();
   root.appendChild(feEl("div", { class: "fe-toprow" + (format ? "" : " fe-noformats") },
-    feEl("img", { class: "fe-appicon", src: "apple-touch-icon.png", alt: "", width: "44", height: "44" }),
+    feEl("img", { class: "fe-appicon", src: "apple-touch-icon.png", alt: "", width: "44", height: "44", onClick: showVersionNotice }),   // a quiet way to see the version: it looks like nothing but a picture
     feEl("div", { class: "fe-tabs", id: "feTabs" }),
     feEl("button", { type: "button", class: "fe-newformat", id: "feNewFormat", "aria-label": "New format", title: "New format", onClick: askNewFormat }, feIcon("plus"), feEl("span", { class: "fe-newformat-label", text: "New format" })),
     feEl("div", { class: "fe-appmenuwrap", id: "feAppMenu" })));
@@ -646,7 +647,13 @@ const notices = { batch: [], held: null, pos: 0, shownAt: 0, pausedUntil: 0, las
 
 function attentionNow() { return typeof attentionItems === "function" ? attentionItems() : []; }
 
-function noticeDuration(item) { return noticeTiming.baseMs + Math.max(0, String(item.text || item).split(/\s+/).length - 8) * noticeTiming.perWordMs; }
+// the app icon says which version this is, for a few seconds, in the line under the bar, and does not look as though it can be pressed
+function showVersionNotice() {
+  if (typeof APP_VERSION === "undefined") return;
+  showNotices([{ text: `App version ${APP_VERSION}`, icon: "info", ms: 6000, transient: true }]);
+}
+
+function noticeDuration(item) { if (item.ms) return item.ms; return noticeTiming.baseMs + Math.max(0, String(item.text || item).split(/\s+/).length - 8) * noticeTiming.perWordMs; }
 
 // A message is a sentence, or { text, icon, warn, hold, actions: [{ label, run }] }. Sentences, and messages with nothing to do, come in turn for a few seconds each. A message
 // with something to do (Undo, Back up now), or one that says something went wrong, is held: it stays until the person uses it, presses OK, or edits.

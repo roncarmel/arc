@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-30n">
-<script src="theme.js?v=2026-10-30n"></script>
+<meta name="app-version" content="2026-10-30p">
+<script src="theme.js?v=2026-10-30p"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -322,7 +322,7 @@
   body.minimal.has-editor h1.brand { display: none; }
   body.minimal.has-editor main { padding-top: 10px; }   /* the same gap as between the tabs and the card */
   #formatEditor .fe-emptynote { margin: 8px 0 0; }
-  #formatEditor .fe-appicon { display: none; }
+  #formatEditor .fe-appicon { display: none; cursor: default; -webkit-tap-highlight-color: transparent; -webkit-user-drag: none; }   /* pressing it shows the version, but nothing about it says so: no pointer, no hover, no highlight */
   @media (min-width: 760px) {
     body.minimal #formatEditor .fe-appicon { display: block; width: 44px; height: 44px; flex: none; border-radius: 22%; }   /* narrow screens need the room for the tabs */
   }
@@ -821,8 +821,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-30n"></script>
-<script src="editor.js?v=2026-10-30n"></script>
-<script src="app.js?v=2026-10-30n"></script>
+<script src="formats.js?v=2026-10-30p"></script>
+<script src="editor.js?v=2026-10-30p"></script>
+<script src="app.js?v=2026-10-30p"></script>
 </body>
 </html>

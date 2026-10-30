@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-30n";
+const APP_VERSION = "2026-10-30p";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -386,7 +386,7 @@ const SAVE_SUFFIX = " (format backup)";
 // time. Spotify counts the calls an app makes in a rolling 30 seconds, so saves are not made more often than that needs, and not while a build is under way.
 let spotifySaveDelayMs = 5000;
 let spotifySaveMaxWaitMs = 30000;
-const saveState = { running: false, again: false, timer: null, since: 0, error: "", tooLong: [], newer: [], savedAt: null, coverBlocked: false, added: [], updated: [], unread: 0, skip: new Set(), dismissed: new Set(), lastNews: null };
+const saveState = { running: false, again: false, timer: null, since: 0, error: "", tooLong: [], newer: [], savedAt: null, coverBlocked: false, added: [], updated: [], coverProblem: null, unread: 0, skip: new Set(), dismissed: new Set(), lastNews: null };
 let playlistsLoadedAt = 0;
 let playlistRefreshMs = 5 * 60 * 1000;   // coming back to the page after this long, the account's playlists, and so the backups, are read again
 
@@ -530,16 +530,25 @@ async function runSpotifySave() {
     // The cover of a backup playlist is the app's icon, dimmed, with a cloud: a playlist that has no cover yet gets it, once. (Spotify limits image uploads on their own,
     // so it is never sent again, and a problem with it never stops a save.)
     let cover;   // loaded when it is first needed
+    let coverFailed = null;   // why a cover could not be put on a backup, if one could not: said in the line under the editor's bar, since otherwise nothing says why there is none
     const putCover = async (entry) => {
-      if (entry.image || saveState.coverBlocked || !hasScope("ugc-image-upload")) return;
+      if (entry.image) return;
+      if (saveState.coverBlocked || !hasScope("ugc-image-upload")) {
+        coverFailed = { key: "permission", text: "Your Spotify sign-in does not include permission to add cover art, so the backup playlists have no cover. Disconnect and connect again to allow it." };
+        return;
+      }
       try {
-        if (cover === undefined) { try { cover = await loadCover("backup-cover.jpg"); } catch (err) { cover = null; logStep("save: cover image not loaded"); } }
+        if (cover === undefined) {
+          try { cover = await loadCover("backup-cover.jpg"); }
+          catch (err) { cover = null; logStep("save: cover image not loaded"); coverFailed = { key: "file", text: "The cover image for the backup playlists (backup-cover.jpg) could not be loaded from this site, so they have no cover." }; }
+        }
         if (!cover) return;
         await spotifyRequest("PUT", `/playlists/${entry.id}/images`, { body: cover, contentType: "image/jpeg" });
         entry.image = "set";
       } catch (err) {
         logStep("save: cover not accepted");
         if (/did not allow|sign-in expired/.test(err.message)) saveState.coverBlocked = true;
+        coverFailed = { key: "refused", text: `Spotify did not accept the cover for the backup playlists: ${String(err.message || err).replace(/\.$/, "")}. They have no cover.` };
       }
     };
     // formats deleted here: their saves go too, unless a format with that ID is here again
@@ -593,6 +602,7 @@ async function runSpotifySave() {
       }
     }
     writeSynced(synced);
+    saveState.coverProblem = coverFailed;
     saveState.tooLong = tooLong;
     saveState.newer = newer;
     saveState.savedAt = new Date().toISOString();
@@ -620,6 +630,7 @@ function spotifySaveParts(full = true) {
   if (!full) return parts;   // the line in the page: how the saving is going, and nothing more
   // the menu keeps a record of the last news, which the line under the bar only shows for a few seconds
   if (saveState.lastNews) parts.push({ text: `${saveState.lastNews.text} (${new Date(saveState.lastNews.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })})` });
+  if (saveState.coverProblem) parts.push({ text: saveState.coverProblem.text });
   if (saveState.unread) parts.push({ text: `${saveState.unread === 1 ? "A backup in Spotify" : saveState.unread + " backups in Spotify"} could not be read, or ${saveState.unread === 1 ? "was" : "were"} saved by a newer version of the app, and ${saveState.unread === 1 ? "was" : "were"} left alone.` });
   for (const t of saveState.tooLong) {
     parts.push({ text: `\u201c${t.title.trim() || "Untitled"}\u201d is too long to back up to Spotify. It is still saved in this browser.`, action: () => downloadOneFormat(t.id), label: "Download it" });
@@ -642,6 +653,7 @@ function attentionItems() {
   if (connection === "ready" && saveState.error && !saveState.running) items.push({ key: "error", text: "Couldn\u2019t save to Spotify.", actions: [{ label: "Try again", run: () => { saveState.error = ""; runSpotifySave(); } }] });
   const n = saveState.unread;
   if (n && !saveState.dismissed.has("unread:" + n)) items.push({ key: "unread:" + n, ok: true, text: `${n === 1 ? "A backup in Spotify" : n + " backups in Spotify"} could not be read, or ${n === 1 ? "was" : "were"} saved by a newer version of the app, and ${n === 1 ? "was" : "were"} left alone.` });
+  if (saveState.coverProblem && !saveState.dismissed.has("cover:" + saveState.coverProblem.key)) items.push({ key: "cover:" + saveState.coverProblem.key, ok: true, text: saveState.coverProblem.text });
   for (const t of saveState.tooLong) if (!saveState.dismissed.has("long:" + t.id)) items.push({ key: "long:" + t.id, ok: true, text: `${name(t.title)} is too long to back up to Spotify. It is still saved in this browser.`, actions: [{ label: "Download it", run: () => downloadOneFormat(t.id) }] });
   return items;
 }
