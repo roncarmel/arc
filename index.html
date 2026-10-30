@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-30e">
-<script src="theme.js?v=2026-10-30e"></script>
+<meta name="app-version" content="2026-10-30f">
+<script src="theme.js?v=2026-10-30f"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -124,8 +124,17 @@
   #formatEditor .fe-toprow { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }   /* the app menu button ends where the card does */
   #formatEditor .fe-toprow .fe-tabs { flex: 1 1 0; min-width: 0; margin-bottom: 0; }
   #formatEditor .fe-appmenuwrap { position: relative; flex: none; }
-  #formatEditor .fe-appmenu { right: 0; top: 48px; width: max-content; max-width: min(300px, calc(100vw - 32px)); }
-  #formatEditor .fe-static { cursor: default; font-weight: 600; font-size: 1rem; }   /* a row that only says something, as the one above the status of the Spotify backup */
+  #formatEditor .fe-appmenu { right: 0; top: 48px; width: max-content; min-width: min(300px, calc(100vw - 32px)); max-width: min(320px, calc(100vw - 32px)); }
+  /* the backup block of the app menu: how it is done and where to (tap to change), how it is going, and for the manual way the two actions */
+  #formatEditor .fe-group { margin: 4px 2px; padding: 4px; border-radius: 12px; background: rgba(127, 127, 127, 0.13); }
+  #formatEditor .fe-grouprow { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 4px 10px; border: none; border-radius: 10px; background: transparent; color: var(--fg); text-align: left; font: inherit; box-sizing: border-box; }
+  #formatEditor .fe-two { display: flex; flex-direction: column; min-width: 0; }
+  #formatEditor .fe-main { font-weight: 600; }
+  #formatEditor .fe-small { color: var(--muted); font-size: 0.8rem; line-height: 1.3; }
+  #formatEditor .fe-trail { margin-left: auto; color: var(--accent); font-weight: 600; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 2px; flex: none; }
+  #formatEditor .fe-status { padding: 0 10px 8px 38px; color: var(--muted); font-size: 0.8rem; line-height: 1.3; }
+  #formatEditor .fe-pair { display: flex; gap: 6px; padding: 0 6px 6px; }
+  #formatEditor .fe-pair button { flex: 1; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; padding: 0 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 10px; font: inherit; font-weight: 600; }
   #formatEditor .fe-itemnote { width: 0; min-width: 100%; box-sizing: border-box; padding: 0 12px 6px 40px; margin-top: -4px; font-size: 0.78rem; color: var(--muted); line-height: 1.3; }   /* the last-backup label, under its item, wrapping inside the menu */
   #formatEditor .fe-check { width: 20px; height: 20px; flex: none; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border: 2px solid var(--muted); border-radius: 5px; }
   #formatEditor .fe-check-on { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
@@ -574,17 +583,17 @@
 
   <div id="appSection" hidden>
   <h2 id="editHeading">2. Edit your formats</h2>
-  <p id="savedNote" class="muted">Your formats are saved in this browser automatically. You can <button id="backupDownloadLink" class="linklike" type="button">download a backup</button> of them to your phone or computer, and <button id="backupRestore" class="linklike" type="button">restore from that backup</button> at any time.</p>
+  <p id="savedNote" class="muted">Your formats are saved in this browser. You back them up to this device yourself: <button id="backupDownloadLink" class="linklike" type="button">back up now</button>, and <button id="backupRestore" class="linklike" type="button">restore from a backup</button> at any time.</p>
   <input id="restoreFile" type="file" accept=".txt,text/plain" hidden>
   <p id="backupMessage" aria-live="polite"></p>
   <p id="savedNoteSpotify" class="muted" hidden>Your formats are saved in this browser, and backed up to Spotify automatically, each in a private playlist ending in (format backup). <span id="spotifySaveStatus" aria-live="polite"></span></p>
   <div id="backupCard" class="card" hidden>
     <h3>How should your formats be backed up?</h3>
-    <p>Your formats are saved in this browser. Clearing the browser's data, on purpose or by accident, erases them, so it is a good idea to keep a second copy.</p>
-    <label class="choice-row"><input type="radio" name="backupMode" id="backupModeSpotify" value="spotify"> <span>Automatically to Spotify</span></label>
+    <p>Your formats are saved in this browser. Clearing the browser's data, on purpose or by accident, erases them, so it is a good idea to keep a second copy. You have two options for that:</p>
+    <label class="choice-row"><input type="radio" name="backupMode" id="backupModeSpotify" value="spotify"> <span>Automatic backup to Spotify</span></label>
     <p class="muted choice-note">Each format is kept in a private playlist of its own, named like the format and ending in (format backup). The format is saved in that playlist's description, so please do not edit it.</p>
-    <label class="choice-row"><input type="radio" name="backupMode" id="backupModeManual" value="manual"> <span>Manually, to your phone or computer</span></label>
-    <p class="muted choice-note">A backup file is downloaded when you ask for one, and you restore from it when you need it.</p>
+    <label class="choice-row"><input type="radio" name="backupMode" id="backupModeManual" value="manual"> <span>Manual backup to this device</span></label>
+    <p class="muted choice-note">You back up to this device when you ask for it, and restore from that backup when you need it.</p>
   </div>
   <div id="formatEditor"></div>
   <p id="editorNote" class="muted" aria-live="polite"></p>
@@ -648,10 +657,10 @@
   </div>
 
   <div id="backupBlock">
-  <h2 id="backupSection">4. Back up your formats (optional)</h2>
-  <p>Your formats are saved only in this browser. Clearing your browser data would erase them. A backup file keeps a copy on your computer or phone so you can restore them if needed.</p>
+  <h2 id="backupSection">4. Back up manually to this device (optional)</h2>
+  <p>Your formats are saved only in this browser. Clearing your browser data would erase them. A manual backup keeps a copy on this device so you can restore them if needed.</p>
   <div class="row">
-    <button id="backupDownload" type="button"><img class="btn-icon" src="icons/download.svg" alt="" width="20" height="20"><span class="btn-label">Download a backup</span></button>
+    <button id="backupDownload" type="button"><img class="btn-icon" src="icons/download.svg" alt="" width="20" height="20"><span class="btn-label">Back up now</span></button>
   </div>
   <p id="downloadMessage" aria-live="polite"></p>
   <p id="backupStatus" class="muted" aria-live="polite"></p>
@@ -727,14 +736,14 @@
 
       <h3>Clear saved data</h3>
       <p class="muted">You can make this page forget everything it saved in this browser: your Client ID, your formats, your Spotify sign-in, and the songs it keeps from your playlists. Nothing in your Spotify account changes.</p>
-      <p id="clearRestoreHelp" class="muted">Your formats are erased too. To get them back afterward, connect to Spotify again, then use the <span class="ui">restore from that backup</span> link in Step 2 and choose your backup file. If you haven't downloaded a backup, do that first in Step 4.</p>
+      <p id="clearRestoreHelp" class="muted">Your formats are erased too. To get them back afterward, connect to Spotify again, then use the <span class="ui">restore from a backup</span> link in Step 2 and choose the backup you made on this device. If you haven't backed up to this device, do that first in Step 4.</p>
       <p id="clearBackupNote"></p>
       <div class="row">
         <button id="clearData" type="button"><img class="btn-icon" src="icons/clear.svg" alt="" width="20" height="20"><span class="btn-label">Clear saved data</span></button>
       </div>
       <div id="clearConfirm" hidden>
         <p>Clear the saved Client ID, formats, and sign-in, and reload this page?</p>
-        <p id="clearConfirmHelp" class="muted">Your formats will be erased from this browser. To get them back, connect to Spotify again, then use the <span class="ui">restore from that backup</span> link in Step 2 and choose your backup file.</p>
+        <p id="clearConfirmHelp" class="muted">Your formats will be erased from this browser. To get them back, connect to Spotify again, then use the <span class="ui">restore from a backup</span> link in Step 2 and choose the backup you made on this device.</p>
         <div class="row">
           <button id="clearYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Yes, clear it</span></button>
           <button id="clearNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
@@ -786,8 +795,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-30e"></script>
-<script src="editor.js?v=2026-10-30e"></script>
-<script src="app.js?v=2026-10-30e"></script>
+<script src="formats.js?v=2026-10-30f"></script>
+<script src="editor.js?v=2026-10-30f"></script>
+<script src="app.js?v=2026-10-30f"></script>
 </body>
 </html>

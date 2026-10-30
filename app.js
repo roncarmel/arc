@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-30e";
+const APP_VERSION = "2026-10-30f";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -700,7 +700,7 @@ async function leaveSpotifyBackups() {
   try { for (const key of ["spotifySynced", "spotifyPendingDeletes", "spotifySavedAt"]) localStorage.removeItem(key); } catch (err) { /* private browsing */ }
   const saves = playlists.filter((p) => p.save && p.save.kind === "save");
   // From here the backup file is the way, so a file is offered in each case, in the message that says what happened to the backups in Spotify.
-  const offer = { label: "Download a backup now", onClick: () => { downloadBackup(); showBackupMessage("Backup downloaded. Find it in Downloads, or in the Files app on a phone."); } };
+  const offer = { label: "Back up now", onClick: () => { downloadBackup(); showBackupMessage(BACKED_UP_MESSAGE); } };
   if (!saves.length) { showBackupMessage("Your formats are now saved only in this browser.", false, offer); return; }
   const many = saves.length > 1;
   if (connection !== "ready") { showBackupMessage(`The ${many ? "backups" : "backup"} in Spotify ${many ? "were" : "was"} left as ${many ? "they are" : "it is"}.`, false, offer); return; }
@@ -757,7 +757,7 @@ function refreshBackupStatus() {
   // Step 4: where the formats stand with regard to a backup.
   $("backupStatus").textContent = {
     example: "You haven't made any formats yet, so there is nothing to back up.",
-    never: "You haven't downloaded a backup of your formats yet.",
+    never: "You haven't backed up to this device yet.",
     edited: "Your formats have been edited since your last backup.",
     current: state.when ? "Last backup: " + state.when + "." : "Your formats are backed up.",
   }[state.kind];
@@ -765,8 +765,8 @@ function refreshBackupStatus() {
   if (backupMode() === "spotify") { $("clearBackupNote").textContent = "Your formats are backed up to Spotify, and clearing the saved data does not remove those backups."; return; }
   $("clearBackupNote").textContent = {
     example: "You haven't made any formats yet, so there is nothing to lose.",
-    never: "You haven't downloaded a backup of your formats yet. Download one first, or they will be gone for good.",
-    edited: "Your formats have been edited since your last backup. Download a new backup first to keep the changes.",
+    never: "You haven't backed up to this device yet. Back up first, or they will be gone for good.",
+    edited: "Your formats have been edited since your last backup. Back up again first to keep the changes.",
     current: "Your formats are backed up" + (state.when ? " (last backup: " + state.when + ")" : "") + ".",
   }[state.kind];
 }
@@ -839,7 +839,7 @@ function downloadBackup() {
   markBackedUp(text);
   undoText = null;
   logStep("backup downloaded");
-  $("downloadMessage").textContent = "Backup downloaded. Find it in Downloads, or in the Files app on a phone.";
+  $("downloadMessage").textContent = BACKED_UP_MESSAGE;
   refreshBackupStatus();
 }
 
@@ -870,6 +870,7 @@ async function restoreFromFile(file) {
   showBackupMessage(`Restored ${formatCount} format${formatCount === 1 ? "" : "s"} from ${file.name}.`, true);
 }
 
+const BACKED_UP_MESSAGE = "Backed up to this device. Find the file in Downloads, or in the Files app on a phone.";   // after a manual backup, wherever it is made from
 let reloadPage = () => location.reload();   // a separate function so tests can replace it
 
 async function clearSavedData() {
@@ -2062,7 +2063,7 @@ async function main() {
   on("maxPlaylists", "input", () => invalidatePlan());
   on("backupDownload", "click", downloadBackup);
   on("backupRestore", "click", () => $("restoreFile").click());
-  on("backupDownloadLink", "click", () => { downloadBackup(); showBackupMessage("Backup downloaded. Find it in Downloads, or in the Files app on a phone."); });   // the same as the menu's Download a backup
+  on("backupDownloadLink", "click", () => { downloadBackup(); showBackupMessage(BACKED_UP_MESSAGE); });   // the same as the menu's Back up now a backup
   on("restoreFile", "change", async (event) => {
     const file = event.target.files && event.target.files[0];
     event.target.value = "";   // so choosing the same file again still counts

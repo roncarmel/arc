@@ -40,6 +40,7 @@ const FE_ICONS = {
   link: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
   retry: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg>',
   cloud: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 19h9a4.2 4.2 0 0 0 .5-8.37A5.6 5.6 0 0 0 6.3 11.7 3.7 3.7 0 0 0 7.5 19z"/><path d="M12 16.5v-5M9.7 13.7 12 11.4l2.3 2.3"/></svg>',
+  device: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
   download: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>',
   restore: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V5M7 9l5-5 5 5M5 20h14"/></svg>',
   unplug: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/><path d="M4 4l16 16"/></svg>',
@@ -436,20 +437,18 @@ function renderAppMenu() {
     connectItems.push(feEl("button", { type: "button", class: "fe-item", id: reconnect ? "feReconnect" : "feRetry", role: "menuitem", onClick: choose(() => (reconnect ? startLogin() : connectToSpotify())) }, feIcon(reconnect ? "link" : "retry"), reconnect ? "Connect again" : "Try again"));
     connectItems.push(feEl("div", { class: "fe-itemnote", id: "feConnectionNote", text: $("connectionMessage").textContent }));
   }
-  // Only what belongs to the chosen way: for the backup file, downloading and restoring; for Spotify, how the saving is going.
-  let backupItems;
-  if (typeof backupMode === "function" && backupMode() === "spotify") {
-    // a row that says what the backup is, like Download a backup does for the file, with how it is going under it
-    const status = feEl("div", { class: "fe-itemnote", id: "feSaveStatus" });
-    writeSaveParts(status);
-    backupItems = [feEl("div", { class: "fe-item fe-static", id: "feSaveHeading" }, feIcon("cloud"), "Automatic Spotify backup"), status];
-  } else {
-    backupItems = [
-      feEl("button", { type: "button", class: "fe-item", id: "feBackup", role: "menuitem", onClick: choose(() => { downloadBackup(); showBackupMessage("Backup downloaded. Find it in Downloads, or in the Files app on a phone."); }) }, feIcon("download"), "Download a backup"),
-      ...(backupLabel ? [feEl("div", { class: "fe-itemnote", id: "feBackupStatus", text: backupLabel })] : []),
-      feEl("button", { type: "button", class: "fe-item", id: "feRestore", role: "menuitem", onClick: choose(() => $("restoreFile").click()) }, feIcon("restore"), "Restore from backup"),
-    ];
-  }
+  // The backup, in one block: how it is done and where to (a row that opens the method card), how it is going, and for the manual way the two actions.
+  const auto = typeof backupMode === "function" && backupMode() === "spotify";
+  const head = feEl("button", { type: "button", class: "fe-grouprow", id: "feBackupMethod", role: "menuitem", onClick: choose(() => openBackupCard()) }, feIcon(auto ? "cloud" : "device"),
+    feEl("span", { class: "fe-two" }, feEl("span", { class: "fe-main", text: auto ? "Automatic backup" : "Manual backup" }), feEl("span", { class: "fe-small", text: auto ? "To Spotify" : "To this device" })),
+    feEl("span", { class: "fe-trail" }, "Change", feIcon("chevron")));
+  let status = null;
+  if (auto) { status = feEl("div", { class: "fe-status", id: "feSaveStatus" }); writeSaveParts(status); }
+  else if (backupLabel) status = feEl("div", { class: "fe-status", id: "feBackupStatus", text: backupLabel });
+  const actions = auto ? null : feEl("div", { class: "fe-pair" },
+    feEl("button", { type: "button", id: "feBackup", role: "menuitem", onClick: choose(() => { downloadBackup(); showBackupMessage(BACKED_UP_MESSAGE); }) }, feIcon("download"), "Back up now"),
+    feEl("button", { type: "button", id: "feRestore", role: "menuitem", onClick: choose(() => $("restoreFile").click()) }, feIcon("restore"), "Restore"));
+  const backupBlock = feEl("div", { class: "fe-group" }, head, status, actions);
   const minimalButton = feEl("button", { type: "button", class: "fe-item", id: "feMinimal", role: "menuitemcheckbox", "aria-checked": String(on), onClick: toggleMinimal }, box, "Minimalist mode");
   if (!available) minimalButton.disabled = true;
   slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" },
@@ -458,8 +457,7 @@ function renderAppMenu() {
     minimalButton,
     ...(!available ? [feEl("div", { class: "fe-itemnote", id: "feMinimalNote", text: "Available after you first connect to Spotify." })] : []),
     feEl("div", { class: "fe-rule" }),
-    ...backupItems,
-    feEl("button", { type: "button", class: "fe-item", id: "feBackupMethod", role: "menuitem", onClick: choose(() => openBackupCard()) }, feIcon("sliders"), "Change backup method\u2026"),
+    backupBlock,
     ...(connection === "ready" ? [feEl("div", { class: "fe-rule" }), feEl("button", { type: "button", class: "fe-item", id: "feDisconnect", role: "menuitem", onClick: choose(() => disconnect()) }, feIcon("unplug"), "Disconnect Spotify")] : [])));
 }
 
