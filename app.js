@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-29s";
+const APP_VERSION = "2026-10-29t";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -390,8 +390,7 @@ function refreshBackupCard() {
   if (!card) return;
   card.hidden = !(backupCardOpen || !backupMode());
   card.classList.toggle("opened", backupCardOpen);
-  $("backupCardCancel").hidden = !backupCardOpen;
-  const mode = backupMode() || "manual";
+  const mode = backupMode();   // before a choice is made, neither is selected
   $("backupModeManual").checked = mode === "manual";
   $("backupModeSpotify").checked = mode === "spotify";
 }
@@ -403,14 +402,17 @@ function openBackupCard() {
   if (card && card.scrollIntoView) card.scrollIntoView({ block: "nearest" });
 }
 
-function closeBackupCard(save) {
-  if (save) {
-    const chosen = document.querySelector('input[name="backupMode"]:checked');
-    try { localStorage.setItem("backupMode", chosen && !chosen.disabled ? chosen.value : "manual"); } catch (err) { /* private browsing */ }
-  }
+// Picking one of the two is the whole interaction: it is saved and the card goes away. Picking the one already chosen just closes it.
+function chooseBackupMode(value) {
+  try { localStorage.setItem("backupMode", value); } catch (err) { /* private browsing */ }
   backupCardOpen = false;
   refreshBackupCard();
   if (typeof renderAppMenu === "function") renderAppMenu();
+}
+
+function dismissBackupCard() {
+  backupCardOpen = false;
+  refreshBackupCard();
 }
 
 function backupState() {
@@ -1439,8 +1441,11 @@ function setDonateChoice(choice) {
 
 function initDonateChoice() {
   on("donateHideBox", "change", () => setDonateChoice($("donateHideBox").checked ? "donated" : ""));
-  on("backupCardDone", "click", () => closeBackupCard(true));
-  on("backupCardCancel", "click", () => closeBackupCard(false));
+  for (const radio of document.querySelectorAll('input[name="backupMode"]')) {
+    radio.addEventListener("click", () => { if (!radio.disabled) chooseBackupMode(radio.value); });
+    radio.addEventListener("change", () => { if (!radio.disabled && radio.checked) chooseBackupMode(radio.value); });
+  }
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && backupCardOpen) dismissBackupCard(); });
   refreshBackupCard();
   applyDonateChoice();
 }
