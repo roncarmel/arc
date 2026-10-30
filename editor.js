@@ -212,6 +212,49 @@ function commitHealed() {
   if (typeof refreshBackupStatus === "function") refreshBackupStatus();
 }
 
+// ---------------------------------------------------------------- formats coming from Spotify, and questions about them
+// A format read from its backup in Spotify replaces the one here with that ID, or is added. That is not an edit made here, so it keeps the revision and the time it
+// was saved with, and nothing is saved back.
+function writeAdopted() {
+  rememberFormats(editor.model);
+  const text = modelToText(editor.model);
+  editor.internal = true;
+  $("formats").value = text;
+  $("formats").dispatchEvent(new Event("input", { bubbles: true }));
+  editor.internal = false;
+  if (!editor.model.formats.some((f) => f.id === editor.activeId)) editor.activeId = editor.model.formats.length ? editor.model.formats[0].id : null;
+  snapshotFormats(editor.model);
+}
+
+function adoptFormat(fmt) {
+  if (!editor.model) return;
+  const i = editor.model.formats.findIndex((f) => f.id === fmt.id);
+  if (i >= 0) editor.model.formats[i] = fmt; else editor.model.formats.push(fmt);
+  syncPlaylistRefs();   // the names of its playlists, from the account's playlists
+}
+
+function removeLocalFormat(id) {
+  if (editor.model) editor.model.formats = editor.model.formats.filter((f) => f.id !== id);
+}
+
+// A question with a few answers, in a dialog. Resolves with the answer's value, or null if the dialog was closed to decide later.
+function askSyncChoice(title, text, choices) {
+  return new Promise((resolve) => {
+    const done = (value) => { overlay.remove(); document.removeEventListener("keydown", onKey); resolve(value); };
+    const onKey = (event) => { if (event.key === "Escape") done(null); };
+    const buttons = choices.map((c, i) => feEl("button", { type: "button", id: "feSyncChoice" + i, class: c.danger ? "fe-danger-button" : undefined, onClick: () => done(c.value) }, c.label));
+    const overlay = feEl("div", { class: "fe-overlay", id: "feSyncDialog", onClick: () => done(null) },
+      feEl("div", { class: "fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": title, onClick: (e) => e.stopPropagation() },
+        feEl("h3", { text: title }),
+        feEl("p", { text }),
+        feEl("p", { class: "muted", text: "Closing this decides nothing yet. The question stays in the status line." }),
+        feEl("div", { class: "row" }, ...buttons)));
+    document.body.appendChild(overlay);
+    document.addEventListener("keydown", onKey);
+    buttons[0].focus();
+  });
+}
+
 function syncEditorFromText() {
   try {
     editor.model = textToModel($("formats").value, true);

@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-29y">
-<script src="theme.js?v=2026-10-29y"></script>
+<meta name="app-version" content="2026-10-30e">
+<script src="theme.js?v=2026-10-30e"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -727,14 +727,14 @@
 
       <h3>Clear saved data</h3>
       <p class="muted">You can make this page forget everything it saved in this browser: your Client ID, your formats, your Spotify sign-in, and the songs it keeps from your playlists. Nothing in your Spotify account changes.</p>
-      <p class="muted">Your formats are erased too. To get them back afterward, connect to Spotify again, then use the <span class="ui">restore from that backup</span> link in Step 2 and choose your backup file. If you haven't downloaded a backup, do that first in Step 4.</p>
+      <p id="clearRestoreHelp" class="muted">Your formats are erased too. To get them back afterward, connect to Spotify again, then use the <span class="ui">restore from that backup</span> link in Step 2 and choose your backup file. If you haven't downloaded a backup, do that first in Step 4.</p>
       <p id="clearBackupNote"></p>
       <div class="row">
         <button id="clearData" type="button"><img class="btn-icon" src="icons/clear.svg" alt="" width="20" height="20"><span class="btn-label">Clear saved data</span></button>
       </div>
       <div id="clearConfirm" hidden>
         <p>Clear the saved Client ID, formats, and sign-in, and reload this page?</p>
-        <p class="muted">Your formats will be erased from this browser. To get them back, connect to Spotify again, then use the <span class="ui">restore from that backup</span> link in Step 2 and choose your backup file.</p>
+        <p id="clearConfirmHelp" class="muted">Your formats will be erased from this browser. To get them back, connect to Spotify again, then use the <span class="ui">restore from that backup</span> link in Step 2 and choose your backup file.</p>
         <div class="row">
           <button id="clearYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Yes, clear it</span></button>
           <button id="clearNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
@@ -758,6 +758,7 @@
 
       <h3>What stays in this browser</h3>
       <p>Your Client ID, your formats, your color choice, and a copy of the songs from your playlists are saved in this browser, and nowhere else. The copy of your songs lets the app skip asking Spotify for them again. Disconnect removes your Spotify sign-in and the saved songs. <span class="ui">Clear saved data</span>, in <span class="ui">More options</span>, removes everything.</p>
+      <p>If you choose automatic backup to Spotify, each format is also kept in a private playlist in your own Spotify account, in the playlist's description. That is where the app saves it and reads it back, and it goes nowhere else.</p>
 
       <h3>Your Spotify account</h3>
       <p>You sign in on Spotify's own page, and this app never sees your Spotify password. It asks Spotify for permission to read your playlists, create playlists, remove playlists, and set their cover images. Your existing playlists are only read, never changed. Removing only touches the playlists this app made, unless you choose to remove others too.</p>
@@ -785,8 +786,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-29y"></script>
-<script src="editor.js?v=2026-10-29y"></script>
-<script src="app.js?v=2026-10-29y"></script>
+<script src="formats.js?v=2026-10-30e"></script>
+<script src="editor.js?v=2026-10-30e"></script>
+<script src="app.js?v=2026-10-30e"></script>
 </body>
 </html>

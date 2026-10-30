@@ -369,6 +369,13 @@ function rememberFormats(model) {
   for (const fmt of model.formats) FORMAT_SIGNATURES.set(fmt, formatSignature(fmt));
 }
 
+// What a format says, for telling whether two copies of it say the same: its playlists by ID (a playlist with no ID by its name), not by name, since a copy read
+// from Spotify has only IDs.
+function contentSignature(fmt) {
+  return JSON.stringify([fmt.title, fmt.gap, (fmt.gaps || []).map((g) => (g === undefined ? null : g)), fmt.lead || 0,
+    fmt.items.map((it) => [it.minutes, it.lists.map((l) => [l.id || ("name:" + l.name), l.weight])])]);
+}
+
 // ---------------------------------------------------------------- packing a format into a Spotify description
 // A format is packed into bytes, and the bytes into characters of the CJK block (14 bits each, U+4E00 to U+8DFF), so that a format of any usual size fits the
 // 300 characters Spotify's own app allows in a description. The description is a plain "Do not edit." followed by those characters.

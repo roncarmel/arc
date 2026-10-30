@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-29y";
+const APP_VERSION = "2026-10-30e";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -386,7 +386,9 @@ const SAVE_SUFFIX = " (format backup)";
 // time. Spotify counts the calls an app makes in a rolling 30 seconds, so saves are not made more often than that needs, and not while a build is under way.
 let spotifySaveDelayMs = 5000;
 let spotifySaveMaxWaitMs = 30000;
-const saveState = { running: false, again: false, timer: null, since: 0, error: "", tooLong: [], newer: [], savedAt: null, coverBlocked: false };
+const saveState = { running: false, again: false, timer: null, since: 0, error: "", tooLong: [], newer: [], savedAt: null, coverBlocked: false, added: [], updated: [], questions: [], unread: 0, skip: new Set() };
+let playlistsLoadedAt = 0;
+let playlistRefreshMs = 5 * 60 * 1000;   // coming back to the page after this long, the account's playlists, and so the backups, are read again
 
 function saveName(title) {
   return (cleanTitle(title).trim() || "Untitled").slice(0, 80) + SAVE_SUFFIX;
@@ -413,6 +415,87 @@ function scheduleSpotifySave(delay) {
   renderSaveStatus();
 }
 
+// What this device last knew of each backup: the revision it held, and the playlist. A format with a backup that is gone is one that was backed up here before.
+function readSynced() {
+  try { const o = JSON.parse(localStorage.getItem("spotifySynced") || "{}"); return o && typeof o === "object" && !Array.isArray(o) ? o : {}; } catch (err) { return {}; }
+}
+function writeSynced(synced) {
+  try { localStorage.setItem("spotifySynced", JSON.stringify(synced)); } catch (err) { /* private browsing */ }
+}
+
+function whenText(seconds) {
+  return seconds ? formatBackupTime(new Date(seconds * 1000).toISOString()) : "a time that is not known";
+}
+
+// Reads the account's backups and settles each format against its backup. Where one side changed and the other did not, the changed one wins. Where both changed, or
+// there is no record of a backup and the two differ, the person is asked. Formats found only in Spotify are added; a format whose backup has gone is asked about.
+async function mergeFromSpotify() {
+  saveState.skip = new Set();
+  saveState.added = [];
+  saveState.updated = [];
+  saveState.questions = [];
+  const model = editor.model;
+  const allIds = playlists.map((p) => p.id);
+  const synced = readSynced();
+  const pendingDeletes = pendingSaveDeletes();
+  const remote = savesInAccount();
+  const unread = playlists.filter((p) => p.save && p.save.kind !== "save");
+  saveState.unread = unread.length;
+  const readRemote = (p) => { const u = unpackFormat(p.description); if (u.kind !== "save") return null; resolveSaveTails(u.format, allIds); return u.format; };
+  const asks = [];
+  let changedHere = false;
+  for (const [id, p] of remote) {
+    const r = readRemote(p);
+    if (!r) continue;
+    const local = model.formats.find((f) => f.id === id);
+    if (!local) {
+      if (pendingDeletes.includes(id)) continue;   // deleted here: its backup is about to be removed
+      adoptFormat(r);
+      synced[id] = { rev: r.rev || 0, playlistId: p.id };
+      saveState.added.push(r.title);
+      changedHere = true;
+      continue;
+    }
+    const lr = local.rev || 0, rr = r.rev || 0;
+    if (contentSignature(local) === contentSignature(r)) {   // the same: only the counters may differ
+      if (rr > lr) { local.rev = rr; local.modified = r.modified; changedHere = true; }
+      synced[id] = { rev: Math.max(lr, rr), playlistId: p.id };
+      continue;
+    }
+    const base = synced[id];
+    if (base) {
+      const localChanged = lr > (base.rev || 0), remoteChanged = rr > (base.rev || 0);
+      if (remoteChanged && !localChanged) { adoptFormat(r); synced[id] = { rev: rr, playlistId: p.id }; saveState.updated.push(r.title); changedHere = true; continue; }
+      if (!(localChanged && remoteChanged)) continue;   // only this device changed (it will be written), or neither did
+    }
+    asks.push({ kind: "conflict", id, title: local.title, local, remote: r, playlist: p });
+  }
+  for (const f of model.formats) {
+    if (remote.has(f.id) || !synced[f.id]) continue;
+    if (unread.some((p) => p.name === saveName(f.title))) continue;   // its backup is there, but cannot be read: it is written again below
+    asks.push({ kind: "removed", id: f.id, title: f.title });
+  }
+  for (const a of asks) {
+    const label = a.title.trim() || "Untitled";
+    let choice;
+    if (a.kind === "conflict") {
+      choice = await askSyncChoice(`\u201c${label}\u201d was changed in two places`, `This device has a version from ${whenText(a.local.modified)}, and Spotify has one from ${whenText(a.remote.modified)}, probably saved from another device. Which one do you want to keep?`,
+        [{ label: "Keep this device\u2019s", value: "mine" }, { label: "Use Spotify\u2019s", value: "theirs" }]);
+    } else {
+      choice = await askSyncChoice(`\u201c${label}\u201d is no longer in Spotify`, "Its backup was removed from your Spotify, maybe on another device. Keep it here, and it will be saved to Spotify again, or remove it from this device too?",
+        [{ label: "Keep it here", value: "keep" }, { label: "Remove it here", value: "remove", danger: true }]);
+    }
+    if (choice === null) { saveState.questions.push({ kind: a.kind, id: a.id, title: a.title }); saveState.skip.add(a.id); continue; }
+    if (a.kind === "conflict" && choice === "theirs") { adoptFormat(a.remote); synced[a.id] = { rev: a.remote.rev || 0, playlistId: a.playlist.id }; saveState.updated.push(a.remote.title); }
+    else if (a.kind === "conflict") { a.local.rev = Math.max(a.local.rev || 0, a.remote.rev || 0) + 1; a.local.modified = Math.floor(Date.now() / 1000); synced[a.id] = { rev: a.remote.rev || 0, playlistId: a.playlist.id }; }
+    else if (choice === "remove") removeLocalFormat(a.id);
+    if (a.kind === "removed") delete synced[a.id];
+    changedHere = true;
+  }
+  writeSynced(synced);
+  if (changedHere) { writeAdopted(); renderEditor(); }
+}
+
 function savesInAccount() {
   const byFormat = new Map();
   for (const p of playlists) {
@@ -435,6 +518,8 @@ async function runSpotifySave() {
   saveState.error = "";
   renderSaveStatus();
   try {
+    await mergeFromSpotify();
+    const synced = readSynced();
     const tooLong = [], newer = [];
     const allIds = playlists.map((p) => p.id);
     // The cover of a backup playlist is the app's icon, dimmed, with a cloud: a playlist that has no cover yet gets it, once. (Spotify limits image uploads on their own,
@@ -461,6 +546,8 @@ async function runSpotifySave() {
           await spotifyRequest("DELETE", "/me/library", { params: { uris: "spotify:playlist:" + save.id } });
           playlists = playlists.filter((p) => p.id !== save.id);
         }
+        const known = readSynced();
+        if (known[id]) { delete known[id]; writeSynced(known); }
       }
       pending = pending.filter((x) => x !== id);
       try { localStorage.setItem("spotifyPendingDeletes", JSON.stringify(pending)); } catch (err) { /* private browsing */ }
@@ -468,16 +555,27 @@ async function runSpotifySave() {
     for (const fmt of editor.model.formats) {
       const description = packFormat(fmt, allIds);
       if (description.length > SAVE_LIMIT) { tooLong.push({ id: fmt.id, title: fmt.title }); continue; }
+      if (saveState.skip.has(fmt.id)) continue;   // waiting for an answer to a question about it
       const name = saveName(fmt.title);
       const have = savesInAccount().get(fmt.id);
+      // a backup of this name that cannot be read (damaged, or saved by a newer version) is written over only if it was this format's: it is the same name, and the format
+      // was backed up from here before
+      const unreadOfIt = !have && synced[fmt.id] ? playlists.find((p) => p.save && p.save.kind === "damaged" && p.name === name) : null;
       if (have) {
         if (have.save.format.rev > (fmt.rev || 0)) { newer.push(fmt.title); continue; }
-        if (have.description === description && have.name === name) { await putCover(have); continue; }   // already as it should be
+        if (have.description === description && have.name === name) { synced[fmt.id] = { rev: fmt.rev || 0, playlistId: have.id }; await putCover(have); continue; }   // already as it should be
         await spotifyRequest("PUT", `/playlists/${have.id}`, { json: { name, description } });
         have.name = name;
         have.description = description;
         have.save = unpackFormat(description);
+        synced[fmt.id] = { rev: fmt.rev || 0, playlistId: have.id };
         await putCover(have);
+      } else if (unreadOfIt) {
+        await spotifyRequest("PUT", `/playlists/${unreadOfIt.id}`, { json: { name, description } });
+        unreadOfIt.description = description;
+        unreadOfIt.save = unpackFormat(description);
+        synced[fmt.id] = { rev: fmt.rev || 0, playlistId: unreadOfIt.id };
+        await putCover(unreadOfIt);
       } else {
         const made = await spotifyRequest("POST", "/me/playlists", { json: { name, public: false, description } });
         if (made.public !== false) { try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); } catch (err) { logStep("save: could not make a backup playlist private"); } }
@@ -485,9 +583,11 @@ async function runSpotifySave() {
         entry.save = unpackFormat(description);
         entry.isSave = true;
         playlists.push(entry);
+        synced[fmt.id] = { rev: fmt.rev || 0, playlistId: made.id };
         await putCover(entry);
       }
     }
+    writeSynced(synced);
     saveState.tooLong = tooLong;
     saveState.newer = newer;
     saveState.savedAt = new Date().toISOString();
@@ -512,6 +612,12 @@ function spotifySaveParts() {
     const at = saveState.savedAt || (() => { try { return localStorage.getItem("spotifySavedAt"); } catch (err) { return null; } })();
     if (at) parts.push({ text: "Saved to Spotify at " + new Date(at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "." });
   }
+  for (const title of saveState.added) parts.push({ text: `Added \u201c${title.trim() || "Untitled"}\u201d from Spotify.` });
+  for (const title of saveState.updated) parts.push({ text: `Updated \u201c${title.trim() || "Untitled"}\u201d from Spotify.` });
+  for (const q of saveState.questions) {
+    parts.push({ text: q.kind === "conflict" ? `\u201c${q.title.trim() || "Untitled"}\u201d was changed here and in Spotify.` : `\u201c${q.title.trim() || "Untitled"}\u201d is no longer in Spotify.`, action: () => { saveState.error = ""; runSpotifySave(); }, label: "Choose" });
+  }
+  if (saveState.unread) parts.push({ text: `${saveState.unread === 1 ? "A backup in Spotify" : saveState.unread + " backups in Spotify"} could not be read, or ${saveState.unread === 1 ? "was" : "were"} saved by a newer version of the app, and ${saveState.unread === 1 ? "was" : "were"} left alone.` });
   for (const t of saveState.tooLong) {
     parts.push({ text: `\u201c${t.title.trim() || "Untitled"}\u201d is too long to back up to Spotify. It is still saved in this browser.`, action: () => downloadOneFormat(t.id), label: "Download it" });
   }
@@ -572,13 +678,46 @@ function openBackupCard() {
 }
 
 // Picking one of the two is the whole interaction: it is saved and the card goes away. Picking the one already chosen just closes it.
-function chooseBackupMode(value) {
+async function chooseBackupMode(value) {
+  const was = backupMode();
   try { localStorage.setItem("backupMode", value); } catch (err) { /* private browsing */ }
   backupCardOpen = false;
   refreshBackupCard();
   applyBackupMode();
-  if (value === "spotify") scheduleSpotifySave(200);
+  // To Spotify: the first pass settles what is here against what is there, and asks only about formats that differ.
+  if (value === "spotify" && was !== "spotify") scheduleSpotifySave(200);
+  if (value !== "spotify" && was === "spotify") await leaveSpotifyBackups();
   if (typeof renderAppMenu === "function") renderAppMenu();
+}
+
+// Away from Spotify: nothing more is saved there, this device forgets what it knew of the backups, and the person is asked whether to keep the backups that are in
+// Spotify or remove them. Keeping them is what happens unless they say otherwise, since another device may still be using them.
+async function leaveSpotifyBackups() {
+  clearTimeout(saveState.timer);
+  saveState.timer = null;
+  saveState.since = 0;
+  saveState.error = ""; saveState.added = []; saveState.updated = []; saveState.questions = []; saveState.tooLong = []; saveState.newer = []; saveState.unread = 0;
+  try { for (const key of ["spotifySynced", "spotifyPendingDeletes", "spotifySavedAt"]) localStorage.removeItem(key); } catch (err) { /* private browsing */ }
+  const saves = playlists.filter((p) => p.save && p.save.kind === "save");
+  // From here the backup file is the way, so a file is offered in each case, in the message that says what happened to the backups in Spotify.
+  const offer = { label: "Download a backup now", onClick: () => { downloadBackup(); showBackupMessage("Backup downloaded. Find it in Downloads, or in the Files app on a phone."); } };
+  if (!saves.length) { showBackupMessage("Your formats are now saved only in this browser.", false, offer); return; }
+  const many = saves.length > 1;
+  if (connection !== "ready") { showBackupMessage(`The ${many ? "backups" : "backup"} in Spotify ${many ? "were" : "was"} left as ${many ? "they are" : "it is"}.`, false, offer); return; }
+  const choice = await askSyncChoice("Remove the backups from Spotify?",
+    `${many ? "There are " + saves.length + " backups" : "There is 1 backup"} of your formats in Spotify, in private playlists ending in (format backup). Keep ${many ? "them" : "it"}, or remove ${many ? "them" : "it"}? Another device that backs up to Spotify would lose ${many ? "them" : "it"} too.`,
+    [{ label: many ? "Keep them" : "Keep it", value: "keep" }, { label: many ? "Remove them" : "Remove it", value: "remove", danger: true }]);
+  if (choice !== "remove") { showBackupMessage(`The ${many ? "backups" : "backup"} in Spotify ${many ? "were" : "was"} left as ${many ? "they are" : "it is"}.`, false, offer); return; }
+  try {
+    const ids = saves.map((p) => p.id);
+    for (let i = 0; i < ids.length; i += REMOVE_CHUNK) {
+      await spotifyRequest("DELETE", "/me/library", { params: { uris: ids.slice(i, i + REMOVE_CHUNK).map((id) => "spotify:playlist:" + id).join(",") } });
+    }
+    playlists = playlists.filter((p) => !ids.includes(p.id));
+    showBackupMessage(`Removed ${plural(ids.length, "backup")} from Spotify. Your formats are now saved only in this browser.`, false, offer);
+  } catch (err) {
+    showBackupMessage("The backups could not be removed from Spotify: " + String(err && err.message || err), false, offer);
+  }
 }
 
 // Only what belongs to the chosen way is on the page: the backup file's note and step for "manual", the status of the saving for "spotify".
@@ -588,6 +727,14 @@ function applyBackupMode() {
   if ($("savedNoteSpotify")) $("savedNoteSpotify").hidden = !spotify;
   if ($("backupBlock")) $("backupBlock").hidden = spotify;
   document.body.classList.toggle("spotify-backup", spotify);
+  // Clear saved data: with Spotify as the way, the formats come back from Spotify, not from a file
+  for (const [id, text] of [["clearRestoreHelp", "Your formats are erased from this browser too, but their backups in Spotify stay where they are. Connect to Spotify again and they are loaded back."], ["clearConfirmHelp", "Your formats will be erased from this browser. Their backups in Spotify stay, and connecting to Spotify again loads them back."]]) {
+    const el = $(id);
+    if (!el) continue;
+    if (el.dataset.manual === undefined) el.dataset.manual = el.innerHTML;
+    if (spotify) el.textContent = text; else el.innerHTML = el.dataset.manual;
+  }
+  if (typeof refreshBackupStatus === "function") refreshBackupStatus();
   renderSaveStatus();
 }
 
@@ -615,6 +762,7 @@ function refreshBackupStatus() {
     current: state.when ? "Last backup: " + state.when + "." : "Your formats are backed up.",
   }[state.kind];
   // Clear saved data: what would be lost, so a backup can be made first.
+  if (backupMode() === "spotify") { $("clearBackupNote").textContent = "Your formats are backed up to Spotify, and clearing the saved data does not remove those backups."; return; }
   $("clearBackupNote").textContent = {
     example: "You haven't made any formats yet, so there is nothing to lose.",
     never: "You haven't downloaded a backup of your formats yet. Download one first, or they will be gone for good.",
@@ -628,9 +776,18 @@ function markBackedUp(text, atMs) {
   localStorage.setItem("lastBackupAt", new Date(atMs || Date.now()).toISOString());
 }
 
-function showBackupMessage(text, undo = false) {
+function showBackupMessage(text, undo = false, link = null) {
   const box = $("backupMessage");
   box.textContent = text;
+  if (link) {
+    box.appendChild(document.createTextNode(" "));
+    const action = document.createElement("button");
+    action.type = "button";
+    action.className = "linklike";
+    action.textContent = link.label;
+    action.addEventListener("click", link.onClick);
+    box.appendChild(action);
+  }
   if (undo) {
     box.appendChild(document.createTextNode(" "));
     const button = document.createElement("button");
@@ -730,7 +887,17 @@ function updateButtons() {
 function updateButtonsNow() {
   const ready = !!token && connection === "ready" && !!py && formatsValid && !busy && !!activeKey();
   const action = connectionAction();
-  if (action) {
+  // Step 1's buttons, while a sign-in is under way
+  const connectButton = $("connect");
+  if (connectButton) { setLabel(connectButton, signingIn ? "Connecting\u2026" : "Connect Spotify"); connectButton.disabled = signingIn; }
+  if ($("connectionReconnect")) $("connectionReconnect").disabled = signingIn;
+  const connectingNow = signingIn || connection === "connecting";
+  if (connectingNow && minimalActive()) {
+    // in minimalist mode Step 1 is hidden, and the Create button is the one that says what is going on
+    setLabel($("create"), "Connecting\u2026");
+    setIcon($("create"), "connect");
+    $("create").disabled = true;
+  } else if (action) {
     const again = connection === "problem";
     setLabel($("create"), again ? (connectionKind === "reconnect" ? "Connect again" : "Try again") : "Connect Spotify");
     setIcon($("create"), again && connectionKind !== "reconnect" ? "retry" : "connect");
@@ -768,6 +935,10 @@ function updateButtonsNow() {
     $("spotifyNote").hidden = !noConnection;
   }
   $("removeNote").hidden = !noConnection;
+  if (minimalActive() && (signingIn || connection === "connecting" || signInNote)) {
+    $("spotifyNote").textContent = signingIn ? signInNote : connection === "connecting" ? "Connecting to Spotify. On a slow connection this can take a few seconds." : signInNote;
+    $("spotifyNote").hidden = false;
+  }
 }
 
 function connectionAction() {
@@ -881,28 +1052,54 @@ function fillConfirmList(listId, textId, text, list) {
 
 
 // ---------------------------------------------------------------- Spotify sign-in (PKCE, no server)
+// Signing in takes a few seconds on a slow connection, in two stretches: opening Spotify, then finishing the sign-in when Spotify sends the person back. In both the
+// Connect buttons say so and cannot be pressed again, since a second press would start a second sign-in over the first and spoil it.
+let signingIn = new URLSearchParams(location.search).has("code");   // coming back from Spotify: on from the first moment
+let signInNote = signingIn ? "Finishing the sign-in with Spotify. On a slow connection this can take a few seconds." : "";
+let signInTimer = null;
+
+function setSigningIn(flag, note = "") {
+  signingIn = flag;
+  signInNote = note;
+  clearTimeout(signInTimer);
+  if (flag) setLoginMessage(note);
+  updateButtons();
+}
+
 async function startLogin() {
+  if (signingIn) return;
   const clientId = $("clientId").value.trim();
   if (!clientId) {
     setLoginMessage("Paste your Client ID first.");
     return;
   }
   localStorage.setItem("clientId", clientId);
+  setSigningIn(true, "Opening Spotify. On a slow connection this can take a few seconds.");
   clearReportHints("loginReportHint");
   logStep("sign-in started");
   const verifier = randomString(96);
   const state = randomString(24);
   sessionStorage.setItem("pkceVerifier", verifier);
   sessionStorage.setItem("pkceState", state);
+  let challenge;
+  try { challenge = base64url(await sha256(verifier)); } catch (err) { setSigningIn(false); setLoginMessage("This browser could not start the sign-in: " + String(err && err.message || err)); return; }
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: "code",
     redirect_uri: redirectUri(),
     scope: SCOPES,
     code_challenge_method: "S256",
-    code_challenge: base64url(await sha256(verifier)),
+    code_challenge: challenge,
     state,
   });
+  // if Spotify has not opened after this long, say so, so the buttons are not left waiting for good
+  signInTimer = setTimeout(() => {
+    if (!signingIn) return;
+    setSigningIn(false);
+    signInNote = "Spotify did not open. Check your connection, then try again.";
+    setLoginMessage(signInNote);
+    updateButtons();
+  }, 30000);
   location.href = "https://accounts.spotify.com/authorize?" + params.toString();
 }
 
@@ -1123,6 +1320,7 @@ async function loadMyPlaylists() {
   // A format's backup in Spotify is known by what its description decodes to, whatever the playlist is called.
   for (const p of playlists) { const u = unpackFormat(p.description); p.save = u.kind === "none" ? null : u; p.isSave = !!p.save; }
   // The count shown in Step 1 always matches the list, including after playlists are created or removed.
+  playlistsLoadedAt = Date.now();
   $("connectedMessage").textContent = `Connected as ${me.display_name || me.id}. ${plural(playlists.length, "playlist")} found.`;
   if (typeof editorPlaylistsChanged === "function") editorPlaylistsChanged();
 }
@@ -1629,8 +1827,16 @@ function initDonateChoice() {
     radio.addEventListener("change", () => { if (!radio.disabled && radio.checked) chooseBackupMode(radio.value); });
   }
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && backupCardOpen) dismissBackupCard(); });
+  // Back from Spotify's page, a browser may show this page as it was left, with the buttons still waiting
+  window.addEventListener("pageshow", (event) => { if (event.persisted && signingIn) { setSigningIn(false); setLoginMessage(""); } });
+  // the connection coming back after a failed save: try again, without waiting to be asked
+  window.addEventListener("online", () => { if (backupMode() === "spotify" && saveState.error) { saveState.error = ""; scheduleSpotifySave(500); } });
   // someone leaving the page, or switching to another app, does not wait for the pause: whatever has not been saved is saved now
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && saveState.timer && backupMode() === "spotify") runSpotifySave(); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden" && saveState.timer && backupMode() === "spotify") runSpotifySave();
+    // coming back after a while: another device may have changed a backup, so the account's playlists are read again
+    if (document.visibilityState === "visible" && backupMode() === "spotify" && connection === "ready" && playlistsLoadedAt && Date.now() - playlistsLoadedAt > playlistRefreshMs && !saveState.running) loadMyPlaylists().catch(() => {});
+  });
   refreshBackupCard();
   applyBackupMode();
   applyDonateChoice();
@@ -1872,12 +2078,14 @@ async function main() {
   });
   refreshBackupStatus();
 
+  if (signingIn) { setLoginMessage(signInNote); updateButtons(); }   // coming back from Spotify: say so before the sign-in is finished
   try {
     await finishLoginIfReturning();
   } catch (err) {
     setLoginMessage(String(err.message || err));
     offerReport("loginReportHint", String(err.message || err));
   }
+  setSigningIn(false);   // the sign-in is over, one way or the other: from here the connection itself is what the buttons follow
   token = loadStoredToken();
   if (!token && needsReconnect) {
     if ($("welcomeBack").hidden) revealLoginProblem();
