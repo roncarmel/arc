@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-30p">
-<script src="theme.js?v=2026-10-30p"></script>
+<meta name="app-version" content="2026-10-30r">
+<script src="theme.js?v=2026-10-30r"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -146,6 +146,7 @@
   #formatEditor .fe-sp-title { font-weight: 600; flex: 1; min-width: 0; }
   #formatEditor .fe-sp-status { color: var(--muted); font-size: 0.8rem; line-height: 1.3; padding: 0 0 0 28px; }
   #formatEditor .fe-sp-disconnect { flex: none; min-height: 36px; padding: 0 12px; font-size: 0.9rem; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 10px; }
+  #formatEditor .fe-version { padding: 4px 12px 6px; color: var(--muted); font-size: 0.78rem; }   /* the last line of the app menu: which version this is */
   #formatEditor .fe-bk-actions { display: flex; gap: 6px; padding: 0 6px 6px; }
   #formatEditor .fe-bk-actions button { flex: 1; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; padding: 0 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 10px; font: inherit; font-weight: 600; }
   #formatEditor .fe-itemnote { width: 0; min-width: 100%; box-sizing: border-box; padding: 0 12px 6px 40px; margin-top: -4px; font-size: 0.78rem; color: var(--muted); line-height: 1.3; }   /* the last-backup label, under its item, wrapping inside the menu */
@@ -322,7 +323,7 @@
   body.minimal.has-editor h1.brand { display: none; }
   body.minimal.has-editor main { padding-top: 10px; }   /* the same gap as between the tabs and the card */
   #formatEditor .fe-emptynote { margin: 8px 0 0; }
-  #formatEditor .fe-appicon { display: none; cursor: default; -webkit-tap-highlight-color: transparent; -webkit-user-drag: none; }   /* pressing it shows the version, but nothing about it says so: no pointer, no hover, no highlight */
+  #formatEditor .fe-appicon { display: none; }
   @media (min-width: 760px) {
     body.minimal #formatEditor .fe-appicon { display: block; width: 44px; height: 44px; flex: none; border-radius: 22%; }   /* narrow screens need the room for the tabs */
   }
@@ -821,8 +822,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-30p"></script>
-<script src="editor.js?v=2026-10-30p"></script>
-<script src="app.js?v=2026-10-30p"></script>
+<script src="formats.js?v=2026-10-30r"></script>
+<script src="editor.js?v=2026-10-30r"></script>
+<script src="app.js?v=2026-10-30r"></script>
 </body>
 </html>
