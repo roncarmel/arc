@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-30m";
+const APP_VERSION = "2026-10-30n";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1195,6 +1195,15 @@ function loadStoredToken() {
   return null;
 }
 
+// Disconnecting signs out on this device and deletes the songs the app keeps of the playlists, which are only there to make building quicker. It asks first, and says what
+// is not touched, because the second part is easy to take for something worse than it is.
+async function confirmDisconnect() {
+  const choice = await askSyncChoice("Disconnect from Spotify?",
+    "This signs you out of Spotify on this device. Your formats and your backups are not touched. The next time you build, the app reads your playlists from Spotify again, which takes a little longer.",
+    [{ label: "Disconnect", value: "yes" }, { label: "Cancel", value: "no" }], { focusLast: true });
+  if (choice === "yes") await disconnect();
+}
+
 async function disconnect() {
   sessionStorage.removeItem("token");
   await Promise.race([forgetAllSongs(), new Promise((r) => setTimeout(r, 1500))]);   // the songs kept from this account go with the sign-in
@@ -2060,7 +2069,7 @@ async function main() {
   on("clearYes", "click", clearSavedData);
   on("connect", "click", startLogin);
   on("connectReturning", "click", startLogin);
-  on("disconnect", "click", disconnect);
+  on("disconnect", "click", confirmDisconnect);
   on("connectionRetry", "click", connectToSpotify);
   on("connectionReconnect", "click", startLogin);
   on("create", "click", () => startCreate());

@@ -255,7 +255,7 @@ function askSyncChoice(title, text, choices, options = {}) {
         feEl("div", { class: "row" }, ...buttons)));
     document.body.appendChild(overlay);
     document.addEventListener("keydown", onKey);
-    buttons[0].focus();
+    (options.focusLast ? buttons[buttons.length - 1] : buttons[0]).focus();   // a question about something that cannot be taken back starts on the safe answer
   });
 }
 
@@ -440,7 +440,10 @@ function renderAppMenu() {
   // Connecting from the menu: with a saved Client ID, Connect Spotify; and, in minimalist mode where Step 1 is hidden, the way out of a problem.
   const reconnect = connectionKind === "reconnect";
   const connectItems = [];
-  if (connection === "none" && localStorage.getItem("clientId")) {
+  if (connection === "connecting") {
+    connectItems.push(feEl("div", { class: "fe-sp-block" }, feEl("div", { class: "fe-sp-row" }, feIcon("link"), feEl("span", { class: "fe-sp-title", id: "feConnecting", text: "Connecting to Spotify\u2026" })),
+      feEl("div", { class: "fe-sp-status", text: "On a slow connection this can take a few seconds." })));
+  } else if (connection === "none" && localStorage.getItem("clientId")) {
     connectItems.push(feEl("button", { type: "button", class: "fe-item", id: "feConnect", role: "menuitem", onClick: choose(() => startLogin()) }, feIcon("link"), "Connect Spotify"));
   } else if (connection === "problem" && minimalActive()) {
     connectItems.push(feEl("button", { type: "button", class: "fe-item", id: reconnect ? "feReconnect" : "feRetry", role: "menuitem", onClick: choose(() => (reconnect ? startLogin() : connectToSpotify())) }, feIcon(reconnect ? "link" : "retry"), reconnect ? "Connect again" : "Try again"));
@@ -460,6 +463,12 @@ function renderAppMenu() {
     feEl("button", { type: "button", id: "feBackup", role: "menuitem", onClick: choose(() => downloadBackup()) }, feIcon("download"), "Back up now"),
     feEl("button", { type: "button", id: "feRestore", role: "menuitem", onClick: choose(() => $("restoreFile").click()) }, feIcon("restore"), "Restore"));
   const backupBlock = feEl("div", { class: "fe-bk-block" }, head, actions);
+  // Spotify, when it is connected: what is connected and who to, and the way out, small and to the side, since it is hardly ever wanted
+  const who = typeof me !== "undefined" && me ? (me.display_name || me.id) : "";
+  const spotifyRow = feEl("div", { class: "fe-sp-block" },
+    feEl("div", { class: "fe-sp-row" }, feIcon("link"), feEl("span", { class: "fe-sp-title", text: "Spotify connected" }),
+      feEl("button", { type: "button", class: "fe-sp-disconnect", id: "feDisconnect", role: "menuitem", onClick: choose(() => confirmDisconnect()), text: "Disconnect" })),
+    who ? feEl("div", { class: "fe-sp-status", id: "feConnectedStatus", text: `Connected as ${who}, ${plural(playlists.length, "playlist")} found.` }) : null);
   const minimalButton = feEl("button", { type: "button", class: "fe-item", id: "feMinimal", role: "menuitemcheckbox", "aria-checked": String(on), onClick: toggleMinimal }, box, "Minimalist mode");
   if (!available) minimalButton.disabled = true;
   slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" },
@@ -469,7 +478,7 @@ function renderAppMenu() {
     ...(!available ? [feEl("div", { class: "fe-itemnote", id: "feMinimalNote", text: "Available after you first connect to Spotify." })] : []),
     feEl("div", { class: "fe-rule" }),
     backupBlock,
-    ...(connection === "ready" ? [feEl("div", { class: "fe-rule" }), feEl("button", { type: "button", class: "fe-item", id: "feDisconnect", role: "menuitem", onClick: choose(() => disconnect()) }, feIcon("unplug"), "Disconnect Spotify")] : [])));
+    ...(connection === "ready" ? [feEl("div", { class: "fe-rule" }), spotifyRow] : [])));
 }
 
 // A menu, list or card that would run off the bottom of the screen opens upward instead (or, if there is no more room above,
