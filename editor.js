@@ -125,13 +125,54 @@ function coverEl(name, size, extraClass) {
 }
 
 // ---------------------------------------------------------------- writing changes back
+// ---------------------------------------------------------------- the size limit
+// A format has to fit in the description of a Spotify playlist (SAVE_LIMIT characters), in both backup modes, so that a format that works in one works in the other.
+// Whatever is done to a format that would make its save longer than that is not done: the format goes back to how it was, and a note says why. Making a format
+// shorter is always allowed, which is how one that is already too long gets back under the limit.
+const SIZE_MESSAGE = "This format has reached its size limit. Remove a segment or a mix to make room.";
+const formatSnapshots = new Map();   // a format's id -> the format as last accepted, and the length of its save
+
+function copyItems(items) {
+  return items.map((it) => ({ id: it.id, kind: it.kind, minutes: it.minutes, lists: it.lists.map((l) => ({ ...l })) }));
+}
+
+function snapshotFormats(model) {
+  formatSnapshots.clear();
+  for (const f of model.formats) formatSnapshots.set(f.id, { title: f.title, gap: f.gap, gaps: (f.gaps || []).slice(), lead: f.lead, rev: f.rev, modified: f.modified, items: copyItems(f.items), length: saveLength(f) });
+}
+
+function restoreFormat(f, s) {
+  f.title = s.title; f.gap = s.gap; f.gaps = s.gaps.slice(); f.lead = s.lead; f.rev = s.rev; f.modified = s.modified; f.items = copyItems(s.items);
+  ensureGaps(f);
+}
+
+// Would one more segment, or one more playlist in a segment's mix, push the format past the limit?
+function noRoomForSegment(f) {
+  const trial = { ...f, gaps: f.gaps.slice(), items: copyItems(f.items).concat([{ id: "trial", kind: "seg", minutes: 20, lists: [{ name: "", weight: 1 }] }]) };
+  trial.gaps.push(undefined);
+  return saveLength(trial) > SAVE_LIMIT;
+}
+
+function noRoomForMix(f, item) {
+  const trial = { ...f, items: copyItems(f.items).map((it) => (it.id === item.id ? { ...it, lists: it.lists.concat([{ name: "", weight: 50 }]) } : it)) };
+  return saveLength(trial) > SAVE_LIMIT;
+}
+
 function commit() {
+  editor.refused = false;
+  for (const f of editor.model.formats) {
+    const before = formatSnapshots.get(f.id);
+    if (!before || FORMAT_SIGNATURES.get(f) === formatSignature(f)) continue;   // new, or not changed by this edit
+    const length = saveLength(f);
+    if (length > SAVE_LIMIT && length > before.length) { restoreFormat(f, before); editor.refused = true; }
+  }
   touchFormats(editor.model);   // a format whose content changed gets its next revision number and its edit time
   const text = modelToText(editor.model);
   editor.internal = true;
   $("formats").value = text;
   $("formats").dispatchEvent(new Event("input", { bubbles: true }));
   editor.internal = false;
+  snapshotFormats(editor.model);
 }
 
 // A playlist in a format is known by its Spotify ID, and its name is kept up to date from it, so renaming a playlist in Spotify does not break the format.
@@ -177,6 +218,7 @@ function syncEditorFromText() {
     editor.model = null;
     editor.broken = String(err.message || err);
   }
+  if (editor.model) snapshotFormats(editor.model);
   if (editor.model && syncPlaylistRefs()) commitHealed();
   if (editor.model && !editor.model.formats.some((f) => f.id === editor.activeId)) {
     editor.activeId = editor.model.formats.length ? editor.model.formats[0].id : null;
@@ -576,7 +618,9 @@ function renderRows(settle) {
   holder.innerHTML = "";
   f.items.forEach((item, index) => holder.appendChild(rowEl(f, item, index)));
   equalizeAmounts();
-  holder.appendChild(feEl("button", { type: "button", class: "fe-add", id: "feAddSegment", onClick: addSegment }, feIcon("plus"), "New segment"));
+  const full = noRoomForSegment(f);
+  holder.appendChild(feEl("button", { type: "button", class: "fe-add", id: "feAddSegment", disabled: full ? true : undefined, onClick: addSegment }, feIcon("plus"), "New segment"));
+  if (full || editor.refused) holder.appendChild(feEl("p", { class: "muted", id: "feSizeNote", role: "status", text: SIZE_MESSAGE }));
   const rootEl = $("formatEditor");
   if (rootEl) rootEl.classList.toggle("fe-hastags", f.items.some((x, index) => gapInfo(f, index + 1).show));
   updateTagHang();
@@ -747,8 +791,9 @@ function menuPanel(f, item, index) {
   const mixed = item.lists.length > 1;
   const pop = feEl("div", { class: "fe-pop fe-menu" });
   if (!mixed) {
+    const noRoom = noRoomForMix(f, item);
     pop.appendChild(feEl("button", {
-      type: "button", class: "fe-item", id: "feAddMix",
+      type: "button", class: "fe-item", id: "feAddMix", disabled: noRoom ? true : undefined,
       onClick: () => {
         const used = item.lists[0].name;
         const other = readablePlaylists().find((p) => normName(p.name) !== normName(used));
@@ -757,6 +802,7 @@ function menuPanel(f, item, index) {
         commit(); renderRows(); renderTimeline();
       },
     }, feIcon("plus"), "Add a mix"));
+    if (noRoom) pop.appendChild(feEl("div", { class: "fe-itemnote", id: "feMixNote", text: "No room: this format has reached its size limit." }));
   } else {
     pop.appendChild(feEl("button", { type: "button", class: "fe-item", id: "feEditMix", onClick: () => setPanel(item.id, "mix") }, feIcon("sliders"), "Edit mix"));
     pop.appendChild(feEl("button", { type: "button", class: "fe-item", id: "feRemoveMix", onClick: () => removeMix(item) }, feIcon("minus"), "Remove mix"));
@@ -886,7 +932,7 @@ function stepItem(item, direction) {
 
 function addSegment() {
   const f = activeFormat();
-  if (!f) return;
+  if (!f || noRoomForSegment(f)) return;
   ensureGaps(f);
   const item = { id: `r${++ROW_SEQ}`, kind: "seg", lists: [{ name: "", weight: 1 }], minutes: 20 };
   f.items.push(item);

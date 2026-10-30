@@ -375,7 +375,7 @@ function rememberFormats(model) {
 //   bytes:  length of what follows | "C" "P" version | the format | CRC-16 of "C" "P" version and the format
 //   format: id, title (each a length and UTF-8), revision, edit time (seconds since the start of 2026), default silence, silence before the first segment,
 //           the silences of their own (count; place and seconds), then the segments (count; seconds, and the playlists of each: count; for each, a kind
-//           byte, then a 16 byte Spotify ID, or the ID as text, or the name as text, and the weight)
+//           byte, then the last 6 bytes of a Spotify ID, or all 16 where another playlist ends the same way, or the ID as text, or the name as text, and the weight)
 const SAVE_PREFIX = "Do not edit. ";
 const SAVE_VERSION = 1;
 const SAVE_EPOCH = 1767225600;
@@ -390,6 +390,13 @@ function spotifyIdToBytes(id) {
   const out = [];
   for (let i = 0; i < 16; i++) { out.unshift(Number(n & 0xffn)); n >>= 8n; }
   return out;
+}
+
+// The last 6 bytes of a Spotify ID: 48 bits that tell your playlists apart (the front of an ID is not safe to use, since Spotify's own playlists share a long
+// beginning). It is how a playlist is kept in a save, when no other playlist of yours ends the same way.
+function tailOfId(id) {
+  const bytes = spotifyIdToBytes(id);
+  return bytes ? bytes.slice(10).map((b) => b.toString(16).padStart(2, "0")).join("") : null;
 }
 
 function bytesToSpotifyId(bytes) {
@@ -432,8 +439,12 @@ function denseEncode(bytes) {
   return out;
 }
 
-function packFormat(fmt) {
+// allIds: the IDs of all the playlists of the account, which are used to see whether another playlist ends like one of this format's. Where one does, that
+// playlist is written in full. With none given, every playlist is taken to be the only one with its ending.
+function packFormat(fmt, allIds) {
   ensureGaps(fmt);
+  const tails = new Map();
+  if (allIds) for (const other of allIds) { const t = tailOfId(other); if (t) tails.set(t, (tails.get(t) || new Set()).add(other)); }
   const body = [];
   writeText(body, fmt.id);
   writeText(body, fmt.title);
@@ -451,7 +462,9 @@ function packFormat(fmt) {
     writeVarint(body, item.lists.length);
     for (const l of item.lists) {
       const idBytes = l.id ? spotifyIdToBytes(l.id) : null;
-      if (idBytes) { body.push(1); for (const b of idBytes) body.push(b); }
+      const shared = idBytes && tails.has(tailOfId(l.id)) && [...tails.get(tailOfId(l.id))].some((other) => other !== l.id);
+      if (idBytes && shared) { body.push(1); for (const b of idBytes) body.push(b); }
+      else if (idBytes) { body.push(3); for (const b of idBytes.slice(10)) body.push(b); }
       else if (l.id) { body.push(2); writeText(body, l.id); }
       else { body.push(0); writeText(body, l.name); }
       writeVarint(body, l.weight);
@@ -464,6 +477,32 @@ function packFormat(fmt) {
   writeVarint(all, payload.length);
   for (const b of payload) all.push(b);
   return SAVE_PREFIX + denseEncode(all);
+}
+
+// A save keeps most playlists as the last 6 bytes of their ID. Given the IDs of the account's playlists, this turns each of those back into the full ID, when exactly
+// one playlist ends that way. When none does (the playlist is gone) or several do (one was added since), that playlist is left without an ID, and counted: it is
+// shown as not found and can be picked again. Returns how many were left.
+function resolveSaveTails(format, allIds) {
+  const byTail = new Map();
+  for (const id of allIds) { const t = tailOfId(id); if (t) byTail.set(t, (byTail.get(t) || []).concat(id)); }
+  let left = 0;
+  for (const item of format.items) {
+    for (const l of item.lists) {
+      if (!l.tail) continue;
+      const found = byTail.get(l.tail) || [];
+      if (found.length === 1) l.id = found[0]; else left += 1;
+      delete l.tail;
+    }
+  }
+  return left;
+}
+
+// How long a format's save is, for the size limit: its description as it would be written, with a playlist not yet linked counted as one that is.
+const SAVE_LIMIT = 300;
+const PLACEHOLDER_ID = "3" + "0".repeat(21);
+function saveLength(fmt) {
+  const copy = Object.assign({}, fmt, { items: fmt.items.map((it) => Object.assign({}, it, { lists: it.lists.map((l) => Object.assign({}, l, { id: l.id || PLACEHOLDER_ID })) })) });
+  return packFormat(copy).length;
 }
 
 // What a description is: { kind: "save", format } for a good save; { kind: "newer" } for a save from a newer version of the app, which is to be left
@@ -516,6 +555,7 @@ function unpackFormat(description) {
         const kind = u8();
         let list;
         if (kind === 1) list = { name: "", id: bytesToSpotifyId(take(16)) };
+        else if (kind === 3) list = { name: "", tail: take(6).map((b) => b.toString(16).padStart(2, "0")).join("") };
         else if (kind === 2) list = { name: "", id: str() };
         else if (kind === 0) list = { name: str() };
         else fail();
