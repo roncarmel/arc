@@ -252,9 +252,9 @@ function textToModel(text, allowEmpty) {
       const minutes = Number(amount);
       if (!Number.isFinite(minutes) || minutes <= 0) throw new Error(`A segment needs a number of minutes, such as ("Warm up", 20). Got: ${JSON.stringify(amount)}.`);
       let lists;
-      if (spec instanceof PyDict) lists = spec.pairs.map(([name, weight]) => ({ name: String(name), weight: Number(weight) || 1 }));
-      else if (Array.isArray(spec)) lists = spec.map((name) => ({ name: String(name), weight: 1 }));
-      else lists = [{ name: String(spec), weight: 1 }];
+      if (spec instanceof PyDict) lists = spec.pairs.map(([name, weight]) => ({ ...splitPlaylistRef(name), weight: Number(weight) || 1 }));
+      else if (Array.isArray(spec)) lists = spec.map((name) => ({ ...splitPlaylistRef(name), weight: 1 }));
+      else lists = [{ ...splitPlaylistRef(spec), weight: 1 }];
       if (items.length === 0) lead = pending || 0;
       else gaps[items.length] = pending === null ? undefined : pending;
       pending = null;
@@ -271,6 +271,19 @@ function textToModel(text, allowEmpty) {
 
 function pyString(s) { return JSON.stringify(String(s)); }
 
+// A playlist in the saved text is its name followed by its Spotify ID: "Soft landing [id:37i9dQZF1DXcBWIGoYBM5M]". The ID is what the app goes by, so a
+// playlist keeps working after it is renamed in Spotify; the name stays in the text so the text can be read, and is what the engine sees.
+function splitPlaylistRef(text) {
+  const m = String(text).match(/^(.*) \[id:([0-9A-Za-z_-]{1,64})\]$/s);
+  return m ? { name: m[1], id: m[2] } : { name: String(text) };
+}
+function withoutPlaylistIds(text) {
+  return String(text).replace(/ \[id:[0-9A-Za-z_-]{1,64}\](?=["'])/g, "");
+}
+function joinPlaylistRef(list) {
+  return list.id ? `${list.name} [id:${list.id}]` : list.name;
+}
+
 function modelToText(model) {
   const out = ["FORMATS = {"];
   for (const fmt of model.formats) {
@@ -284,9 +297,9 @@ function modelToText(model) {
     if (fmt.lead > 0) out.push(`            ("silence", ${pyString(formatSilenceText(fmt.lead))}),`);
     fmt.items.forEach((item, index) => {
       if (item.lists.length === 1) {
-        out.push(`            (${pyString(item.lists[0].name)}, ${item.minutes}),`);
+        out.push(`            (${pyString(joinPlaylistRef(item.lists[0]))}, ${item.minutes}),`);
       } else {
-        const pairs = item.lists.map((l) => `${pyString(l.name)}: ${l.weight}`).join(", ");
+        const pairs = item.lists.map((l) => `${pyString(joinPlaylistRef(l))}: ${l.weight}`).join(", ");
         out.push(`            ({${pairs}}, ${item.minutes}),`);
       }
       const g = index + 1;

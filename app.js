@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-29l";
+const APP_VERSION = "2026-10-29n";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -824,15 +824,33 @@ async function runDescriptionTest() {
       say(`${label}: ${sent} characters sent, ${kept} kept, first difference at character ${at + 1}`);
       return false;
     };
+    let failedAt = 0;
     for (const n of [100, 200, 300, 301, 400, 500, 1000, 2000, 4000, 8000, 10000]) {
       const ok = await probe(`plain text, ${n}`, plain(n));
-      if (!ok) break;
+      if (!ok) { failedAt = n; break; }
       longest = n;
     }
+    // narrow down the exact limit between the last length that worked and the first that did not
+    let lo = longest, hi = failedAt;
+    while (hi - lo > 1) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (await probe(`plain text, ${mid}`, plain(mid))) lo = mid; else hi = mid;
+    }
+    longest = lo;
     say("Longest plain description kept in full: " + longest + " characters.");
     await probe("letters, digits, - and _ (100)", safe64(100));
     await probe("dense Unicode, 100 characters from the CJK block", dense(100));
-    await probe("quotes, angle brackets, ampersand, line break, emoji", "He said \"hi\" & 'bye' <b>x</b> line1\nline2 \u{1F600} \u00e9");
+    // the same kind of text at the lengths that matter: Spotify's own app stops at 300 characters, so see where this goes
+    let denseOk = 0;
+    for (const n of [200, 300, 301, 400, 500, 700, 1000]) {
+      if (!(await probe(`dense Unicode, ${n}`, dense(n)))) break;
+      denseOk = n;
+    }
+    say("Longest dense Unicode description kept in full: " + denseOk + " characters.");
+    await probe("300 emoji", "\u{1F600}".repeat(300));
+    for (const [label, c] of [["a double quote", '"'], ["a single quote", "'"], ["a less-than sign", "<"], ["a greater-than sign", ">"], ["an ampersand", "&"], ["a line break", "\n"], ["an emoji", "\u{1F600}"], ["an accented letter", "\u00e9"], ["a check mark", "\u2713"], ["a backslash", "\\"], ["a tilde, a caret and a pipe", "~^|"]]) {
+      await probe(label, "ab" + c + "cd");
+    }
     await probe("plus, slash and equals signs", "a+b/c==");
   } catch (err) {
     say("The test stopped: " + err.message);

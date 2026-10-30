@@ -133,6 +133,40 @@ function commit() {
   editor.internal = false;
 }
 
+// A playlist in a format is known by its Spotify ID, and its name is kept up to date from it, so renaming a playlist in Spotify does not break the format.
+// A playlist without an ID yet (a format written by hand, or from before IDs) is given one when exactly one playlist of yours has that name;
+// one whose ID is no longer among your playlists (deleted and made again) is found again by its name. Returns whether anything changed.
+function syncPlaylistRefs() {
+  if (!editor.model || !playlists.length) return false;
+  const byId = new Map(playlists.map((p) => [p.id, p]));
+  const readable = readablePlaylists();
+  let changed = false;
+  for (const f of editor.model.formats) {
+    for (const item of f.items) {
+      for (const l of item.lists) {
+        const known = l.id && byId.get(l.id);
+        if (known) {
+          if (normName(known.name) !== normName(l.name)) { l.name = known.name; changed = true; }   // a real rename, not a difference in capitals or spacing
+          continue;
+        }
+        if (!l.name) continue;
+        const same = readable.filter((p) => normName(p.name) === normName(l.name));
+        if (same.length === 1 && l.id !== same[0].id) { l.id = same[0].id; changed = true; }
+      }
+    }
+  }
+  return changed;
+}
+
+// Saves the text after playlist IDs were added or a renamed playlist's name was brought up to date. That is not an edit of the formats, so a backup that was
+// current stays current.
+function commitHealed() {
+  const wasCurrent = typeof backupState === "function" && backupState().kind === "current";
+  commit();
+  if (wasCurrent) localStorage.setItem("lastBackupText", $("formats").value);
+  if (typeof refreshBackupStatus === "function") refreshBackupStatus();
+}
+
 function syncEditorFromText() {
   try {
     editor.model = textToModel($("formats").value, true);
@@ -141,6 +175,7 @@ function syncEditorFromText() {
     editor.model = null;
     editor.broken = String(err.message || err);
   }
+  if (editor.model && syncPlaylistRefs()) commitHealed();
   if (editor.model && !editor.model.formats.some((f) => f.id === editor.activeId)) {
     editor.activeId = editor.model.formats.length ? editor.model.formats[0].id : null;
   }
@@ -189,7 +224,9 @@ function focusSearchBox() {
 function editorThemeChanged() { /* every color in the editor is a CSS variable, so there is nothing to redraw */ }
 
 function editorPlaylistsChanged() {
-  if (editor.model) renderRows();
+  if (!editor.model) return;
+  if (syncPlaylistRefs()) { commitHealed(); renderEditor(); return; }
+  renderRows();
 }
 
 // ---------------------------------------------------------------- drawing
@@ -712,7 +749,7 @@ function menuPanel(f, item, index) {
       onClick: () => {
         const used = item.lists[0].name;
         const other = readablePlaylists().find((p) => normName(p.name) !== normName(used));
-        item.lists = [{ name: used, weight: 50 }, { name: other ? other.name : "", weight: 50 }];
+        item.lists = [{ name: used, id: item.lists[0].id, weight: 50 }, { name: other ? other.name : "", id: other ? other.id : undefined, weight: 50 }];
         editor.panel = { id: item.id, mode: "mix" };
         commit(); renderRows(); renderTimeline();
       },
@@ -757,7 +794,7 @@ function removeSegment(f, index) {
 }
 
 function removeMix(item) {
-  item.lists = [{ name: item.lists[0].name, weight: 1 }];
+  item.lists = [{ name: item.lists[0].name, id: item.lists[0].id, weight: 1 }];
   editor.panel = null;
   commit(); renderRows(); renderTimeline();
 }
@@ -806,8 +843,9 @@ function listPanel(item, slot) {
   const search = feEl("input", { type: "search", class: "fe-search", id: "feSearch", placeholder: "Search your playlists", "aria-label": "Search your playlists", autocomplete: "off" });
   search.value = editor.search;
 
-  const choose = (name) => {
-    item.lists[slot].name = name;
+  const choose = (p) => {
+    item.lists[slot].name = p.name;
+    item.lists[slot].id = p.id;
     editor.panel = mixed ? { id: item.id, mode: "mix" } : null;
     editor.search = "";
     commit(); renderRows(); renderTimeline();
@@ -823,7 +861,7 @@ function listPanel(item, slot) {
       const taken = mixed && normName(p.name) === other;
       list.appendChild(feEl("button", {
         type: "button", class: "fe-option" + (normName(p.name) === current ? " fe-option-on" : ""), "data-name": p.name,
-        disabled: taken ? true : undefined, onClick: () => choose(p.name),
+        disabled: taken ? true : undefined, onClick: () => choose(p),
       }, coverEl(p.name, 32),
       feEl("span", { class: "fe-text" }, feEl("span", { class: "fe-title", text: p.name }),
         feEl("span", { class: "fe-sub", text: taken ? "Already in this mix" : (typeof p.count === "number" ? `${p.count} songs` : "") }))));

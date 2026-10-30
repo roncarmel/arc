@@ -221,6 +221,8 @@ def letters(i):
 def parse_formats(text):
     """Read the formats text. It can be the whole 'FORMATS = {...}' line or just the {...} part."""
     text = re.sub(r"^\s*FORMATS\s*=\s*", "", text.strip())
+    # the app writes a playlist as "name [id:...]" so it can follow a rename; the engine goes by the name alone
+    text = re.sub(r" \[id:[0-9A-Za-z_-]{1,64}\](?=[\"'])", "", text)
     try:
         data = ast.literal_eval(text)
     except (ValueError, SyntaxError) as err:
