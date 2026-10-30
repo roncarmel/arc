@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-29n";
+const APP_VERSION = "2026-10-29p";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -795,69 +795,48 @@ function rateLimitError(wait, reason) {
   return error;
 }
 
-// TEMPORARY: finds out how much text Spotify keeps in a playlist description, and which characters survive. Only reachable with ?diag in the address.
-async function runDescriptionTest() {
+// TEMPORARY: finds out whether Spotify's playlist list includes each playlist's description, or whether it takes a separate request. Only reachable with ?diag in the address.
+async function runListTest() {
   const box = $("diagOutput"), lines = [];
   const say = (s) => { lines.push(s); box.textContent = lines.join("\n"); };
   if (connection !== "ready") { say("Connect to Spotify first."); return; }
   const pause = (ms) => new Promise((r) => setTimeout(r, ms));
   const decode = (s) => { const t = document.createElement("textarea"); t.innerHTML = s; return t.value; };
-  const plain = (n) => { const a = "abcdefghijklmnopqrstuvwxyz0123456789"; let s = ""; for (let i = 0; i < n; i++) s += a[(i * 7 + (i >> 3)) % a.length]; return s; };
-  const safe64 = (n) => { const a = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"; let s = ""; for (let i = 0; i < n; i++) s += a[(i * 13 + (i >> 2)) % a.length]; return s; };
-  const dense = (n) => { let s = ""; for (let i = 0; i < n; i++) s += String.fromCodePoint(0x4e00 + ((i * 37) % 2000)); return s; };
-  let id = null, longest = 0;
+  const dense = (n, shift) => { let s = ""; for (let i = 0; i < n; i++) s += String.fromCodePoint(0x4e00 + ((i * 37 + shift) % 2000)); return s; };
+  let id = null;
+  const look = async (label, expected) => {
+    const started = Date.now();
+    const all = await pagedItems("/me/playlists?limit=50");
+    const mine = all.filter(Boolean).find((p) => p.id === id);
+    const secs = ((Date.now() - started) / 1000).toFixed(1);
+    if (!mine) { say(`${label}: the test playlist was not in the list (${secs} s)`); return; }
+    if (typeof mine.description !== "string") { say(`${label}: the list has NO description for it (${typeof mine.description}), so a separate request would be needed`); return; }
+    const got = decode(mine.description);
+    say(`${label}: the list shows the description, ${Array.from(got).length} characters, ${got === expected ? "identical to what was saved" : "NOT identical to what was saved"} (${secs} s for ${all.length} playlists)`);
+  };
   try {
-    const made = await spotifyRequest("POST", "/me/playlists", { json: { name: "Description limit test (safe to delete)", public: false, description: "" } });
+    const first = dense(280, 0);
+    const made = await spotifyRequest("POST", "/me/playlists", { json: { name: "List test (safe to delete)", public: false, description: first } });
     id = made.id;
-    say("Test playlist made (private).");
-    const probe = async (label, text) => {
-      const sent = Array.from(text).length;
-      try { await spotifyRequest("PUT", `/playlists/${id}`, { json: { description: text } }); }
-      catch (err) { say(`${label}: Spotify refused it (${err.message})`); return false; }
-      await pause(600);
-      const back = await spotifyRequest("GET", `/playlists/${id}`, { params: { fields: "description" } });
-      const got = decode((back && back.description) || "");
-      const kept = Array.from(got).length;
-      if (got === text) { say(`${label}: ${sent} characters, all kept`); return true; }
-      let at = 0; const a = Array.from(text), b = Array.from(got);
-      while (at < a.length && a[at] === b[at]) at++;
-      say(`${label}: ${sent} characters sent, ${kept} kept, first difference at character ${at + 1}`);
-      return false;
-    };
-    let failedAt = 0;
-    for (const n of [100, 200, 300, 301, 400, 500, 1000, 2000, 4000, 8000, 10000]) {
-      const ok = await probe(`plain text, ${n}`, plain(n));
-      if (!ok) { failedAt = n; break; }
-      longest = n;
-    }
-    // narrow down the exact limit between the last length that worked and the first that did not
-    let lo = longest, hi = failedAt;
-    while (hi - lo > 1) {
-      const mid = Math.floor((lo + hi) / 2);
-      if (await probe(`plain text, ${mid}`, plain(mid))) lo = mid; else hi = mid;
-    }
-    longest = lo;
-    say("Longest plain description kept in full: " + longest + " characters.");
-    await probe("letters, digits, - and _ (100)", safe64(100));
-    await probe("dense Unicode, 100 characters from the CJK block", dense(100));
-    // the same kind of text at the lengths that matter: Spotify's own app stops at 300 characters, so see where this goes
-    let denseOk = 0;
-    for (const n of [200, 300, 301, 400, 500, 700, 1000]) {
-      if (!(await probe(`dense Unicode, ${n}`, dense(n)))) break;
-      denseOk = n;
-    }
-    say("Longest dense Unicode description kept in full: " + denseOk + " characters.");
-    await probe("300 emoji", "\u{1F600}".repeat(300));
-    for (const [label, c] of [["a double quote", '"'], ["a single quote", "'"], ["a less-than sign", "<"], ["a greater-than sign", ">"], ["an ampersand", "&"], ["a line break", "\n"], ["an emoji", "\u{1F600}"], ["an accented letter", "\u00e9"], ["a check mark", "\u2713"], ["a backslash", "\\"], ["a tilde, a caret and a pipe", "~^|"]]) {
-      await probe(label, "ab" + c + "cd");
-    }
-    await probe("plus, slash and equals signs", "a+b/c==");
+    say("Test playlist made (private), with a 280 character description.");
+    await look("Right after it was made", first);
+    const second = dense(280, 11);
+    await spotifyRequest("PUT", `/playlists/${id}`, { json: { description: second } });
+    say("Description changed with an update.");
+    await look("Straight away after the update", second);
+    await pause(3000);
+    await look("Three seconds later", second);
+    const everything = await pagedItems("/me/playlists?limit=50");
+    const real = everything.filter(Boolean).filter((p) => p.id !== id);
+    const withText = real.filter((p) => typeof p.description === "string" && p.description !== "").length;
+    const withNull = real.filter((p) => p.description === null || p.description === undefined).length;
+    say(`Across your other ${real.length} playlists: ${withText} show a description, ${withNull} show none at all, and the rest are empty.`);
   } catch (err) {
     say("The test stopped: " + err.message);
   } finally {
     if (id) {
       try { await spotifyRequest("DELETE", "/me/library", { params: { uris: "spotify:playlist:" + id } }); say("Test playlist removed."); }
-      catch (err) { say("The test playlist could not be removed. It is private and called \"Description limit test (safe to delete)\": remove it in Spotify."); }
+      catch (err) { say("The test playlist could not be removed. It is private and called \"List test (safe to delete)\": remove it in Spotify."); }
     }
   }
 }
@@ -1469,7 +1448,7 @@ function setDonateChoice(choice) {
 
 function initDonateChoice() {
   on("donateHideBox", "change", () => setDonateChoice($("donateHideBox").checked ? "donated" : ""));
-  if (/[?&]diag(=|&|$)/.test(location.search) && $("diagBox")) { $("diagBox").hidden = false; on("diagRun", "click", runDescriptionTest); }
+  if (/[?&]diag(=|&|$)/.test(location.search) && $("diagBox")) { $("diagBox").hidden = false; on("diagRun", "click", runListTest); }
   applyDonateChoice();
 }
 
