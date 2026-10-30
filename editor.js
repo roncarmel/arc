@@ -426,8 +426,8 @@ function renderAppMenu() {
   if (!slot) return;
   slot.innerHTML = "";
   slot.appendChild(feEl("button", {
-    type: "button", class: "fe-iconbtn fe-trigger" + (connection === "problem" ? " fe-alert" : ""), id: "feAppMenuButton",
-    "aria-label": connection === "problem" ? "App menu, there is a Spotify problem" : "App menu", "aria-haspopup": "menu", "aria-expanded": String(editor.appMenu),
+    type: "button", class: "fe-iconbtn fe-trigger", id: "feAppMenuButton",
+    "aria-label": "App menu", "aria-haspopup": "menu", "aria-expanded": String(editor.appMenu),
     onClick: toggleAppMenu,
   }, feIcon("dots")));
   if (!editor.appMenu) return;
@@ -438,16 +438,17 @@ function renderAppMenu() {
   const box = feEl("span", { class: "fe-check" + (on ? " fe-check-on" : ""), "aria-hidden": "true" });
   if (on) box.appendChild(feIcon("check"));
   // Connecting from the menu: with a saved Client ID, Connect Spotify; and, in minimalist mode where Step 1 is hidden, the way out of a problem.
-  const reconnect = connectionKind === "reconnect";
+  // Not connected is one thing in the menu, whatever the reason: Connect Spotify, with what is wrong (or that it is under way) in a line under it. The page has its own
+  // Try again and Connect again, with the same words, so the menu does not need its own.
   const connectItems = [];
-  if (connection === "connecting") {
-    connectItems.push(feEl("div", { class: "fe-sp-block" }, feEl("div", { class: "fe-sp-row" }, feIcon("link"), feEl("span", { class: "fe-sp-title", id: "feConnecting", text: "Connecting to Spotify\u2026" })),
-      feEl("div", { class: "fe-sp-status", text: "On a slow connection this can take a few seconds." })));
-  } else if (connection === "none" && localStorage.getItem("clientId")) {
-    connectItems.push(feEl("button", { type: "button", class: "fe-item", id: "feConnect", role: "menuitem", onClick: choose(() => startLogin()) }, feIcon("link"), "Connect Spotify"));
-  } else if (connection === "problem" && minimalActive()) {
-    connectItems.push(feEl("button", { type: "button", class: "fe-item", id: reconnect ? "feReconnect" : "feRetry", role: "menuitem", onClick: choose(() => (reconnect ? startLogin() : connectToSpotify())) }, feIcon(reconnect ? "link" : "retry"), reconnect ? "Connect again" : "Try again"));
-    connectItems.push(feEl("div", { class: "fe-itemnote", id: "feConnectionNote", text: $("connectionMessage").textContent }));
+  const hasClientId = !!localStorage.getItem("clientId");
+  if ((connection === "none" && hasClientId) || ((connection === "problem" || connection === "connecting") && (hasClientId || token))) {
+    const connecting = connection === "connecting";
+    // a problem that waiting can mend (the network, a rate limit) is tried again where it stopped; one in the sign-in itself, or no sign-in, starts a new sign-in
+    const press = () => (connection === "problem" && connectionKind === "retry" && token ? connectToSpotify() : startLogin());
+    connectItems.push(feEl("button", { type: "button", class: "fe-item", id: "feConnect", role: "menuitem", disabled: connecting, onClick: choose(press) }, feIcon("link"), connecting ? "Connecting\u2026" : "Connect Spotify"));
+    const why = connecting ? "On a slow connection this can take a few seconds." : connection === "problem" ? $("connectionMessage").textContent : "";
+    if (why) connectItems.push(feEl("div", { class: "fe-itemnote", id: "feConnectionNote", text: why }));
   }
   // The backup, in one block: how it is done and where to, a link to change it, how it is going, and for the manual way the two actions.
   const auto = typeof backupMode === "function" && backupMode() === "spotify";
@@ -469,11 +470,13 @@ function renderAppMenu() {
     feEl("div", { class: "fe-sp-row" }, feIcon("link"), feEl("span", { class: "fe-sp-title", text: "Spotify connected" }),
       feEl("button", { type: "button", class: "fe-sp-disconnect", id: "feDisconnect", role: "menuitem", onClick: choose(() => confirmDisconnect()), text: "Disconnect" })),
     who ? feEl("div", { class: "fe-sp-status", id: "feConnectedStatus", text: `Connected as ${who}, ${plural(playlists.length, "playlist")} found.` }) : null);
-  const minimalButton = feEl("button", { type: "button", class: "fe-item", id: "feMinimal", role: "menuitemcheckbox", "aria-checked": String(on), onClick: toggleMinimal }, box, "Minimalist mode");
+  const minimalButton = feEl("button", { type: "button", class: "fe-item", id: "feMinimal", role: "menuitemcheckbox", "aria-checked": String(on), onClick: toggleMinimal }, box, "Compact view");
   if (!available) minimalButton.disabled = true;
   // Spotify is the last thing in the menu, in whatever state it is in (connected, connecting, not connected, a problem), so it is always found in the same place.
   const spotifyItems = connection === "ready" ? [spotifyRow] : connectItems;
   slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" },
+    feEl("div", { class: "fe-menuhead", id: "feMenuHead" }, feEl("img", { class: "fe-menuicon", src: "apple-touch-icon.png", alt: "", width: "32", height: "32" }), feEl("span", { class: "fe-menuname", text: "Ceremony Playlist Builder" })),
+    feEl("div", { class: "fe-rule" }),
     minimalButton,
     ...(!available ? [feEl("div", { class: "fe-itemnote", id: "feMinimalNote", text: "Available after you first connect to Spotify." })] : []),
     feEl("div", { class: "fe-rule" }),
@@ -611,12 +614,12 @@ function renderHead(rebuild) {
       feEl("div", { class: "fe-silence" },
         stepperBox({
           shorterId: "feGapShorter", longerId: "feGapLonger", valueId: "feGapValue", inline: true, width: 46,
-          text: f.gap ? describeSeconds(f.gap) : "No", shorterLabel: "Shorter silence between segments", longerLabel: "Longer silence between segments",
+          // "[ - 30 sec gaps + ]", "[ - No gaps + ]" on a phone, and a whole sentence on a wide screen: "[ - 30 sec of silence between segments + ]"
+          children: [feEl("span", { id: "feGapValue", text: f.gap ? describeSeconds(f.gap) : "No" }), " ", feEl("span", { class: "fe-silence-short", text: "gaps" }), feEl("span", { class: "fe-silence-label", id: "feSilenceLabel", text: silenceLabel(f.gap) })],
+          shorterLabel: "Shorter silence between segments", longerLabel: "Longer silence between segments",
           onShorter: () => { const lower = GAP_STEPS.filter((s) => s < f.gap); f.gap = lower.length ? lower[lower.length - 1] : 0; afterGapChange(); },
           onLonger: () => { const higher = GAP_STEPS.filter((s) => s > f.gap); f.gap = higher.length ? higher[0] : GAP_STEPS[GAP_STEPS.length - 1]; afterGapChange(); },
-        }),
-        feEl("span", { class: "fe-silence-short", text: "gaps" }),   // a phone shows just this after the length: "30 sec gaps", "No gaps"
-        feEl("span", { class: "fe-silence-label", id: "feSilenceLabel", text: silenceLabel(f.gap) })),   // a wide screen shows this instead
+        })),
       feEl("button", { type: "button", class: "fe-iconbtn", id: "feDuplicate", "aria-label": "Duplicate format", title: "Duplicate format", onClick: askDuplicateFormat }, feIcon("copy")),
       feEl("button", { type: "button", class: "fe-iconbtn fe-danger", id: "feDelete", "aria-label": "Delete format", title: "Delete format", onClick: askDeleteFormat }, feIcon("trash"))));
     renderClash();
@@ -625,8 +628,8 @@ function renderHead(rebuild) {
   $("feSilenceLabel").textContent = silenceLabel(f.gap);
 }
 
-// On a wide screen the row reads as a sentence: "[ - 30 sec + ] of silence between segments", and with none: "[ - No + ] silence between segments".
-// On a phone it is shorter: "[ - 30 sec + ] gaps", and with none "[ - No + ] gaps".
+// On a wide screen the stepper reads as a sentence: "[ - 30 sec of silence between segments + ]", and with none: "[ - No silence between segments + ]".
+// On a phone it is shorter: "[ - 30 sec gaps + ]", and with none "[ - No gaps + ]".
 function silenceLabel(gap) {
   return gap ? "of silence between segments" : "silence between segments";
 }
@@ -673,12 +676,34 @@ function pauseNotices() {
   refreshNoticeLine();
 }
 
-function paintNotice(caption, view) {
+// What the line says changes with a short crossfade: the old words fade up and out as the new ones rise in. Not when the person is editing (the total is feedback for their
+// taps, so it comes back at once), not for the total as it changes minute by minute, and not for someone who has asked for less motion.
+function paintNotice(caption, view, options = {}) {
+  const key = view ? `${view.text}|${view.count || ""}` : "total";
+  const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const fade = !options.instant && !reduce && typeof caption.animate === "function" && notices.paintedKey !== undefined && notices.paintedKey !== key;
+  let ghost = null;
+  if (fade) {
+    ghost = document.createElement("div");
+    ghost.className = caption.className + " fe-ghost";
+    ghost.setAttribute("aria-hidden", "true");
+    ghost.innerHTML = caption.innerHTML;
+  }
+  notices.paintedKey = key;
+  paintNoticeNow(caption, view);
+  if (!fade) return;
+  for (const child of Array.from(caption.children)) child.animate([{ opacity: 0, transform: "translateY(4px)" }, { opacity: 1, transform: "none" }], { duration: 200, easing: "ease-out" });
+  caption.appendChild(ghost);
+  const out = ghost.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(-4px)" }], { duration: 160, easing: "ease-in", fill: "forwards" });
+  out.onfinish = () => ghost.remove();
+}
+
+function paintNoticeNow(caption, view) {
   caption.className = "fe-caption";
   caption.textContent = "";
   const live = $("feNoticeLive");
   if (!view) {
-    caption.textContent = editor.musicText || "";
+    caption.appendChild(feEl("span", { class: "fe-total", text: editor.musicText || "" }));
     notices.spoken = "";
     if (live) live.textContent = "";
     return;
@@ -700,12 +725,10 @@ function refreshNoticeLine() {
   if (!caption) return;
   const now = Date.now();
   const attention = attentionNow();
-  const trigger = $("feAppMenuButton");
-  if (trigger) trigger.classList.toggle("fe-alert", connection === "problem");   // the dot on the menu button: the connection to Spotify has a problem
   const settleIn = notices.lastEditAt + noticeTiming.quietMs - now;
   if (settleIn > 0) {   // still being edited
     notices.shownAt = 0;
-    paintNotice(caption, null);
+    paintNotice(caption, null, { instant: true });
     notices.timer = setTimeout(refreshNoticeLine, settleIn + 20);
     return;
   }
@@ -716,7 +739,7 @@ function refreshNoticeLine() {
     paintNotice(caption, { warn: !!held.warn, icon: held.icon, text: held.text, actions });
     return;
   }
-  if (attention.length) {
+  if (attention.length && !notices.batch.some((b) => b.transient)) {   // what was said about something the person has just done comes before trouble that is waiting
     notices.attn = Math.min(notices.attn, attention.length - 1);
     const item = attention[notices.attn];
     const actions = (item.actions || []).map((a) => ({ label: a.label, run: a.run }));
@@ -726,13 +749,14 @@ function refreshNoticeLine() {
     return;
   }
   if (notices.batch.length) {
+    if (notices.pos >= notices.batch.length) notices.pos = 0;
     if (!notices.shownAt) notices.shownAt = now;
     let due = notices.shownAt + noticeDuration(notices.batch[notices.pos]);
     if (now < notices.pausedUntil) due = Math.max(due, notices.pausedUntil);
     if (now >= due) {
       notices.pos += 1;
       notices.shownAt = now;
-      if (notices.pos >= notices.batch.length) { notices.batch = []; notices.pos = 0; notices.shownAt = 0; paintNotice(caption, null); return; }
+      if (notices.pos >= notices.batch.length) { notices.batch = []; notices.pos = 0; notices.shownAt = 0; refreshNoticeLine(); return; }   // done: whatever is waiting comes next, or the total
       due = now + noticeDuration(notices.batch[notices.pos]);
     }
     paintNotice(caption, { text: notices.batch[notices.pos].text, icon: notices.batch[notices.pos].icon, count: notices.batch.length > 1 ? `${notices.pos + 1} of ${notices.batch.length}` : "" });
@@ -895,10 +919,12 @@ function tagEl(f, g) {
   return button;
 }
 
-function stepperBox({ text, onShorter, onLonger, shorterLabel, longerLabel, shorterId, longerId, valueId, inline, width }) {
+function stepperBox({ text, children, onShorter, onLonger, shorterLabel, longerLabel, shorterId, longerId, valueId, inline, width }) {
   return feEl("div", { class: "fe-stepper" + (inline ? " fe-stepper-inline" : "") },
     feEl("button", { type: "button", class: "fe-step", id: shorterId, "aria-label": shorterLabel, onClick: onShorter }, feIcon("minus")),
-    feEl("span", { class: "fe-amount", id: valueId, text, style: `min-width:${width}px` }),
+    children
+      ? feEl("span", { class: "fe-amount fe-amount-rich" }, ...children)   // the words are inside the stepper, with the length
+      : feEl("span", { class: "fe-amount", id: valueId, text, style: `min-width:${width}px` }),
     feEl("button", { type: "button", class: "fe-step", id: longerId, "aria-label": longerLabel, onClick: onLonger }, feIcon("plus")));
 }
 

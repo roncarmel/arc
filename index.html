@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-30r">
-<script src="theme.js?v=2026-10-30r"></script>
+<meta name="app-version" content="2026-10-30t">
+<script src="theme.js?v=2026-10-30t"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -132,20 +132,25 @@
   #formatEditor .fe-appmenu { right: 0; top: 48px; width: max-content; min-width: min(300px, calc(100vw - 32px)); max-width: min(320px, calc(100vw - 32px)); }
   /* the backup block of the app menu: how it is done and where to (tap to change), how it is going, and for the manual way the two actions */
   #formatEditor .fe-bk-block { margin: 4px 2px; padding: 4px; border-radius: 12px; background: rgba(127, 127, 127, 0.13); }
-  #formatEditor .fe-bk-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px 6px; }
-  #formatEditor .fe-bk-row > svg { margin-top: 3px; flex: none; }
+  #formatEditor .fe-bk-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px 6px 6px; }
+  #formatEditor .fe-bk-row > .fe-icon { width: 20px; margin-top: 3px; flex: none; }
   #formatEditor .fe-bk-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
   #formatEditor .fe-bk-title { font-weight: 600; }
   #formatEditor .fe-bk-change { position: relative; padding: 5px 0; margin: 0; font-size: 0.9rem; }
   #formatEditor .fe-bk-change::after { content: ""; position: absolute; left: -8px; right: -14px; top: -4px; bottom: -4px; }   /* a bigger target for a thumb */
   #formatEditor .fe-bk-status { color: var(--muted); font-size: 0.8rem; line-height: 1.3; padding-bottom: 2px; }
   /* the Spotify row of the app menu: connected, with the way out at the right, and who it is under it */
-  #formatEditor .fe-sp-block { padding: 6px 10px 8px; }
+  #formatEditor .fe-sp-block { padding: 6px 10px 8px 12px; }
   #formatEditor .fe-sp-row { display: flex; align-items: center; gap: 10px; min-height: 36px; }
-  #formatEditor .fe-sp-row > svg { flex: none; }
+  #formatEditor .fe-sp-row > .fe-icon { width: 20px; flex: none; }
   #formatEditor .fe-sp-title { font-weight: 600; flex: 1; min-width: 0; }
-  #formatEditor .fe-sp-status { color: var(--muted); font-size: 0.8rem; line-height: 1.3; padding: 0 0 0 28px; }
+  #formatEditor .fe-sp-status { color: var(--muted); font-size: 0.8rem; line-height: 1.3; padding: 0 0 0 30px; }
   #formatEditor .fe-sp-disconnect { flex: none; min-height: 36px; padding: 0 12px; font-size: 0.9rem; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 10px; }
+  #formatEditor .fe-menuhead { display: flex; align-items: center; gap: 10px; padding: 6px 10px 8px 12px; }
+  #formatEditor .fe-appmenu .fe-item > .fe-icon { width: 20px; flex: none; }
+  #formatEditor .fe-appmenu .fe-itemnote { padding-left: 42px; }   /* a line under a plain row starts where that row's words do */   /* the icons of the plain rows take the width of the checkbox, so their words start in line with Compact view */   /* the app's icon and name: who this menu belongs to, and not something to press */
+  #formatEditor .fe-menuicon { width: 32px; height: 32px; flex: none; border-radius: 22%; display: block; }
+  #formatEditor .fe-menuname { font-weight: 700; font-size: 1.02rem; letter-spacing: 0.01em; }
   #formatEditor .fe-version { padding: 4px 12px 6px; color: var(--muted); font-size: 0.78rem; }   /* the last line of the app menu: which version this is */
   #formatEditor .fe-bk-actions { display: flex; gap: 6px; padding: 0 6px 6px; }
   #formatEditor .fe-bk-actions button { flex: 1; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; padding: 0 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 10px; font: inherit; font-weight: 600; }
@@ -176,7 +181,8 @@
   #formatEditor .fe-piece-silence { background: #000; border: 1.5px solid var(--silence-line, #8a8a92); box-sizing: border-box; }
   #formatEditor .fe-bar.fe-hasHl .fe-piece:not(.fe-hl) { opacity: 0.35; }
   #formatEditor .fe-piece.fe-hl { outline: 2px solid var(--fg); outline-offset: 1px; }
-  #formatEditor .fe-caption { font-size: 0.78rem; color: var(--muted); min-height: 24px; display: flex; align-items: center; }
+  #formatEditor .fe-caption { position: relative; font-size: 0.78rem; color: var(--muted); min-height: 24px; display: flex; align-items: center; transition: background-color 180ms ease; }
+  #formatEditor .fe-ghost { position: absolute; left: 0; right: 0; top: 0; bottom: 0; pointer-events: none; background: none; }   /* what the line said, fading out as the new words fade in */
   /* the same line, carrying a notice: news in turn, or trouble that stays until it is dealt with (one line, so nothing below it moves) */
   #formatEditor .fe-notice { gap: 6px; white-space: nowrap; color: var(--fg); }
   #formatEditor .fe-notice svg { flex: none; color: var(--accent); }
@@ -234,9 +240,9 @@
   #formatEditor .fe-option-on { background: var(--accent-wash, rgba(255, 56, 184, 0.22)); }
   #formatEditor .fe-option:disabled { opacity: 0.45; }
   /* silences: bookmark-shaped tags hanging off the right side of the rows, pointed at their gap */
-  #formatEditor .fe-tag { position: absolute; left: calc(100% - 16px); top: 43px; z-index: 6; height: 24px; min-width: 42px; width: max-content; display: flex; align-items: center; justify-content: center; gap: 3px; padding: 0 4px 0 16px; box-sizing: border-box; border: none; border-radius: 0 999px 999px 0;
-    /* the left end is the notch between two segments' rounded corners: its two sides are arcs around those corners (16 px radius), kept 3 px away, meeting at the point in the gap */
-    clip-path: polygon(0.0px 12.00px, 1.0px 11.97px, 2.0px 11.90px, 2.9px 11.77px, 3.9px 11.59px, 4.9px 11.36px, 5.9px 11.06px, 6.9px 10.71px, 7.9px 10.30px, 8.8px 9.82px, 9.8px 9.27px, 10.8px 8.64px, 11.8px 7.91px, 12.8px 7.08px, 13.7px 6.12px, 14.7px 5.01px, 15.7px 3.70px, 16.7px 2.09px, 17.7px -0.00px, 100% 0, 100% 100%, 17.7px 24.00px, 16.7px 21.91px, 15.7px 20.30px, 14.7px 18.99px, 13.7px 17.88px, 12.8px 16.92px, 11.8px 16.09px, 10.8px 15.36px, 9.8px 14.73px, 8.8px 14.18px, 7.9px 13.70px, 6.9px 13.29px, 5.9px 12.94px, 4.9px 12.64px, 3.9px 12.41px, 2.9px 12.23px, 2.0px 12.10px, 1.0px 12.03px, 0.0px 12.00px); font-size: 0.64rem; font-weight: 700; line-height: 1; white-space: nowrap; background: var(--accent-deep, #a8217c); color: var(--on-deep, #fff); }
+  #formatEditor .fe-tag { position: absolute; left: calc(100% - 16px); top: 43px; z-index: 6; height: 24px; min-width: 42px; width: max-content; display: flex; align-items: center; justify-content: center; gap: 3px; padding: 0 4px 0 20px; box-sizing: border-box; border: none; border-radius: 0 999px 999px 0;
+    /* the left end is the notch between two segments' rounded corners: its two sides are arcs around those corners (16 px radius), kept 6 px away, as far as the segments are from each other, meeting at the point in the gap */
+    clip-path: polygon(11.1px 12.00px, 11.8px 11.54px, 12.6px 11.05px, 13.3px 10.54px, 14.0px 9.99px, 14.6px 9.42px, 15.3px 8.83px, 15.9px 8.20px, 16.5px 7.56px, 17.1px 6.89px, 17.6px 6.19px, 18.1px 5.48px, 18.6px 4.75px, 19.1px 4.00px, 19.5px 3.23px, 19.9px 2.44px, 20.2px 1.64px, 20.6px 0.83px, 20.9px -0.00px, 100% 0, 100% 100%, 20.9px 24.00px, 20.6px 23.17px, 20.2px 22.36px, 19.9px 21.56px, 19.5px 20.77px, 19.1px 20.00px, 18.6px 19.25px, 18.1px 18.52px, 17.6px 17.81px, 17.1px 17.11px, 16.5px 16.44px, 15.9px 15.80px, 15.3px 15.17px, 14.6px 14.58px, 14.0px 14.01px, 13.3px 13.46px, 12.6px 12.95px, 11.8px 12.46px, 11.1px 12.00px); font-size: 0.64rem; font-weight: 700; line-height: 1; white-space: nowrap; background: var(--accent-deep, #a8217c); color: var(--on-deep, #fff); }
   #formatEditor .fe-tag .fe-icon { display: none; }
   #formatEditor .fe-tag .fe-icon svg { width: 12px; height: 12px; }
   #formatEditor .fe-tag-custom { background: var(--button); color: var(--on-button, #fff); }   /* the markers are pink so they show on a phone: deep pink while they follow the default, the buttons' pink once changed */
@@ -262,7 +268,7 @@
   #formatEditor .fe-stepper-inline .fe-step { width: 36px; }
   @media (max-width: 859px) { #formatEditor.fe-hastags { margin-right: calc(var(--tag-hang, 26px) - 23px); } }   /* the markers hang 26 px past the segments (more with a long label, which the page measures), which with this leaves them 2 px from the screen's edge */
   @media (min-width: 860px) {
-    #formatEditor .fe-tag { min-width: 61px; padding: 0 5px 0 16px; font-size: 0.68rem; }
+    #formatEditor .fe-tag { min-width: 61px; padding: 0 5px 0 20px; font-size: 0.68rem; }
     #formatEditor .fe-tag .fe-icon { display: inline-flex; }
   }
   /* on a phone the rows give the playlist name as much room as they can */
@@ -328,8 +334,6 @@
     body.minimal #formatEditor .fe-appicon { display: block; width: 44px; height: 44px; flex: none; border-radius: 22%; }   /* narrow screens need the room for the tabs */
   }
   #moreOptions { margin-bottom: 14px; }   /* a little room between More options and Privacy */
-  #formatEditor .fe-iconbtn.fe-alert { position: relative; }
-  #formatEditor .fe-iconbtn.fe-alert::after { content: ""; position: absolute; top: 5px; right: 5px; width: 8px; height: 8px; border-radius: 50%; background: #ffcc00; border: 2px solid var(--bg); }   /* a Spotify problem, seen without opening the menu */
   body.minimal #feAppMenuButton { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
   /* the popup that holds everything after a click on Create: the plan, the question, the progress, and the result */
   .app-overlay { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 1100; background: rgba(0, 0, 0, 0.65); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
@@ -375,8 +379,8 @@
   #supportBox > * { pointer-events: auto; }
   /* the card's header: the silence between segments, then Duplicate and Delete together at the right */
   #formatEditor .fe-silence { display: flex; flex: 0 1 auto; align-items: center; gap: 8px; min-width: 0; }   /* the length and its words stay together; Duplicate and Delete sit beside them, or drop below on a very narrow screen */
-  #formatEditor .fe-silence-short { color: var(--muted); font-size: 0.9rem; }
-  #formatEditor .fe-silence-label { display: none; color: var(--muted); font-size: 0.9rem; }
+  #formatEditor .fe-amount-rich { padding: 0 6px; white-space: nowrap; text-align: center; min-width: 0; }
+  #formatEditor .fe-silence-label { display: none; }
   #formatEditor #feDuplicate { margin-left: auto; }   /* Duplicate and Delete sit together at the right */
   /* the selected tab: a pencil, a notch pointing down at the card, and the name edited in place */
   #formatEditor .fe-toprow { margin-bottom: 0; }
@@ -618,7 +622,7 @@
     <label class="choice-row"><input type="radio" name="backupMode" id="backupModeSpotify" value="spotify"> <span>Automatic backup to Spotify</span></label>
     <p class="muted choice-note">Each format is kept in a private playlist of its own, named like the format and ending in (format backup). The format is saved in that playlist's description, so please do not edit it.</p>
     <label class="choice-row"><input type="radio" name="backupMode" id="backupModeManual" value="manual"> <span>Manual backup to this device</span></label>
-    <p class="muted choice-note">You back up to this device when you ask for it, and restore from that backup when you need it.</p>
+    <p class="muted choice-note">You back up to this device and restore from that backup whenever you choose.</p>
     <div class="row" id="backupDoneRow" hidden>
       <button id="backupDone" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Done</span></button>
     </div>
@@ -822,8 +826,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-30r"></script>
-<script src="editor.js?v=2026-10-30r"></script>
-<script src="app.js?v=2026-10-30r"></script>
+<script src="formats.js?v=2026-10-30t"></script>
+<script src="editor.js?v=2026-10-30t"></script>
+<script src="app.js?v=2026-10-30t"></script>
 </body>
 </html>

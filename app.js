@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-30r";
+const APP_VERSION = "2026-10-30t";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -386,7 +386,7 @@ const SAVE_SUFFIX = " (format backup)";
 // time. Spotify counts the calls an app makes in a rolling 30 seconds, so saves are not made more often than that needs, and not while a build is under way.
 let spotifySaveDelayMs = 5000;
 let spotifySaveMaxWaitMs = 30000;
-const saveState = { running: false, again: false, timer: null, since: 0, error: "", tooLong: [], newer: [], savedAt: null, coverBlocked: false, added: [], updated: [], coverProblem: null, unread: 0, skip: new Set(), dismissed: new Set(), lastNews: null };
+const saveState = { running: false, again: false, timer: null, since: 0, error: "", tooLong: [], newer: [], savedAt: null, coverBlocked: false, added: [], updated: [], coverProblem: null, failures: 0, failureAsked: false, unread: 0, skip: new Set(), dismissed: new Set(), lastNews: null };
 let playlistsLoadedAt = 0;
 let playlistRefreshMs = 5 * 60 * 1000;   // coming back to the page after this long, the account's playlists, and so the backups, are read again
 
@@ -606,13 +606,22 @@ async function runSpotifySave() {
     saveState.tooLong = tooLong;
     saveState.newer = newer;
     saveState.savedAt = new Date().toISOString();
+    saveState.failures = 0;
+    saveState.failureAsked = false;
     try { localStorage.setItem("spotifySavedAt", saveState.savedAt); } catch (err) { /* private browsing */ }
   } catch (err) {
     saveState.error = String(err && err.message || err);
+    saveState.failures += 1;
     logStep("save: " + saveState.error);
   }
   saveState.running = false;
   renderSaveStatus();
+  // The first time a save fails for a known reason (no connection, a rate limit) the line under the bar says so, and it is tried again. A second failure in a row, or one
+  // nobody expected, is asked about once: the formats are safe in this browser, but not for ever, so a copy on this device is offered, and a report.
+  if (saveState.error && !saveState.failureAsked && (saveState.failures >= 2 || problemKind(saveState.error) === "other")) {
+    saveState.failureAsked = true;
+    askSaveFailure(saveState.error);
+  }
   if (saveState.again) { saveState.again = false; scheduleSpotifySave(300); }
 }
 
@@ -656,6 +665,19 @@ function attentionItems() {
   if (saveState.coverProblem && !saveState.dismissed.has("cover:" + saveState.coverProblem.key)) items.push({ key: "cover:" + saveState.coverProblem.key, ok: true, text: saveState.coverProblem.text });
   for (const t of saveState.tooLong) if (!saveState.dismissed.has("long:" + t.id)) items.push({ key: "long:" + t.id, ok: true, text: `${name(t.title)} is too long to back up to Spotify. It is still saved in this browser.`, actions: [{ label: "Download it", run: () => downloadOneFormat(t.id) }] });
   return items;
+}
+
+async function askSaveFailure(message) {
+  const unexpected = problemKind(message) === "other";
+  if (unexpected) recordError(message);
+  const choices = [{ label: "Back up now", value: "backup" }, { label: "Try again", value: "retry" }];
+  if (unexpected) choices.push({ label: "Report this problem", value: "report" });
+  choices.push({ label: "Close", value: "close" });
+  const choice = await askSyncChoice("Your formats couldn\u2019t be saved to Spotify",
+    "They are still saved in this browser, but clearing its data or switching devices before this is fixed could lose changes. A backup on this device keeps them safe.", choices);
+  if (choice === "backup") downloadBackup();
+  else if (choice === "retry") { saveState.error = ""; runSpotifySave(); }
+  else if (choice === "report") window.open(reportUrl(), "_blank", "noopener");
 }
 
 function dismissAttention(key) {
