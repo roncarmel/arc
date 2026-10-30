@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-30h">
-<script src="theme.js?v=2026-10-30h"></script>
+<meta name="app-version" content="2026-10-30i">
+<script src="theme.js?v=2026-10-30i"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -100,8 +100,6 @@
   body.minimal #buildRow { justify-content: center; }
   body.minimal #pythonNote, body.minimal #spotifyNote { text-align: center; }
   button.linklike { background: none; border: none; padding: 0; color: var(--accent); font-weight: normal; text-decoration: underline; }
-  #backupMessage { min-height: 1.5em; }
-  body.spotify-backup #backupMessage:empty { display: none; }
   #supportBox { position: fixed; right: 16px; bottom: 16px; z-index: 1001; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 8px; width: max-content; max-width: min(240px, calc(100vw - 32px)); }
   #supportButton { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--button);
     background: var(--button); color: var(--on-button, #fff); font-weight: 600; text-decoration: none; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28); }
@@ -313,7 +311,6 @@
   /* the page's title goes (once the editor is there), and the icon takes its place at the left of the tabs, as tall as they are */
   body.minimal.has-editor h1.brand { display: none; }
   body.minimal.has-editor main { padding-top: 10px; }   /* the same gap as between the tabs and the card */
-  body.minimal #backupMessage:empty { display: none; }
   #formatEditor .fe-emptynote { margin: 8px 0 0; }
   #formatEditor .fe-appicon { display: none; }
   @media (min-width: 760px) {
@@ -601,7 +598,6 @@
   <h2 id="editHeading">2. Edit your formats</h2>
   <p id="savedNote" class="muted">Your formats are saved in this browser. You back them up to this device yourself: <button id="backupDownloadLink" class="linklike" type="button">back up now</button>, and <button id="backupRestore" class="linklike" type="button">restore from a backup</button> at any time.</p>
   <input id="restoreFile" type="file" accept=".txt,text/plain" hidden>
-  <p id="backupMessage" aria-live="polite"></p>
   <p id="savedNoteSpotify" class="muted" hidden>Your formats are saved in this browser, and backed up to Spotify automatically, each in a private playlist ending in (format backup).</p>
   <p id="spotifySaveLine" class="muted" hidden><span id="spotifySaveStatus" aria-live="polite"></span></p>
   <div id="backupBackdrop" hidden></div>
@@ -816,8 +812,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-30h"></script>
-<script src="editor.js?v=2026-10-30h"></script>
-<script src="app.js?v=2026-10-30h"></script>
+<script src="formats.js?v=2026-10-30i"></script>
+<script src="editor.js?v=2026-10-30i"></script>
+<script src="app.js?v=2026-10-30i"></script>
 </body>
 </html>
