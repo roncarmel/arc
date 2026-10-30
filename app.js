@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-29j";
+const APP_VERSION = "2026-10-29l";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -795,6 +795,55 @@ function rateLimitError(wait, reason) {
   return error;
 }
 
+// TEMPORARY: finds out how much text Spotify keeps in a playlist description, and which characters survive. Only reachable with ?diag in the address.
+async function runDescriptionTest() {
+  const box = $("diagOutput"), lines = [];
+  const say = (s) => { lines.push(s); box.textContent = lines.join("\n"); };
+  if (connection !== "ready") { say("Connect to Spotify first."); return; }
+  const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+  const decode = (s) => { const t = document.createElement("textarea"); t.innerHTML = s; return t.value; };
+  const plain = (n) => { const a = "abcdefghijklmnopqrstuvwxyz0123456789"; let s = ""; for (let i = 0; i < n; i++) s += a[(i * 7 + (i >> 3)) % a.length]; return s; };
+  const safe64 = (n) => { const a = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"; let s = ""; for (let i = 0; i < n; i++) s += a[(i * 13 + (i >> 2)) % a.length]; return s; };
+  const dense = (n) => { let s = ""; for (let i = 0; i < n; i++) s += String.fromCodePoint(0x4e00 + ((i * 37) % 2000)); return s; };
+  let id = null, longest = 0;
+  try {
+    const made = await spotifyRequest("POST", "/me/playlists", { json: { name: "Description limit test (safe to delete)", public: false, description: "" } });
+    id = made.id;
+    say("Test playlist made (private).");
+    const probe = async (label, text) => {
+      const sent = Array.from(text).length;
+      try { await spotifyRequest("PUT", `/playlists/${id}`, { json: { description: text } }); }
+      catch (err) { say(`${label}: Spotify refused it (${err.message})`); return false; }
+      await pause(600);
+      const back = await spotifyRequest("GET", `/playlists/${id}`, { params: { fields: "description" } });
+      const got = decode((back && back.description) || "");
+      const kept = Array.from(got).length;
+      if (got === text) { say(`${label}: ${sent} characters, all kept`); return true; }
+      let at = 0; const a = Array.from(text), b = Array.from(got);
+      while (at < a.length && a[at] === b[at]) at++;
+      say(`${label}: ${sent} characters sent, ${kept} kept, first difference at character ${at + 1}`);
+      return false;
+    };
+    for (const n of [100, 200, 300, 301, 400, 500, 1000, 2000, 4000, 8000, 10000]) {
+      const ok = await probe(`plain text, ${n}`, plain(n));
+      if (!ok) break;
+      longest = n;
+    }
+    say("Longest plain description kept in full: " + longest + " characters.");
+    await probe("letters, digits, - and _ (100)", safe64(100));
+    await probe("dense Unicode, 100 characters from the CJK block", dense(100));
+    await probe("quotes, angle brackets, ampersand, line break, emoji", "He said \"hi\" & 'bye' <b>x</b> line1\nline2 \u{1F600} \u00e9");
+    await probe("plus, slash and equals signs", "a+b/c==");
+  } catch (err) {
+    say("The test stopped: " + err.message);
+  } finally {
+    if (id) {
+      try { await spotifyRequest("DELETE", "/me/library", { params: { uris: "spotify:playlist:" + id } }); say("Test playlist removed."); }
+      catch (err) { say("The test playlist could not be removed. It is private and called \"Description limit test (safe to delete)\": remove it in Spotify."); }
+    }
+  }
+}
+
 async function spotifyRequest(method, path, { params, json, body, contentType } = {}) {
   let url = path.startsWith("http") ? path : API + path;
   if (params) url += (url.includes("?") ? "&" : "?") + new URLSearchParams(params).toString();
@@ -1402,6 +1451,7 @@ function setDonateChoice(choice) {
 
 function initDonateChoice() {
   on("donateHideBox", "change", () => setDonateChoice($("donateHideBox").checked ? "donated" : ""));
+  if (/[?&]diag(=|&|$)/.test(location.search) && $("diagBox")) { $("diagBox").hidden = false; on("diagRun", "click", runDescriptionTest); }
   applyDonateChoice();
 }
 

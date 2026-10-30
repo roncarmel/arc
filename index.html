@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-29j">
-<script src="theme.js?v=2026-10-29j"></script>
+<meta name="app-version" content="2026-10-29l">
+<script src="theme.js?v=2026-10-29l"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -14,6 +14,9 @@
   [hidden] { display: none !important; }
   :root { color-scheme: light dark; --bg: #ffffff; --fg: #1d1d1f; --muted: #6b6b70; --line: #d8d8dc; --card: #f5f5f7; --accent: #c2188f; --button: #ff38b8; }
   @media (prefers-color-scheme: dark) { :root { --bg: #161618; --fg: #f2f2f4; --muted: #9a9aa2; --line: #333338; --card: #202024; --accent: #ff38b8; --button: #ff38b8; } }
+  /* holding a finger on anything, text, a button or the background, must not select text or show the selection handles; only fields and the blocks of text that are there to be copied can be selected */
+  html { -webkit-user-select: none; user-select: none; }
+  input, textarea, pre, code { -webkit-user-select: text; user-select: text; }
   body { margin: 0; background: var(--bg); color: var(--muted); font: 16px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   main { max-width: 720px; margin: 0 auto; padding: 24px 16px 24px; }
   h1 { font-size: clamp(1.9rem, 6vw, 2.5rem); line-height: 1.15; margin: 0 0 6px; color: var(--accent); }
@@ -651,6 +654,14 @@
   </div>
 
   <footer class="debug">
+    <!-- TEMPORARY, shown only with ?diag in the address -->
+    <div id="diagBox" hidden>
+      <h3>Description test (temporary)</h3>
+      <p class="muted">Creates one private playlist, saves descriptions of growing length in it, reads each one back, then removes the playlist. Nothing else in your Spotify account is touched.</p>
+      <button id="diagRun" type="button"><img class="btn-icon" src="icons/preview.svg" alt="" width="20" height="20"><span class="btn-label">Run the test</span></button>
+      <pre id="diagOutput" class="muted"></pre>
+    </div>
+
     <details id="moreOptions" class="card">
       <summary>More options</summary>
 
@@ -768,8 +779,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-29j"></script>
-<script src="editor.js?v=2026-10-29j"></script>
-<script src="app.js?v=2026-10-29j"></script>
+<script src="formats.js?v=2026-10-29l"></script>
+<script src="editor.js?v=2026-10-29l"></script>
+<script src="app.js?v=2026-10-29l"></script>
 </body>
 </html>
