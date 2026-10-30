@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-30i";
+const APP_VERSION = "2026-10-30j";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -386,7 +386,7 @@ const SAVE_SUFFIX = " (format backup)";
 // time. Spotify counts the calls an app makes in a rolling 30 seconds, so saves are not made more often than that needs, and not while a build is under way.
 let spotifySaveDelayMs = 5000;
 let spotifySaveMaxWaitMs = 30000;
-const saveState = { running: false, again: false, timer: null, since: 0, error: "", tooLong: [], newer: [], savedAt: null, coverBlocked: false, added: [], updated: [], questions: [], unread: 0, skip: new Set(), dismissed: new Set(), lastNews: null };
+const saveState = { running: false, again: false, timer: null, since: 0, error: "", tooLong: [], newer: [], savedAt: null, coverBlocked: false, added: [], updated: [], unread: 0, skip: new Set(), dismissed: new Set(), lastNews: null };
 let playlistsLoadedAt = 0;
 let playlistRefreshMs = 5 * 60 * 1000;   // coming back to the page after this long, the account's playlists, and so the backups, are read again
 
@@ -433,7 +433,6 @@ async function mergeFromSpotify() {
   saveState.skip = new Set();
   saveState.added = [];
   saveState.updated = [];
-  saveState.questions = [];
   const model = editor.model;
   const allIds = playlists.map((p) => p.id);
   const synced = readSynced();
@@ -479,13 +478,12 @@ async function mergeFromSpotify() {
     const label = a.title.trim() || "Untitled";
     let choice;
     if (a.kind === "conflict") {
-      choice = await askSyncChoice(`\u201c${label}\u201d was changed in two places`, `This device has a version from ${whenText(a.local.modified)}, and Spotify has one from ${whenText(a.remote.modified)}, probably saved from another device. Which one do you want to keep?`,
-        [{ label: "Keep this device\u2019s", value: "mine" }, { label: "Use Spotify\u2019s", value: "theirs" }]);
+      choice = await askSyncChoice(`\u201c${label}\u201d was changed in two places`, `This device has a version from ${whenText(a.local.modified)}, and Spotify has one from ${whenText(a.remote.modified)}, probably saved from another device. Which one do you want to keep? The other one is replaced.`,
+        [{ label: "Keep this device\u2019s", value: "mine" }, { label: "Use Spotify\u2019s", value: "theirs" }], { required: true });
     } else {
       choice = await askSyncChoice(`\u201c${label}\u201d is no longer in Spotify`, "Its backup was removed from your Spotify, maybe on another device. Keep it here, and it will be saved to Spotify again, or remove it from this device too?",
-        [{ label: "Keep it here", value: "keep" }, { label: "Remove it here", value: "remove", danger: true }]);
+        [{ label: "Keep it here", value: "keep" }, { label: "Remove it here", value: "remove", danger: true }], { required: true });
     }
-    if (choice === null) { saveState.questions.push({ kind: a.kind, id: a.id, title: a.title }); saveState.skip.add(a.id); continue; }
     if (a.kind === "conflict" && choice === "theirs") { adoptFormat(a.remote); synced[a.id] = { rev: a.remote.rev || 0, playlistId: a.playlist.id }; saveState.updated.push(a.remote.title); }
     else if (a.kind === "conflict") { a.local.rev = Math.max(a.local.rev || 0, a.remote.rev || 0) + 1; a.local.modified = Math.floor(Date.now() / 1000); synced[a.id] = { rev: a.remote.rev || 0, playlistId: a.playlist.id }; }
     else if (choice === "remove") removeLocalFormat(a.id);
@@ -622,9 +620,6 @@ function spotifySaveParts(full = true) {
   if (!full) return parts;   // the line in the page: how the saving is going, and nothing more
   // the menu keeps a record of the last news, which the line under the bar only shows for a few seconds
   if (saveState.lastNews) parts.push({ text: `${saveState.lastNews.text} (${new Date(saveState.lastNews.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })})` });
-  for (const q of saveState.questions) {
-    parts.push({ text: q.kind === "conflict" ? `\u201c${q.title.trim() || "Untitled"}\u201d was changed here and in Spotify.` : `\u201c${q.title.trim() || "Untitled"}\u201d is no longer in Spotify.`, action: () => { saveState.error = ""; runSpotifySave(); }, label: "Choose" });
-  }
   if (saveState.unread) parts.push({ text: `${saveState.unread === 1 ? "A backup in Spotify" : saveState.unread + " backups in Spotify"} could not be read, or ${saveState.unread === 1 ? "was" : "were"} saved by a newer version of the app, and ${saveState.unread === 1 ? "was" : "were"} left alone.` });
   for (const t of saveState.tooLong) {
     parts.push({ text: `\u201c${t.title.trim() || "Untitled"}\u201d is too long to back up to Spotify. It is still saved in this browser.`, action: () => downloadOneFormat(t.id), label: "Download it" });
@@ -645,7 +640,6 @@ function attentionItems() {
   if (backupMode() !== "spotify") return items;
   const name = (t) => `\u201c${String(t).trim() || "Untitled"}\u201d`;
   if (connection === "ready" && saveState.error && !saveState.running) items.push({ key: "error", text: "Couldn\u2019t save to Spotify.", actions: [{ label: "Try again", run: () => { saveState.error = ""; runSpotifySave(); } }] });
-  for (const q of saveState.questions) items.push({ key: "question:" + q.id, text: q.kind === "conflict" ? `${name(q.title)} was changed here and in Spotify.` : `${name(q.title)} is no longer in Spotify.`, actions: [{ label: "Choose", run: () => { saveState.error = ""; runSpotifySave(); } }] });
   const n = saveState.unread;
   if (n && !saveState.dismissed.has("unread:" + n)) items.push({ key: "unread:" + n, ok: true, text: `${n === 1 ? "A backup in Spotify" : n + " backups in Spotify"} could not be read, or ${n === 1 ? "was" : "were"} saved by a newer version of the app, and ${n === 1 ? "was" : "were"} left alone.` });
   for (const t of saveState.tooLong) if (!saveState.dismissed.has("long:" + t.id)) items.push({ key: "long:" + t.id, ok: true, text: `${name(t.title)} is too long to back up to Spotify. It is still saved in this browser.`, actions: [{ label: "Download it", run: () => downloadOneFormat(t.id) }] });
@@ -736,11 +730,11 @@ async function leaveSpotifyBackups() {
   clearTimeout(saveState.timer);
   saveState.timer = null;
   saveState.since = 0;
-  saveState.error = ""; saveState.added = []; saveState.updated = []; saveState.questions = []; saveState.tooLong = []; saveState.newer = []; saveState.unread = 0;
+  saveState.error = ""; saveState.added = []; saveState.updated = []; saveState.tooLong = []; saveState.newer = []; saveState.unread = 0;
   try { for (const key of ["spotifySynced", "spotifyPendingDeletes", "spotifySavedAt"]) localStorage.removeItem(key); } catch (err) { /* private browsing */ }
   const saves = playlists.filter((p) => p.save && p.save.kind === "save");
   // From here the backup file is the way, so a file is offered in each case, in the message that says what happened to the backups in Spotify.
-  const offer = { label: "Back up now", onClick: () => { downloadBackup(); showBackupMessage(BACKED_UP_MESSAGE); } };
+  const offer = { label: "Back up now", onClick: () => { downloadBackup(); } };
   if (!saves.length) { showBackupMessage("Your formats are now saved only in this browser.", false, offer); return; }
   const many = saves.length > 1;
   if (connection !== "ready") { showBackupMessage(`The ${many ? "backups" : "backup"} in Spotify ${many ? "were" : "was"} left as ${many ? "they are" : "it is"}.`, false, offer); return; }
@@ -868,7 +862,7 @@ function downloadBackup() {
   markBackedUp(text);
   undoText = null;
   logStep("backup downloaded");
-  $("downloadMessage").textContent = BACKED_UP_MESSAGE;
+  showBackupMessage(BACKED_UP_MESSAGE);
   refreshBackupStatus();
 }
 
@@ -2094,7 +2088,7 @@ async function main() {
   on("maxPlaylists", "input", () => invalidatePlan());
   on("backupDownload", "click", downloadBackup);
   on("backupRestore", "click", () => $("restoreFile").click());
-  on("backupDownloadLink", "click", () => { downloadBackup(); showBackupMessage(BACKED_UP_MESSAGE); });   // the same as the menu's Back up now a backup
+  on("backupDownloadLink", "click", () => downloadBackup());   // the same as the menu's Back up now a backup
   on("restoreFile", "change", async (event) => {
     const file = event.target.files && event.target.files[0];
     event.target.value = "";   // so choosing the same file again still counts

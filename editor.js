@@ -240,17 +240,18 @@ function removeLocalFormat(id) {
   if (editor.model) editor.model.formats = editor.model.formats.filter((f) => f.id !== id);
 }
 
-// A question with a few answers, in a dialog. Resolves with the answer's value, or null if the dialog was closed to decide later.
-function askSyncChoice(title, text, choices) {
+// A question with a few answers, in a dialog. Resolves with the answer's value. One that is required has to be answered: Escape and the backdrop do nothing. Otherwise
+// closing it resolves with null, to decide later.
+function askSyncChoice(title, text, choices, options = {}) {
   return new Promise((resolve) => {
+    const required = !!options.required;
     const done = (value) => { overlay.remove(); document.removeEventListener("keydown", onKey); resolve(value); };
-    const onKey = (event) => { if (event.key === "Escape") done(null); };
+    const onKey = (event) => { if (event.key === "Escape" && !required) done(null); };
     const buttons = choices.map((c, i) => feEl("button", { type: "button", id: "feSyncChoice" + i, class: c.danger ? "fe-danger-button" : undefined, onClick: () => done(c.value) }, c.label));
-    const overlay = feEl("div", { class: "fe-overlay", id: "feSyncDialog", onClick: () => done(null) },
-      feEl("div", { class: "fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": title, onClick: (e) => e.stopPropagation() },
+    const overlay = feEl("div", { class: "fe-overlay", id: "feSyncDialog", onClick: () => { if (!required) done(null); } },
+      feEl("div", { class: "fe-dialog", role: required ? "alertdialog" : "dialog", "aria-modal": "true", "aria-label": title, onClick: (e) => e.stopPropagation() },
         feEl("h3", { text: title }),
         feEl("p", { text }),
-        feEl("p", { class: "muted", text: "Closing this decides nothing yet. The question stays in the status line." }),
         feEl("div", { class: "row" }, ...buttons)));
     document.body.appendChild(overlay);
     document.addEventListener("keydown", onKey);
@@ -425,8 +426,8 @@ function renderAppMenu() {
   if (!slot) return;
   slot.innerHTML = "";
   slot.appendChild(feEl("button", {
-    type: "button", class: "fe-iconbtn fe-trigger" + (connection === "problem" || attentionNow().length ? " fe-alert" : ""), id: "feAppMenuButton",
-    "aria-label": connection === "problem" ? "App menu, there is a Spotify problem" : attentionNow().length ? "App menu, something needs your attention" : "App menu", "aria-haspopup": "menu", "aria-expanded": String(editor.appMenu),
+    type: "button", class: "fe-iconbtn fe-trigger" + (connection === "problem" ? " fe-alert" : ""), id: "feAppMenuButton",
+    "aria-label": connection === "problem" ? "App menu, there is a Spotify problem" : "App menu", "aria-haspopup": "menu", "aria-expanded": String(editor.appMenu),
     onClick: toggleAppMenu,
   }, feIcon("dots")));
   if (!editor.appMenu) return;
@@ -454,7 +455,7 @@ function renderAppMenu() {
   if (auto) { status = feEl("div", { class: "fe-status", id: "feSaveStatus" }); writeSaveParts(status); }
   else if (backupLabel) status = feEl("div", { class: "fe-status", id: "feBackupStatus", text: backupLabel });
   const actions = auto ? null : feEl("div", { class: "fe-pair" },
-    feEl("button", { type: "button", id: "feBackup", role: "menuitem", onClick: choose(() => { downloadBackup(); showBackupMessage(BACKED_UP_MESSAGE); }) }, feIcon("download"), "Back up now"),
+    feEl("button", { type: "button", id: "feBackup", role: "menuitem", onClick: choose(() => downloadBackup()) }, feIcon("download"), "Back up now"),
     feEl("button", { type: "button", id: "feRestore", role: "menuitem", onClick: choose(() => $("restoreFile").click()) }, feIcon("restore"), "Restore"));
   const backupBlock = feEl("div", { class: "fe-group" }, head, status, actions);
   const minimalButton = feEl("button", { type: "button", class: "fe-item", id: "feMinimal", role: "menuitemcheckbox", "aria-checked": String(on), onClick: toggleMinimal }, box, "Minimalist mode");
@@ -687,7 +688,7 @@ function refreshNoticeLine() {
   const now = Date.now();
   const attention = attentionNow();
   const trigger = $("feAppMenuButton");
-  if (trigger) trigger.classList.toggle("fe-alert", connection === "problem" || attention.length > 0);   // the dot on the menu button
+  if (trigger) trigger.classList.toggle("fe-alert", connection === "problem");   // the dot on the menu button: the connection to Spotify has a problem
   const settleIn = notices.lastEditAt + noticeTiming.quietMs - now;
   if (settleIn > 0) {   // still being edited
     notices.shownAt = 0;
