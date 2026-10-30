@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-29x";
+const APP_VERSION = "2026-10-29y";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -386,7 +386,7 @@ const SAVE_SUFFIX = " (format backup)";
 // time. Spotify counts the calls an app makes in a rolling 30 seconds, so saves are not made more often than that needs, and not while a build is under way.
 let spotifySaveDelayMs = 5000;
 let spotifySaveMaxWaitMs = 30000;
-const saveState = { running: false, again: false, timer: null, since: 0, error: "", tooLong: [], newer: [], savedAt: null };
+const saveState = { running: false, again: false, timer: null, since: 0, error: "", tooLong: [], newer: [], savedAt: null, coverBlocked: false };
 
 function saveName(title) {
   return (cleanTitle(title).trim() || "Untitled").slice(0, 80) + SAVE_SUFFIX;
@@ -437,6 +437,21 @@ async function runSpotifySave() {
   try {
     const tooLong = [], newer = [];
     const allIds = playlists.map((p) => p.id);
+    // The cover of a backup playlist is the app's icon, dimmed, with a cloud: a playlist that has no cover yet gets it, once. (Spotify limits image uploads on their own,
+    // so it is never sent again, and a problem with it never stops a save.)
+    let cover;   // loaded when it is first needed
+    const putCover = async (entry) => {
+      if (entry.image || saveState.coverBlocked || !hasScope("ugc-image-upload")) return;
+      try {
+        if (cover === undefined) { try { cover = await loadCover("backup-cover.jpg"); } catch (err) { cover = null; logStep("save: cover image not loaded"); } }
+        if (!cover) return;
+        await spotifyRequest("PUT", `/playlists/${entry.id}/images`, { body: cover, contentType: "image/jpeg" });
+        entry.image = "set";
+      } catch (err) {
+        logStep("save: cover not accepted");
+        if (/did not allow|sign-in expired/.test(err.message)) saveState.coverBlocked = true;
+      }
+    };
     // formats deleted here: their saves go too, unless a format with that ID is here again
     let pending = pendingSaveDeletes();
     for (const id of pending.slice()) {
@@ -457,11 +472,12 @@ async function runSpotifySave() {
       const have = savesInAccount().get(fmt.id);
       if (have) {
         if (have.save.format.rev > (fmt.rev || 0)) { newer.push(fmt.title); continue; }
-        if (have.description === description && have.name === name) continue;   // already as it should be
+        if (have.description === description && have.name === name) { await putCover(have); continue; }   // already as it should be
         await spotifyRequest("PUT", `/playlists/${have.id}`, { json: { name, description } });
         have.name = name;
         have.description = description;
         have.save = unpackFormat(description);
+        await putCover(have);
       } else {
         const made = await spotifyRequest("POST", "/me/playlists", { json: { name, public: false, description } });
         if (made.public !== false) { try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); } catch (err) { logStep("save: could not make a backup playlist private"); } }
@@ -469,6 +485,7 @@ async function runSpotifySave() {
         entry.save = unpackFormat(description);
         entry.isSave = true;
         playlists.push(entry);
+        await putCover(entry);
       }
     }
     saveState.tooLong = tooLong;
@@ -1067,16 +1084,16 @@ function hasScope(name) {
   } catch (err) { return false; }
 }
 
-let coverImage = null;   // the app's icon as a JPEG in base64, which is how Spotify takes cover art
-async function loadCover() {
-  if (coverImage) return coverImage;
-  const response = await fetch("playlist-cover.jpg");
+const coverImages = {};   // each cover file as a JPEG in base64, which is how Spotify takes cover art
+async function loadCover(file = "playlist-cover.jpg") {
+  if (coverImages[file]) return coverImages[file];
+  const response = await fetch(file);
   if (!response.ok) throw new Error("The cover image could not be loaded.");
   const bytes = new Uint8Array(await response.arrayBuffer());
   let binary = "";
   for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  coverImage = btoa(binary);
-  return coverImage;
+  coverImages[file] = btoa(binary);
+  return coverImages[file];
 }
 
 async function pagedItems(path) {
