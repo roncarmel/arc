@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-30g";
+const APP_VERSION = "2026-10-30h";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -386,7 +386,7 @@ const SAVE_SUFFIX = " (format backup)";
 // time. Spotify counts the calls an app makes in a rolling 30 seconds, so saves are not made more often than that needs, and not while a build is under way.
 let spotifySaveDelayMs = 5000;
 let spotifySaveMaxWaitMs = 30000;
-const saveState = { running: false, again: false, timer: null, since: 0, error: "", tooLong: [], newer: [], savedAt: null, coverBlocked: false, added: [], updated: [], questions: [], unread: 0, skip: new Set() };
+const saveState = { running: false, again: false, timer: null, since: 0, error: "", tooLong: [], newer: [], savedAt: null, coverBlocked: false, added: [], updated: [], questions: [], unread: 0, skip: new Set(), dismissed: new Set(), lastNews: null };
 let playlistsLoadedAt = 0;
 let playlistRefreshMs = 5 * 60 * 1000;   // coming back to the page after this long, the account's playlists, and so the backups, are read again
 
@@ -494,6 +494,13 @@ async function mergeFromSpotify() {
   }
   writeSynced(synced);
   if (changedHere) { writeAdopted(); renderEditor(); }
+  const news = [];
+  if (saveState.added.length) news.push(newsText("Added", saveState.added));
+  if (saveState.updated.length) news.push(newsText("Updated", saveState.updated));
+  if (news.length) {
+    saveState.lastNews = { text: news.join(" "), at: Date.now() };
+    if (typeof showNotices === "function") showNotices(news);
+  }
 }
 
 function savesInAccount() {
@@ -602,7 +609,7 @@ async function runSpotifySave() {
 }
 
 // What the saving is up to, in words, with the actions that belong to it.
-function spotifySaveParts() {
+function spotifySaveParts(full = true) {
   const parts = [];   // each: { text } or { text, action, label }
   if (saveState.running) { parts.push({ text: "Saving to Spotify\u2026" }); return parts; }
   if (connection !== "ready") { parts.push({ text: connection === "problem" ? "Waiting to save to Spotify: see the problem in Step 1." : "Waiting to save to Spotify: connect first." }); }
@@ -612,8 +619,9 @@ function spotifySaveParts() {
     const at = saveState.savedAt || (() => { try { return localStorage.getItem("spotifySavedAt"); } catch (err) { return null; } })();
     if (at) parts.push({ text: "Saved to Spotify at " + new Date(at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "." });
   }
-  for (const title of saveState.added) parts.push({ text: `Added \u201c${title.trim() || "Untitled"}\u201d from Spotify.` });
-  for (const title of saveState.updated) parts.push({ text: `Updated \u201c${title.trim() || "Untitled"}\u201d from Spotify.` });
+  if (!full) return parts;   // the line in the page: how the saving is going, and nothing more
+  // the menu keeps a record of the last news, which the line under the bar only shows for a few seconds
+  if (saveState.lastNews) parts.push({ text: `${saveState.lastNews.text} (${new Date(saveState.lastNews.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })})` });
   for (const q of saveState.questions) {
     parts.push({ text: q.kind === "conflict" ? `\u201c${q.title.trim() || "Untitled"}\u201d was changed here and in Spotify.` : `\u201c${q.title.trim() || "Untitled"}\u201d is no longer in Spotify.`, action: () => { saveState.error = ""; runSpotifySave(); }, label: "Choose" });
   }
@@ -621,7 +629,6 @@ function spotifySaveParts() {
   for (const t of saveState.tooLong) {
     parts.push({ text: `\u201c${t.title.trim() || "Untitled"}\u201d is too long to back up to Spotify. It is still saved in this browser.`, action: () => downloadOneFormat(t.id), label: "Download it" });
   }
-  for (const title of saveState.newer) parts.push({ text: `Spotify has a newer copy of \u201c${title.trim() || "Untitled"}\u201d, from another device. It was not overwritten, and loading it comes in a later update.` });
   return parts;
 }
 
@@ -632,9 +639,35 @@ function downloadOneFormat(id) {
 }
 
 // Writes the parts into a place on the page, with their actions as pink links.
-function writeSaveParts(into) {
+// Trouble that needs the person: it stays in the line under the editor's bar until it is fixed, or dismissed where that is all there is to do.
+function attentionItems() {
+  const items = [];
+  if (backupMode() !== "spotify") return items;
+  const name = (t) => `\u201c${String(t).trim() || "Untitled"}\u201d`;
+  if (connection === "ready" && saveState.error && !saveState.running) items.push({ key: "error", text: "Couldn\u2019t save to Spotify.", actions: [{ label: "Try again", run: () => { saveState.error = ""; runSpotifySave(); } }] });
+  for (const q of saveState.questions) items.push({ key: "question:" + q.id, text: q.kind === "conflict" ? `${name(q.title)} was changed here and in Spotify.` : `${name(q.title)} is no longer in Spotify.`, actions: [{ label: "Choose", run: () => { saveState.error = ""; runSpotifySave(); } }] });
+  const n = saveState.unread;
+  if (n && !saveState.dismissed.has("unread:" + n)) items.push({ key: "unread:" + n, ok: true, text: `${n === 1 ? "A backup in Spotify" : n + " backups in Spotify"} could not be read, or ${n === 1 ? "was" : "were"} saved by a newer version of the app, and ${n === 1 ? "was" : "were"} left alone.` });
+  for (const t of saveState.tooLong) if (!saveState.dismissed.has("long:" + t.id)) items.push({ key: "long:" + t.id, ok: true, text: `${name(t.title)} is too long to back up to Spotify. It is still saved in this browser.`, actions: [{ label: "Download it", run: () => downloadOneFormat(t.id) }] });
+  return items;
+}
+
+function dismissAttention(key) {
+  saveState.dismissed.add(key);
+  renderSaveStatus();
+}
+
+// News from reading Spotify: one sentence for each kind, so a few formats added together are one message and not several.
+function newsText(verb, titles) {
+  const names = titles.map((t) => `\u201c${String(t).trim() || "Untitled"}\u201d`);
+  if (names.length === 1) return `${verb} ${names[0]} from Spotify.`;
+  if (names.length === 2) return `${verb} ${names[0]} and ${names[1]} from Spotify.`;
+  return `${verb} ${names.length} formats from Spotify.`;
+}
+
+function writeSaveParts(into, full = true) {
   into.textContent = "";
-  for (const part of spotifySaveParts()) {
+  for (const part of spotifySaveParts(full)) {
     into.appendChild(document.createTextNode((into.childNodes.length ? " " : "") + part.text + (part.action ? " " : "")));
     if (part.action) {
       const link = document.createElement("button");
@@ -647,8 +680,9 @@ function writeSaveParts(into) {
 
 function renderSaveStatus() {
   const slot = $("spotifySaveStatus");
-  if (slot) writeSaveParts(slot);
+  if (slot) writeSaveParts(slot, false);
   if (typeof renderAppMenu === "function") renderAppMenu();
+  if (typeof refreshNoticeLine === "function") refreshNoticeLine();   // trouble that needs the person is in the line under the editor's bar
 }
 
 // ---------------------------------------------------------------- how the formats are backed up
@@ -731,6 +765,7 @@ function applyBackupMode() {
   const spotify = backupMode() === "spotify";
   if ($("savedNote")) $("savedNote").hidden = spotify;
   if ($("savedNoteSpotify")) $("savedNoteSpotify").hidden = !spotify;
+  if ($("spotifySaveLine")) $("spotifySaveLine").hidden = !spotify;
   if ($("backupBlock")) $("backupBlock").hidden = spotify;
   document.body.classList.toggle("spotify-backup", spotify);
   // Clear saved data: with Spotify as the way, the formats come back from Spotify, not from a file

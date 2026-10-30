@@ -162,6 +162,7 @@ function noRoomForMix(f, item) {
 
 function commit() {
   editor.refused = false;
+  notices.lastEditAt = Date.now();   // notices wait while the person is editing
   for (const f of editor.model.formats) {
     const before = formatSnapshots.get(f.id);
     if (!before || FORMAT_SIGNATURES.get(f) === formatSignature(f)) continue;   // new, or not changed by this edit
@@ -351,7 +352,8 @@ function renderEditor() {
     feEl("p", { class: "fe-warn", id: "feClash", hidden: true }),   // about the name, so it stays at the top, near the tab
     feEl("div", { class: "fe-barwrap" },
       feEl("div", { class: "fe-bar", id: "feBar", role: "img", "aria-label": "Shape of one playlist" }),
-      feEl("div", { class: "fe-caption", id: "feCaption" })),
+      feEl("div", { class: "fe-caption", id: "feCaption", onPointerDown: pauseNotices, onMouseEnter: pauseNotices }),
+      feEl("span", { class: "fe-sr", id: "feNoticeLive", "aria-live": "polite" })),
     feEl("div", { class: "fe-rows", id: "feRows" }),
     feEl("div", { id: "feHead" }));   // the silence between segments, Duplicate and Delete: settings for the whole format, below the segments
   root.appendChild(card);
@@ -417,8 +419,8 @@ function renderAppMenu() {
   if (!slot) return;
   slot.innerHTML = "";
   slot.appendChild(feEl("button", {
-    type: "button", class: "fe-iconbtn fe-trigger" + (connection === "problem" ? " fe-alert" : ""), id: "feAppMenuButton",
-    "aria-label": connection === "problem" ? "App menu, there is a Spotify problem" : "App menu", "aria-haspopup": "menu", "aria-expanded": String(editor.appMenu),
+    type: "button", class: "fe-iconbtn fe-trigger" + (connection === "problem" || attentionNow().length ? " fe-alert" : ""), id: "feAppMenuButton",
+    "aria-label": connection === "problem" ? "App menu, there is a Spotify problem" : attentionNow().length ? "App menu, something needs your attention" : "App menu", "aria-haspopup": "menu", "aria-expanded": String(editor.appMenu),
     onClick: toggleAppMenu,
   }, feIcon("dots")));
   if (!editor.appMenu) return;
@@ -618,6 +620,89 @@ function renderClash() {
   note.textContent = clash ? "Another format has this name. Playlists from both would be treated as one set when replacing." : "";
 }
 
+// ---------------------------------------------------------------- the line under the bar: the music total, or a notice
+// The line says how long the format is. It also carries the app's notices: news (formats added or updated from Spotify), each shown for a few seconds in turn, and
+// trouble that needs the person, which stays until it is fixed or dismissed. While the person is editing the total is what they want, so notices wait.
+const noticeTiming = { quietMs: 2000, baseMs: 3000, perWordMs: 250, pauseMs: 4000 };
+const notices = { batch: [], pos: 0, shownAt: 0, pausedUntil: 0, lastEditAt: 0, attn: 0, timer: null, spoken: "" };
+
+function attentionNow() { return typeof attentionItems === "function" ? attentionItems() : []; }
+
+function noticeDuration(text) { return noticeTiming.baseMs + Math.max(0, text.split(/\s+/).length - 8) * noticeTiming.perWordMs; }
+
+function showNotices(messages) {
+  if (!messages || !messages.length) return;
+  notices.batch.push(...messages);   // joins whatever is still waiting or showing
+  refreshNoticeLine();
+}
+
+function pauseNotices() {
+  notices.pausedUntil = Date.now() + noticeTiming.pauseMs;
+  refreshNoticeLine();
+}
+
+function paintNotice(caption, view) {
+  caption.className = "fe-caption";
+  caption.textContent = "";
+  const live = $("feNoticeLive");
+  if (!view) {
+    caption.textContent = editor.musicText || "";
+    notices.spoken = "";
+    if (live) live.textContent = "";
+    return;
+  }
+  caption.classList.add("fe-notice", view.warn ? "fe-notice-warn" : "fe-notice-news");
+  caption.appendChild(feIcon(view.warn ? "warn" : "cloud"));
+  caption.appendChild(feEl("span", { class: "fe-notice-text", text: view.text }));
+  for (const a of view.actions || []) caption.appendChild(feEl("button", { type: "button", class: a.ok ? "fe-notice-ok" : "fe-notice-link", onClick: a.run, text: a.label }));
+  if (view.count) caption.appendChild(view.cycle
+    ? feEl("button", { type: "button", class: "fe-notice-count", "aria-label": "Next message", onClick: view.cycle, text: `(${view.count})` })
+    : feEl("span", { class: "fe-notice-count", text: `(${view.count})` }));
+  if (live && notices.spoken !== view.text) { notices.spoken = view.text; live.textContent = view.text; }
+}
+
+function refreshNoticeLine() {
+  clearTimeout(notices.timer);
+  notices.timer = null;
+  const caption = $("feCaption");
+  if (!caption) return;
+  const now = Date.now();
+  const attention = attentionNow();
+  const trigger = $("feAppMenuButton");
+  if (trigger) trigger.classList.toggle("fe-alert", connection === "problem" || attention.length > 0);   // the dot on the menu button
+  const settleIn = notices.lastEditAt + noticeTiming.quietMs - now;
+  if (settleIn > 0) {   // still being edited
+    notices.shownAt = 0;
+    paintNotice(caption, null);
+    notices.timer = setTimeout(refreshNoticeLine, settleIn + 20);
+    return;
+  }
+  if (attention.length) {
+    notices.attn = Math.min(notices.attn, attention.length - 1);
+    const item = attention[notices.attn];
+    const actions = (item.actions || []).map((a) => ({ label: a.label, run: a.run }));
+    if (item.ok) actions.push({ label: "OK", ok: true, run: () => dismissAttention(item.key) });
+    paintNotice(caption, { warn: true, text: item.text, actions, count: attention.length > 1 ? `${notices.attn + 1} of ${attention.length}` : "",
+      cycle: attention.length > 1 ? () => { notices.attn = (notices.attn + 1) % attention.length; refreshNoticeLine(); } : null });
+    return;
+  }
+  if (notices.batch.length) {
+    if (!notices.shownAt) notices.shownAt = now;
+    let due = notices.shownAt + noticeDuration(notices.batch[notices.pos]);
+    if (now < notices.pausedUntil) due = Math.max(due, notices.pausedUntil);
+    if (now >= due) {
+      notices.pos += 1;
+      notices.shownAt = now;
+      if (notices.pos >= notices.batch.length) { notices.batch = []; notices.pos = 0; notices.shownAt = 0; paintNotice(caption, null); return; }
+      due = now + noticeDuration(notices.batch[notices.pos]);
+    }
+    paintNotice(caption, { text: notices.batch[notices.pos], count: notices.batch.length > 1 ? `${notices.pos + 1} of ${notices.batch.length}` : "" });
+    notices.timer = setTimeout(refreshNoticeLine, Math.max(due - Date.now(), 0) + 20);
+    return;
+  }
+  paintNotice(caption, null);
+}
+
 function renderTimeline() {
   const f = activeFormat();
   const bar = $("feBar");
@@ -644,7 +729,8 @@ function renderTimeline() {
     }
   });
   const music = f.items.reduce((n, i) => n + i.minutes, 0);
-  caption.textContent = `${Math.round(music * 10) / 10} min of music` + (quiet ? ` + ${describeSeconds(quiet)} of silence` : "");
+  editor.musicText = `${Math.round(music * 10) / 10} min of music` + (quiet ? ` + ${describeSeconds(quiet)} of silence` : "");
+  refreshNoticeLine();   // the line shows the total, unless there is a notice to show
   applyHighlight();
 }
 
