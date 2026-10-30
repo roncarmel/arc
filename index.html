@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-29p">
-<script src="theme.js?v=2026-10-29p"></script>
+<meta name="app-version" content="2026-10-29s">
+<script src="theme.js?v=2026-10-29s"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -74,6 +74,8 @@
   #confirmBox ul, #removeConfirmBox ul { margin: 6px 0 10px; padding-left: 20px; }
   .choice-row { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 0 0 8px; cursor: pointer; }
   .choice-row input { width: 20px; height: 20px; accent-color: var(--button); flex: none; }
+  .choice-note { margin: -4px 0 12px 30px; font-size: 0.9rem; }
+  #backupCard { margin: 12px 0; }
   #actionMessage, #removeMessage { white-space: pre-line; }
   #results div { padding: 3px 0; }
   footer.debug { margin-top: 32px; font-size: 0.95rem; }
@@ -279,7 +281,7 @@
   .swatch { width: 18px; height: 18px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.55); }
   /* minimalist mode: the page with only what is needed. The headings and explanations of the steps, the "more about" box, the Spotify
      connection once it is made, and the backup step all go; the app menu has the backup and sign-out. */
-  body.minimal .tagline, body.minimal #about, body.minimal #connectedSection, body.minimal #editHeading, body.minimal #savedNote,
+  body.minimal #backupCard:not(.opened), body.minimal .tagline, body.minimal #about, body.minimal #connectedSection, body.minimal #editHeading, body.minimal #savedNote,
   body.minimal #createHeading, body.minimal #createNote, body.minimal #backupBlock, body.minimal #formatHelp, body.minimal #moreOptions, body.minimal #privacySection, body.minimal #loginSection, body.minimal #connectionProblem { display: none; }
   /* the page's title goes (once the editor is there), and the icon takes its place at the left of the tabs, as tall as they are */
   body.minimal.has-editor h1.brand { display: none; }
@@ -573,6 +575,18 @@
   <p id="savedNote" class="muted">Your formats are saved in this browser automatically. You can <button id="backupDownloadLink" class="linklike" type="button">download a backup</button> of them to your phone or computer, and <button id="backupRestore" class="linklike" type="button">restore from that backup</button> at any time.</p>
   <input id="restoreFile" type="file" accept=".txt,text/plain" hidden>
   <p id="backupMessage" aria-live="polite"></p>
+  <div id="backupCard" class="card" hidden>
+    <h3>How should your formats be backed up?</h3>
+    <p>Your formats are saved in this browser. Clearing the browser's data, on purpose or by accident, erases them, so it is a good idea to keep a second copy.</p>
+    <label class="choice-row"><input type="radio" name="backupMode" id="backupModeSpotify" value="spotify" disabled> <span>Automatically to Spotify <span class="muted">(coming soon)</span></span></label>
+    <p class="muted choice-note">Each format is kept in a private playlist of its own, named like the format and ending in (format backup). The format is saved in that playlist's description, so please do not edit it.</p>
+    <label class="choice-row"><input type="radio" name="backupMode" id="backupModeManual" value="manual" checked> <span>Manually, to your phone or computer</span></label>
+    <p class="muted choice-note">A backup file is downloaded when you ask for one, and you restore from it when you need it.</p>
+    <div class="row">
+      <button id="backupCardDone" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Done</span></button>
+      <button id="backupCardCancel" type="button" hidden><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
+    </div>
+  </div>
   <div id="formatEditor"></div>
   <p id="editorNote" class="muted" aria-live="polite"></p>
   <textarea id="formats" spellcheck="false" hidden aria-hidden="true" tabindex="-1"></textarea>
@@ -654,14 +668,6 @@
   </div>
 
   <footer class="debug">
-    <!-- TEMPORARY, shown only with ?diag in the address -->
-    <div id="diagBox" hidden>
-      <h3>Playlist list test (temporary)</h3>
-      <p class="muted">Creates one private playlist with a long description, checks whether Spotify's playlist list includes that description, then removes the playlist. Nothing else in your Spotify account is touched.</p>
-      <button id="diagRun" type="button"><img class="btn-icon" src="icons/preview.svg" alt="" width="20" height="20"><span class="btn-label">Run the test</span></button>
-      <pre id="diagOutput" class="muted"></pre>
-    </div>
-
     <details id="moreOptions" class="card">
       <summary>More options</summary>
 
@@ -779,8 +785,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-29p"></script>
-<script src="editor.js?v=2026-10-29p"></script>
-<script src="app.js?v=2026-10-29p"></script>
+<script src="formats.js?v=2026-10-29s"></script>
+<script src="editor.js?v=2026-10-29s"></script>
+<script src="app.js?v=2026-10-29s"></script>
 </body>
 </html>

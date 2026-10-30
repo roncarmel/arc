@@ -126,6 +126,7 @@ function coverEl(name, size, extraClass) {
 
 // ---------------------------------------------------------------- writing changes back
 function commit() {
+  touchFormats(editor.model);   // a format whose content changed gets its next revision number and its edit time
   const text = modelToText(editor.model);
   editor.internal = true;
   $("formats").value = text;
@@ -162,6 +163,7 @@ function syncPlaylistRefs() {
 // current stays current.
 function commitHealed() {
   const wasCurrent = typeof backupState === "function" && backupState().kind === "current";
+  rememberFormats(editor.model);   // IDs and renamed names filled in by the app are not an edit, so they do not count as a new revision
   commit();
   if (wasCurrent) localStorage.setItem("lastBackupText", $("formats").value);
   if (typeof refreshBackupStatus === "function") refreshBackupStatus();
@@ -357,6 +359,7 @@ function renderAppMenu() {
     feEl("button", { type: "button", class: "fe-item", id: "feBackup", role: "menuitem", onClick: choose(() => { downloadBackup(); showBackupMessage("Backup downloaded. Find it in Downloads, or in the Files app on a phone."); }) }, feIcon("download"), "Download a backup"),
     ...(backupLabel ? [feEl("div", { class: "fe-itemnote", id: "feBackupStatus", text: backupLabel })] : []),
     feEl("button", { type: "button", class: "fe-item", id: "feRestore", role: "menuitem", onClick: choose(() => $("restoreFile").click()) }, feIcon("restore"), "Restore from backup"),
+    feEl("button", { type: "button", class: "fe-item", id: "feBackupMethod", role: "menuitem", onClick: choose(() => openBackupCard()) }, feIcon("sliders"), "Change backup method\u2026"),
     ...(connection === "ready" ? [feEl("div", { class: "fe-rule" }), feEl("button", { type: "button", class: "fe-item", id: "feDisconnect", role: "menuitem", onClick: choose(() => disconnect()) }, feIcon("unplug"), "Disconnect Spotify")] : [])));
 }
 

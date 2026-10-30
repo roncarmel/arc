@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-29p";
+const APP_VERSION = "2026-10-29s";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -374,6 +374,43 @@ function formatBackupTime(iso) {
   const day = d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   return `${day} at ${time}`;
+}
+
+// ---------------------------------------------------------------- how the formats are backed up
+// "manual" is the backup file. "spotify", saving each format to Spotify by itself, is the other choice, which is not available yet. Until a choice is made
+// the card asking for it is on the page, and the app behaves as it does for "manual".
+let backupCardOpen = false;
+
+function backupMode() {
+  try { return localStorage.getItem("backupMode") || ""; } catch (err) { return ""; }
+}
+
+function refreshBackupCard() {
+  const card = $("backupCard");
+  if (!card) return;
+  card.hidden = !(backupCardOpen || !backupMode());
+  card.classList.toggle("opened", backupCardOpen);
+  $("backupCardCancel").hidden = !backupCardOpen;
+  const mode = backupMode() || "manual";
+  $("backupModeManual").checked = mode === "manual";
+  $("backupModeSpotify").checked = mode === "spotify";
+}
+
+function openBackupCard() {
+  backupCardOpen = true;
+  refreshBackupCard();
+  const card = $("backupCard");
+  if (card && card.scrollIntoView) card.scrollIntoView({ block: "nearest" });
+}
+
+function closeBackupCard(save) {
+  if (save) {
+    const chosen = document.querySelector('input[name="backupMode"]:checked');
+    try { localStorage.setItem("backupMode", chosen && !chosen.disabled ? chosen.value : "manual"); } catch (err) { /* private browsing */ }
+  }
+  backupCardOpen = false;
+  refreshBackupCard();
+  if (typeof renderAppMenu === "function") renderAppMenu();
 }
 
 function backupState() {
@@ -793,52 +830,6 @@ function rateLimitError(wait, reason) {
   error.retryAfter = wait;
   error.reason = reason;
   return error;
-}
-
-// TEMPORARY: finds out whether Spotify's playlist list includes each playlist's description, or whether it takes a separate request. Only reachable with ?diag in the address.
-async function runListTest() {
-  const box = $("diagOutput"), lines = [];
-  const say = (s) => { lines.push(s); box.textContent = lines.join("\n"); };
-  if (connection !== "ready") { say("Connect to Spotify first."); return; }
-  const pause = (ms) => new Promise((r) => setTimeout(r, ms));
-  const decode = (s) => { const t = document.createElement("textarea"); t.innerHTML = s; return t.value; };
-  const dense = (n, shift) => { let s = ""; for (let i = 0; i < n; i++) s += String.fromCodePoint(0x4e00 + ((i * 37 + shift) % 2000)); return s; };
-  let id = null;
-  const look = async (label, expected) => {
-    const started = Date.now();
-    const all = await pagedItems("/me/playlists?limit=50");
-    const mine = all.filter(Boolean).find((p) => p.id === id);
-    const secs = ((Date.now() - started) / 1000).toFixed(1);
-    if (!mine) { say(`${label}: the test playlist was not in the list (${secs} s)`); return; }
-    if (typeof mine.description !== "string") { say(`${label}: the list has NO description for it (${typeof mine.description}), so a separate request would be needed`); return; }
-    const got = decode(mine.description);
-    say(`${label}: the list shows the description, ${Array.from(got).length} characters, ${got === expected ? "identical to what was saved" : "NOT identical to what was saved"} (${secs} s for ${all.length} playlists)`);
-  };
-  try {
-    const first = dense(280, 0);
-    const made = await spotifyRequest("POST", "/me/playlists", { json: { name: "List test (safe to delete)", public: false, description: first } });
-    id = made.id;
-    say("Test playlist made (private), with a 280 character description.");
-    await look("Right after it was made", first);
-    const second = dense(280, 11);
-    await spotifyRequest("PUT", `/playlists/${id}`, { json: { description: second } });
-    say("Description changed with an update.");
-    await look("Straight away after the update", second);
-    await pause(3000);
-    await look("Three seconds later", second);
-    const everything = await pagedItems("/me/playlists?limit=50");
-    const real = everything.filter(Boolean).filter((p) => p.id !== id);
-    const withText = real.filter((p) => typeof p.description === "string" && p.description !== "").length;
-    const withNull = real.filter((p) => p.description === null || p.description === undefined).length;
-    say(`Across your other ${real.length} playlists: ${withText} show a description, ${withNull} show none at all, and the rest are empty.`);
-  } catch (err) {
-    say("The test stopped: " + err.message);
-  } finally {
-    if (id) {
-      try { await spotifyRequest("DELETE", "/me/library", { params: { uris: "spotify:playlist:" + id } }); say("Test playlist removed."); }
-      catch (err) { say("The test playlist could not be removed. It is private and called \"List test (safe to delete)\": remove it in Spotify."); }
-    }
-  }
 }
 
 async function spotifyRequest(method, path, { params, json, body, contentType } = {}) {
@@ -1448,7 +1439,9 @@ function setDonateChoice(choice) {
 
 function initDonateChoice() {
   on("donateHideBox", "change", () => setDonateChoice($("donateHideBox").checked ? "donated" : ""));
-  if (/[?&]diag(=|&|$)/.test(location.search) && $("diagBox")) { $("diagBox").hidden = false; on("diagRun", "click", runListTest); }
+  on("backupCardDone", "click", () => closeBackupCard(true));
+  on("backupCardCancel", "click", () => closeBackupCard(false));
+  refreshBackupCard();
   applyDonateChoice();
 }
 

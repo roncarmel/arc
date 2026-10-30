@@ -264,7 +264,10 @@ function textToModel(text, allowEmpty) {
     gaps[items.length] = pending && pending > 0 ? pending : undefined;
     const rawTitle = fmt.get("title");
     const title = typeof rawTitle === "string" ? rawTitle : titleFromName(fmt.get("name"), String(key));
-    return ensureGaps({ id: String(key), title, gap, gaps, lead, items });
+    const rev = Number(fmt.get("revision")), modified = Number(fmt.get("modified"));
+    const format = ensureGaps({ id: String(key), title, gap, gaps, lead, items, rev: rev > 0 ? Math.floor(rev) : 0, modified: modified > 0 ? Math.floor(modified) : 0 });
+    FORMAT_SIGNATURES.set(format, formatSignature(format));   // as loaded, so reading a format counts as no edit
+    return format;
   });
   return { formats };
 }
@@ -293,6 +296,7 @@ function modelToText(model) {
     out.push(`        "title": ${pyString(cleanTitle(fmt.title))},`);
     out.push(`        "name": ${pyString(nameFromTitle(fmt.title))},`);
     out.push(`        "silence between segments": ${fmt.gap > 0 ? pyString(formatSilenceText(fmt.gap)) : '"none"'},`);
+    if (fmt.rev > 0) { out.push(`        "revision": ${fmt.rev},`); out.push(`        "modified": ${fmt.modified || 0},`); }
     out.push('        "segments": [');
     if (fmt.lead > 0) out.push(`            ("silence", ${pyString(formatSilenceText(fmt.lead))}),`);
     fmt.items.forEach((item, index) => {
@@ -320,7 +324,7 @@ function modelToText(model) {
 function newFormatId(model) {
   const taken = new Set(model.formats.map((f) => f.id));
   let id;
-  do { id = "format-" + Math.random().toString(36).slice(2, 7); } while (taken.has(id));
+  do { id = "format-" + Math.random().toString(36).slice(2, 10).padEnd(8, "0"); } while (taken.has(id));
   return id;
 }
 
@@ -337,4 +341,194 @@ function defaultModel() {
 function mixPercentA(item) {
   const total = item.lists.reduce((n, l) => n + l.weight, 0) || 1;
   return Math.round((100 * item.lists[0].weight) / total);
+}
+
+
+// ---------------------------------------------------------------- editing counts: a revision number and an edit time for each format
+// A format's revision goes up, and its edit time is set, whenever its content changes. What counts as content is what the format says (title, silences, segments,
+// playlists), not its revision or edit time, and not the IDs and names the app fills in by itself.
+const FORMAT_SIGNATURES = new WeakMap();
+
+function formatSignature(fmt) {
+  return JSON.stringify([fmt.title, fmt.gap, (fmt.gaps || []).map((g) => (g === undefined ? null : g)), fmt.lead || 0,
+    fmt.items.map((it) => [it.minutes, it.lists.map((l) => [l.name, l.id || "", l.weight])])]);
+}
+
+function touchFormats(model, nowSeconds) {
+  for (const fmt of model.formats) {
+    const sig = formatSignature(fmt);
+    if (FORMAT_SIGNATURES.get(fmt) !== sig) {
+      fmt.rev = (fmt.rev || 0) + 1;
+      fmt.modified = nowSeconds || Math.floor(Date.now() / 1000);
+      FORMAT_SIGNATURES.set(fmt, sig);
+    }
+  }
+}
+
+function rememberFormats(model) {
+  for (const fmt of model.formats) FORMAT_SIGNATURES.set(fmt, formatSignature(fmt));
+}
+
+// ---------------------------------------------------------------- packing a format into a Spotify description
+// A format is packed into bytes, and the bytes into characters of the CJK block (14 bits each, U+4E00 to U+8DFF), so that a format of any usual size fits the
+// 300 characters Spotify's own app allows in a description. The description is a plain "Do not edit." followed by those characters.
+//   bytes:  length of what follows | "C" "P" version | the format | CRC-16 of "C" "P" version and the format
+//   format: id, title (each a length and UTF-8), revision, edit time (seconds since the start of 2026), default silence, silence before the first segment,
+//           the silences of their own (count; place and seconds), then the segments (count; seconds, and the playlists of each: count; for each, a kind
+//           byte, then a 16 byte Spotify ID, or the ID as text, or the name as text, and the weight)
+const SAVE_PREFIX = "Do not edit. ";
+const SAVE_VERSION = 1;
+const SAVE_EPOCH = 1767225600;
+const DENSE_BASE = 0x4e00;
+const SPOTIFY_ID_DIGITS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+function spotifyIdToBytes(id) {
+  if (!/^[0-9A-Za-z]{22}$/.test(id)) return null;
+  let n = 0n;
+  for (const ch of id) n = n * 62n + BigInt(SPOTIFY_ID_DIGITS.indexOf(ch));
+  if (n >= (1n << 128n)) return null;
+  const out = [];
+  for (let i = 0; i < 16; i++) { out.unshift(Number(n & 0xffn)); n >>= 8n; }
+  return out;
+}
+
+function bytesToSpotifyId(bytes) {
+  let n = 0n;
+  for (const b of bytes) n = (n << 8n) | BigInt(b);
+  let id = "";
+  for (let i = 0; i < 22; i++) { id = SPOTIFY_ID_DIGITS[Number(n % 62n)] + id; n /= 62n; }
+  return id;
+}
+
+function crc16(bytes) {
+  let crc = 0xffff;
+  for (const b of bytes) {
+    crc ^= b << 8;
+    for (let i = 0; i < 8; i++) crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
+  }
+  return crc;
+}
+
+function writeVarint(out, n) {
+  n = Math.max(0, Math.round(n));
+  while (n >= 128) { out.push((n % 128) | 128); n = Math.floor(n / 128); }
+  out.push(n);
+}
+
+function writeText(out, s) {
+  const bytes = new TextEncoder().encode(String(s));
+  writeVarint(out, bytes.length);
+  for (const b of bytes) out.push(b);
+}
+
+function denseEncode(bytes) {
+  let acc = 0, bits = 0, out = "";
+  for (const b of bytes) {
+    acc = (acc << 8) | b;
+    bits += 8;
+    while (bits >= 14) { bits -= 14; out += String.fromCharCode(DENSE_BASE + ((acc >> bits) & 0x3fff)); acc &= (1 << bits) - 1; }
+  }
+  if (bits > 0) out += String.fromCharCode(DENSE_BASE + ((acc << (14 - bits)) & 0x3fff));
+  return out;
+}
+
+function packFormat(fmt) {
+  ensureGaps(fmt);
+  const body = [];
+  writeText(body, fmt.id);
+  writeText(body, fmt.title);
+  writeVarint(body, fmt.rev || 0);
+  writeVarint(body, fmt.modified ? Math.max(1, fmt.modified - SAVE_EPOCH + 1) : 0);   // 0 means never edited
+  writeVarint(body, fmt.gap || 0);
+  writeVarint(body, fmt.lead || 0);
+  const own = [];
+  for (let g = 1; g <= fmt.items.length; g++) if (fmt.gaps[g] !== undefined) own.push([g, fmt.gaps[g]]);
+  writeVarint(body, own.length);
+  for (const [g, sec] of own) { writeVarint(body, g); writeVarint(body, sec); }
+  writeVarint(body, fmt.items.length);
+  for (const item of fmt.items) {
+    writeVarint(body, item.minutes * 60);
+    writeVarint(body, item.lists.length);
+    for (const l of item.lists) {
+      const idBytes = l.id ? spotifyIdToBytes(l.id) : null;
+      if (idBytes) { body.push(1); for (const b of idBytes) body.push(b); }
+      else if (l.id) { body.push(2); writeText(body, l.id); }
+      else { body.push(0); writeText(body, l.name); }
+      writeVarint(body, l.weight);
+    }
+  }
+  const payload = [0x43, 0x50, SAVE_VERSION, ...body];
+  const crc = crc16(payload);
+  payload.push(crc >> 8, crc & 0xff);
+  const all = [];
+  writeVarint(all, payload.length);
+  for (const b of payload) all.push(b);
+  return SAVE_PREFIX + denseEncode(all);
+}
+
+// What a description is: { kind: "save", format } for a good save; { kind: "newer" } for a save from a newer version of the app, which is to be left
+// alone; { kind: "damaged" } for something that starts like a save but does not add up; { kind: "none" } for anything else.
+function unpackFormat(description) {
+  const text = String(description || "");
+  let start = -1;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    if (c >= DENSE_BASE && c < DENSE_BASE + 16384) { start = i; break; }
+  }
+  if (start < 0 || text.slice(0, start).trim() !== SAVE_PREFIX.trim()) return { kind: "none" };
+  const bytes = [];
+  let acc = 0, bits = 0;
+  for (let i = start; i < text.length; i++) {
+    const v = text.charCodeAt(i) - DENSE_BASE;
+    if (v < 0 || v >= 16384) return { kind: "damaged" };
+    acc = (acc << 14) | v;
+    bits += 14;
+    while (bits >= 8) { bits -= 8; bytes.push((acc >> bits) & 0xff); acc &= (1 << bits) - 1; }
+  }
+  let pos = 0;
+  const fail = () => { throw new Error("damaged"); };
+  const u8 = () => { if (pos >= bytes.length) fail(); return bytes[pos++]; };
+  const varint = () => { let n = 0, mul = 1; for (let i = 0; i < 9; i++) { const b = u8(); n += (b & 127) * mul; if (b < 128) return n; mul *= 128; } return fail(); };
+  const take = (n) => { if (pos + n > bytes.length) fail(); const out = bytes.slice(pos, pos + n); pos += n; return out; };
+  const str = () => new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(take(varint())));
+  try {
+    const length = varint();
+    const payload = take(length);
+    if (payload.length < 5 || payload[0] !== 0x43 || payload[1] !== 0x50) return { kind: "none" };
+    if (payload[2] > SAVE_VERSION) return { kind: "newer" };
+    const crc = crc16(payload.slice(0, -2));
+    if (crc !== ((payload[payload.length - 2] << 8) | payload[payload.length - 1])) return { kind: "damaged" };
+    bytes.length = 0;
+    for (const b of payload.slice(3, -2)) bytes.push(b);
+    pos = 0;
+    const id = str(), title = str(), rev = varint(), edited = varint(), gap = varint(), lead = varint();
+    const gaps = [undefined];
+    const ownCount = varint();
+    const own = [];
+    for (let i = 0; i < ownCount; i++) own.push([varint(), varint()]);
+    const count = varint();
+    const items = [];
+    for (let i = 0; i < count; i++) {
+      const minutes = varint() / 60;
+      const lists = [];
+      const listCount = varint();
+      for (let j = 0; j < listCount; j++) {
+        const kind = u8();
+        let list;
+        if (kind === 1) list = { name: "", id: bytesToSpotifyId(take(16)) };
+        else if (kind === 2) list = { name: "", id: str() };
+        else if (kind === 0) list = { name: str() };
+        else fail();
+        list.weight = varint();
+        lists.push(list);
+      }
+      items.push({ id: `r${++ROW_SEQ}`, kind: "seg", lists, minutes });
+    }
+    if (pos !== bytes.length) fail();
+    for (let g = 1; g <= items.length; g++) gaps[g] = undefined;
+    for (const [g, sec] of own) if (g >= 1 && g <= items.length) gaps[g] = sec;
+    return { kind: "save", format: ensureGaps({ id, title, gap, gaps, lead, items, rev, modified: edited ? edited - 1 + SAVE_EPOCH : 0 }) };
+  } catch (err) {
+    return { kind: "damaged" };
+  }
 }
