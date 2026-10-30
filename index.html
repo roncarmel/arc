@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-29v">
-<script src="theme.js?v=2026-10-29v"></script>
+<meta name="app-version" content="2026-10-29x">
+<script src="theme.js?v=2026-10-29x"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -125,6 +125,7 @@
   #formatEditor .fe-toprow .fe-tabs { flex: 1 1 0; min-width: 0; margin-bottom: 0; }
   #formatEditor .fe-appmenuwrap { position: relative; flex: none; }
   #formatEditor .fe-appmenu { right: 0; top: 48px; width: max-content; max-width: min(300px, calc(100vw - 32px)); }
+  #formatEditor .fe-static { cursor: default; font-weight: 600; font-size: 1rem; }   /* a row that only says something, as the one above the status of the Spotify backup */
   #formatEditor .fe-itemnote { width: 0; min-width: 100%; box-sizing: border-box; padding: 0 12px 6px 40px; margin-top: -4px; font-size: 0.78rem; color: var(--muted); line-height: 1.3; }   /* the last-backup label, under its item, wrapping inside the menu */
   #formatEditor .fe-check { width: 20px; height: 20px; flex: none; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border: 2px solid var(--muted); border-radius: 5px; }
   #formatEditor .fe-check-on { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
@@ -413,7 +414,7 @@
     #formatEditor .fe-main:hover, #formatEditor .fe-tag:hover { outline: none; }
     #formatEditor .fe-main:hover { filter: none; }
     button.linklike:hover, #formatEditor .fe-linkbutton:hover { outline: none; filter: brightness(1.25); text-decoration-thickness: 2px; }
-    #formatEditor .fe-item:hover, #formatEditor .fe-option:hover { filter: none; outline: none; background: rgba(127, 127, 127, 0.18); }
+    #formatEditor .fe-item:not(.fe-static):hover, #formatEditor .fe-option:hover { filter: none; outline: none; background: rgba(127, 127, 127, 0.18); }
     #kofiPanel .kofi-bar button:hover { filter: none; outline: none; background: rgba(0, 0, 0, 0.08); }
     details > summary:hover { filter: brightness(1.2); }
     /* the pencil on the selected tab lights up, since pressing the tab renames the format */
@@ -784,8 +785,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-29v"></script>
-<script src="editor.js?v=2026-10-29v"></script>
-<script src="app.js?v=2026-10-29v"></script>
+<script src="formats.js?v=2026-10-29x"></script>
+<script src="editor.js?v=2026-10-29x"></script>
+<script src="app.js?v=2026-10-29x"></script>
 </body>
 </html>

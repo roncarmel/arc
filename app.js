@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-29v";
+const APP_VERSION = "2026-10-29x";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -382,8 +382,11 @@ function formatBackupTime(iso) {
 // except which formats were deleted and still have a save to remove. This stage only writes: it creates a save for each format, brings it up to date after an
 // edit, renames it with the format, and removes it when the format is deleted. A save that is newer than the format here (made on another device) is left alone.
 const SAVE_SUFFIX = " (format backup)";
-let spotifySaveDelayMs = 2000;
-const saveState = { running: false, again: false, timer: null, error: "", tooLong: [], newer: [], savedAt: null };
+// Edits are saved once they have stopped for a few seconds, and at the latest this long after the first of them, so a long run of edits still gets saved from time to
+// time. Spotify counts the calls an app makes in a rolling 30 seconds, so saves are not made more often than that needs, and not while a build is under way.
+let spotifySaveDelayMs = 5000;
+let spotifySaveMaxWaitMs = 30000;
+const saveState = { running: false, again: false, timer: null, since: 0, error: "", tooLong: [], newer: [], savedAt: null };
 
 function saveName(title) {
   return (cleanTitle(title).trim() || "Untitled").slice(0, 80) + SAVE_SUFFIX;
@@ -403,7 +406,10 @@ function noteFormatDeleted(id) {
 function scheduleSpotifySave(delay) {
   if (backupMode() !== "spotify") return;
   clearTimeout(saveState.timer);
-  saveState.timer = setTimeout(runSpotifySave, delay === undefined ? spotifySaveDelayMs : delay);
+  const now = Date.now();
+  if (!saveState.since) saveState.since = now;
+  const wanted = delay === undefined ? spotifySaveDelayMs : delay;
+  saveState.timer = setTimeout(runSpotifySave, Math.max(0, Math.min(wanted, saveState.since + spotifySaveMaxWaitMs - now)));
   renderSaveStatus();
 }
 
@@ -419,7 +425,11 @@ function savesInAccount() {
 
 async function runSpotifySave() {
   if (backupMode() !== "spotify") return;
+  clearTimeout(saveState.timer);
+  saveState.timer = null;
   if (saveState.running) { saveState.again = true; return; }
+  if (busy) { saveState.timer = setTimeout(runSpotifySave, 3000); return; }   // a plan or a build is under way: wait for it to finish
+  saveState.since = 0;
   if (connection !== "ready" || !me || typeof editor === "undefined" || !editor.model) { renderSaveStatus(); return; }
   saveState.running = true;
   saveState.error = "";
@@ -480,7 +490,7 @@ function spotifySaveParts() {
   if (saveState.running) { parts.push({ text: "Saving to Spotify\u2026" }); return parts; }
   if (connection !== "ready") { parts.push({ text: connection === "problem" ? "Waiting to save to Spotify: see the problem in Step 1." : "Waiting to save to Spotify: connect first." }); }
   else if (saveState.error) parts.push({ text: "Couldn\u2019t save to Spotify.", action: () => { saveState.error = ""; runSpotifySave(); }, label: "Try again" });
-  else if (saveState.timer && saveState.savedAt === null) parts.push({ text: "Saving to Spotify\u2026" });
+  else if (saveState.timer) parts.push({ text: "Saving to Spotify\u2026" });
   else {
     const at = saveState.savedAt || (() => { try { return localStorage.getItem("spotifySavedAt"); } catch (err) { return null; } })();
     if (at) parts.push({ text: "Saved to Spotify at " + new Date(at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "." });
@@ -1602,6 +1612,8 @@ function initDonateChoice() {
     radio.addEventListener("change", () => { if (!radio.disabled && radio.checked) chooseBackupMode(radio.value); });
   }
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && backupCardOpen) dismissBackupCard(); });
+  // someone leaving the page, or switching to another app, does not wait for the pause: whatever has not been saved is saved now
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && saveState.timer && backupMode() === "spotify") runSpotifySave(); });
   refreshBackupCard();
   applyBackupMode();
   applyDonateChoice();
