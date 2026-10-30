@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-29u";
+const APP_VERSION = "2026-10-29v";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -376,6 +376,148 @@ function formatBackupTime(iso) {
   return `${day} at ${time}`;
 }
 
+// ---------------------------------------------------------------- automatic backup to Spotify
+// Each format is kept in a private playlist of its own, named like the format and ending in (format backup). The format is packed into the description (see
+// packFormat). A save is found again by what its description decodes to, so it does not matter what the playlist is called, and nothing is kept in this browser
+// except which formats were deleted and still have a save to remove. This stage only writes: it creates a save for each format, brings it up to date after an
+// edit, renames it with the format, and removes it when the format is deleted. A save that is newer than the format here (made on another device) is left alone.
+const SAVE_SUFFIX = " (format backup)";
+let spotifySaveDelayMs = 2000;
+const saveState = { running: false, again: false, timer: null, error: "", tooLong: [], newer: [], savedAt: null };
+
+function saveName(title) {
+  return (cleanTitle(title).trim() || "Untitled").slice(0, 80) + SAVE_SUFFIX;
+}
+
+function pendingSaveDeletes() {
+  try { const list = JSON.parse(localStorage.getItem("spotifyPendingDeletes") || "[]"); return Array.isArray(list) ? list : []; } catch (err) { return []; }
+}
+
+function noteFormatDeleted(id) {
+  if (backupMode() !== "spotify") return;
+  const list = pendingSaveDeletes();
+  if (!list.includes(id)) list.push(id);
+  try { localStorage.setItem("spotifyPendingDeletes", JSON.stringify(list)); } catch (err) { /* private browsing */ }
+}
+
+function scheduleSpotifySave(delay) {
+  if (backupMode() !== "spotify") return;
+  clearTimeout(saveState.timer);
+  saveState.timer = setTimeout(runSpotifySave, delay === undefined ? spotifySaveDelayMs : delay);
+  renderSaveStatus();
+}
+
+function savesInAccount() {
+  const byFormat = new Map();
+  for (const p of playlists) {
+    if (!p.save || p.save.kind !== "save") continue;
+    const had = byFormat.get(p.save.format.id);
+    if (!had || p.save.format.rev > had.save.format.rev) byFormat.set(p.save.format.id, p);   // if there are two for one format, the newer one
+  }
+  return byFormat;
+}
+
+async function runSpotifySave() {
+  if (backupMode() !== "spotify") return;
+  if (saveState.running) { saveState.again = true; return; }
+  if (connection !== "ready" || !me || typeof editor === "undefined" || !editor.model) { renderSaveStatus(); return; }
+  saveState.running = true;
+  saveState.error = "";
+  renderSaveStatus();
+  try {
+    const tooLong = [], newer = [];
+    const allIds = playlists.map((p) => p.id);
+    // formats deleted here: their saves go too, unless a format with that ID is here again
+    let pending = pendingSaveDeletes();
+    for (const id of pending.slice()) {
+      if (!editor.model.formats.some((f) => f.id === id)) {
+        const save = savesInAccount().get(id);
+        if (save) {
+          await spotifyRequest("DELETE", "/me/library", { params: { uris: "spotify:playlist:" + save.id } });
+          playlists = playlists.filter((p) => p.id !== save.id);
+        }
+      }
+      pending = pending.filter((x) => x !== id);
+      try { localStorage.setItem("spotifyPendingDeletes", JSON.stringify(pending)); } catch (err) { /* private browsing */ }
+    }
+    for (const fmt of editor.model.formats) {
+      const description = packFormat(fmt, allIds);
+      if (description.length > SAVE_LIMIT) { tooLong.push({ id: fmt.id, title: fmt.title }); continue; }
+      const name = saveName(fmt.title);
+      const have = savesInAccount().get(fmt.id);
+      if (have) {
+        if (have.save.format.rev > (fmt.rev || 0)) { newer.push(fmt.title); continue; }
+        if (have.description === description && have.name === name) continue;   // already as it should be
+        await spotifyRequest("PUT", `/playlists/${have.id}`, { json: { name, description } });
+        have.name = name;
+        have.description = description;
+        have.save = unpackFormat(description);
+      } else {
+        const made = await spotifyRequest("POST", "/me/playlists", { json: { name, public: false, description } });
+        if (made.public !== false) { try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); } catch (err) { logStep("save: could not make a backup playlist private"); } }
+        const entry = { id: made.id, name, owner: me.id, collaborative: false, image: null, count: 0, description, snapshot: null, madeByApp: false };
+        entry.save = unpackFormat(description);
+        entry.isSave = true;
+        playlists.push(entry);
+      }
+    }
+    saveState.tooLong = tooLong;
+    saveState.newer = newer;
+    saveState.savedAt = new Date().toISOString();
+    try { localStorage.setItem("spotifySavedAt", saveState.savedAt); } catch (err) { /* private browsing */ }
+  } catch (err) {
+    saveState.error = String(err && err.message || err);
+    logStep("save: " + saveState.error);
+  }
+  saveState.running = false;
+  renderSaveStatus();
+  if (saveState.again) { saveState.again = false; scheduleSpotifySave(300); }
+}
+
+// What the saving is up to, in words, with the actions that belong to it.
+function spotifySaveParts() {
+  const parts = [];   // each: { text } or { text, action, label }
+  if (saveState.running) { parts.push({ text: "Saving to Spotify\u2026" }); return parts; }
+  if (connection !== "ready") { parts.push({ text: connection === "problem" ? "Waiting to save to Spotify: see the problem in Step 1." : "Waiting to save to Spotify: connect first." }); }
+  else if (saveState.error) parts.push({ text: "Couldn\u2019t save to Spotify.", action: () => { saveState.error = ""; runSpotifySave(); }, label: "Try again" });
+  else if (saveState.timer && saveState.savedAt === null) parts.push({ text: "Saving to Spotify\u2026" });
+  else {
+    const at = saveState.savedAt || (() => { try { return localStorage.getItem("spotifySavedAt"); } catch (err) { return null; } })();
+    if (at) parts.push({ text: "Saved to Spotify at " + new Date(at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "." });
+  }
+  for (const t of saveState.tooLong) {
+    parts.push({ text: `\u201c${t.title.trim() || "Untitled"}\u201d is too long to back up to Spotify. It is still saved in this browser.`, action: () => downloadOneFormat(t.id), label: "Download it" });
+  }
+  for (const title of saveState.newer) parts.push({ text: `Spotify has a newer copy of \u201c${title.trim() || "Untitled"}\u201d, from another device. It was not overwritten, and loading it comes in a later update.` });
+  return parts;
+}
+
+function downloadOneFormat(id) {
+  const fmt = editor.model && editor.model.formats.find((f) => f.id === id);
+  if (!fmt) return;
+  saveFile(`playlist-format-${fileStamp()}.txt`, modelToText({ formats: [fmt] }));
+}
+
+// Writes the parts into a place on the page, with their actions as pink links.
+function writeSaveParts(into) {
+  into.textContent = "";
+  for (const part of spotifySaveParts()) {
+    into.appendChild(document.createTextNode((into.childNodes.length ? " " : "") + part.text + (part.action ? " " : "")));
+    if (part.action) {
+      const link = document.createElement("button");
+      link.type = "button"; link.className = "linklike"; link.textContent = part.label;
+      link.addEventListener("click", part.action);
+      into.appendChild(link);
+    }
+  }
+}
+
+function renderSaveStatus() {
+  const slot = $("spotifySaveStatus");
+  if (slot) writeSaveParts(slot);
+  if (typeof renderAppMenu === "function") renderAppMenu();
+}
+
 // ---------------------------------------------------------------- how the formats are backed up
 // "manual" is the backup file. "spotify", saving each format to Spotify by itself, is the other choice, which is not available yet. Until a choice is made
 // the card asking for it is on the page, and the app behaves as it does for "manual".
@@ -407,7 +549,19 @@ function chooseBackupMode(value) {
   try { localStorage.setItem("backupMode", value); } catch (err) { /* private browsing */ }
   backupCardOpen = false;
   refreshBackupCard();
+  applyBackupMode();
+  if (value === "spotify") scheduleSpotifySave(200);
   if (typeof renderAppMenu === "function") renderAppMenu();
+}
+
+// Only what belongs to the chosen way is on the page: the backup file's note and step for "manual", the status of the saving for "spotify".
+function applyBackupMode() {
+  const spotify = backupMode() === "spotify";
+  if ($("savedNote")) $("savedNote").hidden = spotify;
+  if ($("savedNoteSpotify")) $("savedNoteSpotify").hidden = !spotify;
+  if ($("backupBlock")) $("backupBlock").hidden = spotify;
+  document.body.classList.toggle("spotify-backup", spotify);
+  renderSaveStatus();
 }
 
 function dismissBackupCard() {
@@ -939,6 +1093,8 @@ async function loadMyPlaylists() {
     snapshot: typeof p.snapshot_id === "string" && p.snapshot_id ? p.snapshot_id : null,   // changes whenever the playlist does
   }));
   for (const p of playlists) p.madeByApp = typeof p.description === "string" && p.description.startsWith(APP_MARKER);
+  // A format's backup in Spotify is known by what its description decodes to, whatever the playlist is called.
+  for (const p of playlists) { const u = unpackFormat(p.description); p.save = u.kind === "none" ? null : u; p.isSave = !!p.save; }
   // The count shown in Step 1 always matches the list, including after playlists are created or removed.
   $("connectedMessage").textContent = `Connected as ${me.display_name || me.id}. ${plural(playlists.length, "playlist")} found.`;
   if (typeof editorPlaylistsChanged === "function") editorPlaylistsChanged();
@@ -1447,6 +1603,7 @@ function initDonateChoice() {
   }
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && backupCardOpen) dismissBackupCard(); });
   refreshBackupCard();
+  applyBackupMode();
   applyDonateChoice();
 }
 

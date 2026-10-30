@@ -100,7 +100,7 @@ function readablePlaylists() {
     const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\\\{n\\\}/g, "\\d+").replace(/\\\{letter\\\}/g, "[a-z]+");
     return new RegExp("^" + esc + "$", "i");
   });
-  return playlists.filter((p) => (p.owner === (me && me.id) || p.collaborative) && !p.madeByApp && !patterns.some((re) => re.test(p.name)));
+  return playlists.filter((p) => (p.owner === (me && me.id) || p.collaborative) && !p.madeByApp && !p.isSave && !patterns.some((re) => re.test(p.name)));
 }
 
 function playlistInfo(name) {
@@ -173,6 +173,7 @@ function commit() {
   $("formats").dispatchEvent(new Event("input", { bubbles: true }));
   editor.internal = false;
   snapshotFormats(editor.model);
+  if (typeof scheduleSpotifySave === "function") scheduleSpotifySave();
 }
 
 // A playlist in a format is known by its Spotify ID, and its name is kept up to date from it, so renaming a playlist in Spotify does not break the format.
@@ -269,6 +270,7 @@ function editorThemeChanged() { /* every color in the editor is a CSS variable, 
 
 function editorPlaylistsChanged() {
   if (!editor.model) return;
+  if (typeof scheduleSpotifySave === "function") scheduleSpotifySave(800);
   if (syncPlaylistRefs()) { commitHealed(); renderEditor(); return; }
   renderRows();
 }
@@ -390,6 +392,19 @@ function renderAppMenu() {
     connectItems.push(feEl("button", { type: "button", class: "fe-item", id: reconnect ? "feReconnect" : "feRetry", role: "menuitem", onClick: choose(() => (reconnect ? startLogin() : connectToSpotify())) }, feIcon(reconnect ? "link" : "retry"), reconnect ? "Connect again" : "Try again"));
     connectItems.push(feEl("div", { class: "fe-itemnote", id: "feConnectionNote", text: $("connectionMessage").textContent }));
   }
+  // Only what belongs to the chosen way: for the backup file, downloading and restoring; for Spotify, how the saving is going.
+  let backupItems;
+  if (typeof backupMode === "function" && backupMode() === "spotify") {
+    const status = feEl("div", { class: "fe-itemnote", id: "feSaveStatus" });
+    writeSaveParts(status);
+    backupItems = [status];
+  } else {
+    backupItems = [
+      feEl("button", { type: "button", class: "fe-item", id: "feBackup", role: "menuitem", onClick: choose(() => { downloadBackup(); showBackupMessage("Backup downloaded. Find it in Downloads, or in the Files app on a phone."); }) }, feIcon("download"), "Download a backup"),
+      ...(backupLabel ? [feEl("div", { class: "fe-itemnote", id: "feBackupStatus", text: backupLabel })] : []),
+      feEl("button", { type: "button", class: "fe-item", id: "feRestore", role: "menuitem", onClick: choose(() => $("restoreFile").click()) }, feIcon("restore"), "Restore from backup"),
+    ];
+  }
   const minimalButton = feEl("button", { type: "button", class: "fe-item", id: "feMinimal", role: "menuitemcheckbox", "aria-checked": String(on), onClick: toggleMinimal }, box, "Minimalist mode");
   if (!available) minimalButton.disabled = true;
   slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" },
@@ -398,9 +413,7 @@ function renderAppMenu() {
     minimalButton,
     ...(!available ? [feEl("div", { class: "fe-itemnote", id: "feMinimalNote", text: "Available after you first connect to Spotify." })] : []),
     feEl("div", { class: "fe-rule" }),
-    feEl("button", { type: "button", class: "fe-item", id: "feBackup", role: "menuitem", onClick: choose(() => { downloadBackup(); showBackupMessage("Backup downloaded. Find it in Downloads, or in the Files app on a phone."); }) }, feIcon("download"), "Download a backup"),
-    ...(backupLabel ? [feEl("div", { class: "fe-itemnote", id: "feBackupStatus", text: backupLabel })] : []),
-    feEl("button", { type: "button", class: "fe-item", id: "feRestore", role: "menuitem", onClick: choose(() => $("restoreFile").click()) }, feIcon("restore"), "Restore from backup"),
+    ...backupItems,
     feEl("button", { type: "button", class: "fe-item", id: "feBackupMethod", role: "menuitem", onClick: choose(() => openBackupCard()) }, feIcon("sliders"), "Change backup method\u2026"),
     ...(connection === "ready" ? [feEl("div", { class: "fe-rule" }), feEl("button", { type: "button", class: "fe-item", id: "feDisconnect", role: "menuitem", onClick: choose(() => disconnect()) }, feIcon("unplug"), "Disconnect Spotify")] : [])));
 }
@@ -1022,13 +1035,14 @@ function askDeleteFormat() {
     editor.model.formats = editor.model.formats.filter((x) => x.id !== f.id);
     editor.activeId = editor.model.formats.length ? editor.model.formats[0].id : null;
     close();
+    if (typeof noteFormatDeleted === "function") noteFormatDeleted(f.id);
     commit();
     renderEditor();
   } }, "Delete format");
   const overlay = feEl("div", { class: "fe-overlay", id: "feDeleteDialog", onClick: close },
     feEl("div", { class: "fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": "Delete format", onClick: (e) => e.stopPropagation() },
       feEl("h3", { text: `Delete \u201c${f.title.trim() || "Untitled"}\u201d?` }),
-      feEl("p", { text: `This removes the format and its ${rows === 1 ? "1 row" : rows + " rows"}. Playlists already in Spotify are not affected. Formats can be restored from a backup if you have one.` }),
+      feEl("p", { text: `This removes the format and its ${rows === 1 ? "1 row" : rows + " rows"}. Playlists already in Spotify are not affected.${typeof backupMode === "function" && backupMode() === "spotify" ? " Its backup playlist in Spotify is deleted too." : " Formats can be restored from a backup if you have one."}` }),
       feEl("div", { class: "row" }, cancel, confirm)));
   document.body.appendChild(overlay);
   document.addEventListener("keydown", onKey);
