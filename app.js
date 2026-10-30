@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-30f";
+const APP_VERSION = "2026-10-30g";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -665,16 +665,22 @@ function refreshBackupCard() {
   if (!card) return;
   card.hidden = !(backupCardOpen || !backupMode());
   card.classList.toggle("opened", backupCardOpen);
+  // opened, it is a popup: with a backdrop, no scrolling of the page behind it, and what a screen reader needs to know
+  $("backupBackdrop").hidden = !backupCardOpen;
+  document.body.classList.toggle("backup-card-open", backupCardOpen);
+  if (backupCardOpen) { card.setAttribute("role", "dialog"); card.setAttribute("aria-modal", "true"); card.setAttribute("aria-labelledby", "backupCardTitle"); }
+  else { card.removeAttribute("role"); card.removeAttribute("aria-modal"); card.removeAttribute("aria-labelledby"); }
   const mode = backupMode();   // before a choice is made, neither is selected
   $("backupModeManual").checked = mode === "manual";
   $("backupModeSpotify").checked = mode === "spotify";
+  $("backupDoneRow").hidden = !mode;   // with a way chosen, the card can be closed without changing it; before that, a choice is what it is for
 }
 
 function openBackupCard() {
   backupCardOpen = true;
   refreshBackupCard();
-  const card = $("backupCard");
-  if (card && card.scrollIntoView) card.scrollIntoView({ block: "nearest" });
+  const chosen = $("backupModeManual").checked ? $("backupModeManual") : $("backupModeSpotify");
+  chosen.focus({ preventScroll: true });   // the popup is on screen as it opens, and a keyboard starts on the choice
 }
 
 // Picking one of the two is the whole interaction: it is saved and the card goes away. Picking the one already chosen just closes it.
@@ -741,6 +747,8 @@ function applyBackupMode() {
 function dismissBackupCard() {
   backupCardOpen = false;
   refreshBackupCard();
+  const trigger = $("feAppMenuButton");
+  if (trigger) trigger.focus({ preventScroll: true });   // back to where the person came from
 }
 
 function backupState() {
@@ -1828,6 +1836,8 @@ function initDonateChoice() {
     radio.addEventListener("change", () => { if (!radio.disabled && radio.checked) chooseBackupMode(radio.value); });
   }
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && backupCardOpen) dismissBackupCard(); });
+  on("backupDone", "click", dismissBackupCard);
+  on("backupBackdrop", "click", dismissBackupCard);
   // Back from Spotify's page, a browser may show this page as it was left, with the buttons still waiting
   window.addEventListener("pageshow", (event) => { if (event.persisted && signingIn) { setSigningIn(false); setLoginMessage(""); } });
   // the connection coming back after a failed save: try again, without waiting to be asked
