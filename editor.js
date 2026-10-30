@@ -446,18 +446,20 @@ function renderAppMenu() {
     connectItems.push(feEl("button", { type: "button", class: "fe-item", id: reconnect ? "feReconnect" : "feRetry", role: "menuitem", onClick: choose(() => (reconnect ? startLogin() : connectToSpotify())) }, feIcon(reconnect ? "link" : "retry"), reconnect ? "Connect again" : "Try again"));
     connectItems.push(feEl("div", { class: "fe-itemnote", id: "feConnectionNote", text: $("connectionMessage").textContent }));
   }
-  // The backup, in one block: how it is done and where to (a row that opens the method card), how it is going, and for the manual way the two actions.
+  // The backup, in one block: how it is done and where to, a link to change it, how it is going, and for the manual way the two actions.
   const auto = typeof backupMode === "function" && backupMode() === "spotify";
-  const head = feEl("button", { type: "button", class: "fe-grouprow", id: "feBackupMethod", role: "menuitem", onClick: choose(() => openBackupCard()) }, feIcon(auto ? "cloud" : "device"),
-    feEl("span", { class: "fe-two" }, feEl("span", { class: "fe-main", text: auto ? "Automatic backup" : "Manual backup" }), feEl("span", { class: "fe-small", text: auto ? "To Spotify" : "To this device" })),
-    feEl("span", { class: "fe-trail" }, "Change", feIcon("chevron")));
   let status = null;
-  if (auto) { status = feEl("div", { class: "fe-status", id: "feSaveStatus" }); writeSaveParts(status); }
-  else if (backupLabel) status = feEl("div", { class: "fe-status", id: "feBackupStatus", text: backupLabel });
-  const actions = auto ? null : feEl("div", { class: "fe-pair" },
+  if (auto) { status = feEl("span", { class: "fe-bk-status", id: "feSaveStatus" }); writeSaveParts(status); }
+  else if (backupLabel) status = feEl("span", { class: "fe-bk-status", id: "feBackupStatus", text: backupLabel });
+  const head = feEl("div", { class: "fe-bk-row" }, feIcon(auto ? "cloud" : "device"),
+    feEl("div", { class: "fe-bk-text" },
+      feEl("span", { class: "fe-bk-title", text: auto ? "Automatic backup to Spotify" : "Manual backup to this device" }),
+      feEl("button", { type: "button", class: "linklike fe-bk-change", id: "feBackupMethod", role: "menuitem", onClick: choose(() => openBackupCard()), text: "Change" }),
+      status));
+  const actions = auto ? null : feEl("div", { class: "fe-bk-actions" },
     feEl("button", { type: "button", id: "feBackup", role: "menuitem", onClick: choose(() => downloadBackup()) }, feIcon("download"), "Back up now"),
     feEl("button", { type: "button", id: "feRestore", role: "menuitem", onClick: choose(() => $("restoreFile").click()) }, feIcon("restore"), "Restore"));
-  const backupBlock = feEl("div", { class: "fe-group" }, head, status, actions);
+  const backupBlock = feEl("div", { class: "fe-bk-block" }, head, actions);
   const minimalButton = feEl("button", { type: "button", class: "fe-item", id: "feMinimal", role: "menuitemcheckbox", "aria-checked": String(on), onClick: toggleMinimal }, box, "Minimalist mode");
   if (!available) minimalButton.disabled = true;
   slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" },

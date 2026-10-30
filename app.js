@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-30j";
+const APP_VERSION = "2026-10-30l";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1086,7 +1086,7 @@ function setSigningIn(flag, note = "") {
   signingIn = flag;
   signInNote = note;
   clearTimeout(signInTimer);
-  if (flag) setLoginMessage(note);
+  if (flag) setLoginMessage(note, true);
   updateButtons();
 }
 
@@ -1168,10 +1168,12 @@ async function finishLoginIfReturning() {
   }));
 }
 
-function setLoginMessage(text) {
-  // The message shows next to whichever Connect button is on screen.
-  $("loginMessage").textContent = text;
-  $("welcomeMessage").textContent = text;
+function setLoginMessage(text, info = false) {
+  // The message shows next to whichever Connect button is on screen. Something that went wrong is in the error color; something that is just happening (Spotify is opening) is not.
+  for (const id of ["loginMessage", "welcomeMessage"]) {
+    $(id).textContent = text;
+    $(id).className = info ? "muted" : "error";
+  }
 }
 
 function revealLoginProblem() {
@@ -2104,7 +2106,7 @@ async function main() {
   });
   refreshBackupStatus();
 
-  if (signingIn) { setLoginMessage(signInNote); updateButtons(); }   // coming back from Spotify: say so before the sign-in is finished
+  if (signingIn) { setLoginMessage(signInNote, true); updateButtons(); }   // coming back from Spotify: say so before the sign-in is finished
   try {
     await finishLoginIfReturning();
   } catch (err) {

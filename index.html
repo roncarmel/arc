@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-30j">
-<script src="theme.js?v=2026-10-30j"></script>
+<meta name="app-version" content="2026-10-30l">
+<script src="theme.js?v=2026-10-30l"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -129,15 +129,16 @@
   #formatEditor .fe-appmenuwrap { position: relative; flex: none; }
   #formatEditor .fe-appmenu { right: 0; top: 48px; width: max-content; min-width: min(300px, calc(100vw - 32px)); max-width: min(320px, calc(100vw - 32px)); }
   /* the backup block of the app menu: how it is done and where to (tap to change), how it is going, and for the manual way the two actions */
-  #formatEditor .fe-group { margin: 4px 2px; padding: 4px; border-radius: 12px; background: rgba(127, 127, 127, 0.13); }
-  #formatEditor .fe-grouprow { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 4px 10px; border: none; border-radius: 10px; background: transparent; color: var(--fg); text-align: left; font: inherit; box-sizing: border-box; }
-  #formatEditor .fe-two { display: flex; flex-direction: column; min-width: 0; }
-  #formatEditor .fe-main { font-weight: 600; }
-  #formatEditor .fe-small { color: var(--muted); font-size: 0.8rem; line-height: 1.3; }
-  #formatEditor .fe-trail { margin-left: auto; color: var(--accent); font-weight: 600; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 2px; flex: none; }
-  #formatEditor .fe-status { padding: 0 10px 8px 38px; color: var(--muted); font-size: 0.8rem; line-height: 1.3; }
-  #formatEditor .fe-pair { display: flex; gap: 6px; padding: 0 6px 6px; }
-  #formatEditor .fe-pair button { flex: 1; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; padding: 0 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 10px; font: inherit; font-weight: 600; }
+  #formatEditor .fe-bk-block { margin: 4px 2px; padding: 4px; border-radius: 12px; background: rgba(127, 127, 127, 0.13); }
+  #formatEditor .fe-bk-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px 6px; }
+  #formatEditor .fe-bk-row > svg { margin-top: 3px; flex: none; }
+  #formatEditor .fe-bk-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+  #formatEditor .fe-bk-title { font-weight: 600; }
+  #formatEditor .fe-bk-change { position: relative; padding: 5px 0; margin: 0; font-size: 0.9rem; }
+  #formatEditor .fe-bk-change::after { content: ""; position: absolute; left: -8px; right: -14px; top: -4px; bottom: -4px; }   /* a bigger target for a thumb */
+  #formatEditor .fe-bk-status { color: var(--muted); font-size: 0.8rem; line-height: 1.3; padding-bottom: 2px; }
+  #formatEditor .fe-bk-actions { display: flex; gap: 6px; padding: 0 6px 6px; }
+  #formatEditor .fe-bk-actions button { flex: 1; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; padding: 0 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 10px; font: inherit; font-weight: 600; }
   #formatEditor .fe-itemnote { width: 0; min-width: 100%; box-sizing: border-box; padding: 0 12px 6px 40px; margin-top: -4px; font-size: 0.78rem; color: var(--muted); line-height: 1.3; }   /* the last-backup label, under its item, wrapping inside the menu */
   #formatEditor .fe-check { width: 20px; height: 20px; flex: none; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border: 2px solid var(--muted); border-radius: 5px; }
   #formatEditor .fe-check-on { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
@@ -811,8 +812,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-30j"></script>
-<script src="editor.js?v=2026-10-30j"></script>
-<script src="app.js?v=2026-10-30j"></script>
+<script src="formats.js?v=2026-10-30l"></script>
+<script src="editor.js?v=2026-10-30l"></script>
+<script src="app.js?v=2026-10-30l"></script>
 </body>
 </html>
