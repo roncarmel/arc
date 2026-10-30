@@ -454,7 +454,7 @@ function renderAppMenu() {
   const head = feEl("div", { class: "fe-bk-row" }, feIcon(auto ? "cloud" : "device"),
     feEl("div", { class: "fe-bk-text" },
       feEl("span", { class: "fe-bk-title", text: auto ? "Automatic backup to Spotify" : "Manual backup to this device" }),
-      feEl("button", { type: "button", class: "linklike fe-bk-change", id: "feBackupMethod", role: "menuitem", onClick: choose(() => openBackupCard()), text: "Change" }),
+      feEl("button", { type: "button", class: "linklike fe-bk-change", id: "feBackupMethod", role: "menuitem", onClick: choose(() => openBackupCard()), text: "Change backup method" }),
       status));
   const actions = auto ? null : feEl("div", { class: "fe-bk-actions" },
     feEl("button", { type: "button", id: "feBackup", role: "menuitem", onClick: choose(() => downloadBackup()) }, feIcon("download"), "Back up now"),
