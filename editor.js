@@ -162,7 +162,7 @@ function noRoomForMix(f, item) {
 
 function commit() {
   editor.refused = false;
-  notices.lastEditAt = Date.now();   // notices wait while the person is editing
+  if (!editor.healing) { notices.lastEditAt = Date.now(); notices.held = null; }   // notices wait while the person is editing, and what was offered after an earlier action goes
   for (const f of editor.model.formats) {
     const before = formatSnapshots.get(f.id);
     if (!before || FORMAT_SIGNATURES.get(f) === formatSignature(f)) continue;   // new, or not changed by this edit
@@ -209,7 +209,8 @@ function syncPlaylistRefs() {
 function commitHealed() {
   const wasCurrent = typeof backupState === "function" && backupState().kind === "current";
   rememberFormats(editor.model);   // IDs and renamed names filled in by the app are not an edit, so they do not count as a new revision
-  commit();
+  editor.healing = true;
+  try { commit(); } finally { editor.healing = false; }
   if (wasCurrent) localStorage.setItem("lastBackupText", $("formats").value);
   if (typeof refreshBackupStatus === "function") refreshBackupStatus();
 }
@@ -345,6 +346,11 @@ function renderEditor() {
   updateTabFade();
   if (!format) {   // no formats: the New format button, and what to do with it
     root.appendChild(feEl("p", { class: "muted fe-emptynote", id: "feEmptyNote", text: "Tap New format to create your first format, then add as many segments to it as you like." }));
+    // the line for notices is here too, so a message about what was just done is never left without a place to show
+    root.appendChild(feEl("div", { class: "fe-caption", id: "feCaption", onPointerDown: pauseNotices, onMouseEnter: pauseNotices }));
+    root.appendChild(feEl("span", { class: "fe-sr", id: "feNoticeLive", "aria-live": "polite" }));
+    editor.musicText = "";
+    refreshNoticeLine();
     if (typeof updateButtons === "function") updateButtons();
     return;
   }
@@ -624,15 +630,27 @@ function renderClash() {
 // The line says how long the format is. It also carries the app's notices: news (formats added or updated from Spotify), each shown for a few seconds in turn, and
 // trouble that needs the person, which stays until it is fixed or dismissed. While the person is editing the total is what they want, so notices wait.
 const noticeTiming = { quietMs: 2000, baseMs: 3000, perWordMs: 250, pauseMs: 4000 };
-const notices = { batch: [], pos: 0, shownAt: 0, pausedUntil: 0, lastEditAt: 0, attn: 0, timer: null, spoken: "" };
+const notices = { batch: [], held: null, pos: 0, shownAt: 0, pausedUntil: 0, lastEditAt: 0, attn: 0, timer: null, spoken: "" };
 
 function attentionNow() { return typeof attentionItems === "function" ? attentionItems() : []; }
 
-function noticeDuration(text) { return noticeTiming.baseMs + Math.max(0, text.split(/\s+/).length - 8) * noticeTiming.perWordMs; }
+function noticeDuration(item) { return noticeTiming.baseMs + Math.max(0, String(item.text || item).split(/\s+/).length - 8) * noticeTiming.perWordMs; }
 
+// A message is a sentence, or { text, icon, warn, hold, actions: [{ label, run }] }. Sentences, and messages with nothing to do, come in turn for a few seconds each. A message
+// with something to do (Undo, Back up now), or one that says something went wrong, is held: it stays until the person uses it, presses OK, or edits.
 function showNotices(messages) {
   if (!messages || !messages.length) return;
-  notices.batch.push(...messages);   // joins whatever is still waiting or showing
+  for (const m of messages) {
+    const item = typeof m === "string" ? { text: m } : m;
+    if (item.transient) { notices.batch = notices.batch.filter((b) => !b.transient); notices.pos = 0; notices.shownAt = 0; }   // what was just done replaces what was said about the one before, which is no longer news
+    if (item.hold) notices.held = item; else notices.batch.push(item);   // a held one replaces the one before it; the rest join whatever is waiting or showing
+  }
+  refreshNoticeLine();
+}
+
+function clearHeldNotice() {
+  if (!notices.held) return;
+  notices.held = null;
   refreshNoticeLine();
 }
 
@@ -652,7 +670,7 @@ function paintNotice(caption, view) {
     return;
   }
   caption.classList.add("fe-notice", view.warn ? "fe-notice-warn" : "fe-notice-news");
-  caption.appendChild(feIcon(view.warn ? "warn" : "cloud"));
+  caption.appendChild(feIcon(view.icon || (view.warn ? "warn" : "cloud")));
   caption.appendChild(feEl("span", { class: "fe-notice-text", text: view.text }));
   for (const a of view.actions || []) caption.appendChild(feEl("button", { type: "button", class: a.ok ? "fe-notice-ok" : "fe-notice-link", onClick: a.run, text: a.label }));
   if (view.count) caption.appendChild(view.cycle
@@ -677,6 +695,13 @@ function refreshNoticeLine() {
     notices.timer = setTimeout(refreshNoticeLine, settleIn + 20);
     return;
   }
+  if (notices.held) {   // what the person has just done has something to say, and something to offer
+    const held = notices.held;
+    const actions = (held.actions || []).map((a) => ({ label: a.label, run: () => { notices.held = null; a.run(); refreshNoticeLine(); } }));
+    actions.push({ label: "OK", ok: true, run: () => clearHeldNotice() });
+    paintNotice(caption, { warn: !!held.warn, icon: held.icon, text: held.text, actions });
+    return;
+  }
   if (attention.length) {
     notices.attn = Math.min(notices.attn, attention.length - 1);
     const item = attention[notices.attn];
@@ -696,7 +721,7 @@ function refreshNoticeLine() {
       if (notices.pos >= notices.batch.length) { notices.batch = []; notices.pos = 0; notices.shownAt = 0; paintNotice(caption, null); return; }
       due = now + noticeDuration(notices.batch[notices.pos]);
     }
-    paintNotice(caption, { text: notices.batch[notices.pos], count: notices.batch.length > 1 ? `${notices.pos + 1} of ${notices.batch.length}` : "" });
+    paintNotice(caption, { text: notices.batch[notices.pos].text, icon: notices.batch[notices.pos].icon, count: notices.batch.length > 1 ? `${notices.pos + 1} of ${notices.batch.length}` : "" });
     notices.timer = setTimeout(refreshNoticeLine, Math.max(due - Date.now(), 0) + 20);
     return;
   }
@@ -707,7 +732,7 @@ function renderTimeline() {
   const f = activeFormat();
   const bar = $("feBar");
   const caption = $("feCaption");
-  if (!f || !bar) return;
+  if (!f || !bar) { editor.musicText = ""; refreshNoticeLine(); return; }
   editor.hover = null;
   bar.innerHTML = "";
   const addPiece = (key, label, style, silence) => {

@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-30h";
+const APP_VERSION = "2026-10-30i";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -756,7 +756,7 @@ async function leaveSpotifyBackups() {
     playlists = playlists.filter((p) => !ids.includes(p.id));
     showBackupMessage(`Removed ${plural(ids.length, "backup")} from Spotify. Your formats are now saved only in this browser.`, false, offer);
   } catch (err) {
-    showBackupMessage("The backups could not be removed from Spotify: " + String(err && err.message || err), false, offer);
+    showBackupMessage("The backups could not be removed from Spotify: " + String(err && err.message || err), false, offer, true);
   }
 }
 
@@ -819,27 +819,13 @@ function markBackedUp(text, atMs) {
   localStorage.setItem("lastBackupAt", new Date(atMs || Date.now()).toISOString());
 }
 
-function showBackupMessage(text, undo = false, link = null) {
-  const box = $("backupMessage");
-  box.textContent = text;
-  if (link) {
-    box.appendChild(document.createTextNode(" "));
-    const action = document.createElement("button");
-    action.type = "button";
-    action.className = "linklike";
-    action.textContent = link.label;
-    action.addEventListener("click", link.onClick);
-    box.appendChild(action);
-  }
-  if (undo) {
-    box.appendChild(document.createTextNode(" "));
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "linklike";
-    button.textContent = "Undo";
-    button.addEventListener("click", undoLastChange);
-    box.appendChild(button);
-  }
+// What the person has just done says what happened in the line under the editor's bar, as a notice. One with something to offer (Undo, a link) or one that
+// says something went wrong is held there until it is used, put away with OK, or the formats are edited.
+function showBackupMessage(text, undo = false, link = null, warn = false) {
+  const actions = [];
+  if (link) actions.push({ label: link.label, run: link.onClick });
+  if (undo) actions.push({ label: "Undo", run: undoLastChange });
+  if (typeof showNotices === "function") showNotices([{ text, icon: warn ? "warn" : "device", warn, hold: warn || actions.length > 0, actions, transient: true }]);
 }
 
 let openQuestion = null;   // finishes the "create these?" question while it is showing
@@ -890,7 +876,7 @@ async function restoreFromFile(file) {
   if (!file) return;
   undoText = null;
   if (file.size > 200000) {
-    showBackupMessage(`${file.name} is too large to be a formats backup, so nothing was changed.`);
+    showBackupMessage(`${file.name} is too large to be a formats backup, so nothing was changed.`, false, null, true);
     return;
   }
   let text;
@@ -901,7 +887,7 @@ async function restoreFromFile(file) {
   } catch (err) {
     recordError(cleanError(err));
     logStep("restore: file rejected");
-    showBackupMessage(`${file.name} doesn't look like a formats backup, so nothing was changed. (${cleanError(err)})`);
+    showBackupMessage(`${file.name} doesn't look like a formats backup, so nothing was changed. (${cleanError(err)})`, false, null, true);
     return;
   }
   const previous = $("formats").value;
@@ -2118,7 +2104,7 @@ async function main() {
     localStorage.setItem("formats", $("formats").value);
     invalidatePlan();
     undoText = null;
-    $("backupMessage").textContent = "";   // an Undo offered earlier would now overwrite new edits
+    if (typeof editor === "undefined" || !editor.internal) clearHeldNotice();   // an Undo offered earlier would now overwrite new edits
     refreshBackupStatus();
     refreshFormatKeys();
   });
