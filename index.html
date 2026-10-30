@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-29g">
-<script src="theme.js?v=2026-10-29g"></script>
+<meta name="app-version" content="2026-10-29i">
+<script src="theme.js?v=2026-10-29i"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -193,7 +193,9 @@
   #formatEditor .fe-option-on { background: var(--accent-wash, rgba(255, 56, 184, 0.22)); }
   #formatEditor .fe-option:disabled { opacity: 0.45; }
   /* silences: bookmark-shaped tags hanging off the right side of the rows, pointed at their gap */
-  #formatEditor .fe-tag { position: absolute; left: calc(100% - 5px); top: 43px; z-index: 6; height: 24px; width: 36px; display: flex; align-items: center; justify-content: center; gap: 3px; padding: 0 5px 0 9px; box-sizing: border-box; border: none; border-radius: 0 999px 999px 0; clip-path: polygon(0 50%, 11px 0, 100% 0, 100% 100%, 11px 100%); font-size: 0.64rem; font-weight: 700; line-height: 1; white-space: nowrap; background: var(--tag, #43434d); color: var(--fg); }
+  #formatEditor .fe-tag { position: absolute; left: calc(100% - 16px); top: 43px; z-index: 6; height: 24px; min-width: 42px; width: max-content; display: flex; align-items: center; justify-content: center; gap: 3px; padding: 0 4px 0 16px; box-sizing: border-box; border: none; border-radius: 0 999px 999px 0;
+    /* the left end is the notch between two segments' rounded corners: its two sides are arcs around those corners (16 px radius), kept 3 px away, meeting at the point in the gap */
+    clip-path: polygon(0.0px 12.00px, 1.0px 11.97px, 2.0px 11.90px, 2.9px 11.77px, 3.9px 11.59px, 4.9px 11.36px, 5.9px 11.06px, 6.9px 10.71px, 7.9px 10.30px, 8.8px 9.82px, 9.8px 9.27px, 10.8px 8.64px, 11.8px 7.91px, 12.8px 7.08px, 13.7px 6.12px, 14.7px 5.01px, 15.7px 3.70px, 16.7px 2.09px, 17.7px -0.00px, 100% 0, 100% 100%, 17.7px 24.00px, 16.7px 21.91px, 15.7px 20.30px, 14.7px 18.99px, 13.7px 17.88px, 12.8px 16.92px, 11.8px 16.09px, 10.8px 15.36px, 9.8px 14.73px, 8.8px 14.18px, 7.9px 13.70px, 6.9px 13.29px, 5.9px 12.94px, 4.9px 12.64px, 3.9px 12.41px, 2.9px 12.23px, 2.0px 12.10px, 1.0px 12.03px, 0.0px 12.00px); font-size: 0.64rem; font-weight: 700; line-height: 1; white-space: nowrap; background: var(--tag, #43434d); color: var(--fg); }
   #formatEditor .fe-tag .fe-icon { display: none; }
   #formatEditor .fe-tag .fe-icon svg { width: 12px; height: 12px; }
   #formatEditor .fe-tag-custom { background: var(--accent-deep); color: var(--on-deep, #fff); }
@@ -217,9 +219,9 @@
   #formatEditor .fe-tagdefault { padding: 0 6px 0 4px; color: var(--muted); font-size: 0.9rem; }
   #formatEditor .fe-stepper-inline { display: inline-flex; }   /* the frame hugs its − value + instead of stretching across the menu */
   #formatEditor .fe-stepper-inline .fe-step { width: 36px; }
-  @media (max-width: 859px) { #formatEditor.fe-hastags { margin-right: 8px; } }
+  @media (max-width: 859px) { #formatEditor.fe-hastags { margin-right: calc(var(--tag-hang, 26px) - 23px); } }   /* the markers hang 26 px past the segments (more with a long label, which the page measures), which with this leaves them 2 px from the screen's edge */
   @media (min-width: 860px) {
-    #formatEditor .fe-tag { width: 58px; padding: 0 7px 0 11px; font-size: 0.68rem; }
+    #formatEditor .fe-tag { min-width: 61px; padding: 0 5px 0 16px; font-size: 0.68rem; }
     #formatEditor .fe-tag .fe-icon { display: inline-flex; }
   }
   /* on a phone the rows give the playlist name as much room as they can */
@@ -766,8 +768,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-29g"></script>
-<script src="editor.js?v=2026-10-29g"></script>
-<script src="app.js?v=2026-10-29g"></script>
+<script src="formats.js?v=2026-10-29i"></script>
+<script src="editor.js?v=2026-10-29i"></script>
+<script src="app.js?v=2026-10-29i"></script>
 </body>
 </html>

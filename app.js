@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-29g";
+const APP_VERSION = "2026-10-29i";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1537,7 +1537,10 @@ function initThemeChooser() {
     else if (event.key === "End") { event.preventDefault(); all[all.length - 1].focus(); }
     else if ((event.key === "Enter" || event.key === " ") && at >= 0) { event.preventDefault(); choose(all[at].dataset.id); }
   });
-  document.addEventListener("click", (event) => { if (!list.hidden && !(event.target.closest && event.target.closest(".theme-picker"))) close(false); });
+  // tapping anywhere else closes the list and does nothing else
+  const outsideList = (event) => !list.hidden && !(event.target.closest && event.target.closest(".theme-picker"));
+  document.addEventListener("pointerdown", (event) => { if (outsideList(event)) event.stopPropagation(); }, true);
+  document.addEventListener("click", (event) => { if (!outsideList(event)) return; event.stopPropagation(); event.preventDefault(); close(false); }, true);
   show();
 }
 

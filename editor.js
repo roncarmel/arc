@@ -152,14 +152,19 @@ function syncEditorFromText() {
 
 function initEditor() {
   $("formats").addEventListener("input", () => { if (!editor.internal) syncEditorFromText(); });
-  // tapping anywhere else, or pressing Escape, closes an open menu or list
+  // Tapping anywhere else, or pressing Escape, closes an open menu or list, and does nothing else: the press and the tap that follows are both stopped
+  // before they reach what was tapped. The only things let through are the popup itself and the control that opened it, which closes it as usual.
+  const popupOpen = () => editor.panel || editor.cardMenu || editor.gapPanel !== null || editor.appMenu;
+  const outsidePopup = (event) => !(event.target.closest && event.target.closest('.fe-pop, .fe-trigger[aria-expanded="true"]'));
+  document.addEventListener("pointerdown", (event) => { if (popupOpen() && outsidePopup(event)) event.stopPropagation(); }, true);   // so a handle does not start a drag
   document.addEventListener("click", (event) => {
-    if (!editor.panel && !editor.cardMenu && editor.gapPanel === null && !editor.appMenu) return;
-    if (event.target.closest && event.target.closest(".fe-pop, .fe-trigger")) return;
+    if (!popupOpen() || !outsidePopup(event)) return;
+    event.stopPropagation();
+    event.preventDefault();
     closePanels();
   }, true);
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && (editor.panel || editor.cardMenu || editor.gapPanel !== null || editor.appMenu)) closePanels(); });
-  window.addEventListener("resize", equalizeAmounts);   // the widget changes size when the page goes between phone and wide layouts
+  window.addEventListener("resize", () => { equalizeAmounts(); updateTagHang(); });   // the widget changes size when the page goes between phone and wide layouts
   applyMinimalMode();
   syncEditorFromText();
 }
@@ -515,6 +520,14 @@ function equalizeAmounts() {
   if (widest > 0) for (const el of spans) el.style.minWidth = Math.ceil(widest) + "px";
 }
 
+// The room kept beside the segments for the silence markers follows the widest marker: they hang 26 px past the segments with the usual labels, more with a long one such as 12.5m.
+function updateTagHang() {
+  const rootEl = $("formatEditor"), holder = $("feRows");
+  if (!rootEl || !holder) return;
+  const hang = Math.max(26, ...Array.from(holder.querySelectorAll(".fe-tag")).map((t) => Math.ceil(t.getBoundingClientRect().width) - 16));
+  if (rootEl.style.getPropertyValue("--tag-hang") !== hang + "px") rootEl.style.setProperty("--tag-hang", hang + "px");
+}
+
 function renderRows(settle) {
   const f = activeFormat();
   const holder = $("feRows");
@@ -526,6 +539,9 @@ function renderRows(settle) {
   holder.appendChild(feEl("button", { type: "button", class: "fe-add", id: "feAddSegment", onClick: addSegment }, feIcon("plus"), "New segment"));
   const rootEl = $("formatEditor");
   if (rootEl) rootEl.classList.toggle("fe-hastags", f.items.some((x, index) => gapInfo(f, index + 1).show));
+  updateTagHang();
+  // the markers only have a size once the editor is on screen, so measure again whenever the rows change size
+  if (window.ResizeObserver) { if (!editor.tagObserver) editor.tagObserver = new ResizeObserver(() => updateTagHang()); editor.tagObserver.disconnect(); editor.tagObserver.observe(holder); }
   if (settle) applySettle(holder, settle);
   applyHighlight();
   fitPops();
