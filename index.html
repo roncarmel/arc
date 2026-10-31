@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-31c">
-<script src="theme.js?v=2026-10-31c"></script>
+<meta name="app-version" content="2026-10-31d">
+<script src="theme.js?v=2026-10-31d"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -733,12 +733,15 @@
         <ul id="confirmMoreList"></ul>
         <p id="confirmKeepText"></p>
         <ul id="confirmKeepList"></ul>
+        <p id="confirmSuspectsText" class="muted" hidden></p>
+        <p id="confirmSuspectsLinkRow" class="plan-links" hidden><button id="confirmSuspectsToggle" class="linklike" type="button">Which songs?</button></p>
+        <ul id="confirmSuspectsList" hidden></ul>
         <label id="confirmKeepToggleRow" class="choice-row" hidden><input type="checkbox" id="confirmKeepToggle"> <span id="confirmKeepToggleLabel"></span></label>
         <div class="row">
           <button id="confirmYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Create</span></button>
           <button id="confirmNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
         </div>
-        <p class="plan-links"><button id="planToggle" class="linklike" type="button">See the full plan</button></p>
+        <p class="plan-links"><button id="confirmKeepEarlier" class="linklike" type="button" hidden></button><button id="planToggle" class="linklike" type="button">See the full plan</button></p>
         <pre id="planText" hidden></pre>
       </div>
 
@@ -893,8 +896,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-31c"></script>
-<script src="editor.js?v=2026-10-31c"></script>
-<script src="app.js?v=2026-10-31c"></script>
+<script src="formats.js?v=2026-10-31d"></script>
+<script src="editor.js?v=2026-10-31d"></script>
+<script src="app.js?v=2026-10-31d"></script>
 </body>
 </html>

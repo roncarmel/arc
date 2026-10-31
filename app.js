@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-31c";
+const APP_VERSION = "2026-10-31d";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -52,6 +52,58 @@ function on(id, type, handler) {
 function guarded(name, work) {
   // A step of starting up that fails must not stop the steps after it.
   try { return work(); } catch (err) { startupProblems.push(`${name}: ${String((err && err.message) || err)}`); return undefined; }
+}
+
+// Is there a newer version of the page than the one that is running? version.txt, on the site, holds only the stamp of the version uploaded last, so asking costs a few bytes.
+// It is asked a few seconds after a clean start, and when the person comes back to the tab if the last time was over 10 minutes ago, which is a moment when nothing is going on.
+// Newer means different, since stamps do not sort once there are more than 26 in a day. If nothing is going on, the page loads again by itself (once for each new version, so a
+// half-finished upload cannot make it loop); otherwise a message in the line under the editor's bar offers it. A running page is never harmed by an upload: it keeps what it
+// loaded, and the Python engine is read once, at the start.
+const versionCheck = { last: 0, everyMs: 10 * 60 * 1000, running: false };
+
+async function checkForNewVersion() {
+  if (versionCheck.running || navigator.onLine === false) return;
+  versionCheck.running = true;
+  versionCheck.last = Date.now();
+  try {
+    const response = await fetch("version.txt?t=" + Date.now(), { cache: "no-store" });
+    if (!response.ok) return;
+    const latest = (await response.text()).trim();
+    if (!/^[A-Za-z0-9._-]{4,40}$/.test(latest) || latest === APP_VERSION) return;   // nothing new, or not a stamp at all (an error page)
+    logStep(`newer version found: ${latest}`);
+    newerVersionFound(latest);
+  } catch (err) {
+    /* no connection, or the file is not there: the next time */
+  } finally {
+    versionCheck.running = false;
+  }
+}
+
+function nothingIsGoingOn() {
+  const active = document.activeElement;
+  const typing = active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName);
+  const popup = document.querySelector(".fe-overlay:not([hidden]), #backupCard.opened, #createOverlay:not([hidden])");
+  return !busy && !saveState.running && !typing && !popup && !(typeof notices !== "undefined" && Date.now() - notices.lastEditAt < 10000);
+}
+
+function newerVersionFound(latest) {
+  let tried = false;
+  try { tried = sessionStorage.getItem("versionTried") === latest; } catch (err) { tried = true; }
+  if (nothingIsGoingOn() && !tried) {
+    try { sessionStorage.setItem("versionTried", latest); } catch (err) { /* no storage: no second try either */ }
+    reloadForNewVersion(() => offerNewVersion());
+    return;
+  }
+  offerNewVersion();
+}
+
+function reloadForNewVersion(failed) {
+  if (window.pageStart && window.pageStart.refresh) window.pageStart.refresh(failed || (() => {}));   // fresh copies of every file, then the page again
+  else location.reload();
+}
+
+function offerNewVersion() {
+  if (typeof showNotices === "function") showNotices([{ text: "A newer version of the app is available.", icon: "cloud", hold: true, actions: [{ label: "Reload", run: () => reloadForNewVersion(() => {}) }] }]);
 }
 
 function showStartupProblems() {
@@ -389,7 +441,7 @@ const SAVE_SUFFIX = " (recipe)";
 // time. Spotify counts the calls an app makes in a rolling 30 seconds, so saves are not made more often than that needs, and not while a build is under way.
 let spotifySaveDelayMs = 5000;
 let spotifySaveMaxWaitMs = 30000;
-const saveState = { running: false, again: false, timer: null, since: 0, error: "", tooLong: [], newer: [], savedAt: null, coverBlocked: false, added: [], updated: [], coverProblem: null, failures: 0, failureAsked: false, unread: 0, skip: new Set(), dismissed: new Set(), lastNews: null };
+const saveState = { running: false, again: false, timer: null, since: 0, error: "", tooLong: [], newer: [], savedAt: null, coverBlocked: false, added: [], updated: [], coverProblem: null, coverQueue: [], coverRunning: false, coverGapMs: 400, failures: 0, failureAsked: false, unread: 0, skip: new Set(), dismissed: new Set(), lastNews: null };
 let playlistsLoadedAt = 0;
 let playlistRefreshMs = 5 * 60 * 1000;   // coming back to the page after this long, the account's playlists, and so the backups, are read again
 
@@ -530,30 +582,8 @@ async function runSpotifySave() {
     const synced = readSynced();
     const tooLong = [], newer = [];
     const allIds = playlists.map((p) => p.id);
-    // The cover of a backup playlist is the app's icon, dimmed, with a cloud: a playlist that has no cover yet gets it, once. (Spotify limits image uploads on their own,
-    // so it is never sent again, and a problem with it never stops a save.)
-    let cover;   // loaded when it is first needed
-    let coverFailed = null;   // why a cover could not be put on a backup, if one could not: said in the line under the editor's bar, since otherwise nothing says why there is none
-    const putCover = async (entry) => {
-      if (entry.image) return;
-      if (saveState.coverBlocked || !hasScope("ugc-image-upload")) {
-        coverFailed = { key: "permission", text: "Your Spotify sign-in does not include permission to add cover art, so the backup playlists have no cover. Disconnect and connect again to allow it." };
-        return;
-      }
-      try {
-        if (cover === undefined) {
-          try { cover = await loadCover("backup-cover.jpg"); }
-          catch (err) { cover = null; logStep("save: cover image not loaded"); coverFailed = { key: "file", text: "The cover image for the backup playlists (backup-cover.jpg) could not be loaded from this site, so they have no cover." }; }
-        }
-        if (!cover) return;
-        await spotifyRequest("PUT", `/playlists/${entry.id}/images`, { body: cover, contentType: "image/jpeg" });
-        entry.image = "set";
-      } catch (err) {
-        logStep("save: cover not accepted");
-        if (/did not allow|sign-in expired/.test(err.message)) saveState.coverBlocked = true;
-        coverFailed = { key: "refused", text: `Spotify did not accept the cover for the backup playlists: ${String(err.message || err).replace(/\.$/, "")}. They have no cover.` };
-      }
-    };
+    // A backup playlist that has no cover yet is put in a queue for one. The covers are sent after the save is done and never make it wait (see uploadCovers).
+    const putCover = (entry) => { if (!entry.image && !saveState.coverQueue.includes(entry)) saveState.coverQueue.push(entry); };
     // formats deleted here: their saves go too, unless a format with that ID is here again
     let pending = pendingSaveDeletes();
     for (const id of pending.slice()) {
@@ -580,19 +610,19 @@ async function runSpotifySave() {
       const unreadOfIt = !have && synced[fmt.id] ? playlists.find((p) => p.save && p.save.kind === "damaged" && p.name === name) : null;
       if (have) {
         if (have.save.format.rev > (fmt.rev || 0)) { newer.push(fmt.title); continue; }
-        if (have.description === description && have.name === name) { synced[fmt.id] = { rev: fmt.rev || 0, playlistId: have.id }; await putCover(have); continue; }   // already as it should be
+        if (have.description === description && have.name === name) { synced[fmt.id] = { rev: fmt.rev || 0, playlistId: have.id }; putCover(have); continue; }   // already as it should be
         await spotifyRequest("PUT", `/playlists/${have.id}`, { json: { name, description } });
         have.name = name;
         have.description = description;
         have.save = unpackFormat(description);
         synced[fmt.id] = { rev: fmt.rev || 0, playlistId: have.id };
-        await putCover(have);
+        putCover(have);
       } else if (unreadOfIt) {
         await spotifyRequest("PUT", `/playlists/${unreadOfIt.id}`, { json: { name, description } });
         unreadOfIt.description = description;
         unreadOfIt.save = unpackFormat(description);
         synced[fmt.id] = { rev: fmt.rev || 0, playlistId: unreadOfIt.id };
-        await putCover(unreadOfIt);
+        putCover(unreadOfIt);
       } else {
         const made = await spotifyRequest("POST", "/me/playlists", { json: { name, public: false, description } });
         if (made.public !== false) { try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); } catch (err) { logStep("save: could not make a backup playlist private"); } }
@@ -601,11 +631,10 @@ async function runSpotifySave() {
         entry.isSave = true;
         playlists.push(entry);
         synced[fmt.id] = { rev: fmt.rev || 0, playlistId: made.id };
-        await putCover(entry);
+        putCover(entry);
       }
     }
     writeSynced(synced);
-    saveState.coverProblem = coverFailed;
     saveState.tooLong = tooLong;
     saveState.newer = newer;
     saveState.savedAt = new Date().toISOString();
@@ -625,6 +654,7 @@ async function runSpotifySave() {
     saveState.failureAsked = true;
     askSaveFailure(saveState.error);
   }
+  if (!saveState.error) uploadCovers();   // not waited for: the save is already done
   if (saveState.again) { saveState.again = false; scheduleSpotifySave(300); }
 }
 
@@ -675,6 +705,48 @@ function saveFailureDetail(message) {
   const code = /Spotify returned (\d{3})/.exec(message);
   if (code) return `Spotify returned an error (${code[1]}) while saving.`;
   return String(message).replace(/\s*\/playlists\/[A-Za-z0-9]+/g, "").trim();
+}
+
+// The cover of a backup playlist is a picture of a cloud with a check. It is sent once, to a playlist that has none, after the save is done, and it never makes a save wait:
+// Spotify limits image uploads on their own, so one that is turned away for asking too often stops the rest, quietly, and they go with a later save. Anything else that goes
+// wrong with a cover is said in the line under the editor's bar.
+async function uploadCovers() {
+  if (saveState.coverRunning) return;
+  if (!saveState.coverQueue.length) {
+    if (saveState.coverProblem) { saveState.coverProblem = null; renderSaveStatus(); }
+    return;
+  }
+  saveState.coverRunning = true;
+  let problem = null, stopped = false;
+  try {
+    if (saveState.coverBlocked || !hasScope("ugc-image-upload")) {
+      problem = { key: "permission", text: "Your Spotify sign-in does not include permission to add cover art, so the backup playlists have no cover. Disconnect and connect again to allow it." };
+    } else {
+      let cover = null;
+      try { cover = await loadCover("backup-cover.jpg"); }
+      catch (err) { logStep("save: cover image not loaded"); problem = { key: "file", text: "The cover image for the backup playlists (backup-cover.jpg) could not be loaded from this site, so they have no cover." }; }
+      while (cover && saveState.coverQueue.length && backupMode() === "spotify" && connection === "ready") {
+        const entry = saveState.coverQueue[0];
+        if (entry.image) { saveState.coverQueue.shift(); continue; }
+        try {
+          await spotifyRequest("PUT", `/playlists/${entry.id}/images`, { body: cover, contentType: "image/jpeg", noWait: true });
+          entry.image = "set";
+          saveState.coverQueue.shift();
+        } catch (err) {
+          if (problemKind(String(err && err.message || err)) === "rate-limit") { stopped = true; logStep("save: covers wait, Spotify is limiting uploads"); break; }
+          logStep("save: cover not accepted");
+          if (/did not allow|sign-in expired/.test(err.message)) saveState.coverBlocked = true;
+          problem = { key: "refused", text: `Spotify did not accept the cover for the backup playlists: ${String(err.message || err).replace(/\.$/, "")}. They have no cover.` };
+          saveState.coverQueue.shift();   // the next save queues it again
+        }
+        if (saveState.coverGapMs) await new Promise((r) => setTimeout(r, saveState.coverGapMs));
+      }
+    }
+  } finally {
+    saveState.coverRunning = false;
+  }
+  if (!stopped) saveState.coverProblem = problem;
+  renderSaveStatus();
 }
 
 async function askSaveFailure(message) {
@@ -1291,7 +1363,7 @@ function rateLimitError(wait, reason) {
   return error;
 }
 
-async function spotifyRequest(method, path, { params, json, body, contentType } = {}) {
+async function spotifyRequest(method, path, { params, json, body, contentType, noWait } = {}) {   // noWait: a rate limit is not waited out, it is an error at once
   let url = path.startsWith("http") ? path : API + path;
   if (params) url += (url.includes("?") ? "&" : "?") + new URLSearchParams(params).toString();
   const what = `${method} ${path.split("?")[0]}`;
@@ -1315,7 +1387,7 @@ async function spotifyRequest(method, path, { params, json, body, contentType } 
       let reason = "";
       try { const data = JSON.parse(await response.text()); reason = (data && data.error && data.error.reason) || ""; } catch (err) { /* no body, or not JSON */ }
       // A quota limit, or a wait over a minute, is not worth sitting through: stop at once and say what is known.
-      if (reason === "QUOTA_EXCEEDED" || (wait && wait > 60)) throw rateLimitError(wait || lastWait, reason);
+      if (reason === "QUOTA_EXCEEDED" || (wait && wait > 60) || noWait) throw rateLimitError(wait || lastWait, reason);
       const pause = (wait || 2) * 1000 + 500;
       if (waitedMs + pause > RETRY_BUDGET_MS) break;
       await retrySleep(pause);
@@ -1620,7 +1692,39 @@ async function planSelected(startedWith, includeOthers = false) {
     return null;
   }
   setOutput("");
-  return { formatsText: inputs.formatsText, keys: inputs.keys, built, total, ours, marked, others, includeOthers, text: parts.join("\n\n") + "\n\nNothing has been built yet.", problems };
+  return { formatsText: inputs.formatsText, keys: inputs.keys, built, total, ours, marked, others, includeOthers, suspects: findSuspects(inputs.tracks), text: parts.join("\n\n") + "\n\nNothing has been built yet.", problems };
+}
+
+// Songs that may be one song in two versions, among the playlists a build draws from. The app knows a song by its Spotify ID, so the same song on an album and on a
+// compilation, or remastered, is two songs to it, and both could end up in a playlist. It does not guess which songs are the same: it points out the ones whose artist and
+// title match, once case, punctuation and a remaster note are set aside, and leaves the choice of version to the person.
+function songKey(label) {
+  return String(label || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/&/g, " and ")
+    .replace(/\s*[-\u2013]\s*(?:\d{4}\s+)?(?:digital(?:ly)?\s+)?remaster(?:ed)?(?:\s+\d{4})?(?:\s+version)?\s*$/, "")
+    .replace(/\s*[\(\[]\s*(?:\d{4}\s+)?(?:digital(?:ly)?\s+)?remaster(?:ed)?(?:\s+\d{4})?(?:\s+version)?\s*[\)\]]/g, "")
+    .replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function findSuspects(tracksByName) {
+  const byKey = new Map();
+  for (const [list, tracks] of Object.entries(tracksByName || {})) {
+    for (const t of tracks) {
+      const key = songKey(t.label);
+      if (!key) continue;
+      if (!byKey.has(key)) byKey.set(key, new Map());
+      const versions = byKey.get(key);
+      if (!versions.has(t.uri)) versions.set(t.uri, { label: t.label, lists: new Set() });
+      versions.get(t.uri).lists.add(list);
+    }
+  }
+  const out = [];
+  for (const versions of byKey.values()) {
+    if (versions.size < 2) continue;
+    const lists = new Set();
+    for (const v of versions.values()) v.lists.forEach((l) => lists.add(l));
+    out.push({ label: Array.from(versions.values())[0].label, versions: versions.size, lists: Array.from(lists) });
+  }
+  return out.sort((a, b) => a.label.localeCompare(b.label));
 }
 
 function setPlanText(text) {
@@ -1659,6 +1763,25 @@ function askToCreate(plan) {
     $("confirmKeepToggle").checked = plan.includeOthers;
     $("confirmKeepToggleLabel").textContent = `Replace ${many ? "them" : "it"} too`;
     setLabel($("confirmYes"), replacing ? `Remove them and build ${plural(plan.total, "playlist")}` : `Build ${plural(plan.total, "playlist")}`);
+    const suspects = plan.suspects || [];
+    const suspectsText = $("confirmSuspectsText"), suspectsList = $("confirmSuspectsList"), suspectsLinks = $("confirmSuspectsLinkRow");
+    suspectsText.hidden = suspectsLinks.hidden = !suspects.length;
+    suspectsList.hidden = true;
+    suspectsList.textContent = "";
+    $("confirmSuspectsToggle").textContent = "Which songs?";
+    if (suspects.length) {
+      suspectsText.textContent = `${plural(suspects.length, "song")} ${suspects.length === 1 ? "appears" : "appear"} in more than one version in your source playlists. The app can\u2019t tell versions apart, so one of them could repeat in a playlist or across playlists. To avoid that, use the same version of each song in every playlist.`;
+      const shown = suspects.slice(0, 10);
+      for (const s of shown) {
+        const li = document.createElement("li");
+        li.textContent = `${s.label}, in ${s.lists.map((l) => `\u201c${l}\u201d`).join(" and ")}`;
+        suspectsList.appendChild(li);
+      }
+      if (suspects.length > shown.length) { const li = document.createElement("li"); li.textContent = `and ${suspects.length - shown.length} more`; suspectsList.appendChild(li); }
+    }
+    const keepLink = $("confirmKeepEarlier");
+    keepLink.hidden = !plan.marked.length;
+    if (plan.marked.length) keepLink.textContent = `Keep ${plan.marked.length === 1 ? "it" : "them"} instead: rename ${plan.marked.length === 1 ? "it" : "them"} to \u201c\u2026 (version ${nextVersionLetter(plan.marked)})\u201d, then build`;
     setLabel($("confirmNo"), "Cancel");
     setPlanText(plan.text);
     $("planText").hidden = true;
@@ -1670,15 +1793,20 @@ function askToCreate(plan) {
       openQuestion = null;
       box.hidden = true;
       $("planText").textContent = "";
-      for (const id of ["confirmYes", "confirmNo", "planToggle"]) $(id).onclick = null;
+      for (const id of ["confirmYes", "confirmNo", "planToggle", "confirmKeepEarlier", "confirmSuspectsToggle"]) $(id).onclick = null;
       $("confirmKeepToggle").onchange = null;
       if (answer === "create") setCreateStage("creating");   // from this moment it cannot be dismissed
-      else if (answer === "include" || answer === "exclude") setCreateStage("planning");
+      else if (answer === "include" || answer === "exclude" || answer === "keep") setCreateStage("planning");
       resolve(answer);
     };
     openQuestion = finish;
     $("confirmYes").onclick = () => finish("create");
     $("confirmNo").onclick = () => finish("cancel");
+    $("confirmKeepEarlier").onclick = () => finish("keep");
+    $("confirmSuspectsToggle").onclick = () => {
+      $("confirmSuspectsList").hidden = !$("confirmSuspectsList").hidden;
+      $("confirmSuspectsToggle").textContent = $("confirmSuspectsList").hidden ? "Which songs?" : "Hide the list";
+    };
     $("confirmKeepToggle").onchange = () => finish($("confirmKeepToggle").checked ? "include" : "exclude");
     $("planToggle").onclick = () => {
       $("planText").hidden = !$("planText").hidden;
@@ -1715,6 +1843,13 @@ async function startCreate(keys = null) {
         closeCreateDialog();
         return;
       }
+      if (answer === "keep") {
+        await keepEarlierPlaylists(plan.marked);
+        plan = await planSelected(startedWith, includeOthers);   // with those names free, the new playlists start again at 1
+        if (!plan) return;
+        await createFromPlan(plan);   // they have just said what they want, so there is no second question
+        return;
+      }
       if (answer === "include" || answer === "exclude") {
         includeOthers = answer === "include";
         logStep(`plan: ${includeOthers ? "replacing" : "keeping"} playlists the app did not mark`);
@@ -1732,6 +1867,43 @@ async function startCreate(keys = null) {
     setBusy(false);
     if (!$("createOverlay").hidden) setCreateStage("done");
   }
+}
+
+// Keeping earlier playlists instead of replacing them: "Warm focus 1" becomes "Warm focus 1 (version a)". The letter is the first one that none of these playlists has used
+// before ("version b" the second time, and so on, then "aa"), and they all get the same one. A renamed playlist no longer has a name the recipe makes, so building and
+// "Remove earlier playlists" leave it alone, and the new playlists start again at 1.
+function versionLetters(index) {
+  let n = index, out = "";
+  do { out = String.fromCharCode(97 + (n % 26)) + out; n = Math.floor(n / 26) - 1; } while (n >= 0);
+  return out;
+}
+function nextVersionLetter(earlier) {
+  const used = new Set();
+  for (const p of earlier) {
+    const prefix = `${p.name} (version `;
+    for (const q of playlists) if (q.name.startsWith(prefix) && q.name.endsWith(")")) used.add(q.name.slice(prefix.length, -1));
+  }
+  let i = 0;
+  while (used.has(versionLetters(i))) i += 1;
+  return versionLetters(i);
+}
+async function keepEarlierPlaylists(earlier) {
+  const letter = nextVersionLetter(earlier);
+  let done = 0;
+  try {
+    for (const p of earlier) {
+      setActionMessage(`Renaming ${done + 1} of ${earlier.length}: ${p.name}`);
+      const name = `${p.name} (version ${letter})`;
+      await spotifyRequest("PUT", `/playlists/${p.id}`, { json: { name } });
+      const entry = playlists.find((q) => q.id === p.id);
+      if (entry) entry.name = name;
+      done += 1;
+    }
+  } catch (err) {
+    throw new Error(`${done} of ${earlier.length} earlier playlists were renamed before this went wrong: ${cleanError(err)}`);
+  }
+  logStep(`kept ${plural(earlier.length, "earlier playlist")} as version ${letter}`);
+  return letter;
 }
 
 async function createFromPlan(plan) {
@@ -1916,9 +2088,12 @@ function initDonateChoice() {
   // someone leaving the page, or switching to another app, does not wait for the pause: whatever has not been saved is saved now
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden" && saveState.timer && backupMode() === "spotify") runSpotifySave();
+    if (document.visibilityState === "visible" && startupDone && Date.now() - versionCheck.last > versionCheck.everyMs) checkForNewVersion();
     // coming back after a while: another device may have changed a backup, so the account's playlists are read again
     if (document.visibilityState === "visible" && backupMode() === "spotify" && connection === "ready" && playlistsLoadedAt && Date.now() - playlistsLoadedAt > playlistRefreshMs && !saveState.running) loadMyPlaylists().catch(() => {});
   });
+  // a window that was behind another one and comes forward counts as coming back too
+  window.addEventListener("focus", () => { if (startupDone && Date.now() - versionCheck.last > versionCheck.everyMs) checkForNewVersion(); });
   refreshBackupCard();
   applyBackupMode();
   applyDonateChoice();
@@ -2176,6 +2351,7 @@ async function main() {
 
   startupDone = true;
   showStartupProblems();
+  if (!startupProblems.length) setTimeout(checkForNewVersion, 5000);   // a few seconds after a clean start, off the way of everything else
   const hasOwnFormats = localStorage.getItem("formats") !== null && localStorage.getItem("formats") !== DEFAULT_FORMATS;
   if (token) {
     $("loginSection").hidden = true;

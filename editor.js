@@ -822,7 +822,11 @@ function renderTimeline() {
     }
   });
   const music = f.items.reduce((n, i) => n + i.minutes, 0);
-  editor.musicText = `${Math.round(music * 10) / 10} min of music` + (quiet ? ` + ${describeSeconds(quiet)} of silence` : "");
+  // Under an hour it is in minutes, with a decimal where there is one ("12.5 min"); from an hour up it is hours and whole minutes ("2 hr 40 min").
+  const shownMusic = Math.round(music * 10) / 10;
+  const musicWords = shownMusic >= 60 ? describeClock(shownMusic) : `${shownMusic} min`;
+  const quietWords = quiet >= 3600 ? describeClock(quiet / 60) : describeSeconds(quiet);
+  editor.musicText = `${musicWords} of music` + (quiet ? ` + ${quietWords} of silence` : "");
   refreshNoticeLine();   // the line shows the total, unless there is a notice to show
   applyHighlight();
 }
