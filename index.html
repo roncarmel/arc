@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-30t">
-<script src="theme.js?v=2026-10-30t"></script>
+<meta name="app-version" content="2026-10-30u">
+<script src="theme.js?v=2026-10-30u"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -30,6 +30,9 @@
   a.button-link { display: inline-flex; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--button); background: var(--button); color: var(--on-button, #fff); text-decoration: none; }
   pre.report-preview { min-height: 0; font-size: 12.5px; margin: 6px 0; }
   .report-hint { margin: 6px 0; }
+  #startupProblem { z-index: 2000; }   /* above everything, including the donation panel */
+  #startupProblem[hidden] { display: none; }
+  #startupProblem .report-hint { margin-top: 14px; }
   #welcomeBack p { margin-top: 0; }
   details.about summary { cursor: pointer; font-weight: 600; color: var(--accent); }
   details.about p { margin: 10px 0 0; }
@@ -146,7 +149,10 @@
   #formatEditor .fe-sp-title { font-weight: 600; flex: 1; min-width: 0; }
   #formatEditor .fe-sp-status { color: var(--muted); font-size: 0.8rem; line-height: 1.3; padding: 0 0 0 30px; }
   #formatEditor .fe-sp-disconnect { flex: none; min-height: 36px; padding: 0 12px; font-size: 0.9rem; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 10px; }
-  #formatEditor .fe-menuhead { display: flex; align-items: center; gap: 10px; padding: 6px 10px 8px 12px; }
+  /* the app's icon and name, as the header of the menu: a band in the deep pink right to the menu's edges, who this menu belongs to and nothing to press */
+  #formatEditor .fe-menuhead { display: flex; align-items: center; gap: 12px; margin: -4px -4px 6px; padding: 12px 16px; border-radius: 15px 15px 0 0; background: var(--accent-deep, #a8217c); background: linear-gradient(135deg, var(--accent-deep, #a8217c), color-mix(in srgb, var(--accent-deep, #a8217c) 76%, #fff 24%)); color: var(--on-deep, #fff); }
+  #formatEditor .fe-menuicon { width: 40px; height: 40px; flex: none; border-radius: 22%; display: block; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4); }
+  #formatEditor .fe-menuname { font-weight: 700; font-size: 1.1rem; letter-spacing: 0.01em; }
   #formatEditor .fe-appmenu .fe-item > .fe-icon { width: 20px; flex: none; }
   #formatEditor .fe-appmenu .fe-itemnote { padding-left: 42px; }   /* a line under a plain row starts where that row's words do */   /* the icons of the plain rows take the width of the checkbox, so their words start in line with Compact view */   /* the app's icon and name: who this menu belongs to, and not something to press */
   #formatEditor .fe-menuicon { width: 32px; height: 32px; flex: none; border-radius: 22%; display: block; }
@@ -478,14 +484,50 @@
     var file = function (s) { return String(s).split("/").pop().split("?")[0]; };
     pageStart.errors.push(t && t.src ? "could not load " + file(t.src) : String(e.message || "error") + (e.filename ? " (" + file(e.filename) + ", line " + e.lineno + ")" : ""));
   }, true);
+  // Asking for fresh copies of the page and of every file it loads, then loading the page again. This is a hard reload that works on a phone, where there is no key
+  // for it. It needs the network, so with none it does not reload (the page that is on screen is better than none).
+  pageStart.freshUrls = function () {
+    var own = location.origin + location.pathname;
+    var files = Array.prototype.map.call(document.querySelectorAll("script[src], link[rel=stylesheet][href]"), function (el) { return el.src || el.href; });
+    return [own].concat(files.filter(function (u) { return u.indexOf(location.origin) === 0; }));
+  };
+  pageStart.reload = function () { location.replace(location.origin + location.pathname); };
+  pageStart.refresh = function (done) {
+    if (!window.fetch || !window.Promise) { done(false); return; }
+    Promise.all(pageStart.freshUrls().map(function (u) { return fetch(u, { cache: "reload" }).then(function (r) { return r.ok; }, function () { return false; }); })).then(function (oks) {
+      if (oks[0]) { pageStart.reload(); } else { done(false); }   // the page itself came back, so the reload will find the new copies
+    });
+  };
+  pageStart.show = function (detail) {
+    var box = document.getElementById("startupProblem");
+    if (!box) return;
+    var d = document.getElementById("startupDetail");
+    if (d && detail) { d.textContent = "Details: " + detail; d.hidden = false; }
+    box.hidden = false;
+    var button = document.getElementById("startupReload");
+    if (button) try { button.focus(); } catch (e) { /* nothing to focus */ }
+  };
+  // A problem at startup: the first time in a visit, fresh copies are fetched and the page loads again by itself, since an old copy of one file, kept while files were being
+  // uploaded, is the usual cause. If it is still there after that (or there is no network), the popup says so.
+  pageStart.problem = function (detail) {
+    var tried = false;
+    try { tried = !!sessionStorage.getItem("startupRefreshed"); } catch (e) { tried = true; }
+    if (tried || navigator.onLine === false || pageStart.refreshing) { pageStart.show(detail); return; }
+    pageStart.refreshing = true;
+    try { sessionStorage.setItem("startupRefreshed", "1"); } catch (e) { /* no storage: no second try either */ }
+    pageStart.refresh(function () { pageStart.refreshing = false; pageStart.show(detail); });
+  };
   window.addEventListener("load", function () {
     setTimeout(function () {
       if (pageStart.started) return;
-      var box = document.getElementById("startupProblem");
-      if (!box) return;
-      box.hidden = false;
-      if (pageStart.errors.length) box.appendChild(document.createTextNode(" Details: " + pageStart.errors[0]));
+      pageStart.problem(pageStart.errors.length ? pageStart.errors[0] : "");
     }, 3000);
+    document.getElementById("startupReload").addEventListener("click", function () {
+      var offline = document.getElementById("startupOffline");
+      if (offline) offline.hidden = true;
+      pageStart.refresh(function () { if (offline) offline.hidden = false; });
+    });
+    document.getElementById("startupClose").addEventListener("click", function () { document.getElementById("startupProblem").hidden = true; });
   });
 </script>
 <script>
@@ -498,7 +540,19 @@
 <main>
   <h1 class="brand"><img class="app-icon" src="apple-touch-icon.png" alt="" width="44" height="44"><span class="brand-text"><span>Ceremony</span> <span>Playlist</span> <span>Builder</span></span></h1>
   <p class="tagline">New playlists for ceremonies and retreats, built from the ones you already have. <strong id="taglinePremium">Requires Spotify Premium.</strong></p>
-  <p id="startupProblem" class="report-hint" role="alert" hidden>Part of this page did not start. Try reloading it with Command-Shift-R on a Mac, or Ctrl-F5 on Windows. If this message stays, <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">report this problem</a>.</p>
+  <div id="startupProblem" class="fe-overlay" role="alertdialog" aria-modal="true" aria-labelledby="startupTitle" hidden>
+    <div class="fe-dialog">
+      <h3 id="startupTitle">Part of this page did not start</h3>
+      <p>This usually means your device is holding an older copy of some of the page&rsquo;s files. Reload asks for fresh ones.</p>
+      <p id="startupOffline" class="muted" hidden>The page could not be reached. Check your internet connection, then try again.</p>
+      <p id="startupDetail" class="muted" hidden></p>
+      <div class="row">
+        <button id="startupReload" type="button"><img class="btn-icon" src="icons/retry.svg" alt="" width="20" height="20"><span class="btn-label">Reload</span></button>
+        <button id="startupClose" class="quiet" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Close</span></button>
+      </div>
+      <p class="report-hint"><a id="startupReport" href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Report this problem</a></p>
+    </div>
+  </div>
 
   <details id="about" class="about card">
     <summary>More about this app</summary>
@@ -826,8 +880,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-30t"></script>
-<script src="editor.js?v=2026-10-30t"></script>
-<script src="app.js?v=2026-10-30t"></script>
+<script src="formats.js?v=2026-10-30u"></script>
+<script src="editor.js?v=2026-10-30u"></script>
+<script src="app.js?v=2026-10-30u"></script>
 </body>
 </html>

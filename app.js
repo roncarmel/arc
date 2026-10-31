@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-30t";
+const APP_VERSION = "2026-10-30u";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -55,12 +55,15 @@ function guarded(name, work) {
 }
 
 function showStartupProblems() {
-  const box = $("startupProblem");
-  if (!box || !startupProblems.length) return;
-  try { recordError("Startup: " + startupProblems.join("; ").slice(0, 300)); } catch (err) { /* the banner matters more */ }
-  box.hidden = false;
-  const link = box.querySelector("a");
+  if (!startupProblems.length) {
+    try { sessionStorage.removeItem("startupRefreshed"); } catch (err) { /* nothing was kept */ }   // a clean start: the next stale copy may be tried again by itself
+    return;
+  }
+  try { recordError("Startup: " + startupProblems.join("; ").slice(0, 300)); } catch (err) { /* the popup matters more */ }
+  const link = $("startupReport");
   if (link) { try { link.href = reportUrl(); } catch (err) { /* the plain link still works */ } }
+  if (window.pageStart && window.pageStart.problem) window.pageStart.problem(startupProblems[0]);
+  else { const box = $("startupProblem"); if (box) box.hidden = false; }
 }
 
 function startupFailed(err) {

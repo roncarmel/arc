@@ -475,8 +475,7 @@ function renderAppMenu() {
   // Spotify is the last thing in the menu, in whatever state it is in (connected, connecting, not connected, a problem), so it is always found in the same place.
   const spotifyItems = connection === "ready" ? [spotifyRow] : connectItems;
   slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" },
-    feEl("div", { class: "fe-menuhead", id: "feMenuHead" }, feEl("img", { class: "fe-menuicon", src: "apple-touch-icon.png", alt: "", width: "32", height: "32" }), feEl("span", { class: "fe-menuname", text: "Ceremony Playlist Builder" })),
-    feEl("div", { class: "fe-rule" }),
+    feEl("div", { class: "fe-menuhead", id: "feMenuHead" }, feEl("img", { class: "fe-menuicon", src: "apple-touch-icon.png", alt: "", width: "40", height: "40" }), feEl("span", { class: "fe-menuname", text: "Ceremony Playlist Builder" })),
     minimalButton,
     ...(!available ? [feEl("div", { class: "fe-itemnote", id: "feMinimalNote", text: "Available after you first connect to Spotify." })] : []),
     feEl("div", { class: "fe-rule" }),
