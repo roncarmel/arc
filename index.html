@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-30u">
-<script src="theme.js?v=2026-10-30u"></script>
+<meta name="app-version" content="2026-10-30v">
+<script src="theme.js?v=2026-10-30v"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -385,7 +385,10 @@
   #supportBox > * { pointer-events: auto; }
   /* the card's header: the silence between segments, then Duplicate and Delete together at the right */
   #formatEditor .fe-silence { display: flex; flex: 0 1 auto; align-items: center; gap: 8px; min-width: 0; }   /* the length and its words stay together; Duplicate and Delete sit beside them, or drop below on a very narrow screen */
-  #formatEditor .fe-amount-rich { padding: 0 6px; white-space: nowrap; text-align: center; min-width: 0; }
+  #formatEditor .fe-amount-rich { display: inline-grid; justify-items: center; align-items: center; padding: 0 6px; white-space: nowrap; text-align: center; min-width: 0; }
+  #formatEditor .fe-amount-rich > * { grid-area: 1 / 1; }   /* the words it says now, and everything it could say, in one place: the widest sets the width */
+  #formatEditor .fe-sizer { visibility: hidden; pointer-events: none; }
+  #formatEditor .fe-sizer-label { display: none; }
   #formatEditor .fe-silence-label { display: none; }
   #formatEditor #feDuplicate { margin-left: auto; }   /* Duplicate and Delete sit together at the right */
   /* the selected tab: a pencil, a notch pointing down at the card, and the name edited in place */
@@ -399,7 +402,8 @@
     #formatEditor .fe-silence { flex: 1 1 100%; }   /* too narrow for everything on one line: Duplicate and Delete go below together */
   }
   @media (min-width: 760px) {
-    #formatEditor .fe-silence-short { display: none; }   /* wide: a whole sentence instead of the short word */
+    #formatEditor .fe-silence-short, #formatEditor .fe-sizer-short { display: none; }   /* wide: a whole sentence instead of the short word */
+    #formatEditor .fe-sizer-label { display: inline; }
     #formatEditor .fe-silence-label { display: inline; flex: 0 1 auto; white-space: nowrap; }
   }
   /* on a phone, Disconnect sits below the status line, so the heading keeps the whole width and does not wrap */
@@ -880,8 +884,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-30u"></script>
-<script src="editor.js?v=2026-10-30u"></script>
-<script src="app.js?v=2026-10-30u"></script>
+<script src="formats.js?v=2026-10-30v"></script>
+<script src="editor.js?v=2026-10-30v"></script>
+<script src="app.js?v=2026-10-30v"></script>
 </body>
 </html>

@@ -614,7 +614,15 @@ function renderHead(rebuild) {
         stepperBox({
           shorterId: "feGapShorter", longerId: "feGapLonger", valueId: "feGapValue", inline: true, width: 46,
           // "[ - 30 sec gaps + ]", "[ - No gaps + ]" on a phone, and a whole sentence on a wide screen: "[ - 30 sec of silence between segments + ]"
-          children: [feEl("span", { id: "feGapValue", text: f.gap ? describeSeconds(f.gap) : "No" }), " ", feEl("span", { class: "fe-silence-short", text: "gaps" }), feEl("span", { class: "fe-silence-label", id: "feSilenceLabel", text: silenceLabel(f.gap) })],
+          // The stepper is as wide as the longest thing it can say, whatever it says now, so the + and − stay where they are while someone taps. Every thing it can say is
+          // in it, invisibly, in the same place, so the width follows the fonts and not a guess.
+          children: [
+            feEl("span", { class: "fe-amount-live" }, feEl("span", { id: "feGapValue", text: f.gap ? describeSeconds(f.gap) : "No" }), " ", feEl("span", { class: "fe-silence-short", text: "gaps" }), feEl("span", { class: "fe-silence-label", id: "feSilenceLabel", text: silenceLabel(f.gap) })),
+            ...GAP_STEPS.flatMap((s) => [
+              feEl("span", { class: "fe-sizer fe-sizer-short", "aria-hidden": "true", text: `${s ? describeSeconds(s) : "No"} gaps` }),
+              feEl("span", { class: "fe-sizer fe-sizer-label", "aria-hidden": "true", text: `${s ? describeSeconds(s) : "No"} ${silenceLabel(s)}` }),
+            ]),
+          ],
           shorterLabel: "Shorter silence between segments", longerLabel: "Longer silence between segments",
           onShorter: () => { const lower = GAP_STEPS.filter((s) => s < f.gap); f.gap = lower.length ? lower[lower.length - 1] : 0; afterGapChange(); },
           onLonger: () => { const higher = GAP_STEPS.filter((s) => s > f.gap); f.gap = higher.length ? higher[0] : GAP_STEPS[GAP_STEPS.length - 1]; afterGapChange(); },
