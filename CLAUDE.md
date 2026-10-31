@@ -73,4 +73,4 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 
 ## Tests
 
-See `tests/README.md`. Run the whole suite after every change; it takes about 4 minutes. New behavior gets new checks in a named area; when wording changes, update the checks that read it.
+See `tests/README.md`. Ron wants credit use kept low, so run the whole suite very rarely: only when Ron asks, or before a release after large or wide-reaching changes, and say why first. After an ordinary change, run only the areas it touches (`node run.js "--only=..."`). Read only the failures and the last lines of the output, never the full PASS list. New behavior gets new checks in a named area; when wording changes, update the checks that read it.

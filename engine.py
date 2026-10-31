@@ -2,8 +2,7 @@
 engine.py: the playlist-planning logic, with no network or file access.
 
 The page (app.js) reads playlists from Spotify and hands this code plain data. This code decides
-which songs go where and returns text. It runs inside Pyodide (Python in the browser), and the
-same logic runs unchanged in make_playlists.py.
+which songs go where and returns text. It runs inside Pyodide (Python in the browser).
 """
 import ast
 import json
