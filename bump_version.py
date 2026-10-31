@@ -5,6 +5,7 @@ The site has no build step, so the stamp is written out in each place that needs
   index.html   the app-version meta tag, and ?v= on every script, so browsers fetch the new copies
   app.js       APP_VERSION, so a page that loaded an old script notices the two differ
   version.txt  what a running page asks for, to find out a newer version is on the site
+  tests/run.js the checks that hold the stamp as text
 
   python3 bump_version.py            next stamp: today's date and the next letter (2026-10-31d -> 2026-10-31e)
   python3 bump_version.py 2026-11-02a  that stamp
@@ -23,6 +24,7 @@ PLACES = [  # file, pattern with the stamp as group 2
     ("app.js", rf'(const APP_VERSION = ")({STAMP})(";)'),
     ("version.txt", rf"(\A)({STAMP})(\s*\Z)"),
 ]
+TESTS = ROOT / "tests" / "run.js"   # holds the stamp as plain text, so every copy of the old stamp is replaced
 
 
 def found():
@@ -48,7 +50,11 @@ def main(args):
     stamps = found()
     if args == ["--check"]:
         if len(stamps) == 1:
-            print(f"All agree: {next(iter(stamps))}")
+            stamp = next(iter(stamps))
+            if TESTS.exists() and stamp not in TESTS.read_text():
+                print(f"The site files agree on {stamp}, but tests/run.js does not have it")
+                return 1
+            print(f"All agree: {stamp}")
             return 0
         print("The stamps differ:", "; ".join(f"{s} in {', '.join(sorted(set(f)))}" for s, f in stamps.items()))
         return 1
@@ -68,6 +74,11 @@ def main(args):
             if n == name:
                 text = re.sub(pattern, lambda m: m.group(1) + new + m.group(3), text)
         path.write_text(text)
+    if TESTS.exists():
+        text = TESTS.read_text()
+        for old in stamps:
+            text = text.replace(old, new)
+        TESTS.write_text(text)
     print(f"{', '.join(stamps)} -> {new}")
     return 0
 
