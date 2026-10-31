@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-30v">
-<script src="theme.js?v=2026-10-30v"></script>
+<meta name="app-version" content="2026-10-31c">
+<script src="theme.js?v=2026-10-31c"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -135,6 +135,13 @@
   #formatEditor .fe-appmenu { right: 0; top: 48px; width: max-content; min-width: min(300px, calc(100vw - 32px)); max-width: min(320px, calc(100vw - 32px)); }
   /* the backup block of the app menu: how it is done and where to (tap to change), how it is going, and for the manual way the two actions */
   #formatEditor .fe-bk-block { margin: 4px 2px; padding: 4px; border-radius: 12px; background: rgba(127, 127, 127, 0.13); }
+  /* the menu button, showing the cloud-save picture while recipes are being saved */
+  #formatEditor .fe-trigger { position: relative; overflow: hidden; }
+  #formatEditor .fe-saveicon { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; opacity: 0; pointer-events: none; transition: opacity 220ms ease; }
+  #formatEditor .fe-trigger > .fe-icon { transition: opacity 220ms ease; }
+  #formatEditor .fe-trigger.fe-saving .fe-saveicon { opacity: 1; }
+  #formatEditor .fe-trigger.fe-saving > .fe-icon { opacity: 0; }
+  @media (prefers-reduced-motion: reduce) { #formatEditor .fe-saveicon, #formatEditor .fe-trigger > .fe-icon { transition: none; } }
   #formatEditor .fe-bk-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px 6px 6px; }
   #formatEditor .fe-bk-row > .fe-icon { width: 20px; margin-top: 3px; flex: none; }
   #formatEditor .fe-bk-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
@@ -560,12 +567,12 @@
 
   <details id="about" class="about card">
     <summary>More about this app</summary>
-    <p><strong>What it does</strong><br>Ceremony Playlist Builder makes long playlists from your existing Spotify playlists. Describe the structure of the playlists you want to create, and the app builds as many complete playlists as your music allows, with songs picked at random and no song repeated across the playlists made from one format. Each playlist is created in your Spotify account, ready to play.</p>
+    <p><strong>What it does</strong><br>Ceremony Playlist Builder makes long playlists from your existing Spotify playlists. Describe the structure of the playlists you want to create, and the app builds as many complete playlists as your music allows, with songs picked at random and no song repeated across the playlists made from one recipe. Each playlist is created in your Spotify account, ready to play.</p>
     <p><strong>What it's good for</strong><br>Ceremonies, retreats, workshops, and any long event where the music should follow an arc, such as arriving, deepening, and landing. Instead of steering a shuffle during the event or manually building a playlist ahead of time for each event, set the structure once and get multiple fresh, non-overlapping playlists. You can then use these playlists for subsequent events without ever repeating the same music.</p>
     <p><strong>How it works</strong></p>
     <ol>
       <li>Connect Spotify through a free developer app. This takes a few minutes to set up, but you’ll only need to do it once.</li>
-      <li>Define your format(s): which of your playlists to draw from, in what order, and for how long.</li>
+      <li>Define your recipe(s): which of your playlists to draw from, in what order, and for how long.</li>
       <li>Build the playlists. The app shows you what it found and asks before it builds anything.</li>
     </ol>
     <p><strong>What you need</strong><br>A Spotify Premium account (Spotify requires it for the free developer app) and some playlists of your own to draw from.</p>
@@ -668,20 +675,19 @@
   </section>
 
   <div id="appSection" hidden>
-  <h2 id="editHeading">2. Edit your formats</h2>
-  <p id="savedNote" class="muted">Your formats are saved in this browser. You back them up to this device yourself: <button id="backupDownloadLink" class="linklike" type="button">back up now</button>, and <button id="backupRestore" class="linklike" type="button">restore from a backup</button> at any time.</p>
+  <h2 id="editHeading">2. Edit your recipes</h2>
+  <p id="savedNote" class="muted" hidden>You back your recipes up to this device yourself: <button id="backupDownloadLink" class="linklike" type="button">back up now</button>, and <button id="backupRestore" class="linklike" type="button">restore from a backup</button> at any time.</p>
   <input id="restoreFile" type="file" accept=".txt,text/plain" hidden>
-  <p id="savedNoteSpotify" class="muted" hidden>Your formats are saved in this browser, and backed up to Spotify automatically, each in a private playlist ending in (format backup).</p>
-  <p id="spotifySaveLine" class="muted" hidden><span id="spotifySaveStatus" aria-live="polite"></span></p>
+  <p id="spotifySaveLine" class="muted"><span id="spotifySaveStatus" aria-live="polite"></span></p>
   <div id="backupBackdrop" hidden></div>
   <div id="backupCard" class="card" hidden>
-    <h3 id="backupCardTitle">How should your formats be backed up?</h3>
-    <p>Your formats are saved in this browser. Clearing the browser's data, on purpose or by accident, erases them, so it is a good idea to keep a second copy. You have two options for that:</p>
-    <label class="choice-row"><input type="radio" name="backupMode" id="backupModeSpotify" value="spotify"> <span>Automatic backup to Spotify</span></label>
-    <p class="muted choice-note">Each format is kept in a private playlist of its own, named like the format and ending in (format backup). The format is saved in that playlist's description, so please do not edit it.</p>
-    <label class="choice-row"><input type="radio" name="backupMode" id="backupModeManual" value="manual"> <span>Manual backup to this device</span></label>
-    <p class="muted choice-note">You back up to this device and restore from that backup whenever you choose.</p>
-    <div class="row" id="backupDoneRow" hidden>
+    <h3 id="backupCardTitle">How should your recipes be saved?</h3>
+    <p>Pick where your recipes live. You can change this whenever you like.</p>
+    <label class="choice-row"><input type="radio" name="backupMode" id="backupModeSpotify" value="spotify"> <span>Saved to Spotify automatically</span></label>
+    <p class="muted choice-note">Each recipe is kept in a private playlist of its own, named like the recipe and ending in (recipe). The recipe is stored in that playlist's description, so please do not edit it.</p>
+    <label class="choice-row"><input type="radio" name="backupMode" id="backupModeManual" value="manual"> <span>Backed up to this device manually</span></label>
+    <p class="muted choice-note">Your recipes live on this device only. You back them up to a file when you choose, and restore from it when you need it.</p>
+    <div class="row" id="backupDoneRow">
       <button id="backupDone" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Done</span></button>
     </div>
   </div>
@@ -690,26 +696,26 @@
   <textarea id="formats" spellcheck="false" hidden aria-hidden="true" tabindex="-1"></textarea>
 
   <details id="formatHelp" class="help card">
-    <summary>How formats work</summary>
+    <summary>How recipes work</summary>
 
-    <p>A format is a recipe for one kind of playlist: which of your playlists to draw from, in what order, and for how long. The app makes as many playlists from a format as your songs allow, and no song repeats between them.</p>
+    <p>A recipe describes one kind of playlist: which of your playlists to draw from, in what order, and for how long. The app makes as many playlists from a recipe as your songs allow, and no song repeats between them.</p>
 
     <h3>Segments</h3>
     <p>Each row is one stretch of music. Tap the playlist to choose it, and use the minus and plus buttons to set how many minutes it fills. Drag the dotted handle to change the order. Each segment typically lands within about 30 seconds of its target. Point at a row, or tap a piece of the bar at the top, to see which belongs to which. Add another with <span class="ui">New segment</span>.</p>
 
     <h3>Silence</h3>
-    <p>The small tags hanging off the right side of the rows are silences. A silence adds time on top of your segment minutes, and can be used for effect or simply to tell a facilitator the music has moved into a new segment. To put the same silence between every two segments, set the length at the bottom of the format, beside Duplicate and Delete. Tap a tag to change that one silence. A tag with a changed length is pink, and <span class="ui">Reset to default</span> puts it back. To add a silence where there is none, use a segment's three dots.</p>
+    <p>The small tags hanging off the right side of the rows are silences. A silence adds time on top of your segment minutes, and can be used for effect or simply to tell a facilitator the music has moved into a new segment. To put the same silence between every two segments, set the length at the bottom of the recipe, beside Duplicate and Delete. Tap a tag to change that one silence. A tag with a changed length is pink, and <span class="ui">Reset to default</span> puts it back. To add a silence where there is none, use a segment's three dots.</p>
 
     <h3>Mixes</h3>
     <p>To blend two playlists in one segment, tap the three dots on that row and choose <span class="ui">Add a mix</span>. Pick the second playlist, then use the slider to set how much of each. In the bar at the top, a mixed segment shows as diagonal stripes in two shades of the accent color.</p>
-    <p>A format has a size limit, so that it always fits in a backup. When a format is full, <span class="ui">New segment</span> and <span class="ui">Add a mix</span> are greyed out, and a change that would make it longer is not made, until something is removed.</p>
+    <p>A recipe has a size limit, so that it always fits in a backup. When a recipe is full, <span class="ui">New segment</span> and <span class="ui">Add a mix</span> are greyed out, and a change that would make it longer is not made, until something is removed.</p>
 
     <h3>Names</h3>
-    <p>The name of a format is also the name of the playlists it makes: a format called "Warm focus" makes "Warm focus 1", "Warm focus 2", and so on. Give every format a different name. When you build playlists again, this app treats playlists that match a format's name as its own and offers to replace them.</p>
+    <p>The name of a recipe is also the name of the playlists it makes: a recipe called "Warm focus" makes "Warm focus 1", "Warm focus 2", and so on. Give every recipe a different name. When you build playlists again, this app treats playlists that match a recipe's name as its own and offers to replace them.</p>
   </details>
 
   <h2 id="createHeading">3. Build playlists</h2>
-  <p id="createNote" class="muted">Builds playlists for the selected format. You can see the plan first, and nothing is built until you confirm.</p>
+  <p id="createNote" class="muted">Builds playlists for the selected recipe. You can see the plan first, and nothing is built until you confirm.</p>
   <div id="buildRow" class="row" style="margin-top:0">
     <button id="create" class="primary" type="button" disabled><img class="btn-icon" src="icons/build.svg" alt="" width="24" height="24"><span class="btn-label"><span class="build-verb">Build playlists</span></span></button>
   </div>
@@ -748,7 +754,7 @@
 
   <div id="backupBlock">
   <h2 id="backupSection">4. Back up manually to this device (optional)</h2>
-  <p>Your formats are saved only in this browser. Clearing your browser data would erase them. A manual backup keeps a copy on this device so you can restore them if needed.</p>
+  <p>Your recipes live only on this device. Clearing your browser data would erase them. A manual backup keeps a copy so you can restore them if needed.</p>
   <div class="row">
     <button id="backupDownload" type="button"><img class="btn-icon" src="icons/download.svg" alt="" width="20" height="20"><span class="btn-label">Back up now</span></button>
   </div>
@@ -783,17 +789,17 @@
       <a id="reportLink" class="button-link" href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer"><img class="btn-icon" src="icons/report.svg" alt="" width="20" height="20"><span class="btn-label">Open the report form</span></a>
 
       <h3>Limit how many playlists are made</h3>
-      <p class="muted">By default, the app makes as many playlists as your songs allow, but here you can cap how many playlists get created per format:</p>
-      <select id="maxPlaylists" aria-label="Most playlists per format"><option value="">No limit</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select>
+      <p class="muted">By default, the app makes as many playlists as your songs allow, but here you can cap how many playlists get created per recipe:</p>
+      <select id="maxPlaylists" aria-label="Most playlists per recipe"><option value="">No limit</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select>
 
-      <h3>Build all formats</h3>
-      <p class="muted">Builds, or rebuilds, the playlists for every format at once. It shows what it found and asks first, as it does for one format.</p>
+      <h3>Build all recipes</h3>
+      <p class="muted">Builds, or rebuilds, the playlists for every recipe at once. It shows what it found and asks first, as it does for one recipe.</p>
       <div class="row">
-        <button id="buildAll" type="button" disabled><img class="btn-icon" src="icons/build.svg" alt="" width="24" height="24"><span class="btn-label">Build all formats</span></button>
+        <button id="buildAll" type="button" disabled><img class="btn-icon" src="icons/build.svg" alt="" width="24" height="24"><span class="btn-label">Build all recipes</span></button>
       </div>
 
       <h3>Remove earlier playlists</h3>
-      <p class="muted">Removes playlists made earlier by a format from your Spotify library, for example "mix 1" and "mix 2". It only touches playlists you own whose name matches the format you specify, and it asks before removing anything. It needs Spotify to be connected.</p>
+      <p class="muted">Removes playlists made earlier by a recipe from your Spotify library, for example "mix 1" and "mix 2". It only touches playlists you own whose name matches the recipe you specify, and it asks before removing anything. It needs Spotify to be connected.</p>
       <div class="row">
         <select id="removeKey" style="max-width:260px"></select>
         <button id="removeOld" type="button" disabled><img class="btn-icon" src="icons/remove.svg" alt="" width="20" height="20"><span class="btn-label">Remove earlier playlists</span></button>
@@ -823,16 +829,19 @@
       </div>
       <p id="themeNote" class="muted" hidden></p>
 
+      <h3>How your recipes are saved</h3>
+      <p><button id="changeSaveMethod" class="linklike" type="button">Change how your recipes are saved</button></p>
+
       <h3>Clear saved data</h3>
-      <p class="muted">You can make this page forget everything it saved in this browser: your Client ID, your formats, your Spotify sign-in, and the songs it keeps from your playlists. Nothing in your Spotify account changes.</p>
-      <p id="clearRestoreHelp" class="muted">Your formats are erased too. To get them back afterward, connect to Spotify again, then use the <span class="ui">restore from a backup</span> link in Step 2 and choose the backup you made on this device. If you haven't backed up to this device, do that first in Step 4.</p>
+      <p class="muted">Removes everything this app keeps on this device, including your Client ID. Nothing in your Spotify account changes. Recipes saved to Spotify stay there, and connecting again brings them back. Recipes you only back up manually are erased unless you have a backup file.</p>
+      <p id="clearRestoreHelp" class="muted">Your recipes are erased too. To get them back afterward, use the <span class="ui">restore from a backup</span> link in Step 2 and choose the backup you made on this device. If you haven't backed up to this device, do that first in Step 4.</p>
       <p id="clearBackupNote"></p>
       <div class="row">
         <button id="clearData" type="button"><img class="btn-icon" src="icons/clear.svg" alt="" width="20" height="20"><span class="btn-label">Clear saved data</span></button>
       </div>
       <div id="clearConfirm" hidden>
-        <p>Clear the saved Client ID, formats, and sign-in, and reload this page?</p>
-        <p id="clearConfirmHelp" class="muted">Your formats will be erased from this browser. To get them back, connect to Spotify again, then use the <span class="ui">restore from a backup</span> link in Step 2 and choose the backup you made on this device.</p>
+        <p>Clear the saved Client ID, recipes, and sign-in, and reload this page?</p>
+        <p id="clearConfirmHelp" class="muted">Your recipes will be erased from this device. To get them back, use the <span class="ui">restore from a backup</span> link in Step 2 and choose the backup you made on this device.</p>
         <div class="row">
           <button id="clearYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Yes, clear it</span></button>
           <button id="clearNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
@@ -855,8 +864,8 @@
       <summary>Privacy</summary>
 
       <h3>What stays in this browser</h3>
-      <p>Your Client ID, your formats, your color choice, and a copy of the songs from your playlists are saved in this browser, and nowhere else. The copy of your songs lets the app skip asking Spotify for them again. Disconnect removes your Spotify sign-in and the saved songs. <span class="ui">Clear saved data</span>, in <span class="ui">More options</span>, removes everything.</p>
-      <p>If you choose automatic backup to Spotify, each format is also kept in a private playlist in your own Spotify account, in the playlist's description. That is where the app saves it and reads it back, and it goes nowhere else.</p>
+      <p>Your Client ID, your recipes, your color choice, and a copy of the songs from your playlists are saved in this browser, and nowhere else. The copy of your songs lets the app skip asking Spotify for them again. Disconnect removes your Spotify sign-in and the saved songs. <span class="ui">Clear saved data</span>, in <span class="ui">More options</span>, removes everything.</p>
+      <p>Recipes are saved to Spotify unless you choose otherwise: each recipe is also kept in a private playlist in your own Spotify account, in the playlist's description. That is where the app saves it and reads it back, and it goes nowhere else. You can change this at any time in More options.</p>
 
       <h3>Your Spotify account</h3>
       <p>You sign in on Spotify's own page, and this app never sees your Spotify password. It asks Spotify for permission to read your playlists, create playlists, remove playlists, and set their cover images. Your existing playlists are only read, never changed. Removing only touches the playlists this app made, unless you choose to remove others too.</p>
@@ -866,7 +875,7 @@
       <p>Spotify, for everything about your music. The page's code comes from GitHub, and the Python it runs comes from a public code host (jsDelivr). Ko-fi's page loads only if you open Donate, and the report form opens only if you choose to report a problem<span id="privacyFeedbackWho" hidden>, and the feedback form only if you choose to send feedback</span>.</p>
 
       <h3>Anonymous visit counts</h3>
-      <p>The page keeps simple counts, to see how many people use the app and how it is used. It counts visits with GoatCounter, a service that uses no cookies and does not use unique identifiers to follow people around the web. It records that the page was opened, with the browser, screen size, country, and the site you came from, but not who you are. It also counts a few actions: the first time a browser connects to Spotify, how many playlists get created, when Donate is opened, and the kind of connection problem that happened. It never receives playlist names, formats, song titles, or your Client ID. A small marker in this browser remembers that your first connection was counted, so it is counted once.</p>
+      <p>The page keeps simple counts, to see how many people use the app and how it is used. It counts visits with GoatCounter, a service that uses no cookies and does not use unique identifiers to follow people around the web. It records that the page was opened, with the browser, screen size, country, and the site you came from, but not who you are. It also counts a few actions: the first time a browser connects to Spotify, how many playlists get created, when Donate is opened, and the kind of connection problem that happened. It never receives playlist names, recipes, song titles, or your Client ID. A small marker in this browser remembers that your first connection was counted, so it is counted once.</p>
 
       <h3>Donations</h3>
       <p>Donations are handled entirely by Ko-fi and its payment providers. This app never sees any payment details. If you check the box to hide the Donate button, that choice is saved in this browser and goes nowhere else.</p>
@@ -884,8 +893,8 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-30v"></script>
-<script src="editor.js?v=2026-10-30v"></script>
-<script src="app.js?v=2026-10-30v"></script>
+<script src="formats.js?v=2026-10-31c"></script>
+<script src="editor.js?v=2026-10-31c"></script>
+<script src="app.js?v=2026-10-31c"></script>
 </body>
 </html>

@@ -202,7 +202,7 @@ def plan_format(fmt):
         pending = []
         music.append((item[0], item[1]))
     if not music:
-        raise ValueError("A format needs at least one segment.")
+        raise ValueError("A recipe needs at least one segment.")
     gaps.append(combine(pending) if pending else none)
     return music, gaps
 
@@ -220,15 +220,15 @@ def letters(i):
 # ---------------------------------------------------------------- functions called by app.js
 def parse_formats(text):
     """Read the formats text. It can be the whole 'FORMATS = {...}' line or just the {...} part."""
-    text = re.sub(r"^\s*FORMATS\s*=\s*", "", text.strip())
+    text = re.sub(r"^\s*(?:RECIPES|FORMATS)\s*=\s*", "", text.strip())
     # the app writes a playlist as "name [id:...]" so it can follow a rename; the engine goes by the name alone
     text = re.sub(r" \[id:[0-9A-Za-z_-]{1,64}\](?=[\"'])", "", text)
     try:
         data = ast.literal_eval(text)
     except (ValueError, SyntaxError) as err:
-        raise ValueError(f"Could not read the formats: {err}")
+        raise ValueError(f"Could not read the recipes: {err}")
     if not isinstance(data, dict) or not data:
-        raise ValueError('The formats should look like { "format-1": { "name": ..., "segments": [...] } }.')
+        raise ValueError('The recipes should look like { "recipe-1": { "name": ..., "segments": [...] } }.')
     return data
 
 
@@ -344,7 +344,7 @@ def _plan_lines(key, music, gaps, built, stopped, used, cache, label=None):
     if stopped:
         lines.append(_stop_message(stopped))
     lines.append(f"{label}: {len(built)} playlist(s) planned.")
-    lines.append("Left in source playlists after this format:")
+    lines.append("Left in source playlists after this recipe:")
     lines.append(leftover_report(cache, music, used))
     return lines
 

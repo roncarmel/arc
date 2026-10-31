@@ -131,7 +131,7 @@ function coverEl(name, size, extraClass) {
 // A format has to fit in the description of a Spotify playlist (SAVE_LIMIT characters), in both backup modes, so that a format that works in one works in the other.
 // Whatever is done to a format that would make its save longer than that is not done: the format goes back to how it was, and a note says why. Making a format
 // shorter is always allowed, which is how one that is already too long gets back under the limit.
-const SIZE_MESSAGE = "This format has reached its size limit. Remove a segment or a mix to make room.";
+const SIZE_MESSAGE = "This recipe has reached its size limit. Remove a segment or a mix to make room.";
 const formatSnapshots = new Map();   // a format's id -> the format as last accepted, and the length of its save
 
 function copyItems(items) {
@@ -252,6 +252,7 @@ function askSyncChoice(title, text, choices, options = {}) {
       feEl("div", { class: "fe-dialog", role: required ? "alertdialog" : "dialog", "aria-modal": "true", "aria-label": title, onClick: (e) => e.stopPropagation() },
         feEl("h3", { text: title }),
         feEl("p", { text }),
+        options.detail ? feEl("p", { class: "muted", id: "feSyncDetail", text: options.detail }) : null,
         feEl("div", { class: "row" }, ...buttons)));
     document.body.appendChild(overlay);
     document.addEventListener("keydown", onKey);
@@ -337,7 +338,7 @@ function renderEditor() {
   root.appendChild(feEl("div", { class: "fe-toprow" + (format ? "" : " fe-noformats") },
     feEl("img", { class: "fe-appicon", src: "apple-touch-icon.png", alt: "", width: "44", height: "44" }),
     feEl("div", { class: "fe-tabs", id: "feTabs" }),
-    feEl("button", { type: "button", class: "fe-newformat", id: "feNewFormat", "aria-label": "New format", title: "New format", onClick: askNewFormat }, feIcon("plus"), feEl("span", { class: "fe-newformat-label", text: "New format" })),
+    feEl("button", { type: "button", class: "fe-newformat", id: "feNewFormat", "aria-label": "New recipe", title: "New recipe", onClick: askNewFormat }, feIcon("plus"), feEl("span", { class: "fe-newformat-label", text: "New recipe" })),
     feEl("div", { class: "fe-appmenuwrap", id: "feAppMenu" })));
   $("feTabs").addEventListener("scroll", updateTabFade);
   renderTabs();
@@ -346,7 +347,7 @@ function renderEditor() {
   scrollSelectedTab();
   updateTabFade();
   if (!format) {   // no formats: the New format button, and what to do with it
-    root.appendChild(feEl("p", { class: "muted fe-emptynote", id: "feEmptyNote", text: "Tap New format to create your first format, then add as many segments to it as you like." }));
+    root.appendChild(feEl("p", { class: "muted fe-emptynote", id: "feEmptyNote", text: "Tap New recipe to create your first recipe, then add as many segments to it as you like." }));
     // the line for notices is here too, so a message about what was just done is never left without a place to show
     root.appendChild(feEl("div", { class: "fe-caption", id: "feCaption", onPointerDown: pauseNotices, onMouseEnter: pauseNotices }));
     root.appendChild(feEl("span", { class: "fe-sr", id: "feNoticeLive", "aria-live": "polite" }));
@@ -372,10 +373,10 @@ function renderEditor() {
 
 function brokenView() {
   return feEl("div", { class: "fe-empty", id: "feBroken" },
-    feEl("p", { text: "Your saved formats could not be read, so they can't be shown." }),
+    feEl("p", { text: "Your saved recipes could not be read, so they can't be shown." }),
     feEl("p", { class: "muted", text: editor.broken }),
     feEl("div", { class: "row" },
-      feEl("button", { type: "button", id: "feSaveBroken", onClick: () => saveFile(`playlist-formats-unreadable-${fileStamp()}.txt`, $("formats").value) }, "Download the saved text"),
+      feEl("button", { type: "button", id: "feSaveBroken", onClick: () => saveFile(`playlist-recipes-unreadable-${fileStamp()}.txt`, $("formats").value) }, "Download the saved text"),
       feEl("button", { type: "button", class: "primary", id: "feStartOver", onClick: () => { setFormatsText(DEFAULT_FORMATS); } }, "Start over")));
 }
 
@@ -429,7 +430,8 @@ function renderAppMenu() {
     type: "button", class: "fe-iconbtn fe-trigger", id: "feAppMenuButton",
     "aria-label": "App menu", "aria-haspopup": "menu", "aria-expanded": String(editor.appMenu),
     onClick: toggleAppMenu,
-  }, feIcon("dots")));
+  }, feIcon("dots"), feEl("img", { class: "fe-saveicon", src: "backup-cover.jpg", alt: "", "aria-hidden": "true", width: "44", height: "44" })));
+  applySavingIcon();
   if (!editor.appMenu) return;
   const choose = (action) => () => { editor.appMenu = false; renderAppMenu(); action(); };
   const on = minimalMode();
@@ -450,20 +452,22 @@ function renderAppMenu() {
     const why = connecting ? "On a slow connection this can take a few seconds." : connection === "problem" ? $("connectionMessage").textContent : "";
     if (why) connectItems.push(feEl("div", { class: "fe-itemnote", id: "feConnectionNote", text: why }));
   }
-  // The backup, in one block: how it is done and where to, a link to change it, how it is going, and for the manual way the two actions.
+  // When recipes are saved to Spotify there is nothing about saving in this menu: it happens by itself, and the icon on the menu button shows it while it does. For a person
+  // who backs up by hand there is one block: what it is, a link to change it, when the last backup was, and the two actions.
   const auto = typeof backupMode === "function" && backupMode() === "spotify";
-  let status = null;
-  if (auto) { status = feEl("span", { class: "fe-bk-status", id: "feSaveStatus" }); writeSaveParts(status); }
-  else if (backupLabel) status = feEl("span", { class: "fe-bk-status", id: "feBackupStatus", text: backupLabel });
-  const head = feEl("div", { class: "fe-bk-row" }, feIcon(auto ? "cloud" : "device"),
-    feEl("div", { class: "fe-bk-text" },
-      feEl("span", { class: "fe-bk-title", text: auto ? "Automatic backup to Spotify" : "Manual backup to this device" }),
-      feEl("button", { type: "button", class: "linklike fe-bk-change", id: "feBackupMethod", role: "menuitem", onClick: choose(() => openBackupCard()), text: "Change backup method" }),
-      status));
-  const actions = auto ? null : feEl("div", { class: "fe-bk-actions" },
-    feEl("button", { type: "button", id: "feBackup", role: "menuitem", onClick: choose(() => downloadBackup()) }, feIcon("download"), "Back up now"),
-    feEl("button", { type: "button", id: "feRestore", role: "menuitem", onClick: choose(() => $("restoreFile").click()) }, feIcon("restore"), "Restore"));
-  const backupBlock = feEl("div", { class: "fe-bk-block" }, head, actions);
+  let backupBlock = null;
+  if (!auto) {
+    const status = backupLabel ? feEl("span", { class: "fe-bk-status", id: "feBackupStatus", text: backupLabel }) : null;
+    backupBlock = feEl("div", { class: "fe-bk-block" },
+      feEl("div", { class: "fe-bk-row" }, feIcon("device"),
+        feEl("div", { class: "fe-bk-text" },
+          feEl("span", { class: "fe-bk-title", text: "Manual backup to this device" }),
+          feEl("button", { type: "button", class: "linklike fe-bk-change", id: "feBackupMethod", role: "menuitem", onClick: choose(() => openBackupCard()), text: "Change how your recipes are saved" }),
+          status)),
+      feEl("div", { class: "fe-bk-actions" },
+        feEl("button", { type: "button", id: "feBackup", role: "menuitem", onClick: choose(() => downloadBackup()) }, feIcon("download"), "Back up now"),
+        feEl("button", { type: "button", id: "feRestore", role: "menuitem", onClick: choose(() => $("restoreFile").click()) }, feIcon("restore"), "Restore")));
+  }
   // Spotify, when it is connected: what is connected and who to, and the way out, small and to the side, since it is hardly ever wanted
   const who = typeof me !== "undefined" && me ? (me.display_name || me.id) : "";
   const spotifyRow = feEl("div", { class: "fe-sp-block" },
@@ -478,11 +482,30 @@ function renderAppMenu() {
     feEl("div", { class: "fe-menuhead", id: "feMenuHead" }, feEl("img", { class: "fe-menuicon", src: "apple-touch-icon.png", alt: "", width: "40", height: "40" }), feEl("span", { class: "fe-menuname", text: "Ceremony Playlist Builder" })),
     minimalButton,
     ...(!available ? [feEl("div", { class: "fe-itemnote", id: "feMinimalNote", text: "Available after you first connect to Spotify." })] : []),
-    feEl("div", { class: "fe-rule" }),
-    backupBlock,
+    ...(backupBlock ? [feEl("div", { class: "fe-rule" }), backupBlock] : []),
     ...(spotifyItems.length ? [feEl("div", { class: "fe-rule" }), ...spotifyItems] : []),
     feEl("div", { class: "fe-rule" }),
     feEl("div", { class: "fe-version", id: "feVersion", text: `App version ${typeof APP_VERSION === "undefined" ? "" : APP_VERSION}` })));
+}
+
+// While recipes are being saved to Spotify the menu button shows the cloud-save picture in place of its dots, with a short cross-fade, and keeps it for at least a second so a
+// quick save can still be seen. It stays up for as long as saves follow each other.
+const savingIcon = { on: false, since: 0, timer: null };
+function applySavingIcon() {
+  const button = $("feAppMenuButton");
+  if (button) button.classList.toggle("fe-saving", savingIcon.on);
+}
+function setSavingIcon(flag) {
+  if (flag) {
+    clearTimeout(savingIcon.timer);
+    savingIcon.timer = null;
+    if (!savingIcon.on) { savingIcon.on = true; savingIcon.since = Date.now(); }
+  } else if (savingIcon.on && !savingIcon.timer) {
+    const left = 1000 - (Date.now() - savingIcon.since);
+    const off = () => { savingIcon.on = false; savingIcon.timer = null; applySavingIcon(); };
+    if (left > 0) savingIcon.timer = setTimeout(off, left); else off();
+  }
+  applySavingIcon();
 }
 
 // A menu, list or card that would run off the bottom of the screen opens upward instead (or, if there is no more room above,
@@ -534,7 +557,7 @@ function renderTabs() {
     } else if (selected) {
       // the selected tab carries a pencil, and pressing it renames the format where it is
       tabs.appendChild(feEl("button", {
-        type: "button", class: "fe-tab", "aria-pressed": "true", "data-id": f.id, title: "Rename format", onClick: startRename,
+        type: "button", class: "fe-tab", "aria-pressed": "true", "data-id": f.id, title: "Rename recipe", onClick: startRename,
       }, f.title.trim() || "Untitled", feIcon("pencil")));
     } else {
       tabs.appendChild(feEl("button", {
@@ -548,7 +571,7 @@ function renderTabs() {
 }
 
 function renameTab(f) {
-  const input = feEl("input", { type: "text", id: "feName", class: "fe-tab-input", value: f.title, autocomplete: "off", "aria-label": "Name of format", enterkeyhint: "done" });
+  const input = feEl("input", { type: "text", id: "feName", class: "fe-tab-input", value: f.title, autocomplete: "off", "aria-label": "Name of recipe", enterkeyhint: "done" });
   input.value = f.title;
   const fit = () => { input.style.width = Math.max(6, input.value.length + 1) + "ch"; };
   fit();
@@ -627,8 +650,8 @@ function renderHead(rebuild) {
           onShorter: () => { const lower = GAP_STEPS.filter((s) => s < f.gap); f.gap = lower.length ? lower[lower.length - 1] : 0; afterGapChange(); },
           onLonger: () => { const higher = GAP_STEPS.filter((s) => s > f.gap); f.gap = higher.length ? higher[0] : GAP_STEPS[GAP_STEPS.length - 1]; afterGapChange(); },
         })),
-      feEl("button", { type: "button", class: "fe-iconbtn", id: "feDuplicate", "aria-label": "Duplicate format", title: "Duplicate format", onClick: askDuplicateFormat }, feIcon("copy")),
-      feEl("button", { type: "button", class: "fe-iconbtn fe-danger", id: "feDelete", "aria-label": "Delete format", title: "Delete format", onClick: askDeleteFormat }, feIcon("trash"))));
+      feEl("button", { type: "button", class: "fe-iconbtn", id: "feDuplicate", "aria-label": "Duplicate recipe", title: "Duplicate recipe", onClick: askDuplicateFormat }, feIcon("copy")),
+      feEl("button", { type: "button", class: "fe-iconbtn fe-danger", id: "feDelete", "aria-label": "Delete recipe", title: "Delete recipe", onClick: askDeleteFormat }, feIcon("trash"))));
     renderClash();
   }
   $("feGapValue").textContent = f.gap ? describeSeconds(f.gap) : "No";
@@ -647,7 +670,7 @@ function renderClash() {
   if (!f || !note) return;
   const clash = editor.model.formats.some((x) => x.id !== f.id && normName(x.title) === normName(f.title));
   note.hidden = !clash;
-  note.textContent = clash ? "Another format has this name. Playlists from both would be treated as one set when replacing." : "";
+  note.textContent = clash ? "Another recipe has this name. Playlists from both would be treated as one set when replacing." : "";
 }
 
 // ---------------------------------------------------------------- the line under the bar: the music total, or a notice
@@ -1016,7 +1039,7 @@ function menuPanel(f, item, index) {
         commit(); renderRows(); renderTimeline();
       },
     }, feIcon("plus"), "Add a mix"));
-    if (noRoom) pop.appendChild(feEl("div", { class: "fe-itemnote", id: "feMixNote", text: "No room: this format has reached its size limit." }));
+    if (noRoom) pop.appendChild(feEl("div", { class: "fe-itemnote", id: "feMixNote", text: "No room: this recipe has reached its size limit." }));
   } else {
     pop.appendChild(feEl("button", { type: "button", class: "fe-item", id: "feEditMix", onClick: () => setPanel(item.id, "mix") }, feIcon("sliders"), "Edit mix"));
     pop.appendChild(feEl("button", { type: "button", class: "fe-item", id: "feRemoveMix", onClick: () => removeMix(item) }, feIcon("minus"), "Remove mix"));
@@ -1167,10 +1190,10 @@ function askNewFormat() {
   const close = () => { overlay.remove(); document.removeEventListener("keydown", onKey); };
   const onKey = (event) => { if (event.key === "Escape") close(); };
   const cancel = feEl("button", { type: "button", id: "feNewFormatCancel", onClick: close }, "Cancel");
-  const confirm = feEl("button", { type: "button", class: "primary", id: "feNewFormatConfirm", onClick: () => { close(); addFormat(); } }, "Create format");
+  const confirm = feEl("button", { type: "button", class: "primary", id: "feNewFormatConfirm", onClick: () => { close(); addFormat(); } }, "Create recipe");
   const overlay = feEl("div", { class: "fe-overlay", id: "feNewFormatDialog", onClick: close },
-    feEl("div", { class: "fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": "New format", onClick: (e) => e.stopPropagation() },
-      feEl("h3", { text: "Create a new format?" }),
+    feEl("div", { class: "fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": "New recipe", onClick: (e) => e.stopPropagation() },
+      feEl("h3", { text: "Create a new recipe?" }),
       feEl("p", { text: "It starts with one empty segment, ready to rename and fill in." }),
       feEl("div", { class: "row" }, cancel, confirm)));
   document.body.appendChild(overlay);
@@ -1181,8 +1204,8 @@ function askNewFormat() {
 function addFormat() {
   const taken = new Set(editor.model.formats.map((f) => normName(f.title)));
   let number = 1;
-  while (taken.has(normName(`Format ${number}`))) number += 1;
-  const title = `Format ${number}`;
+  while (taken.has(normName(`Recipe ${number}`))) number += 1;
+  const title = `Recipe ${number}`;
   const fresh = newBlankFormat(editor.model, title);
   editor.model.formats.push(fresh);
   editor.activeId = fresh.id;
@@ -1200,10 +1223,10 @@ function askDuplicateFormat() {
   const close = () => { overlay.remove(); document.removeEventListener("keydown", onKey); };
   const onKey = (event) => { if (event.key === "Escape") close(); };
   const cancel = feEl("button", { type: "button", id: "feDuplicateCancel", onClick: close }, "Cancel");
-  const confirm = feEl("button", { type: "button", class: "primary", id: "feDuplicateConfirm", onClick: () => { close(); duplicateFormat(); } }, "Duplicate format");
+  const confirm = feEl("button", { type: "button", class: "primary", id: "feDuplicateConfirm", onClick: () => { close(); duplicateFormat(); } }, "Duplicate recipe");
   const overlay = feEl("div", { class: "fe-overlay", id: "feDuplicateDialog", onClick: close },
-    feEl("div", { class: "fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": "Duplicate format", onClick: (event) => event.stopPropagation() },
-      feEl("h3", { text: "Duplicate this format?" }),
+    feEl("div", { class: "fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": "Duplicate recipe", onClick: (event) => event.stopPropagation() },
+      feEl("h3", { text: "Duplicate this recipe?" }),
       feEl("p", { text: `A copy of \u201c${f.title.trim() || "Untitled"}\u201d is added, with the same segments and silences, ready to rename.` }),
       feEl("div", { class: "row" }, cancel, confirm)));
   document.body.appendChild(overlay);
@@ -1239,11 +1262,11 @@ function askDeleteFormat() {
     if (typeof noteFormatDeleted === "function") noteFormatDeleted(f.id);
     commit();
     renderEditor();
-  } }, "Delete format");
+  } }, "Delete recipe");
   const overlay = feEl("div", { class: "fe-overlay", id: "feDeleteDialog", onClick: close },
-    feEl("div", { class: "fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": "Delete format", onClick: (e) => e.stopPropagation() },
+    feEl("div", { class: "fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": "Delete recipe", onClick: (e) => e.stopPropagation() },
       feEl("h3", { text: `Delete \u201c${f.title.trim() || "Untitled"}\u201d?` }),
-      feEl("p", { text: `This removes the format and its ${rows === 1 ? "1 row" : rows + " rows"}. Playlists already in Spotify are not affected.${typeof backupMode === "function" && backupMode() === "spotify" ? " Its backup playlist in Spotify is deleted too." : " Formats can be restored from a backup if you have one."}` }),
+      feEl("p", { text: `This removes the recipe and its ${rows === 1 ? "1 row" : rows + " rows"}. Playlists already in Spotify are not affected.${typeof backupMode === "function" && backupMode() === "spotify" ? " Its backup playlist in Spotify is deleted too." : " Formats can be restored from a backup if you have one."}` }),
       feEl("div", { class: "row" }, cancel, confirm)));
   document.body.appendChild(overlay);
   document.addEventListener("keydown", onKey);

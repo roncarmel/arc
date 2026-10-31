@@ -15,7 +15,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-30v";
+const APP_VERSION = "2026-10-31c";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -384,7 +384,7 @@ function formatBackupTime(iso) {
 // packFormat). A save is found again by what its description decodes to, so it does not matter what the playlist is called, and nothing is kept in this browser
 // except which formats were deleted and still have a save to remove. This stage only writes: it creates a save for each format, brings it up to date after an
 // edit, renames it with the format, and removes it when the format is deleted. A save that is newer than the format here (made on another device) is left alone.
-const SAVE_SUFFIX = " (format backup)";
+const SAVE_SUFFIX = " (recipe)";
 // Edits are saved once they have stopped for a few seconds, and at the latest this long after the first of them, so a long run of edits still gets saved from time to
 // time. Spotify counts the calls an app makes in a rolling 30 seconds, so saves are not made more often than that needs, and not while a build is under way.
 let spotifySaveDelayMs = 5000;
@@ -637,7 +637,7 @@ function spotifySaveParts(full = true) {
   else if (saveState.timer) parts.push({ text: "Saving to Spotify\u2026" });
   else {
     const at = saveState.savedAt || (() => { try { return localStorage.getItem("spotifySavedAt"); } catch (err) { return null; } })();
-    if (at) parts.push({ text: "Saved to Spotify at " + new Date(at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "." });
+    if (at) parts.push({ text: "Last saved at " + new Date(at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "." });
   }
   if (!full) return parts;   // the line in the page: how the saving is going, and nothing more
   // the menu keeps a record of the last news, which the line under the bar only shows for a few seconds
@@ -653,7 +653,7 @@ function spotifySaveParts(full = true) {
 function downloadOneFormat(id) {
   const fmt = editor.model && editor.model.formats.find((f) => f.id === id);
   if (!fmt) return;
-  saveFile(`playlist-format-${fileStamp()}.txt`, modelToText({ formats: [fmt] }));
+  saveFile(`playlist-recipe-${fileStamp()}.txt`, modelToText({ formats: [fmt] }));
 }
 
 // Writes the parts into a place on the page, with their actions as pink links.
@@ -670,14 +670,21 @@ function attentionItems() {
   return items;
 }
 
+// What went wrong, in words a person can read: the plain messages are kept, and the technical one ("Spotify returned 500 for PUT /playlists/…") becomes a sentence.
+function saveFailureDetail(message) {
+  const code = /Spotify returned (\d{3})/.exec(message);
+  if (code) return `Spotify returned an error (${code[1]}) while saving.`;
+  return String(message).replace(/\s*\/playlists\/[A-Za-z0-9]+/g, "").trim();
+}
+
 async function askSaveFailure(message) {
   const unexpected = problemKind(message) === "other";
   if (unexpected) recordError(message);
   const choices = [{ label: "Back up now", value: "backup" }, { label: "Try again", value: "retry" }];
   if (unexpected) choices.push({ label: "Report this problem", value: "report" });
   choices.push({ label: "Close", value: "close" });
-  const choice = await askSyncChoice("Your formats couldn\u2019t be saved to Spotify",
-    "They are still saved in this browser, but clearing its data or switching devices before this is fixed could lose changes. A backup on this device keeps them safe.", choices);
+  const choice = await askSyncChoice("Your recipes couldn\u2019t be saved to Spotify",
+    "Your latest changes haven\u2019t been saved to Spotify yet. A backup on this device keeps them safe.", choices, { detail: `What happened: ${saveFailureDetail(message)}` });
   if (choice === "backup") downloadBackup();
   else if (choice === "retry") { saveState.error = ""; runSpotifySave(); }
   else if (choice === "report") window.open(reportUrl(), "_blank", "noopener");
@@ -693,7 +700,7 @@ function newsText(verb, titles) {
   const names = titles.map((t) => `\u201c${String(t).trim() || "Untitled"}\u201d`);
   if (names.length === 1) return `${verb} ${names[0]} from Spotify.`;
   if (names.length === 2) return `${verb} ${names[0]} and ${names[1]} from Spotify.`;
-  return `${verb} ${names.length} formats from Spotify.`;
+  return `${verb} ${names.length} recipes from Spotify.`;
 }
 
 function writeSaveParts(into, full = true) {
@@ -714,6 +721,7 @@ function renderSaveStatus() {
   if (slot) writeSaveParts(slot, false);
   if (typeof renderAppMenu === "function") renderAppMenu();
   if (typeof refreshNoticeLine === "function") refreshNoticeLine();   // trouble that needs the person is in the line under the editor's bar
+  if (typeof setSavingIcon === "function") setSavingIcon(saveState.running);   // the menu button shows the cloud-save picture while a save is going on
 }
 
 // ---------------------------------------------------------------- how the formats are backed up
@@ -721,24 +729,24 @@ function renderSaveStatus() {
 // the card asking for it is on the page, and the app behaves as it does for "manual".
 let backupCardOpen = false;
 
+// Saved to Spotify is how recipes are kept unless the person has chosen the other way: nothing is asked at the first sign-in.
 function backupMode() {
-  try { return localStorage.getItem("backupMode") || ""; } catch (err) { return ""; }
+  try { return localStorage.getItem("backupMode") === "manual" ? "manual" : "spotify"; } catch (err) { return "spotify"; }
 }
 
 function refreshBackupCard() {
   const card = $("backupCard");
   if (!card) return;
-  card.hidden = !(backupCardOpen || !backupMode());
+  card.hidden = !backupCardOpen;
   card.classList.toggle("opened", backupCardOpen);
   // opened, it is a popup: with a backdrop, no scrolling of the page behind it, and what a screen reader needs to know
   $("backupBackdrop").hidden = !backupCardOpen;
   document.body.classList.toggle("backup-card-open", backupCardOpen);
   if (backupCardOpen) { card.setAttribute("role", "dialog"); card.setAttribute("aria-modal", "true"); card.setAttribute("aria-labelledby", "backupCardTitle"); }
   else { card.removeAttribute("role"); card.removeAttribute("aria-modal"); card.removeAttribute("aria-labelledby"); }
-  const mode = backupMode();   // before a choice is made, neither is selected
+  const mode = backupMode();
   $("backupModeManual").checked = mode === "manual";
   $("backupModeSpotify").checked = mode === "spotify";
-  $("backupDoneRow").hidden = !mode;   // with a way chosen, the card can be closed without changing it; before that, a choice is what it is for
 }
 
 function openBackupCard() {
@@ -772,11 +780,11 @@ async function leaveSpotifyBackups() {
   const saves = playlists.filter((p) => p.save && p.save.kind === "save");
   // From here the backup file is the way, so a file is offered in each case, in the message that says what happened to the backups in Spotify.
   const offer = { label: "Back up now", onClick: () => { downloadBackup(); } };
-  if (!saves.length) { showBackupMessage("Your formats are now saved only in this browser.", false, offer); return; }
+  if (!saves.length) { showBackupMessage("Your recipes are now saved only in this browser.", false, offer); return; }
   const many = saves.length > 1;
   if (connection !== "ready") { showBackupMessage(`The ${many ? "backups" : "backup"} in Spotify ${many ? "were" : "was"} left as ${many ? "they are" : "it is"}.`, false, offer); return; }
   const choice = await askSyncChoice("Remove the backups from Spotify?",
-    `${many ? "There are " + saves.length + " backups" : "There is 1 backup"} of your formats in Spotify, in private playlists ending in (format backup). Keep ${many ? "them" : "it"}, or remove ${many ? "them" : "it"}? Another device that backs up to Spotify would lose ${many ? "them" : "it"} too.`,
+    `${many ? "There are " + saves.length + " backups" : "There is 1 backup"} of your recipes in Spotify, in private playlists ending in (recipe). Keep ${many ? "them" : "it"}, or remove ${many ? "them" : "it"}? Another device that backs up to Spotify would lose ${many ? "them" : "it"} too.`,
     [{ label: many ? "Keep them" : "Keep it", value: "keep" }, { label: many ? "Remove them" : "Remove it", value: "remove", danger: true }]);
   if (choice !== "remove") { showBackupMessage(`The ${many ? "backups" : "backup"} in Spotify ${many ? "were" : "was"} left as ${many ? "they are" : "it is"}.`, false, offer); return; }
   try {
@@ -785,7 +793,7 @@ async function leaveSpotifyBackups() {
       await spotifyRequest("DELETE", "/me/library", { params: { uris: ids.slice(i, i + REMOVE_CHUNK).map((id) => "spotify:playlist:" + id).join(",") } });
     }
     playlists = playlists.filter((p) => !ids.includes(p.id));
-    showBackupMessage(`Removed ${plural(ids.length, "backup")} from Spotify. Your formats are now saved only in this browser.`, false, offer);
+    showBackupMessage(`Removed ${plural(ids.length, "backup")} from Spotify. Your recipes are now saved only in this browser.`, false, offer);
   } catch (err) {
     showBackupMessage("The backups could not be removed from Spotify: " + String(err && err.message || err), false, offer, true);
   }
@@ -795,12 +803,11 @@ async function leaveSpotifyBackups() {
 function applyBackupMode() {
   const spotify = backupMode() === "spotify";
   if ($("savedNote")) $("savedNote").hidden = spotify;
-  if ($("savedNoteSpotify")) $("savedNoteSpotify").hidden = !spotify;
   if ($("spotifySaveLine")) $("spotifySaveLine").hidden = !spotify;
   if ($("backupBlock")) $("backupBlock").hidden = spotify;
   document.body.classList.toggle("spotify-backup", spotify);
   // Clear saved data: with Spotify as the way, the formats come back from Spotify, not from a file
-  for (const [id, text] of [["clearRestoreHelp", "Your formats are erased from this browser too, but their backups in Spotify stay where they are. Connect to Spotify again and they are loaded back."], ["clearConfirmHelp", "Your formats will be erased from this browser. Their backups in Spotify stay, and connecting to Spotify again loads them back."]]) {
+  for (const [id, text] of [["clearRestoreHelp", "Recipes saved to Spotify stay there, and connecting to Spotify again brings them back."], ["clearConfirmHelp", "Recipes saved to Spotify stay there, and connecting to Spotify again brings them back."]]) {
     const el = $(id);
     if (!el) continue;
     if (el.dataset.manual === undefined) el.dataset.manual = el.innerHTML;
@@ -830,18 +837,18 @@ function refreshBackupStatus() {
   const state = backupState();
   // Step 4: where the formats stand with regard to a backup.
   $("backupStatus").textContent = {
-    example: "You haven't made any formats yet, so there is nothing to back up.",
+    example: "You haven't made any recipes yet, so there is nothing to back up.",
     never: "You haven't backed up to this device yet.",
-    edited: "Your formats have been edited since your last backup.",
-    current: state.when ? "Last backup: " + state.when + "." : "Your formats are backed up.",
+    edited: "Your recipes have been edited since your last backup.",
+    current: state.when ? "Last backup: " + state.when + "." : "Your recipes are backed up.",
   }[state.kind];
   // Clear saved data: what would be lost, so a backup can be made first.
-  if (backupMode() === "spotify") { $("clearBackupNote").textContent = "Your formats are backed up to Spotify, and clearing the saved data does not remove those backups."; return; }
+  if (backupMode() === "spotify") { $("clearBackupNote").textContent = "Your recipes are saved to Spotify, and clearing the saved data does not remove them."; return; }
   $("clearBackupNote").textContent = {
-    example: "You haven't made any formats yet, so there is nothing to lose.",
+    example: "You haven't made any recipes yet, so there is nothing to lose.",
     never: "You haven't backed up to this device yet. Back up first, or they will be gone for good.",
-    edited: "Your formats have been edited since your last backup. Back up again first to keep the changes.",
-    current: "Your formats are backed up" + (state.when ? " (last backup: " + state.when + ")" : "") + ".",
+    edited: "Your recipes have been edited since your last backup. Back up again first to keep the changes.",
+    current: "Your recipes are backed up" + (state.when ? " (last backup: " + state.when + ")" : "") + ".",
   }[state.kind];
 }
 
@@ -890,12 +897,12 @@ function undoLastChange() {
   if (undoText === null) return;
   setFormatsText(undoText);
   undoText = null;
-  showBackupMessage("Undone. Your formats are back as they were.");
+  showBackupMessage("Undone. Your recipes are back as they were.");
 }
 
 function downloadBackup() {
   const text = $("formats").value;
-  saveFile(`playlist-formats-${fileStamp()}.txt`, text);
+  saveFile(`playlist-recipes-${fileStamp()}.txt`, text);
   markBackedUp(text);
   undoText = null;
   logStep("backup downloaded");
@@ -907,7 +914,7 @@ async function restoreFromFile(file) {
   if (!file) return;
   undoText = null;
   if (file.size > 200000) {
-    showBackupMessage(`${file.name} is too large to be a formats backup, so nothing was changed.`, false, null, true);
+    showBackupMessage(`${file.name} is too large to be a recipe backup, so nothing was changed.`, false, null, true);
     return;
   }
   let text;
@@ -918,7 +925,7 @@ async function restoreFromFile(file) {
   } catch (err) {
     recordError(cleanError(err));
     logStep("restore: file rejected");
-    showBackupMessage(`${file.name} doesn't look like a formats backup, so nothing was changed. (${cleanError(err)})`, false, null, true);
+    showBackupMessage(`${file.name} doesn't look like a recipe backup, so nothing was changed. (${cleanError(err)})`, false, null, true);
     return;
   }
   const previous = $("formats").value;
@@ -927,7 +934,7 @@ async function restoreFromFile(file) {
   refreshBackupStatus();
   undoText = previous;
   logStep(`restore: ${plural(formatCount, "format")} loaded`);
-  showBackupMessage(`Restored ${formatCount} format${formatCount === 1 ? "" : "s"} from ${file.name}.`, true);
+  showBackupMessage(`Restored ${formatCount} recipe${formatCount === 1 ? "" : "s"} from ${file.name}.`, true);
 }
 
 const BACKED_UP_MESSAGE = "Backed up to this device. Find the file in Downloads, or in the Files app on a phone.";   // after a manual backup, wherever it is made from
@@ -1236,7 +1243,7 @@ function loadStoredToken() {
 // is not touched, because the second part is easy to take for something worse than it is.
 async function confirmDisconnect() {
   const choice = await askSyncChoice("Disconnect from Spotify?",
-    "This signs you out of Spotify on this device. Your formats and your backups are not touched. The next time you build, the app reads your playlists from Spotify again, which takes a little longer.",
+    "This signs you out of Spotify on this device. Your recipes and your backups are not touched. The next time you build, the app reads your playlists from Spotify again, which takes a little longer.",
     [{ label: "Disconnect", value: "yes" }, { label: "Cancel", value: "no" }], { focusLast: true });
   if (choice === "yes") await disconnect();
 }
@@ -1475,7 +1482,7 @@ function fillFormatDropdown(select, formats, defaultToAll) {
   const previous = select.value;
   select.innerHTML = "";
   for (const f of formats) select.add(new Option(f.title, f.id));
-  select.add(new Option("All formats", ALL_FORMATS));
+  select.add(new Option("All recipes", ALL_FORMATS));
   if (formats.some((f) => f.id === previous) || previous === ALL_FORMATS) select.value = previous;
   else if (defaultToAll) select.value = ALL_FORMATS;
 }
@@ -1552,7 +1559,7 @@ async function gatherInputs() {
     try {
       plans.push({ key, names: JSON.parse(py.neededSources(formatsText, key)) });
     } catch (err) {
-      failed.push(`=== ${formatLabel(key)} ===\nCould not plan this format: ${cleanError(err)}`);
+      failed.push(`=== ${formatLabel(key)} ===\nCould not plan this recipe: ${cleanError(err)}`);
       failedNotes.push(`${formatLabel(key)} could not be planned: ${cleanError(err)}`);
     }
   }
@@ -1562,7 +1569,7 @@ async function gatherInputs() {
     recordError(`Build blocked: ${plural(match.problems.length, "source playlist")} not found or not owned`);
     logStep("plan blocked: source playlists");
     setOutput("Cannot plan yet:\n\n" + match.problems.map((p) => "- " + p).join("\n")
-      + "\n\nCheck the playlist names in your formats against your Spotify playlists. Each name must match a playlist you own.");
+      + "\n\nCheck the playlist names in your recipes against your Spotify playlists. Each name must match a playlist you own.");
     return null;
   }
   const tracks = {};
@@ -1596,7 +1603,7 @@ async function planSelected(startedWith, includeOthers = false) {
       parts.push(plan.text);
     } catch (err) {
       recordError(cleanError(err));
-      parts.push(`=== ${formatLabel(key)} ===\nCould not plan this format: ${cleanError(err)}`);
+      parts.push(`=== ${formatLabel(key)} ===\nCould not plan this recipe: ${cleanError(err)}`);
       problems.push(`${formatLabel(key)} could not be planned: ${cleanError(err)}`);
     }
   }
@@ -1636,7 +1643,7 @@ function askToCreate(plan) {
     // A plan with nothing to warn about is one sentence. Playlists that would be replaced or left alone, and formats that could not be planned, get lines of their own.
     const problems = plan.problems.map((n) => "Note: " + n);
     const names = plan.keys.map((k) => (currentFormats.find((f) => f.id === k) || {}).title).filter(Boolean);
-    const forWhat = names.length === 1 ? ` for \u201c${names[0]}\u201d` : names.length > 1 ? ` for ${plural(names.length, "format")}` : "";
+    const forWhat = names.length === 1 ? ` for \u201c${names[0]}\u201d` : names.length > 1 ? ` for ${plural(names.length, "recipe")}` : "";
     fillConfirmList("confirmList", "confirmText", `Ready to build ${plural(plan.total, "playlist")}${forWhat}.`, problems);
     const replacing = plan.ours.length > 0;
     const many = plan.others.length !== 1;
@@ -1749,7 +1756,7 @@ async function createFromPlan(plan) {
     }
     for (const p of planned) {
       setActionMessage(`Building ${created + 1} of ${planned.length}: ${p.name}`);
-      const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: `${APP_MARKER} from the format "${p.label}". Please leave this description as it is: the app uses it to recognize the playlists it made.` } });
+      const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: `${APP_MARKER} from the recipe "${p.label}". Please leave this description as it is: the app uses it to recognize the playlists it made.` } });
       createdIds.push(made.id);
       if (made.public !== false) {   // asked to keep it off the profile; make sure
         try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); }
@@ -1847,7 +1854,7 @@ async function removeEarlier() {
     const keys = removeKeys();
     const existing = JSON.parse(py.existingMatches(formatsText, JSON.stringify(keys), JSON.stringify(playlists), me.id));
     if (!existing.length) {
-      setRemoveMessage("No playlists matching these formats' names were found.");
+      setRemoveMessage("No playlists matching these recipes' names were found.");
       return;
     }
     const madeByApp = new Set(playlists.filter((p) => p.madeByApp).map((p) => p.id));
@@ -1900,6 +1907,7 @@ function initDonateChoice() {
   }
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && backupCardOpen) dismissBackupCard(); });
   on("backupDone", "click", dismissBackupCard);
+  on("changeSaveMethod", "click", openBackupCard);
   on("backupBackdrop", "click", dismissBackupCard);
   // Back from Spotify's page, a browser may show this page as it was left, with the buttons still waiting
   window.addEventListener("pageshow", (event) => { if (event.persisted && signingIn) { setSigningIn(false); setLoginMessage(""); } });

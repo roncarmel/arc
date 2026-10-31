@@ -118,15 +118,15 @@ function parsePythonLiteral(text) {
   }
   const result = value();
   skip();
-  if (i < n) fail("there is extra text after the formats");
+  if (i < n) fail("there is extra text after the recipes");
   return result;
 }
 
 function parseFormatsText(text, allowEmpty) {
-  const cleaned = String(text).trim().replace(/^FORMATS\s*=\s*/, "");
+  const cleaned = String(text).trim().replace(/^(?:RECIPES|FORMATS)\s*=\s*/, "");
   const data = parsePythonLiteral(cleaned);
   if (!(data instanceof PyDict) || (!data.pairs.length && !allowEmpty)) {
-    throw new Error('The formats should look like { "format-1": { "name": ..., "segments": [...] } }.');
+    throw new Error('The recipes should look like { "recipe-1": { "name": ..., "segments": [...] } }.');
   }
   return data;
 }
@@ -288,7 +288,7 @@ function joinPlaylistRef(list) {
 }
 
 function modelToText(model) {
-  const out = ["FORMATS = {"];
+  const out = ["RECIPES = {"];
   for (const fmt of model.formats) {
     ensureGaps(fmt);
     const n = fmt.items.length;
