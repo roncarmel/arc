@@ -808,11 +808,18 @@ function renderTimeline() {
   const music = f.items.reduce((n, i) => n + i.minutes, 0);
   // Under an hour it is in minutes, with a decimal where there is one ("12.5 min"); from an hour up it is hours and whole minutes ("2 hr 40 min").
   const shownMusic = Math.round(music * 10) / 10;
-  const musicWords = shownMusic >= 60 ? describeClock(shownMusic) : `${shownMusic} min`;
-  const quietWords = quiet >= 3600 ? describeClock(quiet / 60) : describeSeconds(quiet);
+  const musicWords = shownMusic >= 60 ? clockWords(shownMusic) : minuteWords(shownMusic);
+  const quietWords = quiet >= 3600 ? clockWords(quiet / 60) : quiet < 60 ? `${quiet} ${quiet === 1 ? "second" : "seconds"}` : minuteWords(Math.round(quiet / 6) / 10);
   editor.musicText = `${musicWords} of music` + (quiet ? ` + ${quietWords} of silence` : "");
   refreshNoticeLine();   // the line shows the total, unless there is a notice to show
   applyHighlight();
+}
+
+// The line under the bar has room, so it uses whole words.
+function minuteWords(n) { return `${n} ${n === 1 ? "minute" : "minutes"}`; }
+function clockWords(minutes) {
+  const m = Math.round(minutes), h = Math.floor(m / 60);
+  return `${h} ${h === 1 ? "hour" : "hours"}` + (m % 60 ? " " + minuteWords(m % 60) : "");
 }
 
 // Every length widget in a format is as wide as the widest one: they all grow when one needs more room, and shrink again when it does not.

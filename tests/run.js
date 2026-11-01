@@ -749,9 +749,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-10-31zh" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-10-31zi" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-10-31zh/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-10-31zi/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -1028,7 +1028,7 @@ print(json.dumps(out))
   var ed_r1 = rowsOf(ed1);
   check("the old pause-between-segments setting is the format's default silence, shown as one tag between the two rows and not as a row", ed_r1.length === 2 && ed_r1[0].querySelector(".fe-title").textContent === "💗 spacious + gentle" && ed_r1[1].querySelector(".fe-title").textContent.trim() === "🛋 rest" && !!ed_r1[0].querySelector(".fe-tag") && ed_r1[0].querySelector(".fe-tag").textContent === "1m" && ed_r1[0].querySelector(".fe-tag").classList.contains("fe-tag-default") && ed_r1[0].querySelector(".fe-tag").getAttribute("data-id") === "gap1" && /Silence between these segments: 1 min/.test(ed_r1[0].querySelector(".fe-tag").getAttribute("aria-label")) && ed_r1[1].querySelector(".fe-tag") === null);
   check("the tag hangs outside the row's card, as a button of its own, and the card knows it has tags", ed_r1[0].querySelector(".fe-tag").parentElement === ed_r1[0] && !ed_r1[0].querySelector(".fe-rowcard").contains(ed_r1[0].querySelector(".fe-tag")) && ed1.document.getElementById("formatEditor").classList.contains("fe-hastags"));
-  check("the bar shows each row to scale, and the caption gives the totals", ed1.document.querySelectorAll("#feBar .fe-piece").length === 3 && ed1.document.querySelector("#feBar .fe-piece-silence") !== null && ed1.document.getElementById("feCaption").textContent === "1 hr of music + 1 min of silence", ed1.document.getElementById("feCaption").textContent);
+  check("the bar shows each row to scale, and the caption gives the totals", ed1.document.querySelectorAll("#feBar .fe-piece").length === 3 && ed1.document.querySelector("#feBar .fe-piece-silence") !== null && ed1.document.getElementById("feCaption").textContent === "1 hour of music + 1 minute of silence", ed1.document.getElementById("feCaption").textContent);
   var ed_cover1 = ed_r1[0].querySelector(".fe-cover img");
   check("a playlist row shows its cover (the smallest one Spotify lists) and its song count", !!ed_cover1 && ed_cover1.getAttribute("src") === "https://img.example/p2-small.jpg" && ed_r1[0].querySelector(".fe-sub").textContent === "132 songs", ed_r1[0].textContent);
   check("a playlist is found even when the name differs only by a trailing space", ed_r1[1].querySelector(".fe-sub-warn") === null);
@@ -1036,7 +1036,7 @@ print(json.dumps(out))
 
   // ---- changing the length
   ed_r1[0].querySelector(".fe-inc").click();
-  check("plus adds five minutes, and the text and bar follow", rowsOf(ed1)[0].querySelector(".fe-amount").textContent === "25 min" && /\("💗 spacious \+ gentle", 25\)/.test(T(ed1)) && ed1.document.getElementById("feCaption").textContent === "1 hr 5 min of music + 1 min of silence");
+  check("plus adds five minutes, and the text and bar follow", rowsOf(ed1)[0].querySelector(".fe-amount").textContent === "25 min" && /\("💗 spacious \+ gentle", 25\)/.test(T(ed1)) && ed1.document.getElementById("feCaption").textContent === "1 hour 5 minutes of music + 1 minute of silence");
   check("the default silence stays a setting in the text, with no explicit silence written", /"silence between segments": "1 min"/.test(T(ed1)) && !/\("silence"/.test(T(ed1)));
   rowsOf(ed1)[0].querySelector(".fe-dec").click();
   var ed_tag = () => rowsOf(ed1)[0].querySelector(".fe-tag");
@@ -1057,7 +1057,7 @@ print(json.dumps(out))
   ed_tag().click();
   ed1.document.getElementById("feTagShorter").click();
   ed1.document.getElementById("feTagShorter").click();
-  check("below 30 seconds the silence is set to none: the tag stays, pink like any changed one, reading 0s, the bar loses its piece, the card says 0 sec, and the text says none", ed_tag().classList.contains("fe-tag-custom") && !ed_tag().classList.contains("fe-tag-zero") && ed_tag().textContent === "0s" && ed1.document.getElementById("feTagDuration").textContent === "0 sec" && /\("silence", "none"\)/.test(T(ed1)) && ed1.document.querySelectorAll("#feBar .fe-piece-silence").length === 0 && /^1 hr of music$/.test(ed1.document.getElementById("feCaption").textContent), ed1.document.getElementById("feCaption").textContent);
+  check("below 30 seconds the silence is set to none: the tag stays, pink like any changed one, reading 0s, the bar loses its piece, the card says 0 sec, and the text says none", ed_tag().classList.contains("fe-tag-custom") && !ed_tag().classList.contains("fe-tag-zero") && ed_tag().textContent === "0s" && ed1.document.getElementById("feTagDuration").textContent === "0 sec" && /\("silence", "none"\)/.test(T(ed1)) && ed1.document.querySelectorAll("#feBar .fe-piece-silence").length === 0 && /^1 hour of music$/.test(ed1.document.getElementById("feCaption").textContent), ed1.document.getElementById("feCaption").textContent);
   ed1.document.getElementById("feTagShorter").click();
   check("shorter does nothing more once it is 0 sec", ed1.document.getElementById("feTagDuration").textContent === "0 sec");
   ed1.document.getElementById("feTagLonger").click();
@@ -1541,7 +1541,7 @@ print(json.dumps(out))
   var z_title = (w) => rowsOf(w).map((r) => r.querySelector(".fe-title").textContent.trim()).join("|");
   var z_tags = (w) => rowsOf(w).map((r) => { const t = r.querySelector(".fe-tag"); return t ? t.textContent : "-"; }).join("|");
   check("three segments show their silences by place: 3 minutes, the default minute, and 5 minutes after the last", z_title(z_d) === "💗 spacious + gentle|💗💗 evocative|🛋 rest" && z_tags(z_d) === "3m|1m|5m", z_tags(z_d));
-  check("the bar draws the two silences between segments and the one after", z_d.document.querySelectorAll("#feBar .fe-piece-silence").length === 3 && /^1 hr of music \+ 9 min of silence$/.test(z_d.document.getElementById("feCaption").textContent), z_d.document.getElementById("feCaption").textContent);
+  check("the bar draws the two silences between segments and the one after", z_d.document.querySelectorAll("#feBar .fe-piece-silence").length === 3 && /^1 hour of music \+ 9 minutes of silence$/.test(z_d.document.getElementById("feCaption").textContent), z_d.document.getElementById("feCaption").textContent);
   var z_grip = (i) => rowsOf(z_d)[i].querySelector(".fe-grip");
   pointer(z_d, z_grip(0), "pointerdown", 100);
   check("while a row is being dragged, the silence tags step aside", z_d.document.getElementById("feRows").classList.contains("fe-dragging-any"));
@@ -2759,7 +2759,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-10-31zh", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-10-31zi", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4096,14 +4096,14 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var nl_w = await nl_go();
   var nl_cap = () => nl_w.document.getElementById("feCaption");
   var nl_sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  check("with nothing to say, the line shows how long the format is, as before", /min of music/.test(capText(nl_w)) && !nl_cap().classList.contains("fe-notice"));
+  check("with nothing to say, the line shows how long the format is, as before", /minutes? of music/.test(capText(nl_w)) && !nl_cap().classList.contains("fe-notice"));
   check("the line always has room for a notice, so showing one moves nothing below it", /#formatEditor \.fe-caption \{[^}]*min-height: 24px; display: flex;/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /\.fe-notice \{ gap: 6px; white-space: nowrap;/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   // news, one message
   nl_w.eval('showNotices(["Updated \\u201cTEST\\u201d from Spotify."])');
   check("a piece of news replaces the total, with a cloud, and no count when there is only one", /Updated .TEST. from Spotify\./.test(capText(nl_w)) && nl_cap().classList.contains("fe-notice-news") && !/of \d/.test(capText(nl_w)) && nl_cap().querySelector("svg"));
   check("a screen reader is told it too, in a region that is not the line itself, so the total is not read out at every edit", /Updated .TEST./.test(nl_w.document.getElementById("feNoticeLive").textContent) && nl_w.document.getElementById("feNoticeLive").getAttribute("aria-live") === "polite" && !nl_cap().getAttribute("aria-live"));
   await nl_sleep(450);
-  check("after a few seconds the line goes back to the total", /min of music/.test(capText(nl_w)) && !nl_cap().classList.contains("fe-notice") && nl_w.document.getElementById("feNoticeLive").textContent === "");
+  check("after a few seconds the line goes back to the total", /minutes? of music/.test(capText(nl_w)) && !nl_cap().classList.contains("fe-notice") && nl_w.document.getElementById("feNoticeLive").textContent === "");
   // several
   nl_w.eval('showNotices(["Added \\u201cA\\u201d from Spotify.", "Updated \\u201cB\\u201d from Spotify.", "Added 3 formats from Spotify."])');
   check("with several, each says which one it is", /Added .A. from Spotify\./.test(capText(nl_w)) && /\(1 of 3\)/.test(capText(nl_w)));
@@ -4112,13 +4112,13 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   await nl_sleep(330);
   check("and the next", /\(3 of 3\)/.test(capText(nl_w)));
   await nl_sleep(380);
-  check("then the total returns", /min of music/.test(capText(nl_w)));
+  check("then the total returns", /minutes? of music/.test(capText(nl_w)));
   nl_w.eval('showNotices(["First."])');
   await nl_sleep(100);
   nl_w.eval('showNotices(["Second."])');
   check("news that comes while one is showing joins the others, and the count grows", /First\./.test(capText(nl_w)) && /\(1 of 2\)/.test(capText(nl_w)));
   await nl_sleep(900);
-  check("and each gets its turn", /min of music/.test(capText(nl_w)));
+  check("and each gets its turn", /minutes? of music/.test(capText(nl_w)));
   // a long message gets longer
   check("a message of many words stays up longer than a short one", nl_w.eval('noticeDuration("a b c")') === 300 && nl_w.eval('noticeDuration("a b c d e f g h i j k l")') === 300 + 4 * 250);
   // editing
@@ -4126,7 +4126,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   nl_w.document.body.click();
   rowsOf(nl_w)[0].querySelector(".fe-inc").click();
   await nl_sleep(40);
-  check("while the person is editing, the line shows the total, and the news waits", /min of music/.test(capText(nl_w)) && !/Waiting for a quiet/.test(capText(nl_w)));
+  check("while the person is editing, the line shows the total, and the news waits", /minutes? of music/.test(capText(nl_w)) && !/Waiting for a quiet/.test(capText(nl_w)));
   await nl_sleep(250);
   check("once they have stopped, the news is shown", /Waiting for a quiet moment\./.test(capText(nl_w)));
   await nl_sleep(450);
@@ -4136,14 +4136,14 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   await nl_sleep(420);
   check("touching the line holds the message past its time", /Held while touched\./.test(capText(nl_w)));
   await nl_sleep(500);
-  check("and lets it go afterwards", /min of music/.test(capText(nl_w)));
+  check("and lets it go afterwards", /minutes? of music/.test(capText(nl_w)));
   // trouble
   nl_w.eval('saveState.error = "boom"; renderSaveStatus()');
   check("a save that failed shows in amber, with its link, and the menu button does not get a dot for it", /Couldn.t save to Spotify\./.test(capText(nl_w)) && nl_cap().classList.contains("fe-notice-warn") && capLinks(nl_w).some((b) => b.textContent === "Try again") && !nl_w.document.getElementById("feAppMenuButton").classList.contains("fe-alert") && nl_w.document.getElementById("feAppMenuButton").getAttribute("aria-label") === "App menu");
   await nl_sleep(700);
   check("trouble does not go away by itself", /Couldn.t save to Spotify\./.test(capText(nl_w)));
   nl_w.eval('saveState.error = ""; renderSaveStatus()');
-  check("it goes when it is fixed", /min of music/.test(capText(nl_w)));
+  check("it goes when it is fixed", /minutes? of music/.test(capText(nl_w)));
   // two things needing the person
   nl_w.eval('saveState.unread = 2; saveState.tooLong = [{ id: "f1", title: "Huge" }]; renderSaveStatus()');
   check("two of them show one at a time, with a count that can be pressed, and no turning by itself", /2 backups in Spotify could not be read/.test(capText(nl_w)) && /\(1 of 2\)/.test(capText(nl_w)) && !!nl_cap().querySelector("button.fe-notice-count"));
@@ -4162,9 +4162,9 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   nl_w.eval('saveState.unread = 2; renderSaveStatus()');
   check("something that only needs to be known has an OK", /2 backups in Spotify could not be read/.test(capText(nl_w)) && capLinks(nl_w).some((b) => b.textContent === "OK"));
   capLinks(nl_w).find((b) => b.textContent === "OK").click();
-  check("OK puts it away, and it stays away", /min of music/.test(capText(nl_w)) && !nl_w.document.getElementById("feAppMenuButton").classList.contains("fe-alert"));
+  check("OK puts it away, and it stays away", /minutes? of music/.test(capText(nl_w)) && !nl_w.document.getElementById("feAppMenuButton").classList.contains("fe-alert"));
   nl_w.eval('renderSaveStatus()');
-  check("also when the line is drawn again", /min of music/.test(capText(nl_w)));
+  check("also when the line is drawn again", /minutes? of music/.test(capText(nl_w)));
   nl_w.eval('saveState.unread = 3; renderSaveStatus()');
   check("but a different count is news again", /3 backups in Spotify could not be read/.test(capText(nl_w)));
   nl_w.eval('saveState.unread = 0; saveState.tooLong = [{ id: "f1", title: "Huge" }]; renderSaveStatus()');
@@ -4184,7 +4184,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   await nl_sleep(900);
   check("and it stays, since there is something to do", /Restored 2 formats/.test(capText(nl_w)));
   capLinks(nl_w).find((b) => b.textContent === "OK").click();
-  check("OK puts it away", /min of music/.test(capText(nl_w)));
+  check("OK puts it away", /minutes? of music/.test(capText(nl_w)));
   nl_w.eval('showBackupMessage("Restored 2 formats from x.txt.", true)');
   nl_w.document.body.click();
   rowsOf(nl_w)[0].querySelector(".fe-inc").click();
@@ -4209,20 +4209,20 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   await nl_sleep(1200);
   check("a long one stays longer than a short one", /Backed up to this device/.test(capText(nl_w)));
   await nl_sleep(2200);
-  check("and then the total returns", /min of music/.test(capText(nl_w)));
+  check("and then the total returns", /minutes? of music/.test(capText(nl_w)));
   nl_w.eval('showBackupMessage("First thing done.")');
   nl_w.eval('showBackupMessage("Second thing done.")');
   check("what was just done replaces what was said about the one before, so old action messages never queue up", /Second thing done\./.test(capText(nl_w)) && !/\(1 of 2\)/.test(capText(nl_w)) && nl_w.eval("notices.batch.length") === 1);
   await nl_sleep(2700);
   // in minimalist mode too
   var nl_m = await nl_go({ minimalMode: "1" });
-  check("with minimalist mode on, the page is minimal and the line is still there", nl_m.document.body.classList.contains("minimal") && !!nl_m.document.getElementById("feCaption") && /min of music/.test(capText(nl_m)));
+  check("with minimalist mode on, the page is minimal and the line is still there", nl_m.document.body.classList.contains("minimal") && !!nl_m.document.getElementById("feCaption") && /minutes? of music/.test(capText(nl_m)));
   nl_m.eval('showBackupMessage(BACKED_UP_MESSAGE)');
   check("a message from an action shows in the line in minimalist mode, where the page has nothing else for it", /^Backed up to this device\./.test(capText(nl_m)));
   nl_m.eval('noticeTiming.baseMs = 100');
   nl_m.eval('showBackupMessage("Short one.")');
   await new Promise((r) => setTimeout(r, 400));
-  check("and when there is nothing more to say, the line goes back to the minutes of music and silence", /min of music/.test(capText(nl_m)) && !nl_m.document.getElementById("feCaption").classList.contains("fe-notice"));
+  check("and when there is nothing more to say, the line goes back to the minutes of music and silence", /minutes? of music/.test(capText(nl_m)) && !nl_m.document.getElementById("feCaption").classList.contains("fe-notice"));
   nl_w.eval('saveState.unread = 4; renderSaveStatus()');
   check("trouble that has not been put away shows", /4 backups in Spotify could not be read/.test(capText(nl_w)));
   nl_w.eval('showBackupMessage("Just done.")');
@@ -4380,7 +4380,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-10-31zh"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-10-31zi"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -4439,9 +4439,9 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   // ================================================================ hours and minutes, covers after the save, keeping earlier playlists, songs in two versions, a newer version
   var rs_text = (segs, gap) => 'FORMATS = {"f1": {"title": "T", "name": "T {n}", "silence between segments": "' + gap + '", "segments": [' + segs.map((m) => '("💗 spacious + gentle [id:p2]", ' + m + ')').join(", ") + ']}}';
   var rs_total = async (segs, gap) => { const w = await boot({ url: EDURL, session: signedIn(), local: { formats: rs_text(segs, gap), connectedBefore: "1", backupMode: "manual" }, fetchOptions: {} }); return w.eval("editor.musicText"); };
-  check("under an hour the total is in minutes, as before", /^55 min of music/.test(await rs_total([55], "30 sec")) && /^25 min of music \+ 30 sec of silence$/.test(await rs_total([10, 15], "30 sec")));
-  check("an hour is 1 hr, and above it is hours and whole minutes", /^1 hr of music/.test(await rs_total([60], "30 sec")) && /^1 hr 5 min of music/.test(await rs_total([65], "30 sec")) && /^2 hr 5 min of music/.test(await rs_total([120, 5], "30 sec")) && /^10 hr of music/.test(await rs_total([600], "30 sec")));
-  check("silence of an hour or more is the same: 1 hr 10 min, not 70 min", / of music \+ 1 hr 10 min of silence$/.test(await rs_total([5, 5, 5, 5, 5, 5, 5, 5], "10 min")) || / of music \+ \d+ hr( \d+ min)? of silence$/.test(await rs_total([5, 5, 5, 5, 5, 5, 5, 5], "10 min")));
+  check("under an hour the total is in minutes, as before", /^55 minutes of music/.test(await rs_total([55], "30 sec")) && /^25 minutes of music \+ 30 seconds of silence$/.test(await rs_total([10, 15], "30 sec")));
+  check("an hour is 1 hour, and above it is hours and whole minutes", /^1 hour of music/.test(await rs_total([60], "30 sec")) && /^1 hour 5 minutes of music/.test(await rs_total([65], "30 sec")) && /^2 hours 5 minutes of music/.test(await rs_total([120, 5], "30 sec")) && /^10 hours of music/.test(await rs_total([600], "30 sec")));
+  check("silence of an hour or more is the same: 1 hour 10 minutes, not 70 minutes", / of music \+ 1 hour 10 minutes of silence$/.test(await rs_total([5, 5, 5, 5, 5, 5, 5, 5], "10 min")) || / of music \+ \d+ hours?( \d+ minutes?)? of silence$/.test(await rs_total([5, 5, 5, 5, 5, 5, 5, 5], "10 min")));
 
   // covers: after the save, never waited for, and a rate limit stops them without a word
   var rs_fmt = 'FORMATS = {"f1": {"title": "Alpha", "name": "Alpha {n}", "silence between segments": "30 sec", "segments": [("💗 spacious + gentle [id:p2]", 30)]}, "f2": {"title": "Beta", "name": "Beta {n}", "silence between segments": "30 sec", "segments": [("🛋 rest [id:p4]", 20)]}}';
