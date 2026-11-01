@@ -565,7 +565,7 @@ function renderTabs() {
     }
   }
   // New recipe is the last thing in the row, after every tab, and scrolls with them; no tab can be dragged past it
-  tabs.appendChild(feEl("button", { type: "button", class: "fe-newformat", id: "feNewFormat", "aria-label": "New recipe", title: "New recipe", onClick: askNewFormat }, feIcon("plus"), feEl("span", { class: "fe-newformat-label", text: "New recipe" })));
+  tabs.appendChild(feEl("button", { type: "button", class: "fe-newformat", id: "feNewFormat", onClick: askNewFormat }, feIcon("plus"), feEl("span", { class: "fe-newformat-label", text: "New recipe" })));
   scrollSelectedTab();
 }
 
