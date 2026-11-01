@@ -16,7 +16,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-31zi";
+const APP_VERSION = "2026-11-01b";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1127,6 +1127,9 @@ const BACKED_UP_MESSAGE = "Backed up to this device. Find the file in Downloads,
 let reloadPage = () => location.reload();   // a separate function so tests can replace it
 
 async function clearSavedData() {
+  // The Client ID goes to the clipboard first (while the click still counts), so connecting again is a paste (debugging aid, not mentioned on the page).
+  const savedId = localStorage.getItem("clientId");
+  if (savedId) { try { await Promise.race([navigator.clipboard.writeText(savedId), new Promise((r) => setTimeout(r, 1000))]); } catch (err) { /* no clipboard access: the reset goes on */ } }
   // Everything this page saves lives in this browser's storage for this address, so clearing it forgets it all.
   localStorage.clear();
   sessionStorage.clear();
