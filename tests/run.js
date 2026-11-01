@@ -749,9 +749,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-01i" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-01j" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-01i/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-01j/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -1891,7 +1891,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var am_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI + "\n" }, fetchOptions: am_o });
   am_w.eval("saveFile = (name, text) => { window.__saved = { name, text }; }");
   var am_row = am_w.document.querySelector(".fe-toprow");
-  check("the app's menu button sits on the same row as the tabs and the New recipe button, at the right", !!am_row && am_row.children[1].id === "feTabs" && am_row.lastElementChild.id === "feAppMenu" && !!am_row.querySelector("#feNewFormat") && !!am_row.querySelector("#feAppMenuButton") && am_row.querySelector("#feAppMenuButton").getAttribute("aria-label") === "App menu");
+  check("the app's menu button sits on the same row as the tabs, which end with the New recipe button, at the right", !!am_row && am_row.children[1].id === "feTabs" && am_row.lastElementChild.id === "feAppMenu" && !!am_row.querySelector("#feTabs #feNewFormat") && !!am_row.querySelector("#feAppMenuButton") && am_row.querySelector("#feAppMenuButton").getAttribute("aria-label") === "App menu");
   var am_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("the tabs take only the room left of the buttons, and stay on one row that scrolls sideways", /\.fe-toprow \{ display: flex; align-items: flex-start; gap: 8px;/.test(am_css) && /\.fe-toprow \.fe-tabs \{ flex: 1 1 0; min-width: 0; margin-bottom: 0; \}/.test(am_css) && /\.fe-appmenuwrap \{ position: relative; flex: none; \}/.test(am_css) && /\.fe-tabs \{ position: relative; display: flex; gap: 8px; flex-wrap: nowrap;[^}]*overflow-x: auto;[^}]*scrollbar-width: none;/.test(am_css) && /\.fe-tab \{ flex: none; white-space: nowrap;/.test(am_css));
   check("the menu starts closed", !am_w.document.getElementById("feAppMenuPanel") && am_w.document.getElementById("feAppMenuButton").getAttribute("aria-expanded") === "false");
@@ -2207,22 +2207,13 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var sc_cur = () => sc_w.document.getElementById("feTabs");
   var sc_strip = sc_cur();
   var sc_row = sc_w.document.querySelector(".fe-toprow");
-  check("the row is the icon, the tabs, a plus, and the menu, in that order, and the plus is outside the scrolling tabs", Array.from(sc_row.children).map((c) => c.id || c.className).join("|") === "fe-appicon|feTabs|feNewFormat|feAppMenu" && !sc_strip.contains(sc_w.document.getElementById("feNewFormat")) && sc_strip.querySelectorAll(".fe-tab").length === 3);
+  check("the row is the icon, the tabs, and the menu, and New recipe is the last thing in the scrolling tabs, after every tab", Array.from(sc_row.children).map((c) => c.id || c.className).join("|") === "fe-appicon|feTabs|feAppMenu" && sc_strip.lastElementChild === sc_w.document.getElementById("feNewFormat") && sc_strip.querySelectorAll(".fe-tab").length === 3);
   var sc_plus = sc_w.document.getElementById("feNewFormat");
   check("New recipe is a plus button, with its name for screen readers and as a hover hint, and a label that only shows when there is room or no formats", sc_plus.textContent.trim() === "New recipe" && !!sc_plus.querySelector(".fe-newformat-label") && sc_plus.getAttribute("aria-label") === "New recipe" && sc_plus.getAttribute("title") === "New recipe" && !!sc_plus.querySelector("svg"));
   sc_plus.click();
   sc_w.document.getElementById("feNewFormatConfirm").click();
-  check("pressing it adds a format and selects its tab, as before", sc_cur().querySelectorAll(".fe-tab").length === 4 && sc_cur().querySelector('.fe-tab[aria-pressed="true"]') === sc_cur().querySelectorAll(".fe-tab")[3]);
-  var sc_size = (ignored, w, cw, left) => { const el = sc_cur(); Object.defineProperty(el, "scrollWidth", { value: w, configurable: true }); Object.defineProperty(el, "clientWidth", { value: cw, configurable: true }); el.scrollLeft = left; el.dispatchEvent(new sc_w.Event("scroll")); };
-  sc_size(null, 500, 500, 0);
-  check("when all the tabs fit there is no fade at either edge", !sc_cur().classList.contains("fe-fade-left") && !sc_cur().classList.contains("fe-fade-right"));
-  sc_size(null, 800, 300, 0);
-  check("when there are more tabs to the right, the right edge fades", sc_cur().classList.contains("fe-fade-right") && !sc_cur().classList.contains("fe-fade-left"));
-  sc_size(null, 800, 300, 250);
-  check("in the middle both edges fade", sc_cur().classList.contains("fe-fade-right") && sc_cur().classList.contains("fe-fade-left"));
-  sc_size(null, 800, 300, 500);
-  check("at the far end only the left edge fades", !sc_cur().classList.contains("fe-fade-right") && sc_cur().classList.contains("fe-fade-left"));
-  check("the fade is as wide as what is left to scroll that way, up to 28 pixels, so it shrinks away at an end instead of switching off", /--fe-fade-l: 0px; --fe-fade-r: 0px;[^}]*#000 var\(--fe-fade-l\), #000 calc\(100% - var\(--fe-fade-r\)\)/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /Math\.min\(28, right\)/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
+  check("pressing it adds a format and selects its tab, as before, and New recipe is still last", sc_cur().querySelectorAll(".fe-tab").length === 4 && sc_cur().querySelector('.fe-tab[aria-pressed="true"]') === sc_cur().querySelectorAll(".fe-tab")[3] && sc_cur().lastElementChild.id === "feNewFormat");
+  check("there is no fade at the ends of the row any more", !/fe-fade|mask-image: linear-gradient/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && !/updateTabFade/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
   var sc_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   // choosing a tab re-draws the row, so give the new elements sizes too and look at where it scrolled
   var sc_prep = () => { const strip = sc_cur(); Object.defineProperty(strip, "clientWidth", { value: 300, configurable: true }); Object.defineProperty(strip, "scrollWidth", { value: 800, configurable: true }); Array.from(strip.querySelectorAll(".fe-tab")).forEach((t, i) => { Object.defineProperty(t, "offsetLeft", { value: i * 150, configurable: true }); Object.defineProperty(t, "offsetWidth", { value: 130, configurable: true }); }); return strip; };
@@ -2230,8 +2221,8 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   sc_w.eval("renderTabs = ((orig) => function () { orig(); })(renderTabs)");
   Array.from(sc_cur().querySelectorAll(".fe-tab"))[2].click();
   var sc_after = sc_cur();
-  check("choosing a tab selects it, and the row is told to keep the selected tab in view", sc_after.querySelector('.fe-tab[aria-pressed="true"]').getAttribute("data-id") === "c" && /function scrollSelectedTab\(\)/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && /scrollSelectedTab\(\);\n  updateTabFade\(\);/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
-  check("the minimalist icon and the app's menu keep their place beside the tabs, and the plus sits just before the menu", sc_w.document.querySelector(".fe-toprow").lastElementChild.id === "feAppMenu" && sc_w.document.getElementById("feNewFormat").nextElementSibling.id === "feAppMenu");
+  check("choosing a tab selects it, and the row is told to keep the selected tab in view", sc_after.querySelector('.fe-tab[aria-pressed="true"]').getAttribute("data-id") === "c" && /function scrollSelectedTab\(\)/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && /scrollSelectedTab\(\);\n\}/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
+  check("the minimalist icon and the app's menu keep their place beside the tabs, and the menu is last in the row", sc_w.document.querySelector(".fe-toprow").lastElementChild.id === "feAppMenu" && sc_w.document.querySelector(".fe-toprow").children[1].id === "feTabs");
   var fr_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI } });
   fr_w.document.getElementById("supportButton").dispatchEvent(new fr_w.MouseEvent("click", { bubbles: true, cancelable: true }));
   check("the donation frame is allowed to offer Apple Pay and Google Pay, which a frame cannot otherwise do", fr_w.document.querySelector("#kofiPanel iframe").getAttribute("allow") === "payment *");
@@ -2760,7 +2751,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-01i", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-01j", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -2801,6 +2792,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   ro_w.dispatchEvent(ro_ptr("pointermove", 400, "mouse"));
   check("a mouse held still for a moment lifts the tab, as a finger does", ro_first.classList.contains("fe-dragging"));
   ro_w.dispatchEvent(ro_ptr("pointerup", 400, "mouse"));
+  check("dragged past the last tab, it stops before New recipe, which stays last", ro_w.document.querySelector("#feTabs").lastElementChild.id === "feNewFormat");
   check("dropping it past the others puts it last, and the order is saved", JSON.stringify(ro_tabs()) === JSON.stringify(["One", "Three", "Two"]) && !ro_w.document.querySelector(".fe-dragging"), JSON.stringify(ro_tabs()));
   var ro_active = ro_w.document.querySelector('#feTabs .fe-tab[aria-pressed="true"]').textContent;
   var ro_t = ro_w.document.querySelector("#feTabs .fe-tab");
@@ -2835,7 +2827,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   await new Promise((r) => setTimeout(r, 420));
   rd_w.dispatchEvent(rd_ptr("pointermove", 400));
   rd_w.eval("renderEditor(); renderTabs();");
-  check("while a tab is held the New recipe and menu buttons step aside on any screen, and only a phone narrows the other tabs", /\n  #formatEditor \.fe-toprow-reordering \.fe-newformat, #formatEditor \.fe-toprow-reordering \.fe-appmenuwrap \{ display: none; \}\n  @media \(max-width: 759px\) \{\n    #formatEditor \.fe-tabs\.fe-reordering \.fe-tab/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && rd_w.document.querySelector("#formatEditor .fe-toprow").classList.contains("fe-toprow-reordering"));
+  check("while a tab is held nothing steps aside, and only a phone narrows the other tabs", !/fe-toprow-reordering/.test(fs.readFileSync(ROOT + "index.html", "utf8") + fs.readFileSync(ROOT + "editor.js", "utf8")) && /@media \(max-width: 759px\) \{\n    #formatEditor \.fe-tabs\.fe-reordering \.fe-tab/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && !!rd_w.document.getElementById("feNewFormat"));
   check("while a tab is held, the editor is not drawn again under it", rd_w.document.querySelector("#feTabs .fe-tab") && rd_w.document.querySelectorAll("#feTabs .fe-dragging").length === 1 && rd_w.eval("tabDrag.redraw") === true);
   rd_w.dispatchEvent(rd_ptr("pointermove", 420));
   rd_w.dispatchEvent(rd_ptr("pointerup", 420));
@@ -2992,7 +2984,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var ns_pick = ns_w.__scrollLog[ns_w.__scrollLog.length - 1];
   check("and choosing a tab that is partly out of view brings it fully into view too", !!ns_pick && ns_pick.menuThere === true && ns_pick.selected === "One");
   var ns_src = fs.readFileSync(ROOT + "editor.js", "utf8");
-  check("the editor scrolls after the menu button is drawn, and again when minimalist mode changes how much room the tabs have", /renderTabs\(\);\n  renderAppMenu\(\);\n[^\n]*\n  scrollSelectedTab\(\);\n  updateTabFade\(\);/.test(ns_src) && /scrollSelectedTab\(\);[^\n]*\n  if \(typeof updateTabFade === "function"\) updateTabFade\(\);/.test(ns_src));
+  check("the editor scrolls after the menu button is drawn, and again when minimalist mode changes how much room the tabs have", /renderTabs\(\);\n  renderAppMenu\(\);\n[^\n]*\n  scrollSelectedTab\(\);/.test(ns_src) && /if \(typeof scrollSelectedTab === "function"\) scrollSelectedTab\(\);/.test(ns_src));
   } catch (err) { areaCrashed("a new format scrolls into view", err); } }
 
   if (want("disconnect below the status line on phones")) { try {
@@ -4460,7 +4452,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-01i"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-01j"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
