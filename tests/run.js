@@ -749,9 +749,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-01e" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-01f" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-01e/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-01f/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -1897,8 +1897,8 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   check("the menu starts closed", !am_w.document.getElementById("feAppMenuPanel") && am_w.document.getElementById("feAppMenuButton").getAttribute("aria-expanded") === "false");
   am_w.document.getElementById("feAppMenuButton").click();
   var am_items = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel .fe-item")).map((b) => b.textContent.trim());
-  var am_ids = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel [id]")).map((n) => n.id).filter((id) => ["feMoreOptions", "feAbout", "fePrivacy", "feReport", "feBackupMethod", "feBackup", "feRestore", "feDisconnect"].includes(id));
-  check("it offers More options, Privacy and Report a problem, then the backup block (what it is, a Change how your recipes are saved link, how it is going, then Back up now and Restore), then Disconnect Spotify, in that order", JSON.stringify(am_ids) === JSON.stringify(["feMoreOptions", "fePrivacy", "feReport", "feBackupMethod", "feBackup", "feRestore", "feDisconnect"]) && /Manual backup to this device/.test(am_w.document.getElementById("feBackupMethod").closest(".fe-bk-block").textContent), JSON.stringify(am_ids));
+  var am_ids = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel [id]")).map((n) => n.id).filter((id) => ["feMoreOptions", "feAbout", "feTips", "fePrivacy", "feReport", "feBackupMethod", "feBackup", "feRestore", "feDisconnect"].includes(id));
+  check("it offers Disconnect Spotify, then the backup block (what it is, a Change how your recipes are saved link, how it is going, then Back up now and Restore), then More options, Report a problem, Tips & tricks and Privacy, in that order", JSON.stringify(am_ids) === JSON.stringify(["feDisconnect", "feBackupMethod", "feBackup", "feRestore", "feMoreOptions", "feReport", "feTips", "fePrivacy"]) && /Manual backup to this device/.test(am_w.document.getElementById("feBackupMethod").closest(".fe-bk-block").textContent), JSON.stringify(am_ids));
   check("there is no Compact view item: the app page is always compact", !am_w.document.getElementById("feMinimal") && am_w.document.body.classList.contains("minimal") && !/minimalMode/.test(fs.readFileSync(ROOT + "editor.js", "utf8") + fs.readFileSync(ROOT + "app.js", "utf8")));
   var am_info = (id) => am_w.document.getElementById("infoSlot").firstElementChild && am_w.document.getElementById("infoSlot").firstElementChild.id === id && am_w.document.getElementById("infoOverlay").hidden === false;
   am_w.document.getElementById("feMoreOptions").click();
@@ -2492,7 +2492,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   check("with a connection problem the page stays minimal, so nothing from Step 1 is squeezed above the editor", pa_bad.eval("connection") === "problem" && pa_bad.document.body.classList.contains("minimal"));
   check("the app menu button has no dot, whatever is wrong with Spotify: the page and the menu already say it", !pa_bad.document.getElementById("feAppMenuButton").classList.contains("fe-alert") && pa_bad.document.getElementById("feAppMenuButton").getAttribute("aria-label") === "App menu" && !/fe-alert/.test(fs.readFileSync(ROOT + "index.html", "utf8") + fs.readFileSync(ROOT + "editor.js", "utf8")));
   pa_bad.document.getElementById("feAppMenuButton").click();
-  check("the menu offers the ordinary Connect to Spotify, last in the menu like every other Spotify state, with what went wrong under it, and no Try again of its own", JSON.stringify(Array.from(pa_bad.document.querySelectorAll("#feAppMenuPanel .fe-item")).slice(-1).map((b) => b.id)) === '["feConnect"]' && pa_bad.document.getElementById("feConnect").textContent.trim() === "Connect to Spotify" && pa_bad.document.getElementById("feConnectionNote").textContent === pa_bad.document.getElementById("connectionMessage").textContent && !pa_bad.document.getElementById("feReconnect") && !pa_bad.document.getElementById("feRetry"));
+  check("the menu offers the ordinary Connect to Spotify, first in the menu like every other Spotify state, with what went wrong under it, and no Try again of its own", JSON.stringify(Array.from(pa_bad.document.querySelectorAll("#feAppMenuPanel .fe-item")).slice(0, 1).map((b) => b.id)) === '["feConnect"]' && pa_bad.document.getElementById("feConnect").textContent.trim() === "Connect to Spotify" && pa_bad.document.getElementById("feConnectionNote").textContent === pa_bad.document.getElementById("connectionMessage").textContent && !pa_bad.document.getElementById("feReconnect") && !pa_bad.document.getElementById("feRetry"));
   pa_bad.document.getElementById("feAppMenuButton").click();
   check("Create has become Try again, and is on", pa_bad.document.getElementById("create").textContent.trim() === "Try again" && pa_bad.document.getElementById("create").disabled === false && pa_bad.document.querySelector("#create img").getAttribute("src") === "icons/retry.svg");
   check("the note beside it says what went wrong, in place of the pointer to Step 1", pa_bad.document.getElementById("spotifyNote").hidden === false && pa_bad.document.getElementById("spotifyNote").textContent === pa_bad.document.getElementById("connectionMessage").textContent);
@@ -2759,7 +2759,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-01e", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-01f", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3023,7 +3023,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var qf_sec = qf_w.document.getElementById("feedbackSection");
   check("Questions and feedback is not in More options any more", !qf_w.document.getElementById("moreOptions").contains(qf_sec) && qf_sec.querySelector("h3").textContent === "Questions and feedback");
   qf_w.document.getElementById("feAppMenuButton").click();
-  check("once the address is set, the app menu has Questions and feedback, after Tips & tricks", !!qf_w.document.getElementById("feFeedback") && qf_w.document.getElementById("feTips").nextElementSibling === qf_w.document.getElementById("feFeedback") && /Questions and feedback/.test(qf_w.document.getElementById("feFeedback").textContent));
+  check("once the address is set, the app menu has Questions and feedback, after More options", !!qf_w.document.getElementById("feFeedback") && qf_w.document.getElementById("feMoreOptions").nextElementSibling === qf_w.document.getElementById("feFeedback") && /Questions and feedback/.test(qf_w.document.getElementById("feFeedback").textContent));
   qf_w.document.getElementById("feFeedback").click();
   check("and it opens the section in the popup, titled Questions and feedback", qf_w.document.getElementById("infoOverlay").hidden === false && qf_w.document.getElementById("infoSlot").contains(qf_sec) && qf_sec.hidden === false && qf_w.document.getElementById("infoTitle").textContent === "Questions and feedback");
   qf_w.document.getElementById("infoClose").click();
@@ -4304,7 +4304,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var sr_count = (sr_ready.document.getElementById("connectedMessage").textContent.match(/(\d+) playlists? found/) || [])[1];
   check("the menu says how many playlists were found, the same number as Step 1 does", !!sr_count && new RegExp("^Connected as .+, " + sr_count + " playlists? found\\.$").test(sr_ready.document.getElementById("feConnectedStatus").textContent));
   check("it says Spotify, so there is no doubt what is connected", sr_ready.document.querySelector("#feAppMenuPanel .fe-sp-title").textContent === "Spotify connected");
-  check("the row is at the bottom of the menu, after the backup block, with only the version line after it", Array.from(sr_ready.document.querySelectorAll("#feAppMenuPanel > *")).slice(0, -2).pop() === sr_ready.document.querySelector("#feAppMenuPanel .fe-sp-block"));
+  check("the row is at the top of the menu, right under the app's name", sr_ready.document.querySelectorAll("#feAppMenuPanel > *")[1] === sr_ready.document.querySelector("#feAppMenuPanel .fe-sp-block"));
   sr_ready.document.body.click();
   var sr_slow = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: { listDelayMs: 4000 } });
   sr_slow.document.getElementById("feAppMenuButton").click();
@@ -4334,19 +4334,21 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   } catch (err) { areaCrashed("version line", err); } }
 
   if (want("spotify last")) { try {
-  // ================================================================ the Spotify item is always the last in the menu, above the version
-  var sl_last = (w) => { w.document.getElementById("feAppMenuButton").click(); const kids = Array.from(w.document.querySelectorAll("#feAppMenuPanel > *")).slice(0, -2) /* without the version line and the divider above it */; const ids = kids.map((k) => k.id || (k.querySelector("[id]") || {}).id || k.className); w.document.body.click(); return { ids, last: kids[kids.length - 1] }; };
-  var sl_ready = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: {} });
-  var sl_r = sl_last(sl_ready);
-  check("connected: the Spotify row is last, after the backup block", sl_r.last.classList.contains("fe-sp-block") && /Spotify connected/.test(sl_r.last.textContent));
-  var sl_slow = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: { listDelayMs: 4000 } });
-  var sl_s = sl_last(sl_slow);
-  check("connecting: the Connecting item and its note are last", sl_slow.eval("connection") === "connecting" && sl_s.last.id === "feConnectionNote" && /Connecting/.test(sl_s.last.previousElementSibling.textContent));
-  var sl_out = await boot({ url: EDURL, local: { formats: MINI, connectedBefore: "1", clientId: "c1" }, fetchOptions: {} });
-  sl_out.document.getElementById("feAppMenuButton").click();
-  check("not connected: Connect to Spotify is last", JSON.stringify(Array.from(sl_out.document.querySelectorAll("#feAppMenuPanel > *")).slice(0, -2).slice(-1).map((n) => n.id)) === '["feConnect"]');
-  sl_out.document.body.click();
-  check("and in every state the menu starts with the app's name and icon, then More options, so it begins the same way", [sl_ready, sl_slow, sl_out].every((w) => { w.document.getElementById("feAppMenuButton").click(); const kids = w.document.querySelectorAll("#feAppMenuPanel > *"); const ok = kids[0].id === "feMenuHead" && kids[1].id === "feMoreOptions"; w.document.body.click(); return ok; }));
+  // ================================================================ the Spotify item is always first in the menu, under the app's name; then the rest in a fixed order, and the version
+  var sl_ids = (w) => { w.document.getElementById("feAppMenuButton").click(); const ids = Array.from(w.document.querySelectorAll("#feAppMenuPanel > *")).map((k) => k.id || k.className); w.document.body.click(); return ids; };
+  var sl_rest = ["fe-rule", "feMoreOptions", "feFeedback", "feReport", "feTips", "fePrivacy", "fe-rule", "feVersion"];
+  var sl_ready = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: {}, feedbackUrl: "https://tally.so/r/X" });
+  var sl_r = sl_ids(sl_ready);
+  check("connected: the app's name, the Spotify row, then More options, Questions and feedback, Report a problem, Tips & tricks, Privacy, and the version", JSON.stringify(sl_r) === JSON.stringify(["feMenuHead", "fe-sp-block"].concat(sl_rest)), JSON.stringify(sl_r));
+  var sl_slow = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: { listDelayMs: 4000 }, feedbackUrl: "https://tally.so/r/X" });
+  var sl_s = sl_ids(sl_slow);
+  check("connecting: the Connecting item and its note come first, then the same order", sl_slow.eval("connection") === "connecting" && JSON.stringify(sl_s) === JSON.stringify(["feMenuHead", "feConnect", "feConnectionNote"].concat(sl_rest)), JSON.stringify(sl_s));
+  var sl_out = await boot({ url: EDURL, local: { formats: MINI, connectedBefore: "1", clientId: "c1", backupMode: "spotify" }, fetchOptions: {}, feedbackUrl: "https://tally.so/r/X" });
+  var sl_o = sl_ids(sl_out);
+  check("not connected: Connect to Spotify comes first, then the same order", JSON.stringify(sl_o) === JSON.stringify(["feMenuHead", "feConnect"].concat(sl_rest)), JSON.stringify(sl_o));
+  var sl_man = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "manual" }, fetchOptions: {}, feedbackUrl: "https://tally.so/r/X" });
+  var sl_m = sl_ids(sl_man);
+  check("with manual backup, its block comes right after Spotify", JSON.stringify(sl_m) === JSON.stringify(["feMenuHead", "fe-sp-block", "fe-rule", "fe-bk-block"].concat(sl_rest)), JSON.stringify(sl_m));
   } catch (err) { areaCrashed("spotify last", err); } }
 
   if (want("batch seven")) { try {
@@ -4438,7 +4440,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-01e"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-01f"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

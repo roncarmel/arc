@@ -471,17 +471,18 @@ function renderAppMenu() {
     who ? feEl("div", { class: "fe-sp-status", id: "feConnectedStatus", text: `Connected as ${who}, ${plural(playlists.length, "playlist")} found.` }) : null);
   // what the welcome and setup pages have at the bottom, each in a popup
   const infoItem = (id, target, icon, label) => feEl("button", { type: "button", class: "fe-item", id, role: "menuitem", onClick: choose(() => openInfo(target)) }, feIcon(icon), label);
-  // Spotify is the last thing in the menu, in whatever state it is in (connected, connecting, not connected, a problem), so it is always found in the same place.
+  // Spotify is the first thing in the menu under its name, in whatever state it is in (connected, connecting, not connected, a problem), so it is always found in the same place.
   const spotifyItems = connection === "ready" ? [spotifyRow] : connectItems;
   slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" },
     feEl("div", { class: "fe-menuhead", id: "feMenuHead" }, feEl("img", { class: "fe-menuicon", src: "apple-touch-icon.png", alt: "", width: "40", height: "40" }), feEl("span", { class: "fe-menuname", text: "Ceremony Playlist Builder" })),
-    infoItem("feMoreOptions", "moreOptions", "sliders", "More options"),
-    infoItem("feTips", "tipsBlock", "info", "Tips & tricks"),
-    typeof FEEDBACK_FORM_URL !== "undefined" && FEEDBACK_FORM_URL ? infoItem("feFeedback", "feedbackSection", "chat", "Questions and feedback") : null,
-    infoItem("fePrivacy", "privacySection", "lock", "Privacy"),
-    infoItem("feReport", "reportBlock", "flag", "Report a problem"),
+    ...spotifyItems,
     ...(backupBlock ? [feEl("div", { class: "fe-rule" }), backupBlock] : []),
-    ...(spotifyItems.length ? [feEl("div", { class: "fe-rule" }), ...spotifyItems] : []),
+    ...(spotifyItems.length || backupBlock ? [feEl("div", { class: "fe-rule" })] : []),
+    infoItem("feMoreOptions", "moreOptions", "sliders", "More options"),
+    typeof FEEDBACK_FORM_URL !== "undefined" && FEEDBACK_FORM_URL ? infoItem("feFeedback", "feedbackSection", "chat", "Questions and feedback") : null,
+    infoItem("feReport", "reportBlock", "flag", "Report a problem"),
+    infoItem("feTips", "tipsBlock", "info", "Tips & tricks"),
+    infoItem("fePrivacy", "privacySection", "lock", "Privacy"),
     feEl("div", { class: "fe-rule" }),
     feEl("div", { class: "fe-version", id: "feVersion", text: `App version ${typeof APP_VERSION === "undefined" ? "" : APP_VERSION}` })));
 }
