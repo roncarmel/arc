@@ -189,7 +189,8 @@ function gapInfo(f, g) {
   const n = f.items.length;
   const interior = g > 0 && g < n;
   const hasDefault = interior && f.gap > 0;
-  if (g <= 0 || g > n) return { sec: 0, show: false, zero: false, custom: false, interior: false, hasDefault: false };
+  if (g === 0) return { sec: f.lead > 0 ? f.lead : 0, show: f.lead > 0, zero: false, custom: true, interior: false, hasDefault: false };   // the silence before the first segment
+  if (g < 0 || g > n) return { sec: 0, show: false, zero: false, custom: false, interior: false, hasDefault: false };
   const raw = f.gaps[g];
   if (raw === undefined) return { sec: interior ? f.gap : 0, show: hasDefault, zero: false, custom: false, interior, hasDefault };
   if (raw === 0) return { sec: 0, show: hasDefault, zero: true, custom: true, interior, hasDefault };   // only worth showing where there is a default to override

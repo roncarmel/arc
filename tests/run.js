@@ -749,9 +749,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-10-31zg" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-10-31zh" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-10-31zg/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-10-31zh/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -1110,12 +1110,20 @@ print(json.dumps(out))
 
   // ---- the three dots on a row
   rowsOf(ed1)[0].querySelector(".fe-more").click();
-  check("a segment's menu offers a mix and removal, no color choices, and no Add silence where a tag already follows it", ed1.document.querySelectorAll(".fe-menu .fe-swatchbtn").length === 0 && !/Color/.test(ed1.document.querySelector(".fe-menu").textContent) && !!ed1.document.getElementById("feAddMix") && !!ed1.document.getElementById("feRemoveRow") && ed1.document.getElementById("feRemoveRow").textContent === "Remove segment" && !ed1.document.getElementById("feAddSilence"));
+  check("a segment's menu offers a mix and removal, no color choices, and Add silence after dimmed where a tag already follows it", ed1.document.querySelectorAll(".fe-menu .fe-swatchbtn").length === 0 && !/Color/.test(ed1.document.querySelector(".fe-menu").textContent) && !!ed1.document.getElementById("feAddMix") && !!ed1.document.getElementById("feRemoveRow") && ed1.document.getElementById("feRemoveRow").textContent === "Remove segment" && ed1.document.getElementById("feAddSilence").disabled && ed1.document.getElementById("feAddSilenceBefore").disabled === false);
   ed1.document.body.click();   // a tap elsewhere only closes the first menu
   rowsOf(ed1)[1].querySelector(".fe-more").click();
   check("the last segment, which has no silence after it, offers Add silence after", !!ed1.document.getElementById("feAddSilence") && ed1.document.getElementById("feAddSilence").textContent === "Add silence after");
   ed1.document.getElementById("feAddSilence").click();
   check("Add silence after puts a 30 second silence after the last segment: a deeper tag, written at the end of the text", rowsOf(ed1)[1].querySelector(".fe-tag").textContent === "30s" && rowsOf(ed1)[1].querySelector(".fe-tag").classList.contains("fe-tag-custom") && /\("silence", "30 sec"\),\n\s+\],/.test(T(ed1)) && /of silence/.test(ed1.document.getElementById("feCaption").textContent));
+  rowsOf(ed1)[0].querySelector(".fe-more").click();
+  const ed1BeforeOffered = ed1.document.getElementById("feAddSilenceBefore") && ed1.document.getElementById("feAddSilenceBefore").textContent === "Add silence before" && !ed1.document.getElementById("feAddSilenceBefore").disabled;
+  ed1.document.getElementById("feAddSilenceBefore").click();
+  check("the first segment can take a silence before it: a tag on its row, and the choice dimmed afterwards", ed1BeforeOffered && rowsOf(ed1)[0].querySelector(".fe-tag-lead") && rowsOf(ed1)[0].querySelector(".fe-tag-lead").textContent === "30s" && (rowsOf(ed1)[0].querySelector(".fe-more").click(), ed1.document.getElementById("feAddSilenceBefore").disabled));
+  ed1.document.body.click();
+  rowsOf(ed1)[0].querySelector(".fe-tag-lead").click();
+  ed1.document.getElementById("feTagRemove").click();
+  check("removing the silence before the first segment takes its tag away", !rowsOf(ed1)[0].querySelector(".fe-tag-lead"));
   rowsOf(ed1)[1].querySelector(".fe-tag").click();
   check("a silence with no default to go back to offers Remove, not Reset, and its stepper stops at 30 seconds", !!ed1.document.getElementById("feTagRemove") && !ed1.document.getElementById("feTagReset") && !ed1.document.getElementById("feTagDefault") && (() => { ed1.document.getElementById("feTagShorter").click(); return ed1.document.getElementById("feTagDuration").textContent === "30 sec"; })());
   ed1.document.getElementById("feTagRemove").click();
@@ -2751,7 +2759,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-10-31zg", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-10-31zh", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4372,7 +4380,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-10-31zg"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-10-31zh"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

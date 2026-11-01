@@ -845,7 +845,7 @@ function renderRows(settle) {
   holder.appendChild(feEl("button", { type: "button", class: "fe-add", id: "feAddSegment", disabled: full ? true : undefined, onClick: addSegment }, feIcon("plus"), "New segment"));
   if (full || editor.refused) holder.appendChild(feEl("p", { class: "muted", id: "feSizeNote", role: "status", text: SIZE_MESSAGE }));
   const rootEl = $("formatEditor");
-  if (rootEl) rootEl.classList.toggle("fe-hastags", f.items.some((x, index) => gapInfo(f, index + 1).show));
+  if (rootEl) rootEl.classList.toggle("fe-hastags", gapInfo(f, 0).show || f.items.some((x, index) => gapInfo(f, index + 1).show));
   updateTagHang();
   // the markers only have a size once the editor is on screen, so measure again whenever the rows change size
   if (window.ResizeObserver) { if (!editor.tagObserver) editor.tagObserver = new ResizeObserver(() => updateTagHang()); editor.tagObserver.disconnect(); editor.tagObserver.observe(holder); }
@@ -859,7 +859,8 @@ function rowEl(f, item, index) {
   const open = editor.panel && editor.panel.id === item.id ? editor.panel.mode : null;
   const g = index + 1;
   const tag = gapInfo(f, g);
-  const wrap = feEl("div", { class: "fe-row" + (open || (tag.show && editor.gapPanel === g) ? " fe-open" : ""), "data-id": item.id, "data-index": String(index) });
+  const leadTag = index === 0 ? gapInfo(f, 0) : null;
+  const wrap = feEl("div", { class: "fe-row" + (open || (tag.show && editor.gapPanel === g) || (leadTag && leadTag.show && editor.gapPanel === 0) ? " fe-open" : ""), "data-id": item.id, "data-index": String(index) });
   wrap.addEventListener("mouseenter", () => { editor.hover = item.id; applyHighlight(); });
   wrap.addEventListener("mouseleave", () => { editor.hover = null; applyHighlight(); });
   const card = feEl("div", { class: "fe-rowcard" });
@@ -909,6 +910,10 @@ function rowEl(f, item, index) {
   }, feIcon("dots")));
   wrap.appendChild(card);
 
+  if (leadTag && leadTag.show) {
+    wrap.appendChild(tagEl(f, 0));
+    if (editor.gapPanel === 0) wrap.appendChild(tagPanel(f, 0));
+  }
   if (tag.show) {
     wrap.appendChild(tagEl(f, g));
     if (editor.gapPanel === g) wrap.appendChild(tagPanel(f, g));
@@ -923,12 +928,12 @@ function rowEl(f, item, index) {
 // A silence is a small bookmark-shaped tag hanging off the right side of the rows, its point aimed at the gap it belongs to.
 function tagEl(f, g) {
   const info = gapInfo(f, g);
-  const key = `gap${g}`;
+  const key = g === 0 ? "lead" : `gap${g}`;
   const kind = info.custom ? "custom" : "default";   // a silence set to 0 is a changed one, like any other: pink
-  const where = info.interior ? "Silence between these segments" : "Silence after the last segment";
+  const where = g === 0 ? "Silence before the first segment" : info.interior ? "Silence between these segments" : "Silence after the last segment";
   const open = editor.gapPanel === g;
   const button = feEl("button", {
-    type: "button", class: `fe-tag fe-trigger fe-tag-${kind}`, "data-id": key, "aria-expanded": String(open),
+    type: "button", class: `fe-tag fe-trigger fe-tag-${kind}` + (g === 0 ? " fe-tag-lead" : ""), "data-id": key, "aria-expanded": String(open),
     "aria-label": `${where}: ${info.zero ? "0 sec" : describeSeconds(info.sec)}. Tap to change.`,
     onClick: () => { editor.gapPanel = open ? null : g; editor.panel = null; editor.cardMenu = false; editor.appMenu = false; editor.search = ""; renderAppMenu(); renderHead(); renderRows(); },
   }, feIcon("mute"), feEl("span", { class: "fe-tag-text", text: shortSeconds(info.sec) }));
@@ -980,14 +985,15 @@ function tagPanel(f, g) {
   amount.appendChild(feEl("span", { class: "fe-line", text: "silence" }));
   // the link, the gray (default) or the Remove button sits right under the widget, centered on it
   const column = feEl("div", { class: "fe-tagcol" }, stepper, ...(below.childNodes.length ? [below] : []));
-  return feEl("div", { class: "fe-pop fe-tagpanel", id: "feTagPanel" }, feEl("div", { class: "fe-tagrow" }, column));
+  return feEl("div", { class: "fe-pop fe-tagpanel" + (g === 0 ? " fe-tagpanel-lead" : ""), id: "feTagPanel" }, feEl("div", { class: "fe-tagrow" }, column));
 }
 
 function setGap(g, value) {
   const f = activeFormat();
   if (!f) return;
   ensureGaps(f);
-  f.gaps[g] = value;
+  if (g === 0) f.lead = value === undefined ? 0 : value;   // the silence before the first segment is kept apart from the others
+  else f.gaps[g] = value;
   afterGapChange();
 }
 
@@ -1040,12 +1046,12 @@ function menuPanel(f, item, index) {
       onClick: () => { editor.panel = null; renderRows(); refreshSongsFor(unwatched.map((l) => l.name)); },
     }, feIcon("reset"), "Refresh songs from Spotify"));
   }
-  // a silence can be added after this segment wherever there is none yet
-  if (!gapInfo(f, index + 1).show) {
+  // a silence can be added before or after this segment; the choice is dimmed where there is one already
+  for (const [id, g, label] of [["feAddSilenceBefore", index, "Add silence before"], ["feAddSilence", index + 1, "Add silence after"]]) {
     pop.appendChild(feEl("button", {
-      type: "button", class: "fe-item", id: "feAddSilence",
-      onClick: () => { ensureGaps(f); f.gaps[index + 1] = 30; editor.panel = null; afterGapChange(); },
-    }, feIcon("mute"), "Add silence after"));
+      type: "button", class: "fe-item", id, disabled: gapInfo(f, g).show ? true : undefined,
+      onClick: () => { editor.panel = null; setGap(g, 30); },
+    }, feIcon("mute"), label));
   }
   pop.appendChild(feEl("div", { class: "fe-rule" }));
   pop.appendChild(feEl("button", {
