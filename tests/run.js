@@ -215,6 +215,14 @@ async function boot({ url, session = {}, local = {}, fetchOptions = {}, before =
 function menuStatus(w) { w.document.getElementById("feAppMenuButton").click(); const n = w.document.getElementById("feSaveStatus"); const t = n ? n.textContent : ""; w.document.body.click(); return t; }
 function capText(w) { const n = w.document.getElementById("feCaption"); return n ? n.textContent : ""; }
 function capLinks(w) { return Array.from(w.document.querySelectorAll("#feCaption .fe-notice-link, #feCaption .fe-notice-ok, #feCaption .fe-notice-count")); }
+// Remove now needs a choice in the dropdown: keep one that is set, otherwise pick All recipes, then press Remove.
+function removeNow(w) {
+  const sel = w.document.getElementById("removeKey");
+  if (!sel.value) sel.value = "__all__";
+  sel.dispatchEvent(new w.document.defaultView.Event("change"));
+  w.document.getElementById("removeOld").click();
+}
+
 async function waitFor(condition, ms = 15000) {
   const start = Date.now();
   while (Date.now() - start < ms) {
@@ -538,10 +546,11 @@ print(json.dumps(out))
   var wG = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: TWO }, fetchOptions: oG });
   await readyToPreview(wG);
   var removeOpts = Array.from(wG.document.getElementById("removeKey").options).map((o) => o.value);
-  check("the removal dropdown lists the formats plus All recipes, defaulting to all", JSON.stringify(removeOpts) === JSON.stringify(["a", "b", "__all__"]) && wG.document.getElementById("removeKey").value === "__all__", JSON.stringify(removeOpts) + wG.document.getElementById("removeKey").value);
+  check("the removal dropdown lists a blank, the formats, then All recipes", JSON.stringify(removeOpts) === JSON.stringify(["", "a", "b", "__all__"]), JSON.stringify(removeOpts));
   check("removal is inside More options", !!wG.document.querySelector("#moreOptions #removeOld") && !!wG.document.querySelector("#moreOptions #maxPlaylists") && !!wG.document.querySelector("#moreOptions #clearData") && /More options/.test(wG.document.querySelector("#moreOptions summary").textContent));
+  check("the removal dropdown starts blank and Remove waits for a choice", wG.document.getElementById("removeKey").value === "" && wG.document.getElementById("removeOld").disabled === true);
   wG.document.getElementById("removeKey").value = "b";
-  wG.document.getElementById("removeOld").click();
+  removeNow(wG);
   await waitFor(() => visible(wG, "removeConfirmBox"));
   check("the removal question appears inside the Remove section, below its button, not up in Step 3", !!wG.document.querySelector("#moreOptions #removeConfirmBox") && !visible(wG, "confirmBox") && !!(wG.document.getElementById("removeOld").compareDocumentPosition(wG.document.getElementById("removeConfirmBox")) & 4));
   check("choosing one format removes only its playlists", JSON.stringify(Array.from(wG.document.querySelectorAll("#removeConfirmList li")).map((li) => li.textContent)) === JSON.stringify(["beta 1", "beta 2"]));
@@ -549,7 +558,7 @@ print(json.dumps(out))
   wG.document.getElementById("removeConfirmNo").click();
   await waitFor(() => /Cancelled/.test(wG.document.getElementById("removeMessage").textContent));
   check("cancelling a removal says so inside that section and changes nothing", oG.writes.length === 0 && !visible(wG, "removeConfirmBox"));
-  wG.document.getElementById("removeOld").click();
+  removeNow(wG);
   await waitFor(() => visible(wG, "removeConfirmBox"));
   wG.document.getElementById("removeConfirmYes").click();
   await waitFor(() => /^Removed/.test(wG.document.getElementById("removeMessage").textContent));
@@ -560,7 +569,7 @@ print(json.dumps(out))
   var oH = { extraPlaylists: many };
   var wH = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: oH });
   await readyToPreview(wH);
-  wH.document.getElementById("removeOld").click();
+  removeNow(wH);
   await waitFor(() => visible(wH, "removeConfirmBox"));
   wH.document.getElementById("removeConfirmYes").click();
   await waitFor(() => /^Removed/.test(wH.document.getElementById("removeMessage").textContent), 20000);
@@ -710,7 +719,7 @@ print(json.dumps(out))
   await waitFor(() => /^Done\./.test(wCount.document.getElementById("actionMessage").textContent), 20000);
   await waitFor(() => /8 playlists found/.test(countText()), 5000);
   check("after creating 3 playlists the count goes from 5 to 8", countText() === "Connected as Ron. 8 playlists found.", countText());
-  wCount.document.getElementById("removeOld").click();
+  removeNow(wCount);
   await waitFor(() => visible(wCount, "removeConfirmBox"));
   wCount.document.getElementById("removeConfirmYes").click();
   await waitFor(() => /^Removed/.test(wCount.document.getElementById("removeMessage").textContent), 10000);
@@ -734,9 +743,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-10-31zd" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-10-31zf" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-10-31zd/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-10-31zf/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -780,7 +789,7 @@ print(json.dumps(out))
   var oRm = { failRemove: true, extraPlaylists: [{ id: "old1", name: "mini 1", owner: { id: "ron" }, description: MADE }] };
   var rp5 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: oRm });
   await readyToPreview(rp5);
-  rp5.document.getElementById("removeOld").click();
+  removeNow(rp5);
   await waitFor(() => visible(rp5, "removeConfirmBox"));
   rp5.document.getElementById("removeConfirmYes").click();
   await waitFor(() => visible(rp5, "removeReportHint"), 10000);
@@ -1666,7 +1675,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   check("when the page loads, the app has read the playlists, two of them marked as its own", v_w.eval("playlists").filter((p) => p.madeByApp).map((p) => p.id).join(",") === "v1,v2");
   // someone clears the description of mini 2 in Spotify while the page is open
   v_o.extraPlaylists[1].description = "";
-  v_w.document.getElementById("removeOld").click();
+  removeNow(v_w);
   await waitFor(() => visible(v_w, "removeConfirmBox"));
   check("Remove looks at Spotify again first, so a mark removed there since the page loaded is noticed", v_w.eval("playlists").filter((p) => p.madeByApp).map((p) => p.id).join(",") === "v1");
   check("Remove then lists only the playlists marked as the app's own to remove", JSON.stringify(Array.from(v_w.document.querySelectorAll("#removeConfirmList li")).map((li) => li.textContent)) === JSON.stringify(["mini 1"]) && /^Remove 1 playlist made by this app from your library\? They match the naming pattern of mini\.$/.test(v_w.document.getElementById("removeConfirmText").textContent), v_w.document.getElementById("removeConfirmText").textContent);
@@ -1683,7 +1692,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var v_o2 = { extraPlaylists: [{ id: "u1", name: "mini 1", owner: { id: "ron" } }] };
   var v_w2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: v_o2 });
   await readyToPreview(v_w2);
-  v_w2.document.getElementById("removeOld").click();
+  removeNow(v_w2);
   await waitFor(() => visible(v_w2, "removeConfirmBox"));
   check("with nothing marked as the app's, Remove says so, and offers nothing until the switch is on", /^No playlists made by this app match the naming pattern of mini\.$/.test(v_w2.document.getElementById("removeConfirmText").textContent) && v_w2.document.getElementById("removeConfirmYes").disabled === true && v_w2.document.getElementById("removeConfirmYes").textContent.trim() === "Nothing to remove");
   v_w2.document.getElementById("removeToggle").checked = true;
@@ -2736,7 +2745,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-10-31zd", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-10-31zf", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3990,8 +3999,8 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   if (want("backup wording")) { try {
   // ================================================================ Automatic and Manual, said the same way everywhere
   var bw_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("the method card asks how the recipes should be saved, and offers the two ways", /<h3 id="backupCardTitle">How should your recipes be saved\?<\/h3> <p>Pick where your recipes live\. You can change this whenever you like\.<\/p>/.test(bw_html));
-  check("its two options are Saved to Spotify automatically and Backed up to this device manually, the second with its note", /<span>Saved to Spotify automatically<\/span><\/label>/.test(bw_html) && /<span>Backed up to this device manually<\/span><\/label> <p class="muted choice-note">Your recipes live on this device only\. You back them up to a file when you choose, and restore from it when you need it\.<\/p>/.test(bw_html));
+  check("the method card asks how the recipes should be saved, and offers the two ways", /<h3 id="backupCardTitle">How should your recipes be saved\?<\/h3> <p>Pick where your recipes live\.<\/p>/.test(bw_html));
+  check("its two options are Saved to Spotify automatically and Backed up to this device manually, the second with its note", /<span>Saved to Spotify automatically \(recommended\)<\/span><\/label>/.test(bw_html) && /<span>Backed up to this device manually<\/span><\/label> <p class="muted choice-note">Your recipes live on this device only\. You back them up to a file when you choose, and restore from it when you need it\.<\/p>/.test(bw_html));
   check("nothing on the page calls the manual way a file any more, in the card, the notes, Step 4 or the menu", !/Manually, to your phone or computer|Automatically to Spotify|Download a backup|Restore from backup|Change how your recipes are saved\u2026/.test(bw_html + fs.readFileSync(ROOT + "editor.js", "utf8") + fs.readFileSync(ROOT + "app.js", "utf8")));
   var bw_m = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "manual", connectedBefore: "1" }, fetchOptions: {} });
   bw_m.document.getElementById("feAppMenuButton").click();
@@ -4355,7 +4364,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-10-31zd"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-10-31zf"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

@@ -16,7 +16,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-31zd";
+const APP_VERSION = "2026-10-31zf";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1177,7 +1177,7 @@ function updateButtonsNow() {
   }
   const buildAll = $("buildAll");   // a page older than this script may not have it, and that must not stop the rest
   if (buildAll) buildAll.disabled = !(!!token && connection === "ready" && !!py && formatsValid && !busy && currentFormats.length > 0);
-  $("removeOld").disabled = !ready;
+  $("removeOld").disabled = !ready || !$("removeKey").value;
   // The notes appear when Create cannot work because there is no connection, not while the app is still connecting.
   const noConnection = !$("appSection").hidden && (connection === "problem" || connection === "none");
   if (noConnection && minimalActive()) {
@@ -1660,13 +1660,14 @@ async function startPython() {
 }
 
 // ---------------------------------------------------------------- the formats box
-function fillFormatDropdown(select, formats, defaultToAll) {
+function fillFormatDropdown(select, formats, blankFirst) {
   const previous = select.value;
   select.innerHTML = "";
+  if (blankFirst) select.add(new Option("", ""));   // nothing chosen yet: the person has to pick before Remove works
   for (const f of formats) select.add(new Option(f.title, f.id));
   select.add(new Option("All recipes", ALL_FORMATS));
   if (formats.some((f) => f.id === previous) || previous === ALL_FORMATS) select.value = previous;
-  else if (defaultToAll) select.value = ALL_FORMATS;
+  else select.value = "";
 }
 
 function formatLabel(key) {
@@ -2429,6 +2430,7 @@ async function main() {
   guarded("donation panel", () => initDonatePanel());
   guarded("hiding the Donate button", () => initDonateChoice());
   on("removeOld", "click", removeEarlier);
+  on("removeKey", "change", updateButtons);
   on("buildAll", "click", () => startCreate(currentFormats.map((f) => f.id)));
   on("maxPlaylists", "input", () => invalidatePlan());
   on("backupDownload", "click", downloadBackup);
