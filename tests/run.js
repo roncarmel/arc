@@ -749,9 +749,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-01h" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-01i" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-01h/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-01i/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -2760,7 +2760,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-01h", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-01i", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -2827,6 +2827,32 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   ro_m.eval("spotifySaveDelayMs = 30");
   await waitFor(() => Array.from(ro_m.document.querySelectorAll("#feTabs .fe-tab")).map((t) => t.textContent)[0] === "Two", 8000);
   check("a recipe moved on another device moves here too, with no question asked, and its save is not written back", !ro_m.document.getElementById("feSyncDialog") && !ro_o.writes.some((x) => x.type === "update" && x.id === "s1"), JSON.stringify(ro_o.writes.map((x) => x.type + ":" + x.id)));
+  // the tabs drawn again while one is held (a save read from Spotify does that) must not leave the held tab in the row twice
+  var rd_w = await boot({ url: EDURL, session: signedIn(), local: { formats: 'FORMATS = {"a": {"name": "A {n}", "title": "One", "segments": [("x", 10)]}, "b": {"name": "B {n}", "title": "Two", "segments": [("x", 10)]}, "c": {"name": "C {n}", "title": "Three", "segments": [("x", 10)]}}' }, fetchOptions: {} });
+  var rd_ptr = (type, x) => { const e = new rd_w.MouseEvent(type, { clientX: x, clientY: 5, bubbles: true, cancelable: true, button: 0 }); Object.defineProperty(e, "pointerId", { value: 3 }); Object.defineProperty(e, "pointerType", { value: "touch" }); return e; };
+  var rd_tab = rd_w.document.querySelector("#feTabs .fe-tab");
+  rd_tab.dispatchEvent(rd_ptr("pointerdown", 10));
+  await new Promise((r) => setTimeout(r, 420));
+  rd_w.dispatchEvent(rd_ptr("pointermove", 400));
+  rd_w.eval("renderEditor(); renderTabs();");
+  check("while a tab is held the New recipe and menu buttons step aside on any screen, and only a phone narrows the other tabs", /\n  #formatEditor \.fe-toprow-reordering \.fe-newformat, #formatEditor \.fe-toprow-reordering \.fe-appmenuwrap \{ display: none; \}\n  @media \(max-width: 759px\) \{\n    #formatEditor \.fe-tabs\.fe-reordering \.fe-tab/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && rd_w.document.querySelector("#formatEditor .fe-toprow").classList.contains("fe-toprow-reordering"));
+  check("while a tab is held, the editor is not drawn again under it", rd_w.document.querySelector("#feTabs .fe-tab") && rd_w.document.querySelectorAll("#feTabs .fe-dragging").length === 1 && rd_w.eval("tabDrag.redraw") === true);
+  rd_w.dispatchEvent(rd_ptr("pointermove", 420));
+  rd_w.dispatchEvent(rd_ptr("pointerup", 420));
+  var rd_ids = Array.from(rd_w.document.querySelectorAll("#feTabs .fe-tab")).map((t) => t.getAttribute("data-id"));
+  check("after it is let go, it is drawn again: each recipe once, one selected, and the order saved", JSON.stringify(rd_ids) === JSON.stringify(["b", "c", "a"]) && rd_w.document.querySelectorAll('#feTabs .fe-tab[aria-pressed="true"]').length === 1 && rd_w.eval("editor.model.formats.length") === 3 && rd_w.eval("tabDrag.redraw") === false, JSON.stringify(rd_ids));
+  // a recipe added while the tab was held is kept, and the moved one goes after the tab it was dropped behind
+  var rd_t = rd_w.document.querySelector("#feTabs .fe-tab");
+  rd_t.dispatchEvent(rd_ptr("pointerdown", 10));
+  await new Promise((r) => setTimeout(r, 420));
+  rd_w.dispatchEvent(rd_ptr("pointermove", 400));
+  rd_w.eval('adoptFormat(Object.assign(newBlankFormat(editor.model, "Four"), { id: "d", place: 1 })); writeAdopted(); renderEditor();');
+  rd_w.dispatchEvent(rd_ptr("pointerup", 400));
+  var rd_after = Array.from(rd_w.document.querySelectorAll("#feTabs .fe-tab")).map((t) => t.getAttribute("data-id"));
+  check("a recipe that came in while a tab was held is kept, and the held one lands after the tab it was dropped behind", JSON.stringify(rd_after) === JSON.stringify(["d", "c", "a", "b"]), JSON.stringify(rd_after));
+  // the same recipe written twice in the saved text (what the bug left behind) is read as one
+  var rd_dup = await boot({ url: EDURL, session: signedIn(), local: { formats: 'FORMATS = {"a": {"name": "A {n}", "title": "One", "segments": [("x", 10)]}, "b": {"name": "B {n}", "title": "Two", "segments": [("x", 10)]}, "a": {"name": "A {n}", "title": "One", "segments": [("x", 10)]}}' }, fetchOptions: {} });
+  check("a recipe written twice in the saved text is read as one, so a doubled tab mends itself", rd_dup.document.querySelectorAll("#feTabs .fe-tab").length === 2 && rd_dup.document.querySelectorAll('#feTabs .fe-tab[aria-pressed="true"]').length === 1);
   } catch (err) { areaCrashed("reordering recipes", err); } }
   if (want("card header, pencil and notch")) { try {
   // ================================================================ the card's header, the pencil, and the notch
@@ -4434,7 +4460,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-01h"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-01i"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

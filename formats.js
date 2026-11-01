@@ -363,6 +363,9 @@ function sortFormats(formats) {
 
 // gives a place to each format that has none (one from before places, or a new one), after all the others in the order they are in, then sorts
 function placeFormats(formats) {
+  // one format per ID: a second one with the same ID (which an older version could make when the tabs were drawn again during a drag) is dropped
+  const seen = new Set();
+  for (let i = 0; i < formats.length; i++) { if (seen.has(formats[i].id)) { formats.splice(i, 1); i--; } else seen.add(formats[i].id); }
   let last = formats.reduce((m, f) => (f.place > 0 ? Math.max(m, f.place) : m), 0);
   for (const f of formats) if (!(f.place > 0)) { f.place = last += PLACE_STEP; f.placeAt = f.placeAt || 0; }
   sortFormats(formats);

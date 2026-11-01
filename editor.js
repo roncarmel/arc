@@ -333,6 +333,7 @@ function editorPlaylistsChanged() {
 
 // ---------------------------------------------------------------- drawing
 function renderEditor() {
+  if (tabHeld()) { tabDrag.redraw = true; return; }   // not under a held tab: it is drawn again when the tab is let go
   const root = $("formatEditor");
   if (!root) return;
   root.innerHTML = "";
@@ -547,6 +548,7 @@ function fitPops() {
 }
 
 function renderTabs() {
+  if (tabHeld()) return;   // the tabs are drawn again when the held one is let go
   const tabs = $("feTabs");
   if (!tabs) return;
   tabs.innerHTML = "";
@@ -573,9 +575,9 @@ function renderTabs() {
 // ---------------------------------------------------------------- reordering the tabs
 // Press and hold a tab for about a third of a second, then drag it sideways; the others make way. Moving before the hold is over scrolls the row instead: a finger
 // scrolls it as usual, and a mouse drags it along. The held tab grows a little past its lifted size and settles back, and on a phone each step gives a tick. Near either end of the row it scrolls by itself, but never past the last tab. The tab stays inside the row: pulled past an end it gives a little,
-// harder the further it goes, like a list on a phone pulled past its end. On a phone the New recipe and menu buttons step aside while a tab is held, and the other tabs
+// harder the further it goes, like a list on a phone pulled past its end. The New recipe and menu buttons step aside while a tab is held, and on a phone the other tabs
 // get narrower, so more of the row can be seen. Alt + the left or right arrow on a focused tab moves it one place.
-const tabDrag = { holdMs: 350, slop: 8, edge: 44, speed: 10, give: 22, press: null, frame: 0 };
+const tabDrag = { holdMs: 350, slop: 8, edge: 44, speed: 10, give: 22, press: null, frame: 0, redraw: false };
 
 function startTabPress(event) {
   if (tabDrag.press || !editor.model) return;
@@ -607,7 +609,7 @@ function moveTabPress(event) {
 }
 
 function beginTabDrag(press) {
-  if (tabDrag.press !== press || !press.tab.isConnected) return;
+  if (tabDrag.press !== press || press.tab.parentNode !== $("feTabs")) return;   // the tabs were drawn again while it was held: this one is gone
   press.dragging = true;
   press.grab = press.x0 - press.tab.getBoundingClientRect().left;   // where the tab was taken hold of, not where the finger is by now
   press.tab.classList.add("fe-dragging");
@@ -725,21 +727,35 @@ function endTabPress() {
   if (row) row.classList.remove("fe-toprow-reordering");
   const id = press.tab.getAttribute("data-id");
   const from = press.tab.getBoundingClientRect().left;
-  const order = [...strip.querySelectorAll(".fe-tab")].map((t) => t.getAttribute("data-id"));
+  // The recipes may have changed while the tab was held (a save read from Spotify can add one), so the tabs on screen are not taken as the new list: the moved
+  // recipe is put after the one it was dropped behind, in the list as it is now.
+  const shown = [...strip.querySelectorAll(".fe-tab")].map((t) => t.getAttribute("data-id"));
+  const behind = shown[shown.indexOf(id) - 1];
   const formats = editor.model.formats;
-  if (order.join("|") !== formats.map((f) => f.id).join("|")) {
-    editor.model.formats = order.map((id) => formats.find((f) => f.id === id));
-    placeMoved(editor.model.formats, order.indexOf(id));
-    commit();
+  const moving = formats.find((f) => f.id === id);
+  if (moving) {
+    const rest = formats.filter((f) => f !== moving);
+    const at = behind === undefined ? 0 : rest.findIndex((f) => f.id === behind) + 1;
+    rest.splice(at, 0, moving);
+    if (rest.some((f, i) => f !== formats[i])) {
+      editor.model.formats = rest;
+      placeMoved(rest, at);
+      commit();
+    }
   }
-  renderTabs();
+  if (tabDrag.redraw) { tabDrag.redraw = false; renderEditor(); } else renderTabs();
   // the tab settles into its place from where it was let go
-  const dropped = [...strip.querySelectorAll(".fe-tab")].find((t) => t.getAttribute("data-id") === id);
+  const dropped = [...$("feTabs").querySelectorAll(".fe-tab")].find((t) => t.getAttribute("data-id") === id);
   const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (dropped && !reduce && typeof dropped.animate === "function") {
     const moved = from - dropped.getBoundingClientRect().left;
     dropped.animate([{ transform: `translateX(${moved}px)`, scale: TAB_LIFT }, { transform: "none", scale: 1 }], { duration: 200, easing: "ease-out" });
   }
+}
+
+// a tab is lifted and moving: drawing the tabs again now would take it out from under the finger
+function tabHeld() {
+  return !!(tabDrag.press && tabDrag.press.dragging);
 }
 
 // the same, one place at a time, for the keyboard
