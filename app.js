@@ -16,7 +16,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-31zf";
+const APP_VERSION = "2026-10-31zg";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -942,7 +942,7 @@ function openBackupCard() {
   chosen.focus({ preventScroll: true });   // the popup is on screen as it opens, and a keyboard starts on the choice
 }
 
-// Picking one of the two is the whole interaction: it is saved and the card goes away. Picking the one already chosen just closes it.
+// The radio buttons only mark a choice. OK saves it and closes the card; Cancel, Escape and the backdrop close it and change nothing.
 async function chooseBackupMode(value) {
   const was = backupMode();
   try { localStorage.setItem("backupMode", value); } catch (err) { /* private browsing */ }
@@ -2184,12 +2184,9 @@ function setDonateChoice(choice) {
 
 function initDonateChoice() {
   on("donateHideBox", "change", () => setDonateChoice($("donateHideBox").checked ? "donated" : ""));
-  for (const radio of document.querySelectorAll('input[name="backupMode"]')) {
-    radio.addEventListener("click", () => { if (!radio.disabled) chooseBackupMode(radio.value); });
-    radio.addEventListener("change", () => { if (!radio.disabled && radio.checked) chooseBackupMode(radio.value); });
-  }
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && backupCardOpen) dismissBackupCard(); });
-  on("backupDone", "click", dismissBackupCard);
+  on("backupOk", "click", () => { const radio = document.querySelector('input[name="backupMode"]:checked'); if (radio) chooseBackupMode(radio.value); else dismissBackupCard(); });
+  on("backupCancel", "click", dismissBackupCard);
   on("changeSaveMethod", "click", () => { closeInfo(true); openBackupCard(); });   // More options is a popup too, and would cover the card
   on("backupBackdrop", "click", dismissBackupCard);
   // Back from Spotify's page, a browser may show this page as it was left, with the buttons still waiting

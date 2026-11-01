@@ -223,6 +223,12 @@ function removeNow(w) {
   w.document.getElementById("removeOld").click();
 }
 
+// The method card's radio buttons only mark a choice: pick one, then press OK.
+function pickMode(w, id) {
+  w.document.getElementById(id).click();
+  w.document.getElementById("backupOk").click();
+}
+
 async function waitFor(condition, ms = 15000) {
   const start = Date.now();
   while (Date.now() - start < ms) {
@@ -743,9 +749,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-10-31zf" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-10-31zg" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-10-31zf/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-10-31zg/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -2745,7 +2751,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-10-31zf", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-10-31zg", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3407,15 +3413,15 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var bm_card = () => bm_w.document.getElementById("backupCard");
   check("a new visitor is asked nothing: saved to Spotify is chosen, and the card is not on the page until it is asked for", bm_card().hidden === true && bm_w.document.getElementById("backupModeSpotify").checked && !bm_w.document.getElementById("backupModeManual").checked && bm_w.localStorage.getItem("backupMode") === null);
   check("it says that saved to Spotify keeps each recipe in a private playlist, in its description, which is not to be edited, and that backing up to the device keeps the recipes on this device only", /stored in that playlist's description, so please do not edit it/.test(bm_card().textContent) && /ending in \(recipe\)/.test(bm_card().textContent) && /Your recipes live on this device only/.test(bm_card().textContent));
-  check("it is the two radio buttons and one Done button, always shown, and no Cancel", bm_card().querySelectorAll("button").length === 1 && bm_card().querySelector("button").id === "backupDone" && bm_card().querySelector("#backupDoneRow").hidden === false && bm_card().querySelectorAll('input[type="radio"]').length === 2);
-  bm_w.document.getElementById("backupModeManual").click();
+  check("it is the two radio buttons and OK and Cancel buttons, always shown", bm_card().querySelectorAll("button").length === 2 && !!bm_card().querySelector("#backupOk") && !!bm_card().querySelector("#backupCancel") && bm_card().querySelector("#backupDoneRow").hidden === false && bm_card().querySelectorAll('input[type="radio"]').length === 2);
+  pickMode(bm_w, "backupModeManual");
   check("choosing manual saves it and takes the card away", bm_w.localStorage.getItem("backupMode") === "manual" && bm_card().hidden === true);
   var bm_menuItems = () => Array.from(bm_w.document.querySelectorAll("#feAppMenuPanel .fe-item")).map((b) => b.textContent.trim());
   bm_w.document.getElementById("feAppMenuButton").click();
   check("the app menu has the backup block: the row that opens the method card comes before Back up now and Restore", (() => { const ids = Array.from(bm_w.document.querySelectorAll("#feAppMenuPanel [id]")).map((n) => n.id); return ids.indexOf("feBackupMethod") >= 0 && ids.indexOf("feBackupMethod") < ids.indexOf("feBackup") && ids.indexOf("feBackup") < ids.indexOf("feRestore"); })());
   bm_w.document.getElementById("feBackupMethod").click();
   check("choosing it brings the card back with the current choice selected, and closes the menu", bm_card().hidden === false && bm_w.document.getElementById("backupModeManual").checked && !bm_w.document.getElementById("feAppMenuPanel"));
-  bm_w.document.getElementById("backupModeManual").click();
+  pickMode(bm_w, "backupModeManual");
   check("choosing the same one again simply closes it, and the choice stays", bm_card().hidden === true && bm_w.localStorage.getItem("backupMode") === "manual");
   bm_w.document.getElementById("feAppMenuButton").click();
   bm_w.document.getElementById("feBackupMethod").click();
@@ -3588,7 +3594,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   // choosing Spotify from the card starts the saving
   var ss_o8 = { descStore: {}, nameStore: {} };
   var ss_w8 = await ss_started({ formats: ss_two }, ss_o8);
-  ss_w8.document.getElementById("backupModeSpotify").click();
+  pickMode(ss_w8, "backupModeSpotify");
   await waitFor(() => ss_writes(ss_o8, "create").length >= 2, 8000);
   check("choosing Spotify in the card saves the formats at once, and the card goes away", ss_writes(ss_o8, "create").length === 2 && ss_w8.localStorage.getItem("backupMode") === "spotify" && ss_w8.document.getElementById("backupCard").hidden === true);
   } catch (err) { areaCrashed("spotify saves", err); } }
@@ -3847,7 +3853,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var bs_settled = async (w) => { await waitFor(() => !w.eval("saveState.running") && !w.eval("saveState.timer"), 8000); await new Promise((r) => setTimeout(r, 120)); };
   var bs_writes = (o, t) => o.writes.filter((x) => x.type === t);
   var bs_synced = JSON.stringify({ f1: { rev: 2 }, f2: { rev: 1 } });
-  var bs_leave = (w) => { w.document.getElementById("changeSaveMethod").click(); w.document.getElementById("backupModeManual").click(); };
+  var bs_leave = (w) => { w.document.getElementById("changeSaveMethod").click(); pickMode(w, "backupModeManual"); };
 
   // leaving Spotify, keeping the backups
   var bs_o1 = { descStore: {}, nameStore: {}, extraPlaylists: bs_account() };
@@ -3909,7 +3915,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   // not connected: the backups are left, and the person is told
   var bs_w5 = await boot({ url: EDURL, session: {}, local: { formats: bs_two, backupMode: "spotify" }, fetchOptions: {} });
   bs_w5.eval('playlists = [{ id: "s1", name: "Alpha (recipe)", owner: "ron", description: "", save: { kind: "save", format: { id: "f1" } }, isSave: true }]');
-  bs_w5.document.getElementById("backupModeManual").click();
+  pickMode(bs_w5, "backupModeManual");
   await new Promise((r) => setTimeout(r, 200));
   check("when Spotify is not connected, there is no question: the backup is left, and it says so", !bs_w5.document.getElementById("feSyncDialog") && /was left as it is/.test(capText(bs_w5)) && !!capLinks(bs_w5).find((b) => b.textContent === "Back up now"));
 
@@ -3920,7 +3926,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   check("on the backup file way, the backups in the account are left alone and nothing is asked", !bs_w6.document.getElementById("feSyncDialog") && bs_o6.writes.filter((x) => x.type === "create" || x.type === "update").length === 0);
   bs_w6.document.getElementById("feAppMenuButton").click();
   bs_w6.document.getElementById("feBackupMethod").click();
-  bs_w6.document.getElementById("backupModeSpotify").click();
+  pickMode(bs_w6, "backupModeSpotify");
   await waitFor(() => !!bs_w6.document.getElementById("feSyncDialog"), 5000);
   check("switching to Spotify settles the formats against the backups, and asks only about the one that differs (Beta), not the one that matches (Alpha)", /Beta/.test(bs_w6.document.getElementById("feSyncDialog").textContent) && !/Alpha/.test(bs_w6.document.getElementById("feSyncDialog").textContent));
   bs_w6.document.getElementById("feSyncChoice1").click();
@@ -4021,16 +4027,16 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   if (want("backup card done")) { try {
   // ================================================================ closing the method card without changing anything
   var bd_new = await boot({ url: EDURL, session: signedIn(), local: { connectedBefore: "1", backupMode: null }, fetchOptions: {} });
-  check("a new visitor has no card on the page, and the card has its Done button whenever it is opened", bd_new.document.getElementById("backupCard").hidden && bd_new.document.getElementById("backupDoneRow").hidden === false);
+  check("a new visitor has no card on the page, and the card has its OK and Cancel buttons whenever it is opened", bd_new.document.getElementById("backupCard").hidden && bd_new.document.getElementById("backupDoneRow").hidden === false);
   var bd_w = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "manual", connectedBefore: "1" }, fetchOptions: {} });
   check("with a way chosen, the card is not on the page", bd_w.document.getElementById("backupCard").hidden);
   bd_w.document.getElementById("feAppMenuButton").click();
   bd_w.document.getElementById("feBackupMethod").click();
   await new Promise((r) => setTimeout(r, 100));
-  check("opened from the menu, it has a Done button, with an icon like the page's other buttons", !bd_w.document.getElementById("backupCard").hidden && !bd_w.document.getElementById("backupDoneRow").hidden && bd_w.document.getElementById("backupDone").querySelector(".btn-icon").getAttribute("src") === "icons/confirm.svg" && bd_w.document.getElementById("backupDone").textContent.trim() === "Done");
-  bd_w.document.getElementById("backupDone").click();
+  check("opened from the menu, it has OK and Cancel buttons, with an icon like the page's other buttons", !bd_w.document.getElementById("backupCard").hidden && !bd_w.document.getElementById("backupDoneRow").hidden && bd_w.document.getElementById("backupOk").querySelector(".btn-icon").getAttribute("src") === "icons/confirm.svg" && bd_w.document.getElementById("backupOk").textContent.trim() === "OK" && bd_w.document.getElementById("backupCancel").textContent.trim() === "Cancel");
+  bd_w.document.getElementById("backupCancel").click();
   await new Promise((r) => setTimeout(r, 100));
-  check("Done closes it and changes nothing: the way is still Manual", bd_w.document.getElementById("backupCard").hidden && bd_w.localStorage.getItem("backupMode") === "manual" && bd_w.document.getElementById("backupModeManual").checked);
+  check("Cancel closes it and changes nothing: the way is still Manual", bd_w.document.getElementById("backupCard").hidden && bd_w.localStorage.getItem("backupMode") === "manual" && bd_w.document.getElementById("backupModeManual").checked);
   } catch (err) { areaCrashed("backup card done", err); } }
 
   if (want("backup popup")) { try {
@@ -4038,7 +4044,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var bp_html = fs.readFileSync(ROOT + "index.html", "utf8");
   var bp_z = (re) => Number((bp_html.match(re) || [])[1]);
   check("opened, the card is fixed over the page, above the Donate bar, with its backdrop just under it", /#backupCard\.opened \{ position: fixed;/.test(bp_html) && bp_z(/#backupCard\.opened \{[^}]*z-index: (\d+)/) > bp_z(/#supportBox \{[^}]*z-index: (\d+)/) && bp_z(/#backupBackdrop \{[^}]*z-index: (\d+)/) > bp_z(/#supportBox \{[^}]*z-index: (\d+)/) && bp_z(/#backupBackdrop \{[^}]*z-index: (\d+)/) < bp_z(/#backupCard\.opened \{[^}]*z-index: (\d+)/));
-  check("its Done button stays at the bottom of the popup while the rest scrolls, and the page behind does not scroll", /#backupCard\.opened #backupDoneRow \{ position: sticky; bottom: 0;/.test(bp_html) && /body\.backup-card-open \{ overflow: hidden; \}/.test(bp_html) && /max-height: calc\(100dvh - 32px\)/.test(bp_html));
+  check("its OK and Cancel buttons stay at the bottom of the popup while the rest scrolls, and the page behind does not scroll", /#backupCard\.opened #backupDoneRow \{ position: sticky; bottom: 0;/.test(bp_html) && /body\.backup-card-open \{ overflow: hidden; \}/.test(bp_html) && /max-height: calc\(100dvh - 32px\)/.test(bp_html));
   var bp_w = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "manual", connectedBefore: "1", minimalMode: "1" }, fetchOptions: {} });
   var bp_d = bp_w.document;
   check("before it is opened, the backdrop is not shown and the page can scroll", bp_d.getElementById("backupBackdrop").hidden && !bp_d.body.classList.contains("backup-card-open") && !bp_d.getElementById("backupCard").getAttribute("role"));
@@ -4046,9 +4052,9 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   bp_d.getElementById("feBackupMethod").click();
   await new Promise((r) => setTimeout(r, 100));
   check("from the menu it opens as a popup: the backdrop shows, the page behind is locked, and it is a dialog for a screen reader", !bp_d.getElementById("backupBackdrop").hidden && bp_d.body.classList.contains("backup-card-open") && bp_d.getElementById("backupCard").classList.contains("opened") && bp_d.getElementById("backupCard").getAttribute("role") === "dialog" && bp_d.getElementById("backupCard").getAttribute("aria-modal") === "true" && bp_d.getElementById("backupCard").getAttribute("aria-labelledby") === "backupCardTitle" && !!bp_d.getElementById("backupCardTitle"));
-  check("the keyboard starts on the chosen way, and Done is there", bp_d.activeElement.id === "backupModeManual" && !bp_d.getElementById("backupDoneRow").hidden);
-  bp_d.getElementById("backupDone").click();
-  check("Done closes it, unlocks the page, and returns to the menu button", bp_d.getElementById("backupBackdrop").hidden && !bp_d.body.classList.contains("backup-card-open") && bp_d.getElementById("backupCard").hidden && !bp_d.getElementById("backupCard").getAttribute("role") && bp_d.activeElement.id === "feAppMenuButton" && bp_w.localStorage.getItem("backupMode") === "manual");
+  check("the keyboard starts on the chosen way, and the buttons are there", bp_d.activeElement.id === "backupModeManual" && !bp_d.getElementById("backupDoneRow").hidden);
+  bp_d.getElementById("backupCancel").click();
+  check("Cancel closes it, unlocks the page, and returns to the menu button", bp_d.getElementById("backupBackdrop").hidden && !bp_d.body.classList.contains("backup-card-open") && bp_d.getElementById("backupCard").hidden && !bp_d.getElementById("backupCard").getAttribute("role") && bp_d.activeElement.id === "feAppMenuButton" && bp_w.localStorage.getItem("backupMode") === "manual");
   bp_d.getElementById("feAppMenuButton").click(); bp_d.getElementById("feBackupMethod").click();
   await new Promise((r) => setTimeout(r, 60));
   bp_d.getElementById("backupBackdrop").click();
@@ -4060,6 +4066,8 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   bp_d.getElementById("feAppMenuButton").click(); bp_d.getElementById("feBackupMethod").click();
   await new Promise((r) => setTimeout(r, 60));
   bp_d.getElementById("backupModeSpotify").click();
+  check("clicking a radio button alone does not close the card or change anything", !bp_d.getElementById("backupCard").hidden && bp_w.localStorage.getItem("backupMode") !== "spotify");
+  bp_d.getElementById("backupOk").click();
   await new Promise((r) => setTimeout(r, 100));
   check("choosing the other way closes it and saves the choice, as before", bp_d.getElementById("backupCard").hidden && bp_d.getElementById("backupBackdrop").hidden && bp_w.localStorage.getItem("backupMode") === "spotify" && !bp_d.body.classList.contains("backup-card-open"));
   // the first time, before any choice, it is part of the page, not a popup
@@ -4364,7 +4372,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-10-31zf"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-10-31zg"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
