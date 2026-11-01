@@ -16,7 +16,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-31zc";
+const APP_VERSION = "2026-10-31zd";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -992,7 +992,7 @@ function applyBackupMode() {
   if ($("spotifySaveLine")) $("spotifySaveLine").hidden = !spotify;
   if ($("backupBlock")) $("backupBlock").hidden = spotify;
   document.body.classList.toggle("spotify-backup", spotify);
-  // Clear data on this device: with Spotify as the way, the formats come back from Spotify, not from a file
+  // Reset app on this device: with Spotify as the way, the formats come back from Spotify, not from a file
   for (const [id, text] of [["clearRestoreHelp", "Recipes saved to Spotify stay there, and connecting to Spotify again brings them back."], ["clearConfirmHelp", "Recipes saved to Spotify stay there, and connecting to Spotify again brings them back."]]) {
     const el = $(id);
     if (!el) continue;
@@ -1028,8 +1028,8 @@ function refreshBackupStatus() {
     edited: "Your recipes have been edited since your last backup.",
     current: state.when ? "Last backup: " + state.when + "." : "Your recipes are backed up.",
   }[state.kind];
-  // Clear data on this device: what would be lost, so a backup can be made first.
-  if (backupMode() === "spotify") { $("clearBackupNote").textContent = "Your recipes are saved to Spotify, and clearing the data on this device does not remove them."; return; }
+  // Reset app on this device: what would be lost, so a backup can be made first.
+  if (backupMode() === "spotify") { $("clearBackupNote").textContent = "Your recipes are saved to Spotify, and resetting the app on this device does not remove them."; return; }
   $("clearBackupNote").textContent = {
     example: "You haven't made any recipes yet, so there is nothing to lose.",
     never: "You haven't backed up to this device yet. Back up first, or they will be gone for good.",
