@@ -372,7 +372,7 @@ print(json.dumps(out))
   wClear.eval("reloadPage = () => { window.__reloaded = true; }");
   check("clear panel is hidden until asked", wClear.document.getElementById("clearConfirm").hidden === true);
   wClear.document.getElementById("clearData").click();
-  check("clicking Clear saved data asks first, and clears nothing yet", wClear.document.getElementById("clearConfirm").hidden === false && wClear.localStorage.getItem("clientId") === "keep-me" && !!wClear.sessionStorage.getItem("token"));
+  check("clicking Clear data on this device asks first, and clears nothing yet", wClear.document.getElementById("clearConfirm").hidden === false && wClear.localStorage.getItem("clientId") === "keep-me" && !!wClear.sessionStorage.getItem("token"));
   wClear.document.getElementById("clearNo").click();
   check("cancel leaves everything saved", wClear.document.getElementById("clearConfirm").hidden === true && wClear.localStorage.getItem("clientId") === "keep-me" && !wClear.__reloaded);
   wClear.document.getElementById("clearData").click();
@@ -577,7 +577,7 @@ print(json.dumps(out))
   // I3. the Python status moved out of the way
   check("the Python status lives in More options, under a heading that says what it is, with plain wording", !!wB.document.querySelector("#moreOptions #pythonStatus") && /^Ready\. Python v[\d.]+ is running in your browser\.$/.test(wB.document.getElementById("pythonStatus").textContent) && !wB.document.querySelector("#appSection #pythonStatus") && Array.from(wB.document.querySelectorAll("#moreOptions h3")).some((h) => h.textContent === "Python status"), wB.document.getElementById("pythonStatus").textContent);
   check("More options no longer says planner anywhere, and explains Python in one sentence", !/planner/i.test(wB.document.getElementById("moreOptions").textContent) && /The code that builds your playlists is written in Python and runs inside your browser, so nothing about your music is sent to a server\./.test(wB.document.getElementById("moreOptions").textContent) && !/planner/i.test(fs.readFileSync(ROOT + "index.html", "utf8")));
-  check("the app version is its own line at the end of More options, not part of the Python status", (() => { const last = Array.from(wB.document.querySelectorAll("#moreOptions > p")).pop(); return /^App version: /.test(last.textContent) && last.querySelector("#appVersionLabel") !== null; })());
+  check("More options does not show the app version", wB.document.getElementById("appVersionLabel") === null && !/App version/.test(wB.document.getElementById("moreOptions").textContent));
   check("while Python loads, the note beside Create says Python, not planner", /Getting Python ready/.test(fs.readFileSync(ROOT + "app.js", "utf8")) && /Python could not start, so building is unavailable/.test(fs.readFileSync(ROOT + "app.js", "utf8")) && !/planner/i.test(fs.readFileSync(ROOT + "app.js", "utf8")));
 
   // J. the thank-you prompt only follows a successful create
@@ -693,11 +693,7 @@ print(json.dumps(out))
   var pgc = await boot({ url: "http://127.0.0.1:8000/", local: { clientId: "c1", connectedBefore: "1", formats: MINI } });
   check("connected before and signed out, it is still the app, and Build becomes Connect Spotify", pg(pgc) === "app" && pgc.document.getElementById("appSection").hidden === false && pgc.document.getElementById("create").textContent.trim() === "Connect Spotify");
   pgc.document.getElementById("feAppMenuButton").click();
-  pgc.document.getElementById("feSetupAgain").click();
-  check("the menu's Change Client ID opens the setup page for this tab only", pg(pgc) === "setup" && pgc.sessionStorage.getItem("setupAgain") === "1" && pgc.localStorage.getItem("setupStarted") === null);
-  pgc.history.back();
-  await waitFor(() => pg(pgc) === "app", 2000);
-  check("and the back button returns to the app", pg(pgc) === "app" && pgc.sessionStorage.getItem("setupAgain") === null);
+  check("the menu has no Change Client ID", pgc.document.getElementById("feSetupAgain") === null);
   var pgHead = fs.readFileSync(ROOT + "index.html", "utf8");
   check("the page is chosen in <head> before anything is drawn, the same way as in app.js", /\(function \(\) \{\n    var page = "welcome";/.test(pgHead) && /document\.documentElement\.classList\.add\("page-" \+ page\)/.test(pgHead) && /function pageName\(\)/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
 
@@ -738,10 +734,10 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-10-31z" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-10-31zc" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-10-31z/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
-  check("the version is shown in More options too", rp.document.getElementById("appVersionLabel").textContent === "2026-10-31z");
+  check("the page shows people exactly what will be attached", /Version: 2026-10-31zc/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
 
@@ -804,12 +800,12 @@ print(json.dumps(out))
   check("the Details attached line is plain text, not bold, and not gray", lbl.textContent === "Details attached to the report:" && !lbl.querySelector("strong, b") && !lbl.classList.contains("muted") && lbl.nextElementSibling.id === "reportPreview");
 
 
-  // ---------------- Clear saved data explains how to get formats back, and shows the backup situation
+  // ---------------- Clear data on this device explains how to get formats back, and shows the backup situation
   var cb = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: null } });
   cb.eval("saveFile = (name, text) => { window.__savedFromClear = { name, text }; }");
   var note = () => cb.document.getElementById("clearBackupNote").textContent;
   var clearSection = cb.document.getElementById("moreOptions").textContent.replace(/\s+/g, " ");
-  check("the Clear saved data section starts with You, says formats are erased too, and points to Restore and Back up now in the app menu", /^Removes everything this app keeps on this device, including your Client ID\. Nothing in your Spotify account changes\./.test(clearSection.slice(clearSection.indexOf("Clear saved data") + 16).trim()) && /Your recipes are erased too\. To get them back afterward, choose Restore in the app menu and pick the backup you made on this device\. If you haven't backed up to this device, choose Back up now there first\./.test(clearSection) && !/If something looks stuck/.test(clearSection));
+  check("the Clear data on this device section starts with You, says formats are erased too, and points to Restore and Back up now in the app menu", /^Removes everything this app keeps on this device, including your Client ID\. Nothing in your Spotify account changes\./.test(clearSection.slice(clearSection.indexOf("Clear data on this device") + 16).trim()) && /Your recipes are erased too\. To get them back afterward, choose Restore in the app menu and pick the backup you made on this device\. If you haven't backed up to this device, choose Back up now there first\./.test(clearSection) && !/If something looks stuck/.test(clearSection));
   check("untouched example: nothing to lose", note() === "You haven't made any recipes yet, so there is nothing to lose.", note());
   cb.document.getElementById("formats").value += "\n# my change";
   cb.document.getElementById("formats").dispatchEvent(new cb.Event("input"));
@@ -920,16 +916,16 @@ print(json.dumps(out))
   var cc = cb.document.getElementById("clearConfirm");
 
 
-  // ---------------- the Clear saved data question
+  // ---------------- the Clear data on this device question
   var cq = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI } });
   var cqBox = cq.document.getElementById("clearConfirm");
   var cqBtn = cq.document.getElementById("clearData");
   cq.eval("reloadPage = () => { window.__reloadedByClear = true; }");
-  check("before it is asked, the Clear saved data button is enabled and the question is hidden", cqBox.hidden === true && cqBtn.disabled === false);
+  check("before it is asked, the Clear data on this device button is enabled and the question is hidden", cqBox.hidden === true && cqBtn.disabled === false);
   cqBtn.click();
   var cqLead = cqBox.querySelector("p");
   check("the question is plain text, not bold, so it does not read like a heading", cqLead.textContent === "Clear the saved Client ID, recipes, and sign-in, and reload this page?" && !cqLead.querySelector("strong, b, h1, h2, h3, h4") && !cqBox.querySelector("strong, b"));
-  check("while the question is showing, the Clear saved data button is disabled", cqBox.hidden === false && cqBtn.disabled === true);
+  check("while the question is showing, the Clear data on this device button is disabled", cqBox.hidden === false && cqBtn.disabled === true);
   cqBtn.click();
   check("clicking the disabled button does nothing more", cqBox.hidden === false && cqBtn.disabled === true);
   cq.document.getElementById("clearNo").click();
@@ -946,7 +942,7 @@ print(json.dumps(out))
   check("Last backup shows the day and the time of day", /^Last backup: Oct 25, 2026 at 2:05\s?PM\.$/.test(afternoon.replace(/\u202f/g, " ")), JSON.stringify(afternoon));
   var tbMorning = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, lastBackupText: MINI, lastBackupAt: new Date(2026, 9, 5, 9, 7, 0).toISOString() } });
   check("a morning time reads naturally, with no leading zero on the day or hour", /^Last backup: Oct 5, 2026 at 9:07\s?AM\.$/.test(tbMorning.document.getElementById("backupStatus").textContent.replace(/\u202f/g, " ")), tbMorning.document.getElementById("backupStatus").textContent);
-  check("the Clear saved data note shows the time too", /^Your recipes are backed up \(last backup: Oct 25, 2026 at 2:05\s?PM\)\.$/.test(tb.document.getElementById("clearBackupNote").textContent.replace(/\u202f/g, " ")), tb.document.getElementById("clearBackupNote").textContent);
+  check("the Clear data on this device note shows the time too", /^Your recipes are backed up \(last backup: Oct 25, 2026 at 2:05\s?PM\)\.$/.test(tb.document.getElementById("clearBackupNote").textContent.replace(/\u202f/g, " ")), tb.document.getElementById("clearBackupNote").textContent);
   tb.document.getElementById("formats").value = MINI + "\n# edit";
   tb.document.getElementById("formats").dispatchEvent(new tb.Event("input"));
   tb.document.getElementById("formats").value = MINI;
@@ -2374,7 +2370,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   sv_w12.document.getElementById("clearYes").click();
   await waitFor(() => sv_w12.__reloaded === true || true, 100);
   await new Promise((r) => setTimeout(r, 300));
-  check("Clear saved data clears them too", (await sv_count(sv_w12)) === 0);
+  check("Clear data on this device clears them too", (await sv_count(sv_w12)) === 0);
   var sv_w13 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: SONGS_FORMAT }, fetchOptions: {}, idb: null, before: (w) => { w.indexedDB = undefined; } });
   await readyToPreview(sv_w13);
   sv_w13.document.getElementById("create").click();
@@ -2462,7 +2458,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var pa_first = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, minimalMode: "1" }, fetchOptions: { meStatus: 429, retryAfter: 120 } });
   check("signed in before any connection has worked, the page is still the app, with the problem on its Build button", pa_first.localStorage.getItem("connectedBefore") === null && pa_first.document.body.classList.contains("minimal") && pa_first.document.getElementById("create").textContent.trim() === "Try again");
   pa_first.document.getElementById("feAppMenuButton").click();
-  check("the menu offers Connect Spotify and Change Client ID", !!pa_first.document.getElementById("feConnect") && !!pa_first.document.getElementById("feSetupAgain"));
+  check("the menu offers Connect Spotify and no Change Client ID", !!pa_first.document.getElementById("feConnect") && !pa_first.document.getElementById("feSetupAgain"));
   check("there is no Compact view in it", !pa_first.document.getElementById("feMinimal"));
   pa_first.document.getElementById("feAppMenuButton").click();
   var pa_new = await boot({ url: EDURL, local: { minimalMode: "1", connectedBefore: "1" }, fetchOptions: {} });
@@ -2473,7 +2469,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   check("with a connection problem the page stays minimal, so nothing from Step 1 is squeezed above the editor", pa_bad.eval("connection") === "problem" && pa_bad.document.body.classList.contains("minimal"));
   check("the app menu button has no dot, whatever is wrong with Spotify: the page and the menu already say it", !pa_bad.document.getElementById("feAppMenuButton").classList.contains("fe-alert") && pa_bad.document.getElementById("feAppMenuButton").getAttribute("aria-label") === "App menu" && !/fe-alert/.test(fs.readFileSync(ROOT + "index.html", "utf8") + fs.readFileSync(ROOT + "editor.js", "utf8")));
   pa_bad.document.getElementById("feAppMenuButton").click();
-  check("the menu offers the ordinary Connect Spotify, then Change Client ID, last in the menu like every other Spotify state, with what went wrong under it, and no Try again of its own", JSON.stringify(Array.from(pa_bad.document.querySelectorAll("#feAppMenuPanel .fe-item")).slice(-2).map((b) => b.id)) === '["feConnect","feSetupAgain"]' && pa_bad.document.getElementById("feConnect").textContent.trim() === "Connect Spotify" && pa_bad.document.getElementById("feConnectionNote").textContent === pa_bad.document.getElementById("connectionMessage").textContent && !pa_bad.document.getElementById("feReconnect") && !pa_bad.document.getElementById("feRetry"));
+  check("the menu offers the ordinary Connect Spotify, last in the menu like every other Spotify state, with what went wrong under it, and no Try again of its own", JSON.stringify(Array.from(pa_bad.document.querySelectorAll("#feAppMenuPanel .fe-item")).slice(-1).map((b) => b.id)) === '["feConnect"]' && pa_bad.document.getElementById("feConnect").textContent.trim() === "Connect Spotify" && pa_bad.document.getElementById("feConnectionNote").textContent === pa_bad.document.getElementById("connectionMessage").textContent && !pa_bad.document.getElementById("feReconnect") && !pa_bad.document.getElementById("feRetry"));
   pa_bad.document.getElementById("feAppMenuButton").click();
   check("Create has become Try again, and is on", pa_bad.document.getElementById("create").textContent.trim() === "Try again" && pa_bad.document.getElementById("create").disabled === false && pa_bad.document.querySelector("#create img").getAttribute("src") === "icons/retry.svg");
   check("the note beside it says what went wrong, in place of the pointer to Step 1", pa_bad.document.getElementById("spotifyNote").hidden === false && pa_bad.document.getElementById("spotifyNote").textContent === pa_bad.document.getElementById("connectionMessage").textContent);
@@ -2548,7 +2544,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   check("it says the app never sees the Spotify password, what it asks Spotify to allow, and that existing playlists are only read", /never sees your Spotify password/.test(pv_text) && /read your playlists, create playlists, remove playlists, and set their cover images/.test(pv_text) && /Your existing playlists are only read, never changed/.test(pv_text) && /anyone with a playlist's link can still open it/.test(pv_text));
   check("it says a problem report goes only to the developer, only if sent, and lists what is attached and what never is", /sent only if you choose to send it, and it goes only to me, the developer of this app/.test(pv_text) && /app version, browser, window size, last error, and recent steps/.test(pv_text) && /Your sign-in, Client ID, playlist names, and song titles are never included/.test(pv_text));
   check("it describes the counts honestly: GoatCounter, no cookies, what is recorded, the four actions, and what it never receives", /GoatCounter/.test(pv_text) && /uses no cookies/.test(pv_text) && /browser, screen size, country, and the site you came from/.test(pv_text) && /first time a browser connects to Spotify, how many playlists get created, when Donate is opened, and the kind of connection problem/.test(pv_text) && /never receives playlist names, recipes, song titles, or your Client ID/.test(pv_text));
-  check("it says what is kept in the browser and what Disconnect and Clear saved data remove", /Your Client ID, your recipes, your color choice, and a copy of the songs from your playlists are saved in this browser/.test(pv_text) && /Disconnect removes your Spotify sign-in and the saved songs/.test(pv_text) && /Clear saved data, in More options, removes everything/.test(pv_text));
+  check("it says what is kept in the browser and what Disconnect and Clear data on this device remove", /Your Client ID, your recipes, your color choice, and a copy of the songs from your playlists are saved in this browser/.test(pv_text) && /Disconnect removes your Spotify sign-in and the saved songs/.test(pv_text) && /Clear data on this device, in More options, removes everything/.test(pv_text));
   check("About links to it, and the setup and welcome pages do not, since they leave Privacy out", pv_w.document.querySelectorAll("#about a.privacy-link").length === 1 && pv_w.document.querySelectorAll("#loginSection a.privacy-link").length === 0 && pv_w.document.querySelectorAll("#welcomePage a.privacy-link").length === 0 && /html\.page-welcome footer, /.test(pv_html) && Array.from(pv_w.document.querySelectorAll("a.privacy-link")).every((a) => a.getAttribute("href") === "#privacySection"));
   var pv_click2 = new pv_w.MouseEvent("click", { bubbles: true, cancelable: true });
   pv_w.document.querySelector("#about a.privacy-link").dispatchEvent(pv_click2);
@@ -2740,7 +2736,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-10-31z", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-10-31zc", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -2981,7 +2977,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var py_heads = Array.from(py_w.document.querySelectorAll("#moreOptions h3")).filter((h) => !h.closest("[hidden]")).map((h) => h.textContent);
   check("the Python status is the last section of More options, after Hiding the Support me button, since it is the only one with nothing to press", py_heads[py_heads.length - 1] === "Python status" && py_heads[py_heads.length - 2] === "Hiding the Support me button", JSON.stringify(py_heads));
   check("it sits right above the app version, the last line", py_w.document.getElementById("pythonStatus").nextElementSibling.id === "" && /^App version: /.test(py_w.document.getElementById("pythonStatus").nextElementSibling.textContent) && py_w.document.getElementById("pythonStatus").nextElementSibling.nextElementSibling === null);
-  check("the Clear saved data question still opens right under its button, ahead of the Hiding the Support me button section", !!(py_w.document.getElementById("clearConfirm").compareDocumentPosition(py_w.document.getElementById("donateHideBox")) & 4));
+  check("the Clear data on this device question still opens right under its button, ahead of the Hiding the Support me button section", !!(py_w.document.getElementById("clearConfirm").compareDocumentPosition(py_w.document.getElementById("donateHideBox")) & 4));
   } catch (err) { areaCrashed("python status at the bottom", err); } }
 
   if (want("the build icon")) { try {
@@ -3044,7 +3040,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var dh_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var dh_d = dh_w.document;
   var dh_h3 = Array.from(dh_d.querySelectorAll("#moreOptions h3")).map((h) => h.textContent);
-  check("More options has a section called Hiding the Support me button, right after Clear saved data and just before Python status", dh_h3.includes("Hiding the Support me button") && dh_h3.indexOf("Hiding the Support me button") === dh_h3.indexOf("Clear saved data") + 1 && dh_h3.indexOf("Hiding the Support me button") + 1 === dh_h3.indexOf("Python status"), JSON.stringify(dh_h3));
+  check("More options has a section called Hiding the Support me button, right after Clear data on this device and just before Python status", dh_h3.includes("Hiding the Support me button") && dh_h3.indexOf("Hiding the Support me button") === dh_h3.indexOf("Clear data on this device") + 1 && dh_h3.indexOf("Hiding the Support me button") + 1 === dh_h3.indexOf("Python status"), JSON.stringify(dh_h3));
   var dh_p = dh_d.querySelector("#donateHideBox").closest("label").previousElementSibling;
   check("it is direct and playful: the button is meant to be visible until you have donated, please give what feels right, thank you if you did, check the box and it leaves you alone, honor system, nobody is looking, and it waits patiently", dh_p.textContent === "The Support me button stays visible until you have... supported me 🙂. If this app has been helpful to you, please give whatever feels right. Already did? Thank you! Check the box and the button will leave you alone. This runs on the honor system, so nobody\u2019s looking, and the button waits patiently.");
   check("there is one checkbox, labeled I have supported you!, for people who have donated, and no second answer for people who have not", dh_d.getElementById("donateHideBox").type === "checkbox" && dh_d.getElementById("donateHideBox").closest("label").textContent.trim() === "I have supported you!" && !dh_d.getElementById("hideDonated") && !dh_d.getElementById("hideDeclined") && !dh_d.getElementById("showDonate"));
@@ -3821,7 +3817,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var sw_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("the privacy text says that with automatic backup each recipe is also kept in a private playlist in the person's own Spotify account, in its description, and goes nowhere else", /Recipes are saved to Spotify unless you choose otherwise: each recipe is also kept in a private playlist in your own Spotify account, in the playlist's description\. That is where the app saves it and reads it back, and it goes nowhere else\./.test(sw_html));
   var sw_m = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "manual" }, fetchOptions: {} });
-  check("with the backup file as the way, Clear saved data talks about restoring from the file, with Restore in the app menu", /Restore in the app menu/.test(sw_m.document.getElementById("clearRestoreHelp").textContent) && /Restore in the app menu/.test(sw_m.document.getElementById("clearConfirmHelp").textContent));
+  check("with the backup file as the way, Clear data on this device talks about restoring from the file, with Restore in the app menu", /Restore in the app menu/.test(sw_m.document.getElementById("clearRestoreHelp").textContent) && /Restore in the app menu/.test(sw_m.document.getElementById("clearConfirmHelp").textContent));
   var sw_s = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "spotify" }, fetchOptions: {} });
   check("with Spotify as the way, it says the backups in Spotify stay, and that connecting again loads the formats back, and does not mention a file", /Recipes saved to Spotify stay there/.test(sw_s.document.getElementById("clearRestoreHelp").textContent) && /connecting to Spotify again brings them back/.test(sw_s.document.getElementById("clearConfirmHelp").textContent) && !/restore from a backup/.test(sw_s.document.getElementById("clearRestoreHelp").textContent + sw_s.document.getElementById("clearConfirmHelp").textContent));
   check("and the note above the button says clearing does not remove those backups", /does not remove them/.test(sw_s.document.getElementById("clearBackupNote").textContent));
@@ -4241,7 +4237,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var vl_ready = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: {} });
   vl_ready.document.getElementById("feAppMenuButton").click();
   var vl_menu = vl_ready.document.getElementById("feAppMenuPanel");
-  check("the app menu ends with the version, in the same words as at the bottom of More options", vl_menu.lastElementChild.id === "feVersion" && vl_menu.lastElementChild.textContent === "App version " + vl_ready.document.getElementById("appVersionLabel").textContent && vl_ready.document.getElementById("feVersion").textContent === "App version " + vl_ready.eval("APP_VERSION"));
+  check("the app menu ends with the version", vl_menu.lastElementChild.id === "feVersion" && vl_ready.document.getElementById("feVersion").textContent === "App version " + vl_ready.eval("APP_VERSION"));
   check("it is only text: small, muted, with a divider above it, and nothing to press", vl_menu.lastElementChild.tagName === "DIV" && vl_menu.lastElementChild.previousElementSibling.className === "fe-rule" && /#formatEditor \.fe-version \{[^}]*color: var\(--muted\); font-size: 0\.78rem;/.test(vl_css) && !/fe-version[^{]*:hover/.test(vl_css));
   vl_ready.document.body.click();
   var vl_out = await boot({ url: EDURL, local: { formats: MINI, connectedBefore: "1", clientId: "c1" }, fetchOptions: {} });
@@ -4265,7 +4261,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   check("connecting: the Connecting item and its note are last", sl_slow.eval("connection") === "connecting" && sl_s.last.id === "feConnectionNote" && /Connecting/.test(sl_s.last.previousElementSibling.textContent));
   var sl_out = await boot({ url: EDURL, local: { formats: MINI, connectedBefore: "1", clientId: "c1" }, fetchOptions: {} });
   sl_out.document.getElementById("feAppMenuButton").click();
-  check("not connected: Connect Spotify, then Change Client ID, are last", JSON.stringify(Array.from(sl_out.document.querySelectorAll("#feAppMenuPanel > *")).slice(0, -2).slice(-2).map((n) => n.id)) === '["feConnect","feSetupAgain"]');
+  check("not connected: Connect Spotify is last", JSON.stringify(Array.from(sl_out.document.querySelectorAll("#feAppMenuPanel > *")).slice(0, -2).slice(-1).map((n) => n.id)) === '["feConnect"]');
   sl_out.document.body.click();
   check("and in every state the menu starts with the app's name and icon, then More options, so it begins the same way", [sl_ready, sl_slow, sl_out].every((w) => { w.document.getElementById("feAppMenuButton").click(); const kids = w.document.querySelectorAll("#feAppMenuPanel > *"); const ok = kids[0].id === "feMenuHead" && kids[1].id === "feMoreOptions"; w.document.body.click(); return ok; }));
   } catch (err) { areaCrashed("spotify last", err); } }
@@ -4359,7 +4355,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-10-31z"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-10-31zc"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

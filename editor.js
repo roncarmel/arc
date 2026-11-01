@@ -434,10 +434,6 @@ function renderAppMenu() {
     const why = connecting ? "On a slow connection this can take a few seconds." : connection === "problem" ? $("connectionMessage").textContent : "";
     if (why) connectItems.push(feEl("div", { class: "fe-itemnote", id: "feConnectionNote", text: why }));
   }
-  // not connected: the setup page again, for a Client ID that is wrong or whose developer app is gone
-  if ((connection === "none" || connection === "problem") && typeof goToSetup === "function") {
-    connectItems.push(feEl("button", { type: "button", class: "fe-item", id: "feSetupAgain", role: "menuitem", onClick: choose(() => goToSetup(true)) }, feIcon("key"), "Change Client ID"));
-  }
   // When recipes are saved to Spotify there is nothing about saving in this menu: it happens by itself, and the icon on the menu button shows it while it does. For a person
   // who backs up by hand there is one block: what it is, a link to change it, when the last backup was, and the two actions.
   const auto = typeof backupMode === "function" && backupMode() === "spotify";
