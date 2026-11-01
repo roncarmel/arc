@@ -266,10 +266,13 @@ function textToModel(text, allowEmpty) {
     const rawTitle = fmt.get("title");
     const title = typeof rawTitle === "string" ? rawTitle : titleFromName(fmt.get("name"), String(key));
     const rev = Number(fmt.get("revision")), modified = Number(fmt.get("modified"));
-    const format = ensureGaps({ id: String(key), title, gap, gaps, lead, items, rev: rev > 0 ? Math.floor(rev) : 0, modified: modified > 0 ? Math.floor(modified) : 0 });
+    const place = Number(fmt.get("place")), placed = Number(fmt.get("placed"));
+    const format = ensureGaps({ id: String(key), title, gap, gaps, lead, items, rev: rev > 0 ? Math.floor(rev) : 0, modified: modified > 0 ? Math.floor(modified) : 0,
+      place: place > 0 ? Math.floor(place) : undefined, placeAt: placed > 0 ? Math.floor(placed) : 0 });
     FORMAT_SIGNATURES.set(format, formatSignature(format));   // as loaded, so reading a format counts as no edit
     return format;
   });
+  placeFormats(formats);
   return { formats };
 }
 
@@ -298,6 +301,8 @@ function modelToText(model) {
     out.push(`        "name": ${pyString(nameFromTitle(fmt.title))},`);
     out.push(`        "silence between segments": ${fmt.gap > 0 ? pyString(formatSilenceText(fmt.gap)) : '"none"'},`);
     if (fmt.rev > 0) { out.push(`        "revision": ${fmt.rev},`); out.push(`        "modified": ${fmt.modified || 0},`); }
+    if (fmt.place > 0) out.push(`        "place": ${fmt.place},`);
+    if (fmt.placeAt > 0) out.push(`        "placed": ${fmt.placeAt},`);
     out.push('        "segments": [');
     if (fmt.lead > 0) out.push(`            ("silence", ${pyString(formatSilenceText(fmt.lead))}),`);
     fmt.items.forEach((item, index) => {
@@ -345,6 +350,41 @@ function mixPercentA(item) {
 }
 
 
+// ---------------------------------------------------------------- the order of the formats
+// Each format has a place, a number that the formats are sorted by (then by ID, so equal places sort the same everywhere), and the time it was last moved. Moving a
+// format gives it a place between its new neighbours, so only that one format changes and only its save is written again. Two devices that moved the same format settle
+// on the later move (the higher place on a tie), so every device ends up with the same order whatever order they saved in. The place is not part of a format's
+// content: moving a format is not an edit, and never asks which version to keep.
+const PLACE_STEP = 1024;
+
+function sortFormats(formats) {
+  formats.sort((a, b) => (a.place - b.place) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+}
+
+// gives a place to each format that has none (one from before places, or a new one), after all the others in the order they are in, then sorts
+function placeFormats(formats) {
+  let last = formats.reduce((m, f) => (f.place > 0 ? Math.max(m, f.place) : m), 0);
+  for (const f of formats) if (!(f.place > 0)) { f.place = last += PLACE_STEP; f.placeAt = f.placeAt || 0; }
+  sortFormats(formats);
+}
+
+// of two copies of a format, the one whose place stands: the later move, then the higher place
+function laterPlace(a, b) {
+  const pa = a.place > 0 ? a.place : 0, pb = b.place > 0 ? b.place : 0;
+  if ((a.placeAt || 0) !== (b.placeAt || 0)) return (a.placeAt || 0) > (b.placeAt || 0) ? a : b;
+  return pa >= pb ? a : b;
+}
+
+// The format at this index has just been moved there: a place between its neighbours, or, when there is no whole number between them, new places for them all.
+function placeMoved(formats, index, nowSeconds) {
+  const now = nowSeconds || Math.floor(Date.now() / 1000);
+  const f = formats[index], before = formats[index - 1], after = formats[index + 1];
+  const lo = before ? before.place : 0;
+  const hi = after ? after.place : lo + 2 * PLACE_STEP;
+  if (hi - lo >= 2) { f.place = after ? Math.floor((lo + hi) / 2) : lo + PLACE_STEP; f.placeAt = now; return; }
+  formats.forEach((g, k) => { g.place = (k + 1) * PLACE_STEP; g.placeAt = now; });
+}
+
 // ---------------------------------------------------------------- editing counts: a revision number and an edit time for each format
 // A format's revision goes up, and its edit time is set, whenever its content changes. What counts as content is what the format says (title, silences, segments,
 // playlists), not its revision or edit time, and not the IDs and names the app fills in by itself.
@@ -383,9 +423,10 @@ function contentSignature(fmt) {
 //   bytes:  length of what follows | "C" "P" version | the format | CRC-16 of "C" "P" version and the format
 //   format: id, title (each a length and UTF-8), revision, edit time (seconds since the start of 2026), default silence, silence before the first segment,
 //           the silences of their own (count; place and seconds), then the segments (count; seconds, and the playlists of each: count; for each, a kind
-//           byte, then the last 6 bytes of a Spotify ID, or all 16 where another playlist ends the same way, or the ID as text, or the name as text, and the weight)
+//           byte, then the last 6 bytes of a Spotify ID, or all 16 where another playlist ends the same way, or the ID as text, or the name as text, and the weight),
+//           then the place and the time it was last moved (seconds since the start of 2026, 0 for never)
 const SAVE_PREFIX = "Do not edit. ";
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2;   // 2 added the place, at the end
 const SAVE_EPOCH = 1767225600;
 const DENSE_BASE = 0x4e00;
 const SPOTIFY_ID_DIGITS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -478,6 +519,8 @@ function packFormat(fmt, allIds) {
       writeVarint(body, l.weight);
     }
   }
+  writeVarint(body, fmt.place > 0 ? fmt.place : 0);
+  writeVarint(body, fmt.placeAt ? Math.max(1, fmt.placeAt - SAVE_EPOCH + 1) : 0);
   const payload = [0x43, 0x50, SAVE_VERSION, ...body];
   const crc = crc16(payload);
   payload.push(crc >> 8, crc & 0xff);
@@ -572,10 +615,12 @@ function unpackFormat(description) {
       }
       items.push({ id: `r${++ROW_SEQ}`, kind: "seg", lists, minutes });
     }
+    let place, placeAt = 0;
+    if (payload[2] >= 2) { place = varint() || undefined; const moved = varint(); placeAt = moved ? moved - 1 + SAVE_EPOCH : 0; }
     if (pos !== bytes.length) fail();
     for (let g = 1; g <= items.length; g++) gaps[g] = undefined;
     for (const [g, sec] of own) if (g >= 1 && g <= items.length) gaps[g] = sec;
-    return { kind: "save", format: ensureGaps({ id, title, gap, gaps, lead, items, rev, modified: edited ? edited - 1 + SAVE_EPOCH : 0 }) };
+    return { kind: "save", format: ensureGaps({ id, title, gap, gaps, lead, items, rev, modified: edited ? edited - 1 + SAVE_EPOCH : 0, place, placeAt }) };
   } catch (err) {
     return { kind: "damaged" };
   }

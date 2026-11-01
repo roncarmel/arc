@@ -46,6 +46,7 @@ const FE_ICONS = {
   unplug: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/><path d="M4 4l16 16"/></svg>',
   lock: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
   flag: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>',
+  chat: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/></svg>',
   info: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
   key: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/></svg>',
   check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
@@ -173,6 +174,7 @@ function commit() {
     const length = saveLength(f);
     if (length > SAVE_LIMIT && length > before.length) { restoreFormat(f, before); editor.refused = true; }
   }
+  placeFormats(editor.model.formats);   // a new format goes last
   touchFormats(editor.model);   // a format whose content changed gets its next revision number and its edit time
   const text = modelToText(editor.model);
   editor.internal = true;
@@ -223,6 +225,7 @@ function commitHealed() {
 // A format read from its backup in Spotify replaces the one here with that ID, or is added. That is not an edit made here, so it keeps the revision and the time it
 // was saved with, and nothing is saved back.
 function writeAdopted() {
+  placeFormats(editor.model.formats);   // in the order the places say, whatever device moved them
   rememberFormats(editor.model);
   const text = modelToText(editor.model);
   editor.internal = true;
@@ -344,7 +347,17 @@ function renderEditor() {
     feEl("div", { class: "fe-tabs", id: "feTabs" }),
     feEl("button", { type: "button", class: "fe-newformat", id: "feNewFormat", "aria-label": "New recipe", title: "New recipe", onClick: askNewFormat }, feIcon("plus"), feEl("span", { class: "fe-newformat-label", text: "New recipe" })),
     feEl("div", { class: "fe-appmenuwrap", id: "feAppMenu" })));
-  $("feTabs").addEventListener("scroll", updateTabFade);
+  const strip = $("feTabs");
+  strip.addEventListener("scroll", updateTabFade);
+  strip.addEventListener("pointerdown", startTabPress);
+  strip.addEventListener("touchmove", (event) => { if (tabDrag.press && tabDrag.press.dragging) event.preventDefault(); }, { passive: false });   // a held tab moves, the row does not scroll under it
+  strip.addEventListener("contextmenu", (event) => { if (tabDrag.press) event.preventDefault(); });   // the long press is not a request for a menu
+  strip.addEventListener("keydown", (event) => {
+    const tab = event.target.closest && event.target.closest("button.fe-tab");
+    if (!tab || !event.altKey || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
+    event.preventDefault();
+    moveTabBy(tab.getAttribute("data-id"), event.key === "ArrowLeft" ? -1 : 1);
+  });
   renderTabs();
   renderAppMenu();
   // the menu button was not there yet when the tabs were drawn, so the tabs have less room than they were scrolled for
@@ -421,8 +434,8 @@ function renderAppMenu() {
   if (!editor.appMenu) return;
   const choose = (action) => () => { editor.appMenu = false; renderAppMenu(); action(); };
   const backupLabel = ($("backupStatus") && $("backupStatus").textContent) || "";   // the same label as in the backup step, which the app page hides
-  // Connecting from the menu: with a saved Client ID, Connect Spotify, which is also the way out of a problem.
-  // Not connected is one thing in the menu, whatever the reason: Connect Spotify, with what is wrong (or that it is under way) in a line under it. The page has its own
+  // Connecting from the menu: with a saved Client ID, Connect to Spotify, which is also the way out of a problem.
+  // Not connected is one thing in the menu, whatever the reason: Connect to Spotify, with what is wrong (or that it is under way) in a line under it. The page has its own
   // Try again and Connect again, with the same words, so the menu does not need its own.
   const connectItems = [];
   const hasClientId = !!localStorage.getItem("clientId");
@@ -430,7 +443,7 @@ function renderAppMenu() {
     const connecting = connection === "connecting";
     // a problem that waiting can mend (the network, a rate limit) is tried again where it stopped; one in the sign-in itself, or no sign-in, starts a new sign-in
     const press = () => (connection === "problem" && connectionKind === "retry" && token ? connectToSpotify() : startLogin());
-    connectItems.push(feEl("button", { type: "button", class: "fe-item", id: "feConnect", role: "menuitem", disabled: connecting, onClick: choose(press) }, feIcon("link"), connecting ? "Connecting\u2026" : "Connect Spotify"));
+    connectItems.push(feEl("button", { type: "button", class: "fe-item", id: "feConnect", role: "menuitem", disabled: connecting, onClick: choose(press) }, feIcon("link"), connecting ? "Connecting\u2026" : "Connect to Spotify"));
     const why = connecting ? "On a slow connection this can take a few seconds." : connection === "problem" ? $("connectionMessage").textContent : "";
     if (why) connectItems.push(feEl("div", { class: "fe-itemnote", id: "feConnectionNote", text: why }));
   }
@@ -463,6 +476,8 @@ function renderAppMenu() {
   slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" },
     feEl("div", { class: "fe-menuhead", id: "feMenuHead" }, feEl("img", { class: "fe-menuicon", src: "apple-touch-icon.png", alt: "", width: "40", height: "40" }), feEl("span", { class: "fe-menuname", text: "Ceremony Playlist Builder" })),
     infoItem("feMoreOptions", "moreOptions", "sliders", "More options"),
+    infoItem("feTips", "tipsBlock", "info", "Tips & tricks"),
+    typeof FEEDBACK_FORM_URL !== "undefined" && FEEDBACK_FORM_URL ? infoItem("feFeedback", "feedbackSection", "chat", "Questions and feedback") : null,
     infoItem("fePrivacy", "privacySection", "lock", "Privacy"),
     infoItem("feReport", "reportBlock", "flag", "Report a problem"),
     ...(backupBlock ? [feEl("div", { class: "fe-rule" }), backupBlock] : []),
@@ -551,6 +566,192 @@ function renderTabs() {
   }
   scrollSelectedTab();
   updateTabFade();
+}
+
+// ---------------------------------------------------------------- reordering the tabs
+// Press and hold a tab for about a third of a second, then drag it sideways; the others make way. Moving before the hold is over scrolls the row instead: a finger
+// scrolls it as usual, and a mouse drags it along. The held tab grows a little past its lifted size and settles back, and on a phone each step gives a tick. Near either end of the row it scrolls by itself, but never past the last tab. The tab stays inside the row: pulled past an end it gives a little,
+// harder the further it goes, like a list on a phone pulled past its end. On a phone the New recipe and menu buttons step aside while a tab is held, and the other tabs
+// get narrower, so more of the row can be seen. Alt + the left or right arrow on a focused tab moves it one place.
+const tabDrag = { holdMs: 350, slop: 8, edge: 44, speed: 10, give: 22, press: null, frame: 0 };
+
+function startTabPress(event) {
+  if (tabDrag.press || !editor.model) return;
+  const mouse = event.pointerType === "mouse";
+  if (mouse && event.button !== 0) return;
+  const found = event.target.closest && event.target.closest(".fe-tab");
+  const tab = found && !found.classList.contains("fe-tab-editing") && editor.model.formats.length > 1 ? found : null;
+  if (!tab && !mouse) return;   // a finger scrolls the row by itself; a mouse is helped to, from anywhere in it
+  if (found && found.classList.contains("fe-tab-editing")) return;   // the name being typed: the mouse selects text there
+  const press = { tab, pointerId: event.pointerId, x0: event.clientX, x: event.clientX, touch: !mouse, dragging: false, panning: false, scroll0: $("feTabs").scrollLeft, grab: 0, timer: 0 };
+  tabDrag.press = press;
+  if (tab) press.timer = setTimeout(() => beginTabDrag(press), tabDrag.holdMs);
+  window.addEventListener("pointermove", moveTabPress);
+  window.addEventListener("pointerup", endTabPress);
+  window.addEventListener("pointercancel", endTabPress);
+}
+
+function moveTabPress(event) {
+  const press = tabDrag.press;
+  if (!press || event.pointerId !== press.pointerId) return;
+  press.x = event.clientX;
+  if (press.dragging) { placeDraggedTab(); return; }
+  if (press.panning) { $("feTabs").scrollLeft = press.scroll0 - (press.x - press.x0); return; }
+  if (Math.abs(press.x - press.x0) <= tabDrag.slop) return;
+  if (press.touch) { endTabPress(); return; }   // a swipe before the hold is over: the row scrolls
+  clearTimeout(press.timer);   // the mouse moved before the hold was over: it scrolls the row
+  press.panning = true;
+  press.scroll0 += press.x - press.x0;   // no jump: it scrolls from here on
+}
+
+function beginTabDrag(press) {
+  if (tabDrag.press !== press || !press.tab.isConnected) return;
+  press.dragging = true;
+  press.grab = press.x0 - press.tab.getBoundingClientRect().left;   // where the tab was taken hold of, not where the finger is by now
+  press.tab.classList.add("fe-dragging");
+  liftTab(press.tab, true);
+  haptic();
+  $("feTabs").classList.add("fe-reordering");
+  const row = document.querySelector("#formatEditor .fe-toprow");
+  if (row) row.classList.add("fe-toprow-reordering");
+  placeDraggedTab();
+  const tick = () => {
+    if (tabDrag.press !== press) return;
+    const strip = $("feTabs");
+    const box = strip.getBoundingClientRect();
+    // the further into the edge, the faster; and only as far as the tabs go (the lifted tab's own offset would otherwise let the row scroll on into nothing)
+    const into = press.x < box.left + tabDrag.edge ? -(box.left + tabDrag.edge - press.x) : press.x > box.right - tabDrag.edge ? press.x - (box.right - tabDrag.edge) : 0;
+    if (into) {
+      const most = Math.max(0, tabsEnd(strip) + (parseFloat(getComputedStyle(strip).paddingRight) || 0) - strip.clientWidth);
+      strip.scrollLeft = Math.max(0, Math.min(most, strip.scrollLeft + Math.sign(into) * tabDrag.speed * Math.min(1, Math.abs(into) / tabDrag.edge)));
+    }
+    placeDraggedTab();
+    tabDrag.frame = requestAnimationFrame(tick);
+  };
+  tabDrag.frame = requestAnimationFrame(tick);
+}
+
+// The lifted tab follows the finger; when its middle passes the middle of a neighbour, the two swap places in the row and the neighbour slides over.
+function placeDraggedTab() {
+  const press = tabDrag.press;
+  const strip = $("feTabs");
+  if (!press || !press.dragging || !strip) return;
+  const tab = press.tab;
+  const origin = strip.getBoundingClientRect().left - strip.scrollLeft;   // layout positions (offsetLeft) never include the transforms of tabs in motion
+  const others = [...strip.querySelectorAll(".fe-tab")].filter((t) => t !== tab);
+  const middle = press.x - press.grab + tab.offsetWidth / 2;
+  const index = others.filter((t) => origin + t.offsetLeft + t.offsetWidth / 2 < middle).length;
+  const target = others[index] || null;
+  if (tab.nextElementSibling !== target) {
+    const before = new Map(others.map((t) => [t, t.offsetLeft]));
+    strip.insertBefore(tab, target);
+    haptic();
+    const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!reduce) {
+      for (const t of others) {
+        const moved = before.get(t) - t.offsetLeft;
+        if (moved && typeof t.animate === "function") t.animate([{ transform: `translateX(${moved}px)` }, { transform: "translateX(0)" }], { duration: 160, easing: "ease-out" });
+      }
+    }
+  }
+  // inside the row and inside the tabs, with a little give past either end; the give, and the lifted tab's extra size, stay inside the row, which cuts off anything past it
+  const box = strip.getBoundingClientRect();
+  const first = strip.querySelector(".fe-tab");
+  const inset = tabDrag.give + tab.offsetWidth * 0.03;
+  const lowest = Math.max(box.left + inset, origin + first.offsetLeft);
+  const highest = Math.min(box.right - inset, origin + tabsEnd(strip)) - tab.offsetWidth;
+  let left = press.x - press.grab;
+  if (left < lowest) left = lowest - rubberBand(lowest - left);
+  else if (left > highest) left = Math.max(lowest, highest) + rubberBand(left - Math.max(lowest, highest));
+  tab.style.transform = `translateX(${left - (origin + tab.offsetLeft)}px)`;
+}
+
+// The held tab's size is its own animation, apart from the sideways move: on lifting it grows a little past its lifted size and settles back to it.
+const TAB_LIFT = 1.06;
+function liftTab(tab, up) {
+  const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce || typeof tab.animate !== "function") { tab.style.scale = up ? String(TAB_LIFT) : ""; return; }
+  tab.animate(up ? [{ scale: 1 }, { scale: 1.12, offset: 0.55 }, { scale: TAB_LIFT }] : [{ scale: TAB_LIFT }, { scale: 1 }],
+    { duration: up ? 260 : 180, easing: "ease-out", fill: up ? "forwards" : "none" });
+}
+
+// A short tick on a phone. Android browsers have vibrate. Safari on an iPhone has no vibrate, but since iOS 18 switching a switch gives a light tick, so a hidden one
+// is switched; elsewhere it does nothing.
+let hapticSwitch = null;
+function haptic() {
+  try {
+    if (typeof navigator.vibrate === "function") { navigator.vibrate(8); return; }
+    if (!/iPhone|iPad|iPod/.test(navigator.userAgent) && !(navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform))) return;
+    if (!hapticSwitch) {
+      const input = feEl("input", { type: "checkbox", switch: true, tabindex: "-1" });
+      hapticSwitch = feEl("label", { class: "fe-haptic", "aria-hidden": "true" }, input);
+      document.body.appendChild(hapticSwitch);
+    }
+    hapticSwitch.click();
+  } catch (err) { /* no tick: nothing else depends on it */ }
+}
+
+// where the last tab ends, by layout (a moving tab's offset does not count)
+function tabsEnd(strip) {
+  const tabs = strip.querySelectorAll(".fe-tab");
+  const last = tabs[tabs.length - 1];
+  return last ? last.offsetLeft + last.offsetWidth : 0;
+}
+
+// how far something pulled past its end goes: about half at first, then less and less, never more than the give
+function rubberBand(distance) {
+  return (1 - 1 / (distance * 0.55 / tabDrag.give + 1)) * tabDrag.give;
+}
+
+function endTabPress() {
+  const press = tabDrag.press;
+  if (!press) return;
+  tabDrag.press = null;
+  clearTimeout(press.timer);
+  cancelAnimationFrame(tabDrag.frame);
+  window.removeEventListener("pointermove", moveTabPress);
+  window.removeEventListener("pointerup", endTabPress);
+  window.removeEventListener("pointercancel", endTabPress);
+  if (!press.dragging && !press.panning) return;
+  // letting go is not a tap on the tab
+  const swallow = (event) => { event.stopPropagation(); event.preventDefault(); };
+  window.addEventListener("click", swallow, { capture: true, once: true });
+  setTimeout(() => window.removeEventListener("click", swallow, { capture: true }), 0);
+  if (!press.dragging) return;
+  const strip = $("feTabs");
+  const row = document.querySelector("#formatEditor .fe-toprow");
+  if (row) row.classList.remove("fe-toprow-reordering");
+  const id = press.tab.getAttribute("data-id");
+  const from = press.tab.getBoundingClientRect().left;
+  const order = [...strip.querySelectorAll(".fe-tab")].map((t) => t.getAttribute("data-id"));
+  const formats = editor.model.formats;
+  if (order.join("|") !== formats.map((f) => f.id).join("|")) {
+    editor.model.formats = order.map((id) => formats.find((f) => f.id === id));
+    placeMoved(editor.model.formats, order.indexOf(id));
+    commit();
+  }
+  renderTabs();
+  // the tab settles into its place from where it was let go
+  const dropped = [...strip.querySelectorAll(".fe-tab")].find((t) => t.getAttribute("data-id") === id);
+  const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (dropped && !reduce && typeof dropped.animate === "function") {
+    const moved = from - dropped.getBoundingClientRect().left;
+    dropped.animate([{ transform: `translateX(${moved}px)`, scale: TAB_LIFT }, { transform: "none", scale: 1 }], { duration: 200, easing: "ease-out" });
+  }
+}
+
+// the same, one place at a time, for the keyboard
+function moveTabBy(id, step) {
+  const formats = editor.model.formats;
+  const from = formats.findIndex((f) => f.id === id);
+  const to = from + step;
+  if (from < 0 || to < 0 || to >= formats.length) return;
+  formats.splice(to, 0, formats.splice(from, 1)[0]);
+  placeMoved(formats, to);
+  commit();
+  renderTabs();
+  const tab = [...$("feTabs").querySelectorAll(".fe-tab")].find((t) => t.getAttribute("data-id") === id);
+  if (tab) tab.focus();
 }
 
 function renameTab(f) {
@@ -1291,7 +1492,8 @@ function startDrag(event, grip, id, index) {
   if (grip.setPointerCapture) { try { grip.setPointerCapture(event.pointerId); } catch (err) { /* not every browser needs it */ } }
   editor.drag = { id, from: index, to: index, startY: event.clientY, dy: 0, step, rows, count: rows.length };
   rows[index].classList.add("fe-dragging");
-  $("feRows").classList.add("fe-dragging-any");   // the silence tags step aside while a row is being moved
+  $("feRows").classList.add("fe-dragging-any");
+  haptic();   // the silence tags step aside while a row is being moved
 }
 
 function moveDrag(event) {
@@ -1301,6 +1503,7 @@ function moveDrag(event) {
   dy = Math.max(-d.from * d.step, Math.min((d.count - 1 - d.from) * d.step, dy));
   const to = Math.max(0, Math.min(d.count - 1, Math.round(d.from + dy / d.step)));
   d.dy = dy;
+  if (to !== d.to) haptic();   // a tick each time the row takes a new place
   d.to = to;
   d.rows.forEach((row, i) => {
     if (i === d.from) { row.style.transform = `translateY(${dy}px)`; return; }

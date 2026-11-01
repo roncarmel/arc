@@ -16,7 +16,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-01b";
+const APP_VERSION = "2026-11-01e";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -624,6 +624,10 @@ async function mergeFromSpotify() {
       changedHere = true;
       continue;
     }
+    // the place is settled on its own, before the content: the later move stands, on both copies, so it is kept whichever content wins
+    const placed = laterPlace(local, r);
+    if (local.place !== placed.place || (local.placeAt || 0) !== (placed.placeAt || 0)) { local.place = placed.place; local.placeAt = placed.placeAt; changedHere = true; }
+    r.place = local.place; r.placeAt = local.placeAt;
     const lr = local.rev || 0, rr = r.rev || 0;
     if (contentSignature(local) === contentSignature(r)) {   // the same: only the counters may differ
       if (rr > lr) { local.rev = rr; local.modified = r.modified; changedHere = true; }
@@ -1127,7 +1131,7 @@ const BACKED_UP_MESSAGE = "Backed up to this device. Find the file in Downloads,
 let reloadPage = () => location.reload();   // a separate function so tests can replace it
 
 async function clearSavedData() {
-  // The Client ID goes to the clipboard first (while the click still counts), so connecting again is a paste (debugging aid, not mentioned on the page).
+  // The Client ID goes to the clipboard first (while the click still counts), so connecting again is a paste (the More options text says so).
   const savedId = localStorage.getItem("clientId");
   if (savedId) { try { await Promise.race([navigator.clipboard.writeText(savedId), new Promise((r) => setTimeout(r, 1000))]); } catch (err) { /* no clipboard access: the reset goes on */ } }
   // Everything this page saves lives in this browser's storage for this address, so clearing it forgets it all.
@@ -1146,7 +1150,7 @@ function updateButtonsNow() {
   const action = connectionAction();
   // Step 1's buttons, while a sign-in is under way
   const connectButton = $("connect");
-  if (connectButton) { setLabel(connectButton, signingIn ? "Connecting\u2026" : "Connect Spotify"); connectButton.disabled = signingIn; }
+  if (connectButton) { setLabel(connectButton, signingIn ? "Connecting\u2026" : "Connect to Spotify"); connectButton.disabled = signingIn; }
   if ($("connectionReconnect")) $("connectionReconnect").disabled = signingIn;
   const connectingNow = signingIn || connection === "connecting";
   if (connectingNow && minimalActive()) {
@@ -1156,7 +1160,7 @@ function updateButtonsNow() {
     $("create").disabled = true;
   } else if (action) {
     const again = connection === "problem";
-    setLabel($("create"), again ? (connectionKind === "reconnect" ? "Connect again" : "Try again") : "Connect Spotify");
+    setLabel($("create"), again ? (connectionKind === "reconnect" ? "Connect again" : "Try again") : "Connect to Spotify");
     setIcon($("create"), again && connectionKind !== "reconnect" ? "retry" : "connect");
     $("create").disabled = busy;
   } else {
@@ -2412,7 +2416,7 @@ async function main() {
   on("create", "click", () => startCreate());
   if (FEEDBACK_FORM_URL) {
     $("feedbackLink").href = FEEDBACK_FORM_URL;
-    for (const id of ["feedbackSection", "privacyFeedback", "privacyFeedbackWho"]) $(id).hidden = false;
+    for (const id of ["privacyFeedback", "privacyFeedbackWho"]) $(id).hidden = false;   // the section itself opens from the app menu
   }
   for (const link of document.querySelectorAll(".privacy-link")) {
     link.addEventListener("click", (event) => {
