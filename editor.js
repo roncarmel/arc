@@ -479,7 +479,8 @@ function renderAppMenu() {
     ...(backupBlock ? [feEl("div", { class: "fe-rule" }), backupBlock] : []),
     ...(spotifyItems.length || backupBlock ? [feEl("div", { class: "fe-rule" })] : []),
     infoItem("feMoreOptions", "moreOptions", "sliders", "More options"),
-    typeof FEEDBACK_FORM_URL !== "undefined" && FEEDBACK_FORM_URL ? infoItem("feFeedback", "feedbackSection", "chat", "Questions and feedback") : null,
+    // the form says all there is to say about itself, so the item opens it straight away, in a new tab, with nothing attached
+    typeof FEEDBACK_FORM_URL !== "undefined" && FEEDBACK_FORM_URL ? feEl("a", { class: "fe-item", id: "feFeedback", role: "menuitem", href: FEEDBACK_FORM_URL, target: "_blank", rel: "noopener noreferrer", onClick: () => setTimeout(() => { editor.appMenu = false; renderAppMenu(); }, 0) }, feIcon("chat"), "Questions and feedback") : null,
     infoItem("feReport", "reportBlock", "flag", "Report a problem"),
     infoItem("feTips", "tipsBlock", "info", "Tips & tricks"),
     infoItem("fePrivacy", "privacySection", "lock", "Privacy"),

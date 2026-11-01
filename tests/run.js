@@ -749,9 +749,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-01g" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-01h" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-01g/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-01h/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -2760,7 +2760,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-01g", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-01h", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3018,24 +3018,17 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   if (want("questions and feedback")) { try {
   // ================================================================ questions and feedback
   var qf_w0 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
-  check("until the form's address is set, nothing about it shows: not the section, and not the lines in Privacy", qf_w0.document.getElementById("feedbackSection").hidden === true && qf_w0.document.getElementById("privacyFeedback").hidden === true && qf_w0.document.getElementById("privacyFeedbackWho").hidden === true);
+  check("until the form's address is set, nothing about it shows: not the lines in Privacy", qf_w0.document.getElementById("privacyFeedback").hidden === true && qf_w0.document.getElementById("privacyFeedbackWho").hidden === true);
   var QF = "https://tally.so/r/EXAMPLE";
   var qf_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {}, feedbackUrl: QF });
-  var qf_sec = qf_w.document.getElementById("feedbackSection");
-  check("Questions and feedback is not in More options any more", !qf_w.document.getElementById("moreOptions").contains(qf_sec) && qf_sec.querySelector("h3").textContent === "Questions and feedback");
+  check("there is no Questions and feedback section or popup any more: the form says it all", !qf_w.document.getElementById("feedbackSection") && !qf_w.document.getElementById("feedbackLink") && !fs.existsSync(ROOT + "icons/feedback.svg"));
   qf_w.document.getElementById("feAppMenuButton").click();
-  check("once the address is set, the app menu has Questions and feedback, after More options", !!qf_w.document.getElementById("feFeedback") && qf_w.document.getElementById("feMoreOptions").nextElementSibling === qf_w.document.getElementById("feFeedback") && /Questions and feedback/.test(qf_w.document.getElementById("feFeedback").textContent));
-  qf_w.document.getElementById("feFeedback").click();
-  check("and it opens the section in the popup, titled Questions and feedback", qf_w.document.getElementById("infoOverlay").hidden === false && qf_w.document.getElementById("infoSlot").contains(qf_sec) && qf_sec.hidden === false && qf_w.document.getElementById("infoTitle").textContent === "Questions and feedback");
-  qf_w.document.getElementById("infoClose").click();
-  check("closing the popup puts it back, hidden", qf_sec.hidden === true && !qf_w.document.getElementById("infoSlot").contains(qf_sec));
-  var qf_text = qf_sec.querySelector("p").textContent;
-  check("it says one form takes questions or feedback, that it sends only what you type, and that the email is optional, for if you want to be answered", /One form takes either\./.test(qf_text) && /It sends only what you type\./.test(qf_text) && /optional email field: enter an email there if you want me to be able to respond\./.test(qf_text) && /nothing is sent until you submit it there/.test(qf_text));
-  var qf_link = qf_w.document.getElementById("feedbackLink");
-  check("its button opens the form in a new tab, safely, at exactly the form's address: no details are attached, unlike a problem report", qf_link.getAttribute("href") === QF && qf_link.target === "_blank" && /noopener/.test(qf_link.rel) && /noreferrer/.test(qf_link.rel) && !/\?/.test(qf_link.getAttribute("href")) && qf_link.textContent.trim() === "Open the feedback form" && qf_link.querySelector("img").getAttribute("src") === "icons/feedback.svg");
+  var qf_link = qf_w.document.getElementById("feFeedback");
+  check("once the address is set, the app menu has Questions and feedback, after More options", !!qf_link && qf_w.document.getElementById("feMoreOptions").nextElementSibling === qf_link && qf_link.textContent.trim() === "Questions and feedback");
+  check("it is a link that opens the form in a new tab, safely, at exactly the form's address: no details are attached, unlike a problem report", qf_link.tagName === "A" && qf_link.getAttribute("href") === QF && qf_link.target === "_blank" && /noopener/.test(qf_link.rel) && /noreferrer/.test(qf_link.rel));
   qf_link.dispatchEvent(new qf_w.MouseEvent("click", { bubbles: true, cancelable: true }));
-  check("pressing it does not rebuild the link with anything added, as the problem report link does", qf_link.getAttribute("href") === QF);
-  check("the icon file exists and is a white line icon like the others", fs.existsSync(ROOT + "icons/feedback.svg") && /stroke="#fff"/.test(fs.readFileSync(ROOT + "icons/feedback.svg", "utf8")));
+  await new Promise((r) => setTimeout(r, 20));   // the menu closes just after the click, so the link is still there to open the form
+  check("pressing it closes the menu, opens no popup, and adds nothing to the address", !qf_w.document.getElementById("feAppMenuPanel") && qf_w.document.getElementById("infoOverlay").hidden === true && qf_link.getAttribute("href") === QF);
   var qf_priv = qf_w.document.getElementById("privacySection").textContent.replace(/\s+/g, " ");
   check("Privacy then says the form sends only what you type, that an email goes only if you enter one and is used only to respond, and that the feedback form opens only if you choose to send feedback", /The form sends only what you type, and nothing else is attached\. An email address is included only if you choose to enter one, and it is used only to respond to you\./.test(qf_priv) && /the feedback form only if you choose to send feedback/.test(qf_priv) && qf_w.document.getElementById("privacyFeedback").hidden === false);
   check("the form that ships is the Tally one, at its real address", /const FEEDBACK_FORM_URL = "https:\/\/tally\.so\/r\/4aayDd";/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
@@ -4441,7 +4434,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-01g"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-01h"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
