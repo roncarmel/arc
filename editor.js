@@ -807,8 +807,11 @@ function scrollSelectedTab() {
 function updateTabFade() {
   const strip = $("feTabs");
   if (!strip) return;
-  strip.classList.toggle("fe-fade-left", strip.scrollLeft > 2);
-  strip.classList.toggle("fe-fade-right", strip.scrollLeft + strip.clientWidth < strip.scrollWidth - 2);
+  const left = Math.max(0, strip.scrollLeft), right = Math.max(0, strip.scrollWidth - strip.clientWidth - strip.scrollLeft);
+  strip.classList.toggle("fe-fade-left", left > 2);
+  strip.classList.toggle("fe-fade-right", right > 2);
+  strip.style.setProperty("--fe-fade-l", Math.min(28, left) + "px");
+  strip.style.setProperty("--fe-fade-r", Math.min(28, right) + "px");
 }
 
 function renderHead(rebuild) {
