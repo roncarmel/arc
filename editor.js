@@ -44,6 +44,10 @@ const FE_ICONS = {
   download: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>',
   restore: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V5M7 9l5-5 5 5M5 20h14"/></svg>',
   unplug: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/><path d="M4 4l16 16"/></svg>',
+  lock: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+  flag: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>',
+  info: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
+  key: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/></svg>',
   check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
   reset: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg>',
   warn: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17.5v.1"/></svg>',
@@ -381,20 +385,10 @@ function brokenView() {
 }
 
 // ---------------------------------------------------------------- the app-level menu
-// Minimalist mode is a saved setting (more of the page will respond to it over time); for now it only records the choice and puts "minimal" on the page.
-function minimalMode() {
-  try { return localStorage.getItem("minimalMode") === "1"; } catch (err) { return false; }
-}
-
-// Minimalist mode becomes available once Spotify has connected for the first time, and it applies whenever the editor is on the page.
-// Step 1 stays hidden then, whether or not Spotify is connected: connecting, trying again and connecting again are done from the
-// app menu and the Create button instead.
-function hasConnectedBefore() {
-  try { return localStorage.getItem("connectedBefore") === "1"; } catch (err) { return false; }
-}
-
+// The app page is the compact one ("minimal" on the body): only the editor and the Build button. Connecting, trying again and connecting
+// again are done from the app menu and the Build button.
 function minimalActive() {
-  return minimalMode() && hasConnectedBefore() && document.body.classList.contains("has-editor");
+  return document.documentElement.classList.contains("page-app") && document.body.classList.contains("has-editor");
 }
 
 function applyMinimalMode() {
@@ -402,14 +396,6 @@ function applyMinimalMode() {
   if (typeof scrollSelectedTab === "function") scrollSelectedTab();   // the icon changes how much room the tabs have, so keep the selected one in view
   if (typeof updateTabFade === "function") updateTabFade();
   if (typeof updateButtons === "function") updateButtons();   // Create turns into a connect button while minimal and not connected
-}
-
-function toggleMinimal() {
-  if (!hasConnectedBefore()) return;
-  try { localStorage.setItem("minimalMode", minimalMode() ? "0" : "1"); } catch (err) { /* the choice just does not last */ }
-  applyMinimalMode();
-  editor.appMenu = false;   // the menu closes; the checkbox shows the new state the next time it opens
-  renderAppMenu();
 }
 
 function toggleAppMenu() {
@@ -434,12 +420,8 @@ function renderAppMenu() {
   applySavingIcon();
   if (!editor.appMenu) return;
   const choose = (action) => () => { editor.appMenu = false; renderAppMenu(); action(); };
-  const on = minimalMode();
-  const backupLabel = ($("backupStatus") && $("backupStatus").textContent) || "";   // the same label as in the backup step, which minimalist mode hides
-  const available = hasConnectedBefore();
-  const box = feEl("span", { class: "fe-check" + (on ? " fe-check-on" : ""), "aria-hidden": "true" });
-  if (on) box.appendChild(feIcon("check"));
-  // Connecting from the menu: with a saved Client ID, Connect Spotify; and, in minimalist mode where Step 1 is hidden, the way out of a problem.
+  const backupLabel = ($("backupStatus") && $("backupStatus").textContent) || "";   // the same label as in the backup step, which the app page hides
+  // Connecting from the menu: with a saved Client ID, Connect Spotify, which is also the way out of a problem.
   // Not connected is one thing in the menu, whatever the reason: Connect Spotify, with what is wrong (or that it is under way) in a line under it. The page has its own
   // Try again and Connect again, with the same words, so the menu does not need its own.
   const connectItems = [];
@@ -451,6 +433,10 @@ function renderAppMenu() {
     connectItems.push(feEl("button", { type: "button", class: "fe-item", id: "feConnect", role: "menuitem", disabled: connecting, onClick: choose(press) }, feIcon("link"), connecting ? "Connecting\u2026" : "Connect Spotify"));
     const why = connecting ? "On a slow connection this can take a few seconds." : connection === "problem" ? $("connectionMessage").textContent : "";
     if (why) connectItems.push(feEl("div", { class: "fe-itemnote", id: "feConnectionNote", text: why }));
+  }
+  // not connected: the setup page again, for a Client ID that is wrong or whose developer app is gone
+  if ((connection === "none" || connection === "problem") && typeof goToSetup === "function") {
+    connectItems.push(feEl("button", { type: "button", class: "fe-item", id: "feSetupAgain", role: "menuitem", onClick: choose(() => goToSetup(true)) }, feIcon("key"), "Change Client ID"));
   }
   // When recipes are saved to Spotify there is nothing about saving in this menu: it happens by itself, and the icon on the menu button shows it while it does. For a person
   // who backs up by hand there is one block: what it is, a link to change it, when the last backup was, and the two actions.
@@ -474,14 +460,15 @@ function renderAppMenu() {
     feEl("div", { class: "fe-sp-row" }, feIcon("link"), feEl("span", { class: "fe-sp-title", text: "Spotify connected" }),
       feEl("button", { type: "button", class: "fe-sp-disconnect", id: "feDisconnect", role: "menuitem", onClick: choose(() => confirmDisconnect()), text: "Disconnect" })),
     who ? feEl("div", { class: "fe-sp-status", id: "feConnectedStatus", text: `Connected as ${who}, ${plural(playlists.length, "playlist")} found.` }) : null);
-  const minimalButton = feEl("button", { type: "button", class: "fe-item", id: "feMinimal", role: "menuitemcheckbox", "aria-checked": String(on), onClick: toggleMinimal }, box, "Compact view");
-  if (!available) minimalButton.disabled = true;
+  // what the welcome and setup pages have at the bottom, each in a popup
+  const infoItem = (id, target, icon, label) => feEl("button", { type: "button", class: "fe-item", id, role: "menuitem", onClick: choose(() => openInfo(target)) }, feIcon(icon), label);
   // Spotify is the last thing in the menu, in whatever state it is in (connected, connecting, not connected, a problem), so it is always found in the same place.
   const spotifyItems = connection === "ready" ? [spotifyRow] : connectItems;
   slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" },
     feEl("div", { class: "fe-menuhead", id: "feMenuHead" }, feEl("img", { class: "fe-menuicon", src: "apple-touch-icon.png", alt: "", width: "40", height: "40" }), feEl("span", { class: "fe-menuname", text: "Ceremony Playlist Builder" })),
-    minimalButton,
-    ...(!available ? [feEl("div", { class: "fe-itemnote", id: "feMinimalNote", text: "Available after you first connect to Spotify." })] : []),
+    infoItem("feMoreOptions", "moreOptions", "sliders", "More options"),
+    infoItem("fePrivacy", "privacySection", "lock", "Privacy"),
+    infoItem("feReport", "reportBlock", "flag", "Report a problem"),
     ...(backupBlock ? [feEl("div", { class: "fe-rule" }), backupBlock] : []),
     ...(spotifyItems.length ? [feEl("div", { class: "fe-rule" }), ...spotifyItems] : []),
     feEl("div", { class: "fe-rule" }),
@@ -710,6 +697,7 @@ function pauseNotices() {
 // taps, so it comes back at once), not for the total as it changes minute by minute, and not for someone who has asked for less motion.
 function paintNotice(caption, view, options = {}) {
   const key = view ? `${view.text}|${view.count || ""}` : "total";
+  if (view && notices.paintedKey === key && caption.classList.contains("fe-notice") && caption.querySelector("button")) return;   // the same message is already there: repainting on a press would replace the button under the finger before the click lands
   const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const fade = !options.instant && !reduce && typeof caption.animate === "function" && notices.paintedKey !== undefined && notices.paintedKey !== key;
   let ghost = null;
@@ -1156,7 +1144,7 @@ function listPanel(item, slot) {
       feEl("span", { class: "fe-text" }, feEl("span", { class: "fe-title", text: p.name }),
         feEl("span", { class: "fe-sub", text: taken ? "Already in this mix" : (typeof p.count === "number" ? `${p.count} songs` : "") }))));
     }
-    if (!shown) list.appendChild(feEl("p", { class: "muted", style: "margin:8px", text: playlists.length ? "No playlists match." : (connection === "problem" ? "Your playlists could not be loaded. See Step 1." : connection === "none" ? "Connect to Spotify in Step 1 to see your playlists." : "Your playlists are still loading.") }));
+    if (!shown) list.appendChild(feEl("p", { class: "muted", style: "margin:8px", text: playlists.length ? "No playlists match." : (connection === "problem" ? "Your playlists could not be loaded. See the app menu." : connection === "none" ? "Connect to Spotify to see your playlists." : "Your playlists are still loading.") }));
   };
   search.addEventListener("input", () => { editor.search = search.value; draw(); });
   draw();

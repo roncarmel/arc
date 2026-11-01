@@ -10,12 +10,13 @@ const SCOPES = [
   "ugc-image-upload",                                       // the cover art on the playlists it creates
 ].join(" ");
 const REQUIRED_SCOPES = ["playlist-modify-private", "playlist-modify-public"];   // cover art is optional, so an older sign-in without it keeps working
-const API = "https://api.spotify.com/v1";
+// Not called API: Pyodide 0.29 treats a global named API as its own and fails to start (it falls back to an older version).
+const SPOTIFY_API = "https://api.spotify.com/v1";
 const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tightened some limits in 2026)
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-10-31d";
+const APP_VERSION = "2026-10-31z";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -82,7 +83,7 @@ async function checkForNewVersion() {
 function nothingIsGoingOn() {
   const active = document.activeElement;
   const typing = active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName);
-  const popup = document.querySelector(".fe-overlay:not([hidden]), #backupCard.opened, #createOverlay:not([hidden])");
+  const popup = document.querySelector(".fe-overlay:not([hidden]), #backupCard.opened, #createOverlay:not([hidden]), #infoOverlay:not([hidden])");
   return !busy && !saveState.running && !typing && !popup && !(typeof notices !== "undefined" && Date.now() - notices.lastEditAt < 10000);
 }
 
@@ -123,16 +124,124 @@ function startupFailed(err) {
   showStartupProblems();
 }
 
+// ---------------------------------------------------------------- the three pages
+// One page shows at a time: "welcome" (the first visit), "setup" (making the Spotify developer app and pasting its Client ID), or "app".
+// The script in index.html's <head> decides the same way before anything is drawn; showPage follows the changes after that.
+// setupStarted is "1" once Start setup is pressed and "0" after going back to the welcome page. setupAgain (this tab only) is the setup page
+// opened from the app menu, to change the Client ID.
+const PAGES = ["welcome", "setup", "app"];
+
+function storedItem(store, key) {
+  try { return store.getItem(key); } catch (err) { return null; }
+}
+
+function pageName() {
+  if (token) return "app";
+  if (storedItem(sessionStorage, "setupAgain") === "1") return "setup";
+  if (storedItem(localStorage, "connectedBefore") === "1") return "app";
+  const setup = storedItem(localStorage, "setupStarted");
+  if (setup === "1" || (setup === null && storedItem(localStorage, "clientId"))) return "setup";
+  return "welcome";
+}
+
+function showPage() {
+  if (token) { try { sessionStorage.removeItem("setupAgain"); } catch (err) { /* nothing to forget */ } }   // signed in: the setup that was opened again is done
+  const page = pageName();
+  const root = document.documentElement;
+  const was = PAGES.find((p) => root.classList.contains("page-" + p));
+  for (const p of PAGES) root.classList.toggle("page-" + p, p === page);
+  if (page === "app") {
+    $("appSection").hidden = false;   // the recipes are there to edit, connected or not; Build becomes Connect while not
+    document.body.classList.add("has-editor");
+  }
+  if (typeof applyMinimalMode === "function") applyMinimalMode();
+  if (was && was !== page) { window.scrollTo(0, 0); requestAnimationFrame(() => window.scrollTo(0, 0)); }   // again after the new page is laid out, so the title sits where it does on the other page
+}
+
+// The welcome page's Why? next to "Requires Spotify Premium" opens a small note under it.
+function showPremiumWhy(open) {
+  $("premiumWhyText").hidden = !open;
+  $("premiumWhy").setAttribute("aria-expanded", String(open));
+}
+
+// Going to the setup page adds a step to the browser's history, so the back button (or a phone's back gesture) returns to where the person was.
+function goToSetup(again) {
+  try { if (again) sessionStorage.setItem("setupAgain", "1"); else localStorage.setItem("setupStarted", "1"); } catch (err) { /* private browsing */ }
+  try { history.pushState({ page: "setup", again: !!again }, ""); } catch (err) { /* the back button just leaves the page */ }
+  closeInfo();
+  showPage();
+}
+
+// Back goes up one step: from the instructions to the question, and from the question to the page before.
+function setupBack() {
+  if (currentFlow()) { showFlow(null); window.scrollTo(0, 0); return; }
+  if (history.state && history.state.page === "setup") { history.back(); return; }   // the popstate that follows does the rest
+  setupLeft();
+}
+
+function setupLeft() {
+  try {
+    if (storedItem(sessionStorage, "setupAgain") === "1") sessionStorage.removeItem("setupAgain");
+    else localStorage.setItem("setupStarted", "0");
+  } catch (err) { /* private browsing */ }
+  showPage();
+}
+
+function pageHistoryMoved() {
+  const state = history.state;
+  if (state && state.page === "setup") {
+    try { if (state.again) sessionStorage.setItem("setupAgain", "1"); else localStorage.setItem("setupStarted", "1"); } catch (err) { /* private browsing */ }
+    showPage();
+  } else if (pageName() === "setup") {
+    setupLeft();
+  }
+}
+
+// About, Privacy, More options and Report a problem sit at the bottom of the welcome and setup pages. In the app they open from the menu in a
+// popup: the block itself moves into it, and goes back to its place when the popup closes.
+const info = { node: null, marker: null, wasOpen: false, wasHidden: false };
+
+function openInfo(id) {
+  closeInfo(true);
+  const node = $(id);
+  if (!node) return;
+  info.node = node;
+  info.wasOpen = !!node.open;
+  info.marker = document.createComment(id);
+  node.before(info.marker);
+  $("infoSlot").appendChild(node);
+  if (node.tagName === "DETAILS") node.open = true;
+  info.wasHidden = node.hidden;
+  node.hidden = false;
+  const title = node.querySelector("summary, h3");
+  $("infoDialog").setAttribute("aria-label", title ? title.textContent.trim() : "");
+  $("infoTitle").textContent = title ? title.textContent.trim() : "";
+  if (id === "reportBlock" || id === "moreOptions") refreshReportBox();
+  $("infoOverlay").hidden = false;
+  document.body.style.overflow = "hidden";
+  $("infoSlot").scrollTop = 0;
+  $("infoDialog").focus({ preventScroll: true });
+}
+
+function closeInfo(quiet = false) {
+  if (!info.node) return;
+  if (info.node.tagName === "DETAILS") info.node.open = info.wasOpen;
+  info.node.hidden = info.wasHidden;
+  info.marker.replaceWith(info.node);
+  info.node = null;
+  info.marker = null;
+  $("infoOverlay").hidden = true;
+  document.body.style.overflow = "";
+  if (!quiet && $("feAppMenuButton")) $("feAppMenuButton").focus();
+}
+
 function startFlowChoice() {
-  // The two choices at the top of Step 1 are wired first of all, for the whole page at once, so they work whatever else goes wrong.
-  // The capture phase catches the change even from a browser or a script that does not let it bubble, and the click covers a browser that
-  // reports a radio button's choice only that way.
-  const choose = (event) => {
-    const radio = event.target;
-    if (radio && radio.type === "radio" && radio.name === "flow") showFlow(radio.value);
-  };
-  document.addEventListener("change", choose, true);
-  document.addEventListener("click", choose, true);
+  // The two answers on the setup page are wired first of all, for the whole page at once, so they work whatever else goes wrong.
+  // The capture phase catches the click even from a script that stops it bubbling.
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest && event.target.closest("[data-flow]");
+    if (button) showFlow(button.getAttribute("data-flow"));
+  }, true);
 }
 let py = null;          // the Python functions, once loaded
 let token = null;       // Spotify access token (kept in this tab only)
@@ -371,13 +480,18 @@ function showFlow(flow) {
   // flow is "new", "existing", or null (nothing chosen yet: show neither, and nothing below the choices).
   $("flowNew").hidden = flow !== "new";
   $("flowExisting").hidden = flow !== "existing";
+  $("spWhat").hidden = flow === "existing";
+  $("spWhatExisting").hidden = flow !== "existing";
   $("connectBlock").hidden = !flow;
-  for (const radio of document.querySelectorAll('input[name="flow"]')) radio.checked = radio.value === flow;
+  $("spAsk").hidden = !!flow;
+  $("spSteps").hidden = !flow;
+  $("spStepsTitle").textContent = flow === "new" ? "Create an app inside your Spotify account" : "Find your Client ID";
+  currentFlowName = flow;
 }
 
+let currentFlowName = null;
 function currentFlow() {
-  const checked = document.querySelector('input[name="flow"]:checked');
-  return checked ? checked.value : null;
+  return currentFlowName;
 }
 
 
@@ -662,7 +776,7 @@ async function runSpotifySave() {
 function spotifySaveParts(full = true) {
   const parts = [];   // each: { text } or { text, action, label }
   if (saveState.running) { parts.push({ text: "Saving to Spotify\u2026" }); return parts; }
-  if (connection !== "ready") { parts.push({ text: connection === "problem" ? "Waiting to save to Spotify: see the problem in Step 1." : "Waiting to save to Spotify: connect first." }); }
+  if (connection !== "ready") { parts.push({ text: connection === "problem" ? "Waiting to save to Spotify: see the connection problem in the app menu." : "Waiting to save to Spotify: connect first." }); }
   else if (saveState.error) parts.push({ text: "Couldn\u2019t save to Spotify.", action: () => { saveState.error = ""; runSpotifySave(); }, label: "Try again" });
   else if (saveState.timer) parts.push({ text: "Saving to Spotify\u2026" });
   else {
@@ -1090,7 +1204,7 @@ function connectionAction() {
 
 // Spotify's free developer app now needs Premium on the account that owns it. Without it, Spotify refuses requests with a 403 that says so.
 const PREMIUM_REQUIRED_MESSAGE = "Spotify says the account that owns this Client ID needs Premium. A free Spotify account will not work. Once that account has Premium, try again.";
-const CREATE_NEEDS_SPOTIFY = "Building playlists needs a working connection to Spotify. See Step 1.";
+const CREATE_NEEDS_SPOTIFY = "Building playlists needs a working connection to Spotify.";
 
 function setConnection(state, message = "", kind = "retry") {
   connectionKind = kind;
@@ -1251,7 +1365,6 @@ async function finishLoginIfReturning() {
   if (params.has("error")) {
     revealLoginProblem();
     setLoginMessage("Spotify did not approve the sign-in: " + params.get("error"));
-    $("redirectHelp").open = true;
     return;
   }
   if (params.get("state") !== sessionStorage.getItem("pkceState")) {
@@ -1285,17 +1398,14 @@ async function finishLoginIfReturning() {
 }
 
 function setLoginMessage(text, info = false) {
-  // The message shows next to whichever Connect button is on screen. Something that went wrong is in the error color; something that is just happening (Spotify is opening) is not.
-  for (const id of ["loginMessage", "welcomeMessage"]) {
-    $(id).textContent = text;
-    $(id).className = info ? "muted" : "error";
-  }
+  // The message shows next to the Connect button. Something that went wrong is in the error color; something that is just happening (Spotify is opening) is not.
+  $("loginMessage").textContent = text;
+  $("loginMessage").className = info ? "muted" : "error";
 }
 
 function revealLoginProblem() {
   // Open the setup steps so the fix (such as the redirect address help) is in view.
   if (!currentFlow()) showFlow("existing");
-  $("setupDetails").open = true;
 }
 
 function loadStoredToken() {
@@ -1364,7 +1474,7 @@ function rateLimitError(wait, reason) {
 }
 
 async function spotifyRequest(method, path, { params, json, body, contentType, noWait } = {}) {   // noWait: a rate limit is not waited out, it is an error at once
-  let url = path.startsWith("http") ? path : API + path;
+  let url = path.startsWith("http") ? path : SPOTIFY_API + path;
   if (params) url += (url.includes("?") ? "&" : "?") + new URLSearchParams(params).toString();
   const what = `${method} ${path.split("?")[0]}`;
   let waitedMs = 0;
@@ -2079,7 +2189,7 @@ function initDonateChoice() {
   }
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && backupCardOpen) dismissBackupCard(); });
   on("backupDone", "click", dismissBackupCard);
-  on("changeSaveMethod", "click", openBackupCard);
+  on("changeSaveMethod", "click", () => { closeInfo(true); openBackupCard(); });   // More options is a popup too, and would cover the card
   on("backupBackdrop", "click", dismissBackupCard);
   // Back from Spotify's page, a browser may show this page as it was left, with the buttons still waiting
   window.addEventListener("pageshow", (event) => { if (event.persisted && signingIn) { setSigningIn(false); setLoginMessage(""); } });
@@ -2124,7 +2234,7 @@ function initDonatePanel() {
     if (!frame) {
       frame = document.createElement("iframe");
       frame.src = frameUrl;
-      frame.title = "Donate on Ko-fi";
+      frame.title = "Support me on Ko-fi";
       frame.setAttribute("allow", "payment *");   // lets the page inside offer Apple Pay and Google Pay, which a frame is not allowed to otherwise
       $("kofiFrameHolder").appendChild(frame);
     }
@@ -2256,8 +2366,7 @@ async function main() {
 
   // Start with no flow shown. People who already saved a Client ID have an app, so open that flow for them.
   showFlow($("clientId").value ? "existing" : null);
-  $("welcomeBack").hidden = !$("clientId").value;   // someone with a saved Client ID only needs to reconnect
-  $("setupDetails").open = !$("clientId").value;     // the setup steps stay one click away
+  showPage();
 
   for (const button of document.querySelectorAll(".copy-redirect")) {
     button.addEventListener("click", async () => {
@@ -2288,14 +2397,19 @@ async function main() {
   });
   on("clearYes", "click", clearSavedData);
   on("connect", "click", startLogin);
-  on("connectReturning", "click", startLogin);
+  on("startSetup", "click", () => goToSetup(false));
+  on("premiumWhy", "click", (event) => { event.stopPropagation(); showPremiumWhy($("premiumWhyText").hidden); });
+  document.addEventListener("click", (event) => { if (!$("premiumWhyText").hidden && !$("premiumWhyText").contains(event.target)) showPremiumWhy(false); });
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape") showPremiumWhy(false); });
+  on("setupBack", "click", setupBack);
+  window.addEventListener("popstate", pageHistoryMoved);
+  on("infoClose", "click", () => closeInfo());
+  on("infoOverlay", "click", (event) => { if (event.target === $("infoOverlay")) closeInfo(); });
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && info.node && !event.defaultPrevented && !(event.target.closest && event.target.closest("#themeList"))) closeInfo(); });   // an Escape that closed something inside it (the color list) is not for the popup
   on("disconnect", "click", confirmDisconnect);
   on("connectionRetry", "click", connectToSpotify);
   on("connectionReconnect", "click", startLogin);
   on("create", "click", () => startCreate());
-  // Both lines about Premium are for people who have not made their developer app yet: no saved Client ID. Connecting needs one, so this also means
-  // not connected. Someone with a Client ID who is refused gets the Premium message instead, where it matters.
-  for (const id of ["premiumNotice", "taglinePremium"]) $(id).hidden = !!localStorage.getItem("clientId");
   if (FEEDBACK_FORM_URL) {
     $("feedbackLink").href = FEEDBACK_FORM_URL;
     for (const id of ["feedbackSection", "privacyFeedback", "privacyFeedbackWho"]) $(id).hidden = false;
@@ -2303,6 +2417,7 @@ async function main() {
   for (const link of document.querySelectorAll(".privacy-link")) {
     link.addEventListener("click", (event) => {
       event.preventDefault();
+      if (pageName() === "app") { openInfo("privacySection"); return; }   // in the app, Privacy is in the menu's popup
       $("privacySection").open = true;
       $("privacySection").scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -2345,24 +2460,17 @@ async function main() {
   setSigningIn(false);   // the sign-in is over, one way or the other: from here the connection itself is what the buttons follow
   token = loadStoredToken();
   if (!token && needsReconnect) {
-    if ($("welcomeBack").hidden) revealLoginProblem();
+    revealLoginProblem();
     setLoginMessage("Please connect again so this page can build playlists.");
   }
 
   startupDone = true;
   showStartupProblems();
   if (!startupProblems.length) setTimeout(checkForNewVersion, 5000);   // a few seconds after a clean start, off the way of everything else
-  const hasOwnFormats = localStorage.getItem("formats") !== null && localStorage.getItem("formats") !== DEFAULT_FORMATS;
+  showPage();   // signed in, or connected before: the app
   if (token) {
-    $("loginSection").hidden = true;
-    $("appSection").hidden = false;  // the formats are there to edit from the moment someone is signed in
-    document.body.classList.add("connected", "has-editor");   // lets minimalist mode drop the title only when the editor is there to take its place
+    document.body.classList.add("connected");
     await connectToSpotify();   // and the app only calls itself connected, and offers Create, once Spotify has answered
-  } else if (hasOwnFormats) {
-    // Someone who has been here before has formats worth editing, and a backup worth restoring, whether or not Spotify is connected yet.
-    $("appSection").hidden = false;
-    document.body.classList.add("has-editor");
-    applyMinimalMode();   // and updates the buttons
   }
 
   $("pythonNote").textContent = "Getting Python ready. The first time takes a little while...";

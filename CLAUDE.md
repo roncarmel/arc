@@ -52,7 +52,9 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 - Playlists are named `<recipe name> N`. Built playlists carry a description marker (`APP_MARKER`) so the app knows they are its own.
 
 **Interface**
-- Compact view (stored as `minimalMode`, body class `minimal`) shows only the editor. The ⋯ menu: app header, Compact view, a manual-backup block (only in manual mode), the Spotify row (connect / connecting / connected with Disconnect), the version. Disconnect asks first.
+- **Three pages in one**, chosen by a class on `<html>` (`page-welcome`, `page-setup`, `page-app`): an inline script in `<head>` picks it before anything is drawn, and `pageName()`/`showPage()` in app.js follow changes. Signed in or `connectedBefore` means the app; `setupStarted` ("1" after Start setup, "0" after Back) means setup; otherwise welcome. `setupAgain` (sessionStorage) is the setup page opened from the menu's Change Client ID. Start setup and Change Client ID push a history entry so the back button returns.
+- The app page is always compact (body class `minimal`); the old full view and its Compact view setting are gone. The ⋯ menu: app header, More options, About this app, Privacy, Report a problem (each opens in `#infoOverlay`: the block itself moves into the popup and back), a manual-backup block (only in manual mode), the Spotify row (connected with Disconnect / connecting / Connect Spotify plus Change Client ID), the version. Disconnect asks first.
+- The old numbered step sections (Connect, Edit, Build, Back up) are still in the markup but hidden on every page.
 - A phone and a wide window differ: below 760 px the silence stepper says "30 sec gaps", wide it says the whole sentence; its width is fixed to the widest wording so the buttons never move under a thumb.
 - Lesson: a short class name (`fe-main`) collided with an existing one and turned a title into a pill. Give new blocks their own prefix (`fe-bk-*`, `fe-sp-*`, `fe-notice-*`).
 
@@ -60,6 +62,7 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 
 - Never use em dashes or en dashes in any text, including page text, comments and docs.
 - Page text: no first person except where already approved; plain, brief, specific; no hedging.
+- Exception: the support text (the caption "I made this app for everyone...", the "Support me" buttons, the Ko-fi panel labels) speaks in Ron's own voice on purpose, and is exempt from the first-person rule.
 - Answers to Ron: brief, essentials only; answer what was asked. Say what was done and what is next. Do not report passing tests (only failures), and do not report time breakdowns.
 - For anything visual, show a mockup early (screenshots of the real page with Playwright, Spotify stubbed with `page.route`) and let Ron pick before building. When he says "let's discuss", discuss and do not build.
 - Flag language that suggests an AI has feelings or personhood.

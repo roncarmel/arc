@@ -338,22 +338,24 @@ print(json.dumps(out))
   check("page sends at most 5 arguments to build_playlists (the last is the names to skip)", global.planTextArgCounts.length > 0 && Math.max(...global.planTextArgCounts) <= 5, String(global.planTextArgCounts));
   // two setup flows: nothing chosen at first, existing when a Client ID is already saved
   var hid = (w, id) => w.document.getElementById(id).hidden;
-  check("new visitors see neither flow, and nothing below the choices", hid(fresh, "flowNew") && hid(fresh, "flowExisting") && hid(fresh, "connectBlock") && !fresh.document.querySelector('input[name="flow"]:checked'));
+  check("new visitors see neither flow, and nothing below the choices", hid(fresh, "flowNew") && hid(fresh, "flowExisting") && hid(fresh, "connectBlock") && hid(fresh, "spSteps") && !hid(fresh, "spAsk"));
   check("nothing below Step 1 shows before Spotify is connected", fresh.document.getElementById("appSection").hidden === true && fresh.document.getElementById("connectedSection").hidden === true);
   check("everything below Step 1 shows once connected", w1.document.getElementById("appSection").hidden === false && w1.document.getElementById("connectedSection").hidden === false);
   var returning = await boot({ url: "http://127.0.0.1:8000/", local: { clientId: "abc" } });
   check("a saved Client ID opens the existing-app flow", !hid(returning, "flowExisting") && hid(returning, "flowNew") && !hid(returning, "connectBlock"));
-  var radios = fresh.document.querySelectorAll('input[name="flow"]');
-  radios[0].checked = true; radios[0].dispatchEvent(new fresh.Event("change"));
+  fresh.document.querySelector('[data-flow="new"]').click();
   check("choosing create shows the create flow and the connect block", !hid(fresh, "flowNew") && hid(fresh, "flowExisting") && !hid(fresh, "connectBlock"));
   var createText = fresh.document.getElementById("flowNew").textContent;
-  check("create flow gives exact form instructions", /App name: type Ceremony Playlist Builder/.test(createText) && /App description: type anything\. Spotify requires something here, for example Playlist builder\./.test(createText) && /Check Web API only/.test(createText) && /Website: leave it blank/.test(createText), createText);
-  radios[1].checked = true; radios[1].dispatchEvent(new fresh.Event("change"));
+  check("create flow gives exact form instructions", /App name: enter Ceremony Playlist Builder/.test(createText) && /App description: enter Ceremony Playlist Builder/.test(createText) && /Check Web API only/.test(createText) && /Website: leave it blank/.test(createText), createText);
+  fresh.document.querySelector('[data-flow="existing"]').click();
   check("choosing existing switches flows", hid(fresh, "flowNew") && !hid(fresh, "flowExisting") && !hid(fresh, "connectBlock"));
-  check("guidance about using a dedicated app is shown", /leave it alone and create a new one/.test(fresh.document.getElementById("loginSection").textContent));
-  check("redirect help is available for the Invalid redirect URI case", /Invalid redirect URI/.test(fresh.document.getElementById("redirectHelp").textContent) && /http:\/\/127\.0\.0\.1:8000\//.test(fresh.document.getElementById("redirectHelp").textContent));
+  check("the steps come in their own card, with the question gone and a title for the answer", hid(fresh, "spAsk") && !hid(fresh, "spSteps") && /Find your Client ID/.test(fresh.document.getElementById("spStepsTitle").textContent));
+  fresh.document.getElementById("setupBack").click();
+  check("the Back button under the card returns to the question", !hid(fresh, "spAsk") && hid(fresh, "spSteps") && fresh.document.getElementById("setupBack").closest("#spSteps") === null);
+  check("inside the steps card, under Connect, a What does all this actually do? opens a plain explanation", /What does all this actually do\?/.test(fresh.document.querySelector("#spSteps #spWhat summary").textContent) && !fresh.document.getElementById("spWhat").open && fresh.document.getElementById("connectBlock").compareDocumentPosition(fresh.document.getElementById("spWhat")) & 4);
+
   var denied = await boot({ url: "http://127.0.0.1:8000/?error=redirect_uri_mismatch&state=st1" });
-  check("a failed sign-in opens the redirect help", denied.document.getElementById("redirectHelp").open === true);
+
   check("a failed sign-in reveals the message even if no flow was chosen", !denied.document.getElementById("connectBlock").hidden && /redirect_uri_mismatch/.test(denied.document.getElementById("loginMessage").textContent));
 
   // 6e. dashboard link opens in a new tab, safely
@@ -381,10 +383,10 @@ print(json.dumps(out))
 
   // 6i. Ko-fi support: a floating link that opens Ko-fi in a new tab
   var sb = fresh.document.getElementById("supportButton");
-  check("the floating button is a link to Ko-fi, as the fallback, labeled Donate, with the Ko-fi cup", sb.tagName === "A" && sb.textContent.trim() === "Donate" && !!sb.querySelector("img[src=\"cup-border.png\"]") && sb.querySelector("img").getAttribute("alt") === "" && sb.href === "https://ko-fi.com/roncarmel" && sb.target === "_blank" && /noopener/.test(sb.rel) && /noreferrer/.test(sb.rel) && sb.getAttribute("title") === "Donate on Ko-fi", sb.outerHTML);
+  check("the floating button is a link to Ko-fi, as the fallback, labeled Support me, with the Ko-fi cup", sb.tagName === "A" && sb.textContent.trim() === "Support me" && !!sb.querySelector("img[src=\"cup-border.png\"]") && sb.querySelector("img").getAttribute("alt") === "" && sb.href === "https://ko-fi.com/roncarmel" && sb.target === "_blank" && /noopener/.test(sb.rel) && /noreferrer/.test(sb.rel) && sb.getAttribute("title") === "Support me on Ko-fi", sb.outerHTML);
   check("no Ko-fi frame, panel or script is ever loaded", !fresh.document.querySelector("iframe") && !fresh.document.getElementById("supportPanel") && !Array.from(fresh.document.querySelectorAll("script")).some((x) => /ko-fi/.test(x.src)));
   var cap = fresh.document.getElementById("supportCaption");
-  check("the caption sits with the Donate button in the same floating box, with the new wording", !!cap && cap.textContent === "This app is freely available to everyone. If it\u2019s been useful to you, please donate whatever feels right." && cap.previousElementSibling === sb && cap.parentElement === sb.parentElement && sb.parentElement.id === "supportBox", cap && cap.textContent);
+  check("the caption sits with the Donate button in the same floating box, with the new wording", !!cap && cap.textContent === "I made this app for everyone. If it\u2019s been helpful to you, please give whatever feels right." && cap.previousElementSibling === sb && cap.parentElement === sb.parentElement && sb.parentElement.id === "supportBox", cap && cap.textContent);
   check("every button is filled #ff38b8 and no green is left", /--button: #ff38b8/.test(css) && /\n  button \{[^}]*background: var\(--button\)/.test(css) && !/1a7f4b|3ccf84/.test(css));
   check("the Tip me button has the same shape as the other buttons", /#supportButton \{[^}]*padding: 8px 14px;[^}]*border-radius: 8px/.test(css.replace(/\n\s+/g, " ")));
   var cupImg = sb.querySelector("img");
@@ -643,17 +645,17 @@ print(json.dumps(out))
   // ---------------- the top of the page, the starting template, and the wording
   var pageHtml = fs.readFileSync(ROOT + "index.html", "utf8");
   check("the page is titled Ceremony Playlist Builder, in pink", /<title>Ceremony Playlist Builder<\/title>/.test(pageHtml) && t0.document.querySelector("h1").textContent === "Ceremony Playlist Builder" && /\n  h1 \{[^}]*color: var\(--accent\)/.test(pageHtml), t0.document.querySelector("h1").textContent);
-  check("a one-line tagline sits under the title", /^New playlists for ceremonies and retreats, built from the ones you already have\. Requires Spotify Premium\.$/.test(t0.document.querySelector(".tagline").textContent));
+  check("a one-line tagline opens the welcome page", /^Ceremony playlists, ready in minutes\.$/.test(t0.document.querySelector(".tagline").textContent) && t0.document.getElementById("welcomePage").contains(t0.document.querySelector(".tagline")));
   check("the page no longer lists sessions as something the app is for, and the about section lists retreats", !/sessions/i.test(t0.document.body.textContent) && /Ceremonies, retreats, workshops, and any long event/.test(t0.document.getElementById("about").textContent));
   var aboutFresh = fresh.document.getElementById("about");
   var aboutText = aboutFresh.textContent;
-  check("a More about this app section tells a new visitor what it does, what it is good for, how it works, what is needed, and the privacy details", /^More about this app$/.test(aboutFresh.querySelector("summary").textContent) && ["What it does", "What it's good for", "How it works", "What you need", "Privacy"].every((t) => aboutText.includes(t)) && aboutFresh.querySelectorAll("ol li").length === 3 && /Premium/.test(aboutText) && /never changed/.test(aboutText) && /Privacy/.test(aboutText));
+  check("an About this app section tells what it does, what it is good for, how it works, what is needed, and the privacy details", /^About this app$/.test(aboutFresh.querySelector("summary").textContent) && ["What it does", "What it's good for", "How it works", "What you need", "Privacy"].every((t) => aboutText.includes(t)) && aboutFresh.querySelectorAll("ol li").length === 3 && /Premium/.test(aboutText) && /never changed/.test(aboutText) && /Privacy/.test(aboutText));
   check("the More about this app section always starts closed, for first-time and returning visitors alike", aboutFresh.open === false && !/<details id="about"[^>]*\bopen\b/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && !/\$\("about"\)\.open/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
   check("it starts closed once a Client ID is saved, and once connected", returning.document.getElementById("about").open === false && t0.document.getElementById("about").open === false);
-  var staticText = pageHtml.replace("I already created an app for this", "").replace(/<style>[\s\S]*?<\/style>/, "").replace(/<label class="choice-row"><input type="checkbox" id="donateHideBox">[\s\S]*?<\/label>/, "").replace(/<id="supportButton"[\s\S]*?<\/a>/, "").replace(/<a id="supportButton"[\s\S]*?<\/a>/, "").replace(/<[^>]+>/g, " ");
+  var staticText = pageHtml.replace("Yes, I have", "").replace("I have done this before", "").replace("No, this is my first time", "").replace(/<style>[\s\S]*?<\/style>/, "").replace(/<label class="choice-row"><input type="checkbox" id="donateHideBox">[\s\S]*?<\/label>/, "").replace(/<id="supportButton"[\s\S]*?<\/a>/, "").replace(/<a id="supportButton"[\s\S]*?<\/a>/, "").replace(/<p id="supportCaption">[\s\S]*?<\/p>/, "").replace(/<button id="createDonate"[\s\S]*?<\/button>/, "").replace(/<[^>]+>/g, " ");
   var firstPerson = staticText.match(/\b(my|mine|myself|I|I'm|I've|I'll)\b/gi) || [];
   check("no first-person wording anywhere in the page text, apart from the setup choice you worded yourself and the checkbox for people who have donated, which is in the person's own voice", firstPerson.length === 0, JSON.stringify(firstPerson));
-  check("the two Step 1 choices are neutral labels", /Create a new Spotify developer app/.test(fresh.document.getElementById("loginSection").textContent) && /I already created an app for this/.test(fresh.document.getElementById("loginSection").textContent));
+  check("the two setup answers are plain labels", /Yes, I have/.test(fresh.document.getElementById("loginSection").textContent) && /No, this is my first time/.test(fresh.document.getElementById("loginSection").textContent));
   var tpl = t0.document.getElementById("formats").value;
   check("the editor starts with one format called Generated playlist, with one segment waiting for a playlist", t0.document.querySelectorAll("#feTabs .fe-tab").length === 1 && t0.document.querySelector("#feTabs .fe-tab").textContent === "Generated playlist" && t0.document.querySelectorAll("#feRows .fe-row").length === 1 && t0.document.querySelector("#feRows .fe-row .fe-title").textContent === "Choose a playlist", t0.document.getElementById("formatEditor").textContent);
   await readyToPreview(t0);
@@ -665,20 +667,39 @@ print(json.dumps(out))
 
 
   // ---------------- returning visitors: a friendly welcome with one button, setup steps tucked away
-  check("Step 1 is headed Connect to Spotify", /1\. Connect to Spotify/.test(fresh.document.querySelector("#loginSection h2").textContent));
-  check("first-time visitors see the setup steps open and no welcome-back message", fresh.document.getElementById("welcomeBack").hidden === true && fresh.document.getElementById("setupDetails").open === true);
+  // ---------------- the three pages: welcome, the one-time setup, and the app
+  var pg = (w) => ["welcome", "setup", "app"].filter((p) => w.document.documentElement.classList.contains("page-" + p)).join();
+  check("a new visitor sees the welcome page, with Start setup", pg(fresh) === "welcome" && !!fresh.document.getElementById("startSetup") && fresh.document.getElementById("welcomePage").contains(fresh.document.getElementById("startSetup")));
+  check("the setup page is headed One-time setup, with the Back button under the steps, not above", /One-time setup/.test(fresh.document.querySelector("#spAsk h2").textContent) && !!fresh.document.getElementById("setupBack") && !fresh.document.getElementById("setupBack").closest(".card"));
+  var pgw = await boot({ url: "http://127.0.0.1:8000/" });
+  pgw.document.getElementById("startSetup").click();
+  check("Start setup opens the setup page, with the question showing, and remembers it", pg(pgw) === "setup" && pgw.document.getElementById("spAsk").hidden === false && pgw.localStorage.getItem("setupStarted") === "1" && pgw.history.state && pgw.history.state.page === "setup");
+  pgw.history.back();
+  await waitFor(() => pg(pgw) === "welcome", 2000);
+  check("the browser's back button returns to the welcome page, and that is remembered too", pg(pgw) === "welcome" && pgw.localStorage.getItem("setupStarted") === "0");
+  pgw.document.getElementById("startSetup").click();
+  var pgs = await boot({ url: "http://127.0.0.1:8000/", local: { setupStarted: "1" } });
+  check("someone who started the setup comes back to it", pg(pgs) === "setup");
   var rv = await boot({ url: "http://127.0.0.1:8000/", local: { clientId: "saved-id-123" } });
-  var rvText = rv.document.getElementById("welcomeBack").textContent;
-  check("a returning visitor sees a welcome back message with a Connect button", rv.document.getElementById("welcomeBack").hidden === false && /Welcome back\./.test(rvText) && /Connect to Spotify to continue\./.test(rvText) && /developer app is saved in this browser/.test(rvText) && rv.document.getElementById("connectReturning").textContent === "Connect Spotify", rvText);
-  check("the setup steps are tucked away, one click from view, and still hold the Client ID", rv.document.getElementById("setupDetails").open === false && rv.document.getElementById("setupDetails").contains(rv.document.getElementById("clientId")) && rv.document.getElementById("clientId").value === "saved-id-123" && /setup/.test(rv.document.querySelector("#setupDetails > summary").textContent));
-  rv.document.getElementById("connectReturning").click();
+  check("someone with a Client ID saved but never connected is on the setup page, on the existing-app steps, with the Client ID filled in", pg(rv) === "setup" && !rv.document.getElementById("flowExisting").hidden && rv.document.getElementById("clientId").value === "saved-id-123" && !rv.document.getElementById("welcomeBack"));
+  rv.document.getElementById("connect").click();
   await new Promise((r) => setTimeout(r, 300));
-  check("the welcome Connect button starts the Spotify sign-in with the saved Client ID", !!rv.sessionStorage.getItem("pkceVerifier") && !!rv.sessionStorage.getItem("pkceState") && rv.localStorage.getItem("clientId") === "saved-id-123");
-  var rvErr = await boot({ url: "http://127.0.0.1:8000/?error=redirect_uri_mismatch&state=st1", local: { clientId: "saved-id-123" } });
-  check("if Spotify sends back a problem, it shows beside the welcome button and the fix is opened up", /redirect_uri_mismatch/.test(rvErr.document.getElementById("welcomeMessage").textContent) && rvErr.document.getElementById("welcomeBack").hidden === false && rvErr.document.getElementById("setupDetails").open === true && rvErr.document.getElementById("redirectHelp").open === true);
+  check("Connect there starts the Spotify sign-in with the saved Client ID", !!rv.sessionStorage.getItem("pkceVerifier") && !!rv.sessionStorage.getItem("pkceState") && rv.localStorage.getItem("clientId") === "saved-id-123");
+  var rvErr = await boot({ url: "http://127.0.0.1:8000/?error=redirect_uri_mismatch&state=st1", local: { clientId: "saved-id-123", setupStarted: "1" } });
+  check("if Spotify sends back a problem, it shows beside the Connect button on the setup page, with the steps showing", pg(rvErr) === "setup" && /redirect_uri_mismatch/.test(rvErr.document.getElementById("loginMessage").textContent) && rvErr.document.getElementById("spSteps").hidden === false);
   var rvOld = await boot({ url: "http://127.0.0.1:8000/", local: { clientId: "saved-id-123" }, session: { token: JSON.stringify({ value: "t", expires: Date.now() + 3600000, scope: "playlist-read-private" }) } });
-  check("an older read-only sign-in asks to connect again right beside the welcome button, without opening the setup steps", /connect again/.test(rvOld.document.getElementById("welcomeMessage").textContent) && rvOld.document.getElementById("setupDetails").open === false);
-  check("once connected, the whole Step 1 card is out of the way", w1.document.getElementById("loginSection").hidden === true);
+  check("an older read-only sign-in asks to connect again on the setup page", pg(rvOld) === "setup" && /connect again/.test(rvOld.document.getElementById("loginMessage").textContent));
+  check("signed in, the page is the app, compact", pg(w1) === "app" && w1.document.body.classList.contains("minimal"));
+  var pgc = await boot({ url: "http://127.0.0.1:8000/", local: { clientId: "c1", connectedBefore: "1", formats: MINI } });
+  check("connected before and signed out, it is still the app, and Build becomes Connect Spotify", pg(pgc) === "app" && pgc.document.getElementById("appSection").hidden === false && pgc.document.getElementById("create").textContent.trim() === "Connect Spotify");
+  pgc.document.getElementById("feAppMenuButton").click();
+  pgc.document.getElementById("feSetupAgain").click();
+  check("the menu's Change Client ID opens the setup page for this tab only", pg(pgc) === "setup" && pgc.sessionStorage.getItem("setupAgain") === "1" && pgc.localStorage.getItem("setupStarted") === null);
+  pgc.history.back();
+  await waitFor(() => pg(pgc) === "app", 2000);
+  check("and the back button returns to the app", pg(pgc) === "app" && pgc.sessionStorage.getItem("setupAgain") === null);
+  var pgHead = fs.readFileSync(ROOT + "index.html", "utf8");
+  check("the page is chosen in <head> before anything is drawn, the same way as in app.js", /\(function \(\) \{\n    var page = "welcome";/.test(pgHead) && /document\.documentElement\.classList\.add\("page-" \+ page\)/.test(pgHead) && /function pageName\(\)/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
 
 
   // ---------------- the playlist count in Step 1 follows creates and removals
@@ -712,15 +733,15 @@ print(json.dumps(out))
   await readyToPreview(rp);
   openMore(rp);
   var firstH3 = Array.from(rp.document.querySelectorAll("#moreOptions h3")).filter((h) => !h.closest("[hidden]"))[0].textContent;   // the feedback section above it shows only once its form address is set
-  check("More options starts with a Report a problem section that explains what happens (the feedback section above it is hidden in this test)", firstH3 === "Report a problem" && /A person reads these, but may not respond to all of them/.test(rp.document.getElementById("moreOptions").textContent) && /nothing is sent until you submit it there/.test(rp.document.getElementById("moreOptions").textContent), firstH3);
+  check("Report a problem is not part of More options; it has its own block, opened from the app menu, that explains what happens", firstH3 !== "Report a problem" && !rp.document.getElementById("moreOptions").contains(rp.document.getElementById("reportBlock")) && rp.document.getElementById("reportBlock").hidden === true && /A person reads these, but may not respond to all of them/.test(rp.document.getElementById("reportBlock").textContent) && /nothing is sent until you submit it there/.test(rp.document.getElementById("reportBlock").textContent), firstH3);
   var rl = rp.document.getElementById("reportLink");
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-10-31d" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-10-31z" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-10-31d/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
-  check("the version is shown in More options too", rp.document.getElementById("appVersionLabel").textContent === "2026-10-31d");
+  check("the page shows people exactly what will be attached", /Version: 2026-10-31z/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the version is shown in More options too", rp.document.getElementById("appVersionLabel").textContent === "2026-10-31z");
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
 
@@ -769,13 +790,13 @@ print(json.dumps(out))
   await waitFor(() => visible(rp5, "removeReportHint"), 10000);
   check("a failed removal offers its report link inside the Remove section", visible(rp5, "removeReportHint") && !!rp5.document.querySelector("#moreOptions #removeReportHint") && /Something went wrong/.test(rp5.document.getElementById("removeMessage").textContent));
   var rp6 = await boot({ url: "http://127.0.0.1:8000/?code=abc&state=st1", session: { pkceState: "st1", pkceVerifier: "v" }, local: { clientId: "SECRET-CLIENT-ID-9" }, fetchOptions: { failToken: true } });
-  check("a refused sign-in offers a report link in Step 1", visible(rp6, "loginReportHint") && /Spotify refused the sign-in/.test(rp6.document.getElementById("welcomeMessage").textContent) && !/SECRET-CLIENT-ID-9/.test(decodeURIComponent(rp6.document.querySelector("#loginReportHint a").href)));
+  check("a refused sign-in offers a report link in Step 1", visible(rp6, "loginReportHint") && /Spotify refused the sign-in/.test(rp6.document.getElementById("loginMessage").textContent) && !/SECRET-CLIENT-ID-9/.test(decodeURIComponent(rp6.document.querySelector("#loginReportHint a").href)));
   check("Python that cannot load offers a report link", visible(w7, "mainReportHint") && /Could not load Python/.test(params(w7.document.querySelector("#mainReportHint a").href).get("lastError")) && /not loaded/.test(params(w7.document.querySelector("#mainReportHint a").href).get("python")));
   var rp7 = await boot({ url: "http://127.0.0.1:8000/?error=access_denied&state=st1" });
   check("cancelling on Spotify's page is not treated as a problem to report", !visible(rp7, "loginReportHint"));
 
   // privacy wording
-  check("Step 1 says the Client ID stays in the browser and goes only to Spotify, and points to Privacy for everything else; the About section points to More options", /Your Client ID is not a secret\. It stays in this browser, and goes only to Spotify\. For everything else the page sends, see Privacy at the bottom of this page\./.test(fresh.document.getElementById("loginSection").textContent) && /If you run into a problem you can report it in the More options section at the bottom of this page\./.test(fresh.document.getElementById("about").textContent));
+  check("the setup page says the Client ID stays in the browser and goes only to Spotify; the About section points to Report a problem in the app menu", /Your Client ID is not a secret\. It stays in this browser and goes only to Spotify\./.test(fresh.document.getElementById("loginSection").textContent) && /If you run into a problem, choose Report a problem in the app menu\./.test(fresh.document.getElementById("about").textContent));
 
 
 
@@ -788,7 +809,7 @@ print(json.dumps(out))
   cb.eval("saveFile = (name, text) => { window.__savedFromClear = { name, text }; }");
   var note = () => cb.document.getElementById("clearBackupNote").textContent;
   var clearSection = cb.document.getElementById("moreOptions").textContent.replace(/\s+/g, " ");
-  check("the Clear saved data section starts with You, says formats are erased too, and points to the restore link in Step 2", /^Removes everything this app keeps on this device, including your Client ID\. Nothing in your Spotify account changes\./.test(clearSection.slice(clearSection.indexOf("Clear saved data") + 16).trim()) && /Your recipes are erased too\. To get them back afterward, use the restore from a backup link in Step 2 and choose the backup you made on this device\. If you haven't backed up to this device, do that first in Step 4\./.test(clearSection) && !/If something looks stuck/.test(clearSection));
+  check("the Clear saved data section starts with You, says formats are erased too, and points to Restore and Back up now in the app menu", /^Removes everything this app keeps on this device, including your Client ID\. Nothing in your Spotify account changes\./.test(clearSection.slice(clearSection.indexOf("Clear saved data") + 16).trim()) && /Your recipes are erased too\. To get them back afterward, choose Restore in the app menu and pick the backup you made on this device\. If you haven't backed up to this device, choose Back up now there first\./.test(clearSection) && !/If something looks stuck/.test(clearSection));
   check("untouched example: nothing to lose", note() === "You haven't made any recipes yet, so there is nothing to lose.", note());
   cb.document.getElementById("formats").value += "\n# my change";
   cb.document.getElementById("formats").dispatchEvent(new cb.Event("input"));
@@ -801,7 +822,7 @@ print(json.dumps(out))
   check("editing after a backup says to back up again first", note() === "Your recipes have been edited since your last backup. Back up again first to keep the changes.", note());
   cb.document.getElementById("clearData").click();
   var confirmText = cb.document.getElementById("clearConfirm").textContent.replace(/\s+/g, " ");
-  check("the confirmation repeats what will be erased and how to get it back", !cb.document.getElementById("clearConfirm").hidden && /Your recipes will be erased from this device\. To get them back, use the restore from a backup link in Step 2 and choose the backup you made on this device\./.test(confirmText));
+  check("the confirmation repeats what will be erased and how to get it back", !cb.document.getElementById("clearConfirm").hidden && /Your recipes will be erased from this device\. To get them back, choose Restore in the app menu and pick the backup you made on this device\./.test(confirmText));
   check("Step 2's own status and this section's note agree", /edited since your last backup/.test(cb.document.getElementById("backupStatus").textContent) && /edited since your last backup/.test(note()));
 
 
@@ -843,7 +864,7 @@ print(json.dumps(out))
   // ---------------- every numbered section title says what the person will do
   var verbs = ["Connect", "Edit", "Build", "Back up"];
   var allH2 = Array.from(t0.document.querySelectorAll("h2")).map((h) => h.textContent);
-  check("every numbered section title is an action, in both the not-connected and connected states", JSON.stringify(allH2) === JSON.stringify(["1. Connect to Spotify", "1. Connect to Spotify", "1. Connect to Spotify", "2. Edit your recipes", "3. Build playlists", "4. Back up manually to this device (optional)"]) && allH2.every((t) => verbs.some((v) => t.replace(/^\d\.\s/, "").startsWith(v))), JSON.stringify(allH2));
+  check("the welcome and setup pages have their own headings, and every numbered section title left is an action", JSON.stringify(allH2) === JSON.stringify(["What to expect", "One-time setup", "Find your Client ID", "1. Connect to Spotify", "1. Connect to Spotify", "2. Edit your recipes", "3. Build playlists", "4. Back up manually to this device (optional)"]) && allH2.slice(3).every((t) => verbs.some((v) => t.replace(/^\d\.\s/, "").startsWith(v))), JSON.stringify(allH2));
 
 
   // ---------------- What is this app? headings, and placeholder icons on the buttons
@@ -857,7 +878,7 @@ print(json.dumps(out))
   check("text-style links (Restore, Reset, Undo) have no icons", Array.from(t0.document.querySelectorAll("button.linklike")).every((b) => !b.querySelector("img")));
   check("each icon sits left of a label, and the label is its own element", pill.every((b) => { const i = b.querySelector("img.btn-icon, img"); return i === b.firstElementChild && !!b.querySelector(".btn-label, span"); }));
   var icss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("every icon file is a valid white line icon, with no placeholder note left", fs.readdirSync(ROOT + "icons").filter((f) => f.endsWith(".svg")).length === 14 && fs.readdirSync(ROOT + "icons").every((f) => { const x = fs.readFileSync(ROOT + "icons/" + f, "utf8"); return /<svg /.test(x) && !/Placeholder/i.test(x) && /stroke="#fff"/.test(x); }));
+  check("every icon file is a valid white line icon, with no placeholder note left", fs.readdirSync(ROOT + "icons").filter((f) => f.endsWith(".svg")).length === 16 && fs.readdirSync(ROOT + "icons").every((f) => { const x = fs.readFileSync(ROOT + "icons/" + f, "utf8"); return /<svg /.test(x) && !/Placeholder/i.test(x) && /stroke="#fff"/.test(x); }));
   // changing a label must not remove the icon
   var ic = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   await runPreview(ic);
@@ -948,7 +969,7 @@ print(json.dumps(out))
   var lastOld = Array.from(ciOld.querySelectorAll(":scope > li")).pop().textContent.trim();
   check("creating an app ends with copying the Client ID shown on the new app's page, no Settings", lastNew === "Copy the Client ID shown on your new app's page." && !/Settings/.test(lastNew), lastNew);
   check("using an existing app ends with copying the Client ID shown on its page, no Settings", lastOld === "Copy the Client ID shown on its page." && !/Settings/.test(lastOld), lastOld);
-  check("Settings is still mentioned where it is really needed: adding the redirect address", /In your app's Settings, paste it under Redirect URIs/.test(fresh.document.getElementById("redirectHelp").textContent.replace(/\s+/g, " ")));
+
 
 
   // ---------------- More options: gray body text, with headings, buttons, links and widgets standing out
@@ -1277,13 +1298,13 @@ print(json.dumps(out))
   check("What it does is the new wording", aboutParas[0] === "What it doesCeremony Playlist Builder makes long playlists from your existing Spotify playlists. Describe the structure of the playlists you want to create, and the app builds as many complete playlists as your music allows, with songs picked at random and no song repeated across the playlists made from one recipe. Each playlist is created in your Spotify account, ready to play.", aboutParas[0]);
   var steps = Array.from(aboutBox.querySelectorAll("ol li")).map((li) => li.textContent);
   check("How it works has your two reworded steps", steps[0] === "Connect Spotify through a free developer app. This takes a few minutes to set up, but you\u2019ll only need to do it once." && steps[1] === "Define your recipe(s): which of your playlists to draw from, in what order, and for how long." && steps.length === 3, JSON.stringify(steps));
-  check("the About section has a Reporting problems paragraph, then Privacy as its last, which points to the full section and says nothing about reporting", aboutParas[aboutParas.length - 1] === "PrivacyYour existing Spotify playlists are only read, never changed. Everything runs in this browser, and nothing about your music, such as playlist names or songs, goes anywhere except to you and Spotify. For the full details, see Privacy at the bottom of this page." && aboutParas[aboutParas.length - 2] === "Reporting problemsIf you run into a problem you can report it in the More options section at the bottom of this page." && !!aboutBox.querySelector("span.ui") && aboutBox.querySelector("span.ui").textContent === "More options", aboutParas[aboutParas.length - 1]);
-  var removeP = Array.from(fresh.document.querySelectorAll("#moreOptions p")).find((p) => /Removes playlists/.test(p.textContent));
-  check("the Remove earlier playlists text says what it touches, in your wording", !!removeP && /It only touches playlists you own whose name matches the recipe you specify, and it asks before removing anything\./.test(removeP.textContent) && !/whose names match a format's naming pattern/.test(removeP.textContent), removeP && removeP.textContent);
+  check("the About section has a Reporting problems paragraph, then Privacy as its last, which points to the full section and says nothing about reporting", aboutParas[aboutParas.length - 1] === "PrivacyYour existing Spotify playlists are only read, never changed. Everything runs in this browser, and nothing about your music, such as playlist names or songs, goes anywhere except to you and Spotify. For the full details, see Privacy." && aboutParas[aboutParas.length - 2] === "Reporting problemsIf you run into a problem, choose Report a problem in the app menu." && !!aboutBox.querySelector("span.ui") && aboutBox.querySelector("span.ui").textContent === "Report a problem", aboutParas[aboutParas.length - 1]);
+  var removeP = Array.from(fresh.document.querySelectorAll("#moreOptions p")).find((p) => /Removes the playlists/.test(p.textContent));
+  check("the Remove playlists built from a recipe text says what it touches, in your wording", !!removeP && /It only looks at playlists that match the recipe\u2019s name, and it asks before removing anything\./.test(removeP.textContent) && !/whose names match a format's naming pattern/.test(removeP.textContent), removeP && removeP.textContent);
   var wCss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("body text in What is this app? and How recipes work is gray, with headings and control names staying bright", /details\.about, #formatHelp \{ color: var\(--muted\); \}/.test(wCss) && /details\.about strong, #formatHelp h3 \{ color: var\(--fg\); \}/.test(wCss) && /\.ui \{ color: var\(--fg\); \}/.test(wCss));
   var uiNames = Array.from(fresh.document.querySelectorAll("span.ui")).map((x) => x.textContent);
-  check("the names of buttons and links in running text are marked up the same way", ["More options", "Build playlists", "New segment", "Add a mix", "Reset to default", "restore from a backup"].every((n) => uiNames.includes(n)), JSON.stringify(uiNames));
+  check("the names of buttons and links in running text are marked up the same way", ["More options", "Build playlists", "New segment", "Add a mix", "Reset to default", "Restore", "Report a problem"].every((n) => uiNames.includes(n)), JSON.stringify(uiNames));
   check("no button or link name is left in single or curly quotes, since the style now sets it apart", !/[\u2018\u2019'](More options|Preview|Create|New segment|Add a mix)[\u2018\u2019']/.test(fresh.document.body.textContent));
 
 
@@ -1294,11 +1315,11 @@ print(json.dumps(out))
   var gh = fs.readFileSync(ROOT + "index.html", "utf8");
   var aboutRange = gh.slice(gh.indexOf('<details id="about"'), gh.indexOf("</details>", gh.indexOf('<details id="about"')));
   var outside = gh.replace(aboutRange, "").slice(gh.indexOf("<body"));
-  check("bold is kept for the six headings in What is this app?, and for the two places that say Premium is required (under the title, and in the notice in Step 1), and nowhere else", (aboutRange.match(/<strong>/g) || []).length === 6 && (outside.match(/<strong[ >]/g) || []).length === 2 && /class="tagline">[^<]*<strong id="taglinePremium">Requires Spotify Premium\.<\/strong>/.test(outside) && /id="premiumNotice"[^>]*>\s*<strong>Requires Spotify Premium<\/strong>/.test(outside) && !/<b>/.test(outside));
-  var setupText = fresh.document.getElementById("setupDetails");
+  check("bold is kept for the six headings in About this app, and nowhere else", (aboutRange.match(/<strong>/g) || []).length === 6 && (outside.match(/<strong[ >]/g) || []).length === 0 && !/<b>/.test(outside));
+  var setupText = fresh.document.getElementById("spSteps");
   check("the setup steps' field names and buttons are highlighted in white, and nothing there is bold", setupText.querySelectorAll("strong, b").length === 0 && Array.from(setupText.querySelectorAll("span.ui")).map((x) => x.textContent).some((t) => /^Create app$/.test(t)) && Array.from(setupText.querySelectorAll("span.ui")).some((x) => /App name/.test(x.textContent)));
   check("the connected message and Step 4's text are plain gray text, not wrapped in any highlight", !fresh.document.getElementById("connectedMessage").querySelector(".ui") && !t0.document.getElementById("backupSection").nextElementSibling.querySelector(".ui") && t0.document.getElementById("backupSection").nextElementSibling.tagName === "P" && !t0.document.getElementById("backupSection").nextElementSibling.classList.contains("ui"));
-  check("the two setup choices are controls, so their labels are bright", Array.from(fresh.document.querySelectorAll("label.choice")).length === 2);
+  check("the two setup answers are buttons, so their labels are bright", fresh.document.querySelectorAll("#spAsk button[data-flow]").length === 2);
 
 
   
@@ -1474,6 +1495,7 @@ print(json.dumps(out))
     }
   }
   check("in every theme, in light and dark, the text, links, buttons and silence tags are readable", z_bad.length === 0, z_bad.join("; "));
+  z_t.eval('openInfo("moreOptions")');   // the color list is in More options, which the app menu opens in a popup
   z_t.document.getElementById("themeButton").click();
   check("the list opens on the button, with the current color's option focused and selected", !z_t.document.getElementById("themeList").hidden && z_t.document.getElementById("themeButton").getAttribute("aria-expanded") === "true" && z_t.document.querySelector("#themeList [aria-selected=true]").textContent === "Pink" && z_t.document.activeElement.textContent === "Pink");
   z_t.document.getElementById("themeList").dispatchEvent(new z_t.KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
@@ -1856,19 +1878,28 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   check("the menu starts closed", !am_w.document.getElementById("feAppMenuPanel") && am_w.document.getElementById("feAppMenuButton").getAttribute("aria-expanded") === "false");
   am_w.document.getElementById("feAppMenuButton").click();
   var am_items = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel .fe-item")).map((b) => b.textContent.trim());
-  var am_ids = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel [id]")).map((n) => n.id).filter((id) => ["feMinimal", "feBackupMethod", "feBackup", "feRestore", "feDisconnect"].includes(id));
-  check("it offers Minimalist mode, then the backup block (what it is, a Change how your recipes are saved link, how it is going, then Back up now and Restore), then Disconnect Spotify, in that order", JSON.stringify(am_ids) === JSON.stringify(["feMinimal", "feBackupMethod", "feBackup", "feRestore", "feDisconnect"]) && /Manual backup to this device/.test(am_w.document.getElementById("feBackupMethod").closest(".fe-bk-block").textContent) && am_w.document.getElementById("feBackupMethod").textContent === "Change how your recipes are saved" && am_w.document.getElementById("feBackup").textContent.trim() === "Back up now" && am_w.document.getElementById("feRestore").textContent.trim() === "Restore" && am_w.document.getElementById("feAppMenuButton").getAttribute("aria-expanded") === "true", JSON.stringify(am_ids));
-  var am_min = () => am_w.document.getElementById("feMinimal");
-  check("Minimalist mode has a checkbox showing its state: empty at first, and the page is not minimal", am_min().getAttribute("role") === "menuitemcheckbox" && am_min().getAttribute("aria-checked") === "false" && !!am_min().querySelector(".fe-check") && !am_min().querySelector(".fe-check-on") && !am_w.document.body.classList.contains("minimal"));
-  am_min().click();
-  check("choosing it saves the choice, marks the page minimal, and closes the menu", !am_w.document.getElementById("feAppMenuPanel") && am_w.document.body.classList.contains("minimal") && am_w.localStorage.getItem("minimalMode") === "1" && am_w.document.getElementById("feAppMenuButton").getAttribute("aria-expanded") === "false");
+  var am_ids = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel [id]")).map((n) => n.id).filter((id) => ["feMoreOptions", "feAbout", "fePrivacy", "feReport", "feBackupMethod", "feBackup", "feRestore", "feDisconnect"].includes(id));
+  check("it offers More options, Privacy and Report a problem, then the backup block (what it is, a Change how your recipes are saved link, how it is going, then Back up now and Restore), then Disconnect Spotify, in that order", JSON.stringify(am_ids) === JSON.stringify(["feMoreOptions", "fePrivacy", "feReport", "feBackupMethod", "feBackup", "feRestore", "feDisconnect"]) && /Manual backup to this device/.test(am_w.document.getElementById("feBackupMethod").closest(".fe-bk-block").textContent), JSON.stringify(am_ids));
+  check("there is no Compact view item: the app page is always compact", !am_w.document.getElementById("feMinimal") && am_w.document.body.classList.contains("minimal") && !/minimalMode/.test(fs.readFileSync(ROOT + "editor.js", "utf8") + fs.readFileSync(ROOT + "app.js", "utf8")));
+  var am_info = (id) => am_w.document.getElementById("infoSlot").firstElementChild && am_w.document.getElementById("infoSlot").firstElementChild.id === id && am_w.document.getElementById("infoOverlay").hidden === false;
+  am_w.document.getElementById("feMoreOptions").click();
+  check("More options opens in a popup, open, and the menu closes", am_info("moreOptions") && am_w.document.getElementById("moreOptions").open === true && !am_w.document.getElementById("feAppMenuPanel") && am_w.document.getElementById("infoDialog").getAttribute("aria-label") === "More options");
+  am_w.document.dispatchEvent(new am_w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  check("Escape closes it, and More options goes back to its place, closed as it was", am_w.document.getElementById("infoOverlay").hidden === true && !!am_w.document.getElementById("moreOptions").closest("footer") && am_w.document.getElementById("moreOptions").open === false && am_w.document.getElementById("infoSlot").children.length === 0);
   am_w.document.getElementById("feAppMenuButton").click();
-  check("reopened, its checkbox is checked", am_min().getAttribute("aria-checked") === "true" && !!am_min().querySelector(".fe-check-on svg"));
-  am_min().click();
+  am_w.document.getElementById("fePrivacy").click();
+  check("Privacy opens in the popup, and the menu has no About this app", am_info("privacySection") && !am_w.document.getElementById("feAbout"));
+  am_w.document.getElementById("infoClose").click();
+  check("the close button closes it", am_w.document.getElementById("infoOverlay").hidden === true && !!am_w.document.getElementById("privacySection").closest("footer"));
   am_w.document.getElementById("feAppMenuButton").click();
-  check("choosing it again unchecks it, and closes the menu again", am_min().getAttribute("aria-checked") === "false" && !am_w.document.body.classList.contains("minimal") && am_w.localStorage.getItem("minimalMode") === "0");
-  var am_w2 = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, minimalMode: "1" }, fetchOptions: {} });
-  check("the choice is remembered the next time the page opens, and applied before anything is shown", am_w2.document.body.classList.contains("minimal"));
+  am_w.document.getElementById("fePrivacy").click();
+  check("Privacy opens in the popup", am_info("privacySection"));
+  am_w.document.getElementById("infoOverlay").dispatchEvent(new am_w.MouseEvent("click", { bubbles: true }));
+  check("a tap outside it closes it", am_w.document.getElementById("infoOverlay").hidden === true);
+  am_w.document.getElementById("feAppMenuButton").click();
+  am_w.document.getElementById("feReport").click();
+  check("Report a problem opens only the report part, with its details filled in, and it goes back to its own place, hidden, after", am_info("reportBlock") && /Version: /.test(am_w.document.getElementById("reportPreview").textContent) && (() => { am_w.document.getElementById("infoClose").click(); return am_w.document.getElementById("reportBlock").hidden === true && !am_w.document.getElementById("moreOptions").contains(am_w.document.getElementById("reportBlock")); })());
+  am_w.document.getElementById("feAppMenuButton").click();
   am_w.document.getElementById("feBackup").click();
   check("Back up now saves the formats as a backup file on the device and closes the menu", !!am_w.__saved && /^playlist-recipes-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.txt$/.test(am_w.__saved.name) && am_w.__saved.text === am_w.document.getElementById("formats").value && !am_w.document.getElementById("feAppMenuPanel") && /^Backed up to this device\./.test(capText(am_w)));
   am_w.document.getElementById("feAppMenuButton").click();
@@ -1925,9 +1956,9 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   // ================================================================ minimalist mode, the menu's label, and alignment
   var mm_html = fs.readFileSync(ROOT + "index.html", "utf8");
   var mm_css = mm_html.replace(/\s+/g, " ");
-  var mm_hidden = ["body.minimal .tagline", "body.minimal #about", "body.minimal #connectedSection", "body.minimal #editHeading", "body.minimal #savedNote", "body.minimal #createHeading", "body.minimal #createNote", "body.minimal #backupBlock"];
-  check("minimalist mode hides the tagline, More about this app, the connected Spotify section, the Edit your recipes heading, the saved note, the Create playlists heading, the note under it, and the whole backup step", mm_hidden.every((sel) => mm_css.includes(sel)) && /body\.minimal [^{]*\{ display: none; \}/.test(mm_css));
-  var mm_hideRule = (mm_css.match(/body\.minimal \.tagline[^{]*\{ display: none; \}/) || [""])[0];
+  var mm_hidden = ["body.minimal main > #about", "body.minimal #connectedSection", "body.minimal #editHeading", "body.minimal #savedNote", "body.minimal #createHeading", "body.minimal #createNote", "body.minimal #backupBlock"];
+  check("the app page hides About this app, the connected Spotify section, the Edit your recipes heading, the saved note, the Create playlists heading, the note under it, and the whole backup step", mm_hidden.every((sel) => mm_css.includes(sel)) && /body\.minimal [^{]*\{ display: none; \}/.test(mm_css));
+  var mm_hideRule = (mm_css.match(/body\.minimal #backupCard:not\(\.opened\)[^{]*\{ display: none; \}/) || [""])[0];
   check("and nothing else is in that list: the editor, the Create button, the restore message and the tip button all stay", mm_hideRule.length > 0 && !/#formatEditor|#create\b|#backupMessage|#supportBox|#feAppMenu|h1/.test(mm_hideRule), mm_hideRule);
   var mm_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var mm_ids = ["editHeading", "savedNote", "createHeading", "createNote", "backupBlock", "about", "connectedSection"];
@@ -1957,7 +1988,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   if (want('minimalist mode, part two')) { try {
   // ================================================================ minimalist mode, part two
   var m2_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("minimalist mode also hides How recipes work and More options", /body\.minimal #formatHelp, body\.minimal #moreOptions, body\.minimal #privacySection, body\.minimal #loginSection, body\.minimal #connectionProblem \{ display: none; \}/.test(m2_css));
+  check("the app page also hides How recipes work, and the page's own More options and Privacy at the bottom, which open from the menu instead", /body\.minimal #formatHelp, body\.minimal footer, body\.minimal #loginSection, body\.minimal #connectionProblem \{ display: none; \}/.test(m2_css) && /html\.page-app #welcomePage, html\.page-app main > #about, html\.page-app #loginSection, html\.page-app footer \{ display: none; \}/.test(m2_css));
   check("and the app menu's button turns the accent color, with text that suits it", /body\.minimal #feAppMenuButton \{ background: var\(--button\); border-color: var\(--button\); color: var\(--on-button, #fff\); \}/.test(m2_css));
   var m2_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var m2_row = m2_w.document.querySelector(".fe-toprow");
@@ -2079,7 +2110,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var dnp_click = new dnp_w.MouseEvent("click", { bubbles: true, cancelable: true });
   var dnp_notPrevented = dnp_btn.dispatchEvent(dnp_click);
   var dnp_frame = dnp_panel.querySelector("iframe");
-  check("clicking Donate opens Ko-fi's page in a panel in this page instead of leaving it", dnp_notPrevented === false && dnp_panel.hidden === false && dnp_btn.getAttribute("aria-expanded") === "true" && !!dnp_frame && dnp_frame.src === "https://ko-fi.com/roncarmel/?hidefeed=true&widget=true&embed=true" && dnp_frame.title === "Donate on Ko-fi");
+  check("clicking Donate opens Ko-fi's page in a panel in this page instead of leaving it", dnp_notPrevented === false && dnp_panel.hidden === false && dnp_btn.getAttribute("aria-expanded") === "true" && !!dnp_frame && dnp_frame.src === "https://ko-fi.com/roncarmel/?hidefeed=true&widget=true&embed=true" && dnp_frame.title === "Support me on Ko-fi");
   dnp_w.document.getElementById("supportBox").getBoundingClientRect = () => ({ top: 300, left: 0, width: 200, height: 80 });
   dnp_w.dispatchEvent(new dnp_w.Event("resize"));
   Object.defineProperty(dnp_w, "innerHeight", { value: 360, configurable: true });
@@ -2134,7 +2165,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   dd_w2.document.getElementById("confirmYes").click();
   await waitFor(() => dd_w2.document.getElementById("createCloseRow").hidden === false, 30000);
   var dd_btns = Array.from(dd_w2.document.querySelectorAll("#createCloseRow button"));
-  check("when it is done, the Create popup offers two buttons that look alike, both pink: Close, then Donate with the cup", dd_btns.map((b) => b.textContent.trim()).join("|") === "Close|Donate" && !!dd_btns[1].querySelector('img[src="cup-border.png"]') && !dd_btns[0].classList.contains("primary") && !dd_btns[1].classList.contains("primary") && !/#createClose \{/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  check("when it is done, the Create popup offers two buttons that look alike, both pink: Close, then Donate with the cup", dd_btns.map((b) => b.textContent.trim()).join("|") === "Close|Support me" && !!dd_btns[1].querySelector('img[src="cup-border.png"]') && !dd_btns[0].classList.contains("primary") && !dd_btns[1].classList.contains("primary") && !/#createClose \{/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   dd_w2.document.getElementById("createDonate").click();
   check("Donate closes the Create popup and opens the donation popup, with the screen dimmed behind it", dd_w2.document.getElementById("createOverlay").hidden === true && dd_w2.document.body.style.overflow === "" && dd_w2.document.getElementById("kofiPanel").hidden === false && dd_w2.document.getElementById("kofiDim").hidden === false && !!dd_w2.document.querySelector("#kofiPanel iframe"));
   dd_w2.document.getElementById("kofiClose").click();
@@ -2233,10 +2264,10 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   check("rate limited at the start: the app does not call itself connected, and shows the problem with how long to wait", cx_w.eval("connection") === "problem" && cx_sec(cx_w, "connectedSection").hidden === true && cx_sec(cx_w, "connectionProblem").hidden === false && /^Spotify is rate limiting requests\. Try again in about 2 minutes\.$/.test(cx_sec(cx_w, "connectionMessage").textContent), cx_sec(cx_w, "connectionMessage").textContent);
   check("a long wait is reported straight away, not sat through: over a minute is not retried, and neither is a quota limit", /wait && wait > 60/.test(fs.readFileSync(ROOT + "app.js", "utf8")) && /reason === "QUOTA_EXCEEDED"/.test(fs.readFileSync(ROOT + "app.js", "utf8")) && /waitText\(wait\)/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
   check("there is no Disconnect button in view: it is hidden, and so is the app menu's Disconnect Spotify", cx_sec(cx_w, "disconnect").hidden === true && (() => { cx_w.document.getElementById("feAppMenuButton").click(); const gone = !cx_w.document.getElementById("feDisconnect"); cx_w.document.getElementById("feAppMenuButton").click(); return gone; })());
-  check("Create playlists and Remove earlier playlists are both off, each with a note saying why", cx_sec(cx_w, "create").disabled === true && cx_sec(cx_w, "removeOld").disabled === true && cx_sec(cx_w, "spotifyNote").hidden === false && /needs a working connection to Spotify/.test(cx_sec(cx_w, "spotifyNote").textContent) && cx_sec(cx_w, "removeNote").hidden === false);
+  check("Build becomes Try again, with what went wrong under it, and Remove earlier playlists is off, with its note", cx_sec(cx_w, "create").textContent.trim() === "Try again" && cx_sec(cx_w, "removeOld").disabled === true && cx_sec(cx_w, "spotifyNote").hidden === false && cx_sec(cx_w, "spotifyNote").textContent === cx_sec(cx_w, "connectionMessage").textContent && cx_sec(cx_w, "removeNote").hidden === false);
   check("the editor is still there for the formats, and the page offers Try again and Connect again, with no report link for a rate limit, which is a known problem", !cx_sec(cx_w, "appSection").hidden && !!cx_w.document.getElementById("formatEditor").querySelector(".fe-card") && cx_sec(cx_w, "connectionRetry").textContent.trim() === "Try again" && cx_sec(cx_w, "connectionReconnect").textContent.trim() === "Connect again" && cx_sec(cx_w, "connectionReportHint").hidden === true);
   rowsOf(cx_w)[0].querySelector(".fe-main").click();
-  check("a segment's list says the playlists could not be loaded, and where to look", /Your playlists could not be loaded\. See Step 1\./.test(cx_w.document.getElementById("feOptions").textContent));
+  check("a segment's list says the playlists could not be loaded, and where to look", /Your playlists could not be loaded\. See the app menu\./.test(cx_w.document.getElementById("feOptions").textContent));
   cx_w.eval("refreshReportBox()");
   check("the recent steps say what happened, and nothing is marked as connected", /connection failed/.test(cx_w.document.getElementById("reportPreview").textContent) && !/connected, \d+ playlists? found/.test(cx_w.document.getElementById("reportPreview").textContent), cx_w.document.getElementById("reportPreview").textContent);
   delete cx_o.meStatus;
@@ -2248,7 +2279,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var cx_w2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { meNetworkFail: true } });
   check("with no connection to the internet it says so, in plain words", cx_w2.eval("connection") === "problem" && /^Could not reach Spotify\. Check your internet connection and try again\.$/.test(cx_sec(cx_w2, "connectionMessage").textContent) && cx_sec(cx_w2, "disconnect").hidden === true);
   var cx_w3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { meStatus: 401 } });
-  check("a sign-in that has expired shows the same problem state, telling you to connect again", cx_w3.eval("connection") === "problem" && /^Your Spotify sign-in expired\. Click Connect again\.$/.test(cx_sec(cx_w3, "connectionMessage").textContent) && cx_sec(cx_w3, "create").disabled === true);
+  check("a sign-in that has expired shows the same problem state, telling you to connect again", cx_w3.eval("connection") === "problem" && /^Your Spotify sign-in expired\. Click Connect again\.$/.test(cx_sec(cx_w3, "connectionMessage").textContent) && cx_sec(cx_w3, "create").textContent.trim() === "Connect again");
   var cx_o4 = {};
   var cx_w4 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: cx_o4 });
   await readyToPreview(cx_w4);
@@ -2256,7 +2287,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   cx_w4.document.getElementById("create").click();
   await waitFor(() => cx_w4.eval("connection") === "problem", 20000);
   await waitFor(() => cx_w4.document.getElementById("createCloseRow").hidden === false, 20000);
-  check("if the sign-in expires part way through, the page notices: Create goes off and Disconnect goes away until you connect again", cx_sec(cx_w4, "create").disabled === true && cx_sec(cx_w4, "disconnect").hidden === true && cx_sec(cx_w4, "connectionProblem").hidden === false && /sign-in expired/.test(cx_sec(cx_w4, "connectionMessage").textContent));
+  check("if the sign-in expires part way through, the page notices: Build becomes Connect again and Disconnect goes away until you connect again", cx_sec(cx_w4, "create").textContent.trim() === "Connect again" && cx_sec(cx_w4, "disconnect").hidden === true && cx_sec(cx_w4, "connectionProblem").hidden === false && /sign-in expired/.test(cx_sec(cx_w4, "connectionMessage").textContent));
   var cx_o5 = { denyCreate: true };
   var cx_w5 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: cx_o5 });
   await readyToPreview(cx_w5);
@@ -2397,12 +2428,13 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var rl_same = await boot({ url: "http://127.0.0.1:8000/", local: { formats: rl_new.modelToText({ formats: [] }) } });
   check("saved formats that are just the empty start do not count as having formats of their own", rl_same.document.getElementById("appSection").hidden === true);
   var rl_back = await boot({ url: "http://127.0.0.1:8000/", local: { formats: MINI, clientId: "abc123" } });
-  check("someone with formats of their own sees the editor and the rest of the steps before connecting, with Step 1 still asking them to connect", rl_back.document.getElementById("appSection").hidden === false && rl_back.document.body.classList.contains("has-editor") && !rl_back.document.body.classList.contains("connected") && rl_back.document.getElementById("loginSection").hidden === false && rl_back.eval("connection") === "none");
-  check("there, Create and Remove are off, each with its note, and the formats can be edited", rl_back.document.getElementById("create").disabled === true && rl_back.document.getElementById("removeOld").disabled === true && rl_back.document.getElementById("spotifyNote").hidden === false && rl_back.document.getElementById("removeNote").hidden === false && !!rl_back.document.querySelector("#formatEditor .fe-card"));
-  rowsOf(rl_back)[0].querySelector(".fe-main").click();
-  check("a segment's list says to connect in Step 1 to see the playlists, and there is no Disconnect in the app menu", /Connect to Spotify in Step 1 to see your playlists\./.test(rl_back.document.getElementById("feOptions").textContent) && (() => { rl_back.document.dispatchEvent(new rl_back.KeyboardEvent("keydown", { key: "Escape", bubbles: true })); rl_back.document.getElementById("feAppMenuButton").click(); const none = !rl_back.document.getElementById("feDisconnect"); rl_back.document.getElementById("feAppMenuButton").click(); return none; })());
+  check("someone with recipes and a Client ID who has never connected is on the setup page: the editor waits for the first connection", rl_back.document.documentElement.classList.contains("page-setup") && rl_back.document.getElementById("appSection").hidden === true && rl_back.eval("connection") === "none");
+  var rl_back2 = await boot({ url: "http://127.0.0.1:8000/", local: { formats: MINI, clientId: "abc123", connectedBefore: "1" } });
+  check("connected before, the editor is there, and Build offers to connect", rl_back2.document.getElementById("appSection").hidden === false && rl_back2.document.getElementById("create").textContent.trim() === "Connect Spotify" && rl_back2.document.getElementById("removeOld").disabled === true && !!rl_back2.document.querySelector("#formatEditor .fe-card"));
+  rowsOf(rl_back2)[0].querySelector(".fe-main").click();
+  check("a segment's list says to connect to see the playlists, and there is no Disconnect in the app menu", /Connect to Spotify to see your playlists\./.test(rl_back2.document.getElementById("feOptions").textContent) && (() => { rl_back2.document.dispatchEvent(new rl_back2.KeyboardEvent("keydown", { key: "Escape", bubbles: true })); rl_back2.document.getElementById("feAppMenuButton").click(); const none = !rl_back2.document.getElementById("feDisconnect"); rl_back2.document.getElementById("feAppMenuButton").click(); return none; })());
   var rl_busy = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { meDelay: 3000 } });
-  check("while the app is still connecting, nothing says Create needs a connection: the note waits for a real problem", rl_busy.eval("connection") === "connecting" && rl_busy.document.getElementById("spotifyNote").hidden === true && rl_busy.document.getElementById("removeNote").hidden === true && rl_busy.document.getElementById("create").disabled === true);
+  check("while the app is still connecting, Build says Connecting, the note says it can take a few seconds, and nothing says Build needs a connection", rl_busy.eval("connection") === "connecting" && /Connecting to Spotify/.test(rl_busy.document.getElementById("spotifyNote").textContent) && rl_busy.document.getElementById("removeNote").hidden === true && rl_busy.document.getElementById("create").disabled === true && rl_busy.document.getElementById("create").textContent.trim() === "Connecting\u2026");
   await waitFor(() => rl_busy.eval("connection") === "ready", 10000);
   await readyToPreview(rl_busy);
   check("and once connected the notes stay away and Create is on", rl_busy.document.getElementById("spotifyNote").hidden === true && rl_busy.document.getElementById("create").disabled === false);
@@ -2428,20 +2460,20 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var pa_ready = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, minimalMode: "1" }, fetchOptions: {} });
   check("the first successful connection makes minimalist mode available, and it is then on, as chosen", pa_ready.localStorage.getItem("connectedBefore") === "1" && pa_ready.document.body.classList.contains("minimal") && pa_ready.eval("minimalActive()") === true);
   var pa_first = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, minimalMode: "1" }, fetchOptions: { meStatus: 429, retryAfter: 120 } });
-  check("before any connection has worked it is not available: the page stays in full so Step 1 can be used", pa_first.localStorage.getItem("connectedBefore") === null && !pa_first.document.body.classList.contains("minimal") && pa_first.document.getElementById("connectionProblem").hidden === false);
+  check("signed in before any connection has worked, the page is still the app, with the problem on its Build button", pa_first.localStorage.getItem("connectedBefore") === null && pa_first.document.body.classList.contains("minimal") && pa_first.document.getElementById("create").textContent.trim() === "Try again");
   pa_first.document.getElementById("feAppMenuButton").click();
-  check("the menu shows Minimalist mode but unavailable, with a note saying when it becomes available", pa_first.document.getElementById("feMinimal").disabled === true && pa_first.document.getElementById("feMinimalNote").textContent === "Available after you first connect to Spotify.");
-  check("and pressing it changes nothing", (() => { pa_first.document.getElementById("feMinimal").click(); return pa_first.localStorage.getItem("minimalMode") === "1" && pa_first.document.getElementById("feAppMenuPanel") !== null; })());
+  check("the menu offers Connect Spotify and Change Client ID", !!pa_first.document.getElementById("feConnect") && !!pa_first.document.getElementById("feSetupAgain"));
+  check("there is no Compact view in it", !pa_first.document.getElementById("feMinimal"));
   pa_first.document.getElementById("feAppMenuButton").click();
   var pa_new = await boot({ url: EDURL, local: { minimalMode: "1", connectedBefore: "1" }, fetchOptions: {} });
-  check("a new visitor with no formats of their own has no editor, so minimalist mode does not apply and Step 1 shows", pa_new.document.getElementById("appSection").hidden === true && !pa_new.document.body.classList.contains("minimal") && pa_new.document.getElementById("loginSection").hidden === false);
+  check("connected before, with no recipes of their own and not signed in, the page is still the app, with the editor", pa_new.document.getElementById("appSection").hidden === false && pa_new.document.body.classList.contains("minimal") && pa_new.document.documentElement.classList.contains("page-app"));
   // connected before, a problem now
   var pa_o = { meStatus: 429, retryAfter: 120 };
   var pa_bad = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, minimalMode: "1", connectedBefore: "1" }, fetchOptions: pa_o });
   check("with a connection problem the page stays minimal, so nothing from Step 1 is squeezed above the editor", pa_bad.eval("connection") === "problem" && pa_bad.document.body.classList.contains("minimal"));
   check("the app menu button has no dot, whatever is wrong with Spotify: the page and the menu already say it", !pa_bad.document.getElementById("feAppMenuButton").classList.contains("fe-alert") && pa_bad.document.getElementById("feAppMenuButton").getAttribute("aria-label") === "App menu" && !/fe-alert/.test(fs.readFileSync(ROOT + "index.html", "utf8") + fs.readFileSync(ROOT + "editor.js", "utf8")));
   pa_bad.document.getElementById("feAppMenuButton").click();
-  check("the menu offers the ordinary Connect Spotify, last in the menu like every other Spotify state, with what went wrong under it, and no Try again of its own", Array.from(pa_bad.document.querySelectorAll("#feAppMenuPanel .fe-item")).pop().id === "feConnect" && pa_bad.document.getElementById("feConnect").textContent.trim() === "Connect Spotify" && pa_bad.document.getElementById("feConnectionNote").textContent === pa_bad.document.getElementById("connectionMessage").textContent && !pa_bad.document.getElementById("feReconnect") && !pa_bad.document.getElementById("feRetry"));
+  check("the menu offers the ordinary Connect Spotify, then Change Client ID, last in the menu like every other Spotify state, with what went wrong under it, and no Try again of its own", JSON.stringify(Array.from(pa_bad.document.querySelectorAll("#feAppMenuPanel .fe-item")).slice(-2).map((b) => b.id)) === '["feConnect","feSetupAgain"]' && pa_bad.document.getElementById("feConnect").textContent.trim() === "Connect Spotify" && pa_bad.document.getElementById("feConnectionNote").textContent === pa_bad.document.getElementById("connectionMessage").textContent && !pa_bad.document.getElementById("feReconnect") && !pa_bad.document.getElementById("feRetry"));
   pa_bad.document.getElementById("feAppMenuButton").click();
   check("Create has become Try again, and is on", pa_bad.document.getElementById("create").textContent.trim() === "Try again" && pa_bad.document.getElementById("create").disabled === false && pa_bad.document.querySelector("#create img").getAttribute("src") === "icons/retry.svg");
   check("the note beside it says what went wrong, in place of the pointer to Step 1", pa_bad.document.getElementById("spotifyNote").hidden === false && pa_bad.document.getElementById("spotifyNote").textContent === pa_bad.document.getElementById("connectionMessage").textContent);
@@ -2474,7 +2506,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   check("with no Client ID saved there is nothing to connect with, so Build stays as it was and is off", /^Build playlists for \u201c[^\u201d]+\u201d$/.test(pa_noid.document.getElementById("create").textContent.trim()) && pa_noid.document.getElementById("create").disabled === true);
   // not minimal: Step 1 is on the page, so only the menu's Connect Spotify is there
   var pa_full = await boot({ url: EDURL, local: { formats: MINI, connectedBefore: "1", clientId: "abc123" }, fetchOptions: {} });
-  check("when minimalist mode is off, Build stays Build playlists (and off) while not connected, and Step 1 is on the page", !pa_full.document.body.classList.contains("minimal") && /^Build playlists for \u201c[^\u201d]+\u201d$/.test(pa_full.document.getElementById("create").textContent.trim()) && pa_full.document.getElementById("create").disabled === true && pa_full.document.getElementById("loginSection").hidden === false);
+  check("there is no full view any more: connected before and signed out, the page is the app, compact, and Build offers to connect", pa_full.document.body.classList.contains("minimal") && pa_full.document.getElementById("create").textContent.trim() === "Connect Spotify");
   var pa_fullbad = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: { meStatus: 429, retryAfter: 120 } });
   pa_fullbad.document.getElementById("feAppMenuButton").click();
   check("and in a problem the menu has the same Connect Spotify and note as in any other mode, with no Try again of its own and no dot on its button", !pa_fullbad.document.getElementById("feRetry") && !!pa_fullbad.document.getElementById("feConnect") && !pa_fullbad.document.getElementById("feAppMenuButton").classList.contains("fe-alert"));
@@ -2517,12 +2549,11 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   check("it says a problem report goes only to the developer, only if sent, and lists what is attached and what never is", /sent only if you choose to send it, and it goes only to me, the developer of this app/.test(pv_text) && /app version, browser, window size, last error, and recent steps/.test(pv_text) && /Your sign-in, Client ID, playlist names, and song titles are never included/.test(pv_text));
   check("it describes the counts honestly: GoatCounter, no cookies, what is recorded, the four actions, and what it never receives", /GoatCounter/.test(pv_text) && /uses no cookies/.test(pv_text) && /browser, screen size, country, and the site you came from/.test(pv_text) && /first time a browser connects to Spotify, how many playlists get created, when Donate is opened, and the kind of connection problem/.test(pv_text) && /never receives playlist names, recipes, song titles, or your Client ID/.test(pv_text));
   check("it says what is kept in the browser and what Disconnect and Clear saved data remove", /Your Client ID, your recipes, your color choice, and a copy of the songs from your playlists are saved in this browser/.test(pv_text) && /Disconnect removes your Spotify sign-in and the saved songs/.test(pv_text) && /Clear saved data, in More options, removes everything/.test(pv_text));
-  check("the About section and Step 1 both link to it", pv_w.document.querySelectorAll("#about a.privacy-link").length === 1 && pv_w.document.querySelectorAll("#loginSection a.privacy-link").length === 1 && Array.from(pv_w.document.querySelectorAll("a.privacy-link")).every((a) => a.getAttribute("href") === "#privacySection"));
-  var pv_scrolled = 0;
-  pv_sec.scrollIntoView = (o) => { pv_scrolled += 1; pv_w.__scrollOpts = o; };
-  var pv_click = new pv_w.MouseEvent("click", { bubbles: true, cancelable: true });
-  pv_w.document.querySelector("#about a.privacy-link").dispatchEvent(pv_click);
-  check("clicking the link opens the Privacy section and scrolls to it, without jumping the page by itself", pv_click.defaultPrevented === true && pv_sec.open === true && pv_scrolled === 1 && pv_w.__scrollOpts.block === "start");
+  check("About links to it, and the setup and welcome pages do not, since they leave Privacy out", pv_w.document.querySelectorAll("#about a.privacy-link").length === 1 && pv_w.document.querySelectorAll("#loginSection a.privacy-link").length === 0 && pv_w.document.querySelectorAll("#welcomePage a.privacy-link").length === 0 && /html\.page-welcome footer, /.test(pv_html) && Array.from(pv_w.document.querySelectorAll("a.privacy-link")).every((a) => a.getAttribute("href") === "#privacySection"));
+  var pv_click2 = new pv_w.MouseEvent("click", { bubbles: true, cancelable: true });
+  pv_w.document.querySelector("#about a.privacy-link").dispatchEvent(pv_click2);
+  check("in the app, it opens Privacy in the popup instead", pv_click2.defaultPrevented === true && pv_w.document.getElementById("infoOverlay").hidden === false && pv_w.document.getElementById("infoSlot").firstElementChild === pv_sec);
+  pv_w.eval("closeInfo()");
   // the counter script
   check("the counter is the GoatCounter script with this account's code, loaded without blocking the page", /<script data-goatcounter="https:\/\/roncarmel\.goatcounter\.com\/count" async src="https:\/\/gc\.zgo\.at\/count\.js"><\/script>/.test(pv_html));
   check("the page is always counted as /, so the one-time code in the address after Spotify's sign-in is never sent, and that return is not counted as a second visit", /window\.goatcounter = \{ path: "\/", no_onload: \/\[\?&\]\(code\|error\)=\/\.test\(location\.search\) \};/.test(pv_html) && pv_html.indexOf("window.goatcounter = {") < pv_html.indexOf("gc.zgo.at/count.js"));
@@ -2565,7 +2596,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   if (want("privacy: hidden in minimalist mode, gap, and where reporting is mentioned")) { try {
   // ================================================================ privacy: hidden in minimalist mode, gap, and where reporting is mentioned
   var pm_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("minimalist mode hides the Privacy section along with More options", /body\.minimal #moreOptions, body\.minimal #privacySection, body\.minimal #loginSection, body\.minimal #connectionProblem \{ display: none; \}/.test(pm_css));
+  check("the app page hides the Privacy section along with More options, at the bottom of the page", /body\.minimal #formatHelp, body\.minimal footer, /.test(pm_css));
   var pm_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var pm_priv = pm_w.document.getElementById("privacySection");
   check("the Privacy section still has its part on problem reports, which is about where a report goes, but the About paragraph on privacy no longer mentions reporting", /Problem reports/.test(pm_priv.textContent) && !/report/i.test(Array.from(pm_w.document.querySelectorAll("#about p")).find((p) => /^Privacy/.test(p.textContent)).textContent));
@@ -2669,15 +2700,11 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   check("the page names its own version, the same as the script's, and loads each script with that version on its address so a cached older one is never mixed in", new RegExp('<meta name="app-version" content="' + su_ver + '">').test(su_html) && ["theme", "formats", "editor", "app"].every((n) => su_html.includes(`<script src="${n}.js?v=${su_ver}"></script>`)));
   var su_ok = await boot({ url: "http://127.0.0.1:8000/" });
   check("a normal start shows no problem banner", su_ok.document.getElementById("startupProblem").hidden === true);
-  var su_radio = (w, value) => w.document.querySelector(`input[name="flow"][value="${value}"]`);
+  var su_radio = (w, value) => w.document.querySelector(`[data-flow="${value}"]`);
   su_radio(su_ok, "new").click();
-  check("choosing Create a new Spotify developer app shows its steps and the Connect button", su_ok.document.getElementById("flowNew").hidden === false && su_ok.document.getElementById("flowExisting").hidden === true && su_ok.document.getElementById("connectBlock").hidden === false);
+  check("answering No shows its steps and the Connect button", su_ok.document.getElementById("flowNew").hidden === false && su_ok.document.getElementById("flowExisting").hidden === true && su_ok.document.getElementById("connectBlock").hidden === false);
   su_radio(su_ok, "existing").click();
-  check("choosing I already created an app shows that instead", su_ok.document.getElementById("flowNew").hidden === true && su_ok.document.getElementById("flowExisting").hidden === false && su_radio(su_ok, "existing").checked === true && su_radio(su_ok, "new").checked === false);
-  var su_change = new su_ok.Event("change");
-  su_radio(su_ok, "new").checked = true;
-  su_radio(su_ok, "new").dispatchEvent(su_change);
-  check("a change that does not bubble still counts, as the page listens for it in the capture phase", su_ok.document.getElementById("flowNew").hidden === false);
+  check("answering Yes shows that instead", su_ok.document.getElementById("flowNew").hidden === true && su_ok.document.getElementById("flowExisting").hidden === false && su_ok.document.getElementById("spAsk").hidden === true);
   // a page whose HTML is older than its script: elements the script expects are missing
   var su_old = await boot({ url: "http://127.0.0.1:8000/", session: { startupRefreshed: "1" }, htmlChange: (h) => h.replace('id="buildAll"', 'id="oldBuildAll"').replace('id="connectionRetry"', 'id="oldRetry"').replace('<meta name="app-version" content="' + su_ver + '">', '<meta name="app-version" content="2020-01-01">') });
   su_radio(su_old, "new").click();
@@ -2713,7 +2740,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-10-31d", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-10-31z", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -2883,8 +2910,10 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   if (want("the tagline")) { try {
   // ================================================================ the tagline under the title
   var tg_w = await boot({ url: "http://127.0.0.1:8000/" });
-  check("the tagline says the new playlists are built from the ones you already have, not that your playlists are turned into something", tg_w.document.querySelector(".tagline").textContent === "New playlists for ceremonies and retreats, built from the ones you already have. Requires Spotify Premium." && !/turn/i.test(tg_w.document.querySelector(".tagline").textContent));
-  check("it is still the line right under the title, and minimalist mode still hides it", tg_w.document.querySelector(".tagline").previousElementSibling.tagName === "H1" && /body\.minimal \.tagline/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  check("the tagline says ceremony playlists are ready in minutes", tg_w.document.querySelector(".tagline").textContent === "Ceremony playlists, ready in minutes.");
+  check("it is the first line of the welcome page, which only the welcome page shows", tg_w.document.getElementById("welcomePage").firstElementChild === tg_w.document.querySelector(".tagline") && /#welcomePage \{ display: none; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  var tg_helps = tg_w.document.querySelector("#welcomePage details.wp-helps");
+  check("under the intro, a closed Where it helps lists three uses, and the steps point at the recipe shown", !!tg_helps && tg_helps.open === false && tg_helps.querySelector("summary").textContent === "Where it helps" && tg_helps.querySelectorAll("li").length === 3 && /like the one shown\./.test(tg_w.document.querySelector("#welcomePage .wp-steps").textContent));
   } catch (err) { areaCrashed("the tagline", err); } }
 
   if (want("the full plan fits a phone better")) { try {
@@ -2922,7 +2951,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var QF = "https://tally.so/r/EXAMPLE";
   var qf_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {}, feedbackUrl: QF });
   var qf_sec = qf_w.document.getElementById("feedbackSection");
-  check("once it is set, Questions and feedback is the first section of More options, above Report a problem", qf_sec.hidden === false && qf_w.document.getElementById("moreOptions").contains(qf_sec) && qf_sec.nextElementSibling.tagName === "H3" && qf_sec.nextElementSibling.textContent === "Report a problem" && qf_sec.previousElementSibling.tagName === "SUMMARY" && qf_sec.querySelector("h3").textContent === "Questions and feedback");
+  check("once it is set, Questions and feedback is the first section of More options, above Limit how many playlists are made", qf_sec.hidden === false && qf_w.document.getElementById("moreOptions").contains(qf_sec) && qf_sec.nextElementSibling.tagName === "H3" && qf_sec.nextElementSibling.textContent === "Limit how many playlists are made" && qf_sec.previousElementSibling.tagName === "SUMMARY" && qf_sec.querySelector("h3").textContent === "Questions and feedback");
   var qf_text = qf_sec.querySelector("p").textContent;
   check("it says one form takes questions or feedback, that it sends only what you type, and that the email is optional, for if you want to be answered", /One form takes either\./.test(qf_text) && /It sends only what you type\./.test(qf_text) && /optional email field: enter an email there if you want me to be able to respond\./.test(qf_text) && /nothing is sent until you submit it there/.test(qf_text));
   var qf_link = qf_w.document.getElementById("feedbackLink");
@@ -2933,7 +2962,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var qf_priv = qf_w.document.getElementById("privacySection").textContent.replace(/\s+/g, " ");
   check("Privacy then says the form sends only what you type, that an email goes only if you enter one and is used only to respond, and that the feedback form opens only if you choose to send feedback", /The form sends only what you type, and nothing else is attached\. An email address is included only if you choose to enter one, and it is used only to respond to you\./.test(qf_priv) && /the feedback form only if you choose to send feedback/.test(qf_priv) && qf_w.document.getElementById("privacyFeedback").hidden === false);
   check("the form that ships is the Tally one, at its real address", /const FEEDBACK_FORM_URL = "https:\/\/tally\.so\/r\/4aayDd";/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
-  check("minimalist mode hides it with the rest of More options", /body\.minimal #moreOptions/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  check("the app page hides it with the rest of More options, which opens from the menu", /body\.minimal footer/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   } catch (err) { areaCrashed("questions and feedback", err); } }
 
   if (want("hover feedback on buttons")) { try {
@@ -2950,9 +2979,9 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   // ================================================================ the Python status at the bottom of More options
   var py_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var py_heads = Array.from(py_w.document.querySelectorAll("#moreOptions h3")).filter((h) => !h.closest("[hidden]")).map((h) => h.textContent);
-  check("the Python status is the last section of More options, after Hiding the Donate button, since it is the only one with nothing to press", py_heads[py_heads.length - 1] === "Python status" && py_heads[py_heads.length - 2] === "Hiding the Donate button", JSON.stringify(py_heads));
+  check("the Python status is the last section of More options, after Hiding the Support me button, since it is the only one with nothing to press", py_heads[py_heads.length - 1] === "Python status" && py_heads[py_heads.length - 2] === "Hiding the Support me button", JSON.stringify(py_heads));
   check("it sits right above the app version, the last line", py_w.document.getElementById("pythonStatus").nextElementSibling.id === "" && /^App version: /.test(py_w.document.getElementById("pythonStatus").nextElementSibling.textContent) && py_w.document.getElementById("pythonStatus").nextElementSibling.nextElementSibling === null);
-  check("the Clear saved data question still opens right under its button, ahead of the Hiding the Donate button section", !!(py_w.document.getElementById("clearConfirm").compareDocumentPosition(py_w.document.getElementById("donateHideBox")) & 4));
+  check("the Clear saved data question still opens right under its button, ahead of the Hiding the Support me button section", !!(py_w.document.getElementById("clearConfirm").compareDocumentPosition(py_w.document.getElementById("donateHideBox")) & 4));
   } catch (err) { areaCrashed("python status at the bottom", err); } }
 
   if (want("the build icon")) { try {
@@ -2980,15 +3009,22 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   // ================================================================ Spotify Premium: the tagline, the notice, the reminder, and the error
   var pr_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   var pr_w = await boot({ url: "http://127.0.0.1:8000/" });
-  var pr_n = pr_w.document.getElementById("premiumNotice");
-  check("a new visitor sees a notice at the very top of Step 1, above the setup choices: Requires Spotify Premium, and that a free account will not work", !!pr_n && pr_n.hidden === false && pr_w.document.getElementById("loginSection").contains(pr_n) && pr_n.previousElementSibling.tagName === "H2" && pr_n.querySelector("strong").textContent === "Requires Spotify Premium" && /Spotify only lets Premium accounts create the developer app this page needs\. A free Spotify account will not work\./.test(pr_n.textContent) && pr_n.nextElementSibling.classList.contains("card"));
+  var pr_req = pr_w.document.querySelector("#welcomePage .wp-req");
+  var pr_why = pr_w.document.getElementById("premiumWhy"), pr_pop = pr_w.document.getElementById("premiumWhyText");
+  check("a new visitor sees a Requires Spotify Premium capsule right under the tagline, with Why? next to it", !!pr_req && pr_req.previousElementSibling === pr_w.document.querySelector(".tagline") && pr_req.querySelector(".wp-cap").textContent === "Requires Spotify Premium" && pr_why.textContent === "Why?" && pr_req.contains(pr_why));
+  check("Why? starts closed, and opens a note that uses Spotify's own name for free accounts", pr_pop.hidden === true && pr_why.getAttribute("aria-expanded") === "false" && (pr_why.click(), pr_pop.hidden === false) && pr_why.getAttribute("aria-expanded") === "true" && pr_pop.textContent === "This app relies on a feature that is not available in Spotify Free accounts.");
+  pr_w.document.body.click();
+  check("a tap anywhere else closes it", pr_pop.hidden === true && pr_why.getAttribute("aria-expanded") === "false");
+  pr_why.click(); pr_pop.click();
+  check("a tap on the note itself leaves it open, Why? again closes it, and so does Escape", pr_pop.hidden === false && (pr_why.click(), pr_pop.hidden === true) && (pr_why.click(), pr_w.document.dispatchEvent(new pr_w.KeyboardEvent("keydown", { key: "Escape" })), pr_pop.hidden === true));
+  check("the old boxed Premium notice is gone", !pr_w.document.getElementById("premiumNotice"));
   var pr_w2 = await boot({ url: "http://127.0.0.1:8000/", local: { clientId: "abc123" } });
-  check("someone with a Client ID saved has already made the developer app, so the notice stays hidden, and so does the line under the title", pr_w2.document.getElementById("premiumNotice").hidden === true && pr_w2.document.getElementById("taglinePremium").hidden === true);
-  check("for a new visitor with no Client ID, both show", pr_w.document.getElementById("premiumNotice").hidden === false && pr_w.document.getElementById("taglinePremium").hidden === false);
+  check("there is no second Premium line under the title any more", !pr_w.document.getElementById("taglinePremium"));
   var pr_w3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, clientId: "abc123" } });
-  check("when connected, neither shows", pr_w3.document.getElementById("premiumNotice").hidden === true && pr_w3.document.getElementById("taglinePremium").hidden === true);
-  check("the line under the title says it too, in bold, so it is read before anything else", /Requires Spotify Premium\./.test(pr_w.document.querySelector(".tagline").textContent) && pr_w.document.querySelector(".tagline strong#taglinePremium").textContent === "Requires Spotify Premium.");
-  check("the first instruction for making the developer app says to log in with the Premium account", /\(it opens in a new tab\), log in with your Spotify Premium account, and click <span class="ui">Create app<\/span>\./.test(pr_html));
+  check("when connected, the welcome page and its notice are not shown", pr_w3.document.documentElement.classList.contains("page-app"));
+  check("the welcome page says it works in any browser, easiest on a bigger screen", /Works in any browser, easiest on a bigger screen\./.test(pr_w.document.getElementById("welcomePage").textContent));
+  check("the welcome page shows a recipe screenshot in a tilted frame", !!pr_w.document.querySelector("#welcomePage .wp-frame img[src='welcome-recipe.jpg']") && /\.wp-frame \{[^}]*transform: rotate\(-3deg\)/.test(pr_html) && fs.existsSync(ROOT + "welcome-recipe.jpg"));
+  check("the first instruction for making the developer app says to log in with the Premium account", /\(it will open in a new tab\), log in with your Spotify Premium account, and press the <span class="ui">Create app<\/span> button\./.test(pr_html));
   // the error
   var pr_e = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { premiumRequired: true } });
   await waitFor(() => !pr_e.document.getElementById("connectionProblem").hidden, 30000);
@@ -3002,19 +3038,19 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   } catch (err) { areaCrashed("spotify premium", err); } }
 
   if (want("hiding the donate button")) { try {
-  // ================================================================ Hiding the Donate button: for people who have donated, on the honor system
+  // ================================================================ Hiding the Support me button: for people who have donated, on the honor system
   var dh_html = fs.readFileSync(ROOT + "index.html", "utf8");
   var dh_css = dh_html.replace(/\s+/g, " ");
   var dh_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var dh_d = dh_w.document;
   var dh_h3 = Array.from(dh_d.querySelectorAll("#moreOptions h3")).map((h) => h.textContent);
-  check("More options has a section called Hiding the Donate button, right after Clear saved data and just before Python status", dh_h3.includes("Hiding the Donate button") && dh_h3.indexOf("Hiding the Donate button") === dh_h3.indexOf("Clear saved data") + 1 && dh_h3.indexOf("Hiding the Donate button") + 1 === dh_h3.indexOf("Python status"), JSON.stringify(dh_h3));
+  check("More options has a section called Hiding the Support me button, right after Clear saved data and just before Python status", dh_h3.includes("Hiding the Support me button") && dh_h3.indexOf("Hiding the Support me button") === dh_h3.indexOf("Clear saved data") + 1 && dh_h3.indexOf("Hiding the Support me button") + 1 === dh_h3.indexOf("Python status"), JSON.stringify(dh_h3));
   var dh_p = dh_d.querySelector("#donateHideBox").closest("label").previousElementSibling;
-  check("it is direct and playful: the button is meant to be visible until you have donated, please give what feels right, thank you if you did, check the box and it leaves you alone, honor system, nobody is looking, and it waits patiently", dh_p.textContent === "The Donate button is meant to be visible until you have donated. If this app has been useful to you, please give whatever feels right to you. Already did? Thank you! Check the box and the button will leave you alone. This runs on the honor system, so nobody\u2019s looking, and the button waits patiently.");
-  check("there is one checkbox, labeled I have donated!, for people who have donated, and no second answer for people who have not", dh_d.getElementById("donateHideBox").type === "checkbox" && dh_d.getElementById("donateHideBox").closest("label").textContent.trim() === "I have donated!" && !dh_d.getElementById("hideDonated") && !dh_d.getElementById("hideDeclined") && !dh_d.getElementById("showDonate"));
+  check("it is direct and playful: the button is meant to be visible until you have donated, please give what feels right, thank you if you did, check the box and it leaves you alone, honor system, nobody is looking, and it waits patiently", dh_p.textContent === "The Support me button stays visible until you have... supported me 🙂. If this app has been helpful to you, please give whatever feels right. Already did? Thank you! Check the box and the button will leave you alone. This runs on the honor system, so nobody\u2019s looking, and the button waits patiently.");
+  check("there is one checkbox, labeled I have supported you!, for people who have donated, and no second answer for people who have not", dh_d.getElementById("donateHideBox").type === "checkbox" && dh_d.getElementById("donateHideBox").closest("label").textContent.trim() === "I have supported you!" && !dh_d.getElementById("hideDonated") && !dh_d.getElementById("hideDeclined") && !dh_d.getElementById("showDonate"));
   check("to begin with the box is unchecked, the Donate button shows, and there is no thank-you under the box", dh_d.getElementById("donateHideBox").checked === false && dh_d.getElementById("donateHiddenMessage").hidden === true && !dh_w.document.documentElement.classList.contains("donate-hidden") && !dh_w.localStorage.getItem("donateHidden"));
   dh_d.getElementById("donateHideBox").checked = true; dh_d.getElementById("donateHideBox").dispatchEvent(new dh_w.Event("change", { bubbles: true }));
-  check("checking it hides the Donate button, keeps the answer in this browser, and says thank you", dh_w.document.documentElement.classList.contains("donate-hidden") && dh_w.localStorage.getItem("donateHidden") === "donated" && dh_d.getElementById("donateHiddenMessage").hidden === false && dh_d.getElementById("donateHiddenMessage").textContent === "The Donate button is hidden. Thank you for donating!");
+  check("checking it hides the Donate button, keeps the answer in this browser, and says thank you", dh_w.document.documentElement.classList.contains("donate-hidden") && dh_w.localStorage.getItem("donateHidden") === "donated" && dh_d.getElementById("donateHiddenMessage").hidden === false && dh_d.getElementById("donateHiddenMessage").textContent === "The Support me button is hidden. Thank you for your support!");
   dh_d.getElementById("donateHideBox").checked = false; dh_d.getElementById("donateHideBox").dispatchEvent(new dh_w.Event("change", { bubbles: true }));
   check("unchecking it brings the button back and clears the saved answer, so no separate button is needed", !dh_w.document.documentElement.classList.contains("donate-hidden") && !dh_w.localStorage.getItem("donateHidden") && dh_d.getElementById("donateHiddenMessage").hidden === true);
   var dh_w2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, donateHidden: "donated" }, fetchOptions: {} });
@@ -3031,7 +3067,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   dh_w4.localStorage.setItem("donateHidden", "donated"); dh_w4.eval("addSupportPrompt()");
   check("the thank-you line after a build is added, unless the Donate button was hidden, and then it is not", dh_shown === 1 && dh_w4.document.querySelectorAll("#results .support-prompt").length === 1);
   var dh_app = fs.readFileSync(ROOT + "app.js", "utf8");
-  check("the answer stays in this browser: it is never counted or sent anywhere, and Privacy says so", !/countEvent\("donate-hid/.test(dh_app) && /const DONATE_KEY = "donateHidden";/.test(dh_app) && !/fetch\([^)]*donateHidden/.test(dh_app) && /If you check the box to hide the Donate button, that choice is saved in this browser and goes nowhere else\./.test(dh_html));
+  check("the answer stays in this browser: it is never counted or sent anywhere, and Privacy says so", !/countEvent\("donate-hid/.test(dh_app) && /const DONATE_KEY = "donateHidden";/.test(dh_app) && !/fetch\([^)]*donateHidden/.test(dh_app) && /If you check the box to hide the Support me button, that choice is saved in this browser and goes nowhere else\./.test(dh_html));
   } catch (err) { areaCrashed("hiding the donate button", err); } }
 
   if (want("backup link in step 2")) { try {
@@ -3216,7 +3252,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   check("the gray marker colors are gone from the page and from the themes", !/var\(--tag(-off)?[,)]/.test(mc_css) && !/"--tag(-off)?":/.test(mc_theme));
 
   var gs_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("holding a finger anywhere in the app, on text, a button or the background, selects nothing: the whole page is set to no selection, and only fields, the plan and report text and the copyable addresses can be selected", /html \{ -webkit-user-select: none; user-select: none; \}/.test(gs_css) && /input, textarea, pre, code \{ -webkit-user-select: text; user-select: text; \}/.test(gs_css));
+  check("holding a finger anywhere on the app page, on text, a button or the background, selects nothing: the whole page is set to no selection, and only fields, the plan and report text and the copyable addresses can be selected", /html\.page-app \{ -webkit-user-select: none; user-select: none; \}/.test(gs_css) && /input, textarea, pre, code \{ -webkit-user-select: text; user-select: text; \}/.test(gs_css));
   } catch (err) { areaCrashed("marker colors", err); } }
 
 
@@ -3785,12 +3821,12 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var sw_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("the privacy text says that with automatic backup each recipe is also kept in a private playlist in the person's own Spotify account, in its description, and goes nowhere else", /Recipes are saved to Spotify unless you choose otherwise: each recipe is also kept in a private playlist in your own Spotify account, in the playlist's description\. That is where the app saves it and reads it back, and it goes nowhere else\./.test(sw_html));
   var sw_m = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "manual" }, fetchOptions: {} });
-  check("with the backup file as the way, Clear saved data talks about restoring from the file", /restore from a backup/.test(sw_m.document.getElementById("clearRestoreHelp").textContent) && /restore from a backup/.test(sw_m.document.getElementById("clearConfirmHelp").textContent));
+  check("with the backup file as the way, Clear saved data talks about restoring from the file, with Restore in the app menu", /Restore in the app menu/.test(sw_m.document.getElementById("clearRestoreHelp").textContent) && /Restore in the app menu/.test(sw_m.document.getElementById("clearConfirmHelp").textContent));
   var sw_s = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "spotify" }, fetchOptions: {} });
   check("with Spotify as the way, it says the backups in Spotify stay, and that connecting again loads the formats back, and does not mention a file", /Recipes saved to Spotify stay there/.test(sw_s.document.getElementById("clearRestoreHelp").textContent) && /connecting to Spotify again brings them back/.test(sw_s.document.getElementById("clearConfirmHelp").textContent) && !/restore from a backup/.test(sw_s.document.getElementById("clearRestoreHelp").textContent + sw_s.document.getElementById("clearConfirmHelp").textContent));
   check("and the note above the button says clearing does not remove those backups", /does not remove them/.test(sw_s.document.getElementById("clearBackupNote").textContent));
   sw_s.document.getElementById("backupCard") && sw_s.eval('localStorage.setItem("backupMode", "manual"); applyBackupMode();');
-  check("switching back to the backup file puts its wording back", /restore from a backup/.test(sw_s.document.getElementById("clearRestoreHelp").textContent));
+  check("switching back to the backup file puts its wording back", /Restore in the app menu/.test(sw_s.document.getElementById("clearRestoreHelp").textContent));
   } catch (err) { areaCrashed("spotify wording", err); } }
 
   if (want("backup switching")) { try {
@@ -3921,7 +3957,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   await new Promise((r) => setTimeout(r, 100));
   check("pressing it makes it say Connecting\u2026 and cannot be pressed again", cs_label(cs_w, "connect") === "Connecting\u2026" && cs_w.document.getElementById("connect").disabled);
   check("and a line beside it says Spotify is opening and that it can take a few seconds", /Opening Spotify\. On a slow connection this can take a few seconds\./.test(cs_w.document.getElementById("loginMessage").textContent));
-  check("that line is not in the error color, since nothing has gone wrong: it is only saying what is happening", cs_w.document.getElementById("loginMessage").className === "muted" && cs_w.document.getElementById("welcomeMessage").className === "muted");
+  check("that line is not in the error color, since nothing has gone wrong: it is only saying what is happening", cs_w.document.getElementById("loginMessage").className === "muted");
   var cs_state = cs_w.sessionStorage.getItem("pkceState");
   cs_w.document.getElementById("connect").click();
   await new Promise((r) => setTimeout(r, 50));
@@ -4229,9 +4265,9 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   check("connecting: the Connecting item and its note are last", sl_slow.eval("connection") === "connecting" && sl_s.last.id === "feConnectionNote" && /Connecting/.test(sl_s.last.previousElementSibling.textContent));
   var sl_out = await boot({ url: EDURL, local: { formats: MINI, connectedBefore: "1", clientId: "c1" }, fetchOptions: {} });
   sl_out.document.getElementById("feAppMenuButton").click();
-  check("not connected: Connect Spotify is last", Array.from(sl_out.document.querySelectorAll("#feAppMenuPanel > *")).slice(0, -2).pop().id === "feConnect");
+  check("not connected: Connect Spotify, then Change Client ID, are last", JSON.stringify(Array.from(sl_out.document.querySelectorAll("#feAppMenuPanel > *")).slice(0, -2).slice(-2).map((n) => n.id)) === '["feConnect","feSetupAgain"]');
   sl_out.document.body.click();
-  check("and in every state the menu starts with the app's name and icon, then Compact view, so it begins the same way", [sl_ready, sl_slow, sl_out].every((w) => { w.document.getElementById("feAppMenuButton").click(); const kids = w.document.querySelectorAll("#feAppMenuPanel > *"); const ok = kids[0].id === "feMenuHead" && kids[1].id === "feMinimal"; w.document.body.click(); return ok; }));
+  check("and in every state the menu starts with the app's name and icon, then More options, so it begins the same way", [sl_ready, sl_slow, sl_out].every((w) => { w.document.getElementById("feAppMenuButton").click(); const kids = w.document.querySelectorAll("#feAppMenuPanel > *"); const ok = kids[0].id === "feMenuHead" && kids[1].id === "feMoreOptions"; w.document.body.click(); return ok; }));
   } catch (err) { areaCrashed("spotify last", err); } }
 
   if (want("batch seven")) { try {
@@ -4242,7 +4278,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var b7_menu = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: {} });
   b7_menu.document.getElementById("feAppMenuButton").click();
   var b7_kids = b7_menu.document.querySelectorAll("#feAppMenuPanel > *");
-  check("the menu begins with the app's icon and name, as a band, then Compact view with no divider between", b7_kids[0].id === "feMenuHead" && b7_kids[0].querySelector("img").getAttribute("src") === "apple-touch-icon.png" && b7_kids[0].querySelector(".fe-menuname").textContent === "Ceremony Playlist Builder" && b7_kids[1].id === "feMinimal" && /^Compact view$/.test(b7_kids[1].textContent.trim()));
+  check("the menu begins with the app's icon and name, as a band, then More options with no divider between", b7_kids[0].id === "feMenuHead" && b7_kids[0].querySelector("img").getAttribute("src") === "apple-touch-icon.png" && b7_kids[0].querySelector(".fe-menuname").textContent === "Ceremony Playlist Builder" && b7_kids[1].id === "feMoreOptions" && /^More options$/.test(b7_kids[1].textContent.trim()));
   check("the header is only a picture and a name: not a button, not a link, and nothing about it reacts to the mouse", b7_kids[0].tagName === "DIV" && !b7_kids[0].querySelector("button, a") && !/fe-menuhead[^{]*:hover/.test(b7_html) && b7_kids[0].querySelector("img").getAttribute("alt") === "");
   b7_menu.document.body.click();
 
@@ -4323,7 +4359,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-10-31d"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-10-31z"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -4479,6 +4515,9 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   await nv_check(nv_b);
   await new Promise((r) => setTimeout(r, 200));
   check("the same newer version again in the same visit does not reload again, in case the upload is half done: it says so instead, with Reload", nv_b.__reloaded === 1 && /A newer version of the app is available\./.test(capText(nv_b)) && capLinks(nv_b).some((b) => b.textContent === "Reload"));
+  var nv_btn = capLinks(nv_b).find((b) => b.textContent === "Reload");
+  nv_b.document.getElementById("feCaption").dispatchEvent(new nv_b.Event("pointerdown", { bubbles: true }));
+  check("pressing on the message does not replace its buttons, so a press on Reload or OK still counts as a click", capLinks(nv_b).includes(nv_btn));
   capLinks(nv_b).find((b) => b.textContent === "Reload").click();
   await new Promise((r) => setTimeout(r, 200));
   check("Reload loads the page again whenever it is pressed", nv_b.__reloaded === 2);

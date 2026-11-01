@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-10-31d">
-<script src="theme.js?v=2026-10-31d"></script>
+<meta name="app-version" content="2026-10-31z">
+<script src="theme.js?v=2026-10-31z"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -14,16 +14,13 @@
   [hidden] { display: none !important; }
   :root { color-scheme: light dark; --bg: #ffffff; --fg: #1d1d1f; --muted: #6b6b70; --line: #d8d8dc; --card: #f5f5f7; --accent: #c2188f; --button: #ff38b8; }
   @media (prefers-color-scheme: dark) { :root { --bg: #161618; --fg: #f2f2f4; --muted: #9a9aa2; --line: #333338; --card: #202024; --accent: #ff38b8; --button: #ff38b8; } }
-  /* holding a finger on anything, text, a button or the background, must not select text or show the selection handles; only fields and the blocks of text that are there to be copied can be selected */
-  html { -webkit-user-select: none; user-select: none; }
+  /* on the app page, holding a finger on anything, text, a button or the background, must not select text or show the selection handles; only fields and the blocks of text that are there to be copied can be selected. The welcome and setup pages are for reading, so their text can be selected. */
+  html.page-app { -webkit-user-select: none; user-select: none; }
   input, textarea, pre, code { -webkit-user-select: text; user-select: text; }
   body { margin: 0; background: var(--bg); color: var(--muted); font: 16px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   main { max-width: 720px; margin: 0 auto; padding: 24px 16px 24px; }
   h1 { font-size: clamp(1.9rem, 6vw, 2.5rem); line-height: 1.15; margin: 0 0 6px; color: var(--accent); }
-  .tagline { margin: 0 0 14px; }
   details.about { margin: 0 0 8px; }
-  #setupDetails > summary { cursor: pointer; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
-  #welcomeBack { margin-bottom: 10px; }
   button:not(.linklike), a.button-link { display: inline-flex; align-items: center; gap: 8px; }
   .btn-icon { width: 20px; height: 20px; display: block; flex: none; filter: var(--icon-filter, none); }
   img.btn-icon[src="icons/build.svg"] { width: 24px; height: 24px; }   /* the sparkles are drawn small within their box, so this one icon is shown 20% larger than the rest */
@@ -33,7 +30,6 @@
   #startupProblem { z-index: 2000; }   /* above everything, including the donation panel */
   #startupProblem[hidden] { display: none; }
   #startupProblem .report-hint { margin-top: 14px; }
-  #welcomeBack p { margin-top: 0; }
   details.about summary { cursor: pointer; font-weight: 600; color: var(--accent); }
   details.about p { margin: 10px 0 0; }
   details.about ol { margin: 6px 0 0; padding-left: 22px; }
@@ -336,8 +332,8 @@
   .swatch { width: 18px; height: 18px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.55); }
   /* minimalist mode: the page with only what is needed. The headings and explanations of the steps, the "more about" box, the Spotify
      connection once it is made, and the backup step all go; the app menu has the backup and sign-out. */
-  body.minimal #backupCard:not(.opened), body.minimal #savedNoteSpotify, body.minimal #spotifySaveLine, body.minimal .tagline, body.minimal #about, body.minimal #connectedSection, body.minimal #editHeading, body.minimal #savedNote,
-  body.minimal #createHeading, body.minimal #createNote, body.minimal #backupBlock, body.minimal #formatHelp, body.minimal #moreOptions, body.minimal #privacySection, body.minimal #loginSection, body.minimal #connectionProblem { display: none; }
+  body.minimal #backupCard:not(.opened), body.minimal #savedNoteSpotify, body.minimal #spotifySaveLine, body.minimal main > #about, body.minimal #connectedSection, body.minimal #editHeading, body.minimal #savedNote,
+  body.minimal #createHeading, body.minimal #createNote, body.minimal #backupBlock, body.minimal #formatHelp, body.minimal footer, body.minimal #loginSection, body.minimal #connectionProblem { display: none; }
   /* the page's title goes (once the editor is there), and the icon takes its place at the left of the tabs, as tall as they are */
   body.minimal.has-editor h1.brand { display: none; }
   body.minimal.has-editor main { padding-top: 10px; }   /* the same gap as between the tabs and the card */
@@ -347,6 +343,81 @@
     body.minimal #formatEditor .fe-appicon { display: block; width: 44px; height: 44px; flex: none; border-radius: 22%; }   /* narrow screens need the room for the tabs */
   }
   #moreOptions { margin-bottom: 14px; }   /* a little room between More options and Privacy */
+  /* Three pages in one: welcome (the first visit), the one-time setup, and the app. The class on <html> says which (see the script in <head> and showPage in app.js). */
+  #welcomePage { display: none; }
+  html.page-welcome #welcomePage { display: block; }
+  html.page-welcome footer, html.page-welcome #about, html.page-welcome #loginSection, html.page-welcome #connectedSection, html.page-welcome #connectionProblem, html.page-welcome #appSection,
+  html.page-welcome #supportBox, html.page-welcome #moreOptions,
+  html.page-setup #about, html.page-setup #connectedSection, html.page-setup #connectionProblem, html.page-setup #appSection,
+  html.page-setup #supportBox, html.page-setup #moreOptions, html.page-setup #privacySection,
+  html.page-app #welcomePage, html.page-app main > #about, html.page-app #loginSection, html.page-app footer { display: none; }
+  html.page-app main > h1.brand { display: none; }
+  html.page-app main { padding-top: 10px; }
+  html.page-welcome, html.page-setup { scrollbar-gutter: stable; }   /* the title does not shift sideways when one page is long enough to scroll and the other is not */
+  html.page-setup footer { margin-top: 40px; }
+  #welcomePage { margin-top: 18px; }
+  .wp-lead { font-size: 1.2rem; color: var(--fg); margin: 0 0 12px; }
+  #welcomePage h2 { margin: 28px 0 10px; font-size: 1.2rem; }
+  .wp-steps { list-style: none; padding: 0; margin: 0; }
+  .wp-steps li { display: flex; gap: 12px; align-items: flex-start; margin: 0 0 14px; }
+  .wp-num { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--button); color: var(--on-button, #fff); font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; margin-top: 1px; }
+  .wp-req { position: relative; display: flex; align-items: center; gap: 10px; margin: -2px 0 14px; }
+  .wp-cap { padding: 3px 11px; border-radius: 999px; font-size: 0.85rem; font-weight: 600; border: 1px solid var(--line); background: var(--card); }
+  #premiumWhy { font-size: 0.9rem; font-weight: 600; }
+  /* the answer to Why? floats under the capsule, over the text, and closes on any tap elsewhere or Escape */
+  .wp-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 5; max-width: 300px; margin: 0; padding: 10px 14px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35); font-size: 0.92rem; }
+  .wp-shot { margin: 22px 0 8px; text-align: center; }
+  .wp-frame { display: inline-block; width: 230px; padding: 10px; border-radius: 22px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35); transform: rotate(-3deg); }
+  .wp-frame img { display: block; width: 100%; height: auto; border-radius: 14px; }
+  .wp-shot figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 14px; }
+  /* phones: the intro, then the screenshot under it. Wide: the screenshot floats at the right and the rest of the page wraps around it. */
+  .wp-intro { display: flex; flex-direction: column; }
+  .wp-intro > p, .wp-intro > .wp-helps { order: -1; margin-top: 0; }
+  .wp-helps { margin-bottom: 14px; }
+  .wp-helps > summary { width: fit-content; color: var(--accent); font-weight: 600; cursor: pointer; }
+  .wp-helps ul { margin: 8px 0 0; padding-left: 20px; }
+  .wp-helps li { margin: 0 0 8px; }
+  @media (min-width: 760px) {
+    .wp-intro { display: block; }
+    .wp-intro .wp-shot { float: right; width: 260px; margin: 0 0 16px 28px; }
+  }
+  .wp-go { margin-top: 22px; }
+  #startSetup { font-size: 1.1rem; padding: 12px 28px; }
+  .wp-screens { margin-top: 14px; }
+  /* the setup page: a question card, then a separate card with the steps for the answer */
+  .sp-card { margin-top: 18px; }
+  .sp-card h2 { margin: 0 0 8px; font-size: 1.2rem; }
+  .sp-q { font-size: 1.05rem; margin: 0 0 12px; }
+  .sp-choices { display: flex; gap: 10px; flex-wrap: wrap; }
+  .sp-choices button { flex: 1 1 200px; }
+  .sp-reassure { margin: 14px 0 0; }
+  .sp-agree { margin: 10px 0 0; }
+  #spSteps { counter-reset: spstep; }
+  .sp-list { list-style: none; padding: 0; margin: 12px 0 0; }
+  .sp-item { counter-increment: spstep; position: relative; padding-left: 40px; margin: 0 0 18px; }
+  .sp-item::before { content: counter(spstep); position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--button); color: var(--on-button, #fff); font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; }
+  #connectBlock #clientId { margin: 8px 0; }
+  #spWhat, #spWhatExisting { margin-top: 4px; }
+  .sp-shot { margin: 10px 0 0; }
+  .sp-shot img { display: block; width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line); }
+  /* the popup that shows About, Privacy, More options or Report a problem, opened from the app menu */
+  #infoDialog details > summary { list-style: none; pointer-events: none; font-size: 1.25rem; font-weight: 700; color: var(--fg); margin: 0 0 6px; }
+  #infoDialog details > summary::-webkit-details-marker { display: none; }
+  #infoDialog details.card, #infoDialog .card { background: none; border: none; padding: 0; margin: 0; }
+  /* the title and the Close button sit in a header that never scrolls; only the part below it does */
+  #infoDialog { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+  #infoHeader { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; }
+  #infoTitle { margin: 0; font-size: 1.25rem; line-height: 1.3; color: var(--fg); }
+  #infoClose { flex: none; margin: 0; }
+  #infoSlot { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 18px 18px; }
+  #infoDialog details > summary, #infoSlot > #reportBlock > h3:first-child { display: none; }
+  /* More options: one rhythm for every section, and everything under a heading indented a little */
+  #moreOptions h3 { margin: 26px 0 8px; font-size: 1.05rem; }
+  #infoSlot > #moreOptions { margin-top: -22px; }   /* the header already has its own room below it */
+  #moreOptions > :not(summary):not(h3):not(#feedbackSection):not(.mo-version), #feedbackSection > :not(h3), #reportBlock > :not(h3) { margin-left: 16px; }
+  #moreOptions p, #moreOptions .row, #moreOptions select, #moreOptions pre.report-preview, #moreOptions .choice-row, #moreOptions .button-link, #reportBlock p, #reportBlock pre.report-preview, #reportBlock .button-link { margin-top: 0; margin-bottom: 10px; }
+  #moreOptions p.mo-version { margin: 32px 0 0; }
+  #moreOptions .row select, #moreOptions .row .button-link { margin-bottom: 0; }   /* inside a row, the row supplies the space below, so the items centre on each other */
   body.minimal #feAppMenuButton { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
   /* the popup that holds everything after a click on Create: the plan, the question, the progress, and the result */
   .app-overlay { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 1100; background: rgba(0, 0, 0, 0.65); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
@@ -542,6 +613,20 @@
   });
 </script>
 <script>
+  // Which of the three pages to show, decided before anything is drawn: welcome, the one-time setup, or the app. pageName() in app.js decides the same way.
+  (function () {
+    var page = "welcome";
+    try {
+      var setup = localStorage.getItem("setupStarted");
+      if (sessionStorage.getItem("token")) page = "app";
+      else if (sessionStorage.getItem("setupAgain") === "1") page = "setup";
+      else if (localStorage.getItem("connectedBefore") === "1") page = "app";
+      else if (setup === "1" || (setup === null && localStorage.getItem("clientId"))) page = "setup";
+    } catch (err) { /* storage is blocked: the welcome page */ }
+    document.documentElement.classList.add("page-" + page);
+  })();
+</script>
+<script>
   // Anonymous visit counts (see Privacy). The page is always counted as "/", and coming back from Spotify's sign-in is not counted again.
   window.goatcounter = { path: "/", no_onload: /[?&](code|error)=/.test(location.search) };
 </script>
@@ -550,7 +635,6 @@
 <body>
 <main>
   <h1 class="brand"><img class="app-icon" src="apple-touch-icon.png" alt="" width="44" height="44"><span class="brand-text"><span>Ceremony</span> <span>Playlist</span> <span>Builder</span></span></h1>
-  <p class="tagline">New playlists for ceremonies and retreats, built from the ones you already have. <strong id="taglinePremium">Requires Spotify Premium.</strong></p>
   <div id="startupProblem" class="fe-overlay" role="alertdialog" aria-modal="true" aria-labelledby="startupTitle" hidden>
     <div class="fe-dialog">
       <h3 id="startupTitle">Part of this page did not start</h3>
@@ -565,8 +649,40 @@
     </div>
   </div>
 
+  <section id="welcomePage">
+    <p class="tagline wp-lead">Ceremony playlists, ready in minutes.</p>
+    <div class="wp-req">
+      <span class="wp-cap">Requires Spotify Premium</span>
+      <button id="premiumWhy" class="linklike" type="button" aria-expanded="false" aria-controls="premiumWhyText">Why?</button>
+      <p id="premiumWhyText" class="wp-pop" hidden>This app relies on a feature that is not available in Spotify Free accounts.</p>
+    </div>
+    <div class="wp-intro">
+      <figure class="wp-shot">
+        <div class="wp-frame"><img src="welcome-recipe.jpg" alt="A recipe with five segments: Settling 30 minutes, Rising 30, Plateau 120, Landing 60, Rest 60." width="230" height="233"></div>
+        <figcaption>A 5 hour recipe. Each row is one of your playlists.</figcaption>
+      </figure>
+      <p>Your ceremonies have an arc, and the music you play follows this arc. Describe this arc in a recipe, which tells the app which of your Spotify playlists to draw from, in what order, and for how long. Using this recipe, the app builds new ceremony playlists for you with no song repeated across them.</p>
+      <details class="wp-helps">
+        <summary>Where it helps</summary>
+        <ul>
+          <li><span class="ui">Returning clients hear new music.</span> One recipe builds as many playlists as your music allows, with no song repeated across them.</li>
+          <li><span class="ui">New music joins quickly.</span> Add songs to your music library and rebuild to include them in all your existing playlists. With enough new songs, you may get more playlists than before.</li>
+          <li><span class="ui">Quicker, even for a single playlist.</span> No more hand-picking songs and adding up their lengths. The app fills each part of the arc for you.</li>
+        </ul>
+      </details>
+    </div>
+    <h2>What to expect</h2>
+    <ol class="wp-steps">
+      <li><span class="wp-num">1</span><div><span class="ui">One-time setup, takes a couple of minutes.</span> Set up the connection between the app and your Spotify Premium account. A little technical, but with clear and simple instructions.</div></li>
+      <li><span class="wp-num">2</span><div><span class="ui">Design a recipe</span>, like the one shown.</div></li>
+      <li><span class="wp-num">3</span><div><span class="ui">Build.</span> The new playlists appear in your Spotify account, ready to play.</div></li>
+    </ol>
+    <div class="row wp-go"><button id="startSetup" class="primary" type="button"><img class="btn-icon" src="icons/start.svg" alt="" width="20" height="20"><span class="btn-label">Start setup</span></button></div>
+    <p class="muted wp-screens">Works in any browser, easiest on a bigger screen.</p>
+  </section>
+
   <details id="about" class="about card">
-    <summary>More about this app</summary>
+    <summary>About this app</summary>
     <p><strong>What it does</strong><br>Ceremony Playlist Builder makes long playlists from your existing Spotify playlists. Describe the structure of the playlists you want to create, and the app builds as many complete playlists as your music allows, with songs picked at random and no song repeated across the playlists made from one recipe. Each playlist is created in your Spotify account, ready to play.</p>
     <p><strong>What it's good for</strong><br>Ceremonies, retreats, workshops, and any long event where the music should follow an arc, such as arriving, deepening, and landing. Instead of steering a shuffle during the event or manually building a playlist ahead of time for each event, set the structure once and get multiple fresh, non-overlapping playlists. You can then use these playlists for subsequent events without ever repeating the same music.</p>
     <p><strong>How it works</strong></p>
@@ -576,85 +692,89 @@
       <li>Build the playlists. The app shows you what it found and asks before it builds anything.</li>
     </ol>
     <p><strong>What you need</strong><br>A Spotify Premium account (Spotify requires it for the free developer app) and some playlists of your own to draw from.</p>
-    <p><strong>Reporting problems</strong><br>If you run into a problem you can report it in the <span class="ui">More options</span> section at the bottom of this page.</p>
-    <p><strong>Privacy</strong><br>Your existing Spotify playlists are only read, never changed. Everything runs in this browser, and nothing about your music, such as playlist names or songs, goes anywhere except to you and Spotify. For the full details, see <a href="#privacySection" class="privacy-link">Privacy</a> at the bottom of this page.</p>
+    <p><strong>Reporting problems</strong><br>If you run into a problem, choose <span class="ui">Report a problem</span> in the app menu.</p>
+    <p><strong>Privacy</strong><br>Your existing Spotify playlists are only read, never changed. Everything runs in this browser, and nothing about your music, such as playlist names or songs, goes anywhere except to you and Spotify. For the full details, see <a href="#privacySection" class="privacy-link">Privacy</a>.</p>
   </details>
 
   <section id="loginSection">
-    <h2>1. Connect to Spotify</h2>
-    <div id="premiumNotice" class="notice" role="note">
-      <strong>Requires Spotify Premium</strong>
-      Spotify only lets Premium accounts create the developer app this page needs. A free Spotify account will not work.
-    </div>
-    <div class="card">
-      <div id="welcomeBack" hidden>
-        <p><span class="ui">Welcome back.</span> Your Spotify developer app is saved in this browser. Connect to Spotify to continue.</p>
-        <div class="row">
-          <button id="connectReturning" class="primary" type="button"><img class="btn-icon" src="icons/connect.svg" alt="" width="20" height="20"><span class="btn-label">Connect Spotify</span></button>
-          <span id="welcomeMessage" class="error"></span>
-        </div>
+    <div id="spAsk" class="card sp-card">
+      <h2>One-time setup</h2>
+      <p class="sp-q">Have you done this setup before?</p>
+      <div class="sp-choices" role="group" aria-label="Spotify app setup">
+        <button type="button" data-flow="new"><img class="btn-icon" src="icons/create.svg" alt="" width="20" height="20"><span class="btn-label">No, this is my first time</span></button>
+        <button type="button" class="primary" data-flow="existing"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Yes, I have</span></button>
       </div>
+      <p class="muted sp-reassure">Either way, you will get clear step-by-step instructions. You will switch between this tab and Spotify's, so keep both open.</p>
+    </div>
 
+    <div id="spSteps" class="card sp-card" hidden>
+      <h2 id="spStepsTitle"></h2>
       <p id="loginReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Report this problem</a></p>
 
-      <details id="setupDetails" open>
-        <summary>Spotify developer app setup</summary>
-      <p>This page connects to Spotify through a free Spotify developer app that belongs to you. Use a developer app made just for Ceremony Playlist Builder.
-      If you have a developer app from another project, leave it alone and create a new one. Pick the option that fits:</p>
-      <div class="toggle" role="radiogroup" aria-label="Spotify app setup">
-        <label class="choice"><input type="radio" name="flow" value="new"> Create a new Spotify developer app</label>
-        <label class="choice"><input type="radio" name="flow" value="existing"> I already created an app for this</label>
-      </div>
-
-      <ol id="flowNew" hidden>
-        <li>
+      <ol id="flowNew" class="sp-list" hidden>
+        <li class="sp-item">
           Open the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify developer dashboard</a>
-          (it opens in a new tab), log in with your Spotify Premium account, and click <span class="ui">Create app</span>.
+          (it will open in a new tab), log in with your Spotify Premium account, and press the <span class="ui">Create app</span> button.
+          Switch back to this tab any time you need to reference these instructions.
+          <figure class="sp-shot"><img src="step-create-app.jpg" alt="The top of the Spotify developer dashboard, with the Create app button at the right." width="1530" height="344"></figure>
         </li>
-        <li>
+        <li class="sp-item">
           Fill in the form:
           <ul class="fields">
-            <li><span class="ui">App name:</span> type <code>Ceremony Playlist Builder</code></li>
-            <li><span class="ui">App description:</span> type anything. Spotify requires something here, for example Playlist builder.</li>
-            <li><span class="ui">Website:</span> leave it blank, if you see this box.</li>
+            <li><span class="ui">App name:</span> enter <code>Ceremony Playlist Builder</code></li>
+            <li><span class="ui">App description:</span> enter <code>Ceremony Playlist Builder</code></li>
+            <li><span class="ui">Website:</span> leave it blank</li>
             <li>
-              <span class="ui">Redirect URI:</span> copy this address, paste it in exactly as shown, then click <span class="ui">Add</span>:
+              <span class="ui">Redirect URI:</span> copy this address, paste it in exactly as shown, then press the <span class="ui">Add</span> button:
               <div class="address"><code id="redirect" class="redirect-address"></code> <button id="copyRedirect" class="copy-redirect" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div>
             </li>
             <li><span class="ui">Which API/SDKs are you planning to use?</span> Check <span class="ui">Web API</span> only. Leave the other boxes unchecked.</li>
-            <li>Check the box agreeing to Spotify's terms, then click <span class="ui">Save</span>.</li>
+            <li>Check the box agreeing to Spotify's terms, then press the <span class="ui">Save</span> button.</li>
           </ul>
         </li>
-        <li>Copy the <span class="ui">Client ID</span> shown on your new app's page.</li>
-      </ol>
-
-      <ol id="flowExisting" hidden>
-        <li>
-          Open the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify developer dashboard</a>
-          (it opens in a new tab), log in, and click the developer app created for Ceremony Playlist Builder.
+        <li class="sp-item">Copy the <span class="ui">Client ID</span> shown on your new app's page.
+          <figure class="sp-shot"><img src="step-client-id.jpg" alt="The new app's page on Spotify's site. Pink labels point to the Client ID line, which is the text to copy, and to the copy button at the right end of that line." width="1348" height="588"></figure>
         </li>
-        <li>Copy the <span class="ui">Client ID</span> shown on its page.</li>
       </ol>
 
-      <div id="connectBlock" hidden>
-        <p><span class="ui">Paste your Client ID here, then connect:</span></p>
+      <ol id="flowExisting" class="sp-list" hidden>
+        <li class="sp-item">
+          Open the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify developer dashboard</a>
+          (it will open in a new tab), log in, and press the app you made for Ceremony Playlist Builder.
+          Switch back to this tab any time you need to reference these instructions.
+          <figure class="sp-shot"><img src="step-open-app.jpg" alt="The Spotify developer dashboard. A pink label points to the white box that says Ceremony Playlist Builder, which is what to press." width="1398" height="564"></figure>
+        </li>
+        <li class="sp-item">Copy the <span class="ui">Client ID</span> shown on its page.
+          <figure class="sp-shot"><img src="step-client-id.jpg" alt="The app's page on Spotify's site. Pink labels point to the Client ID line, which is the text to copy, and to the copy button at the right end of that line." width="1348" height="588"></figure>
+        </li>
+      </ol>
+
+      <div id="connectBlock" class="sp-item" hidden>
+        <span class="ui">Paste your Client ID here, then connect:</span>
         <input id="clientId" type="text" autocomplete="off" spellcheck="false" placeholder="Client ID">
         <div class="row">
           <button id="connect" class="primary" type="button"><img class="btn-icon" src="icons/connect.svg" alt="" width="20" height="20"><span class="btn-label">Connect Spotify</span></button>
           <span id="loginMessage" class="error"></span>
         </div>
-
-        <details id="redirectHelp" class="help">
-          <summary>Spotify says "Invalid redirect URI"?</summary>
-          <p>This address is not registered with your app yet. In your app's <span class="ui">Settings</span>, paste it under <span class="ui">Redirect URIs</span>,
-          click <span class="ui">Add</span>, then scroll down and click <span class="ui">Save</span>. Then try Connect again.</p>
-          <div class="address"><code class="redirect-address"></code> <button class="copy-redirect" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div>
-        </details>
-
-        <p class="muted" style="margin-top:12px">Your Client ID is not a secret. It stays in this browser, and goes only to Spotify. For everything else the page sends, see <a href="#privacySection" class="privacy-link">Privacy</a> at the bottom of this page.</p>
+        <p class="muted sp-agree">Spotify may ask you to log in or to press <span class="ui">Agree</span>. If it does, press <span class="ui">Agree</span> to let this page connect.</p>
       </div>
+
+      <details id="spWhat" class="wp-helps">
+        <summary>What does all this actually do?</summary>
+        <p>Spotify keeps your music private, so this page can only reach your playlists if you give it permission. Making a Spotify developer app inside your Spotify account is how you give this page that permission.</p>
+        <p>The Client ID works like a name tag. It tells Spotify who is asking for access, and Spotify then asks you to approve it. After that, this page can look at your playlists and make new ones in your account. Only you can use the app you made inside your Spotify account.</p>
+        <p>Your Client ID is not a secret. It stays in this browser and goes only to Spotify. You do this once. If you want to use Ceremony Playlist Builder on another device, you won't need to create another app, just use the same Client ID.</p>
+      </details>
+
+      <details id="spWhatExisting" class="wp-helps" hidden>
+        <summary>What does all this actually do?</summary>
+        <p>Spotify keeps your music private, so this page can only reach your playlists if you give it permission. The Spotify developer app you made previously is how you give this page that permission.</p>
+        <p>The Client ID works like a name tag. It tells Spotify who is asking for access, and Spotify then asks you to approve it. After that, this page can look at your playlists and make new ones in your account. Only you can use the app you made inside your Spotify account.</p>
+        <p>Your Client ID is not a secret. It stays in this browser and goes only to Spotify. To use Ceremony Playlist Builder on another device, enter the same Client ID there. You won't need to create another app.</p>
       </details>
     </div>
+
+    <div class="row wp-go"><button id="setupBack" class="primary" type="button"><img class="btn-icon" src="icons/back.svg" alt="" width="20" height="20"><span class="btn-label">Back</span></button></div>
   </section>
 
   <section id="connectedSection" hidden>
@@ -720,7 +840,7 @@
     <button id="create" class="primary" type="button" disabled><img class="btn-icon" src="icons/build.svg" alt="" width="24" height="24"><span class="btn-label"><span class="build-verb">Build playlists</span></span></button>
   </div>
   <p id="pythonNote" class="muted"></p>
-  <p id="spotifyNote" class="muted" hidden>Building playlists needs a working connection to Spotify. See Step 1.</p>
+  <p id="spotifyNote" class="muted" hidden>Building playlists needs a working connection to Spotify.</p>
 
   <div id="createOverlay" class="app-overlay" hidden>
     <div id="createDialog" class="app-dialog" role="dialog" aria-modal="true" aria-label="Build playlists" tabindex="-1">
@@ -750,7 +870,7 @@
       <div id="results"></div>
       <div id="createCloseRow" class="row dialog-actions" hidden>
         <button id="createClose" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Close</span></button>
-        <button id="createDonate" type="button"><img src="cup-border.png" alt="" width="22" height="18"><span class="btn-label">Donate</span></button>
+        <button id="createDonate" type="button"><img src="cup-border.png" alt="" width="22" height="18"><span class="btn-label">Support me</span></button>
       </div>
     </div>
   </div>
@@ -765,11 +885,11 @@
   </div>
   </div>
   <div id="supportBox">
-    <a id="supportButton" href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer" title="Donate on Ko-fi" aria-haspopup="dialog" aria-expanded="false"><img src="cup-border.png" alt="" width="22" height="18"><span>Donate</span></a>
-    <p id="supportCaption">This app is freely available to everyone. If it’s been useful to you, please donate whatever feels right.</p>
+    <a id="supportButton" href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer" title="Support me on Ko-fi" aria-haspopup="dialog" aria-expanded="false"><img src="cup-border.png" alt="" width="22" height="18"><span>Support me</span></a>
+    <p id="supportCaption">I made this app for everyone. If it’s been helpful to you, please give whatever feels right.</p>
   </div>
   <div id="kofiDim" hidden></div>
-  <div id="kofiPanel" role="dialog" aria-label="Donate on Ko-fi" hidden>
+  <div id="kofiPanel" role="dialog" aria-label="Support me on Ko-fi" hidden>
     <div class="kofi-bar"><span id="kofiPrompt">Choose any amount that feels right to you.</span><button id="kofiClose" type="button" aria-label="Close">&times;</button></div>
     <div id="kofiFrameHolder"></div>
   </div>
@@ -784,16 +904,9 @@
         <a id="feedbackLink" class="button-link" href="" target="_blank" rel="noopener noreferrer"><img class="btn-icon" src="icons/feedback.svg" alt="" width="20" height="20"><span class="btn-label">Open the feedback form</span></a>
       </div>
 
-      <h3>Report a problem</h3>
-      <p class="muted">Something not working? Send a report. A person reads these, but may not respond to all of them. The form opens in a new tab, and nothing is sent until you submit it there.</p>
-      <p id="reportLabel" style="margin-bottom:0">Details attached to the report:</p>
-      <pre id="reportPreview" class="report-preview"></pre>
-      <p class="muted">Your sign-in, Client ID, playlist names, and song titles are never included.</p>
-      <a id="reportLink" class="button-link" href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer"><img class="btn-icon" src="icons/report.svg" alt="" width="20" height="20"><span class="btn-label">Open the report form</span></a>
-
       <h3>Limit how many playlists are made</h3>
       <p class="muted">By default, the app makes as many playlists as your songs allow, but here you can cap how many playlists get created per recipe:</p>
-      <select id="maxPlaylists" aria-label="Most playlists per recipe"><option value="">No limit</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select>
+      <select id="maxPlaylists" aria-label="Most playlists per recipe" style="width:auto"><option value="">No limit</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select>
 
       <h3>Build all recipes</h3>
       <p class="muted">Builds, or rebuilds, the playlists for every recipe at once. It shows what it found and asks first, as it does for one recipe.</p>
@@ -801,11 +914,12 @@
         <button id="buildAll" type="button" disabled><img class="btn-icon" src="icons/build.svg" alt="" width="24" height="24"><span class="btn-label">Build all recipes</span></button>
       </div>
 
-      <h3>Remove earlier playlists</h3>
-      <p class="muted">Removes playlists made earlier by a recipe from your Spotify library, for example "mix 1" and "mix 2". It only touches playlists you own whose name matches the recipe you specify, and it asks before removing anything. It needs Spotify to be connected.</p>
+      <h3>Remove playlists built from a recipe</h3>
+      <p class="muted">Removes the playlists this app built from a recipe from your Spotify library. Your recipes and your other playlists are not touched. It only looks at playlists that match the recipe’s name, and it asks before removing anything.</p>
       <div class="row">
+        <label for="removeKey">Built from</label>
         <select id="removeKey" style="max-width:260px"></select>
-        <button id="removeOld" type="button" disabled><img class="btn-icon" src="icons/remove.svg" alt="" width="20" height="20"><span class="btn-label">Remove earlier playlists</span></button>
+        <button id="removeOld" type="button" disabled><img class="btn-icon" src="icons/remove.svg" alt="" width="20" height="20"><span class="btn-label">Remove playlists</span></button>
       </div>
       <p id="removeNote" class="muted" hidden>Removing playlists needs a working connection to Spotify.</p>
       <div id="removeConfirmBox" class="card" hidden>
@@ -833,34 +947,35 @@
       <p id="themeNote" class="muted" hidden></p>
 
       <h3>How your recipes are saved</h3>
+      <p class="muted">Your recipes are saved to Spotify automatically, and a change you make on one device shows up on your others. The other choice is a manual backup: you download a file yourself and restore from it later. Changing this is not recommended. With a manual backup, nothing is saved unless you remember to make a backup, so clearing your browser's data can lose your recipes, and your devices will not stay in step.</p>
       <p><button id="changeSaveMethod" class="linklike" type="button">Change how your recipes are saved</button></p>
 
       <h3>Clear saved data</h3>
       <p class="muted">Removes everything this app keeps on this device, including your Client ID. Nothing in your Spotify account changes. Recipes saved to Spotify stay there, and connecting again brings them back. Recipes you only back up manually are erased unless you have a backup file.</p>
-      <p id="clearRestoreHelp" class="muted">Your recipes are erased too. To get them back afterward, use the <span class="ui">restore from a backup</span> link in Step 2 and choose the backup you made on this device. If you haven't backed up to this device, do that first in Step 4.</p>
+      <p id="clearRestoreHelp" class="muted">Your recipes are erased too. To get them back afterward, choose <span class="ui">Restore</span> in the app menu and pick the backup you made on this device. If you haven't backed up to this device, choose <span class="ui">Back up now</span> there first.</p>
       <p id="clearBackupNote"></p>
       <div class="row">
         <button id="clearData" type="button"><img class="btn-icon" src="icons/clear.svg" alt="" width="20" height="20"><span class="btn-label">Clear saved data</span></button>
       </div>
       <div id="clearConfirm" hidden>
         <p>Clear the saved Client ID, recipes, and sign-in, and reload this page?</p>
-        <p id="clearConfirmHelp" class="muted">Your recipes will be erased from this device. To get them back, use the <span class="ui">restore from a backup</span> link in Step 2 and choose the backup you made on this device.</p>
+        <p id="clearConfirmHelp" class="muted">Your recipes will be erased from this device. To get them back, choose <span class="ui">Restore</span> in the app menu and pick the backup you made on this device.</p>
         <div class="row">
           <button id="clearYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Yes, clear it</span></button>
           <button id="clearNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
         </div>
       </div>
 
-      <h3>Hiding the Donate button</h3>
-      <p class="muted">The Donate button is meant to be visible until you have donated. If this app has been useful to you, please give whatever feels right to you. Already did? Thank you! Check the box and the button will leave you alone. This runs on the honor system, so nobody’s looking, and the button waits patiently.</p>
-      <label class="choice-row"><input type="checkbox" id="donateHideBox"> <span>I have donated!</span></label>
-      <p id="donateHiddenMessage" class="muted" hidden>The Donate button is hidden. Thank you for donating!</p>
+      <h3>Hiding the Support me button</h3>
+      <p class="muted">The Support me button stays visible until you have... supported me 🙂. If this app has been helpful to you, please give whatever feels right. Already did? Thank you! Check the box and the button will leave you alone. This runs on the honor system, so nobody’s looking, and the button waits patiently.</p>
+      <label class="choice-row"><input type="checkbox" id="donateHideBox"> <span>I have supported you!</span></label>
+      <p id="donateHiddenMessage" class="muted" hidden>The Support me button is hidden. Thank you for your support!</p>
 
       <h3>Python status</h3>
       <p class="muted">The code that builds your playlists is written in Python and runs inside your browser, so nothing about your music is sent to a server. If <span class="ui">Build playlists</span> stays unavailable, the reason shows here.</p>
       <p id="pythonStatus">Starting...</p>
 
-    <p class="muted" style="margin-top:24px">App version: <span id="appVersionLabel"></span></p>
+    <p class="muted mo-version">App version: <span id="appVersionLabel"></span></p>
     </details>
 
     <details id="privacySection" class="card">
@@ -875,13 +990,13 @@
       <p>Playlists created by this app stay off your Spotify profile and out of search, though anyone with a playlist's link can still open it. To change that, use Make private in the Spotify app.</p>
 
       <h3>Who the page talks to</h3>
-      <p>Spotify, for everything about your music. The page's code comes from GitHub, and the Python it runs comes from a public code host (jsDelivr). Ko-fi's page loads only if you open Donate, and the report form opens only if you choose to report a problem<span id="privacyFeedbackWho" hidden>, and the feedback form only if you choose to send feedback</span>.</p>
+      <p>Spotify, for everything about your music. The page's code comes from GitHub, and the Python it runs comes from a public code host (jsDelivr). Ko-fi's page loads only if you press Support me, and the report form opens only if you choose to report a problem<span id="privacyFeedbackWho" hidden>, and the feedback form only if you choose to send feedback</span>.</p>
 
       <h3>Anonymous visit counts</h3>
       <p>The page keeps simple counts, to see how many people use the app and how it is used. It counts visits with GoatCounter, a service that uses no cookies and does not use unique identifiers to follow people around the web. It records that the page was opened, with the browser, screen size, country, and the site you came from, but not who you are. It also counts a few actions: the first time a browser connects to Spotify, how many playlists get created, when Donate is opened, and the kind of connection problem that happened. It never receives playlist names, recipes, song titles, or your Client ID. A small marker in this browser remembers that your first connection was counted, so it is counted once.</p>
 
       <h3>Donations</h3>
-      <p>Donations are handled entirely by Ko-fi and its payment providers. This app never sees any payment details. If you check the box to hide the Donate button, that choice is saved in this browser and goes nowhere else.</p>
+      <p>Support payments are handled entirely by Ko-fi and its payment providers. This app never sees any payment details. If you check the box to hide the Support me button, that choice is saved in this browser and goes nowhere else.</p>
 
       <h3>Problem reports</h3>
       <p>A problem report is sent only if you choose to send it, and it goes only to me, the developer of this app. The form opens in a new tab, and nothing is sent until you submit it there. The details attached are shown in <span class="ui">More options</span> first: the app version, browser, window size, last error, and recent steps. Your sign-in, Client ID, playlist names, and song titles are never included.</p>
@@ -896,8 +1011,23 @@
     </details>
   </footer>
 </main>
-<script src="formats.js?v=2026-10-31d"></script>
-<script src="editor.js?v=2026-10-31d"></script>
-<script src="app.js?v=2026-10-31d"></script>
+    <!-- Report a problem: opened from the app menu in the info popup, so it is not part of More options -->
+  <div id="reportBlock" hidden>
+  <h3>Report a problem</h3>
+  <p class="muted">Something not working? Send a report. A person reads these, but may not respond to all of them. The form opens in a new tab, and nothing is sent until you submit it there.</p>
+  <p id="reportLabel" style="margin-bottom:0">Details attached to the report:</p>
+  <pre id="reportPreview" class="report-preview"></pre>
+  <p class="muted">Your sign-in, Client ID, playlist names, and song titles are never included.</p>
+  <a id="reportLink" class="button-link" href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer"><img class="btn-icon" src="icons/report.svg" alt="" width="20" height="20"><span class="btn-label">Open the report form</span></a>
+  </div>
+<div id="infoOverlay" class="app-overlay" hidden>
+  <div id="infoDialog" class="app-dialog" role="dialog" aria-modal="true" tabindex="-1">
+    <div id="infoHeader"><div id="infoTitle"></div><button id="infoClose" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Close</span></button></div>
+    <div id="infoSlot"></div>
+  </div>
+</div>
+<script src="formats.js?v=2026-10-31z"></script>
+<script src="editor.js?v=2026-10-31z"></script>
+<script src="app.js?v=2026-10-31z"></script>
 </body>
 </html>
