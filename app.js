@@ -16,7 +16,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-02f";
+const APP_VERSION = "2026-11-02g";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2449,6 +2449,7 @@ async function createFromPlan(plan) {
         setBarFill(row, Math.min(1, (k + ADD_CHUNK) / p.uris.length));
       }
       if (cover && !coverBlocked) {   // the app's icon as the cover; a problem here never stops the playlists
+        setRowState(row, "now", "adding the cover");   // an image upload, often the slowest step for a playlist
         try { await spotifyRequest("PUT", `/playlists/${made.id}/images`, { body: cover, contentType: "image/jpeg" }); }
         catch (err) {
           coverFailed += 1;
