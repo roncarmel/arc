@@ -2,7 +2,7 @@ const { JSDOM } = require("jsdom");
 const { execFileSync } = require("child_process");
 // Run only some areas: node run.js --only=donate|tabs   (matches part of an area's name; --list shows the names)
 const ONLY = (process.argv.find((a) => a.startsWith("--only=")) || "").slice(7).toLowerCase().split("|").filter(Boolean);
-const SECTION_NAMES = ["newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version icon", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "marker colors", "marker hugs corners", "popups close only", "narrow more button", "the silence card", "privacy: why the counts", "build button centered in minimalist mode", "no double-tap zoom", "backup link in step 2", "hiding the donate button", "spotify premium", "step 3 order and text", "the build icon", "python status at the bottom", "hover feedback on buttons", "questions and feedback", "settings below the segments, pink outline", "the full plan fits a phone better", "the tagline", "disconnect below the status line on phones", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'the Donate panel', 'dimming, fading, and Donate in the Create popup', 'tabs that scroll sideways', 'Donate only after a success', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify'];
+const SECTION_NAMES = ["newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version icon", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "marker colors", "marker hugs corners", "popups close only", "narrow more button", "the silence card", "privacy: why the counts", "build button centered in minimalist mode", "no double-tap zoom", "backup link in step 2", "hiding the donate button", "spotify premium", "step 3 order and text", "the build icon", "python status at the bottom", "hover feedback on buttons", "questions and feedback", "settings below the segments, pink outline", "the full plan fits a phone better", "the tagline", "disconnect below the status line on phones", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'the Donate panel', 'dimming, fading, and Donate in the Create popup', 'tabs that scroll sideways', 'Donate only after a success', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify'];
 // areas that need another area's setup to have run first
 const NEEDS = {
   "the page's styles for tags and phones": ["silences, dragging and removing"],
@@ -124,6 +124,7 @@ function makeFetch(options = {}) {
       if (options.meStatus) return { ok: false, status: options.meStatus, headers: { get: (h) => (h === "Retry-After" && options.retryAfter ? String(options.retryAfter) : null) }, json: async () => ({}), text: async () => JSON.stringify(options.meBody || {}) };
       return json({ id: "ron", display_name: "Ron" });
     }
+    if (options.hangPlaylists && url.includes("/v1/me/playlists")) return new Promise((resolve, reject) => { if (init.signal) init.signal.addEventListener("abort", () => reject(new Error("aborted"))); });   // a stalled connection: no answer until the page gives up
     if (url.includes("/v1/me/playlists")) {
       options.listCalls = (options.listCalls || 0) + 1;
       if (options.listDelayMs) await new Promise((r) => setTimeout(r, options.listDelayMs));
@@ -204,7 +205,7 @@ async function boot({ url, session = {}, local = {}, fetchOptions = {}, before =
   w.indexedDB = idb || new FDBFactory();   // a browser's own database for saved songs; pass the same one to a second boot to pretend the page was reloaded
   if (before) before(w);
   w.__scriptsRequested = [];
-  w.eval(appJs.replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const BACKED_UP_MESSAGE =", "var BACKED_UP_MESSAGE =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let busy =", "var busy =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("const GAP_STEPS =", "var GAP_STEPS ="));  // test harness only: lets a test replace the reload
+  w.eval(appJs.replace("let spotifyAnswerMs = 30000;", "var spotifyAnswerMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const BACKED_UP_MESSAGE =", "var BACKED_UP_MESSAGE =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let busy =", "var busy =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("const GAP_STEPS =", "var GAP_STEPS ="));  // test harness only: lets a test replace the reload
   await Promise.race([w.__main, new Promise((r) => setTimeout(r, 1500))]);   // ready as soon as the page has finished starting up
   await new Promise((r) => setTimeout(r, 30));
   global.bootCount += 1; global.bootMs += Date.now() - bootStarted;
@@ -749,9 +750,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-01n" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-01o" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-01n/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-01o/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -2751,7 +2752,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-01n", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-01o", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -2776,16 +2777,15 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   check("the tabs start in the order of the recipes", JSON.stringify(ro_tabs()) === JSON.stringify(["One", "Two", "Three"]), JSON.stringify(ro_tabs()));
   var ro_key = (tab, key) => tab.dispatchEvent(new ro_w.KeyboardEvent("keydown", { key, altKey: true, bubbles: true, cancelable: true }));
   ro_key(ro_w.document.querySelector("#feTabs .fe-tab"), "ArrowRight");
-  check("Alt and the right arrow move a tab one place later, and the order is saved", JSON.stringify(ro_tabs()) === JSON.stringify(["Two", "One", "Three"]) && ro_stored().indexOf("Two") < ro_stored().indexOf("One"), JSON.stringify(ro_tabs()) + ro_stored());
-  ro_key(ro_w.document.querySelectorAll("#feTabs .fe-tab")[0], "ArrowLeft");
-  check("the first tab cannot move earlier", JSON.stringify(ro_tabs()) === JSON.stringify(["Two", "One", "Three"]));
+  ro_key(ro_w.document.body, "ArrowRight");
+  check("Alt and an arrow no longer move a tab", JSON.stringify(ro_tabs()) === JSON.stringify(["One", "Two", "Three"]), JSON.stringify(ro_tabs()));
   var ro_ptr = (type, x, kind) => { const e = new ro_w.MouseEvent(type, { clientX: x, clientY: 5, bubbles: true, cancelable: true, button: 0 }); Object.defineProperty(e, "pointerId", { value: 1 }); Object.defineProperty(e, "pointerType", { value: kind }); return e; };
   var ro_first = ro_w.document.querySelector("#feTabs .fe-tab");
   ro_first.dispatchEvent(ro_ptr("pointerdown", 10, "mouse"));
   ro_w.dispatchEvent(ro_ptr("pointermove", 60, "mouse"));
   check("a mouse that moves before the hold is over scrolls the row, and does not lift the tab", !ro_first.classList.contains("fe-dragging") && ro_w.eval("tabDrag.press && tabDrag.press.panning"));
   ro_w.dispatchEvent(ro_ptr("pointerup", 60, "mouse"));
-  check("after that the order is the same", JSON.stringify(ro_tabs()) === JSON.stringify(["Two", "One", "Three"]));
+  check("after that the order is the same", JSON.stringify(ro_tabs()) === JSON.stringify(["One", "Two", "Three"]));
   ro_first = ro_w.document.querySelector("#feTabs .fe-tab");
   ro_first.dispatchEvent(ro_ptr("pointerdown", 10, "mouse"));
   await new Promise((r) => setTimeout(r, 420));
@@ -2793,7 +2793,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   check("a mouse held still for a moment lifts the tab, as a finger does", ro_first.classList.contains("fe-dragging"));
   ro_w.dispatchEvent(ro_ptr("pointerup", 400, "mouse"));
   check("dragged past the last tab, it stops before New recipe, which stays last", ro_w.document.querySelector("#feTabs").lastElementChild.id === "feNewFormat");
-  check("dropping it past the others puts it last, and the order is saved", JSON.stringify(ro_tabs()) === JSON.stringify(["One", "Three", "Two"]) && !ro_w.document.querySelector(".fe-dragging"), JSON.stringify(ro_tabs()));
+  check("dropping it past the others puts it last, and the order is saved", JSON.stringify(ro_tabs()) === JSON.stringify(["Two", "Three", "One"]) && !ro_w.document.querySelector(".fe-dragging"), JSON.stringify(ro_tabs()));
   var ro_active = ro_w.document.querySelector('#feTabs .fe-tab[aria-pressed="true"]').textContent;
   var ro_t = ro_w.document.querySelector("#feTabs .fe-tab");
   ro_t.dispatchEvent(ro_ptr("pointerdown", 10, "touch"));
@@ -4080,6 +4080,51 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   check("while the playlists are being read after sign-in, the main button says Connecting\u2026 and is disabled, with a note", cs_c.eval("connection") === "connecting" && cs_label(cs_c, "create") === "Connecting\u2026" && cs_c.document.getElementById("create").disabled && /Connecting to Spotify/.test(cs_c.document.getElementById("spotifyNote").textContent));
   } catch (err) { areaCrashed("connecting state", err); } }
 
+  if (want("connecting screen")) { try {
+  // ================================================================ back from Spotify's sign-in: a quiet screen until the editor is ready
+  var cn_html = fs.readFileSync(ROOT + "index.html", "utf8");
+  check("the page's first script puts up the connecting screen, and picks the app page, when the address has a sign-in code from Spotify", /code=\/\.test\(location\.search\)\) \{ page = "app"; document\.documentElement\.classList\.add\("connecting"\)/.test(cn_html));
+  var cn_steps = Array.from(cn_html.matchAll(/<li id="(cn\w+)" class="cn-step[^"]*"><span class="cn-mark"><svg[^>]*>.*?<\/svg><\/span><span>([^<]+)<\/span><\/li>/g)).map((m) => m[1] + ": " + m[2]);
+  check("the connecting screen shows the app's icon and four steps in order", /<div id="connectingScreen" role="status">\s*<img src="apple-touch-icon\.png"/.test(cn_html) && JSON.stringify(cn_steps) === JSON.stringify(["cnSignin: Signing in to Spotify", "cnPlaylists: Reading your playlists", "cnRecipes: Loading your recipes", "cnPython: Starting the playlist builder"]), JSON.stringify(cn_steps));
+  check("signing in and starting Python are under way from the first moment; the other two wait", /id="cnSignin" class="cn-step cn-active"/.test(cn_html) && /id="cnPython" class="cn-step cn-active"/.test(cn_html) && /id="cnPlaylists" class="cn-step"/.test(cn_html) && /id="cnRecipes" class="cn-step"/.test(cn_html));
+  check("with manual backup the recipes step is left out, from the first moment", /if \(localStorage\.getItem\("backupMode"\) === "manual"\) document\.documentElement\.classList\.add\("cn-manual"\)/.test(cn_html) && /html\.cn-manual #cnRecipes \{ display: none; \}/.test(cn_html));
+  check("the screen sits below the startup problem popup, so a page that cannot start still says so", /#connectingScreen \{[^}]*z-index: 1500/.test(cn_html) && /#startupProblem \{ z-index: 2000/.test(cn_html));
+  check("with reduced motion nothing turns or fades", /prefers-reduced-motion: reduce\) \{ #connectingScreen, \.cn-step \{ transition: none; \} \.cn-active \.cn-mark::before \{ animation: none; \} \}/.test(cn_html));
+  var cn_on = (w) => w.document.documentElement.classList.contains("connecting");
+  var cn_back = { url: "http://127.0.0.1:8000/?code=abc123&state=st1", session: { pkceState: "st1", pkceVerifier: "v" }, before: (w) => w.document.documentElement.classList.add("connecting") };
+  var cn_w = await boot({ ...cn_back, local: { clientId: "client-1", setupStarted: "1", formats: MINI, backupMode: "spotify" }, fetchOptions: { tokenDelayMs: 2500 } });
+  check("while the sign-in is finished, the connecting screen is up and the page under it is the app, not the setup page", cn_on(cn_w) && cn_w.document.documentElement.classList.contains("page-app") && !cn_w.document.documentElement.classList.contains("page-setup"));
+  var cn_state = (w) => ["Signin", "Playlists", "Recipes", "Python"].map((s) => w.document.getElementById("cn" + s).className.replace("cn-step", "").trim() || "waiting").join(",");
+  check("meanwhile Python is ready and ticked, the sign-in still turns, and the playlists and recipes wait", cn_state(cn_w) === "cn-active,waiting,waiting,cn-done", cn_state(cn_w));
+  await waitFor(() => !cn_on(cn_w), 15000);
+  check("by the time the screen goes, every step is ticked", cn_state(cn_w) === "cn-done,cn-done,cn-done,cn-done", cn_state(cn_w));
+  check("the screen goes once everything is ready: connected, the recipes saved to Spotify, Python running", cn_w.eval("connection") === "ready" && cn_w.eval("saveState.savedAt") !== null && !cn_w.eval("saveState.running") && /Ready/.test(cn_w.document.getElementById("pythonStatus").textContent));
+  check("and the app is what is left", cn_w.document.documentElement.classList.contains("page-app") && !cn_w.document.getElementById("formatEditor").closest("[hidden]"));
+  // a refused sign-in takes the screen down at once and shows the setup page with what went wrong
+  var cn_f = await boot({ ...cn_back, local: { clientId: "client-1", setupStarted: "1" }, fetchOptions: { failToken: true, tokenDelayMs: 200 } });
+  await waitFor(() => /refused the sign-in/.test(cn_f.document.getElementById("loginMessage").textContent), 8000);
+  await waitFor(() => !cn_on(cn_f), 5000);
+  check("the sign-in step was the one marked as failed", cn_f.document.getElementById("cnSignin").className === "cn-step cn-failed");
+  check("when Spotify refuses the sign-in, the screen goes and the setup page shows the problem", !cn_on(cn_f) && cn_f.document.documentElement.classList.contains("page-setup") && cn_f.document.getElementById("loginMessage").className === "error");
+  // a step that fails is marked, then the screen goes; a Spotify request that gets no answer is a failure, not a wait without end
+  var cn_s = await boot({ ...cn_back, local: { clientId: "client-1", setupStarted: "1", formats: MINI }, fetchOptions: { hangPlaylists: true, answerMs: 1500 } });
+  await waitFor(() => cn_s.document.getElementById("cnPlaylists").className === "cn-step cn-failed", 8000);
+  check("when Spotify does not answer, the playlists step is marked as failed, and the screen is still up for a moment so it is seen", cn_on(cn_s) && cn_state(cn_s).startsWith("cn-done,cn-failed"), cn_state(cn_s));
+  await waitFor(() => !cn_on(cn_s), 5000);
+  check("then the screen goes and the app shows the connection problem, saying Spotify did not answer", !cn_on(cn_s) && cn_s.eval("connection") === "problem" && /Spotify did not answer\. Check your internet connection and try again\./.test(cn_s.document.getElementById("connectionMessage").textContent));
+  check("a request with no answer is a known kind of problem (the network), so there is no report link for it", cn_s.eval("problemKind('Spotify did not answer. Check your internet connection and try again.')") === "network");
+  check("the failed mark is a muted cross in a muted ring", /\.cn-failed \.cn-mark::before \{ border-color: var\(--muted\); \}/.test(cn_html) && /\.cn-failed \.cn-mark::after \{ content: "\\2715";[^}]*color: var\(--muted\)/.test(cn_html));
+  // a question takes it down too, so it is never hidden
+  var cn_q = await boot({ ...cn_back, local: { clientId: "client-1", setupStarted: "1", formats: MINI }, fetchOptions: { tokenDelayMs: 3000 } });
+  check("(the screen is up while the sign-in is slow)", cn_on(cn_q));
+  cn_q.askSyncChoice("A question", "Which one?", [{ label: "This", value: 1 }]);
+  await new Promise((r) => setTimeout(r, 600));
+  check("a question that needs an answer takes the screen down at once", !cn_on(cn_q) && !!cn_q.document.getElementById("feSyncDialog"));
+  // no sign-in code: no screen, and nothing waits for it
+  var cn_n = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" } });
+  check("an ordinary visit has no connecting screen", !cn_on(cn_n) && cn_n.document.documentElement.classList.contains("page-app"));
+  } catch (err) { areaCrashed("connecting screen", err); } }
+
   if (want("backup wording")) { try {
   // ================================================================ Automatic and Manual, said the same way everywhere
   var bw_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
@@ -4452,7 +4497,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-01n"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-01o"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

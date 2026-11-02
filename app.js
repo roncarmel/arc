@@ -16,7 +16,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-01n";
+const APP_VERSION = "2026-11-01o";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -84,7 +84,7 @@ function nothingIsGoingOn() {
   const active = document.activeElement;
   const typing = active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName);
   const popup = document.querySelector(".fe-overlay:not([hidden]), #backupCard.opened, #createOverlay:not([hidden]), #infoOverlay:not([hidden])");
-  return !busy && !saveState.running && !typing && !popup && !(typeof notices !== "undefined" && Date.now() - notices.lastEditAt < 10000);
+  return !busy && !saveState.running && !connectingScreen && !typing && !popup && !(typeof notices !== "undefined" && Date.now() - notices.lastEditAt < 10000);
 }
 
 function newerVersionFound(latest) {
@@ -136,7 +136,7 @@ function storedItem(store, key) {
 }
 
 function pageName() {
-  if (token) return "app";
+  if (token || connectingScreen) return "app";
   if (storedItem(sessionStorage, "setupAgain") === "1") return "setup";
   if (storedItem(localStorage, "connectedBefore") === "1") return "app";
   const setup = storedItem(localStorage, "setupStarted");
@@ -162,6 +162,46 @@ function showPage() {
 function showPremiumWhy(open) {
   $("premiumWhyText").hidden = !open;
   $("premiumWhy").setAttribute("aria-expanded", String(open));
+}
+
+// ---------------------------------------------------------------- the connecting screen
+// Back from Spotify's sign-in, the script in index.html's <head> puts up a quiet screen in place of the setup page: the app's icon and a list of what is under way
+// (signing in, reading the playlists, settling the recipes with their saves, starting Python), each ticked as it is done. When all are, it fades to the editor.
+// There is no time limit of its own: each step ends by finishing or by failing (a Spotify request that gets no answer fails after spotifyAnswerMs).
+// A step that fails is marked for a moment, then the screen goes and the problem shows as usual. A question takes it down at once.
+let connectingScreen = document.documentElement.classList.contains("connecting");
+let connectingFailedMs = 1200;   // how long a failed step's mark is in view before the screen goes
+
+// step: "Signin", "Playlists", "Recipes" or "Python"; state: "active", "done" or "failed"
+function connectingStep(step, state) {
+  const item = $("cn" + step);
+  if (connectingScreen && item) item.className = "cn-step cn-" + state;
+}
+
+async function connectingStepFailed(step) {
+  if (!connectingScreen) return;
+  connectingStep(step, "failed");
+  await new Promise((r) => setTimeout(r, connectingFailedMs));
+  endConnectingScreen();
+}
+
+function endConnectingScreen() {
+  if (!connectingScreen) return;
+  connectingScreen = false;
+  const screen = $("connectingScreen");
+  screen.classList.add("cn-out");
+  setTimeout(() => { document.documentElement.classList.remove("connecting"); screen.classList.remove("cn-out"); }, 450);   // after the fade
+  showPage();   // the app, or, if the sign-in did not work, the setup page with what went wrong
+}
+
+// The first save settles the recipes with their saves in Spotify (it may add or change some), so it is done before the screen goes,
+// and so is the menu button's second of the cloud picture.
+async function settleFirstSave() {
+  connectingStep("Recipes", "active");
+  await runSpotifySave();
+  if (saveState.error) await connectingStepFailed("Recipes");   // the line under the bar says what went wrong
+  else connectingStep("Recipes", "done");
+  for (let i = 0; i < 30 && typeof savingIcon !== "undefined" && savingIcon.on; i++) await new Promise((r) => setTimeout(r, 50));
 }
 
 // Going to the setup page adds a step to the browser's history, so the back button (or a phone's back gesture) returns to where the person was.
@@ -1247,7 +1287,7 @@ async function connectToSpotify() {
     setConnection("problem", message, /sign-in expired|did not allow/.test(message) ? "reconnect" : "retry");
     countEvent("connection-problem", problemKind(message));
     // A report link is for something unexpected. A rate limit, a quota, no internet and a lapsed sign-in are known, and nothing here can fix them.
-    if (!/rate limiting|request quota|Could not reach Spotify|sign-in expired|did not allow|needs Premium/.test(message)) offerReport("connectionReportHint", message);
+    if (!/rate limiting|request quota|Could not reach Spotify|Spotify did not answer|sign-in expired|did not allow|needs Premium/.test(message)) offerReport("connectionReportHint", message);
   }
 }
 
@@ -1379,7 +1419,7 @@ async function finishLoginIfReturning() {
     setLoginMessage("The sign-in did not match this tab. Please try Connect again.");
     return;
   }
-  const response = await fetch("https://accounts.spotify.com/api/token", {
+  const response = await fetchWithAnswerLimit("https://accounts.spotify.com/api/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -1463,7 +1503,7 @@ function countEvent(name, title) {
 function problemKind(message) {
   if (/request quota/.test(message)) return "quota";
   if (/rate limiting/.test(message)) return "rate-limit";
-  if (/Could not reach Spotify/.test(message)) return "network";
+  if (/Could not reach Spotify|Spotify did not answer/.test(message)) return "network";
   if (/sign-in expired|did not allow/.test(message)) return "sign-in";
   if (/needs Premium/.test(message)) return "premium";
   return "other";
@@ -1480,6 +1520,23 @@ function rateLimitError(wait, reason) {
   return error;
 }
 
+// A request to Spotify that gets no answer at all (a stalled connection) fails after this long, instead of waiting for the browser to give up.
+let spotifyAnswerMs = 30000;
+const NO_ANSWER = "Spotify did not answer. Check your internet connection and try again.";
+
+async function fetchWithAnswerLimit(url, init) {
+  const stop = new AbortController();
+  const timer = setTimeout(() => stop.abort(), spotifyAnswerMs);
+  try {
+    return await fetch(url, { ...init, signal: stop.signal });
+  } catch (err) {
+    if (stop.signal.aborted) throw new Error(NO_ANSWER);
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function spotifyRequest(method, path, { params, json, body, contentType, noWait } = {}) {   // noWait: a rate limit is not waited out, it is an error at once
   let url = path.startsWith("http") ? path : SPOTIFY_API + path;
   if (params) url += (url.includes("?") ? "&" : "?") + new URLSearchParams(params).toString();
@@ -1489,13 +1546,13 @@ async function spotifyRequest(method, path, { params, json, body, contentType, n
   for (let attempt = 0; attempt < 5; attempt++) {
     let response;
     try {
-      response = await fetch(url, {
+      response = await fetchWithAnswerLimit(url, {
         method,
         headers: { Authorization: "Bearer " + token, ...(json ? { "Content-Type": "application/json" } : (contentType ? { "Content-Type": contentType } : {})) },
         body: json ? JSON.stringify(json) : body,
       });
     } catch (err) {
-      throw new Error("Could not reach Spotify. Check your internet connection and try again.");
+      throw new Error(err.message === NO_ANSWER ? NO_ANSWER : "Could not reach Spotify. Check your internet connection and try again.");
     }
     if (response.status === 429) {
       const header = Number(response.headers.get("Retry-After"));
@@ -2455,6 +2512,7 @@ async function main() {
   refreshBackupStatus();
 
   if (signingIn) { setLoginMessage(signInNote, true); updateButtons(); }   // coming back from Spotify: say so before the sign-in is finished
+  const pythonReady = connectingScreen ? preparePython().then((ok) => { if (ok) connectingStep("Python", "done"); else connectingStepFailed("Python"); }) : null;   // behind the connecting screen Python loads alongside the sign-in, so the wait is the slower of the two
   try {
     await finishLoginIfReturning();
   } catch (err) {
@@ -2463,6 +2521,8 @@ async function main() {
   }
   setSigningIn(false);   // the sign-in is over, one way or the other: from here the connection itself is what the buttons follow
   token = loadStoredToken();
+  if (!token) await connectingStepFailed("Signin");   // the sign-in did not work: the setup page shows what went wrong
+  connectingStep("Signin", "done");
   if (!token && needsReconnect) {
     revealLoginProblem();
     setLoginMessage("Please connect again so this page can build playlists.");
@@ -2474,18 +2534,29 @@ async function main() {
   showPage();   // signed in, or connected before: the app
   if (token) {
     document.body.classList.add("connected");
+    connectingStep("Playlists", "active");
     await connectToSpotify();   // and the app only calls itself connected, and offers Create, once Spotify has answered
+    if (connection === "ready") connectingStep("Playlists", "done");
+    else await connectingStepFailed("Playlists");   // the connection problem shows in the app
   }
+  if (connectingScreen) await settleFirstSave();
+  await (pythonReady || preparePython());
+  if (connectingScreen) await new Promise((r) => setTimeout(r, 400));   // the last check is seen before the screen fades
+  endConnectingScreen();
+}
 
+async function preparePython() {
   $("pythonNote").textContent = "Getting Python ready. The first time takes a little while...";
   try {
     await startPython();
     $("pythonNote").textContent = "";
     refreshFormatKeys();
+    return true;
   } catch (err) {
     $("pythonStatus").textContent = String(err.message || err);
     $("pythonNote").textContent = "Python could not start, so building is unavailable. Check your internet connection and reload the page. Details are under More options.";
     offerReport("mainReportHint", String(err.message || err));
+    return false;
   }
 }
 

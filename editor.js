@@ -250,6 +250,7 @@ function removeLocalFormat(id) {
 // A question with a few answers, in a dialog. Resolves with the answer's value. One that is required has to be answered: Escape and the backdrop do nothing. Otherwise
 // closing it resolves with null, to decide later.
 function askSyncChoice(title, text, choices, options = {}) {
+  if (typeof endConnectingScreen === "function") endConnectingScreen();   // a question needs the page in view
   return new Promise((resolve) => {
     const required = !!options.required;
     const done = (value) => { overlay.remove(); document.removeEventListener("keydown", onKey); resolve(value); };
@@ -351,12 +352,6 @@ function renderEditor() {
   strip.addEventListener("pointerdown", startTabPress);
   strip.addEventListener("touchmove", (event) => { if (tabDrag.press && tabDrag.press.dragging) event.preventDefault(); }, { passive: false });   // a held tab moves, the row does not scroll under it
   strip.addEventListener("contextmenu", (event) => { if (tabDrag.press) event.preventDefault(); });   // the long press is not a request for a menu
-  strip.addEventListener("keydown", (event) => {
-    const tab = event.target.closest && event.target.closest("button.fe-tab");
-    if (!tab || !event.altKey || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
-    event.preventDefault();
-    moveTabBy(tab.getAttribute("data-id"), event.key === "ArrowLeft" ? -1 : 1);
-  });
   renderTabs();
   renderAppMenu();
   // the menu button was not there yet when the tabs were drawn, so the tabs have less room than they were scrolled for
@@ -573,7 +568,7 @@ function renderTabs() {
 // Press and hold a tab for about a third of a second, then drag it sideways; the others make way. Moving before the hold is over scrolls the row instead: a finger
 // scrolls it as usual, and a mouse drags it along. The held tab grows a little past its lifted size and settles back, and on a phone each step gives a tick. Near either end of the row it scrolls by itself, but never past the last tab. The tab stays inside the row: pulled past an end it gives a little,
 // harder the further it goes, like a list on a phone pulled past its end; it never goes past New recipe at the end of the row. On a phone the other tabs get
-// narrower while a tab is held, so more of the row can be seen. Alt + the left or right arrow on a focused tab moves it one place.
+// narrower while a tab is held, so more of the row can be seen. Alt + the left or right arrow moves the focused tab, or else the selected one, one place.
 const tabDrag = { holdMs: 350, slop: 8, edge: 44, speed: 10, give: 22, press: null, frame: 0, redraw: false };
 
 function startTabPress(event) {
@@ -750,20 +745,6 @@ function endTabPress() {
 // a tab is lifted and moving: drawing the tabs again now would take it out from under the finger
 function tabHeld() {
   return !!(tabDrag.press && tabDrag.press.dragging);
-}
-
-// the same, one place at a time, for the keyboard
-function moveTabBy(id, step) {
-  const formats = editor.model.formats;
-  const from = formats.findIndex((f) => f.id === id);
-  const to = from + step;
-  if (from < 0 || to < 0 || to >= formats.length) return;
-  formats.splice(to, 0, formats.splice(from, 1)[0]);
-  placeMoved(formats, to);
-  commit();
-  renderTabs();
-  const tab = [...$("feTabs").querySelectorAll(".fe-tab")].find((t) => t.getAttribute("data-id") === id);
-  if (tab) tab.focus();
 }
 
 function renameTab(f) {
