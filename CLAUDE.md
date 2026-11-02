@@ -47,14 +47,17 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 - Releasing: pushing to `main` publishes the site (GitHub Pages). Git uses HTTPS with the `gh` login at `~/.local/bin/gh`.
 
 **Building**
-- A song is used once per playlist and once across the playlists made in one run, compared by Spotify ID. A segment may come in up to 10% short; below that the plan says so instead of repeating songs.
-- Before building, songs whose artist and title match (case, accents, punctuation and a remaster note ignored) under different IDs are pointed out in the confirmation, with a link to the list (`findSuspects`). The app never guesses that two songs are the same.
-- Earlier playlists that share names with the new ones are replaced after a question; a small link renames them instead to `<name> (version a)` (next letter each time) and builds.
+- A song is used once per playlist and once across the playlists made in one run, compared by ISRC (one recording, whatever release it is on), else Spotify ID (`song_id` in engine.py, `key` on each track; saved songs carry `v: SONGS_VERSION`). A song listed twice in one source counts once. A segment may come in up to 10% short; below that the plan says so instead of repeating songs.
+- To get the most playlists from overlapping sources, `pick` takes songs only its own source has first, and `fill_order` fills the segment with the least to spare first.
+- Before building, songs whose artist and title match (case, accents, punctuation and a remaster note ignored) in different recordings are mentioned as information (`findSuspects`), with links that open the playlist at the song. The app never guesses that two recordings are the same song.
+- A source that lists a song more than once gets a box with "Fix this for me in Spotify" (`removeRepeats`: Spotify removes every copy of a URI, so one is put back at the first position, then the playlist is read again to check).
+- Earlier playlists the app made that share names with the new ones are replaced; a checkbox keeps them instead, renamed to `<name> (version a)` (next letter each time). The person's own playlists that have names the new ones use are always renamed that way, first.
 - Playlists are named `<recipe name> N`. Built playlists carry a description marker (`APP_MARKER`) so the app knows they are its own.
 
 **The build popup**
-- One popup (`#createDialog`, classes `bd-*`) for the whole build: a strip of steps (Read songs, Plan, Build, Done), then one list of playlists that goes from plan (numbered, with a small bar of its shape, pale) to progress (each row's bar fills with pink as its songs are added, then a tick) to links. No separate progress bar: while building, the status line ("Building 3 of 17") is pinned at the top, the list follows the row being built until the person scrolls it, and at the end it scrolls back to the top. Cards above the list for earlier playlists being replaced, names the app did not make, and songs in more than one version.
-- The plan says "Ready to build N playlists." plus, when the songs (not the limit) set the number, "With X more min of songs in “P”, this recipe could make N+1." X is exact for the segment where the engine stopped (`ranOut` in `build_playlists`), not a promise. "Why N?" opens a table in place: per source playlist, minutes per playlist, minutes it has, how many that is enough for (`sources`).
+- One popup (`#createDialog`, classes `bd-*`) for the whole build: a strip of steps (Read songs, Plan, Build, Done), then one list of playlists that goes from plan (numbered, with a small bar of its shape, pale) to progress (each row's bar fills with pink as its songs are added, then a tick) to links. No separate progress bar: while building, the status line ("Building 3 of 17") is pinned at the top, the list follows the row being built until the person scrolls it, and at the end it scrolls back to the top. Boxes above the list (see below).
+- The plan says "Ready to build N playlists. Why N?" on one line; Why N? opens a table right under it: per source playlist, minutes per playlist, minutes it has, how many playlists that is enough for (`sources`), and how many songs are in more than one source (`shared`).
+- Messages before the list are compact boxes (`.bd-info`, built by `fillInfoBoxes`), each with an accent icon (not a warning), long parts behind "Details". The popup's text can be selected. One Build button.
 - A recipe that makes nothing lists every reason at once (no playlist chosen, missing, not yours, too short, or enough minutes whose song lengths cannot come within 10% of a segment: `fit`), found partly by minutes alone (`source_needs`).
 - When something fails during a build, the build stops. No recovery and no extra buttons: what went wrong, what was built, what to do ("Building again replaces the ones made so far"), and Close. Only an unexpected error offers the report link (`buildProblem`).
 
@@ -76,9 +79,8 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 
 ## Known issues and open items
 
-- A song listed **twice in one source playlist** can be picked twice in the same segment (`pick` in engine.py counts the entries separately until after the pick). Fix: de-duplicate the pool by URI first.
 - Ron is collecting changes from user testing; he sent a partial list and more is coming.
-- Not yet verified on real devices or accounts: iPhone Safari behavior (double-tap guard, text selection, back-forward cache, the `pageshow` reset), a real Spotify account's handling of the full CJK range at exactly 300 characters, cover upload on empty playlists and its rate limit, merge between two real devices, the saving crossfade on a phone, the other color themes.
+- Not yet verified on real devices or accounts: ISRC in real track lists, whether "?highlight=" selects the song in Spotify, the remove-and-put-back fix on a real playlist, iPhone Safari behavior (double-tap guard, text selection, back-forward cache, the `pageshow` reset), a real Spotify account's handling of the full CJK range at exactly 300 characters, cover upload on empty playlists and its rate limit, merge between two real devices, the saving crossfade on a phone, the other color themes.
 - Decided against: detecting a completed donation (nothing reliable), auto-connect on load (the Connect button stays).
 
 ## Tests

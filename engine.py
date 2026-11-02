@@ -29,11 +29,19 @@ def norm(s):
     return " ".join(s.lower().split())
 
 
+def song_id(t):
+    """What makes two entries one song: the recording's ISRC when Spotify gives one (the same recording on an album and on a
+    compilation has two Spotify IDs but one ISRC), else the Spotify ID."""
+    return t.get("key") or t["uri"]
+
+
 def pick(tracks, minutes, used):
-    """Random songs totaling about `minutes`. Adds chosen URIs to `used`."""
+    """Random songs totaling about `minutes`. Adds chosen songs to `used`.
+    Songs that only this source playlist has come first, so a song shared with another source is left for it where possible."""
     target = minutes * 60_000
-    pool = [t for t in tracks if t["uri"] not in used]
+    pool = [t for t in tracks if song_id(t) not in used]
     random.shuffle(pool)
+    pool.sort(key=lambda t: bool(t.get("shared")))
     chosen, rest, total = [], [], 0
     for t in pool:
         if target - total < 30_000:  # within 30 seconds, done
@@ -74,7 +82,7 @@ def pick(tracks, minutes, used):
             rest.remove(add)
             chosen.append(add)
     random.shuffle(chosen)
-    used.update(t["uri"] for t in chosen)
+    used.update(song_id(t) for t in chosen)
     return chosen, total
 
 
@@ -104,13 +112,16 @@ def seg_sources(segments):
     return list(dict.fromkeys(names))
 
 
-def build_one(cache, segments, used):
-    """Try to build one playlist.
+def build_one(cache, segments, used, order=None):
+    """Try to build one playlist. Segments are filled in `order` (the ones with the least to spare first, so they get first pick
+    of songs they share with other segments), and come back in their own order.
     Returns (segment results, updated used set, None) on success,
     or (None, None, (segment number, source name, minutes wanted, minutes found)) on failure."""
     local = set(used)
-    results = []
-    for i, (spec, minutes) in enumerate(segments, 1):
+    results = [None] * len(segments)
+    for idx in (order or range(len(segments))):
+        spec, minutes = segments[idx]
+        i = idx + 1
         songs, seg_total = [], 0
         remaining, remaining_w = minutes, sum(w for _, w in seg_parts(spec))
         for name, w in seg_parts(spec):
@@ -125,8 +136,22 @@ def build_one(cache, segments, used):
             remaining -= total / 60_000
             remaining_w -= w
         random.shuffle(songs)  # interleave the playlists within the segment
-        results.append((seg_label(spec), minutes, songs, seg_total))
+        results[idx] = (seg_label(spec), minutes, songs, seg_total)
     return results, local, None
+
+
+def fill_order(cache, segments):
+    """Segment indexes, the one whose source playlists have the fewest minutes to spare first."""
+    need = {}
+    for spec, minutes in segments:
+        parts = seg_parts(spec)
+        total_w = sum(w for _, w in parts)
+        for name, w in parts:
+            need[name] = need.get(name, 0) + minutes * w / total_w
+    def spare(idx):
+        names = [n for n, _ in seg_parts(segments[idx][0])]
+        return min(sum(t["ms"] for t in cache[norm(n)]) / 60_000 / need[n] if need[n] > 0 else float("inf") for n in names)
+    return sorted(range(len(segments)), key=spare)
 
 
 def fmt_duration(ms):
@@ -138,7 +163,7 @@ def leftover_report(cache, segments, used):
     """Song count and total duration still unused in each source playlist of a format."""
     lines = []
     for name in seg_sources(segments):
-        left = [t for t in cache[norm(name)] if t["uri"] not in used]
+        left = [t for t in cache[norm(name)] if song_id(t) not in used]
         lines.append(f"  {name}: {len(left)} songs left, {fmt_duration(sum(t['ms'] for t in left))}")
     return "\n".join(lines)
 
@@ -299,10 +324,11 @@ def _run_format(fmt, cache, limit, reserved=frozenset()):
     """Plan as many playlists as the songs allow. Returns (music, gaps, built, stopped, used).
     Names already in use (reserved) are skipped, so a new playlist never shares a name with one that stays."""
     music, gaps = plan_format(fmt)
+    order = fill_order(cache, music)
     used, built, stopped = set(), [], None
     counter = 0
     while len(built) < limit:
-        results, new_used, fail = build_one(cache, music, used)
+        results, new_used, fail = build_one(cache, music, used, order)
         if fail:
             stopped = fail
             break
@@ -323,7 +349,24 @@ def _stop_message(stopped):
 
 
 def _cache_from(tracks_json):
-    return {norm(name): tracks for name, tracks in json.loads(tracks_json).items()}
+    """Songs by source playlist name. A song listed more than once in a playlist counts once, and a song that is also in
+    another of these playlists is marked "shared"."""
+    cache = {}
+    for name, tracks in json.loads(tracks_json).items():
+        seen, songs = set(), []
+        for t in tracks:
+            if song_id(t) not in seen:
+                seen.add(song_id(t))
+                songs.append(dict(t))
+        cache[norm(name)] = songs
+    count = {}
+    for songs in cache.values():
+        for t in songs:
+            count[song_id(t)] = count.get(song_id(t), 0) + 1
+    for songs in cache.values():
+        for t in songs:
+            t["shared"] = count[song_id(t)] > 1
+    return cache
 
 
 def format_label(key, fmt):
@@ -398,6 +441,15 @@ def source_report(cache, music):
     return rows
 
 
+def shared_count(cache, music):
+    """How many songs are in more than one of a format's source playlists."""
+    count = {}
+    for name in seg_sources(music):
+        for t in cache[norm(name)]:
+            count[song_id(t)] = count.get(song_id(t), 0) + 1
+    return sum(1 for n in count.values() if n > 1)
+
+
 def build_playlists(formats_text, key, tracks_json, max_n=None, reserved_json="[]"):
     """One planning run that gives both the preview text and everything needed to create the playlists:
     names and ordered song URIs, silence included. Creating from this result makes exactly what was previewed."""
@@ -444,5 +496,6 @@ def build_playlists(formats_text, key, tracks_json, max_n=None, reserved_json="[
             has = next((r["has"] for r in sources if r["name"] == stopped[1]), round(stopped[3], 1))
             short = [{"name": stopped[1], "need": stopped[2], "has": has, "fit": True}]
     return json.dumps({"key": key, "playlists": playlists, "sources": sources, "ranOut": ran_out, "short": short,
+                       "shared": shared_count(cache, music),
                        "stopped": _stop_message(stopped) if stopped else None,
                        "text": "\n".join(_plan_lines(key, music, gaps, built, stopped, used, cache, format_label(key, fmt)))})

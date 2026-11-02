@@ -16,7 +16,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-01q";
+const APP_VERSION = "2026-11-02a";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -303,6 +303,7 @@ const trackCache = new Map();  // playlist id -> songs, for the life of this pag
 // Everything here is best effort: if the browser will not keep songs, the app simply asks Spotify, as it did before.
 const SONGS_DB = "ceremony-playlist-builder";
 const SONGS_STORE = "songs";
+const SONGS_VERSION = 2;   // 2: each song carries its ISRC and album; older saves are read again
 let songsDb = null;
 
 function openSongsDb() {
@@ -1336,7 +1337,7 @@ function resetBuildPopup() {
   clearResults();
   $("confirmBox").hidden = true;
   $("output").classList.remove("bd-pinned");
-  $("planToggleRow").hidden = true;
+  $("bdInfo").textContent = "";
   $("planText").hidden = true;
   $("planText").textContent = "";
   $("createNotes").hidden = true;
@@ -1351,6 +1352,10 @@ const BD_ICON = {
   wait: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="var(--muted)" stroke-width="1.5" fill="none" stroke-dasharray="2 2.4"/></svg>',
   num: (n) => `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7.2" stroke="var(--muted)" stroke-width="1.2" fill="none"/><text x="8" y="11.4" text-anchor="middle" font-size="${n > 9 ? 7.5 : 9.5}" font-family="system-ui, sans-serif" fill="var(--muted)">${n}</text></svg>`,
   warn: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M9 1.8l7.6 13.4H1.4z" fill="#f59e0b"/><path d="M9 7v3.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><circle cx="9" cy="13" r="1" fill="#fff"/></svg>',
+  replace: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/></svg>',
+  rename: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  copy: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  music: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
   err: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="8.2" fill="var(--danger)"/><path d="M9 4.8v5" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="9" cy="12.9" r="1.1" fill="#fff"/></svg>',
 };
 
@@ -1473,22 +1478,6 @@ function showPlanProblems(items, recipes) {
   setBuildSteps("plan", true);
 }
 
-function fillCard(cardId, titleId, textId, listId, title, text, list) {
-  // One of the cards above the plan. Shown only when it has a title.
-  $(cardId).hidden = !title;
-  if (!title) return;
-  const ic = $(cardId).querySelector(".bd-warn-ic");
-  if (ic) ic.innerHTML = BD_ICON.warn;
-  $(titleId).textContent = title;
-  $(textId).textContent = text;
-  $(textId).hidden = !text;
-  const ul = $(listId);
-  ul.textContent = "";
-  for (const item of list.slice(0, 8)) ul.appendChild(Object.assign(document.createElement("li"), { textContent: item }));
-  if (list.length > 8) ul.appendChild(Object.assign(document.createElement("li"), { textContent: `and ${list.length - 8} more` }));
-  if (listId !== "confirmSuspectsList") ul.hidden = list.length === 0;
-}
-
 // What went wrong while building, in the popup's words: a title, and what to do about it.
 function buildProblem(message) {
   if (/Could not reach Spotify|Spotify did not answer/.test(message)) return { title: "Spotify stopped answering", advice: "Check your internet connection, then build again." };
@@ -1501,11 +1490,11 @@ function buildProblem(message) {
 }
 
 function showBuildStop(err, done) {
-  // done: { built, total, incomplete (a name or null), removing (true if it stopped while removing earlier playlists) }, or null before building
+  // done: { built, total, incomplete (a name or null), removing ("renaming" or "removing" if it stopped on earlier playlists) }, or null before building
   const message = cleanError(err);
   const problem = buildProblem(message);
   let what = "No playlists were built.";
-  if (done && done.removing) what = "It stopped while removing earlier playlists, before anything new was built.";
+  if (done && done.removing) what = `It stopped while ${done.removing} ${done.removing === "renaming" ? "playlists" : "earlier playlists"}, before anything new was built.`;
   else if (done && (done.built || done.incomplete)) what = `${done.built} of ${plural(done.total, "playlist")} ${done.built === 1 ? "was" : "were"} built` + (done.incomplete ? `, and “${done.incomplete}” is incomplete.` : ".");
   const again = done && (done.built || done.incomplete) ? " Building again replaces the ones made so far." : "";
   setActionMessage("");
@@ -1820,7 +1809,7 @@ async function loadTracks(id) {
   const snapshot = info && info.snapshot ? info.snapshot : null;
   const saved = await savedSongs(id);
   // Saved songs are used when Spotify reports no snapshot to compare (the refresh control covers that case), or when the snapshot is the same.
-  if (saved && Array.isArray(saved.tracks) && (!snapshot || saved.snapshot === snapshot)) {
+  if (saved && saved.v === SONGS_VERSION && Array.isArray(saved.tracks) && (!snapshot || saved.snapshot === snapshot)) {
     trackCache.set(id, saved.tracks);
     return saved.tracks;
   }
@@ -1830,10 +1819,14 @@ async function loadTracks(id) {
     const t = entry && (entry.item || entry.track);  // "item" is the 2026 field name
     if (!t || t.is_local || t.type !== "track" || !t.uri) continue;
     const artist = t.artists && t.artists[0] ? t.artists[0].name : "";
-    tracks.push({ uri: t.uri, ms: t.duration_ms, label: `${artist} - ${t.name}` });
+    const isrc = t.external_ids && typeof t.external_ids.isrc === "string" && t.external_ids.isrc ? t.external_ids.isrc.toUpperCase() : "";
+    const song = { uri: t.uri, ms: t.duration_ms, label: `${artist} - ${t.name}` };
+    if (isrc) song.key = "isrc:" + isrc;   // one recording, whichever release it came from (engine.py's song_id)
+    if (t.album && t.album.name) song.album = t.album.name + (t.album.release_date ? `, ${String(t.album.release_date).slice(0, 4)}` : "");
+    tracks.push(song);
   }
   trackCache.set(id, tracks);
-  await saveSongs({ id, snapshot, tracks, savedAt: Date.now() });
+  await saveSongs({ id, snapshot, tracks, v: SONGS_VERSION, savedAt: Date.now() });
   return tracks;
 }
 
@@ -1995,7 +1988,7 @@ async function gatherInputs() {
     showPlanProblems(problems.concat(failedNotes), wanted.length);
     return null;
   }
-  return { formatsText, keys: plans.map((p) => p.key), failedNotes, tracks, many };
+  return { formatsText, keys: plans.map((p) => p.key), failedNotes, tracks, ids: match.found, many };
 }
 
 function shortProblems(plan, many) {
@@ -2008,24 +2001,22 @@ function shortProblems(plan, many) {
     : [`${where}“${s.name}” is too short.`, `This recipe uses ${lengthText(s.need)} of it, and it has ${lengthText(s.has)} of songs. Add ${lengthText(Math.max(1, Math.ceil(s.need - s.has)))} of songs to it, or shorten its segments.`]);
 }
 
-async function planSelected(startedWith, includeOthers = false) {
+async function planSelected(startedWith) {
   // Works out the playlists for the chosen formats. Returns the plan, or null after saying why there isn't one.
   const inputs = await gatherInputs();
   if (!inputs) return null;
   setBuildSteps("plan");
-  // Earlier playlists with names this plan would use: the ones this app made get replaced, the others are left alone and their names skipped.
+  // Earlier playlists with names this plan uses: the ones this app made get replaced (or renamed, if the person keeps them), and the person's own get renamed
+  // to "… (version a)" so the new playlists can have their names.
   const matching = JSON.parse(py.existingMatches(inputs.formatsText, JSON.stringify(inputs.keys), JSON.stringify(playlists), me.id));
   const madeByApp = new Set(playlists.filter((p) => p.madeByApp).map((p) => p.id));
   const marked = matching.filter((p) => madeByApp.has(p.id));
-  const others = matching.filter((p) => !madeByApp.has(p.id));
-  const ours = includeOthers ? matching : marked;   // what gets removed first
-  const reserved = JSON.stringify(includeOthers ? [] : others.map((p) => p.name));
   setOutput("Planning…");
   const built = [];
   const problems = inputs.failedNotes.slice();
   for (const key of inputs.keys) {
     try {
-      const plan = JSON.parse(py.buildPlaylists(inputs.formatsText, key, JSON.stringify(inputs.tracks), playlistLimit(), reserved));
+      const plan = JSON.parse(py.buildPlaylists(inputs.formatsText, key, JSON.stringify(inputs.tracks), playlistLimit(), "[]"));
       if (!Array.isArray(plan.sources)) throw new Error("engine.py is out of date. Reload the page.");
       if (plan.playlists.length) built.push(plan);
       else problems.push(...shortProblems(plan, inputs.many));
@@ -2046,20 +2037,25 @@ async function planSelected(startedWith, includeOthers = false) {
     return null;
   }
   setOutput("");
-  return { formatsText: inputs.formatsText, keys: inputs.keys, built, total, ours, marked, others, includeOthers, suspects: findSuspects(inputs.tracks), problems, many: built.length > 1 || problems.length > 0 };
+  const newNames = new Set(built.flatMap((b) => b.playlists.map((p) => normName(p.name))));
+  const others = matching.filter((p) => !madeByApp.has(p.id) && newNames.has(normName(p.name)));   // only the ones in the way
+  return { formatsText: inputs.formatsText, keys: inputs.keys, built, total, ours: marked, marked, others,
+    suspects: findSuspects(inputs.tracks, inputs.ids), repeats: findRepeats(inputs.tracks, inputs.ids), problems, many: built.length > 1 || problems.length > 0 };
 }
 
-// Songs that may be one song in two versions, among the playlists a build draws from. The app knows a song by its Spotify ID, so the same song on an album and on a
-// compilation, or remastered, is two songs to it, and both could end up in a playlist. It does not guess which songs are the same: it points out the ones whose artist and
-// title match, once case, punctuation and a remaster note are set aside, and leaves the choice of version to the person.
+// Songs that may be one song in more than one recording, among the playlists a build draws from. The app knows a song by its ISRC (one recording, whatever release
+// it is on), or its Spotify ID when there is none, so a live and a studio recording are two songs to it, and both could end up in a playlist. It does not guess which
+// songs are the same: it points out the ones whose artist and title match, once case, punctuation and a remaster note are set aside, and leaves the choice to the person.
 function songKey(label) {
-  return String(label || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/&/g, " and ")
-    .replace(/\s*[-\u2013]\s*(?:\d{4}\s+)?(?:digital(?:ly)?\s+)?remaster(?:ed)?(?:\s+\d{4})?(?:\s+version)?\s*$/, "")
+  return String(label || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/&/g, " and ")
+    .replace(/\s*[-–]\s*(?:\d{4}\s+)?(?:digital(?:ly)?\s+)?remaster(?:ed)?(?:\s+\d{4})?(?:\s+version)?\s*$/, "")
     .replace(/\s*[\(\[]\s*(?:\d{4}\s+)?(?:digital(?:ly)?\s+)?remaster(?:ed)?(?:\s+\d{4})?(?:\s+version)?\s*[\)\]]/g, "")
     .replace(/[^a-z0-9]+/g, " ").trim();
 }
+const songId = (t) => t.key || t.uri;   // as engine.py's song_id
 
-function findSuspects(tracksByName) {
+function findSuspects(tracksByName, ids = {}) {
+  // [{ label, versions: [{ album, lists: [{ name, id, uri }] }] }], one for each title and artist found in more than one recording
   const byKey = new Map();
   for (const [list, tracks] of Object.entries(tracksByName || {})) {
     for (const t of tracks) {
@@ -2067,23 +2063,51 @@ function findSuspects(tracksByName) {
       if (!key) continue;
       if (!byKey.has(key)) byKey.set(key, new Map());
       const versions = byKey.get(key);
-      if (!versions.has(t.uri)) versions.set(t.uri, { label: t.label, lists: new Set() });
-      versions.get(t.uri).lists.add(list);
+      if (!versions.has(songId(t))) versions.set(songId(t), { label: t.label, album: t.album || "", lists: [] });
+      const v = versions.get(songId(t));
+      if (!v.lists.some((l) => l.name === list)) v.lists.push({ name: list, id: ids[list] || null, uri: t.uri });
     }
   }
   const out = [];
   for (const versions of byKey.values()) {
     if (versions.size < 2) continue;
-    const lists = new Set();
-    for (const v of versions.values()) v.lists.forEach((l) => lists.add(l));
-    out.push({ label: Array.from(versions.values())[0].label, versions: versions.size, lists: Array.from(lists) });
+    const all = Array.from(versions.values());
+    out.push({ label: all[0].label, versions: all.map((v) => ({ album: v.album, lists: v.lists })) });
   }
   return out.sort((a, b) => a.label.localeCompare(b.label));
 }
 
-function recipeHint(b) {
-  // What one more playlist would take, when the songs (not the limit on the number) set how many there are.
-  return b.ranOut ? `With ${b.ranOut.more} more min of songs in “${b.ranOut.name}”, this recipe could make ${b.playlists.length + 1}.` : "";
+function findRepeats(tracksByName, ids = {}) {
+  // Source playlists that list a song more than once: [{ name, id, songs: how many songs }]. The engine uses each once either way.
+  const out = [];
+  for (const [name, tracks] of Object.entries(tracksByName || {})) {
+    const count = new Map();
+    for (const t of tracks) count.set(t.uri, (count.get(t.uri) || 0) + 1);
+    const songs = Array.from(count.values()).filter((n) => n > 1).length;
+    if (songs) out.push({ name, id: ids[name] || null, songs });
+  }
+  return out;
+}
+
+async function removeRepeats(id) {
+  // Leaves one copy of each song a playlist lists more than once, where the first copy was. Spotify removes a song by its ID, so every copy goes and one is put back.
+  const read = async () => (await pagedItems(`/playlists/${id}/items?limit=50`)).map((e) => { const t = e && (e.item || e.track); return t && t.uri; });
+  let uris = await read();
+  const first = new Map();
+  uris.forEach((u, i) => { if (u && !first.has(u)) first.set(u, i); });
+  const repeated = Array.from(first.keys()).filter((u) => uris.filter((x) => x === u).length > 1).sort((a, b) => first.get(a) - first.get(b));
+  for (const uri of repeated) {
+    const at = uris.indexOf(uri);
+    await spotifyRequest("DELETE", `/playlists/${id}/items`, { json: { items: [{ uri }] } });
+    uris = uris.filter((u) => u !== uri);
+    await spotifyRequest("POST", `/playlists/${id}/items`, { json: { uris: [uri], position: Math.min(at, uris.length) } });
+    uris.splice(Math.min(at, uris.length), 0, uri);
+  }
+  const after = await read();
+  if (after.some((u, i) => u && after.indexOf(u) !== i)) throw new Error("Spotify still lists some songs more than once.");
+  trackCache.delete(id);
+  await forgetSongs([id]);
+  logStep(`removed repeats: ${plural(repeated.length, "song")}`);
 }
 
 function fillWhyTable(plan) {
@@ -2100,14 +2124,16 @@ function fillWhyTable(plan) {
     for (const r of b.sources) {
       const tr = document.createElement("tr");
       if (r.name === limiting) tr.className = "bd-limit";
-      for (const text of [r.name, lengthText(r.per), lengthText(r.has), r.enough == null ? "" : String(r.enough)]) tr.appendChild(Object.assign(document.createElement("td"), { textContent: text }));
+      for (const text of [r.name, lengthText(r.per), lengthText(r.has), r.enough == null ? "" : plural(r.enough, "playlist")]) tr.appendChild(Object.assign(document.createElement("td"), { textContent: text }));
       body.appendChild(tr);
     }
     table.appendChild(body);
     box.appendChild(table);
     if (!b.ranOut) box.appendChild(Object.assign(document.createElement("p"), { className: "bd-note", textContent: `The number is set by “Most playlists per recipe” in More options (${b.playlists.length}).` }));
   }
-  if (plan.built.some((b) => b.ranOut)) box.appendChild(Object.assign(document.createElement("p"), { className: "bd-note", textContent: "Each song is used once, so the playlist with the fewest minutes to spare sets the number." }));
+  if (plan.built.some((b) => b.ranOut)) box.appendChild(Object.assign(document.createElement("p"), { className: "bd-note", textContent: "Each song is used once, so the playlist with the fewest minutes to spare determines the number of playlists the app builds." }));
+  const shared = Math.max(0, ...plan.built.map((b) => b.shared || 0));
+  if (shared) box.appendChild(Object.assign(document.createElement("p"), { className: "bd-note", textContent: `${plural(shared, "song")} ${shared === 1 ? "is" : "are"} in more than one of these playlists. Each is used once.` }));
 }
 
 function showPlanRows(plan) {
@@ -2115,7 +2141,7 @@ function showPlanRows(plan) {
   clearResults();
   let shown = 0, hidden = 0;
   for (const b of plan.built) {
-    if (plan.many) $("results").appendChild(groupRow(formatLabel(b.key), recipeHint(b)));
+    if (plan.many) $("results").appendChild(groupRow(formatLabel(b.key), ""));
     b.playlists.forEach((p, i) => {
       if (shown < 10) { $("results").appendChild(playlistRow(p, i + 1)); shown += 1; } else hidden += 1;
     });
@@ -2134,16 +2160,119 @@ function showPlanRows(plan) {
   }
 }
 
+function infoBox(icon, ...lines) {
+  // One of the small boxes above the list of playlists: an icon, then its lines (elements or text).
+  const box = Object.assign(document.createElement("div"), { className: "bd-info" });
+  box.appendChild(Object.assign(document.createElement("span"), { className: "bd-info-ic", innerHTML: BD_ICON[icon] }));
+  const text = document.createElement("div");
+  for (const line of lines) text.appendChild(typeof line === "string" ? Object.assign(document.createElement("p"), { textContent: line }) : line);
+  box.appendChild(text);
+  $("bdInfo").appendChild(box);
+  return text;
+}
+
+function sentence(text, link) {
+  // A line of text with a link at its end.
+  const p = Object.assign(document.createElement("p"), { textContent: text + " " });
+  if (link) p.appendChild(link);
+  return p;
+}
+
+function linkButton(label, onClick) {
+  const b = Object.assign(document.createElement("button"), { type: "button", className: "linklike", textContent: label });
+  b.onclick = onClick;
+  return b;
+}
+
+function detailsLink(more) {
+  // "Details" opens the part of a box that is hidden at first, and "Hide details" closes it.
+  more.hidden = true;
+  more.classList.add("bd-info-more");
+  const b = linkButton("Details", () => { more.hidden = !more.hidden; b.textContent = more.hidden ? "Details" : "Hide details"; });
+  return b;
+}
+
+function songLink(where) {
+  // A source playlist's name, opening it in Spotify at the song
+  const name = `“${where.name}”`;
+  if (!where.id) return document.createTextNode(name);
+  return Object.assign(document.createElement("a"), { href: `https://open.spotify.com/playlist/${where.id}?highlight=${encodeURIComponent(where.uri)}`, target: "_blank", rel: "noopener noreferrer", textContent: name });
+}
+
+function fillInfoBoxes(plan, keep) {
+  // What else the build does or found, each in its own box: earlier playlists, the person's own playlists in the way, songs listed more than once, and songs in more than one recording.
+  $("bdInfo").textContent = "";
+  if (plan.marked.length) {
+    const one = plan.marked.length === 1;
+    const label = Object.assign(document.createElement("label"), {});
+    label.append(keep, ` Keep ${one ? "it" : "them"}, renamed to “… (version ${nextVersionLetter(plan.marked)})”`);
+    infoBox("replace", `${plural(plan.marked.length, "earlier playlist")} from ${plan.many ? "these recipes" : "this recipe"} will be replaced.`, label);
+  }
+  if (plan.others.length) {
+    const letter = nextVersionLetter(plan.others);
+    const list = document.createElement("ul");
+    for (const p of plan.others) {
+      const li = document.createElement("li");
+      li.append(Object.assign(document.createElement("span"), { className: "bd-nowrap", textContent: `“${p.name}”` }), " → ",
+        Object.assign(document.createElement("span"), { className: "bd-nowrap", textContent: `“${p.name} (version ${letter})”` }));
+      list.appendChild(li);
+    }
+    const one = plan.others.length === 1;
+    infoBox("rename", sentence(one ? "One of your own playlists will be renamed to free its name." : `${plan.others.length} of your own playlists will be renamed to free their names.`, detailsLink(list)), list);
+  }
+  const repeats = (plan.repeats || []).filter((r) => r.id);
+  if (repeats.length) {
+    const text = repeats.length === 1
+      ? `“${repeats[0].name}” lists ${plural(repeats[0].songs, "song")} more than once. Each is used once.`
+      : `${repeats.length} playlists list songs more than once (${repeats.map((r) => `“${r.name}”`).join(", ")}). Each song is used once.`;
+    const fix = linkButton("Fix this for me in Spotify", async () => {
+      fix.disabled = true;
+      fix.textContent = "Fixing…";
+      try {
+        for (const r of repeats) await removeRepeats(r.id);
+        plan.repeats = [];
+        line.textContent = repeats.length === 1 ? `Fixed: “${repeats[0].name}” now lists each song once.` : "Fixed: each of those playlists now lists each song once.";
+        line.className = "bd-done";
+      } catch (err) {
+        recordError(cleanError(err));
+        line.textContent = `Couldn’t fix it: ${cleanError(err).replace(/\.?$/, ".")} The build is not affected.`;
+      }
+    });
+    const line = sentence(text, fix);
+    infoBox("copy", line);
+  }
+  const suspects = plan.suspects || [];
+  if (suspects.length) {
+    const more = document.createElement("div");
+    more.appendChild(Object.assign(document.createElement("p"), { textContent: "Each recording (for example live and studio) counts as its own song, so more than one can be used." }));
+    const list = document.createElement("ul");
+    for (const x of suspects.slice(0, 10)) {
+      const li = Object.assign(document.createElement("li"), { textContent: `${x.label}: ` });
+      const places = x.versions.flatMap((v) => v.lists.map((l) => ({ ...l, album: v.album })));
+      places.forEach((l, i) => {
+        if (i) li.append(", ");
+        li.append("in ", songLink(l));
+        if (l.album) li.append(` (${l.album})`);
+      });
+      list.appendChild(li);
+    }
+    if (suspects.length > 10) list.appendChild(Object.assign(document.createElement("li"), { textContent: `and ${suspects.length - 10} more` }));
+    more.appendChild(list);
+    infoBox("music", sentence(`${plural(suspects.length, "song")} ${suspects.length === 1 ? "has" : "have"} more than one recording.`, detailsLink(more)), more);
+  }
+}
+
 function askToCreate(plan) {
-  // Shows what the plan found and waits: "create", "cancel", "include"/"exclude" (the switch for playlists the app did not mark), "keep", or "stale" if something was edited meanwhile.
+  // Shows what the plan found and waits: "create", "cancel", or "stale" if something was edited meanwhile. With "create", plan.keep says whether to keep the earlier playlists.
   return new Promise((resolve) => {
     setOutput("");
     const summary = $("confirmText");
     summary.textContent = "Ready to build ";
     summary.appendChild(Object.assign(document.createElement("b"), { textContent: plural(plan.total, "playlist") }));
-    summary.appendChild(document.createTextNode(plan.many ? ` for ${plural(plan.built.length, "recipe")}.` : "."));
-    const hint = plan.many ? "" : recipeHint(plan.built[0]);
-    if (hint) summary.appendChild(Object.assign(document.createElement("span"), { className: "bd-hint", textContent: " " + hint }));
+    summary.appendChild(document.createTextNode(plan.many ? ` for ${plural(plan.built.length, "recipe")}. ` : ". "));
+    const whyLabel = plan.many ? "Why these numbers?" : `Why ${plan.total}?`;
+    const why = Object.assign(document.createElement("button"), { type: "button", className: "linklike", id: "planToggle", textContent: whyLabel });
+    summary.appendChild(why);
     // Recipes in this build that give nothing, and why
     $("confirmNotes").hidden = !plan.problems.length;
     const notes = $("confirmList");
@@ -2154,68 +2283,33 @@ function askToCreate(plan) {
       li.appendChild(document.createTextNode(" " + rest));
       notes.appendChild(li);
     }
-    const one = plan.marked.length === 1;
-    fillCard("confirmMoreCard", "confirmMoreTitle", "confirmMoreText", "confirmMoreList",
-      plan.marked.length ? `${plural(plan.marked.length, "earlier playlist")} will be replaced` : "",
-      `Made by this app, with the same ${one ? "name" : "names"}. ${one ? "It is" : "They are"} removed from your library first:`,
-      plan.marked.map((p) => p.name));
-    const keepLink = $("confirmKeepEarlier");
-    keepLink.hidden = !plan.marked.length;
-    if (plan.marked.length) keepLink.textContent = `Keep ${one ? "it" : "them"} instead: rename ${one ? "it" : "them"} to “… (version ${nextVersionLetter(plan.marked)})”, then build`;
-    const many = plan.others.length !== 1;
-    fillCard("confirmKeepCard", "confirmKeepTitle", "confirmKeepText", "confirmKeepList",
-      plan.others.length ? `${plural(plan.others.length, "playlist")} with matching names ${many ? "were" : "was"} not made by this app` : "",
-      plan.includeOthers ? `${many ? "They" : "It"} will be removed too, because you chose to replace ${many ? "them" : "it"}:` : `${many ? "They" : "It"} will not be touched, and the new playlists skip ${many ? "those names" : "that name"}:`,
-      plan.others.map((p) => p.name));
-    $("confirmKeepToggleRow").hidden = plan.others.length === 0;
-    $("confirmKeepToggle").checked = plan.includeOthers;
-    $("confirmKeepToggleLabel").textContent = `Replace ${many ? "them" : "it"} too`;
-    const suspects = plan.suspects || [];
-    fillCard("confirmSuspectsCard", "confirmSuspectsTitle", "confirmSuspectsText", "confirmSuspectsList",
-      suspects.length ? `${plural(suspects.length, "song")} ${suspects.length === 1 ? "is" : "are"} in more than one version` : "",
-      "This app can’t tell versions apart, so one could repeat in a playlist or across playlists. To avoid that, use the same version of each song in every playlist.",
-      []);
-    const suspectsList = $("confirmSuspectsList");
-    suspectsList.hidden = true;
-    $("confirmSuspectsToggle").textContent = "Which songs?";
-    const shown = suspects.slice(0, 10);
-    for (const x of shown) suspectsList.appendChild(Object.assign(document.createElement("li"), { textContent: `${x.label}, in ${x.lists.map((l) => `“${l}”`).join(" and ")}` }));
-    if (suspects.length > shown.length) suspectsList.appendChild(Object.assign(document.createElement("li"), { textContent: `and ${suspects.length - shown.length} more` }));
-    setLabel($("confirmYes"), plan.ours.length ? `Replace ${plan.ours.length} and build ${plan.total}` : `Build ${plural(plan.total, "playlist")}`);
+    const keep = Object.assign(document.createElement("input"), { type: "checkbox", id: "confirmKeepEarlier" });
+    fillInfoBoxes(plan, keep);
+    setLabel($("confirmYes"), `Build ${plural(plan.total, "playlist")}`);
     setLabel($("confirmNo"), "Cancel");
     showPlanRows(plan);
     fillWhyTable(plan);
     $("planText").hidden = true;
-    $("planToggleRow").hidden = false;
-    const whyLabel = plan.many ? "Why these numbers?" : `Why ${plan.total}?`;
-    $("planToggle").textContent = whyLabel;
     $("confirmBox").hidden = false;
     setBuildSteps("build", false, true);
     setCreateStage("question");
     const finish = (answer) => {
       openQuestion = null;
+      plan.keep = keep.checked;
       $("confirmBox").hidden = true;
-      $("planToggleRow").hidden = true;
       $("planText").hidden = true;
       $("planText").textContent = "";
-      for (const id of ["confirmYes", "confirmNo", "planToggle", "confirmKeepEarlier", "confirmSuspectsToggle"]) $(id).onclick = null;
-      $("confirmKeepToggle").onchange = null;
+      $("bdInfo").textContent = "";
+      for (const id of ["confirmYes", "confirmNo"]) $(id).onclick = null;
       if (answer === "create") setCreateStage("creating");   // from this moment it cannot be dismissed
-      else if (answer === "include" || answer === "exclude" || answer === "keep") { clearResults(); setCreateStage("planning"); }
       resolve(answer);
     };
     openQuestion = finish;
     $("confirmYes").onclick = () => finish("create");
     $("confirmNo").onclick = () => finish("cancel");
-    $("confirmKeepEarlier").onclick = () => finish("keep");
-    $("confirmSuspectsToggle").onclick = () => {
-      suspectsList.hidden = !suspectsList.hidden;
-      $("confirmSuspectsToggle").textContent = suspectsList.hidden ? "Which songs?" : "Hide the list";
-    };
-    $("confirmKeepToggle").onchange = () => finish($("confirmKeepToggle").checked ? "include" : "exclude");
-    $("planToggle").onclick = () => {
+    why.onclick = () => {
       $("planText").hidden = !$("planText").hidden;
-      $("planToggle").textContent = $("planText").hidden ? whyLabel : "Hide";
+      why.textContent = $("planText").hidden ? whyLabel : "Hide";
     };
   });
 }
@@ -2238,30 +2332,11 @@ async function startCreate(keys = null) {
   const startedWith = planSignature();
   try {
     await loadMyPlaylists();   // what is in Spotify now, including anything changed there since this page loaded
-    let includeOthers = false;
-    let plan = await planSelected(startedWith, includeOthers);
-    while (plan) {
-      const answer = await askToCreate(plan);
-      if (answer === "stale" || answer === "cancel") { closeCreateDialog(); return; }
-      if (answer === "keep") {
-        setBuildSteps("build");
-        setOutput(`Renaming ${plural(plan.marked.length, "earlier playlist")}…`);
-        await keepEarlierPlaylists(plan.marked);
-        setBuildSteps("plan");
-        plan = await planSelected(startedWith, includeOthers);   // with those names free, the new playlists start again at 1
-        if (!plan) return;
-        await createFromPlan(plan);   // they have just said what they want, so there is no second question
-        return;
-      }
-      if (answer === "include" || answer === "exclude") {
-        includeOthers = answer === "include";
-        logStep(`plan: ${includeOthers ? "replacing" : "keeping"} playlists the app did not mark`);
-        plan = await planSelected(startedWith, includeOthers);
-        continue;
-      }
-      await createFromPlan(plan);
-      return;
-    }
+    const plan = await planSelected(startedWith);
+    if (!plan) return;
+    const answer = await askToCreate(plan);
+    if (answer === "stale" || answer === "cancel") { closeCreateDialog(); return; }
+    await createFromPlan(plan);
   } catch (err) {
     setOutput("");
     showBuildStop(err, null);
@@ -2272,9 +2347,9 @@ async function startCreate(keys = null) {
   }
 }
 
-// Keeping earlier playlists instead of replacing them: "Warm focus 1" becomes "Warm focus 1 (version a)". The letter is the first one that none of these playlists has used
-// before ("version b" the second time, and so on, then "aa"), and they all get the same one. A renamed playlist no longer has a name the recipe makes, so building and
-// "Remove earlier playlists" leave it alone, and the new playlists start again at 1.
+// Keeping earlier playlists instead of replacing them, and moving the person's own playlists out of the way: "Warm focus 1" becomes "Warm focus 1 (version a)". The letter
+// is the first one that none of these playlists has used before ("version b" the second time, and so on, then "aa"), and they all get the same one. A renamed playlist no
+// longer has a name the recipe makes, so building and "Remove earlier playlists" leave it alone.
 function versionLetters(index) {
   let n = index, out = "";
   do { out = String.fromCharCode(97 + (n % 26)) + out; n = Math.floor(n / 26) - 1; } while (n >= 0);
@@ -2302,9 +2377,9 @@ async function keepEarlierPlaylists(earlier) {
       done += 1;
     }
   } catch (err) {
-    throw new Error(`${done} of ${earlier.length} earlier playlists were renamed before this went wrong: ${cleanError(err)}`);
+    throw new Error(`${done} of ${plural(earlier.length, "playlist")} were renamed before this went wrong: ${cleanError(err)}`);
   }
-  logStep(`kept ${plural(earlier.length, "earlier playlist")} as version ${letter}`);
+  logStep(`renamed ${plural(earlier.length, "playlist")} to version ${letter}`);
   return letter;
 }
 
@@ -2312,12 +2387,17 @@ async function createFromPlan(plan) {
   setCreateStage("creating");
   setBuildSteps("build");
   setOutput("");
-  const existing = plan.ours;
+  const existing = plan.keep ? [] : plan.ours;   // removed first
+  const renamed = plan.others.concat(plan.keep ? plan.ours : []);   // renamed first, so the new playlists can have their names
   const planned = plan.built.flatMap((b) => b.playlists.map((p) => ({ ...p, label: formatLabel(b.key), key: b.key })));
   logStep(`create started (${plural(planned.length, "playlist")})`);
   // The same list as the plan, now all of it, each row ticked off as it is made.
   clearResults();
-  let removeRow = null;
+  let removeRow = null, renameRow = null;
+  if (renamed.length) {
+    renameRow = playlistRow({ name: `Renaming ${plural(renamed.length, "playlist")}` }, "now");
+    $("results").appendChild(renameRow);
+  }
   if (existing.length) {
     removeRow = playlistRow({ name: `Removing ${plural(existing.length, "earlier playlist")}` }, "now");
     $("results").appendChild(removeRow);
@@ -2342,7 +2422,7 @@ async function createFromPlan(plan) {
   const progress = (status) => setOutput(status);
   let created = 0;
   let current = null;   // the playlist being made, if it exists in Spotify but is not finished
-  let removing = existing.length > 0;
+  let removing = renamed.length ? "renaming" : existing.length ? "removing" : null;   // what is under way before the building starts
   const createdIds = [];
   const stillPublic = [];
   let cover = null;
@@ -2353,13 +2433,21 @@ async function createFromPlan(plan) {
     try { cover = await loadCover(); } catch (err) { coverUnloaded = true; logStep("create: cover image not loaded"); }
   }
   try {
+    if (renamed.length) {
+      progress(`Renaming ${plural(renamed.length, "playlist")}. Keep this tab open.`);
+      if (plan.others.length) await keepEarlierPlaylists(plan.others);
+      if (plan.keep && plan.ours.length) await keepEarlierPlaylists(plan.ours);
+      renameRow.bd.name.textContent = `Renamed ${plural(renamed.length, "playlist")}`;
+      setRowState(renameRow, "done");
+      removing = existing.length ? "removing" : null;
+    }
     if (existing.length) {
       progress(`Removing ${plural(existing.length, "earlier playlist")}. Keep this tab open.`);
       await removePlaylists(existing.map((p) => p.id));
       removeRow.bd.name.textContent = `Removed ${plural(existing.length, "earlier playlist")}`;
       setRowState(removeRow, "done");
     }
-    removing = false;
+    removing = null;
     for (const [i, p] of planned.entries()) {
       const row = rows[i];
       progress(`Building ${created + 1} of ${planned.length}. Keep this tab open.`);
@@ -2427,7 +2515,7 @@ async function createFromPlan(plan) {
       if (i === created && !removing) setRowState(row, "fail", current ? "incomplete" : "not built");
       else setRowState(row, "wait", "not built");
     });
-    if (removing && removeRow) setRowState(removeRow, "fail");
+    if (removing) setRowState(removing === "renaming" ? renameRow : removeRow, "fail");
     logStep(`create failed after ${created} of ${planned.length}`);
     showBuildStop(err, { built: created, total: planned.length, incomplete: current, removing });
     try { await loadMyPlaylists(); } catch (ignore) { /* keep the original error showing */ }

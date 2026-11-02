@@ -108,6 +108,21 @@ function makeFetch(options = {}) {
       writes.push({ type: "update", id: url.match(/playlists\/(\w+)$/)[1], public: putBody.public, name: putBody.name, description: putBody.description });
       return { ok: true, status: 200, headers: { get: () => null }, text: async () => "", json: async () => { throw new Error("no body"); } };
     }
+    // repeatIn: that source playlist lists its first three songs twice; DELETE takes every copy of a song out, POST with a position puts one back
+    const repeatList = () => (options.repeatList = options.repeatList || TRACKS[options.repeatIn].concat(TRACKS[options.repeatIn].slice(0, 3)));
+    if (options.repeatIn && method === "DELETE" && url.includes(`/playlists/${options.repeatIn}/items`)) {
+      const uri = JSON.parse(init.body).items[0].uri;
+      options.repeatGone = repeatList().find((it) => it.track && it.track.uri === uri);
+      options.repeatList = repeatList().filter((it) => !(it.track && it.track.uri === uri));
+      writes.push({ type: "unlist", id: options.repeatIn, uri });
+      return json({ snapshot_id: "x" });
+    }
+    if (options.repeatIn && method === "POST" && url.includes(`/playlists/${options.repeatIn}/items`)) {
+      const body = JSON.parse(init.body);
+      repeatList().splice(body.position, 0, options.repeatGone);
+      writes.push({ type: "readd", id: options.repeatIn, uri: body.uris[0], position: body.position });
+      return json({ snapshot_id: "x" }, 201);
+    }
     if (method === "POST" && /\/playlists\/\w+\/items/.test(url)) {
       // buildFailIn: the first request that adds songs to this playlist (by id, "new2" for the second one made) fails, as buildFail says:
       // "network", "hang" (no answer), or a status (429, 401, 403, 500)
@@ -164,7 +179,7 @@ function makeFetch(options = {}) {
       (options.trackRequests = options.trackRequests || []).push(m[1]);
       if (options.tracksStatus) return { ok: false, status: options.tracksStatus, headers: { get: (h) => (h === "Retry-After" && options.tracksRetryAfter ? String(options.tracksRetryAfter) : null) }, json: async () => ({}), text: async () => JSON.stringify(options.tracksBody || {}) };
       const u = new URL(url); const offset = Number(u.searchParams.get("offset") || 0);
-      const all = TRACKS[m[1]] || [];
+      const all = (options.repeatIn === m[1] ? repeatList() : TRACKS[m[1]]) || [];
       const page = all.slice(offset, offset + 50).map((it) => (options.uniqueSongNames && it.track && it.track.name ? { track: { ...it.track, name: `${it.track.name} of ${m[1]}` } } : it));
       const next = offset + 50 < all.length ? `https://api.spotify.com/v1/playlists/${m[1]}/items?limit=50&offset=${offset + 50}` : null;
       return json({ items: page, next });
@@ -369,7 +384,7 @@ print(json.dumps(out))
   var out8 = outText(w8);
   console.log("\n--- all-formats output ---\n" + out8.split("\n").slice(0, 40).join("\n") + "\n--------------------------\n");
   check("all: both formats planned, headed by their readable names", JSON.stringify(planGroups(w8)) === '["evo","second"]', JSON.stringify(planGroups(w8)));
-  check("all: one sentence for the whole build", /^Ready to build \d+ playlists for 2 recipes\.$/.test(w8.document.getElementById("confirmText").textContent) && w8.document.getElementById("bdTitle").textContent === "Build 2 recipes", w8.document.getElementById("confirmText").textContent);
+  check("all: one sentence for the whole build", /^Ready to build \d+ playlists for 2 recipes\. Why these numbers\?$/.test(w8.document.getElementById("confirmText").textContent) && w8.document.getElementById("bdTitle").textContent === "Build 2 recipes", w8.document.getElementById("confirmText").textContent);
 
   check("page sends at most 5 arguments to build_playlists (the last is the names to skip)", global.planTextArgCounts.length > 0 && Math.max(...global.planTextArgCounts) <= 5, String(global.planTextArgCounts));
   // two setup flows: nothing chosen at first, existing when a Client ID is already saved
@@ -459,7 +474,7 @@ print(json.dumps(out))
   var planned = planRows(wB);
   var createLabel = wB.document.getElementById("confirmYes").textContent;
   check("after pressing Create, a question shows the exact count and offers to create it", visible(wB, "confirmBox") && planned.length > 3 && createLabel === `Build ${planned.length} playlists` && wB.document.getElementById("confirmText").textContent.startsWith(`Ready to build ${planned.length} playlists.`), createLabel);
-  check("a plan with nothing to warn about is one sentence, the list and two buttons: no cards, and the numbers only behind Why N?", /^Ready to build \d+ playlists\. With \d+ more min of songs in \u201c[^\u201d]+\u201d, this recipe could make \d+\.$/.test(wB.document.getElementById("confirmText").textContent) && ["confirmNotes", "confirmMoreCard", "confirmKeepCard"].every((id) => !visible(wB, id)) && wB.document.getElementById("planText").hidden === true && wB.document.getElementById("planToggle").textContent === `Why ${planned.length}?` && wB.document.getElementById("output").hidden === true, wB.document.getElementById("confirmText").textContent);
+  check("a plan with nothing to replace is one sentence ending in Why N?, the list and two buttons, and the numbers only behind Why N?", /^Ready to build \d+ playlists\. Why \d+\?$/.test(wB.document.getElementById("confirmText").textContent) && !visible(wB, "confirmNotes") && !/will be replaced|renamed/.test(wB.document.getElementById("bdInfo").textContent) && wB.document.getElementById("planText").hidden === true && wB.document.getElementById("planToggle").textContent === `Why ${planned.length}?` && wB.document.getElementById("output").hidden === true, wB.document.getElementById("confirmText").textContent);
   check("nothing has been created yet", oB.writes.length === 0);
   wB.document.getElementById("planToggle").click();
   check("Why N? shows the numbers, and the link then offers to hide them", wB.document.getElementById("planText").hidden === false && wB.document.getElementById("planToggle").textContent === "Hide");
@@ -541,9 +556,9 @@ print(json.dumps(out))
   var oC = { extraPlaylists: existing };
   var wC = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: oC });
   await runPreview(wC);
-  var earlier = Array.from(wC.document.querySelectorAll("#confirmMoreList li")).map((li) => li.textContent);
-  check("the question lists only my matching earlier playlists to replace", JSON.stringify(earlier) === JSON.stringify(["mini 1", "mini 12"]), JSON.stringify(earlier));
-  check("it says they will be replaced, removed first, and offers to replace them and build the new ones", wC.document.getElementById("confirmMoreTitle").textContent === "2 earlier playlists will be replaced" && wC.document.getElementById("confirmMoreText").textContent === "Made by this app, with the same names. They are removed from your library first:" && /^Replace 2 and build \d+$/.test(wC.document.getElementById("confirmYes").textContent) && /^Ready to build \d+ playlists\./.test(wC.document.getElementById("confirmText").textContent), wC.document.getElementById("confirmYes").textContent);
+  var earlier = wC.document.getElementById("bdInfo").textContent;
+  check("the question counts only my matching earlier playlists to replace, without listing them", /^2 earlier playlists from this recipe will be replaced\. Keep them, renamed to “… \(version a\)”/.test(earlier) && !/mini 1/.test(earlier), earlier);
+  check("one Build button, and keeping them is a checkbox that starts off", /^Build \d+ playlists$/.test(wC.document.getElementById("confirmYes").textContent) && wC.document.getElementById("confirmKeepEarlier").type === "checkbox" && wC.document.getElementById("confirmKeepEarlier").checked === false && /^Ready to build \d+ playlists\./.test(wC.document.getElementById("confirmText").textContent), wC.document.getElementById("confirmYes").textContent);
   wC.document.getElementById("confirmNo").click();
   await waitFor(() => wC.document.getElementById("createOverlay").hidden);
   await waitFor(() => !wC.document.getElementById("create").disabled);
@@ -771,9 +786,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-01q" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-02a" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-01q/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-02a/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -1661,14 +1676,15 @@ print(json.dumps(out))
   check("the app knows which playlists are its own by the mark in the description, and by nothing else", k_w.eval("playlists").filter((p) => p.madeByApp).map((p) => p.id).join(",") === "m3" && !/madeIds|rememberMade/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
   k_w.document.getElementById("create").click();
   await waitFor(() => visible(k_w, "confirmBox"), 30000);
-  var k_keep = Array.from(k_w.document.querySelectorAll("#confirmKeepList li")).map((li) => li.textContent);
-  check("playlists with matching names that this app did not make are listed as left alone, with the reason", JSON.stringify(k_keep) === JSON.stringify(["mini 1", "mini 2"]) && k_w.document.getElementById("confirmKeepTitle").textContent === "2 playlists with matching names were not made by this app" && k_w.document.getElementById("confirmKeepText").textContent === "They will not be touched, and the new playlists skip those names:", JSON.stringify(k_keep));
-  check("nothing is offered for replacing, and the button only says Build", k_w.document.getElementById("confirmMoreCard").hidden === true && /^Build \d+ playlists$/.test(k_w.document.getElementById("confirmYes").textContent));
+  var k_keep = k_w.document.getElementById("bdInfo").textContent;
+  check("playlists with matching names that this app did not make are renamed to free their names, the list behind Details", /^2 of your own playlists will be renamed to free their names\. Details“mini 1” → “mini 1 \(version a\)”“mini 2” → “mini 2 \(version a\)”/.test(k_keep) && k_w.document.querySelector("#bdInfo ul").hidden === true, k_keep);
+  check("nothing is offered for replacing, and the button only says Build", !/will be replaced/.test(k_keep) && !k_w.document.getElementById("confirmKeepEarlier") && /^Build \d+ playlists$/.test(k_w.document.getElementById("confirmYes").textContent));
   var k_plan = planRows(k_w).map((r) => r.name);
-  check("the new playlists skip those names: the first is mini 3, not mini 1", k_plan[0] === "mini 3" && !k_plan.includes("mini 1") && !k_plan.includes("mini 2"), k_plan.join(","));
+  check("the new playlists take those names: they start at mini 1", k_plan[0] === "mini 1" && k_plan[1] === "mini 2", k_plan.join(","));
   k_w.document.getElementById("confirmYes").click();
   await waitFor(() => /in your Spotify library\.$/.test(k_w.document.getElementById("actionMessage").textContent), 30000);
-  check("creating leaves them alone: no removal, and every new playlist has a name of its own", k_o.writes.every((w) => w.type !== "remove") && k_o.writes.filter((w) => w.type === "create").every((w) => !["mini 1", "mini 2"].includes(w.name)) && new Set(k_o.writes.filter((w) => w.type === "create").map((w) => w.name)).size === k_o.writes.filter((w) => w.type === "create").length && k_o.writes.find((w) => w.type === "create").name === "mini 3", JSON.stringify(k_o.writes.filter((w) => w.type === "create").map((w) => w.name)));
+  var k_creates = k_o.writes.filter((w) => w.type === "create");
+  check("creating renames them first, removes nothing, and gives every new playlist a name of its own", k_o.writes.every((w) => w.type !== "remove") && JSON.stringify(k_o.writes.slice(0, 2).map((w) => [w.type, w.id, w.name])) === JSON.stringify([["update", "m1", "mini 1 (version a)"], ["update", "m2", "mini 2 (version a)"]]) && new Set(k_creates.map((w) => w.name)).size === k_creates.length && k_creates[0].name === "mini 1", JSON.stringify(k_o.writes.slice(0, 3)));
   check("each playlist it creates is marked in its description with the format it came from, and asked to be left alone", k_o.writes.filter((w) => w.type === "create").every((w) => w.description === 'Made by Ceremony Playlist Builder from the recipe "mini". Please leave this description as it is: the app uses it to recognize the playlists it made.'));
   check("nothing about it is stored in this browser: the mark in the description is the only record", k_w.localStorage.getItem("madeIds") === null);
   await waitFor(() => k_w.eval("playlists").some((p) => /^mini 3$/.test(p.name)), 10000);
@@ -1694,6 +1710,26 @@ c = json.loads(m.build_playlists(text, "a", tracks, 3, "[]"))
 print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["playlists"]], [p["name"] for p in c["playlists"]]]))
 `], { encoding: "utf8" }));
   check("the engine numbers from 1 by default, and skips reserved names without caring about capitals", JSON.stringify(k_py[0]) === JSON.stringify(["A 1", "A 2", "A 3"]) && JSON.stringify(k_py[1]) === JSON.stringify(["A 2", "A 4", "A 5"]) && JSON.stringify(k_py[2]) === JSON.stringify(k_py[0]), JSON.stringify(k_py));
+  var k_py2 = JSON.parse(execFileSync("python3", ["-c", `
+import importlib.util, json
+spec = importlib.util.spec_from_file_location("engine", "${ROOT}engine.py")
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+# A has 40 songs of its own and 30 it shares with B; B has only those 30 and 5 of its own (one listed twice). 4 min each, 100 min a playlist: 75 songs make 3.
+A = [{"uri": "a%d" % i, "ms": 240000} for i in range(40)] + [{"uri": "s%d" % i, "ms": 240000} for i in range(30)]
+B = [{"uri": "s%d" % i, "ms": 240000} for i in range(30)] + [{"uri": "b%d" % i, "ms": 240000} for i in range(5)] + [{"uri": "b0", "ms": 240000}]
+counts = []
+for _ in range(5):
+    r = json.loads(m.build_playlists('{"r": {"name": "R {n}", "segments": [("A", 60), ("B", 40)]}}', "r", json.dumps({"A": A, "B": B})))
+    counts.append(len(r["playlists"]))
+    assert all(len(set(p["uris"])) == len(p["uris"]) for p in r["playlists"])
+# one recording under two Spotify IDs (one ISRC) is one song
+C = [{"uri": "x1", "key": "isrc:I1", "ms": 240000}, {"uri": "x2", "key": "isrc:I1", "ms": 240000}] + [{"uri": "c%d" % i, "ms": 240000} for i in range(3)]
+c = json.loads(m.build_playlists('{"r": {"name": "R {n}", "segments": [("C", 16)]}}', "r", json.dumps({"C": C})))
+print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sources"][0]["has"], len(c["playlists"])]))
+`], { encoding: "utf8" }));
+  check("songs shared by two source playlists are left to the one that needs them, so the most playlists the songs allow are built", k_py2[0].every((n) => n === 3), JSON.stringify(k_py2));
+  check("a song listed twice in a playlist counts once, in the minutes too, and shared songs are counted for the Why table", k_py2[1] === 30 && JSON.stringify(k_py2[2]) === JSON.stringify([280, 140]), JSON.stringify(k_py2));
+  check("one recording under two Spotify IDs (the same ISRC) is one song", k_py2[3] === 16 && k_py2[4] === 1, JSON.stringify(k_py2));
 
 
   
@@ -1749,21 +1785,16 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   v_w3.document.getElementById("create").click();
   await waitFor(() => visible(v_w3, "confirmBox"), 30000);
   var v_names = (w) => planRows(w).map((r) => r.name);
-  check("a playlist that was not marked is kept by default: the new ones skip its name, so with mini 3 kept they run 1, 2, 4, 5 and on", v_names(v_w3).slice(0, 4).join(",") === "mini 1,mini 2,mini 4,mini 5" && v_w3.document.getElementById("confirmKeepToggle").checked === false && !v_w3.document.getElementById("confirmKeepToggleRow").hidden && v_w3.document.getElementById("confirmKeepToggleLabel").textContent === "Replace it too", v_names(v_w3).join(","));
-  v_w3.document.getElementById("confirmKeepToggle").checked = true;
-  v_w3.document.getElementById("confirmKeepToggle").dispatchEvent(new v_w3.Event("change"));
-  await waitFor(() => visible(v_w3, "confirmBox") && v_w3.document.getElementById("confirmKeepToggle").checked === true && /will be removed too, because you chose to replace it:$/.test(v_w3.document.getElementById("confirmKeepText").textContent), 30000);
-  await new Promise((r) => setTimeout(r, 200));
-  check("turning the switch on plans again: it is replaced too, so the new playlists use every number from 1", v_names(v_w3).slice(0, 4).join(",") === "mini 1,mini 2,mini 3,mini 4" && /^Replace 3 and build \d+$/.test(v_w3.document.getElementById("confirmYes").textContent), v_names(v_w3).join(","));
-  check("the question still lists the two marked ones to replace, and the other one separately", JSON.stringify(Array.from(v_w3.document.querySelectorAll("#confirmMoreList li")).map((li) => li.textContent)) === JSON.stringify(["mini 1", "mini 2"]) && JSON.stringify(Array.from(v_w3.document.querySelectorAll("#confirmKeepList li")).map((li) => li.textContent)) === JSON.stringify(["mini 3"]));
+  var v_info = v_w3.document.getElementById("bdInfo").textContent;
+  check("with marked and unmarked ones, the marked ones are replaced and mine is renamed, so the new ones use every number from 1", v_names(v_w3).slice(0, 4).join(",") === "mini 1,mini 2,mini 3,mini 4" && /2 earlier playlists from this recipe will be replaced\./.test(v_info) && /One of your own playlists will be renamed to free its name\./.test(v_info) && /^Build \d+ playlists$/.test(v_w3.document.getElementById("confirmYes").textContent), v_names(v_w3).join(",") + " | " + v_info);
   v_w3.document.getElementById("confirmYes").click();
   await waitFor(() => /in your Spotify library\.$/.test(v_w3.document.getElementById("actionMessage").textContent), 30000);
-  check("creating then removes all three first, then makes the new set", v_o3.writes[0].type === "remove" && v_o3.writes[0].uris.length === 3 && v_o3.writes[1].type === "create" && v_o3.writes.filter((w) => w.type === "create")[0].name === "mini 1", JSON.stringify(v_o3.writes.slice(0, 2)));
+  check("creating renames mine, then removes the two marked ones, then makes the new set", v_o3.writes[0].type === "update" && v_o3.writes[0].id === "w3" && v_o3.writes[0].name === "mini 3 (version a)" && v_o3.writes[1].type === "remove" && v_o3.writes[1].uris.length === 2 && v_o3.writes[2].type === "create" && v_o3.writes.filter((w) => w.type === "create")[0].name === "mini 1", JSON.stringify(v_o3.writes.slice(0, 3)));
   var v_w4 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { extraPlaylists: [{ id: "x1", name: "mini 1", owner: { id: "ron" }, description: MADE }] } });
   await readyToPreview(v_w4);
   v_w4.document.getElementById("create").click();
   await waitFor(() => visible(v_w4, "confirmBox"), 30000);
-  check("with nothing unmarked, there is no switch at all", v_w4.document.getElementById("confirmKeepToggleRow").hidden === true && v_w4.document.getElementById("confirmKeepCard").hidden === true);
+  check("with nothing unmarked, nothing is renamed", !/renamed to free/.test(v_w4.document.getElementById("bdInfo").textContent));
   check("Create looks at Spotify afresh before planning: a page that has been open a while still sees changes made there", /await loadMyPlaylists\(\);   \/\/ what is in Spotify now/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
 
 
@@ -2708,14 +2739,14 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   bb_w.document.getElementById("maxPlaylists").dispatchEvent(new bb_w.Event("input"));
   bb_w.document.getElementById("create").click();
   await waitFor(() => visible(bb_w, "confirmBox"), 30000);
-  check("the question names the format being built, with the count", bb_w.document.getElementById("confirmText").textContent === "Ready to build 2 playlists." && bb_w.document.getElementById("bdTitle").textContent === "Build \u201cRenamed\u201d" && /^Build 2 playlists$/.test(bb_w.document.getElementById("confirmYes").textContent) && bb_w.document.getElementById("createDialog").getAttribute("aria-labelledby") === "bdTitle");
+  check("the question names the format being built, with the count", bb_w.document.getElementById("confirmText").textContent === "Ready to build 2 playlists. Why 2?" && bb_w.document.getElementById("bdTitle").textContent === "Build \u201cRenamed\u201d" && /^Build 2 playlists$/.test(bb_w.document.getElementById("confirmYes").textContent) && bb_w.document.getElementById("createDialog").getAttribute("aria-labelledby") === "bdTitle");
   bb_w.document.getElementById("confirmNo").click();
   // Build all
   check("Build all recipes is in More options, with its own explanation and the building blocks icon", !!bb_w.document.querySelector("#moreOptions #buildAll") && bb_w.document.querySelector("#buildAll img").getAttribute("src") === "icons/build.svg" && /Builds, or rebuilds, the playlists for every recipe at once/.test(bb_w.document.querySelector("#moreOptions").textContent));
   await waitFor(() => !bb_w.document.getElementById("buildAll").disabled, 20000);
   bb_w.document.getElementById("buildAll").click();
   await waitFor(() => visible(bb_w, "confirmBox"), 30000);
-  check("it builds every format, and the question says how many formats", /^Ready to build \d+ playlists for 2 recipes\.$/.test(bb_w.document.getElementById("confirmText").textContent), bb_w.document.getElementById("confirmText").textContent);
+  check("it builds every format, and the question says how many formats", /^Ready to build \d+ playlists for 2 recipes\. Why these numbers\?$/.test(bb_w.document.getElementById("confirmText").textContent), bb_w.document.getElementById("confirmText").textContent);
   bb_w.document.getElementById("confirmNo").click();
   await waitFor(() => bb_w.document.getElementById("createOverlay").hidden === true, 10000);
   bb_w.document.getElementById("create").click();
@@ -2775,7 +2806,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-01q", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-02a", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4504,7 +4535,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-01q"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-02a"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -4567,17 +4598,18 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   // the plan
   var bp_a = await boot({ url: EDURL, session: signedIn(), local: { formats: bp_RAN } });
   await bp_open(bp_a);
-  check("the plan says how many, and what one more playlist would take", /^Ready to build 2 playlists\. With \d+ more min of songs in “💗 spacious \+ gentle”, this recipe could make 3\.$/.test(bp_text(bp_a, "confirmText")), bp_text(bp_a, "confirmText"));
-  check("the hint is a quieter part of the same sentence", !!bp_a.document.querySelector("#confirmText .bd-hint"));
+  check("the plan says how many, with Why 2? on the same line, and no hint about one more", bp_text(bp_a, "confirmText") === "Ready to build 2 playlists. Why 2?" && !bp_a.document.querySelector("#confirmText .bd-hint") && !!bp_a.document.querySelector("#confirmText #planToggle"), bp_text(bp_a, "confirmText"));
+  check("the Why table sits right under that line, before the boxes and the list", bp_a.document.getElementById("confirmText").nextElementSibling.id === "planText");
+  check("the popup's text can be selected", /#createDialog \.bd-body \{[^}]*user-select: text;/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   check("the title names the recipe", bp_text(bp_a, "bdTitle") === "Build “Ran”", bp_text(bp_a, "bdTitle"));
   check("while it asks, reading and planning are ticked and building has not started", bp_steps(bp_a) === "done,done,-,-", bp_steps(bp_a));
   check("each planned playlist is a row with its songs, length and shape", bp_rows(bp_a).length === 2 && bp_rows(bp_a).every((r) => /^\d+ songs · \d+ h \d+ min$/.test(r.querySelector(".bd-meta").textContent) && r.querySelectorAll(".bd-mini span").length === 3 && r.querySelectorAll(".bd-mini .bd-sil").length === 1), bp_rows(bp_a).map((r) => r.textContent).join(" | "));
   check("in the plan the bars are pale: nothing is built yet", bp_rows(bp_a).every((r) => r.querySelector(".bd-mini").dataset.fill === "0"));
   check("there is no separate progress bar any more", !bp_a.document.getElementById("bdProgress"));
-  check("Why 2? is offered, and the table starts hidden", bp_text(bp_a, "planToggle") === "Why 2?" && visible(bp_a, "planToggleRow") && !visible(bp_a, "planText"));
+  check("Why 2? is offered, and the table starts hidden", bp_text(bp_a, "planToggle") === "Why 2?" && !visible(bp_a, "planText"));
   bp_a.document.getElementById("planToggle").click();
   var bp_trs = Array.from(bp_a.document.querySelectorAll("#planText tbody tr"));
-  check("Why 2? opens a table: each source playlist, what one playlist takes, what it has, and how many that is enough for", visible(bp_a, "planText") && bp_trs.length === 2 && /^💗 spacious \+ gentle3 h 20 min8 h \d+ min2$/.test(bp_trs[0].textContent) && /^🛋 rest30 min/.test(bp_trs[1].textContent), bp_trs.map((t) => t.textContent).join(" | "));
+  check("Why 2? opens a table: each source playlist, what one playlist takes, what it has, and how many that is enough for", visible(bp_a, "planText") && bp_trs.length === 2 && /^💗 spacious \+ gentle3 h 20 min8 h \d+ min2 playlists$/.test(bp_trs[0].textContent) && /^🛋 rest30 min/.test(bp_trs[1].textContent), bp_trs.map((t) => t.textContent).join(" | "));
   check("the playlist that ran out is the bold row", bp_trs[0].className === "bd-limit" && bp_trs[1].className === "");
   check("and the link then offers to hide it", bp_text(bp_a, "planToggle") === "Hide");
   check("only Build and Cancel are offered", visible(bp_a, "confirmButtons") && !visible(bp_a, "createCloseRow") && !visible(bp_a, "bdBusyRow") && /Build 2 playlists/.test(bp_text(bp_a, "confirmYes")));
@@ -4593,7 +4625,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   bp_b.document.getElementById("maxPlaylists").value = "1";
   bp_b.document.getElementById("maxPlaylists").dispatchEvent(new bp_b.Event("input"));
   await bp_open(bp_b);
-  check("when the limit sets the number, the plan is one sentence", bp_text(bp_b, "confirmText") === "Ready to build 1 playlist.", bp_text(bp_b, "confirmText"));
+  check("when the limit sets the number, the plan is the same one sentence", bp_text(bp_b, "confirmText") === "Ready to build 1 playlist. Why 1?", bp_text(bp_b, "confirmText"));
   check("and Why 1? says the limit set it", /Most playlists per recipe/.test(bp_text(bp_b, "planText")), bp_text(bp_b, "planText"));
 
   // a build that stops: what went wrong, what was built, what to do, and Close
@@ -4637,7 +4669,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   // the engine's side of it
   const bp_py = (fn, args) => require("child_process").spawnSync("python3", [require("path").join(__dirname, "bridge.py"), fn, JSON.stringify(args)], { encoding: "utf8" }).stdout;
   var bp_eng = JSON.parse(bp_py("build_playlists", ['{"w": {"name": "W {n}", "silence between segments": "2 min", "segments": [("A", 10), ("B", 20)]}}', "w", JSON.stringify({ A: [1, 2, 3, 4, 5].map((i) => ({ uri: "a" + i, ms: 300000 })), B: [1, 2, 3, 4].map((i) => ({ uri: "b" + i, ms: 600000 })) })]));
-  check("engine: what ran out, and the minutes one more playlist needs from it", JSON.stringify(bp_eng.ranOut) === '{"name":"A","more":5}', JSON.stringify(bp_eng.ranOut));
+  check("engine: what ran out (the playlist with the least to spare is filled first), and the minutes one more playlist needs from it", JSON.stringify(bp_eng.ranOut) === '{"name":"B","more":20}', JSON.stringify(bp_eng.ranOut));
   check("engine: each source's minutes per playlist, minutes it has, and how many that is enough for", JSON.stringify(bp_eng.sources) === '[{"name":"A","per":10,"has":25,"enough":2},{"name":"B","per":20,"has":40,"enough":2}]', JSON.stringify(bp_eng.sources));
   check("engine: each playlist's shape, silence included", JSON.stringify(bp_eng.playlists[0].pieces) === "[[10,false],[2,true],[20,false]]" && bp_eng.playlists[0].length === 32, JSON.stringify(bp_eng.playlists[0].pieces));
   var bp_none = JSON.parse(bp_py("build_playlists", ['{"w": {"name": "W {n}", "segments": [("A", 10), ("B", 60)]}}', "w", JSON.stringify({ A: [1, 2, 3].map((i) => ({ uri: "a" + i, ms: 300000 })), B: [{ uri: "b1", ms: 600000 }] })]));
@@ -4699,34 +4731,56 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var rs_ok = { extraPlaylists: rs_old, uniqueSongNames: true };
   var rs_wk = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: rs_ok });
   await runPreview(rs_wk);
-  var rs_link = rs_wk.document.getElementById("confirmKeepEarlier");
-  check("the question about earlier playlists has a link to keep them instead, saying how they will be named: the next letter, since there is a version a already", !rs_link.hidden && /^Keep them instead: rename them to .… \(version b\)., then build$/.test(rs_link.textContent) && rs_link.classList.contains("linklike") && !rs_link.classList.contains("primary"));
-  rs_link.click();
+  var rs_box = rs_wk.document.getElementById("confirmKeepEarlier");
+  check("the box about earlier playlists has a checkbox to keep them instead, saying how they will be named: the next letter, since there is a version a already", rs_box && rs_box.type === "checkbox" && !rs_box.checked && /Keep them, renamed to “… \(version b\)”$/.test(rs_box.parentElement.textContent), rs_box && rs_box.parentElement.textContent);
+  rs_box.checked = true;
+  rs_wk.document.getElementById("confirmYes").click();
   await waitFor(() => rs_ok.writes.filter((x) => x.type === "create").length >= 4, 30000);
   var rs_renames = rs_ok.writes.filter((x) => x.type === "update" && /^old[12]$/.test(x.id));
-  check("they are renamed, all with the same letter, and not removed", rs_renames.length === 2 && rs_renames.map((x) => x.name).sort().join("|") === "mini 1 (version b)|mini 2 (version b)" && rs_ok.writes.filter((x) => x.type === "remove").length === 0);
-  check("and the new playlists are built after, starting again at 1, without another question", rs_ok.writes.filter((x) => x.type === "create").slice(0, 2).map((x) => x.name).join("|") === "mini 1|mini 2" && !visible(rs_wk, "confirmBox"));
+  check("checked, they are renamed, all with the same letter, and not removed", rs_renames.length === 2 && rs_renames.map((x) => x.name).sort().join("|") === "mini 1 (version b)|mini 2 (version b)" && rs_ok.writes.filter((x) => x.type === "remove").length === 0);
+  check("and the new playlists are built after, starting at 1, with the one Build button", rs_ok.writes.filter((x) => x.type === "create").slice(0, 2).map((x) => x.name).join("|") === "mini 1|mini 2" && rs_ok.writes.findIndex((x) => x.type === "create") > rs_ok.writes.findIndex((x) => x.type === "update"));
   check("a playlist that was already kept earlier (version a) is not touched", !rs_ok.writes.some((x) => x.id === "old3"));
   var rs_wk2 = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: { extraPlaylists: [{ id: "n1", name: "mini 1", owner: { id: "ron" }, description: MADE }], uniqueSongNames: true } });
   await runPreview(rs_wk2);
-  check("with none kept before, the first letter is a, and for one playlist the link says it, not them", /^Keep it instead: rename it to .… \(version a\)., then build$/.test(rs_wk2.document.getElementById("confirmKeepEarlier").textContent));
+  check("with none kept before, the first letter is a, and for one playlist it says it, not them", /^1 earlier playlist from this recipe will be replaced\. Keep it, renamed to “… \(version a\)”$/.test(rs_wk2.document.getElementById("bdInfo").textContent), rs_wk2.document.getElementById("bdInfo").textContent);
   var rs_wk3 = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: { uniqueSongNames: true } });
   await runPreview(rs_wk3);
-  check("with nothing earlier to replace, there is no such link", rs_wk3.document.getElementById("confirmKeepEarlier").hidden === true);
+  check("with nothing earlier to replace, there is no such box", !rs_wk3.document.getElementById("confirmKeepEarlier") && rs_wk3.document.getElementById("bdInfo").textContent === "");
   check("the letters run a to z, then aa", rs_wk.eval("versionLetters(0)") === "a" && rs_wk.eval("versionLetters(25)") === "z" && rs_wk.eval("versionLetters(26)") === "aa" && rs_wk.eval("versionLetters(27)") === "ab");
 
-  // songs that may be two versions of one
+  // songs that may be one song in more than one recording
   var rs_ws = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   await runPreview(rs_ws);
-  var rs_st = rs_ws.document.getElementById("confirmSuspectsText");
-  check("when songs in the source playlists have the same artist and title under different IDs, one short line says so, and what to do", !rs_st.hidden && /^\d+ songs? (is|are) in more than one version$/.test(rs_ws.document.getElementById("confirmSuspectsTitle").textContent) && /^This app can.t tell versions apart, so one could repeat in a playlist or across playlists\. To avoid that, use the same version of each song in every playlist\.$/.test(rs_st.textContent) && !rs_ws.document.getElementById("confirmSuspectsCard").hidden);
-  check("the songs are behind a link, and not shown until it is pressed", !rs_ws.document.getElementById("confirmSuspectsLinkRow").hidden && rs_ws.document.getElementById("confirmSuspectsList").hidden === true);
-  rs_ws.document.getElementById("confirmSuspectsToggle").click();
-  var rs_items = Array.from(rs_ws.document.querySelectorAll("#confirmSuspectsList li")).map((li) => li.textContent);
-  check("pressed, it lists up to ten, each with the playlists they are in, and how many more", rs_items.length === 11 && /^Artist - Song \d+, in .*” and “.*”$/.test(rs_items[0]) && /^and \d+ more$/.test(rs_items[10]) && rs_ws.document.getElementById("confirmSuspectsToggle").textContent === "Hide the list");
+  var rs_box2 = Array.from(rs_ws.document.querySelectorAll("#bdInfo .bd-info")).find((b) => /more than one recording/.test(b.textContent));
+  check("when songs in the source playlists have the same artist and title in different recordings, one short line says so, as information, not a warning", !!rs_box2 && /^\d+ songs have more than one recording\. Details/.test(rs_box2.textContent) && !rs_box2.querySelector(".bd-warn-ic") && !rs_box2.closest(".bd-warn"), rs_box2 && rs_box2.textContent);
+  var rs_more = rs_box2.querySelector(".bd-info-more");
+  check("the songs are behind Details, and not shown until it is pressed", rs_more.hidden === true);
+  Array.from(rs_box2.querySelectorAll(".linklike")).find((b) => b.textContent === "Details").click();
+  var rs_items = Array.from(rs_more.querySelectorAll("li")).map((li) => li.textContent);
+  check("pressed, it says each recording counts as its own song and lists up to ten, each with the playlists they are in, and how many more", !rs_more.hidden && /^Each recording \(for example live and studio\) counts as its own song/.test(rs_more.textContent) && rs_items.length === 11 && /^Artist - Song \d+: in “.*”, in “.*”$/.test(rs_items[0]) && /^and \d+ more$/.test(rs_items[10]), rs_items.slice(0, 2).join(" | "));
+  var rs_a = rs_more.querySelector("li a");
+  check("each playlist name opens it in Spotify at that song, in a new tab", !!rs_a && /^https:\/\/open\.spotify\.com\/playlist\/p\d\?highlight=spotify%3Atrack%3Ap\d-\d+$/.test(rs_a.href) && rs_a.target === "_blank", rs_a && rs_a.href);
   var rs_wu = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: { uniqueSongNames: true } });
   await runPreview(rs_wu);
-  check("with no such songs there is no note and no link", rs_wu.document.getElementById("confirmSuspectsCard").hidden === true);
+  check("with no such songs there is no box", !/more than one recording/.test(rs_wu.document.getElementById("bdInfo").textContent));
+
+  // songs a source playlist lists more than once
+  var rs_or = { repeatIn: "p2", uniqueSongNames: true };
+  var rs_wr = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: rs_or });
+  await runPreview(rs_wr);
+  var rs_rep = Array.from(rs_wr.document.querySelectorAll("#bdInfo .bd-info")).find((b) => /more than once/.test(b.textContent));
+  check("a source playlist that lists songs more than once gets a box saying how many, that each is used once, and offering to fix it", !!rs_rep && rs_rep.textContent === "“💗 spacious + gentle” lists 3 songs more than once. Each is used once. Fix this for me in Spotify", rs_rep && rs_rep.textContent);
+  rs_rep.querySelector(".linklike").click();
+  await waitFor(() => /Fixed|Couldn/.test(rs_rep.textContent), 10000);
+  var rs_unl = rs_or.writes.filter((x) => x.type === "unlist" || x.type === "readd");
+  check("fixing takes each repeated song out and puts one copy back where the first one was", rs_unl.length === 6 && rs_unl[0].type === "unlist" && rs_unl[1].type === "readd" && rs_unl[1].position === 0 && rs_unl[5].position === 2, JSON.stringify(rs_unl));
+  check("then it says so, and the playlist lists each song once", rs_rep.textContent === "Fixed: “💗 spacious + gentle” now lists each song once." && new Set(rs_or.repeatList.filter((it) => it.track && it.track.uri !== "local").map((it) => it.track.uri)).size === rs_or.repeatList.filter((it) => it.track && it.track.uri !== "local").length);
+  rs_wr.document.getElementById("confirmYes").click();
+  await waitFor(() => visible(rs_wr, "createCloseRow"), 30000);
+  var rs_adds = rs_or.writes.filter((x) => x.type === "add");
+  var rs_byList = {};
+  for (const x of rs_adds) (rs_byList[x.id] = rs_byList[x.id] || []).push(...x.uris.filter((u) => /p\d-/.test(u)));
+  check("each built playlist has every song once", Object.values(rs_byList).length > 0 && Object.values(rs_byList).every((u) => new Set(u).size === u.length));
   var rs_key = (a, b) => rs_ws.eval(`songKey(${JSON.stringify(a)}) === songKey(${JSON.stringify(b)})`);
   check("it points out the same song with a remaster note, or other case, accents, or punctuation, and not a live, acoustic or remix version, which is a different song", rs_key("Pink Floyd - Time", "Pink Floyd - Time - 2011 Remaster") && rs_key("Beyoncé - Halo", "Beyonce - Halo (Remastered 2020)") && rs_key("Simon & Garfunkel - The Sound of Silence", "simon and garfunkel - the sound of silence - remastered") && !rs_key("Pink Floyd - Time", "Pink Floyd - Time (Live)") && !rs_key("Radiohead - Creep", "Radiohead - Creep (Acoustic)") && !rs_key("Artist - Song", "Artist - Song (Remix)"));
   check("the note is there every time, with nothing remembered about having been shown it", !/localStorage|sessionStorage/.test(fs.readFileSync(ROOT + "app.js", "utf8").match(/function findSuspects[\s\S]*?\n}\n/)[0]));
