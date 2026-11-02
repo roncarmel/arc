@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-02b">
-<script src="theme.js?v=2026-11-02b"></script>
+<meta name="app-version" content="2026-11-02c">
+<script src="theme.js?v=2026-11-02c"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -27,7 +27,7 @@
   a.button-link { display: inline-flex; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--button); background: var(--button); color: var(--on-button, #fff); text-decoration: none; }
   pre.report-preview { min-height: 0; font-size: 12.5px; margin: 6px 0; }
   .report-hint { margin: 6px 0; }
-  #startupProblem { z-index: 2000; }   /* above everything, including the donation panel */
+  #startupProblem { z-index: 2000; }   /* above everything, including the Support me panel */
   #startupProblem[hidden] { display: none; }
   #startupProblem .report-hint { margin-top: 14px; }
   /* Back from Spotify's sign-in: a quiet screen until the editor is ready (see the connecting screen in app.js). Above the page, below the startup popup. */
@@ -477,8 +477,10 @@
   #createDialog a.bd-name { color: var(--accent); text-decoration: underline; }
   #createDialog .bd-meta { color: var(--muted); font-size: 0.82rem; white-space: nowrap; text-align: right; }
   #createDialog .bd-mini { grid-column: 2 / 4; display: flex; gap: 2px; height: 8px; }
-  #createDialog .bd-mini span { display: block; min-width: 3px; border-radius: 3px; background: var(--accent-tint); transition: background 200ms linear; }
-  #createDialog .bd-mini span.bd-sil { background: var(--line); }
+  #createDialog .bd-mini span { display: block; position: relative; overflow: hidden; box-sizing: border-box; min-width: 4px; border-radius: 4px; border: 1px solid var(--button); }
+  #createDialog .bd-mini span.bd-sil { border-color: var(--silence-line); }
+  #createDialog .bd-mini span i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--button); transition-property: width; transition-timing-function: linear; }   /* the fill: app.js sets its width, delay and duration */
+  #createDialog .bd-mini span.bd-sil i { background: #000; }   /* as in the editor bar: a black silence with a grey outline */
   #createDialog .bd-row { scroll-margin-top: 44px; scroll-margin-bottom: 6px; }
   /* while building, the status line stays at the top of the list as it scrolls */
   #createDialog .bd-status.bd-pinned { position: sticky; top: -14px; z-index: 1; margin: -14px -18px 6px; padding: 14px 18px 8px; background: var(--bg); border-bottom: 1px solid var(--line); color: var(--fg); }
@@ -497,6 +499,11 @@
   #createDialog .bd-problems { margin: 4px 0 0; padding-left: 18px; font-size: 0.9rem; }
   #createDialog .bd-problems li { margin: 0 0 8px; }
   #createDialog .bd-problems li:last-child { margin-bottom: 0; }
+  #createDialog .bd-support { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; align-items: start; border: 1px solid var(--accent-tint-border); background: var(--accent-tint); border-radius: 16px; padding: 14px; margin: 0 0 14px; }   /* after a build: the thank-you, where it is seen */
+  #createDialog .bd-support p { margin: 0 0 10px; line-height: 1.4; color: var(--fg); }
+  #createDialog .bd-support button { min-height: 40px; }
+  #createDialog .bd-open { margin: -6px 0 12px; }
+  #createDialog .bd-open a { color: var(--accent); }
   #createDialog .bd-info { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; margin: 0 0 8px; font-size: 0.86rem; line-height: 1.35; color: var(--fg); }
   #createDialog .bd-info-ic { color: var(--accent); line-height: 0; padding-top: 1px; }
   #createDialog .bd-info p { margin: 0; }
@@ -527,7 +534,7 @@
   #createDialog .bd-foot button { flex: 1 1 0; min-height: 44px; justify-content: center; white-space: nowrap; min-width: 0; }
   #createDialog .bd-foot button.primary { flex-grow: 1.7; }
   #createDialog .bd-spin { animation: cn-spin 0.9s linear infinite; transform-origin: 50% 50%; }
-  @media (prefers-reduced-motion: reduce) { #createDialog .bd-spin { animation: none; } #createDialog .bd-mini span { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { #createDialog .bd-spin { animation: none; } #createDialog .bd-mini span i { transition: none; } }
   @media (max-width: 759px) {
     #createDialog .bd-head, #createDialog .bd-body { padding-left: 14px; padding-right: 14px; }
     #createDialog .bd-foot { padding: 10px 14px 14px; }
@@ -538,7 +545,7 @@
   .theme-list.theme-up { top: auto; bottom: calc(100% + 4px); }
   /* a menu or list too close to the bottom of the screen opens upward instead */
   #formatEditor .fe-pop.fe-up { top: auto; bottom: calc(100% + 4px); }
-  /* the donation panel: Ko-fi's own page in a frame, above the button, so nothing of Ko-fi's code runs in this page */
+  /* the Support me panel: Ko-fi's own page in a frame, above the button, so nothing of Ko-fi's code runs in this page */
   #kofiDim { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 1002; background: rgba(0, 0, 0, 0.65); }
   #kofiPanel { position: fixed; right: 16px; bottom: 16px; width: 328px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); z-index: 1003; display: flex; flex-direction: column; background: #fff; color: #444; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 36px rgba(0, 0, 0, 0.3); }
   #kofiPanel .kofi-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px 6px 14px; font-size: 0.85rem; line-height: 1.25; }   /* a line of text at the left and the x at the right */
@@ -649,7 +656,7 @@
   /* a notice that must not be missed: a pink outline, the same weight all around, and a faint pink fill */
   .notice { margin: 0 0 14px; padding: 12px 16px; border: 1px solid var(--accent-tint-border, rgba(255, 56, 184, 0.5)); border-radius: 12px; background: rgba(255, 56, 184, 0.08); color: var(--fg); }
   .notice strong { display: block; margin-bottom: 2px; font-size: 1.1rem; }
-  /* the Donate button, its note, and the Donate button in the Build popup, for someone who chose to hide them */
+  /* the Support me button, its note, and the one in the Build popup, for someone who chose to hide them */
   .donate-hidden #supportBox, .donate-hidden #createDonate { display: none !important; }
   /* popups that are not dialogs: in dark mode a black shadow on a near-black page cannot be seen, so they also get a faint light edge and a surface a touch lighter than the page */
   @media (prefers-color-scheme: dark) {
@@ -660,7 +667,7 @@
   // If the page's own script never starts (a file that did not load, an old copy kept by the browser, an error), the page says so,
   // with the first error, instead of leaving buttons that do nothing. The script marks itself started as the first thing it does.
   window.pageStart = { started: false, errors: [] };
-  // A person who hid the Donate button should not see it flash up while the page loads (see "Hiding the Donate button" in More options).
+  // A person who hid the Support me button should not see it flash up while the page loads (the checkbox for people who have supported, in More options).
   try { if (localStorage.getItem("donateHidden")) document.documentElement.classList.add("donate-hidden"); } catch (e) { /* no saved choice to read */ }
   window.addEventListener("error", function (e) {
     var t = e.target;
@@ -963,6 +970,14 @@
       <div class="bd-body">
         <div id="output" class="bd-status" hidden></div>
         <div id="actionMessage" aria-live="polite"></div>
+        <p id="createOpen" class="bd-open" hidden><a id="createOpenLink" href="https://open.spotify.com/" target="_blank" rel="noopener noreferrer">Open in Spotify</a></p>
+        <div id="createSupport" class="bd-support support-prompt" hidden>
+          <img src="cup-border.png" alt="" width="34" height="28">
+          <div>
+            <p>If this app has been helpful to you, I’d be grateful for your support, in whatever amount feels right.</p>
+            <button id="createDonate" class="primary" type="button"><img src="cup-border.png" alt="" width="22" height="18"><span class="btn-label">Support me</span></button>
+          </div>
+        </div>
         <p id="mainReportHint" class="report-hint muted" hidden>If it keeps happening, <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">report this problem</a>.</p>
         <div id="confirmBox" hidden>
           <p id="confirmText" class="bd-summary"></p>
@@ -972,7 +987,6 @@
         </div>
         <ul id="results" class="bd-list"></ul>
         <p id="createNotes" class="bd-note" hidden></p>
-        <p id="createSupport" class="bd-note support-prompt" hidden>If you're finding this app helpful, you can donate any amount that feels good to you as a way of saying thanks.</p>
       </div>
       <div class="bd-foot">
         <div id="confirmButtons" class="row" hidden>
@@ -984,7 +998,6 @@
         </div>
         <div id="createCloseRow" class="row dialog-actions" hidden>
           <button id="createClose" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Close</span></button>
-          <button id="createDonate" type="button"><img src="cup-border.png" alt="" width="22" height="18"><span class="btn-label">Support me</span></button>
         </div>
       </div>
     </div>
@@ -1143,8 +1156,8 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-02b"></script>
-<script src="editor.js?v=2026-11-02b"></script>
-<script src="app.js?v=2026-11-02b"></script>
+<script src="formats.js?v=2026-11-02c"></script>
+<script src="editor.js?v=2026-11-02c"></script>
+<script src="app.js?v=2026-11-02c"></script>
 </body>
 </html>

@@ -7,7 +7,7 @@ A free, browser-only web app (playlists.roncarmel.com, GitHub Pages, no server) 
 - Each person makes their own Spotify app (a free Client ID, development mode) and pastes the Client ID in. Sign-in is Spotify's PKCE flow in the browser: no secret, no backend.
 - A **recipe** says which of the person's playlists to draw from, in what order, for how many minutes, with silence between segments. The app builds as many playlists from a recipe as the songs allow, each song used once.
 - Pyodide runs `engine.py` in the page (songs are picked there). Everything else is plain JavaScript in classic `<script>` files (no build step, no modules, shared global scope).
-- Anything the person types goes nowhere but their browser and their own Spotify account. Do not add servers, trackers, or anything that sends their data elsewhere (the only third parties are Spotify, the Pyodide CDN, a Ko-fi donate panel, a GoatCounter page-view counter, and a Tally form for problem reports whose address carries scrubbed details).
+- Anything the person types goes nowhere but their browser and their own Spotify account. Do not add servers, trackers, or anything that sends their data elsewhere (the only third parties are Spotify, the Pyodide CDN, a Ko-fi support panel, a GoatCounter page-view counter, and a Tally form for problem reports whose address carries scrubbed details).
 
 ## Files
 
@@ -58,6 +58,7 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 - One popup (`#createDialog`, classes `bd-*`) for the whole build: a strip of steps (Read songs, Plan, Build, Done), then one list of playlists that goes from plan (numbered, with a small bar of its shape, pale) to progress (each row's bar fills with pink as its songs are added, then a tick) to links. No separate progress bar: while building, the status line ("Building 3 of 17") is pinned at the top, the list follows the row being built until the person scrolls it, and at the end it scrolls back to the top. Boxes above the list (see below).
 - The plan says "Ready to build N playlists. Why N?" on one line; Why N? opens a table right under it: per source playlist, minutes per playlist, minutes it has, how many playlists that is enough for (`sources`), and how many songs are in more than one source (`shared`).
 - Messages before the list are compact boxes (`.bd-info`, built by `fillInfoBoxes`), each with an accent icon (not a warning), long parts behind "Details". The popup's text can be selected. One Build button.
+- When a build is done: the summary, an "Open in Spotify" link to the first new playlist (its https address: the app on phones, the web player on computers), then the thank-you box with the Support me button, then the list (names are not links). The footer has only Close. Bars are outlines that fill with a left-to-right sweep (`setBarFill`); silences have a grey outline and a black fill.
 - A recipe that makes nothing lists every reason at once (no playlist chosen, missing, not yours, too short, or enough minutes whose song lengths cannot come within 10% of a segment: `fit`), found partly by minutes alone (`source_needs`).
 - When something fails during a build, the build stops. No recovery and no extra buttons: what went wrong, what was built, what to do ("Building again replaces the ones made so far"), and Close. Only an unexpected error offers the report link (`buildProblem`).
 
@@ -72,7 +73,8 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 
 - Never use em dashes or en dashes in any text, including page text, comments and docs.
 - Page text: no first person except where already approved; plain, brief, specific; no hedging.
-- Exception: the support text (the caption "I made this app for everyone...", the "Support me" buttons, the Ko-fi panel labels) speaks in Ron's own voice on purpose, and is exempt from the first-person rule.
+- Exception: anything about supporting Ron (for example the caption "I made this app for everyone...", the "Support me" buttons, the thank-you box after a build, the Ko-fi panel labels, and any new support text) speaks in Ron's own voice on purpose, and may use the first person.
+- Support wording: page text says "support" and "Support me", never "donate" or "donation" (identifiers such as `donateHidden`, `createDonate` stay as they are).
 - Answers to Ron: brief, essentials only; answer what was asked. Say what was done and what is next. Do not report passing tests (only failures), and do not report time breakdowns.
 - For anything visual, show a mockup early (screenshots of the real page with Playwright, Spotify stubbed with `page.route`) and let Ron pick before building. When he says "let's discuss", discuss and do not build.
 - Flag language that suggests an AI has feelings or personhood.

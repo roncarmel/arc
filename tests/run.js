@@ -38,6 +38,11 @@ function planRows(w) {
   });
 }
 // The groups in the build popup when one build makes playlists for several recipes
+function wB_support_ok(html) {
+  const box = html.match(/<div id="createSupport"[\s\S]*?<\/div>\s*<\/div>/);
+  const foot = html.match(/<div id="createCloseRow"[\s\S]*?<\/div>/);
+  return !!box && /id="createDonate" class="primary"/.test(box[0]) && !!foot && !/createDonate/.test(foot[0]) && /id="createClose"/.test(foot[0]);
+}
 function planGroups(w) { return Array.from(w.document.querySelectorAll("#results .bd-group b")).map((b) => b.textContent); }
 
 const MADE = 'Made by Ceremony Playlist Builder from the format "x". Please leave this description as it is: the app uses it to recognize the playlists it made.';
@@ -482,7 +487,7 @@ print(json.dumps(out))
   var allUris = creates.flatMap((c) => addsFor(oB, c.id).flatMap((a) => a.uris)).filter((u) => u !== SILENCE_30);
   check("no song repeats across the created playlists", new Set(allUris).size === allUris.length);
   var links = wB.document.querySelectorAll("#results .bd-row a");
-  check("each created playlist is listed with a link", links.length === creates.length && /open\.spotify\.com\/playlist\/new1/.test(links[0].href) && links[0].target === "_blank");
+  check("the created playlists are listed without links, and Open in Spotify opens the first one", links.length === 0 && /open\.spotify\.com\/playlist\/new1$/.test(wB.document.getElementById("createOpenLink").href) && wB.document.getElementById("createOpenLink").target === "_blank");
   check("after a successful run the question and the plan are cleared, so it cannot make duplicates, and Create is ready again", !visible(wB, "confirmBox") && (wB.document.getElementById("output").hidden && wB.document.getElementById("output").textContent === "") && wB.document.getElementById("planText").textContent === "" && !wB.document.getElementById("create").disabled);
 
   // C. the limit (in More options) caps the plan
@@ -622,8 +627,8 @@ print(json.dumps(out))
   // J. the thank-you prompt only follows a successful create
   var promptsAfterCreate = Array.from(wB.document.querySelectorAll("#createDialog .support-prompt")).filter((el) => !el.hidden);
   var promptLink = promptsAfterCreate[0] && promptsAfterCreate[0].querySelector("a");
-  check("the thank-you line reads right, as plain text with no link, since the Donate button is right there", promptsAfterCreate.length === 1 && promptsAfterCreate[0].textContent === "If you're finding this app helpful, you can donate any amount that feels good to you as a way of saying thanks." && promptsAfterCreate[0].querySelectorAll("a").length === 0);
-  check("it has no link, since the Donate button is right there", promptsAfterCreate[0].querySelectorAll("a").length === 0 && promptsAfterCreate[0].children.length === 0 && !promptLink && !/KOFI_URL/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("the thank-you line reads right, as plain text with no link, with the Support me button under it", promptsAfterCreate.length === 1 && promptsAfterCreate[0].querySelector("p").textContent === "If this app has been helpful to you, I’d be grateful for your support, in whatever amount feels right." && !/donat/i.test(promptsAfterCreate[0].textContent) && promptsAfterCreate[0].querySelector("#createDonate") !== null);
+  check("it has no link, since the Support me button is right there", promptsAfterCreate[0].querySelectorAll("a").length === 0 && !promptLink && !/KOFI_URL/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
   check("no prompt after cancelling", wE.document.getElementById("createSupport").hidden);
   check("no prompt after a failed create", wE.document.getElementById("createSupport").hidden);
 
@@ -691,7 +696,7 @@ print(json.dumps(out))
   check("an About this app section tells what it does, what it is good for, how it works, what is needed, and the privacy details", /^About this app$/.test(aboutFresh.querySelector("summary").textContent) && ["What it does", "What it's good for", "How it works", "What you need", "Privacy"].every((t) => aboutText.includes(t)) && aboutFresh.querySelectorAll("ol li").length === 3 && /Premium/.test(aboutText) && /never changed/.test(aboutText) && /Privacy/.test(aboutText));
   check("the More about this app section always starts closed, for first-time and returning visitors alike", aboutFresh.open === false && !/<details id="about"[^>]*\bopen\b/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && !/\$\("about"\)\.open/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
   check("it starts closed once a Client ID is saved, and once connected", returning.document.getElementById("about").open === false && t0.document.getElementById("about").open === false);
-  var staticText = pageHtml.replace("Yes, I have", "").replace("I have done this before", "").replace("No, this is my first time", "").replace('"I have supported you!"', "").replace(/<style>[\s\S]*?<\/style>/, "").replace(/<label class="choice-row"><input type="checkbox" id="donateHideBox">[\s\S]*?<\/label>/, "").replace(/<id="supportButton"[\s\S]*?<\/a>/, "").replace(/<a id="supportButton"[\s\S]*?<\/a>/, "").replace(/<p id="supportCaption">[\s\S]*?<\/p>/, "").replace(/<button id="createDonate"[\s\S]*?<\/button>/, "").replace(/<[^>]+>/g, " ");
+  var staticText = pageHtml.replace("Yes, I have", "").replace("I have done this before", "").replace("No, this is my first time", "").replace('"I have supported you!"', "").replace(/<style>[\s\S]*?<\/style>/, "").replace(/<label class="choice-row"><input type="checkbox" id="donateHideBox">[\s\S]*?<\/label>/, "").replace(/<id="supportButton"[\s\S]*?<\/a>/, "").replace(/<a id="supportButton"[\s\S]*?<\/a>/, "").replace(/<p id="supportCaption">[\s\S]*?<\/p>/, "").replace(/<div id="createSupport"[\s\S]*?<\/p>/, "").replace(/<button id="createDonate"[\s\S]*?<\/button>/, "").replace(/<[^>]+>/g, " ");
   var firstPerson = staticText.match(/\b(my|mine|myself|I|I'm|I've|I'll)\b/gi) || [];
   check("no first-person wording anywhere in the page text, apart from the setup choice you worded yourself and the checkbox for people who have donated (and Privacy quoting it), which is in the person's own voice", firstPerson.length === 0, JSON.stringify(firstPerson));
   check("the two setup answers are plain labels", /Yes, I have/.test(fresh.document.getElementById("loginSection").textContent) && /No, this is my first time/.test(fresh.document.getElementById("loginSection").textContent));
@@ -773,9 +778,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-02b" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-02c" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-02b/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-02c/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -2110,7 +2115,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("and clicking outside does nothing while it is creating", pp_w2.document.getElementById("createOverlay").hidden === false);
   await waitFor(() => /in your Spotify library\.$/.test(pp_w2.document.getElementById("actionMessage").textContent), 30000);
   await waitFor(() => pp_w2.document.getElementById("createCloseRow").hidden === false, 10000);
-  check("when it is done the popup shows the result and the playlists made, with a Close button", pp_w2.document.getElementById("createOverlay").hidden === false && pp_w2.document.querySelectorAll("#results a").length >= 2 && pp_w2.document.getElementById("createClose").textContent.trim() === "Close" && pp_w2.document.getElementById("actionMessage").textContent === "2 playlists are in your Spotify library.");
+  check("when it is done the popup shows the result and the playlists made, with a Close button", pp_w2.document.getElementById("createOverlay").hidden === false && pp_w2.document.querySelectorAll("#results .bd-row").length >= 2 && pp_w2.document.getElementById("createClose").textContent.trim() === "Close" && pp_w2.document.getElementById("actionMessage").textContent === "2 playlists are in your Spotify library.");
   pp_w2.document.getElementById("createClose").click();
   check("Close dismisses it and puts the focus back on Create", pp_w2.document.getElementById("createOverlay").hidden === true && pp_w2.document.activeElement === pp_w2.document.getElementById("create"));
   pp_w2.document.getElementById("create").click();
@@ -2224,7 +2229,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   dd_w2.document.getElementById("confirmYes").click();
   await waitFor(() => dd_w2.document.getElementById("createCloseRow").hidden === false, 30000);
   var dd_btns = Array.from(dd_w2.document.querySelectorAll("#createCloseRow button"));
-  check("when it is done, the Create popup offers two buttons that look alike, both pink: Close, then Donate with the cup", dd_btns.map((b) => b.textContent.trim()).join("|") === "Close|Support me" && !!dd_btns[1].querySelector('img[src="cup-border.png"]') && !dd_btns[0].classList.contains("primary") && !dd_btns[1].classList.contains("primary") && !/#createClose \{/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  check("when it is done, the footer offers only Close, and Support me with the cup is a pink button in the thank-you box", dd_btns.map((b) => b.textContent.trim()).join("|") === "Close" && dd_w2.document.getElementById("createDonate").closest("#createSupport") !== null && !!dd_w2.document.getElementById("createDonate").querySelector('img[src="cup-border.png"]') && dd_w2.document.getElementById("createDonate").classList.contains("primary"));
   dd_w2.document.getElementById("createDonate").click();
   check("Donate closes the Create popup and opens the donation popup, with the screen dimmed behind it", dd_w2.document.getElementById("createOverlay").hidden === true && dd_w2.document.body.style.overflow === "" && dd_w2.document.getElementById("kofiPanel").hidden === false && dd_w2.document.getElementById("kofiDim").hidden === false && !!dd_w2.document.querySelector("#kofiPanel iframe"));
   dd_w2.document.getElementById("kofiClose").click();
@@ -2235,7 +2240,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
 
 
   var cl_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("Close and Donate in the Create popup look the same: both are the ordinary pink buttons, so Donate is not pushed harder than Close", !/#createClose \{/.test(cl_css) && !/#createDonate \{/.test(cl_css.replace(/\.donate-hidden #supportBox, \.donate-hidden #createDonate \{[^}]*\}/, "")));
+  check("after a build, Support me is a pink button in the thank-you box near the top, and the footer has only Close", wB_support_ok(fs.readFileSync(ROOT + "index.html", "utf8")));
 
 
   
@@ -2793,7 +2798,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-02b", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-02c", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4522,7 +4527,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-02b"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-02c"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -4603,7 +4608,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   bp_a.document.getElementById("confirmYes").click();
   await waitFor(() => visible(bp_a, "createCloseRow"), 60000);
   check("done: one sentence, every step ticked", bp_text(bp_a, "actionMessage") === "2 playlists are in your Spotify library." && bp_steps(bp_a) === "done,done,done,done", bp_text(bp_a, "actionMessage") + " " + bp_steps(bp_a));
-  check("done: each playlist is a link, its bar filled", bp_rows(bp_a).length === 2 && bp_rows(bp_a).every((r) => r.querySelector("a.bd-name") && r.querySelector(".bd-mini").dataset.fill === "100"));
+  check("done: the playlists are not links, each bar filled", bp_rows(bp_a).length === 2 && bp_rows(bp_a).every((r) => !r.querySelector("a") && r.querySelector(".bd-mini").dataset.fill === "100"));
+  check("done: Open in Spotify opens the first new playlist, then the thank-you box, then the list", visible(bp_a, "createOpen") && /^https:\/\/open\.spotify\.com\/playlist\/new\w+$/.test(bp_a.document.getElementById("createOpenLink").href) && bp_a.document.getElementById("createOpenLink").textContent === "Open in Spotify" && bp_a.document.getElementById("createOpen").nextElementSibling.id === "createSupport", bp_a.document.getElementById("createOpenLink").href);
   check("done: the status line is no longer pinned", !bp_a.document.getElementById("output").classList.contains("bd-pinned") && bp_a.document.getElementById("output").hidden);
   check("done: the thank-you line, Close and Support me", visible(bp_a, "createSupport") && visible(bp_a, "createDonate") && !visible(bp_a, "createNotes"));
 
@@ -4625,7 +4631,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var bp_n = await bp_fail("network");
   check("no connection: it says so and what to do", /^Spotify stopped answering1 of 2 playlists was built, and “Ran 2” is incomplete\. Check your internet connection, then build again\. Building again replaces the ones made so far\.$/.test(bp_n.card), bp_n.card);
   check("the build stops there: nothing more is sent", bp_n.o.addCalls === bp_n.o.writes.filter((x) => x.type === "add").length + 1 && bp_n.o.writes.every((x) => x.type !== "add" || x.id === "new1") && bp_n.o.writes.filter((x) => x.type === "create").length === 2, bp_n.o.addCalls);
-  check("the rows say what happened to each", bp_rows(bp_n.w)[0].querySelector("a.bd-name") && bp_rows(bp_n.w)[1].querySelector(".bd-meta").textContent === "incomplete", bp_rows(bp_n.w).map((r) => r.textContent).join(" | "));
+  check("the rows say what happened to each", bp_rows(bp_n.w)[0].querySelector(".bd-mini").dataset.fill === "100" && bp_rows(bp_n.w)[1].querySelector(".bd-meta").textContent === "incomplete", bp_rows(bp_n.w).map((r) => r.textContent).join(" | "));
   check("the Build step shows the failure", bp_steps(bp_n.w) === "done,done,fail,-", bp_steps(bp_n.w));
   check("the bars show how far it got: the first full, the one that stopped empty (its first songs failed), the rest empty", JSON.stringify(bp_rows(bp_n.w).map((r) => r.querySelector(".bd-mini").dataset.fill)) === '["100","0"]', JSON.stringify(bp_rows(bp_n.w).map((r) => r.querySelector(".bd-mini").dataset.fill)));
   check("only Close is offered: no Support me, no report link", visible(bp_n.w, "createCloseRow") && !visible(bp_n.w, "createDonate") && !visible(bp_n.w, "mainReportHint") && !visible(bp_n.w, "createSupport"));

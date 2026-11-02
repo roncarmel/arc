@@ -16,7 +16,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-02b";
+const APP_VERSION = "2026-11-02c";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1342,6 +1342,7 @@ function resetBuildPopup() {
   $("planText").textContent = "";
   $("createNotes").hidden = true;
   $("createSupport").hidden = true;
+  $("createOpen").hidden = true;
 }
 
 // Small drawings, all made here so they follow the theme's colors.
@@ -1386,7 +1387,7 @@ function lengthText(minutes) {
 }
 
 function playlistRow(p, icon) {
-  // One playlist in the popup's list: an icon for where it stands, its name (a link once it exists), songs and length, and its shape.
+  // One playlist in the popup's list: an icon for where it stands, its name, songs and length, and its shape.
   const li = document.createElement("li");
   li.className = "bd-row";
   const ic = Object.assign(document.createElement("span"), { className: "bd-ic" });
@@ -1400,6 +1401,7 @@ function playlistRow(p, icon) {
       const piece = document.createElement("span");
       if (silence) piece.className = "bd-sil";
       piece.style.flex = `${Math.max(minutes, 0.5)} 0 0`;
+      piece.appendChild(document.createElement("i"));   // the fill
       bar.appendChild(piece);
     }
     li.appendChild(bar);
@@ -1409,7 +1411,7 @@ function playlistRow(p, icon) {
   return li;
 }
 
-function setRowState(li, state, note, url) {
+function setRowState(li, state, note) {
   // state: a number (its place in the plan), "wait", "now", "done" or "fail". note replaces the songs and length.
   const { p, ic, meta } = li.bd;
   ic.innerHTML = typeof state === "number" ? BD_ICON.num(state) : BD_ICON[state];
@@ -1417,25 +1419,31 @@ function setRowState(li, state, note, url) {
   if (state === "done") setBarFill(li, 1);
   else if (state === "wait" || typeof state === "number") setBarFill(li, 0);
   meta.textContent = note || (p.songs != null ? `${plural(p.songs, "song")} · ${lengthText(p.length != null ? p.length : p.minutes)}` : "");
-  if (url) {
-    const link = Object.assign(document.createElement("a"), { className: "bd-name", href: url, target: "_blank", rel: "noopener noreferrer", textContent: p.name });
-    li.bd.name.replaceWith(link);
-    li.bd.name = link;
-  }
 }
 
+const BAR_SWEEP_MS = 900;   // how long the fill takes to cross a whole bar
+
 function setBarFill(li, fraction) {
-  // The playlist's shape doubles as its progress: pale until built, filled from the left as its songs are added.
+  // The playlist's shape doubles as its progress: outlined until built, filled from the left as its songs are added. The fill sweeps at one speed
+  // across the pieces in turn: each piece starts when the sweep reaches it, and takes as long as its share of the bar.
   const bar = li.bd.bar;
   if (!bar) return;
   const pieces = li.bd.p.pieces;
-  const total = pieces.reduce((n, [minutes]) => n + minutes, 0);
+  const total = pieces.reduce((n, [minutes]) => n + minutes, 0) || 1;
+  const from = Number(bar.dataset.fill || 0) / 100;
+  const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   let start = 0;
   Array.from(bar.children).forEach((piece, i) => {
     const length = pieces[i][0];
     const share = length > 0 ? Math.min(1, Math.max(0, (fraction * total - start) / length)) : (fraction >= 1 ? 1 : 0);
-    const on = pieces[i][1] ? "#000" : "var(--button)", off = pieces[i][1] ? "var(--line)" : "var(--accent-tint)";
-    piece.style.background = share >= 1 ? on : share <= 0 ? off : `linear-gradient(to right, ${on} ${share * 100}%, ${off} ${share * 100}%)`;
+    const fill = piece.firstElementChild;
+    if (fill) {
+      const was = parseFloat(fill.style.width) / 100 || 0;
+      const forward = share > was && !still;
+      fill.style.transitionDuration = forward ? `${Math.round(((share - was) * length / total) * BAR_SWEEP_MS)}ms` : "0ms";
+      fill.style.transitionDelay = forward ? `${Math.round(Math.max(0, (start + was * length) / total - from) * BAR_SWEEP_MS)}ms` : "0ms";
+      fill.style.width = `${share * 100}%`;
+    }
     start += length;
   });
   bar.dataset.fill = String(Math.round(fraction * 100));
@@ -2446,7 +2454,7 @@ async function createFromPlan(plan) {
       }
       created += 1;
       current = null;
-      setRowState(row, "done", "", made.external_urls && made.external_urls.spotify);
+      setRowState(row, "done", "");
     }
     logStep(`create finished (${plural(created, "playlist")})`);
     invalidatePlan(true);
@@ -2465,6 +2473,9 @@ async function createFromPlan(plan) {
     done.appendChild(document.createTextNode(` ${created === 1 ? "is" : "are"} in your Spotify library.`));
     setActionMessage("");
     $("actionMessage").appendChild(done);
+    // The first new playlist, at its ordinary Spotify address: on a phone it opens the Spotify app when it is installed, on a computer the web player, which offers the app.
+    if (createdIds.length) $("createOpenLink").href = `https://open.spotify.com/playlist/${createdIds[0]}`;
+    $("createOpen").hidden = !createdIds.length;
     const showNotes = () => { $("createNotes").textContent = notes.join("\n\n"); $("createNotes").hidden = !notes.length; };
     showNotes();
     $("createSupport").hidden = donateHiddenChoice();   // someone who hid the Donate button is not asked again
