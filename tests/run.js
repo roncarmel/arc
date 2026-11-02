@@ -668,9 +668,9 @@ print(json.dumps(out))
   check("an About this app section tells what it does, what it is good for, how it works, what is needed, and the privacy details", /^About this app$/.test(aboutFresh.querySelector("summary").textContent) && ["What it does", "What it's good for", "How it works", "What you need", "Privacy"].every((t) => aboutText.includes(t)) && aboutFresh.querySelectorAll("ol li").length === 3 && /Premium/.test(aboutText) && /never changed/.test(aboutText) && /Privacy/.test(aboutText));
   check("the More about this app section always starts closed, for first-time and returning visitors alike", aboutFresh.open === false && !/<details id="about"[^>]*\bopen\b/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && !/\$\("about"\)\.open/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
   check("it starts closed once a Client ID is saved, and once connected", returning.document.getElementById("about").open === false && t0.document.getElementById("about").open === false);
-  var staticText = pageHtml.replace("Yes, I have", "").replace("I have done this before", "").replace("No, this is my first time", "").replace(/<style>[\s\S]*?<\/style>/, "").replace(/<label class="choice-row"><input type="checkbox" id="donateHideBox">[\s\S]*?<\/label>/, "").replace(/<id="supportButton"[\s\S]*?<\/a>/, "").replace(/<a id="supportButton"[\s\S]*?<\/a>/, "").replace(/<p id="supportCaption">[\s\S]*?<\/p>/, "").replace(/<button id="createDonate"[\s\S]*?<\/button>/, "").replace(/<[^>]+>/g, " ");
+  var staticText = pageHtml.replace("Yes, I have", "").replace("I have done this before", "").replace("No, this is my first time", "").replace('"I have supported you!"', "").replace(/<style>[\s\S]*?<\/style>/, "").replace(/<label class="choice-row"><input type="checkbox" id="donateHideBox">[\s\S]*?<\/label>/, "").replace(/<id="supportButton"[\s\S]*?<\/a>/, "").replace(/<a id="supportButton"[\s\S]*?<\/a>/, "").replace(/<p id="supportCaption">[\s\S]*?<\/p>/, "").replace(/<button id="createDonate"[\s\S]*?<\/button>/, "").replace(/<[^>]+>/g, " ");
   var firstPerson = staticText.match(/\b(my|mine|myself|I|I'm|I've|I'll)\b/gi) || [];
-  check("no first-person wording anywhere in the page text, apart from the setup choice you worded yourself and the checkbox for people who have donated, which is in the person's own voice", firstPerson.length === 0, JSON.stringify(firstPerson));
+  check("no first-person wording anywhere in the page text, apart from the setup choice you worded yourself and the checkbox for people who have donated (and Privacy quoting it), which is in the person's own voice", firstPerson.length === 0, JSON.stringify(firstPerson));
   check("the two setup answers are plain labels", /Yes, I have/.test(fresh.document.getElementById("loginSection").textContent) && /No, this is my first time/.test(fresh.document.getElementById("loginSection").textContent));
   var tpl = t0.document.getElementById("formats").value;
   check("the editor starts with one format called Generated playlist, with one segment waiting for a playlist", t0.document.querySelectorAll("#feTabs .fe-tab").length === 1 && t0.document.querySelector("#feTabs .fe-tab").textContent === "Generated playlist" && t0.document.querySelectorAll("#feRows .fe-row").length === 1 && t0.document.querySelector("#feRows .fe-row .fe-title").textContent === "Choose a playlist", t0.document.getElementById("formatEditor").textContent);
@@ -890,7 +890,7 @@ print(json.dumps(out))
   check("text-style links (Restore, Reset, Undo) have no icons", Array.from(t0.document.querySelectorAll("button.linklike")).every((b) => !b.querySelector("img")));
   check("each icon sits left of a label, and the label is its own element", pill.every((b) => { const i = b.querySelector("img.btn-icon, img"); return i === b.firstElementChild && !!b.querySelector(".btn-label, span"); }));
   var icss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("every icon file is a valid white line icon, with no placeholder note left", fs.readdirSync(ROOT + "icons").filter((f) => f.endsWith(".svg")).length === 16 && fs.readdirSync(ROOT + "icons").every((f) => { const x = fs.readFileSync(ROOT + "icons/" + f, "utf8"); return /<svg /.test(x) && !/Placeholder/i.test(x) && /stroke="#fff"/.test(x); }));
+  check("every icon file is a valid white line icon, with no placeholder note left", fs.readdirSync(ROOT + "icons").filter((f) => f.endsWith(".svg")).length === 15 && fs.readdirSync(ROOT + "icons").every((f) => { const x = fs.readFileSync(ROOT + "icons/" + f, "utf8"); return /<svg /.test(x) && !/Placeholder/i.test(x) && /stroke="#fff"/.test(x); }));
   // changing a label must not remove the icon
   var ic = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   await runPreview(ic);
@@ -1660,7 +1660,7 @@ print(json.dumps(out))
   k_w2.document.getElementById("confirmYes").click();
   await waitFor(() => /^Done\./.test(k_w2.document.getElementById("actionMessage").textContent), 30000);
   await waitFor(() => /Note: Spotify's playlist list/.test(k_w2.document.getElementById("actionMessage").textContent), 10000);
-  check("if Spotify's list does not show the description, the app says it may not recognize its playlists later, and still lists none as its own", /Note: Spotify's playlist list did not show the description this app puts on its playlists \(or has not updated yet\), so the app may not recognize them later\./.test(k_w2.document.getElementById("actionMessage").textContent) && k_w2.eval("playlists").every((p) => !p.madeByApp));
+  check("if Spotify's list does not show the description, the app says it may not recognize its playlists later, and still lists none as its own", /Note: Spotify's playlist list did not show the description this app puts on its playlists \(or has not updated yet\), so this app may not recognize them later\./.test(k_w2.document.getElementById("actionMessage").textContent) && k_w2.eval("playlists").every((p) => !p.madeByApp));
   var k_py = JSON.parse(execFileSync("python3", ["-c", `
 import importlib.util, json
 spec = importlib.util.spec_from_file_location("engine", "${ROOT}engine.py")
@@ -2286,7 +2286,9 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   cx_w.document.body.click();   // the segment's list is still open: the first tap only closes it
   cx_sec(cx_w, "connectionRetry").click();
   await waitFor(() => cx_w.eval("connection") === "ready", 15000);
-  check("Try again, once Spotify answers, makes everything available: Disconnect is back, the problem is gone, Create and Remove are on", cx_sec(cx_w, "connectedSection").hidden === false && cx_sec(cx_w, "disconnect").hidden === false && cx_sec(cx_w, "connectionProblem").hidden === true && cx_sec(cx_w, "create").disabled === false && cx_sec(cx_w, "removeOld").disabled === false && cx_sec(cx_w, "spotifyNote").hidden === true && /^Connected as Ron\./.test(cx_sec(cx_w, "connectedMessage").textContent));
+  // Remove starts with no recipe chosen, and is on once one is
+  var cx_removeOn = () => { const k = cx_sec(cx_w, "removeKey"); const blank = cx_sec(cx_w, "removeOld").disabled; k.value = k.options[k.options.length - 1].value; k.dispatchEvent(new cx_w.Event("change")); return blank && cx_sec(cx_w, "removeOld").disabled === false; };
+  check("Try again, once Spotify answers, makes everything available: Disconnect is back, the problem is gone, Create and Remove are on", cx_sec(cx_w, "connectedSection").hidden === false && cx_sec(cx_w, "disconnect").hidden === false && cx_sec(cx_w, "connectionProblem").hidden === true && cx_sec(cx_w, "create").disabled === false && cx_removeOn() && cx_sec(cx_w, "spotifyNote").hidden === true && /^Connected as Ron\./.test(cx_sec(cx_w, "connectedMessage").textContent));
   check("and the app menu offers Disconnect Spotify again", (() => { cx_w.document.getElementById("feAppMenuButton").click(); const there = !!cx_w.document.getElementById("feDisconnect"); cx_w.document.getElementById("feAppMenuButton").click(); return there; })());
   var cx_w2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { meNetworkFail: true } });
   check("with no connection to the internet it says so, in plain words", cx_w2.eval("connection") === "problem" && /^Could not reach Spotify\. Check your internet connection and try again\.$/.test(cx_sec(cx_w2, "connectionMessage").textContent) && cx_sec(cx_w2, "disconnect").hidden === true);
@@ -3069,7 +3071,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var py_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var py_heads = Array.from(py_w.document.querySelectorAll("#moreOptions h3")).filter((h) => !h.closest("[hidden]")).map((h) => h.textContent);
   check("the Python status is the last section of More options, after Hiding the Support me button, since it is the only one with nothing to press", py_heads[py_heads.length - 1] === "Python status" && py_heads[py_heads.length - 2] === "Hiding the Support me button", JSON.stringify(py_heads));
-  check("it sits right above the app version, the last line", py_w.document.getElementById("pythonStatus").nextElementSibling.id === "" && /^App version: /.test(py_w.document.getElementById("pythonStatus").nextElementSibling.textContent) && py_w.document.getElementById("pythonStatus").nextElementSibling.nextElementSibling === null);
+  check("it is the last line of More options (the app version is in the app menu now)", py_w.document.getElementById("pythonStatus").nextElementSibling === null && py_w.document.getElementById("pythonStatus").parentElement.id === "moreOptions");
   check("the Reset app on this device question still opens right under its button, ahead of the Hiding the Support me button section", !!(py_w.document.getElementById("clearConfirm").compareDocumentPosition(py_w.document.getElementById("donateHideBox")) & 4));
   } catch (err) { areaCrashed("python status at the bottom", err); } }
 
@@ -3156,7 +3158,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   dh_w4.localStorage.setItem("donateHidden", "donated"); dh_w4.eval("addSupportPrompt()");
   check("the thank-you line after a build is added, unless the Donate button was hidden, and then it is not", dh_shown === 1 && dh_w4.document.querySelectorAll("#results .support-prompt").length === 1);
   var dh_app = fs.readFileSync(ROOT + "app.js", "utf8");
-  check("the answer stays in this browser: it is never counted or sent anywhere, and Privacy says so", !/countEvent\("donate-hid/.test(dh_app) && /const DONATE_KEY = "donateHidden";/.test(dh_app) && !/fetch\([^)]*donateHidden/.test(dh_app) && /If you check the box to hide the Support me button, that choice is saved in this browser and goes nowhere else\./.test(dh_html));
+  check("the answer stays in this browser: it is never counted or sent anywhere, and Privacy says so", !/countEvent\("donate-hid/.test(dh_app) && /const DONATE_KEY = "donateHidden";/.test(dh_app) && !/fetch\([^)]*donateHidden/.test(dh_app) && /If you check "I have supported you!" in [\s\S]*?More options[\s\S]*?, that choice is saved in this browser and goes nowhere else\./.test(dh_html));
   } catch (err) { areaCrashed("hiding the donate button", err); } }
 
   if (want("backup link in step 2")) { try {
@@ -4416,7 +4418,8 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var b7_menu = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: {} });
   b7_menu.document.getElementById("feAppMenuButton").click();
   var b7_kids = b7_menu.document.querySelectorAll("#feAppMenuPanel > *");
-  check("the menu begins with the app's icon and name, as a band, then More options with no divider between", b7_kids[0].id === "feMenuHead" && b7_kids[0].querySelector("img").getAttribute("src") === "apple-touch-icon.png" && b7_kids[0].querySelector(".fe-menuname").textContent === "Ceremony Playlist Builder" && b7_kids[1].id === "feMoreOptions" && /^More options$/.test(b7_kids[1].textContent.trim()));
+  var b7_more = Array.from(b7_kids).findIndex((k) => k.id === "feMoreOptions");
+  check("the menu begins with the app's icon and name, as a band, then Spotify, then More options", b7_kids[0].id === "feMenuHead" && b7_kids[0].querySelector("img").getAttribute("src") === "apple-touch-icon.png" && b7_kids[0].querySelector(".fe-menuname").textContent === "Ceremony Playlist Builder" && /Spotify/.test(b7_kids[1].textContent) && b7_more > 1 && /^More options$/.test(b7_kids[b7_more].textContent.trim()), Array.from(b7_kids).map((k) => k.id || k.className).join(","));
   check("the header is only a picture and a name: not a button, not a link, and nothing about it reacts to the mouse", b7_kids[0].tagName === "DIV" && !b7_kids[0].querySelector("button, a") && !/fe-menuhead[^{]*:hover/.test(b7_html) && b7_kids[0].querySelector("img").getAttribute("alt") === "");
   b7_menu.document.body.click();
 
@@ -4610,7 +4613,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var rs_ws = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   await runPreview(rs_ws);
   var rs_st = rs_ws.document.getElementById("confirmSuspectsText");
-  check("when songs in the source playlists have the same artist and title under different IDs, one short line says so, and what to do", !rs_st.hidden && /songs? appears? in more than one version in your source playlists\. The app can.t tell versions apart, so one of them could repeat in a playlist or across playlists\. To avoid that, use the same version of each song in every playlist\.$/.test(rs_st.textContent));
+  check("when songs in the source playlists have the same artist and title under different IDs, one short line says so, and what to do", !rs_st.hidden && /songs? appears? in more than one version in your source playlists\. This app can.t tell versions apart, so one of them could repeat in a playlist or across playlists\. To avoid that, use the same version of each song in every playlist\.$/.test(rs_st.textContent));
   check("the songs are behind a link, and not shown until it is pressed", !rs_ws.document.getElementById("confirmSuspectsLinkRow").hidden && rs_ws.document.getElementById("confirmSuspectsList").hidden === true);
   rs_ws.document.getElementById("confirmSuspectsToggle").click();
   var rs_items = Array.from(rs_ws.document.querySelectorAll("#confirmSuspectsList li")).map((li) => li.textContent);

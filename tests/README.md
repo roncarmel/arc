@@ -4,7 +4,7 @@ About 1,235 checks against the real `index.html`, `app.js`, `editor.js`, `format
 the page runs in jsdom, Spotify is a pretend server written in `run.js` (`makeFetch`), and `engine.py` is the real file, run by `bridge.py` in place of Pyodide.
 
     cd tests && npm install
-    node run.js                      # everything, about 4 minutes
+    NODE_OPTIONS=--max-old-space-size=8192 node run.js   # everything, about 4 minutes (Node's usual memory runs out near the end)
     node run.js "--only=newer version|spotify merge"   # only the areas whose names contain any of these
     node run.js --list               # the names of the areas
     APP_DIR=/path/to/app node run.js # if the app is not in the folder above this one
