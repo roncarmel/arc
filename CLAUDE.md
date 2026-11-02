@@ -50,7 +50,7 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 - A song is used once per playlist and once across the playlists made in one run, compared by ISRC (one recording, whatever release it is on), else Spotify ID (`song_id` in engine.py, `key` on each track; saved songs carry `v: SONGS_VERSION`). A song listed twice in one source counts once. A segment may come in up to 10% short; below that the plan says so instead of repeating songs.
 - To get the most playlists from overlapping sources, `pick` takes songs only its own source has first, and `fill_order` fills the segment with the least to spare first.
 - Before building, songs whose artist and title match (case, accents, punctuation and a remaster note ignored) in different recordings are mentioned as information (`findSuspects`), with links that open the playlist at the song. The app never guesses that two recordings are the same song.
-- A source that lists a song more than once gets a box with "Fix this for me in Spotify" (`removeRepeats`: Spotify removes every copy of a URI, so one is put back at the first position, then the playlist is read again to check).
+- A source that lists a song more than once gets a box saying so, the songs behind Details (`findRepeats`). The app does not change the person's source playlists: Spotify removes every copy of a URI, so a fix would take the song out and put one back, and a failure in between would lose it (decided against).
 - Earlier playlists the app made that share names with the new ones are replaced; a checkbox keeps them instead, renamed to `<name> (version a)` (next letter each time). The person's own playlists that have names the new ones use are always renamed that way, first.
 - Playlists are named `<recipe name> N`. Built playlists carry a description marker (`APP_MARKER`) so the app knows they are its own.
 
@@ -80,7 +80,7 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 ## Known issues and open items
 
 - Ron is collecting changes from user testing; he sent a partial list and more is coming.
-- Not yet verified on real devices or accounts: ISRC in real track lists, whether "?highlight=" selects the song in Spotify, the remove-and-put-back fix on a real playlist, iPhone Safari behavior (double-tap guard, text selection, back-forward cache, the `pageshow` reset), a real Spotify account's handling of the full CJK range at exactly 300 characters, cover upload on empty playlists and its rate limit, merge between two real devices, the saving crossfade on a phone, the other color themes.
+- Not yet verified on real devices or accounts: ISRC in real track lists, whether "?highlight=" selects the song in Spotify, iPhone Safari behavior (double-tap guard, text selection, back-forward cache, the `pageshow` reset), a real Spotify account's handling of the full CJK range at exactly 300 characters, cover upload on empty playlists and its rate limit, merge between two real devices, the saving crossfade on a phone, the other color themes.
 - Decided against: detecting a completed donation (nothing reliable), auto-connect on load (the Connect button stays).
 
 ## Tests

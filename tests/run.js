@@ -108,21 +108,8 @@ function makeFetch(options = {}) {
       writes.push({ type: "update", id: url.match(/playlists\/(\w+)$/)[1], public: putBody.public, name: putBody.name, description: putBody.description });
       return { ok: true, status: 200, headers: { get: () => null }, text: async () => "", json: async () => { throw new Error("no body"); } };
     }
-    // repeatIn: that source playlist lists its first three songs twice; DELETE takes every copy of a song out, POST with a position puts one back
+    // repeatIn: that source playlist lists its first three songs twice
     const repeatList = () => (options.repeatList = options.repeatList || TRACKS[options.repeatIn].concat(TRACKS[options.repeatIn].slice(0, 3)));
-    if (options.repeatIn && method === "DELETE" && url.includes(`/playlists/${options.repeatIn}/items`)) {
-      const uri = JSON.parse(init.body).items[0].uri;
-      options.repeatGone = repeatList().find((it) => it.track && it.track.uri === uri);
-      options.repeatList = repeatList().filter((it) => !(it.track && it.track.uri === uri));
-      writes.push({ type: "unlist", id: options.repeatIn, uri });
-      return json({ snapshot_id: "x" });
-    }
-    if (options.repeatIn && method === "POST" && url.includes(`/playlists/${options.repeatIn}/items`)) {
-      const body = JSON.parse(init.body);
-      repeatList().splice(body.position, 0, options.repeatGone);
-      writes.push({ type: "readd", id: options.repeatIn, uri: body.uris[0], position: body.position });
-      return json({ snapshot_id: "x" }, 201);
-    }
     if (method === "POST" && /\/playlists\/\w+\/items/.test(url)) {
       // buildFailIn: the first request that adds songs to this playlist (by id, "new2" for the second one made) fails, as buildFail says:
       // "network", "hang" (no answer), or a status (429, 401, 403, 500)
@@ -786,9 +773,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-02a" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-02b" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-02a/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-02b/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -2806,7 +2793,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-02a", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-02b", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4535,7 +4522,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-02a"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-02b"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -4769,12 +4756,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var rs_wr = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: rs_or });
   await runPreview(rs_wr);
   var rs_rep = Array.from(rs_wr.document.querySelectorAll("#bdInfo .bd-info")).find((b) => /more than once/.test(b.textContent));
-  check("a source playlist that lists songs more than once gets a box saying how many, that each is used once, and offering to fix it", !!rs_rep && rs_rep.textContent === "“💗 spacious + gentle” lists 3 songs more than once. Each is used once. Fix this for me in Spotify", rs_rep && rs_rep.textContent);
-  rs_rep.querySelector(".linklike").click();
-  await waitFor(() => /Fixed|Couldn/.test(rs_rep.textContent), 10000);
-  var rs_unl = rs_or.writes.filter((x) => x.type === "unlist" || x.type === "readd");
-  check("fixing takes each repeated song out and puts one copy back where the first one was", rs_unl.length === 6 && rs_unl[0].type === "unlist" && rs_unl[1].type === "readd" && rs_unl[1].position === 0 && rs_unl[5].position === 2, JSON.stringify(rs_unl));
-  check("then it says so, and the playlist lists each song once", rs_rep.textContent === "Fixed: “💗 spacious + gentle” now lists each song once." && new Set(rs_or.repeatList.filter((it) => it.track && it.track.uri !== "local").map((it) => it.track.uri)).size === rs_or.repeatList.filter((it) => it.track && it.track.uri !== "local").length);
+  check("a source playlist that lists songs more than once gets a box saying how many, and that each is used once, with nothing offered that changes the playlist", !!rs_rep && rs_rep.textContent.startsWith("“💗 spacious + gentle” lists 3 songs more than once. Each is used once. Details") && !/Fix/.test(rs_rep.textContent) && !/removeRepeats/.test(fs.readFileSync(ROOT + "app.js", "utf8")), rs_rep && rs_rep.textContent);
+  var rs_rl = rs_rep.querySelector("ul");
+  check("the songs are behind Details, each with how many times it is listed", rs_rl.hidden === true && JSON.stringify(Array.from(rs_rl.querySelectorAll("li")).map((li) => li.textContent)) === JSON.stringify(["Artist - Song 0 of p2: 2 times", "Artist - Song 1 of p2: 2 times", "Artist - Song 2 of p2: 2 times"]), Array.from(rs_rl.querySelectorAll("li")).map((li) => li.textContent).join(" | "));
   rs_wr.document.getElementById("confirmYes").click();
   await waitFor(() => visible(rs_wr, "createCloseRow"), 30000);
   var rs_adds = rs_or.writes.filter((x) => x.type === "add");

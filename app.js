@@ -16,7 +16,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-02a";
+const APP_VERSION = "2026-11-02b";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2040,7 +2040,7 @@ async function planSelected(startedWith) {
   const newNames = new Set(built.flatMap((b) => b.playlists.map((p) => normName(p.name))));
   const others = matching.filter((p) => !madeByApp.has(p.id) && newNames.has(normName(p.name)));   // only the ones in the way
   return { formatsText: inputs.formatsText, keys: inputs.keys, built, total, ours: marked, marked, others,
-    suspects: findSuspects(inputs.tracks, inputs.ids), repeats: findRepeats(inputs.tracks, inputs.ids), problems, many: built.length > 1 || problems.length > 0 };
+    suspects: findSuspects(inputs.tracks, inputs.ids), repeats: findRepeats(inputs.tracks), problems, many: built.length > 1 || problems.length > 0 };
 }
 
 // Songs that may be one song in more than one recording, among the playlists a build draws from. The app knows a song by its ISRC (one recording, whatever release
@@ -2077,37 +2077,17 @@ function findSuspects(tracksByName, ids = {}) {
   return out.sort((a, b) => a.label.localeCompare(b.label));
 }
 
-function findRepeats(tracksByName, ids = {}) {
-  // Source playlists that list a song more than once: [{ name, id, songs: how many songs }]. The engine uses each once either way.
+function findRepeats(tracksByName) {
+  // Source playlists that list a song more than once: [{ name, songs: [{ label, times }] }]. The engine uses each once either way. The app only says so: changing
+  // the person's playlist would mean taking every copy out and putting one back (Spotify removes a song by its ID), and a failure in between would lose the song.
   const out = [];
   for (const [name, tracks] of Object.entries(tracksByName || {})) {
     const count = new Map();
-    for (const t of tracks) count.set(t.uri, (count.get(t.uri) || 0) + 1);
-    const songs = Array.from(count.values()).filter((n) => n > 1).length;
-    if (songs) out.push({ name, id: ids[name] || null, songs });
+    for (const t of tracks) count.set(t.uri, { label: t.label, times: ((count.get(t.uri) || {}).times || 0) + 1 });
+    const songs = Array.from(count.values()).filter((x) => x.times > 1);
+    if (songs.length) out.push({ name, songs });
   }
   return out;
-}
-
-async function removeRepeats(id) {
-  // Leaves one copy of each song a playlist lists more than once, where the first copy was. Spotify removes a song by its ID, so every copy goes and one is put back.
-  const read = async () => (await pagedItems(`/playlists/${id}/items?limit=50`)).map((e) => { const t = e && (e.item || e.track); return t && t.uri; });
-  let uris = await read();
-  const first = new Map();
-  uris.forEach((u, i) => { if (u && !first.has(u)) first.set(u, i); });
-  const repeated = Array.from(first.keys()).filter((u) => uris.filter((x) => x === u).length > 1).sort((a, b) => first.get(a) - first.get(b));
-  for (const uri of repeated) {
-    const at = uris.indexOf(uri);
-    await spotifyRequest("DELETE", `/playlists/${id}/items`, { json: { items: [{ uri }] } });
-    uris = uris.filter((u) => u !== uri);
-    await spotifyRequest("POST", `/playlists/${id}/items`, { json: { uris: [uri], position: Math.min(at, uris.length) } });
-    uris.splice(Math.min(at, uris.length), 0, uri);
-  }
-  const after = await read();
-  if (after.some((u, i) => u && after.indexOf(u) !== i)) throw new Error("Spotify still lists some songs more than once.");
-  trackCache.delete(id);
-  await forgetSongs([id]);
-  logStep(`removed repeats: ${plural(repeated.length, "song")}`);
 }
 
 function fillWhyTable(plan) {
@@ -2220,26 +2200,17 @@ function fillInfoBoxes(plan, keep) {
     const one = plan.others.length === 1;
     infoBox("rename", sentence(one ? "One of your own playlists will be renamed to free its name." : `${plan.others.length} of your own playlists will be renamed to free their names.`, detailsLink(list)), list);
   }
-  const repeats = (plan.repeats || []).filter((r) => r.id);
+  const repeats = plan.repeats || [];
   if (repeats.length) {
+    const list = document.createElement("ul");
+    for (const r of repeats) {
+      for (const x of r.songs.slice(0, 10)) list.appendChild(Object.assign(document.createElement("li"), { textContent: `${x.label}: ${x.times} times${repeats.length > 1 ? ` in “${r.name}”` : ""}` }));
+      if (r.songs.length > 10) list.appendChild(Object.assign(document.createElement("li"), { textContent: `and ${r.songs.length - 10} more${repeats.length > 1 ? ` in “${r.name}”` : ""}` }));
+    }
     const text = repeats.length === 1
-      ? `“${repeats[0].name}” lists ${plural(repeats[0].songs, "song")} more than once. Each is used once.`
-      : `${repeats.length} playlists list songs more than once (${repeats.map((r) => `“${r.name}”`).join(", ")}). Each song is used once.`;
-    const fix = linkButton("Fix this for me in Spotify", async () => {
-      fix.disabled = true;
-      fix.textContent = "Fixing…";
-      try {
-        for (const r of repeats) await removeRepeats(r.id);
-        plan.repeats = [];
-        line.textContent = repeats.length === 1 ? `Fixed: “${repeats[0].name}” now lists each song once.` : "Fixed: each of those playlists now lists each song once.";
-        line.className = "bd-done";
-      } catch (err) {
-        recordError(cleanError(err));
-        line.textContent = `Couldn’t fix it: ${cleanError(err).replace(/\.?$/, ".")} The build is not affected.`;
-      }
-    });
-    const line = sentence(text, fix);
-    infoBox("copy", line);
+      ? `“${repeats[0].name}” lists ${plural(repeats[0].songs.length, "song")} more than once. Each is used once.`
+      : `${repeats.length} playlists list songs more than once. Each song is used once.`;
+    infoBox("copy", sentence(text, detailsLink(list)), list);
   }
   const suspects = plan.suspects || [];
   if (suspects.length) {
