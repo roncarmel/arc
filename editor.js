@@ -748,9 +748,11 @@ function tabHeld() {
 }
 
 function renameTab(f) {
-  const input = feEl("input", { type: "text", id: "feName", class: "fe-tab-input", value: f.title, autocomplete: "off", "aria-label": "Name of recipe", enterkeyhint: "done" });
+  const input = feEl("input", { type: "text", id: "feName", class: "fe-tab-input", value: f.title, size: 1, autocomplete: "off", "aria-label": "Name of recipe", enterkeyhint: "done" });
   input.value = f.title;
-  const fit = () => { input.style.width = Math.max(6, input.value.length + 1) + "ch"; };
+  // the field is as wide as the name in it, growing and shrinking as it is typed: a hidden copy of the name beside it sets the width
+  const sizer = feEl("span", { class: "fe-tab-sizer", "aria-hidden": "true" });
+  const fit = () => { sizer.textContent = input.value; };
   fit();
   input.addEventListener("input", () => {
     const cleaned = cleanTitle(input.value);
@@ -765,7 +767,7 @@ function renameTab(f) {
     else if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); finishRename(true); }
   });
   input.addEventListener("blur", () => { if (editor.renaming === f.id) finishRename(false); });
-  return feEl("div", { class: "fe-tab fe-tab-editing", "aria-pressed": "true", "data-id": f.id }, input);
+  return feEl("div", { class: "fe-tab fe-tab-editing", "aria-pressed": "true", "data-id": f.id }, feEl("span", { class: "fe-tab-fit" }, sizer, input));
 }
 
 function startRename() {
