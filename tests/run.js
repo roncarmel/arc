@@ -2,7 +2,7 @@ const { JSDOM } = require("jsdom");
 const { execFileSync } = require("child_process");
 // Run only some areas: node run.js --only=donate|tabs   (matches part of an area's name; --list shows the names)
 const ONLY = (process.argv.find((a) => a.startsWith("--only=")) || "").slice(7).toLowerCase().split("|").filter(Boolean);
-const SECTION_NAMES = ["build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version icon", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "marker colors", "marker hugs corners", "popups close only", "narrow more button", "the silence card", "privacy: why the counts", "build button centered in minimalist mode", "no double-tap zoom", "backup link in step 2", "hiding the donate button", "spotify premium", "step 3 order and text", "the build icon", "python status at the bottom", "hover feedback on buttons", "questions and feedback", "settings below the segments, pink outline", "the tagline", "disconnect below the status line on phones", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'the Donate panel', 'dimming, fading, and Donate in the Create popup', 'tabs that scroll sideways', 'Donate only after a success', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify'];
+const SECTION_NAMES = ["sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version icon", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "marker colors", "marker hugs corners", "popups close only", "narrow more button", "the silence card", "privacy: why the counts", "build button centered in minimalist mode", "no double-tap zoom", "backup link in step 2", "hiding the donate button", "spotify premium", "step 3 order and text", "the build icon", "python status at the bottom", "hover feedback on buttons", "questions and feedback", "settings below the segments, pink outline", "the tagline", "disconnect below the status line on phones", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'the Donate panel', 'dimming, fading, and Donate in the Create popup', 'tabs that scroll sideways', 'Donate only after a success', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify'];
 // areas that need another area's setup to have run first
 const NEEDS = {
   "the page's styles for tags and phones": ["silences, dragging and removing"],
@@ -142,9 +142,21 @@ function makeFetch(options = {}) {
       if (options.tokenDelayMs) await new Promise((r) => setTimeout(r, options.tokenDelayMs));
       const body = String(init.body);
       options.tokenBody = body;
-      return json({ access_token: "tok123", expires_in: 3600, scope: SCOPE_ALL });
+      (options.tokenBodies = options.tokenBodies || []).push(body);
+      // renewing a sign-in: refreshFails says how Spotify refuses ("refused" is a 400, "network" no answer); a renewal gives a new refresh token and leaves out the scope
+      if (/grant_type=refresh_token/.test(body)) {
+        if (options.refreshFails === "network") throw new TypeError("Failed to fetch");
+        if (options.refreshFails) return json({ error: "invalid_grant", error_description: "Refresh token revoked" }, 400);
+        options.renewals = (options.renewals || 0) + 1;
+        return json({ access_token: "renewed" + options.renewals, expires_in: 3600, refresh_token: "ref-" + (options.renewals + 1) });
+      }
+      return json({ access_token: "tok123", expires_in: 3600, scope: SCOPE_ALL, refresh_token: "ref-1" });
     }
     if (url.endsWith("/engine.py")) return { ok: true, text: async () => fs.readFileSync(ROOT + "engine.py", "utf8") };
+    if (url.endsWith("/v1/me") && options.expireOnce && !options.expired) {   // the sign-in runs out: the first request is refused once
+      options.expired = true;
+      return { ok: false, status: 401, headers: { get: () => null }, json: async () => ({}), text: async () => "" };
+    }
     if (url.endsWith("/v1/me")) {
       if (options.meDelay) await new Promise((r) => setTimeout(r, options.meDelay));
       if (options.meNetworkFail) throw new TypeError("Failed to fetch");
@@ -778,9 +790,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-02g" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-02h" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-02g/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-02h/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -2606,7 +2618,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("it says the app never sees the Spotify password, what it asks Spotify to allow, and that existing playlists are only read", /never sees your Spotify password/.test(pv_text) && /read your playlists, create playlists, remove playlists, and set their cover images/.test(pv_text) && /Your existing playlists are only read, never changed/.test(pv_text) && /anyone with a playlist's link can still open it/.test(pv_text));
   check("it says a problem report goes only to the developer, only if sent, and lists what is attached and what never is", /sent only if you choose to send it, and it goes only to me, the developer of this app/.test(pv_text) && /app version, browser, window size, last error, and recent steps/.test(pv_text) && /Your sign-in, Client ID, playlist names, and song titles are never included/.test(pv_text));
   check("it describes the counts honestly: GoatCounter, no cookies, what is recorded, the four actions, and what it never receives", /GoatCounter/.test(pv_text) && /uses no cookies/.test(pv_text) && /browser, screen size, country, and the site you came from/.test(pv_text) && /first time a browser connects to Spotify, how many playlists get created, when Support me is opened, and the kind of connection problem/.test(pv_text) && /never receives playlist names, recipes, song titles, or your Client ID/.test(pv_text));
-  check("it says what is kept in the browser and what Disconnect and Reset app on this device remove", /Your Client ID, your recipes, your color choice, and a copy of the songs from your playlists are saved in this browser/.test(pv_text) && /Disconnect removes your Spotify sign-in and the saved songs/.test(pv_text) && /Reset app on this device, in More options, removes everything/.test(pv_text));
+  check("it says what is kept in the browser and what Disconnect and Reset app on this device remove", /Your Client ID, your Spotify sign-in, your recipes, your color choice, and a copy of the songs from your playlists are saved in this browser/.test(pv_text) && /Disconnect removes your Spotify sign-in and the saved songs/.test(pv_text) && /Reset app on this device, in More options, removes everything/.test(pv_text));
   check("About links to it, and the setup and welcome pages do not, since they leave Privacy out", pv_w.document.querySelectorAll("#about a.privacy-link").length === 1 && pv_w.document.querySelectorAll("#loginSection a.privacy-link").length === 0 && pv_w.document.querySelectorAll("#welcomePage a.privacy-link").length === 0 && /html\.page-welcome footer, /.test(pv_html) && Array.from(pv_w.document.querySelectorAll("a.privacy-link")).every((a) => a.getAttribute("href") === "#privacySection"));
   var pv_click2 = new pv_w.MouseEvent("click", { bubbles: true, cancelable: true });
   pv_w.document.querySelector("#about a.privacy-link").dispatchEvent(pv_click2);
@@ -2798,7 +2810,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-02g", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-02h", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4527,7 +4539,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-02g"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-02h"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -4569,6 +4581,48 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the page's own copy is fetched without its query or hash, so coming back from Spotify's sign-in is not repeated", /pageStart\.reload = function \(\) \{ location\.replace\(location\.origin \+ location\.pathname\); \}/.test(sr_html) && /var own = location\.origin \+ location\.pathname;/.test(sr_html));
   } catch (err) { areaCrashed("startup refresh", err); } }
 
+  if (want("sign-in renewal")) { try {
+  // ================================================================ the sign-in lasts between visits
+  var sr_o = {};
+  var sr_w = await boot({ url: "http://127.0.0.1:8000/?code=abc&state=st1", session: { pkceState: "st1", pkceVerifier: "v" }, local: { clientId: "cid-1", formats: MINI }, fetchOptions: sr_o });
+  await waitFor(() => sr_w.eval("connection") === "ready", 10000);
+  var sr_saved = JSON.parse(sr_w.localStorage.getItem("spotifyRefresh") || "null");
+  check("signing in keeps the refresh token in this browser, with the Client ID it belongs to and the permissions", !!sr_saved && sr_saved.token === "ref-1" && sr_saved.clientId === "cid-1" && sr_saved.scope === SCOPE_ALL, JSON.stringify(sr_saved));
+  var sr_o2 = {};
+  var sr_w2 = await boot({ url: "http://127.0.0.1:8000/", session: {}, local: { clientId: "cid-1", connectedBefore: "1", formats: MINI, spotifyRefresh: JSON.stringify({ token: "ref-1", scope: SCOPE_ALL, clientId: "cid-1" }) }, fetchOptions: sr_o2 });
+  await waitFor(() => sr_w2.eval("connection") === "ready", 10000);
+  check("coming back with no sign-in in the tab, it is renewed in the background and the app connects, without going to Spotify's page", sr_w2.eval("connection") === "ready" && sr_o2.renewals === 1 && /grant_type=refresh_token&refresh_token=ref-1&client_id=cid-1/.test(sr_o2.tokenBodies.join(" ")) && !/accounts\.spotify\.com\/authorize/.test(sr_w2.location.href), JSON.stringify(sr_o2.tokenBodies));
+  check("the renewed sign-in keeps its permissions, and the new refresh token replaces the old", JSON.parse(sr_w2.sessionStorage.getItem("token")).scope === SCOPE_ALL && JSON.parse(sr_w2.localStorage.getItem("spotifyRefresh")).token === "ref-2");
+  var sr_o3 = { expireOnce: true };
+  var sr_w3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { clientId: "cid-1", connectedBefore: "1", formats: MINI, spotifyRefresh: JSON.stringify({ token: "ref-1", scope: SCOPE_ALL, clientId: "cid-1" }) }, fetchOptions: sr_o3 });
+  await waitFor(() => sr_w3.eval("connection") !== "connecting" && sr_w3.eval("connection") !== "none", 10000);
+  check("a sign-in that runs out while the page is open is renewed, and the request goes through", sr_w3.eval("connection") === "ready" && sr_o3.renewals === 1 && JSON.parse(sr_w3.sessionStorage.getItem("token")).value === "renewed1", sr_w3.eval("connection"));
+  var sr_o4 = { refreshFails: "refused" };
+  var sr_w4 = await boot({ url: "http://127.0.0.1:8000/", session: {}, local: { clientId: "cid-1", connectedBefore: "1", formats: MINI, spotifyRefresh: JSON.stringify({ token: "ref-1", scope: SCOPE_ALL, clientId: "cid-1" }) }, fetchOptions: sr_o4 });
+  await new Promise((r) => setTimeout(r, 400));
+  check("when Spotify refuses the renewal, the refresh token is forgotten and the app is not connected", sr_w4.eval("connection") !== "ready" && sr_w4.localStorage.getItem("spotifyRefresh") === null && !sr_w4.sessionStorage.getItem("token"));
+  var sr_o5 = { refreshFails: "network" };
+  var sr_w5 = await boot({ url: "http://127.0.0.1:8000/", session: {}, local: { clientId: "cid-1", connectedBefore: "1", formats: MINI, spotifyRefresh: JSON.stringify({ token: "ref-1", scope: SCOPE_ALL, clientId: "cid-1" }) }, fetchOptions: sr_o5 });
+  await new Promise((r) => setTimeout(r, 400));
+  check("with no answer, the refresh token is kept for later", sr_w5.eval("connection") !== "ready" && sr_w5.localStorage.getItem("spotifyRefresh") !== null);
+  var sr_w6 = await boot({ url: "http://127.0.0.1:8000/", session: {}, local: { clientId: "other-id", connectedBefore: "1", formats: MINI, spotifyRefresh: JSON.stringify({ token: "ref-1", scope: SCOPE_ALL, clientId: "cid-1" }) }, fetchOptions: {} });
+  await new Promise((r) => setTimeout(r, 300));
+  check("a refresh token from another Client ID is not used", sr_w6.eval("connection") !== "ready");
+  var sr_screen = (w) => !w.document.getElementById("reconnectScreen").hidden;
+  check("when the renewal is refused, the app dims behind Reconnect to Spotify, and nothing behind it can be reached", sr_screen(sr_w4) && sr_w4.document.querySelector("main").inert === true && /Spotify needs you to sign in again\./.test(sr_w4.document.getElementById("reconnectScreen").textContent) && /Reconnect to Spotify/.test(sr_w4.document.getElementById("reconnectButton").textContent) && sr_w4.document.activeElement.id !== "reconnectButton");   // no focus ring around the button on its own
+  check("a connected app, and one renewed in the background, show no reconnect screen", !sr_screen(sr_w2) && !sr_screen(sr_w3) && sr_w2.document.querySelector("main").inert !== true);
+  sr_w4.document.getElementById("reconnectButton").click();
+  await new Promise((r) => setTimeout(r, 200));
+  check("Reconnect to Spotify starts the usual sign-in", !!sr_w4.sessionStorage.getItem("pkceState") && !!sr_w4.sessionStorage.getItem("pkceVerifier"));
+  var sr_w7 = await boot({ url: "http://127.0.0.1:8000/", session: {}, local: { clientId: "cid-1", formats: MINI }, fetchOptions: {} });
+  await new Promise((r) => setTimeout(r, 300));
+  check("the welcome and setup pages never show the reconnect screen", !sr_screen(sr_w7));
+  var sr_w8 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { clientId: "cid-1", connectedBefore: "1", formats: MINI }, fetchOptions: { premiumRequired: true } });
+  await new Promise((r) => setTimeout(r, 600));
+  check("a problem signing in again cannot fix (here Premium) shows no reconnect screen", sr_w8.eval("connection") === "problem" && !sr_screen(sr_w8), sr_w8.eval("connection"));
+  check("Disconnect forgets the refresh token too", /async function disconnect\(\) \{\s*sessionStorage\.removeItem\("token"\);\s*keepRefresh\(null\);/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("Privacy says the sign-in is saved in this browser, and why", /Your Client ID, your Spotify sign-in, your recipes, your color choice, and a copy of the songs from your playlists are saved in this browser, and nowhere else\. The saved sign-in lets this app reconnect to Spotify by itself when you come back\./.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  } catch (err) { areaCrashed("sign-in renewal", err); } }
   if (want("build popup")) { try {
   // The build popup: steps along the top, the plan as a list with "Why N?", and a build that stops with a plain message when something goes wrong.
   // "ran" makes 2 playlists: "💗 spacious + gentle" (about 520 min of songs) runs out first, at 200 min per playlist. Each playlist takes 6 requests to add its songs.

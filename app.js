@@ -16,7 +16,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-02g";
+const APP_VERSION = "2026-11-02h";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1216,6 +1216,26 @@ function updateButtonsNow() {
     $("spotifyNote").textContent = signingIn ? signInNote : connection === "connecting" ? "Connecting to Spotify. On a slow connection this can take a few seconds." : signInNote;
     $("spotifyNote").hidden = false;
   }
+  refreshReconnectScreen();
+}
+
+// On the app page with no working sign-in (it ran out and could not be renewed, or Disconnect), nothing that needs Spotify works, so the app dims behind
+// one button that goes through Spotify's sign-in again. A network problem is not this: the page's own Try again is for that.
+function refreshReconnectScreen() {
+  const screen = $("reconnectScreen");
+  if (!screen) return;
+  const show = startupDone && pageName() === "app" && !!localStorage.getItem("clientId")
+    && (connection === "none" || (connection === "problem" && connectionKind === "reconnect"));
+  screen.hidden = !show;
+  const main = document.querySelector("main");
+  if (main) main.inert = show;
+  if (!show) return;
+  const button = $("reconnectButton");
+  button.disabled = signingIn;
+  setLabel(button, signingIn ? "Connecting\u2026" : "Reconnect to Spotify");
+  const problem = $("loginMessage").className === "error" ? $("loginMessage").textContent : "";
+  $("reconnectNote").textContent = problem;
+  $("reconnectNote").hidden = !problem;
 }
 
 function connectionAction() {
@@ -1598,17 +1618,68 @@ async function finishLoginIfReturning() {
     offerReport("loginReportHint", "Spotify refused the sign-in: " + (data.error || response.status));
     return;
   }
-  sessionStorage.setItem("token", JSON.stringify({
-    value: data.access_token,
-    expires: Date.now() + data.expires_in * 1000,
-    scope: data.scope || "",
-  }));
+  keepToken(data);
+}
+
+// The sign-in lasts between visits. Spotify's sign-in also gives a refresh token, kept in this browser with the Client ID it belongs to, so a sign-in that
+// has run out (after an hour, or when the tab was closed) is renewed in the background, without leaving the page. Disconnect and Reset remove it. When
+// Spotify refuses it (access removed in Spotify, or too old), the person reconnects.
+const REFRESH_KEY = "spotifyRefresh";
+function storedRefresh() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(REFRESH_KEY) || "null");
+    return saved && saved.token && saved.clientId === (localStorage.getItem("clientId") || "") ? saved : null;
+  } catch (err) { return null; }
+}
+function keepRefresh(value, scope) {
+  try {
+    if (value) localStorage.setItem(REFRESH_KEY, JSON.stringify({ token: value, scope: scope || "", clientId: localStorage.getItem("clientId") || "" }));
+    else localStorage.removeItem(REFRESH_KEY);
+  } catch (err) { /* then the next visit asks to reconnect */ }
+}
+function keepToken(data) {
+  const scope = data.scope || (storedRefresh() || {}).scope || "";   // a renewal may leave out the permissions, which stay as they were
+  sessionStorage.setItem("token", JSON.stringify({ value: data.access_token, expires: Date.now() + data.expires_in * 1000, scope }));
+  if (data.refresh_token) keepRefresh(data.refresh_token, scope);   // Spotify may send a new one each time; the old one then stops working
+}
+let renewing = null;
+function renewSignIn() {
+  // Gives the new access token, or null. One renewal at a time: requests that find the sign-in expired together wait for the same one.
+  const saved = storedRefresh();
+  if (!saved) return Promise.resolve(null);
+  if (!renewing) renewing = (async () => {
+    try {
+      const response = await fetchWithAnswerLimit("https://accounts.spotify.com/api/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: saved.token, client_id: localStorage.getItem("clientId") || "" }),
+      });
+      let data = {};
+      try { data = await response.json(); } catch (err) { /* no body */ }
+      if (!response.ok || !data.access_token) {
+        if (response.status === 400 || response.status === 401) keepRefresh(null);   // refused for good: reconnecting is the only way
+        logStep("sign-in renewal refused");
+        return null;
+      }
+      keepToken(data);
+      const renewed = loadStoredToken();
+      logStep(renewed ? "sign-in renewed" : "sign-in renewed without every permission");
+      return renewed;
+    } catch (err) {
+      logStep("sign-in renewal: no answer");   // the refresh token is kept, for when the connection is back
+      return null;
+    } finally {
+      renewing = null;
+    }
+  })();
+  return renewing;
 }
 
 function setLoginMessage(text, info = false) {
   // The message shows next to the Connect button. Something that went wrong is in the error color; something that is just happening (Spotify is opening) is not.
   $("loginMessage").textContent = text;
   $("loginMessage").className = info ? "muted" : "error";
+  refreshReconnectScreen();
 }
 
 function revealLoginProblem() {
@@ -1640,6 +1711,7 @@ async function confirmDisconnect() {
 
 async function disconnect() {
   sessionStorage.removeItem("token");
+  keepRefresh(null);
   await Promise.race([forgetAllSongs(), new Promise((r) => setTimeout(r, 1500))]);   // the songs kept from this account go with the sign-in
   location.reload();
 }
@@ -1704,6 +1776,7 @@ async function spotifyRequest(method, path, { params, json, body, contentType, n
   const what = `${method} ${path.split("?")[0]}`;
   let waitedMs = 0;
   let lastWait = null;   // the last wait Spotify gave that could be read
+  let renewedHere = false;
   for (let attempt = 0; attempt < 5; attempt++) {
     let response;
     try {
@@ -1730,6 +1803,11 @@ async function spotifyRequest(method, path, { params, json, body, contentType, n
       continue;
     }
     if (response.status === 401) {
+      if (!renewedHere) {   // the sign-in ran out: renew it in the background and send this once more
+        renewedHere = true;
+        const renewed = await renewSignIn();
+        if (renewed) { token = renewed; attempt -= 1; continue; }
+      }
       const message = "Your Spotify sign-in expired. Click Connect again.";
       if (connection === "ready") setConnection("problem", message, "reconnect");   // from here on nothing that needs Spotify is offered
       throw new Error(message);
@@ -2831,6 +2909,7 @@ async function main() {
   on("disconnect", "click", confirmDisconnect);
   on("connectionRetry", "click", connectToSpotify);
   on("connectionReconnect", "click", startLogin);
+  on("reconnectButton", "click", startLogin);
   on("create", "click", () => startCreate());
   if (FEEDBACK_FORM_URL) {
     for (const id of ["privacyFeedback", "privacyFeedbackWho"]) $(id).hidden = false;   // the form itself opens from the app menu
@@ -2882,6 +2961,11 @@ async function main() {
   }
   setSigningIn(false);   // the sign-in is over, one way or the other: from here the connection itself is what the buttons follow
   token = loadStoredToken();
+  if (!token && !needsReconnect && storedRefresh()) {
+    setConnection("connecting");
+    token = await renewSignIn();   // a sign-in from an earlier visit, renewed without leaving the page
+    if (!token) setConnection("none");
+  }
   if (!token) await connectingStepFailed("Signin");   // the sign-in did not work: the setup page shows what went wrong
   connectingStep("Signin", "done");
   if (!token && needsReconnect) {
@@ -2890,6 +2974,7 @@ async function main() {
   }
 
   startupDone = true;
+  refreshReconnectScreen();
   showStartupProblems();
   if (!startupProblems.length) setTimeout(checkForNewVersion, 5000);   // a few seconds after a clean start, off the way of everything else
   showPage();   // signed in, or connected before: the app
