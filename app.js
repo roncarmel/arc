@@ -12,11 +12,12 @@ const SCOPES = [
 const REQUIRED_SCOPES = ["playlist-modify-private", "playlist-modify-public"];   // cover art is optional, so an older sign-in without it keeps working
 // Not called API: Pyodide 0.29 treats a global named API as its own and fails to start (it falls back to an older version).
 const SPOTIFY_API = "https://api.spotify.com/v1";
-const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tightened some limits in 2026)
+const ADD_CHUNK = 100;     // songs added per request (Spotify's documented maximum; fewer requests means fewer rate limits)
+const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-02n";
+const APP_VERSION = "2026-11-02r";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1275,6 +1276,7 @@ async function connectToSpotify() {
     localStorage.setItem("connectedBefore", "1");   // from now on minimalist mode is available
     setConnection("ready");
     logStep(`connected, ${plural(playlists.length, "playlist")} found`);
+    offerLimitRecord();
     if (!localStorage.getItem("counted") && countEvent("first-connection")) localStorage.setItem("counted", "1");   // once per browser
   } catch (err) {
     const message = String(err.message || err);
@@ -1719,6 +1721,7 @@ async function disconnect() {
 
 // ---------------------------------------------------------------- talking to Spotify
 const RETRY_BUDGET_MS = 30000;   // the most the app will spend waiting out short rate limits in one request
+let addChunk = ADD_CHUNK;   // lowered for the visit if Spotify refuses that many
 let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---------------------------------------------------------------- anonymous counts (see Privacy)
@@ -1752,6 +1755,157 @@ function rateLimitError(wait, reason) {
   error.retryAfter = wait;
   error.reason = reason;
   return error;
+}
+
+// ---------------------------------------------------------------- a record of Spotify's limits
+// Spotify does not publish its limits, and a page cannot read how long Spotify asks it to wait (the Retry-After header is not exposed to browsers). So the app keeps
+// its own record, in this browser only: how many requests went out each minute (8 days kept), and each time Spotify refused, what had been sent before it, the
+// last time it still refused and the first time it answered again. Nothing here leaves the browser, except that the app's owner is offered a copy (OWNER_CLIENT_HASHES).
+const CALLS_KEY = "spotifyCalls";      // {minute: {kind: count}}, minute = Date.now() / 60000
+const LIMITS_KEY = "spotifyLimits";    // [{at, what, kind, reason, sent30s, sent10m, sent1h, sent24h, refusedAgain, lastRefusedAt, clearedAt}] or [{at, note}]
+const CALLS_KEPT_MIN = 8 * 24 * 60;
+const recentCalls = [];                // times of the requests of the last minute, for the 30-second count
+
+function readRecord(key, empty) {
+  try { const v = JSON.parse(localStorage.getItem(key) || "null"); return v && typeof v === "object" ? v : empty; } catch (err) { return empty; }
+}
+function writeRecord(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (err) { /* private browsing, or full */ }
+}
+
+function callKind(method, path) {
+  const p = path.replace(SPOTIFY_API, "").split("?")[0];
+  if (/\/images$/.test(p)) return "cover";
+  if (/\/items$/.test(p)) return method === "GET" ? "read" : "add";
+  if (method === "POST" && p === "/me/playlists") return "create";
+  if (method === "DELETE") return "remove";
+  if (method === "PUT") return "change";
+  return "read";
+}
+
+function countCall(kind) {
+  const now = Date.now();
+  recentCalls.push(now);
+  while (recentCalls.length && recentCalls[0] < now - 60000) recentCalls.shift();
+  const calls = readRecord(CALLS_KEY, {});
+  const minute = Math.floor(now / 60000);
+  const slot = calls[minute] || (calls[minute] = {});
+  slot[kind] = (slot[kind] || 0) + 1;
+  for (const m of Object.keys(calls)) if (Number(m) < minute - CALLS_KEPT_MIN) delete calls[m];
+  writeRecord(CALLS_KEY, calls);
+}
+
+function callsSince(ms) {
+  const from = Math.floor((Date.now() - ms) / 60000);
+  let n = 0;
+  for (const [m, kinds] of Object.entries(readRecord(CALLS_KEY, {}))) if (Number(m) >= from) for (const c of Object.values(kinds)) n += c;
+  return n;
+}
+
+function recordRefusal(method, path, reason) {
+  const limits = readRecord(LIMITS_KEY, []);
+  const open = limits.length && !limits[limits.length - 1].note && !limits[limits.length - 1].clearedAt ? limits[limits.length - 1] : null;
+  const now = Date.now();
+  if (open) { open.refusedAgain = (open.refusedAgain || 0) + 1; open.lastRefusedAt = now; }
+  else {
+    limits.push({
+      at: now, what: `${method} ${path.replace(SPOTIFY_API, "").split("?")[0].replace(/\/[A-Za-z0-9]{22}(?=\/|$)/g, "/{id}")}`, kind: callKind(method, path), reason: reason || "",
+      sent30s: recentCalls.filter((t) => t >= now - 30000).length, sent10m: callsSince(600000), sent1h: callsSince(3600000), sent24h: callsSince(86400000),
+      refusedAgain: 0, lastRefusedAt: now, clearedAt: null,
+    });
+  }
+  writeRecord(LIMITS_KEY, limits.slice(-100));
+}
+
+function recordAnswered() {
+  const limits = readRecord(LIMITS_KEY, null);
+  const last = limits && limits.length ? limits[limits.length - 1] : null;
+  if (!last || last.note || last.clearedAt) return;
+  last.clearedAt = Date.now();
+  writeRecord(LIMITS_KEY, limits);
+}
+
+function recordNote(note) {
+  const limits = readRecord(LIMITS_KEY, []);
+  limits.push({ at: Date.now(), note });
+  writeRecord(LIMITS_KEY, limits.slice(-100));
+}
+
+// Spotify's wait, through the relay. A page cannot read Retry-After, so after a rate limit with no readable wait the app sends one GET /me through
+// a small Cloudflare Worker (cloudflare/retry-after.js) that can. It carries only the sign-in, and answers with only the status, the wait and the reason.
+// Requests that are refused together share one ask, and an answer is reused for 30 seconds (counted down).
+const WAIT_RELAY_URL = "https://spotify-wait.roncarmel.workers.dev";
+let waitRelayMs = 5000;
+const waitAsked = { at: 0, result: null, pending: null };
+async function askSpotifyWait() {
+  if (!WAIT_RELAY_URL) return null;
+  if (waitAsked.pending) return waitAsked.pending;
+  if (waitAsked.at && Date.now() - waitAsked.at < 30000) {   // no answer counts too: the relay is not asked again for 30 seconds
+    const r = waitAsked.result;
+    return r && r.wait ? { ...r, wait: Math.max(1, r.wait - Math.floor((Date.now() - waitAsked.at) / 1000)) } : r;
+  }
+  waitAsked.pending = (async () => {
+    const stop = new AbortController();
+    const timer = setTimeout(() => stop.abort(), waitRelayMs);
+    let result = null;
+    try {
+      countCall("relay");
+      const response = await fetch(WAIT_RELAY_URL, { headers: { Authorization: "Bearer " + token }, signal: stop.signal });
+      if (response.ok) { const data = await response.json(); result = { status: data.status, wait: Number(data.retryAfter) > 0 ? Number(data.retryAfter) : null, reason: data.reason || "" }; }
+    } catch (err) { /* the relay is down or slow: the message says no time, as before */ }
+    finally { clearTimeout(timer); }
+    logStep(result ? `wait asked: ${result.status}${result.wait ? ", " + result.wait + " s" : ""}` : "wait asked: no answer");
+    const limits = readRecord(LIMITS_KEY, []);
+    const open = limits.length && !limits[limits.length - 1].note && !limits[limits.length - 1].relay ? limits[limits.length - 1] : null;
+    if (open) { open.relay = result ? { at: Date.now(), status: result.status, retryAfter: result.wait, reason: result.reason } : { at: Date.now(), status: "no answer" }; writeRecord(LIMITS_KEY, limits); }
+    waitAsked.at = Date.now();
+    waitAsked.result = result;
+    waitAsked.pending = null;
+    return result;
+  })();
+  return waitAsked.pending;
+}
+
+// The owner's Client ID, as a SHA-256 hash so it is not in the page's source. Only there is the record offered for copying.
+const OWNER_CLIENT_HASHES = [];
+let isOwnerHere = false;
+async function checkOwner() {
+  try {
+    const id = (localStorage.getItem("clientId") || "").trim();
+    if (!id || !OWNER_CLIENT_HASHES.length || !(window.crypto && crypto.subtle)) return false;
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(id)));
+    isOwnerHere = OWNER_CLIENT_HASHES.includes(Array.from(digest, (b) => b.toString(16).padStart(2, "0")).join(""));
+  } catch (err) { isOwnerHere = false; }
+  return isOwnerHere;
+}
+
+function limitRecordText() {
+  return JSON.stringify({
+    app: APP_VERSION, copiedAt: new Date().toISOString(), timezoneOffsetMin: new Date().getTimezoneOffset(),
+    previousCopy: Number(localStorage.getItem("spotifyRecordCopiedAt")) || null,
+    limits: readRecord(LIMITS_KEY, []), callsPerMinute: readRecord(CALLS_KEY, {}),
+  });
+}
+
+async function copyLimitRecord() {
+  try { await navigator.clipboard.writeText(limitRecordText()); }
+  catch (err) { showNotices([{ text: "The record could not be copied.", transient: true }]); return; }
+  try { localStorage.setItem("spotifyRecordCopiedAt", String(Date.now())); } catch (err) { /* private browsing */ }
+  if (typeof clearHeldNotice === "function") clearHeldNotice();
+  showNotices([{ text: "Spotify record copied. Paste it into the chat with Claude.", transient: true }]);
+}
+
+// For the owner: once connected, a held message offers the record when Spotify has refused since the last copy, or a week has passed with requests sent.
+async function offerLimitRecord() {
+  if (!(await checkOwner())) return;
+  if (typeof renderAppMenu === "function") renderAppMenu();
+  const copiedAt = Number(localStorage.getItem("spotifyRecordCopiedAt")) || 0;
+  const refusals = readRecord(LIMITS_KEY, []).filter((e) => !e.note && e.at > copiedAt).length;
+  const weekOld = Date.now() - copiedAt > 7 * 86400000 && Object.keys(readRecord(CALLS_KEY, {})).some((m) => Number(m) * 60000 > copiedAt);
+  if (!refusals && !weekOld) return;
+  if (typeof notices !== "undefined" && notices.held) return;   // a held message (a newer version) comes first
+  const text = refusals ? `Spotify refused requests ${refusals === 1 ? "once" : refusals + " times"} since the last copy of the record.` : "A week of Spotify request counts is ready to copy.";
+  showNotices([{ text, icon: "copy", hold: true, actions: [{ label: "Copy", run: () => copyLimitRecord() }] }]);
 }
 
 // A request to Spotify that gets no answer at all (a stalled connection) fails after this long, instead of waiting for the browser to give up.
@@ -1789,12 +1943,19 @@ async function spotifyRequest(method, path, { params, json, body, contentType, n
     } catch (err) {
       throw new Error(err.message === NO_ANSWER ? NO_ANSWER : "Could not reach Spotify. Check your internet connection and try again.");
     }
+    countCall(callKind(method, url));
     if (response.status === 429) {
       const header = Number(response.headers.get("Retry-After"));
-      const wait = header > 0 ? header : null;
-      if (wait) lastWait = wait;
+      let wait = header > 0 ? header : null;
       let reason = "";
       try { const data = JSON.parse(await response.text()); reason = (data && data.error && data.error.reason) || ""; } catch (err) { /* no body, or not JSON */ }
+      recordRefusal(method, url, reason);
+      // the browser hides Retry-After, so Spotify is asked through the relay (not for cover uploads, which have their own limit that /me does not show)
+      if (!wait && !noWait) {
+        const asked = await askSpotifyWait();
+        if (asked && asked.status === 429) { wait = asked.wait; if (!reason) reason = asked.reason; }
+      }
+      if (wait) lastWait = wait;
       // A quota limit, or a wait over a minute, is not worth sitting through: stop at once and say what is known.
       if (reason === "QUOTA_EXCEEDED" || (wait && wait > 60) || noWait) throw rateLimitError(wait || lastWait, reason);
       const pause = (wait || 2) * 1000 + 500;
@@ -1803,6 +1964,7 @@ async function spotifyRequest(method, path, { params, json, body, contentType, n
       waitedMs += pause;
       continue;
     }
+    recordAnswered();
     if (response.status === 401) {
       if (!renewedHere) {   // the sign-in ran out: renew it in the background and send this once more
         renewedHere = true;
@@ -2542,9 +2704,16 @@ async function createFromPlan(plan) {
         catch (err) { stillPublic.push(p.name); logStep("create: could not make a playlist private"); }
       }
       setRowState(row, "now", "adding songs");
-      for (let k = 0; k < p.uris.length; k += ADD_CHUNK) {
-        await spotifyRequest("POST", `/playlists/${made.id}/items`, { json: { uris: p.uris.slice(k, k + ADD_CHUNK) } });
-        setBarFill(row, Math.min(1, (k + ADD_CHUNK) / p.uris.length));
+      for (let k = 0; k < p.uris.length;) {
+        const n = addChunk;
+        try { await spotifyRequest("POST", `/playlists/${made.id}/items`, { json: { uris: p.uris.slice(k, k + n) } }); }
+        catch (err) {
+          // if Spotify turns out to take fewer songs at a time, the rest of the run asks with fewer (a refused request adds nothing)
+          if (n > ADD_CHUNK_SMALL && /returned 400/.test(err.message)) { addChunk = ADD_CHUNK_SMALL; logStep(`create: ${n} songs at a time refused`); recordNote(`${n} songs per add refused (400)`); continue; }
+          throw err;
+        }
+        k += n;
+        setBarFill(row, Math.min(1, k / p.uris.length));
       }
       if (cover && !coverBlocked) {   // the app's icon as the cover; a problem here never stops the playlists
         setRowState(row, "now", "adding the cover");   // an image upload, often the slowest step for a playlist
@@ -2934,6 +3103,7 @@ async function main() {
   if (FEEDBACK_FORM_URL) {
     for (const id of ["privacyFeedback", "privacyFeedbackWho"]) $(id).hidden = false;   // the form itself opens from the app menu
   }
+  $("privacyWaitRelay").hidden = !WAIT_RELAY_URL;   // Privacy says what the relay sees only once there is one
   for (const link of document.querySelectorAll(".privacy-link")) {
     link.addEventListener("click", (event) => {
       event.preventDefault();

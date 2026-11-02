@@ -476,6 +476,8 @@ function renderAppMenu() {
     infoItem("feReport", "reportBlock", "flag", "Report a problem"),
     infoItem("feTips", "tipsBlock", "info", "Tips & tricks"),
     infoItem("fePrivacy", "privacySection", "lock", "Privacy"),
+    // only on the owner's device: the app's own record of Spotify's limits, for the chat where it is studied
+    typeof isOwnerHere !== "undefined" && isOwnerHere ? feEl("button", { type: "button", class: "fe-item", id: "feCopyRecord", role: "menuitem", onClick: choose(() => copyLimitRecord()) }, feIcon("copy"), "Copy Spotify record") : null,
     feEl("div", { class: "fe-rule" }),
     feEl("div", { class: "fe-version", id: "feVersion", text: `App version ${typeof APP_VERSION === "undefined" ? "" : APP_VERSION}` })));
 }

@@ -7,7 +7,7 @@ A free, browser-only web app (playlists.roncarmel.com, GitHub Pages, no server) 
 - Each person makes their own Spotify app (a free Client ID, development mode) and pastes the Client ID in. Sign-in is Spotify's PKCE flow in the browser: no secret, no backend.
 - A **recipe** says which of the person's playlists to draw from, in what order, for how many minutes, with silence between segments. The app builds as many playlists from a recipe as the songs allow, each song used once.
 - Pyodide runs `engine.py` in the page (songs are picked there). Everything else is plain JavaScript in classic `<script>` files (no build step, no modules, shared global scope).
-- Anything the person types goes nowhere but their browser and their own Spotify account. Do not add servers, trackers, or anything that sends their data elsewhere (the only third parties are Spotify, the Pyodide CDN, a Ko-fi support panel, a GoatCounter page-view counter, and a Tally form for problem reports whose address carries scrubbed details).
+- Anything the person types goes nowhere but their browser and their own Spotify account. Do not add servers, trackers, or anything that sends their data elsewhere (the only third parties are Spotify, the Pyodide CDN, a Ko-fi support panel, a GoatCounter page-view counter, and a Tally form for problem reports whose address carries scrubbed details). The one exception is the wait relay: see "Spotify's limits" below.
 
 ## Files
 
@@ -19,6 +19,7 @@ A free, browser-only web app (playlists.roncarmel.com, GitHub Pages, no server) 
 | `formats.js` | Recipe text parse/serialize, the size limit, and `packFormat`/`unpackFormat` (a recipe packed into a Spotify description). |
 | `theme.js` | Color themes as CSS variables. |
 | `engine.py` | The playlist engine: `pick`, `build_one`, naming (`name_pattern`, `existing_matches`), silence tracks. |
+| `cloudflare/retry-after.js` | Ron's Cloudflare Worker `spotify-wait` at spotify-wait.roncarmel.workers.dev (deployed by pasting into the dashboard, Workers Logs off; tests start with no relay): sends one GET /v1/me with the person's sign-in and returns only the status, Retry-After and reason. |
 | `version.txt` | Just the version stamp, fetched by the page to see if it is stale. |
 | `backup-cover.jpg`, `playlist-cover.jpg`, `apple-touch-icon.png`, `ron.jpg`, `icons/` | Images. `ron.jpg` is Ron's face in the thank-you box after a build. `backup-cover.jpg` (cloud with a check) is the cover of the cloud-save playlists and the picture on the menu button while saving. |
 
@@ -47,6 +48,12 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 - After a clean start, and when the person returns to the tab after more than 10 minutes, the page fetches `version.txt`. A different stamp with nothing going on reloads once per new stamp (`versionTried`); otherwise a held message offers Reload. No timers.
 - The stamp (e.g. `2026-10-31d`) is in `version.txt`, `APP_VERSION` in `app.js`, five places in `index.html` (a check enforces it), and a few checks in `tests/run.js`. Scripts load as `app.js?v=STAMP`. `python3 bump_version.py` sets every one of them (`--check` says whether they agree); run it for every change that goes to the site.
 - Releasing: pushing to `main` publishes the site (GitHub Pages). Git uses HTTPS with the `gh` login at `~/.local/bin/gh`.
+
+**Spotify's limits**
+- Spotify does not publish its limits, and a page cannot read Retry-After (Spotify's CORS does not expose it). So the app keeps its own record in localStorage: requests per minute by kind (`spotifyCalls`, 8 days) and each refusal with the requests before it, the last refusal and when it cleared (`spotifyLimits`).
+- Songs are added 100 per request (Spotify's documented maximum; it was 10). If Spotify answers 400, the rest of the visit uses 10 and the record notes it.
+- After a rate limit with no readable wait, every user's page automatically asks the wait relay (`WAIT_RELAY_URL`, `askSpotifyWait`): one GET /me through Ron's worker, shared by requests refused together and reused for 30 s. Its wait goes into the usual message and the record. Not for cover uploads (their own limit). Disclosed in one Privacy paragraph (`privacyWaitRelay`); decided by Ron, 2026-11-02, as automatic for everyone.
+- Ron's device is known by a SHA-256 hash of his Client ID (`OWNER_CLIENT_HASHES`). There only: a held message offers to copy the record after a refusal or a week, and the menu has Copy Spotify record. Ron pastes the record into the chat for analysis.
 
 **Building**
 - A song is used once per playlist and once across the playlists made in one run, compared by ISRC (one recording, whatever release it is on), else Spotify ID (`song_id` in engine.py, `key` on each track; saved songs carry `v: SONGS_VERSION`). A song listed twice in one source counts once. A segment may come in up to 10% short; below that the plan says so instead of repeating songs.
