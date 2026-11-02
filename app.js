@@ -16,7 +16,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-02i";
+const APP_VERSION = "2026-11-02j";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2177,21 +2177,39 @@ function findRepeats(tracksByName) {
   return out;
 }
 
+function whyLength(minutes) {
+  // A length for the Why table, its units in grey: "8 hr 56 min" on a wide screen, "8 h 56 m" on a phone (CSS shows one of the two).
+  const out = document.createDocumentFragment();
+  for (const part of lengthText(minutes).split(/(\d+)/)) {
+    if (!part) continue;
+    if (/\d/.test(part)) { out.append(part); continue; }
+    const unit = part.trim(), unitBox = Object.assign(document.createElement("span"), { className: "bd-unit" });
+    unitBox.append(part.startsWith(" ") ? " " : "", Object.assign(document.createElement("span"), { className: "bd-wide", textContent: unit === "h" ? "hr" : "min" }),
+      Object.assign(document.createElement("span"), { className: "bd-narrow", textContent: unit === "h" ? "h" : "m" }), part.endsWith(" ") ? " " : "");
+    out.append(unitBox);
+  }
+  return out;
+}
+
 function fillWhyTable(plan) {
-  // "Why 4?": for each source playlist, what one playlist takes from it, what it has, and how many playlists that is enough for.
+  // "Why 4?": for each source playlist, what one playlist uses of it, its length, and how many playlists that is enough for.
   const box = $("planText");
   box.textContent = "";
   for (const b of plan.built) {
     if (plan.built.length > 1) box.appendChild(Object.assign(document.createElement("p"), { className: "bd-tablehead", textContent: `${formatLabel(b.key)}: ${plural(b.playlists.length, "playlist")}` }));
     const table = document.createElement("table");
-    table.innerHTML = "<thead><tr><th>Playlist</th><th>Each</th><th>Has</th><th>Enough for</th></tr></thead>";
+    table.innerHTML = "<thead><tr><th>Each playlist uses</th><th>Length</th><th>Enough for</th></tr></thead>";
     const body = document.createElement("tbody");
     const lowest = Math.min(...b.sources.map((r) => (r.enough == null ? Infinity : r.enough)));
     const limiting = b.ranOut ? b.ranOut.name : (b.sources.find((r) => r.enough === lowest) || {}).name;
     for (const r of b.sources) {
       const tr = document.createElement("tr");
       if (r.name === limiting) tr.className = "bd-limit";
-      for (const text of [r.name, lengthText(r.per), lengthText(r.has), r.enough == null ? "" : plural(r.enough, "playlist")]) tr.appendChild(Object.assign(document.createElement("td"), { textContent: text }));
+      const uses = document.createElement("td");
+      uses.append(whyLength(r.per), ` of ${r.name}`);
+      const length = document.createElement("td");
+      length.append(whyLength(r.has));
+      tr.append(uses, length, Object.assign(document.createElement("td"), { textContent: r.enough == null ? "" : plural(r.enough, "playlist") }));
       body.appendChild(tr);
     }
     table.appendChild(body);
