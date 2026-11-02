@@ -16,7 +16,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-02e";
+const APP_VERSION = "2026-11-02f";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2191,17 +2191,14 @@ function fillInfoBoxes(plan, keep) {
   // What else the build does or found, each in its own box: earlier playlists, the person's own playlists in the way, songs listed more than once, and songs in more than one recording.
   $("bdInfo").textContent = "";
   if (plan.marked.length) {
-    // Replacing is the usual thing, so the choice to keep them waits behind a link.
+    // Replacing is the usual thing, so the choice to keep them waits behind Details.
     const one = plan.marked.length === 1;
     const more = document.createElement("div");
     more.appendChild(Object.assign(document.createElement("p"), { textContent: `Replacing ${one ? "it" : "them"} is the usual choice, but you can keep the old ${one ? "one" : "ones"} if you like.` }));
     const label = document.createElement("label");
     label.append(keep, ` Keep ${one ? "it" : "them"}, renamed to “… (version ${nextVersionLetter(plan.marked)})”`);
     more.appendChild(label);
-    more.hidden = true;
-    more.classList.add("bd-info-more");
-    const ask = linkButton(one ? "Keep it?" : "Keep them?", () => { more.hidden = false; ask.remove(); });
-    infoBox("replace", sentence(`${plural(plan.marked.length, "earlier playlist")} from ${plan.many ? "these recipes" : "this recipe"} will be replaced.`, ask), more);
+    infoBox("replace", sentence(`${plural(plan.marked.length, "earlier playlist")} from ${plan.many ? "these recipes" : "this recipe"} will be replaced.`, detailsLink(more)), more);
   }
   if (plan.others.length) {
     const letter = nextVersionLetter(plan.others);
