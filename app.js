@@ -16,7 +16,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-02h";
+const APP_VERSION = "2026-11-02i";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1376,6 +1376,7 @@ const BD_ICON = {
   replace: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/></svg>',
   rename: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
   copy: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  shared: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/></svg>',
   music: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
   err: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="8.2" fill="var(--danger)"/><path d="M9 4.8v5" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="9" cy="12.9" r="1.1" fill="#fff"/></svg>',
 };
@@ -2183,7 +2184,7 @@ function fillWhyTable(plan) {
   for (const b of plan.built) {
     if (plan.built.length > 1) box.appendChild(Object.assign(document.createElement("p"), { className: "bd-tablehead", textContent: `${formatLabel(b.key)}: ${plural(b.playlists.length, "playlist")}` }));
     const table = document.createElement("table");
-    table.innerHTML = "<thead><tr><th>Playlist</th><th>Per playlist</th><th>Has</th><th>Enough for</th></tr></thead>";
+    table.innerHTML = "<thead><tr><th>Playlist</th><th>Each</th><th>Has</th><th>Enough for</th></tr></thead>";
     const body = document.createElement("tbody");
     const lowest = Math.min(...b.sources.map((r) => (r.enough == null ? Infinity : r.enough)));
     const limiting = b.ranOut ? b.ranOut.name : (b.sources.find((r) => r.enough === lowest) || {}).name;
@@ -2198,8 +2199,6 @@ function fillWhyTable(plan) {
     if (!b.ranOut) box.appendChild(Object.assign(document.createElement("p"), { className: "bd-note", textContent: `The number is set by “Most playlists per recipe” in More options (${b.playlists.length}).` }));
   }
   if (plan.built.some((b) => b.ranOut)) box.appendChild(Object.assign(document.createElement("p"), { className: "bd-note", textContent: "Each song is used once, so the playlist with the fewest minutes to spare determines the number of playlists the app builds." }));
-  const shared = Math.max(0, ...plan.built.map((b) => b.shared || 0));
-  if (shared) box.appendChild(Object.assign(document.createElement("p"), { className: "bd-note", textContent: `${plural(shared, "song")} ${shared === 1 ? "is" : "are"} in more than one of these playlists. Each is used once.` }));
 }
 
 function showPlanRows(plan) {
@@ -2266,7 +2265,7 @@ function songLink(where) {
 }
 
 function fillInfoBoxes(plan, keep) {
-  // What else the build does or found, each in its own box: earlier playlists, the person's own playlists in the way, songs listed more than once, and songs in more than one recording.
+  // What else the build does or found, each in its own box: earlier playlists, the person's own playlists in the way, songs listed more than once, songs in more than one source, and songs in more than one recording.
   $("bdInfo").textContent = "";
   if (plan.marked.length) {
     // Replacing is the usual thing, so the choice to keep them waits behind Details.
@@ -2302,6 +2301,8 @@ function fillInfoBoxes(plan, keep) {
       : `${repeats.length} playlists list songs more than once. Each song is used once.`;
     infoBox("copy", sentence(text, detailsLink(list)), list);
   }
+  const shared = Math.max(0, ...plan.built.map((b) => b.shared || 0));
+  if (shared) infoBox("shared", `${plural(shared, "song")} ${shared === 1 ? "is" : "are"} in more than one of these playlists. Each is used once.`);
   const suspects = plan.suspects || [];
   if (suspects.length) {
     const more = document.createElement("div");
