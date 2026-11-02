@@ -16,7 +16,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-02l";
+const APP_VERSION = "2026-11-02m";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2214,9 +2214,10 @@ function fillWhyTable(plan) {
     }
     table.appendChild(body);
     box.appendChild(table);
-    if (!b.ranOut) box.appendChild(Object.assign(document.createElement("p"), { className: "bd-note", textContent: `The number is set by “Most playlists per recipe” in More options (${b.playlists.length}).` }));
+    box.appendChild(Object.assign(document.createElement("p"), { className: "bd-note", textContent: b.ranOut
+      ? `${b.ranOut.name} has enough songs for ${plural(b.playlists.length, "playlist")} without repeating any song.`
+      : `The number is set by “Most playlists per recipe” in More options (${b.playlists.length}).` }));
   }
-  if (plan.built.some((b) => b.ranOut)) box.appendChild(Object.assign(document.createElement("p"), { className: "bd-note", textContent: "Each song is used once, so the playlist with the fewest minutes to spare determines the number of playlists the app builds." }));
 }
 
 function showPlanRows(plan) {
