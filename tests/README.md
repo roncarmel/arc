@@ -14,7 +14,7 @@ Python 3 is needed (standard library only). Use the quotes around `--only=` when
 ## How a check is written
 
 - An area is `if (want("area name")) { try { ... } catch (err) { areaCrashed("area name", err); } }`, and its name is in `SECTION_NAMES` at the top. Checks are `check("what is true", condition)`.
-- `boot({ url, session, local, fetchOptions })` starts the page. `session` and `local` are sessionStorage and localStorage; `fetchOptions` steers the pretend Spotify (a few: `extraPlaylists`, `putFails`, `putStatus`, `coverStatus`, `coverRateLimit`, `noCoverFile`, `listDelayMs`, `tokenDelayMs`, `serverVersion`, `versionFail`, `uniqueSongNames`). Read `makeFetch` for the rest.
+- `boot({ url, session, local, fetchOptions })` starts the page. `session` and `local` are sessionStorage and localStorage; `fetchOptions` steers the pretend Spotify (a few: `extraPlaylists`, `putFails`, `putStatus`, `coverStatus`, `coverRateLimit`, `noCoverFile`, `listDelayMs`, `tokenDelayMs`, `serverVersion`, `versionFail`, `uniqueSongNames`, and `buildFailIn` with `buildFail` to fail a build partway: the first request adding songs to that playlist, such as `"new2"`, fails with `"network"`, `"hang"` or a status). Read `makeFetch` for the rest.
 - `signedIn()` is a session with a token. `MINI` is a small recipe text. `waitFor(condition)` polls.
 - Names such as `editor`, `saveState`, `notices`, `noticeTiming`, `versionCheck`, `signingIn` are `let`/`const` in the page; `boot` turns them into `var` so a check can reach them with `w.eval(...)`. A new top-level name that a check needs goes in that list of `.replace(...)` calls in `boot`.
 

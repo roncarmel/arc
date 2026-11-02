@@ -242,24 +242,38 @@ def needed_sources(formats_text, key):
     return json.dumps(seg_sources(music))
 
 
+def source_needs(formats_text, key):
+    """Minutes one playlist takes from each source playlist of a format: {name: minutes}."""
+    music, _ = plan_format(parse_formats(formats_text)[key])
+    need = {}
+    for spec, minutes in music:
+        parts = seg_parts(spec)
+        total_w = sum(w for _, w in parts)
+        for name, w in parts:
+            need[name] = need.get(name, 0) + minutes * w / total_w
+    return json.dumps(need)
+
+
 def match_playlists(names_json, playlists_json, me_id):
     """Match source names to playlists the user can read (owned or collaborative)."""
     names = json.loads(names_json)
     playlists = json.loads(playlists_json)
-    found, problems = {}, []
+    found, problems, missing, not_mine = {}, [], [], []
     for name in names:
         same_name = [p for p in playlists if norm(p["name"]) == norm(name)]
         readable = [p for p in same_name if p.get("owner") == me_id or p.get("collaborative")]
         if readable:
             found[name] = readable[0]["id"]
         elif same_name:
+            not_mine.append(name)
             problems.append(
                 f"'{name}' is not yours. Spotify only lets this app read playlists you own, "
                 "so copy its songs into a playlist of your own and use that."
             )
         else:
+            missing.append(name)
             problems.append(f"Could not find a playlist named '{name}'.")
-    return json.dumps({"found": found, "problems": problems})
+    return json.dumps({"found": found, "problems": problems, "missing": missing, "notMine": not_mine})
 
 
 def name_pattern(template):
@@ -361,6 +375,29 @@ def plan_text(formats_text, key, tracks_json, max_n=None, footer=True):
     return "\n".join(lines)
 
 
+def gap_seconds(uris):
+    """How long a run of silent tracks lasts, in seconds."""
+    lengths = {uri: sec for sec, uri in SILENCE_TRACKS.items()}
+    return sum(lengths.get(u, 0) for u in uris)
+
+
+def source_report(cache, music):
+    """For each source playlist: the minutes one playlist takes from it, the minutes of songs it has,
+    and how many playlists that is enough for, going by minutes alone."""
+    per = {}
+    for spec, minutes in music:
+        parts = seg_parts(spec)
+        total_w = sum(w for _, w in parts)
+        for name, w in parts:
+            per[name] = per.get(name, 0) + minutes * w / total_w
+    rows = []
+    for name, need in per.items():
+        has = sum(t["ms"] for t in cache[norm(name)]) / 60_000
+        rows.append({"name": name, "per": round(need, 1), "has": round(has, 1),
+                     "enough": int(has // need) if need > 0 else None})
+    return rows
+
+
 def build_playlists(formats_text, key, tracks_json, max_n=None, reserved_json="[]"):
     """One planning run that gives both the preview text and everything needed to create the playlists:
     names and ordered song URIs, silence included. Creating from this result makes exactly what was previewed."""
@@ -376,12 +413,36 @@ def build_playlists(formats_text, key, tracks_json, max_n=None, reserved_json="[
             uris += gaps[idx][0]            # silence before this segment (none before the first unless asked)
             uris += [t["uri"] for t in r[2]]
         uris += gaps[-1][0]                 # silence after the last segment (only if asked)
+        # the shape of this playlist, for the small bar beside it: [minutes, is silence], in order
+        pieces = []
+        for idx, r in enumerate(results):
+            if gaps[idx][0]:
+                pieces.append([gap_seconds(gaps[idx][0]) / 60, True])
+            pieces.append([round(r[3] / 60_000, 1), False])
+        if gaps[-1][0]:
+            pieces.append([gap_seconds(gaps[-1][0]) / 60, True])
         playlists.append({
             "name": name,
             "uris": uris,
             "songs": sum(len(r[2]) for r in results),
             "minutes": round(sum(r[3] for r in results) / 60000),
+            "length": round((sum(r[3] for r in results) / 1000 + sum(gap_seconds(g[0]) for g in gaps)) / 60),
+            "pieces": pieces,
         })
-    return json.dumps({"key": key, "playlists": playlists,
+    sources = source_report(cache, music)
+    # What ran out, and how many more minutes of songs it needed for one more playlist. Not when the limit on the number was reached first.
+    ran_out = None
+    if stopped:
+        ran_out = {"name": stopped[1], "more": max(1, -int(-(stopped[2] - stopped[3]) // 1))}
+    # With nothing planned, every source playlist that is too short on its own. Most of the time the minutes alone tell;
+    # when they do not (the songs did not fit), it is the one the engine stopped on.
+    short = []
+    if not built:
+        short = [{"name": r["name"], "need": r["per"], "has": r["has"]} for r in sources if r["has"] < r["per"] * MIN_FILL]
+        if not short and stopped:
+            # there are enough minutes, but the song lengths cannot add up to the segment's length closely enough
+            has = next((r["has"] for r in sources if r["name"] == stopped[1]), round(stopped[3], 1))
+            short = [{"name": stopped[1], "need": stopped[2], "has": has, "fit": True}]
+    return json.dumps({"key": key, "playlists": playlists, "sources": sources, "ranOut": ran_out, "short": short,
                        "stopped": _stop_message(stopped) if stopped else None,
                        "text": "\n".join(_plan_lines(key, music, gaps, built, stopped, used, cache, format_label(key, fmt)))})

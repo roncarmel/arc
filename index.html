@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-01o">
-<script src="theme.js?v=2026-11-01o"></script>
+<meta name="app-version" content="2026-11-01q">
+<script src="theme.js?v=2026-11-01q"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -103,7 +103,6 @@
   #backupCard.opened #backupDoneRow { position: sticky; bottom: 0; margin: 8px 0 0; padding-top: 10px; background: var(--card); }
   body.backup-card-open { overflow: hidden; }
   #actionMessage, #removeMessage { white-space: pre-line; }
-  #results div { padding: 3px 0; }
   footer.debug { margin-top: 32px; font-size: 0.95rem; }
   details.card > summary { cursor: pointer; font-weight: 600; color: var(--accent); }
   details.help.card { margin: 8px 0; }
@@ -336,7 +335,7 @@
   details.about strong, #formatHelp h3 { color: var(--fg); }
 
   /* Standard text is gray. Headings, controls, results, and words that need a highlight (.ui) are white. */
-  h2, h3, label.choice, code, #output, #planText, #confirmBox, #removeConfirmBox, #clearConfirm { color: var(--fg); }
+  h2, h3, label.choice, code, #confirmBox, #removeConfirmBox, #clearConfirm { color: var(--fg); }
   #formatEditor .fe-amount, #formatEditor .fe-pct { color: var(--fg); }
 
   .brand { display: flex; align-items: center; gap: 12px; }
@@ -454,11 +453,75 @@
   .app-overlay { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 1100; background: rgba(0, 0, 0, 0.65); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
   .app-dialog { width: 100%; max-width: 560px; max-height: calc(100vh - 32px); overflow: auto; box-sizing: border-box; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 20px; padding: 18px; box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5); outline: none; }
   .app-dialog > :first-child { margin-top: 0; }
-  #createDialog #confirmBox { border: none; background: none; padding: 0; margin: 0; }
-  #createDialog #actionMessage { color: var(--fg); white-space: pre-wrap; margin: 0 0 8px; }
-  #createDialog pre#output { margin: 0 0 8px; }
-  #createDialog .dialog-actions { margin-top: 12px; }
-  #createDialog .dialog-actions button { flex: 1 1 0; min-height: 44px; justify-content: center; }
+  /* The build popup: a header with the steps, a body that scrolls, and the buttons always in view. Its own classes start with bd-. */
+  #createDialog { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+  #createDialog .bd-head { padding: 16px 18px 12px; border-bottom: 1px solid var(--line); }
+  #createDialog .bd-title { margin: 0 0 10px; font-size: 1.15rem; font-weight: 700; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #createDialog .bd-steps { display: flex; gap: 6px; align-items: center; font-size: 0.8rem; color: var(--muted); }
+  #createDialog .bd-step { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  #createDialog .bd-step svg { flex: none; }
+  #createDialog .bd-step-done { color: var(--fg); }
+  #createDialog .bd-step-now { color: var(--fg); font-weight: 600; }
+  #createDialog .bd-step-fail { color: var(--danger); font-weight: 600; }
+  #createDialog .bd-sep { width: 14px; height: 1px; background: var(--line); flex: none; }
+  #createDialog .bd-body { padding: 14px 18px; overflow-y: auto; flex: 1 1 auto; overscroll-behavior: contain; }
+  #createDialog .bd-body > :first-child { margin-top: 0; }
+  #createDialog .bd-status { color: var(--muted); margin: 0 0 10px; }
+  #createDialog .bd-summary { margin: 0 0 12px; color: var(--fg); }
+  #createDialog .bd-hint { color: var(--muted); }
+  #createDialog .bd-list { list-style: none; margin: 0; padding: 0; }
+  #createDialog .bd-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  #createDialog .bd-row:last-child { border-bottom: none; }
+  #createDialog .bd-ic { display: flex; align-items: center; justify-content: center; line-height: 0; }
+  #createDialog .bd-name { font-weight: 600; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #createDialog a.bd-name { color: var(--accent); text-decoration: underline; }
+  #createDialog .bd-meta { color: var(--muted); font-size: 0.82rem; white-space: nowrap; text-align: right; }
+  #createDialog .bd-mini { grid-column: 2 / 4; display: flex; gap: 2px; height: 8px; }
+  #createDialog .bd-mini span { display: block; min-width: 3px; border-radius: 3px; background: var(--accent-tint); transition: background 200ms linear; }
+  #createDialog .bd-mini span.bd-sil { background: var(--line); }
+  #createDialog .bd-row { scroll-margin-top: 44px; scroll-margin-bottom: 6px; }
+  /* while building, the status line stays at the top of the list as it scrolls */
+  #createDialog .bd-status.bd-pinned { position: sticky; top: -14px; z-index: 1; margin: -14px -18px 6px; padding: 14px 18px 8px; background: var(--bg); border-bottom: 1px solid var(--line); color: var(--fg); }
+  #createDialog .bd-row.bd-wait { opacity: 0.45; }
+  #createDialog .bd-group { padding: 12px 0 2px; font-size: 0.85rem; color: var(--muted); }
+  #createDialog .bd-group b { color: var(--fg); }
+  #createDialog .bd-more { color: var(--muted); font-size: 0.85rem; padding: 8px 0 0 28px; }
+  #createDialog .bd-card { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin: 0 0 10px; color: var(--fg); }
+  #createDialog .bd-card.bd-warn { border-color: rgba(217, 119, 6, 0.5); background: rgba(217, 119, 6, 0.08); }
+  #createDialog .bd-card.bd-err { border-color: color-mix(in srgb, var(--danger) 55%, transparent); background: color-mix(in srgb, var(--danger) 8%, transparent); }
+  #createDialog .bd-ct { font-weight: 700; display: flex; gap: 8px; align-items: flex-start; margin: 0 0 4px; }
+  #createDialog .bd-ct svg, #createDialog .bd-warn-ic svg { flex: none; margin-top: 2px; }
+  #createDialog .bd-small { font-size: 0.88rem; color: var(--muted); margin: 0 0 6px; }
+  #createDialog .bd-card > :last-child { margin-bottom: 0; }
+  #createDialog .bd-names { font-size: 0.88rem; margin: 0 0 6px; padding-left: 18px; }
+  #createDialog .bd-problems { margin: 4px 0 0; padding-left: 18px; font-size: 0.9rem; }
+  #createDialog .bd-problems li { margin: 0 0 8px; }
+  #createDialog .bd-problems li:last-child { margin-bottom: 0; }
+  #createDialog .bd-cardlink { margin: 0; font-size: 0.88rem; text-align: left; }
+  #createDialog .bd-cardlink .linklike { text-align: left; }
+  #createDialog .bd-note { font-size: 0.85rem; color: var(--muted); margin: 10px 0 0; white-space: pre-line; }
+  #createDialog .bd-note .linklike { font-size: inherit; }
+  #createDialog #planText table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 6px 0 4px; color: var(--fg); }
+  #createDialog #planText th { text-align: left; font-weight: 600; color: var(--muted); font-size: 0.78rem; padding: 4px 6px 6px 0; border-bottom: 1px solid var(--line); }
+  #createDialog #planText td { padding: 6px 6px 6px 0; border-bottom: 1px solid var(--line); }
+  #createDialog #planText td:first-child { overflow-wrap: anywhere; }
+  #createDialog #planText th:not(:first-child), #createDialog #planText td:not(:first-child) { text-align: right; white-space: nowrap; }
+  #createDialog #planText tr.bd-limit td { font-weight: 700; }
+  #createDialog #planText .bd-tablehead { font-weight: 700; margin: 12px 0 0; color: var(--fg); font-size: 0.9rem; }
+  #createDialog #mainReportHint { margin: -4px 0 10px; }
+  #createDialog .bd-foot { padding: 12px 18px 16px; border-top: 1px solid var(--line); }
+  #createDialog .bd-foot .row { margin: 0; gap: 10px; flex-wrap: nowrap; }
+  #createDialog .bd-foot button { flex: 1 1 0; min-height: 44px; justify-content: center; white-space: nowrap; min-width: 0; }
+  #createDialog .bd-foot button.primary { flex-grow: 1.7; }
+  #createDialog .bd-spin { animation: cn-spin 0.9s linear infinite; transform-origin: 50% 50%; }
+  @media (prefers-reduced-motion: reduce) { #createDialog .bd-spin { animation: none; } #createDialog .bd-mini span { transition: none; } }
+  @media (max-width: 759px) {
+    #createDialog .bd-head, #createDialog .bd-body { padding-left: 14px; padding-right: 14px; }
+    #createDialog .bd-foot { padding: 10px 14px 14px; }
+    #createDialog .bd-steps { gap: 4px; font-size: 0.74rem; }
+    #createDialog .bd-sep { width: 8px; }
+    #createDialog .bd-status.bd-pinned { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
+  }
   .theme-list.theme-up { top: auto; bottom: calc(100% + 4px); }
   /* a menu or list too close to the bottom of the screen opens upward instead */
   #formatEditor .fe-pop.fe-up { top: auto; bottom: calc(100% + 4px); }
@@ -518,12 +581,11 @@
     #connectedSection #connectedMessage { order: 2; }
     #connectedSection #disconnect { order: 3; margin-top: 12px; }
   }
-  /* the full plan: each line hangs under its own start when it wraps, and on a phone the text is smaller and the popup's margins are tighter */
-  #planText .pl { padding-left: 2ch; text-indent: -2ch; min-height: 1.45em; }
+  /* on a phone the popups' margins are tighter */
   @media (max-width: 759px) {
     .app-overlay { padding: 8px; }
     .app-dialog { padding: 14px 12px; max-height: calc(100vh - 16px); }
-    #planText { font-size: 11.5px; line-height: 1.45; padding: 10px; overflow-wrap: anywhere; }
+    #createDialog { padding: 0; }
   }
   /* the card has the same soft pink outline as a segment, which ties it to the selected tab; its settings sit below the segments, set off by a line */
   #formatEditor .fe-card { border-color: var(--accent-tint-border, rgba(255, 56, 184, 0.5)); }
@@ -880,34 +942,55 @@
   <p id="spotifyNote" class="muted" hidden>Building playlists needs a working connection to Spotify.</p>
 
   <div id="createOverlay" class="app-overlay" hidden>
-    <div id="createDialog" class="app-dialog" role="dialog" aria-modal="true" aria-label="Build playlists" tabindex="-1">
-      <pre id="output" hidden></pre>
-
-      <div id="confirmBox" class="card" hidden>
-        <p id="confirmText"></p>
-        <ul id="confirmList"></ul>
-        <p id="confirmMoreText"></p>
-        <ul id="confirmMoreList"></ul>
-        <p id="confirmKeepText"></p>
-        <ul id="confirmKeepList"></ul>
-        <p id="confirmSuspectsText" class="muted" hidden></p>
-        <p id="confirmSuspectsLinkRow" class="plan-links" hidden><button id="confirmSuspectsToggle" class="linklike" type="button">Which songs?</button></p>
-        <ul id="confirmSuspectsList" hidden></ul>
-        <label id="confirmKeepToggleRow" class="choice-row" hidden><input type="checkbox" id="confirmKeepToggle"> <span id="confirmKeepToggleLabel"></span></label>
-        <div class="row">
-          <button id="confirmYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Create</span></button>
+    <div id="createDialog" class="app-dialog" role="dialog" aria-modal="true" aria-labelledby="bdTitle" tabindex="-1">
+      <div class="bd-head">
+        <div id="bdTitle" class="bd-title" role="heading" aria-level="2">Build playlists</div>
+        <div id="bdSteps" class="bd-steps"></div>
+      </div>
+      <div class="bd-body">
+        <div id="output" class="bd-status" hidden></div>
+        <div id="actionMessage" aria-live="polite"></div>
+        <p id="mainReportHint" class="report-hint muted" hidden>If it keeps happening, <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">report this problem</a>.</p>
+        <div id="confirmBox" hidden>
+          <p id="confirmText" class="bd-summary"></p>
+          <div id="confirmNotes" class="bd-card bd-warn" hidden><ul id="confirmList" class="bd-problems"></ul></div>
+          <div id="confirmMoreCard" class="bd-card bd-warn" hidden>
+            <div class="bd-ct"><span class="bd-warn-ic" aria-hidden="true"></span><span id="confirmMoreTitle"></span></div>
+            <p id="confirmMoreText" class="bd-small"></p>
+            <ul id="confirmMoreList" class="bd-names"></ul>
+            <p class="bd-cardlink"><button id="confirmKeepEarlier" class="linklike" type="button" hidden></button></p>
+          </div>
+          <div id="confirmKeepCard" class="bd-card bd-warn" hidden>
+            <div class="bd-ct"><span class="bd-warn-ic" aria-hidden="true"></span><span id="confirmKeepTitle"></span></div>
+            <p id="confirmKeepText" class="bd-small"></p>
+            <ul id="confirmKeepList" class="bd-names"></ul>
+            <label id="confirmKeepToggleRow" class="choice-row" hidden><input type="checkbox" id="confirmKeepToggle"> <span id="confirmKeepToggleLabel"></span></label>
+          </div>
+          <div id="confirmSuspectsCard" class="bd-card bd-warn" hidden>
+            <div class="bd-ct"><span class="bd-warn-ic" aria-hidden="true"></span><span id="confirmSuspectsTitle"></span></div>
+            <p id="confirmSuspectsText" class="bd-small"></p>
+            <p id="confirmSuspectsLinkRow" class="bd-cardlink"><button id="confirmSuspectsToggle" class="linklike" type="button">Which songs?</button></p>
+            <ul id="confirmSuspectsList" class="bd-names" hidden></ul>
+          </div>
+        </div>
+        <ul id="results" class="bd-list"></ul>
+        <p id="planToggleRow" class="bd-note" hidden><button id="planToggle" class="linklike" type="button"></button></p>
+        <div id="planText" hidden></div>
+        <p id="createNotes" class="bd-note" hidden></p>
+        <p id="createSupport" class="bd-note support-prompt" hidden>If you're finding this app helpful, you can donate any amount that feels good to you as a way of saying thanks.</p>
+      </div>
+      <div class="bd-foot">
+        <div id="confirmButtons" class="row" hidden>
+          <button id="confirmYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Build</span></button>
           <button id="confirmNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
         </div>
-        <p class="plan-links"><button id="confirmKeepEarlier" class="linklike" type="button" hidden></button><button id="planToggle" class="linklike" type="button">See the full plan</button></p>
-        <pre id="planText" hidden></pre>
-      </div>
-
-      <p id="actionMessage" aria-live="polite"></p>
-      <p id="mainReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Report this problem</a></p>
-      <div id="results"></div>
-      <div id="createCloseRow" class="row dialog-actions" hidden>
-        <button id="createClose" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Close</span></button>
-        <button id="createDonate" type="button"><img src="cup-border.png" alt="" width="22" height="18"><span class="btn-label">Support me</span></button>
+        <div id="bdBusyRow" class="row" hidden>
+          <button id="bdBusy" class="primary" type="button" disabled><img class="btn-icon" src="icons/build.svg" alt="" width="24" height="24"><span class="btn-label">Building…</span></button>
+        </div>
+        <div id="createCloseRow" class="row dialog-actions" hidden>
+          <button id="createClose" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Close</span></button>
+          <button id="createDonate" type="button"><img src="cup-border.png" alt="" width="22" height="18"><span class="btn-label">Support me</span></button>
+        </div>
       </div>
     </div>
   </div>
@@ -1065,8 +1148,8 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-01o"></script>
-<script src="editor.js?v=2026-11-01o"></script>
-<script src="app.js?v=2026-11-01o"></script>
+<script src="formats.js?v=2026-11-01q"></script>
+<script src="editor.js?v=2026-11-01q"></script>
+<script src="app.js?v=2026-11-01q"></script>
 </body>
 </html>

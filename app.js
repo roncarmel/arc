@@ -16,7 +16,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-01o";
+const APP_VERSION = "2026-11-01q";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -393,13 +393,13 @@ function setIcon(button, name) {
 }
 
 function setOutput(text) {
-  // The box exists only while there is something to show: progress, a plan, or a problem.
+  // The build popup's status line: what is happening now ("Reading songs from ..."). Problems that stop a plan are cards in the same place.
   $("output").textContent = text;
   $("output").hidden = !text;
 }
 
 function setActionMessage(text) {
-  $("actionMessage").textContent = text;   // progress and results of Create
+  $("actionMessage").textContent = text;   // the build popup's result or problem
 }
 
 function setRemoveMessage(text) {
@@ -500,22 +500,6 @@ function clearResults() {
   $("results").textContent = "";
 }
 
-function addResult(name, url, detail) {
-  const row = document.createElement("div");
-  if (url) {
-    const link = document.createElement("a");
-    link.href = url;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.textContent = name;
-    row.appendChild(link);
-  } else {
-    row.appendChild(document.createTextNode(name));
-  }
-  if (detail) row.appendChild(document.createTextNode("  " + detail));
-  $("results").appendChild(row);
-}
-
 function showFlow(flow) {
   // flow is "new", "existing", or null (nothing chosen yet: show neither, and nothing below the choices).
   $("flowNew").hidden = flow !== "new";
@@ -534,15 +518,6 @@ function currentFlow() {
   return currentFlowName;
 }
 
-
-function addSupportPrompt() {
-  // A thank-you line after the playlists are made. No link: the Donate button is right there.
-  if (donateHiddenChoice()) return;   // someone who hid the Donate button is not asked again
-  const row = document.createElement("div");
-  row.className = "support-prompt";
-  row.textContent = "If you're finding this app helpful, you can donate any amount that feels good to you as a way of saying thanks.";
-  $("results").appendChild(row);
-}
 
 // ---------------------------------------------------------------- backing up and restoring formats
 let undoText = null;   // what the formats box held before the last restore or reset
@@ -1300,20 +1275,24 @@ function setBusy(flag) {
 // Create asks under the Create button (askToCreate). Remove asks inside the Remove section, at the bottom of it.
 
 // ---------------------------------------------------------------- the popup for Create
-// One popup holds everything after a click on Create, and each step replaces the one before it:
-// planning, then the question, then the progress, then the result. It can be dismissed while it
-// is asking and once it is done (the Close button, a click outside it, or Escape), but not while
-// the app is reading or creating.
+// One popup holds everything after a click on Build: the steps along the top (read songs, plan, build, done), then the plan and its question,
+// then the same list of playlists ticked off one by one, then the links. When something goes wrong the build stops, and the popup says what
+// went wrong, what was built, and what to do; it never tries to repair anything. It can be dismissed while it is asking and once it is done
+// (the Close button, a click outside it, or Escape), but not while the app is reading or creating.
 let createStage = "closed";   // closed, planning, question, creating or done
 let createSucceeded = false;  // the playlists were all made, so the popup may offer Donate
 
 function setCreateStage(stage) {
   createStage = stage;
+  $("confirmButtons").hidden = stage !== "question";
+  $("bdBusyRow").hidden = stage !== "planning" && stage !== "creating";
+  setLabel($("bdBusy"), stage === "creating" ? "Building…" : "Planning…");
   $("createCloseRow").hidden = stage !== "done";
   $("createDonate").hidden = stage !== "done" || !createSucceeded;   // only after a success, never beside an error or a problem
 }
 
-function openCreateDialog() {
+function openCreateDialog(title) {
+  $("bdTitle").textContent = title;
   $("createOverlay").hidden = false;
   document.body.style.overflow = "hidden";
   setCreateStage("planning");
@@ -1351,6 +1330,191 @@ function fillConfirmList(listId, textId, text, list) {
   ul.hidden = list.length === 0;
 }
 
+function resetBuildPopup() {
+  setOutput("");
+  setActionMessage("");
+  clearResults();
+  $("confirmBox").hidden = true;
+  $("output").classList.remove("bd-pinned");
+  $("planToggleRow").hidden = true;
+  $("planText").hidden = true;
+  $("planText").textContent = "";
+  $("createNotes").hidden = true;
+  $("createSupport").hidden = true;
+}
+
+// Small drawings, all made here so they follow the theme's colors.
+const BD_ICON = {
+  done: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="var(--accent)"/><path d="M4.5 8.2l2.3 2.3 4.7-4.9" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  fail: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="var(--danger)"/><path d="M5.3 5.3l5.4 5.4M10.7 5.3l-5.4 5.4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  now: '<svg class="bd-spin" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="var(--line)" stroke-width="2.2" fill="none"/><path d="M8 1.5a6.5 6.5 0 0 1 6.5 6.5" stroke="var(--accent)" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>',
+  wait: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="var(--muted)" stroke-width="1.5" fill="none" stroke-dasharray="2 2.4"/></svg>',
+  num: (n) => `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7.2" stroke="var(--muted)" stroke-width="1.2" fill="none"/><text x="8" y="11.4" text-anchor="middle" font-size="${n > 9 ? 7.5 : 9.5}" font-family="system-ui, sans-serif" fill="var(--muted)">${n}</text></svg>`,
+  warn: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M9 1.8l7.6 13.4H1.4z" fill="#f59e0b"/><path d="M9 7v3.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><circle cx="9" cy="13" r="1" fill="#fff"/></svg>',
+  err: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="8.2" fill="var(--danger)"/><path d="M9 4.8v5" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="9" cy="12.9" r="1.1" fill="#fff"/></svg>',
+};
+
+const BD_STEPS = [["read", "Read songs"], ["plan", "Plan"], ["build", "Build"], ["done", "Done"]];
+let buildStep = "read";   // the step under way, so a problem can be shown on it
+
+function setBuildSteps(current, failed = false, waiting = false) {
+  // The steps before `current` are ticked; `current` is under way, or has failed, or (waiting) has not started. "done" ticks them all.
+  buildStep = current;
+  const box = $("bdSteps");
+  box.textContent = "";
+  const at = BD_STEPS.findIndex((step) => step[0] === current);
+  BD_STEPS.forEach(([, label], i) => {
+    if (i) box.appendChild(Object.assign(document.createElement("span"), { className: "bd-sep" }));
+    const state = current === "done" || i < at ? "done" : i === at && !waiting ? (failed ? "fail" : "now") : "";
+    const step = document.createElement("span");
+    step.className = "bd-step" + (state ? " bd-step-" + state : "");
+    step.innerHTML = state ? BD_ICON[state] : BD_ICON.num(i + 1);
+    step.appendChild(document.createTextNode(label));
+    box.appendChild(step);
+  });
+}
+
+function lengthText(minutes) {
+  // 45 min, 2 h 16 min
+  const m = Math.round(minutes), h = Math.floor(m / 60);
+  return h ? `${h} h${m % 60 ? ` ${m % 60} min` : ""}` : `${m} min`;
+}
+
+function playlistRow(p, icon) {
+  // One playlist in the popup's list: an icon for where it stands, its name (a link once it exists), songs and length, and its shape.
+  const li = document.createElement("li");
+  li.className = "bd-row";
+  const ic = Object.assign(document.createElement("span"), { className: "bd-ic" });
+  const name = Object.assign(document.createElement("span"), { className: "bd-name", textContent: p.name });
+  const meta = Object.assign(document.createElement("span"), { className: "bd-meta" });
+  li.append(ic, name, meta);
+  if (p.pieces && p.pieces.length) {
+    const bar = Object.assign(document.createElement("span"), { className: "bd-mini" });
+    bar.setAttribute("aria-hidden", "true");
+    for (const [minutes, silence] of p.pieces) {
+      const piece = document.createElement("span");
+      if (silence) piece.className = "bd-sil";
+      piece.style.flex = `${Math.max(minutes, 0.5)} 0 0`;
+      bar.appendChild(piece);
+    }
+    li.appendChild(bar);
+  }
+  li.bd = { p, ic, name, meta, bar: li.querySelector(".bd-mini") };
+  setRowState(li, icon);
+  return li;
+}
+
+function setRowState(li, state, note, url) {
+  // state: a number (its place in the plan), "wait", "now", "done" or "fail". note replaces the songs and length.
+  const { p, ic, meta } = li.bd;
+  ic.innerHTML = typeof state === "number" ? BD_ICON.num(state) : BD_ICON[state];
+  li.classList.toggle("bd-wait", state === "wait");
+  if (state === "done") setBarFill(li, 1);
+  else if (state === "wait" || typeof state === "number") setBarFill(li, 0);
+  meta.textContent = note || (p.songs != null ? `${plural(p.songs, "song")} · ${lengthText(p.length != null ? p.length : p.minutes)}` : "");
+  if (url) {
+    const link = Object.assign(document.createElement("a"), { className: "bd-name", href: url, target: "_blank", rel: "noopener noreferrer", textContent: p.name });
+    li.bd.name.replaceWith(link);
+    li.bd.name = link;
+  }
+}
+
+function setBarFill(li, fraction) {
+  // The playlist's shape doubles as its progress: pale until built, filled from the left as its songs are added.
+  const bar = li.bd.bar;
+  if (!bar) return;
+  const pieces = li.bd.p.pieces;
+  const total = pieces.reduce((n, [minutes]) => n + minutes, 0);
+  let start = 0;
+  Array.from(bar.children).forEach((piece, i) => {
+    const length = pieces[i][0];
+    const share = length > 0 ? Math.min(1, Math.max(0, (fraction * total - start) / length)) : (fraction >= 1 ? 1 : 0);
+    const on = pieces[i][1] ? "#000" : "var(--button)", off = pieces[i][1] ? "var(--line)" : "var(--accent-tint)";
+    piece.style.background = share >= 1 ? on : share <= 0 ? off : `linear-gradient(to right, ${on} ${share * 100}%, ${off} ${share * 100}%)`;
+    start += length;
+  });
+  bar.dataset.fill = String(Math.round(fraction * 100));
+}
+
+function groupRow(title, text) {
+  // A recipe's heading when one build makes playlists for several.
+  const li = document.createElement("li");
+  li.className = "bd-group";
+  li.appendChild(Object.assign(document.createElement("b"), { textContent: title }));
+  if (text) li.appendChild(document.createTextNode(" " + text));
+  return li;
+}
+
+function problemCard(title, items, className = "bd-err") {
+  // A card with a title and, below it, sentences in a list. items are [bold part, rest].
+  const card = Object.assign(document.createElement("div"), { className: "bd-card " + className });
+  const head = Object.assign(document.createElement("div"), { className: "bd-ct" });
+  head.innerHTML = className === "bd-err" ? BD_ICON.err : BD_ICON.warn;
+  head.appendChild(document.createTextNode(title));
+  card.appendChild(head);
+  if (items.length) {
+    const ul = Object.assign(document.createElement("ul"), { className: "bd-problems" });
+    for (const [bold, rest] of items) {
+      const li = document.createElement("li");
+      if (bold) li.appendChild(Object.assign(document.createElement("b"), { textContent: bold }));
+      if (rest) li.appendChild(document.createTextNode((bold ? " " : "") + rest));
+      ul.appendChild(li);
+    }
+    card.appendChild(ul);
+  }
+  return card;
+}
+
+function showPlanProblems(items, recipes) {
+  // Nothing can be built: every reason at once, each with what to do about it.
+  setOutput("");
+  $("output").appendChild(problemCard(`Nothing can be built from ${recipes > 1 ? "these recipes" : "this recipe"} yet`, items));
+  $("output").hidden = false;
+  setBuildSteps("plan", true);
+}
+
+function fillCard(cardId, titleId, textId, listId, title, text, list) {
+  // One of the cards above the plan. Shown only when it has a title.
+  $(cardId).hidden = !title;
+  if (!title) return;
+  const ic = $(cardId).querySelector(".bd-warn-ic");
+  if (ic) ic.innerHTML = BD_ICON.warn;
+  $(titleId).textContent = title;
+  $(textId).textContent = text;
+  $(textId).hidden = !text;
+  const ul = $(listId);
+  ul.textContent = "";
+  for (const item of list.slice(0, 8)) ul.appendChild(Object.assign(document.createElement("li"), { textContent: item }));
+  if (list.length > 8) ul.appendChild(Object.assign(document.createElement("li"), { textContent: `and ${list.length - 8} more` }));
+  if (listId !== "confirmSuspectsList") ul.hidden = list.length === 0;
+}
+
+// What went wrong while building, in the popup's words: a title, and what to do about it.
+function buildProblem(message) {
+  if (/Could not reach Spotify|Spotify did not answer/.test(message)) return { title: "Spotify stopped answering", advice: "Check your internet connection, then build again." };
+  if (/rate limiting|request quota/.test(message)) return { title: "Spotify asked this app to wait", advice: message.replace(/^[^.]*\.\s*/, "") };
+  if (/sign-in expired/.test(message)) return { title: "Your Spotify sign-in expired", advice: "Connect again, then build again." };
+  if (/needs Premium/.test(message)) return { title: "Spotify Premium is needed", advice: message };
+  if (/did not allow/.test(message)) return { title: "Spotify did not allow this", advice: message.replace(/^Spotify did not allow this \([^)]*\)\.\s*/, "") };
+  const status = message.match(/^Spotify returned (\d+)/);   // the rest of that message names the request, which means nothing to a person
+  return { title: "Something went wrong", advice: `${status ? `Spotify returned an error (${status[1]}).` : message.replace(/\.?$/, ".")} Try again later.`, unexpected: true };
+}
+
+function showBuildStop(err, done) {
+  // done: { built, total, incomplete (a name or null), removing (true if it stopped while removing earlier playlists) }, or null before building
+  const message = cleanError(err);
+  const problem = buildProblem(message);
+  let what = "No playlists were built.";
+  if (done && done.removing) what = "It stopped while removing earlier playlists, before anything new was built.";
+  else if (done && (done.built || done.incomplete)) what = `${done.built} of ${plural(done.total, "playlist")} ${done.built === 1 ? "was" : "were"} built` + (done.incomplete ? `, and “${done.incomplete}” is incomplete.` : ".");
+  const again = done && (done.built || done.incomplete) ? " Building again replaces the ones made so far." : "";
+  setActionMessage("");
+  const card = problemCard(problem.title, []);
+  card.appendChild(Object.assign(document.createElement("p"), { className: "bd-small", textContent: `${what} ${problem.advice}${again}` }));
+  $("actionMessage").appendChild(card);
+  setBuildSteps(buildStep === "done" ? "build" : buildStep, true);
+  if (problem.unexpected) offerReport("mainReportHint", message);
+}
 
 // ---------------------------------------------------------------- Spotify sign-in (PKCE, no server)
 // Signing in takes a few seconds on a slow connection, in two stretches: opening Spotify, then finishing the sign-in when Spotify sends the person back. In both the
@@ -1706,6 +1870,7 @@ async function startPython() {
       py = {
         formatKeys: get("format_keys"),
         neededSources: get("needed_sources"),
+        sourceNeeds: get("source_needs"),
         matchPlaylists: get("match_playlists"),
         planText: get("plan_text"),
         buildPlaylists: get("build_playlists"),
@@ -1788,49 +1953,66 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 // ---------------------------------------------------------------- actions: create, remove
 async function gatherInputs() {
-  // Works out which source playlists the chosen formats need and reads their songs.
+  // Works out which source playlists the chosen formats need and reads their songs. Returns null after showing why it cannot.
   const formatsText = $("formats").value;
   const wanted = selectedKeys();
-  const blanks = blankSegmentReport(wanted);
-  if (blanks.length) {
-    recordError("Build blocked: a segment has no playlist chosen");
-    logStep("plan blocked: empty segment");
-    setOutput("Choose a playlist for every segment first:\n\n"
-      + blanks.map((b) => `- ${b.title}: ${b.count === 1 ? "1 segment has" : b.count + " segments have"} no playlist yet`).join("\n"));
-    return null;
+  const many = wanted.length > 1;
+  const problems = [];
+  for (const b of blankSegmentReport(wanted)) {
+    problems.push([b.count === 1 ? `A segment in “${b.title}” has no playlist yet.` : `${b.count} segments in “${b.title}” have no playlist yet.`, "Choose one in the recipe."]);
   }
   const plans = [];
-  const failed = [];
   const failedNotes = [];
   for (const key of wanted) {
     try {
       plans.push({ key, names: JSON.parse(py.neededSources(formatsText, key)) });
     } catch (err) {
-      failed.push(`=== ${formatLabel(key)} ===\nCould not plan this recipe: ${cleanError(err)}`);
-      failedNotes.push(`${formatLabel(key)} could not be planned: ${cleanError(err)}`);
+      failedNotes.push([`“${formatLabel(key)}” could not be planned.`, cleanError(err)]);
     }
   }
-  const names = [...new Set(plans.flatMap((p) => p.names))];
+  const names = [...new Set(plans.flatMap((p) => p.names))].filter((n) => String(n).trim());
   const match = JSON.parse(py.matchPlaylists(JSON.stringify(names), JSON.stringify(playlists), me.id));
-  if (match.problems.length) {
-    recordError(`Build blocked: ${plural(match.problems.length, "source playlist")} not found or not owned`);
-    logStep("plan blocked: source playlists");
-    setOutput("Cannot plan yet:\n\n" + match.problems.map((p) => "- " + p).join("\n")
-      + "\n\nCheck the playlist names in your recipes against your Spotify playlists. Each name must match a playlist you own.");
-    return null;
-  }
+  for (const name of match.missing || []) problems.push([`“${name}” is not in your Spotify playlists.`, "Choose another playlist in the recipe, or check its name in Spotify."]);
+  for (const name of match.notMine || []) problems.push([`“${name}” is not yours.`, "Spotify only lets this app read playlists you own. Copy its songs into a playlist of your own and use that."]);
   const tracks = {};
   for (const name of names) {
-    setOutput(`Reading "${name}"...`);
+    if (!match.found[name]) continue;
+    setOutput(`Reading songs from “${name}”…`);
     tracks[name] = await loadTracks(match.found[name]);
   }
-  return { formatsText, keys: plans.map((p) => p.key), failed, failedNotes, tracks };
+  if (problems.length) {
+    // The recipe cannot be planned as it is. Playlists that are too short are found from their minutes alone, so they are listed too, all at once.
+    for (const p of plans) {
+      let needs = {};
+      try { needs = JSON.parse(py.sourceNeeds(formatsText, p.key)); } catch (err) { /* already listed as not planned */ }
+      const short = Object.entries(needs).filter(([name]) => tracks[name])
+        .map(([name, need]) => ({ name, need, has: tracks[name].reduce((n, t) => n + t.ms, 0) / 60000 }))
+        .filter((x) => x.has < x.need * 0.9);
+      problems.push(...shortProblems({ key: p.key, short }, many));
+    }
+    recordError(`Build blocked: ${plural(problems.length, "problem")} in the recipe`);
+    logStep("plan blocked: recipe problems");
+    showPlanProblems(problems.concat(failedNotes), wanted.length);
+    return null;
+  }
+  return { formatsText, keys: plans.map((p) => p.key), failedNotes, tracks, many };
+}
+
+function shortProblems(plan, many) {
+  // Why a recipe gave no playlists: each source playlist that is too short for even one, in words.
+  const where = many ? `In “${formatLabel(plan.key)}”, ` : "";
+  return (plan.short || []).map((s) => s.fit
+    ? [`${where}The songs in \u201c${s.name}\u201d don\u2019t add up to ${lengthText(s.need)}.`, `A segment has to come within 10% of its length. Make the segment a little longer or shorter, or add a few shorter songs to \u201c${s.name}\u201d.`]
+    : s.has <= 0
+    ? [`${where}“${s.name}” has no songs this app can use.`, "Local files and podcast episodes are skipped. Add songs to it, or choose another playlist."]
+    : [`${where}“${s.name}” is too short.`, `This recipe uses ${lengthText(s.need)} of it, and it has ${lengthText(s.has)} of songs. Add ${lengthText(Math.max(1, Math.ceil(s.need - s.has)))} of songs to it, or shorten its segments.`]);
 }
 
 async function planSelected(startedWith, includeOthers = false) {
   // Works out the playlists for the chosen formats. Returns the plan, or null after saying why there isn't one.
   const inputs = await gatherInputs();
   if (!inputs) return null;
+  setBuildSteps("plan");
   // Earlier playlists with names this plan would use: the ones this app made get replaced, the others are left alone and their names skipped.
   const matching = JSON.parse(py.existingMatches(inputs.formatsText, JSON.stringify(inputs.keys), JSON.stringify(playlists), me.id));
   const madeByApp = new Set(playlists.filter((p) => p.madeByApp).map((p) => p.id));
@@ -1838,36 +2020,33 @@ async function planSelected(startedWith, includeOthers = false) {
   const others = matching.filter((p) => !madeByApp.has(p.id));
   const ours = includeOthers ? matching : marked;   // what gets removed first
   const reserved = JSON.stringify(includeOthers ? [] : others.map((p) => p.name));
-  setOutput("Planning...");
+  setOutput("Planning…");
   const built = [];
-  const parts = [];
-  const problems = [];
+  const problems = inputs.failedNotes.slice();
   for (const key of inputs.keys) {
     try {
       const plan = JSON.parse(py.buildPlaylists(inputs.formatsText, key, JSON.stringify(inputs.tracks), playlistLimit(), reserved));
-      if (typeof plan.text !== "string") throw new Error("engine.py is out of date. Upload the newest engine.py, then reload the page.");
-      built.push(plan);
-      parts.push(plan.text);
+      if (!Array.isArray(plan.sources)) throw new Error("engine.py is out of date. Reload the page.");
+      if (plan.playlists.length) built.push(plan);
+      else problems.push(...shortProblems(plan, inputs.many));
     } catch (err) {
       recordError(cleanError(err));
-      parts.push(`=== ${formatLabel(key)} ===\nCould not plan this recipe: ${cleanError(err)}`);
-      problems.push(`${formatLabel(key)} could not be planned: ${cleanError(err)}`);
+      problems.push([`“${formatLabel(key)}” could not be planned.`, cleanError(err)]);
     }
   }
   if (planSignature() !== startedWith) {   // the user edited something while this was planning
     setOutput("");
+    closeCreateDialog();
     return null;
   }
-  parts.push(...inputs.failed);
-  problems.push(...inputs.failedNotes);
   const total = built.reduce((n, plan) => n + plan.playlists.length, 0);
   logStep(total ? `plan: ${plural(total, "playlist")} planned` : "plan: nothing can be created");
   if (!total) {
-    setOutput(parts.join("\n\n") + "\n\nNothing can be built from this plan.");
+    showPlanProblems(problems, selectedKeys().length);
     return null;
   }
   setOutput("");
-  return { formatsText: inputs.formatsText, keys: inputs.keys, built, total, ours, marked, others, includeOthers, suspects: findSuspects(inputs.tracks), text: parts.join("\n\n") + "\n\nNothing has been built yet.", problems };
+  return { formatsText: inputs.formatsText, keys: inputs.keys, built, total, ours, marked, others, includeOthers, suspects: findSuspects(inputs.tracks), problems, many: built.length > 1 || problems.length > 0 };
 }
 
 // Songs that may be one song in two versions, among the playlists a build draws from. The app knows a song by its Spotify ID, so the same song on an album and on a
@@ -1902,76 +2081,127 @@ function findSuspects(tracksByName) {
   return out.sort((a, b) => a.label.localeCompare(b.label));
 }
 
-function setPlanText(text) {
-  // One block per line, so a line that has to wrap hangs under its own start and the lines stay easy to tell apart.
-  // The text itself is exactly what it was: each block ends with the line break that was there.
+function recipeHint(b) {
+  // What one more playlist would take, when the songs (not the limit on the number) set how many there are.
+  return b.ranOut ? `With ${b.ranOut.more} more min of songs in “${b.ranOut.name}”, this recipe could make ${b.playlists.length + 1}.` : "";
+}
+
+function fillWhyTable(plan) {
+  // "Why 4?": for each source playlist, what one playlist takes from it, what it has, and how many playlists that is enough for.
   const box = $("planText");
   box.textContent = "";
-  const lines = String(text).split("\n");
-  lines.forEach((line, i) => {
-    const row = document.createElement("div");
-    row.className = "pl";
-    row.textContent = line + (i < lines.length - 1 ? "\n" : "");
-    box.appendChild(row);
-  });
+  for (const b of plan.built) {
+    if (plan.built.length > 1) box.appendChild(Object.assign(document.createElement("p"), { className: "bd-tablehead", textContent: `${formatLabel(b.key)}: ${plural(b.playlists.length, "playlist")}` }));
+    const table = document.createElement("table");
+    table.innerHTML = "<thead><tr><th>Playlist</th><th>Per playlist</th><th>Has</th><th>Enough for</th></tr></thead>";
+    const body = document.createElement("tbody");
+    const lowest = Math.min(...b.sources.map((r) => (r.enough == null ? Infinity : r.enough)));
+    const limiting = b.ranOut ? b.ranOut.name : (b.sources.find((r) => r.enough === lowest) || {}).name;
+    for (const r of b.sources) {
+      const tr = document.createElement("tr");
+      if (r.name === limiting) tr.className = "bd-limit";
+      for (const text of [r.name, lengthText(r.per), lengthText(r.has), r.enough == null ? "" : String(r.enough)]) tr.appendChild(Object.assign(document.createElement("td"), { textContent: text }));
+      body.appendChild(tr);
+    }
+    table.appendChild(body);
+    box.appendChild(table);
+    if (!b.ranOut) box.appendChild(Object.assign(document.createElement("p"), { className: "bd-note", textContent: `The number is set by “Most playlists per recipe” in More options (${b.playlists.length}).` }));
+  }
+  if (plan.built.some((b) => b.ranOut)) box.appendChild(Object.assign(document.createElement("p"), { className: "bd-note", textContent: "Each song is used once, so the playlist with the fewest minutes to spare sets the number." }));
+}
+
+function showPlanRows(plan) {
+  // The playlists about to be built, each with its shape. Ten at most; the rest are counted.
+  clearResults();
+  let shown = 0, hidden = 0;
+  for (const b of plan.built) {
+    if (plan.many) $("results").appendChild(groupRow(formatLabel(b.key), recipeHint(b)));
+    b.playlists.forEach((p, i) => {
+      if (shown < 10) { $("results").appendChild(playlistRow(p, i + 1)); shown += 1; } else hidden += 1;
+    });
+  }
+  if (hidden) {
+    const li = Object.assign(document.createElement("li"), { className: "bd-more" });
+    const more = Object.assign(document.createElement("button"), { type: "button", className: "linklike", id: "bdShowAll", textContent: `and ${hidden} more` });
+    more.onclick = () => {
+      // the rest of the list, in its place
+      li.remove();
+      let n = 0;
+      for (const b of plan.built) b.playlists.forEach((p, i) => { if (n++ >= 10) $("results").appendChild(playlistRow(p, i + 1)); });
+    };
+    li.appendChild(more);
+    $("results").appendChild(li);
+  }
 }
 
 function askToCreate(plan) {
-  // Shows what the plan found and waits: "create", "cancel", "include"/"exclude" (the switch for playlists the app did not mark), or "stale" if something was edited meanwhile.
+  // Shows what the plan found and waits: "create", "cancel", "include"/"exclude" (the switch for playlists the app did not mark), "keep", or "stale" if something was edited meanwhile.
   return new Promise((resolve) => {
-    // A plan with nothing to warn about is one sentence. Playlists that would be replaced or left alone, and formats that could not be planned, get lines of their own.
-    const problems = plan.problems.map((n) => "Note: " + n);
-    const names = plan.keys.map((k) => (currentFormats.find((f) => f.id === k) || {}).title).filter(Boolean);
-    const forWhat = names.length === 1 ? ` for \u201c${names[0]}\u201d` : names.length > 1 ? ` for ${plural(names.length, "recipe")}` : "";
-    fillConfirmList("confirmList", "confirmText", `Ready to build ${plural(plan.total, "playlist")}${forWhat}.`, problems);
-    const replacing = plan.ours.length > 0;
-    const many = plan.others.length !== 1;
-    fillConfirmList("confirmMoreList", "confirmMoreText",
-      plan.marked.length ? `Replace ${plural(plan.marked.length, "earlier playlist")} made by this app? They share names with the playlists about to be built, and will be removed from your library first:` : "",
+    setOutput("");
+    const summary = $("confirmText");
+    summary.textContent = "Ready to build ";
+    summary.appendChild(Object.assign(document.createElement("b"), { textContent: plural(plan.total, "playlist") }));
+    summary.appendChild(document.createTextNode(plan.many ? ` for ${plural(plan.built.length, "recipe")}.` : "."));
+    const hint = plan.many ? "" : recipeHint(plan.built[0]);
+    if (hint) summary.appendChild(Object.assign(document.createElement("span"), { className: "bd-hint", textContent: " " + hint }));
+    // Recipes in this build that give nothing, and why
+    $("confirmNotes").hidden = !plan.problems.length;
+    const notes = $("confirmList");
+    notes.textContent = "";
+    for (const [bold, rest] of plan.problems) {
+      const li = document.createElement("li");
+      li.appendChild(Object.assign(document.createElement("b"), { textContent: bold }));
+      li.appendChild(document.createTextNode(" " + rest));
+      notes.appendChild(li);
+    }
+    const one = plan.marked.length === 1;
+    fillCard("confirmMoreCard", "confirmMoreTitle", "confirmMoreText", "confirmMoreList",
+      plan.marked.length ? `${plural(plan.marked.length, "earlier playlist")} will be replaced` : "",
+      `Made by this app, with the same ${one ? "name" : "names"}. ${one ? "It is" : "They are"} removed from your library first:`,
       plan.marked.map((p) => p.name));
-    fillConfirmList("confirmKeepList", "confirmKeepText",
-      !plan.others.length ? ""
-        : plan.includeOthers ? `${plural(plan.others.length, "playlist")} with matching names ${many ? "were" : "was"} not made by this app, and will be removed too because you chose to replace ${many ? "them" : "it"}:`
-        : `${plural(plan.others.length, "playlist")} with matching names ${many ? "were" : "was"} not made by this app, so ${many ? "they" : "it"} will not be touched, and the new playlists skip ${many ? "those names" : "that name"}:`,
+    const keepLink = $("confirmKeepEarlier");
+    keepLink.hidden = !plan.marked.length;
+    if (plan.marked.length) keepLink.textContent = `Keep ${one ? "it" : "them"} instead: rename ${one ? "it" : "them"} to “… (version ${nextVersionLetter(plan.marked)})”, then build`;
+    const many = plan.others.length !== 1;
+    fillCard("confirmKeepCard", "confirmKeepTitle", "confirmKeepText", "confirmKeepList",
+      plan.others.length ? `${plural(plan.others.length, "playlist")} with matching names ${many ? "were" : "was"} not made by this app` : "",
+      plan.includeOthers ? `${many ? "They" : "It"} will be removed too, because you chose to replace ${many ? "them" : "it"}:` : `${many ? "They" : "It"} will not be touched, and the new playlists skip ${many ? "those names" : "that name"}:`,
       plan.others.map((p) => p.name));
     $("confirmKeepToggleRow").hidden = plan.others.length === 0;
     $("confirmKeepToggle").checked = plan.includeOthers;
     $("confirmKeepToggleLabel").textContent = `Replace ${many ? "them" : "it"} too`;
-    setLabel($("confirmYes"), replacing ? `Remove them and build ${plural(plan.total, "playlist")}` : `Build ${plural(plan.total, "playlist")}`);
     const suspects = plan.suspects || [];
-    const suspectsText = $("confirmSuspectsText"), suspectsList = $("confirmSuspectsList"), suspectsLinks = $("confirmSuspectsLinkRow");
-    suspectsText.hidden = suspectsLinks.hidden = !suspects.length;
+    fillCard("confirmSuspectsCard", "confirmSuspectsTitle", "confirmSuspectsText", "confirmSuspectsList",
+      suspects.length ? `${plural(suspects.length, "song")} ${suspects.length === 1 ? "is" : "are"} in more than one version` : "",
+      "This app can’t tell versions apart, so one could repeat in a playlist or across playlists. To avoid that, use the same version of each song in every playlist.",
+      []);
+    const suspectsList = $("confirmSuspectsList");
     suspectsList.hidden = true;
-    suspectsList.textContent = "";
     $("confirmSuspectsToggle").textContent = "Which songs?";
-    if (suspects.length) {
-      suspectsText.textContent = `${plural(suspects.length, "song")} ${suspects.length === 1 ? "appears" : "appear"} in more than one version in your source playlists. This app can\u2019t tell versions apart, so one of them could repeat in a playlist or across playlists. To avoid that, use the same version of each song in every playlist.`;
-      const shown = suspects.slice(0, 10);
-      for (const s of shown) {
-        const li = document.createElement("li");
-        li.textContent = `${s.label}, in ${s.lists.map((l) => `\u201c${l}\u201d`).join(" and ")}`;
-        suspectsList.appendChild(li);
-      }
-      if (suspects.length > shown.length) { const li = document.createElement("li"); li.textContent = `and ${suspects.length - shown.length} more`; suspectsList.appendChild(li); }
-    }
-    const keepLink = $("confirmKeepEarlier");
-    keepLink.hidden = !plan.marked.length;
-    if (plan.marked.length) keepLink.textContent = `Keep ${plan.marked.length === 1 ? "it" : "them"} instead: rename ${plan.marked.length === 1 ? "it" : "them"} to \u201c\u2026 (version ${nextVersionLetter(plan.marked)})\u201d, then build`;
+    const shown = suspects.slice(0, 10);
+    for (const x of shown) suspectsList.appendChild(Object.assign(document.createElement("li"), { textContent: `${x.label}, in ${x.lists.map((l) => `“${l}”`).join(" and ")}` }));
+    if (suspects.length > shown.length) suspectsList.appendChild(Object.assign(document.createElement("li"), { textContent: `and ${suspects.length - shown.length} more` }));
+    setLabel($("confirmYes"), plan.ours.length ? `Replace ${plan.ours.length} and build ${plan.total}` : `Build ${plural(plan.total, "playlist")}`);
     setLabel($("confirmNo"), "Cancel");
-    setPlanText(plan.text);
+    showPlanRows(plan);
+    fillWhyTable(plan);
     $("planText").hidden = true;
-    $("planToggle").textContent = "See the full plan";
-    const box = $("confirmBox");
-    box.hidden = false;
+    $("planToggleRow").hidden = false;
+    const whyLabel = plan.many ? "Why these numbers?" : `Why ${plan.total}?`;
+    $("planToggle").textContent = whyLabel;
+    $("confirmBox").hidden = false;
+    setBuildSteps("build", false, true);
     setCreateStage("question");
     const finish = (answer) => {
       openQuestion = null;
-      box.hidden = true;
+      $("confirmBox").hidden = true;
+      $("planToggleRow").hidden = true;
+      $("planText").hidden = true;
       $("planText").textContent = "";
       for (const id of ["confirmYes", "confirmNo", "planToggle", "confirmKeepEarlier", "confirmSuspectsToggle"]) $(id).onclick = null;
       $("confirmKeepToggle").onchange = null;
       if (answer === "create") setCreateStage("creating");   // from this moment it cannot be dismissed
-      else if (answer === "include" || answer === "exclude" || answer === "keep") setCreateStage("planning");
+      else if (answer === "include" || answer === "exclude" || answer === "keep") { clearResults(); setCreateStage("planning"); }
       resolve(answer);
     };
     openQuestion = finish;
@@ -1979,13 +2209,13 @@ function askToCreate(plan) {
     $("confirmNo").onclick = () => finish("cancel");
     $("confirmKeepEarlier").onclick = () => finish("keep");
     $("confirmSuspectsToggle").onclick = () => {
-      $("confirmSuspectsList").hidden = !$("confirmSuspectsList").hidden;
-      $("confirmSuspectsToggle").textContent = $("confirmSuspectsList").hidden ? "Which songs?" : "Hide the list";
+      suspectsList.hidden = !suspectsList.hidden;
+      $("confirmSuspectsToggle").textContent = suspectsList.hidden ? "Which songs?" : "Hide the list";
     };
     $("confirmKeepToggle").onchange = () => finish($("confirmKeepToggle").checked ? "include" : "exclude");
     $("planToggle").onclick = () => {
       $("planText").hidden = !$("planText").hidden;
-      $("planToggle").textContent = $("planText").hidden ? "See the full plan" : "Hide the full plan";
+      $("planToggle").textContent = $("planText").hidden ? whyLabel : "Hide";
     };
   });
 }
@@ -1996,13 +2226,13 @@ async function startCreate(keys = null) {
   buildScope = Array.isArray(keys) && keys.length ? keys : null;
   // One button: plan, show what was found, ask, then create exactly that plan.
   setBusy(true);
-  clearResults();
-  setActionMessage("");
+  resetBuildPopup();
   clearReportHints("mainReportHint");
-  setOutput("");
   $("editorNote").textContent = "";
   createSucceeded = false;
-  openCreateDialog();
+  const wanted = selectedKeys();
+  openCreateDialog(wanted.length === 1 ? `Build “${formatLabel(wanted[0])}”` : `Build ${plural(wanted.length, "recipe")}`);
+  setBuildSteps("read");
   logStep("plan started");
   invalidatePlan(false);
   const startedWith = planSignature();
@@ -2012,14 +2242,12 @@ async function startCreate(keys = null) {
     let plan = await planSelected(startedWith, includeOthers);
     while (plan) {
       const answer = await askToCreate(plan);
-      if (answer === "stale") { closeCreateDialog(); return; }
-      if (answer === "cancel") {
-        setActionMessage("Cancelled. Nothing was changed.");
-        closeCreateDialog();
-        return;
-      }
+      if (answer === "stale" || answer === "cancel") { closeCreateDialog(); return; }
       if (answer === "keep") {
+        setBuildSteps("build");
+        setOutput(`Renaming ${plural(plan.marked.length, "earlier playlist")}…`);
         await keepEarlierPlaylists(plan.marked);
+        setBuildSteps("plan");
         plan = await planSelected(startedWith, includeOthers);   // with those names free, the new playlists start again at 1
         if (!plan) return;
         await createFromPlan(plan);   // they have just said what they want, so there is no second question
@@ -2035,8 +2263,8 @@ async function startCreate(keys = null) {
       return;
     }
   } catch (err) {
-    setOutput("Something went wrong:\n\n" + cleanError(err));
-    offerReport("mainReportHint", cleanError(err));
+    setOutput("");
+    showBuildStop(err, null);
   } finally {
     buildScope = null;
     setBusy(false);
@@ -2067,7 +2295,6 @@ async function keepEarlierPlaylists(earlier) {
   let done = 0;
   try {
     for (const p of earlier) {
-      setActionMessage(`Renaming ${done + 1} of ${earlier.length}: ${p.name}`);
       const name = `${p.name} (version ${letter})`;
       await spotifyRequest("PUT", `/playlists/${p.id}`, { json: { name } });
       const entry = playlists.find((q) => q.id === p.id);
@@ -2083,10 +2310,39 @@ async function keepEarlierPlaylists(earlier) {
 
 async function createFromPlan(plan) {
   setCreateStage("creating");
+  setBuildSteps("build");
+  setOutput("");
   const existing = plan.ours;
-  const planned = plan.built.flatMap((b) => b.playlists.map((p) => ({ ...p, label: formatLabel(b.key) })));
+  const planned = plan.built.flatMap((b) => b.playlists.map((p) => ({ ...p, label: formatLabel(b.key), key: b.key })));
   logStep(`create started (${plural(planned.length, "playlist")})`);
+  // The same list as the plan, now all of it, each row ticked off as it is made.
+  clearResults();
+  let removeRow = null;
+  if (existing.length) {
+    removeRow = playlistRow({ name: `Removing ${plural(existing.length, "earlier playlist")}` }, "now");
+    $("results").appendChild(removeRow);
+  }
+  const rows = [];
+  let lastKey = null;
+  for (const p of planned) {
+    if (plan.many && p.key !== lastKey) $("results").appendChild(groupRow(p.label, ""));
+    lastKey = p.key;
+    const row = playlistRow(p, "wait");
+    rows.push(row);
+    $("results").appendChild(row);
+  }
+  // The status line stays at the top while the list scrolls, and the list keeps the row being built in view, until the person scrolls it themselves.
+  $("output").classList.add("bd-pinned");
+  const body = $("createDialog").querySelector(".bd-body");
+  let follow = true;
+  const stopFollowing = () => { follow = false; };
+  for (const type of ["wheel", "touchmove", "keydown"]) body.addEventListener(type, stopFollowing, { passive: true });
+  const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const show = (row) => { if (follow && row.scrollIntoView) row.scrollIntoView({ block: "nearest", behavior: still ? "auto" : "smooth" }); };
+  const progress = (status) => setOutput(status);
   let created = 0;
+  let current = null;   // the playlist being made, if it exists in Spotify but is not finished
+  let removing = existing.length > 0;
   const createdIds = [];
   const stillPublic = [];
   let cover = null;
@@ -2098,19 +2354,28 @@ async function createFromPlan(plan) {
   }
   try {
     if (existing.length) {
-      setActionMessage(`Removing ${plural(existing.length, "earlier playlist")}...`);
+      progress(`Removing ${plural(existing.length, "earlier playlist")}. Keep this tab open.`);
       await removePlaylists(existing.map((p) => p.id));
+      removeRow.bd.name.textContent = `Removed ${plural(existing.length, "earlier playlist")}`;
+      setRowState(removeRow, "done");
     }
-    for (const p of planned) {
-      setActionMessage(`Building ${created + 1} of ${planned.length}: ${p.name}`);
+    removing = false;
+    for (const [i, p] of planned.entries()) {
+      const row = rows[i];
+      progress(`Building ${created + 1} of ${planned.length}. Keep this tab open.`);
+      setRowState(row, "now", "starting");
+      show(row);
       const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: `${APP_MARKER} from the recipe "${p.label}". Please leave this description as it is: the app uses it to recognize the playlists it made.` } });
+      current = p.name;
       createdIds.push(made.id);
       if (made.public !== false) {   // asked to keep it off the profile; make sure
         try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); }
         catch (err) { stillPublic.push(p.name); logStep("create: could not make a playlist private"); }
       }
-      for (let i = 0; i < p.uris.length; i += ADD_CHUNK) {
-        await spotifyRequest("POST", `/playlists/${made.id}/items`, { json: { uris: p.uris.slice(i, i + ADD_CHUNK) } });
+      setRowState(row, "now", "adding songs");
+      for (let k = 0; k < p.uris.length; k += ADD_CHUNK) {
+        await spotifyRequest("POST", `/playlists/${made.id}/items`, { json: { uris: p.uris.slice(k, k + ADD_CHUNK) } });
+        setBarFill(row, Math.min(1, (k + ADD_CHUNK) / p.uris.length));
       }
       if (cover && !coverBlocked) {   // the app's icon as the cover; a problem here never stops the playlists
         try { await spotifyRequest("PUT", `/playlists/${made.id}/images`, { body: cover, contentType: "image/jpeg" }); }
@@ -2121,33 +2386,54 @@ async function createFromPlan(plan) {
         }
       }
       created += 1;
-      addResult(p.name, made.external_urls && made.external_urls.spotify, `${p.songs} songs, ${p.minutes} min`);
+      current = null;
+      setRowState(row, "done", "", made.external_urls && made.external_urls.spotify);
     }
     logStep(`create finished (${plural(created, "playlist")})`);
     invalidatePlan(true);
+    $("output").classList.remove("bd-pinned");
+    setOutput("");
+    setBuildSteps("done");
     const notes = [];
-    if (stillPublic.length) notes.push(`Note: Spotify kept ${plural(stillPublic.length, "playlist")} on your profile and would not let this app change that. You can change that in the Spotify app.`);
-    if (coverBlocked) notes.push("Note: the cover art was not added, because your Spotify sign-in does not include permission to upload images. Click Disconnect, then Connect again to allow it. Playlists you build after that will get the cover.");
-    else if (coverUnloaded) notes.push("Note: the cover art could not be loaded, so the playlists have Spotify's default cover.");
-    else if (coverFailed) notes.push(`Note: Spotify would not accept the cover art for ${plural(coverFailed, "playlist")}.`);
+    if (stillPublic.length) notes.push(`Spotify kept ${plural(stillPublic.length, "playlist")} on your profile and would not let this app change that. You can change that in the Spotify app.`);
+    if (coverBlocked) notes.push("The cover art was not added, because your Spotify sign-in does not include permission to upload images. Click Disconnect, then Connect again to allow it. Playlists you build after that will get the cover.");
+    else if (coverUnloaded) notes.push("The cover art could not be loaded, so the playlists have Spotify's default cover.");
+    else if (coverFailed) notes.push(`Spotify would not accept the cover art for ${plural(coverFailed, "playlist")}.`);
     createSucceeded = created > 0;
     if (created > 0) countEvent("playlists-created", String(created));
-    const doneText = `Done. Built ${plural(created, "playlist")} in your Spotify account.` + (notes.length ? "\n\n" + notes.join("\n\n") : "");
-    setActionMessage(doneText);
-    addSupportPrompt();
+    const done = Object.assign(document.createElement("p"), { className: "bd-summary" });
+    done.appendChild(Object.assign(document.createElement("b"), { textContent: plural(created, "playlist") }));
+    done.appendChild(document.createTextNode(` ${created === 1 ? "is" : "are"} in your Spotify library.`));
+    setActionMessage("");
+    $("actionMessage").appendChild(done);
+    const showNotes = () => { $("createNotes").textContent = notes.join("\n\n"); $("createNotes").hidden = !notes.length; };
+    showNotes();
+    $("createSupport").hidden = donateHiddenChoice();   // someone who hid the Donate button is not asked again
     await loadMyPlaylists();
     // The mark in the description is how this app finds its own playlists later. If Spotify's list does not show it, say so.
     const marked = new Set(playlists.filter((p) => p.madeByApp).map((p) => p.id));
     if (createdIds.length && createdIds.every((id) => !marked.has(id))) {
       logStep("create: description mark not returned");
-      setActionMessage(doneText + "\n\nNote: Spotify's playlist list did not show the description this app puts on its playlists (or has not updated yet), so this app may not recognize them later.");
+      notes.push("Spotify's playlist list did not show the description this app puts on its playlists (or has not updated yet), so this app may not recognize them later.");
+      showNotes();
     }
   } catch (err) {
-    if (created) invalidatePlan(true);   // some playlists exist now, so creating the plan again would duplicate them
-    setActionMessage((created ? `Stopped after building ${created} of ${planned.length} playlists.\n\n` : "Something went wrong:\n\n") + cleanError(err));
+    if (created || current) invalidatePlan(true);   // some playlists exist now, so creating the plan again would duplicate them
+    $("output").classList.remove("bd-pinned");
+    setOutput("");
+    // The row that was under way gets a cross; the ones after it stay as they were, marked "not built".
+    rows.forEach((row, i) => {
+      if (i < created) return;
+      if (i === created && !removing) setRowState(row, "fail", current ? "incomplete" : "not built");
+      else setRowState(row, "wait", "not built");
+    });
+    if (removing && removeRow) setRowState(removeRow, "fail");
     logStep(`create failed after ${created} of ${planned.length}`);
-    offerReport("mainReportHint", cleanError(err));
+    showBuildStop(err, { built: created, total: planned.length, incomplete: current, removing });
     try { await loadMyPlaylists(); } catch (ignore) { /* keep the original error showing */ }
+  } finally {
+    for (const type of ["wheel", "touchmove", "keydown"]) body.removeEventListener(type, stopFollowing);
+    body.scrollTop = 0;   // the result, or what went wrong, is at the top
   }
 }
 
