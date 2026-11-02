@@ -16,7 +16,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-01l";
+const APP_VERSION = "2026-11-01m";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -104,7 +104,7 @@ function reloadForNewVersion(failed) {
 }
 
 function offerNewVersion() {
-  if (typeof showNotices === "function") showNotices([{ text: "A newer version of the app is available.", icon: "cloud", hold: true, actions: [{ label: "Reload", run: () => reloadForNewVersion(() => {}) }] }]);
+  if (typeof showNotices === "function") showNotices([{ text: "A newer version of this app is available.", icon: "cloud", hold: true, actions: [{ label: "Reload", run: () => reloadForNewVersion(() => {}) }] }]);
 }
 
 function showStartupProblems() {
@@ -791,7 +791,7 @@ function spotifySaveParts(full = true) {
   // the menu keeps a record of the last news, which the line under the bar only shows for a few seconds
   if (saveState.lastNews) parts.push({ text: `${saveState.lastNews.text} (${new Date(saveState.lastNews.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })})` });
   if (saveState.coverProblem) parts.push({ text: saveState.coverProblem.text });
-  if (saveState.unread) parts.push({ text: `${saveState.unread === 1 ? "A backup in Spotify" : saveState.unread + " backups in Spotify"} could not be read, or ${saveState.unread === 1 ? "was" : "were"} saved by a newer version of the app, and ${saveState.unread === 1 ? "was" : "were"} left alone.` });
+  if (saveState.unread) parts.push({ text: `${saveState.unread === 1 ? "A backup in Spotify" : saveState.unread + " backups in Spotify"} could not be read, or ${saveState.unread === 1 ? "was" : "were"} saved by a newer version of this app, and ${saveState.unread === 1 ? "was" : "were"} left alone.` });
   for (const t of saveState.tooLong) {
     parts.push({ text: `\u201c${t.title.trim() || "Untitled"}\u201d is too long to back up to Spotify. It is still saved in this browser.`, action: () => downloadOneFormat(t.id), label: "Download it" });
   }
@@ -812,7 +812,7 @@ function attentionItems() {
   const name = (t) => `\u201c${String(t).trim() || "Untitled"}\u201d`;
   if (connection === "ready" && saveState.error && !saveState.running) items.push({ key: "error", text: "Couldn\u2019t save to Spotify.", actions: [{ label: "Try again", run: () => { saveState.error = ""; runSpotifySave(); } }] });
   const n = saveState.unread;
-  if (n && !saveState.dismissed.has("unread:" + n)) items.push({ key: "unread:" + n, ok: true, text: `${n === 1 ? "A backup in Spotify" : n + " backups in Spotify"} could not be read, or ${n === 1 ? "was" : "were"} saved by a newer version of the app, and ${n === 1 ? "was" : "were"} left alone.` });
+  if (n && !saveState.dismissed.has("unread:" + n)) items.push({ key: "unread:" + n, ok: true, text: `${n === 1 ? "A backup in Spotify" : n + " backups in Spotify"} could not be read, or ${n === 1 ? "was" : "were"} saved by a newer version of this app, and ${n === 1 ? "was" : "were"} left alone.` });
   if (saveState.coverProblem && !saveState.dismissed.has("cover:" + saveState.coverProblem.key)) items.push({ key: "cover:" + saveState.coverProblem.key, ok: true, text: saveState.coverProblem.text });
   for (const t of saveState.tooLong) if (!saveState.dismissed.has("long:" + t.id)) items.push({ key: "long:" + t.id, ok: true, text: `${name(t.title)} is too long to back up to Spotify. It is still saved in this browser.`, actions: [{ label: "Download it", run: () => downloadOneFormat(t.id) }] });
   return items;
@@ -1432,7 +1432,7 @@ function loadStoredToken() {
 // is not touched, because the second part is easy to take for something worse than it is.
 async function confirmDisconnect() {
   const choice = await askSyncChoice("Disconnect from Spotify?",
-    "This signs you out of Spotify on this device. Your recipes and your backups are not touched. The next time you build, the app reads your playlists from Spotify again, which takes a little longer.",
+    "This signs you out of Spotify on this device. Your recipes and your backups are not touched. The next time you build, this app reads your playlists from Spotify again, which takes a little longer.",
     [{ label: "Disconnect", value: "yes" }, { label: "Cancel", value: "no" }], { focusLast: true });
   if (choice === "yes") await disconnect();
 }
@@ -1888,7 +1888,7 @@ function askToCreate(plan) {
     suspectsList.textContent = "";
     $("confirmSuspectsToggle").textContent = "Which songs?";
     if (suspects.length) {
-      suspectsText.textContent = `${plural(suspects.length, "song")} ${suspects.length === 1 ? "appears" : "appear"} in more than one version in your source playlists. The app can\u2019t tell versions apart, so one of them could repeat in a playlist or across playlists. To avoid that, use the same version of each song in every playlist.`;
+      suspectsText.textContent = `${plural(suspects.length, "song")} ${suspects.length === 1 ? "appears" : "appear"} in more than one version in your source playlists. This app can\u2019t tell versions apart, so one of them could repeat in a playlist or across playlists. To avoid that, use the same version of each song in every playlist.`;
       const shown = suspects.slice(0, 10);
       for (const s of shown) {
         const li = document.createElement("li");
@@ -2083,7 +2083,7 @@ async function createFromPlan(plan) {
     const marked = new Set(playlists.filter((p) => p.madeByApp).map((p) => p.id));
     if (createdIds.length && createdIds.every((id) => !marked.has(id))) {
       logStep("create: description mark not returned");
-      setActionMessage(doneText + "\n\nNote: Spotify's playlist list did not show the description this app puts on its playlists (or has not updated yet), so the app may not recognize them later.");
+      setActionMessage(doneText + "\n\nNote: Spotify's playlist list did not show the description this app puts on its playlists (or has not updated yet), so this app may not recognize them later.");
     }
   } catch (err) {
     if (created) invalidatePlan(true);   // some playlists exist now, so creating the plan again would duplicate them

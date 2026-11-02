@@ -749,9 +749,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-01l" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-01m" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-01l/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-01m/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -1314,7 +1314,7 @@ print(json.dumps(out))
   // ---------------- wording and look: What is this app?, How recipes work, and names of controls
   var aboutBox = fresh.document.getElementById("about");
   var aboutParas = Array.from(aboutBox.querySelectorAll("p")).map((p) => p.textContent);
-  check("What it does is the new wording", aboutParas[0] === "What it doesCeremony Playlist Builder makes long playlists from your existing Spotify playlists. Describe the structure of the playlists you want to create, and the app builds as many complete playlists as your music allows, with songs picked at random and no song repeated across the playlists made from one recipe. Each playlist is created in your Spotify account, ready to play.", aboutParas[0]);
+  check("What it does is the new wording", aboutParas[0] === "What it doesCeremony Playlist Builder makes long playlists from your existing Spotify playlists. Describe the structure of the playlists you want to create, and this app builds as many complete playlists as your music allows, with songs picked at random and no song repeated across the playlists made from one recipe. Each playlist is created in your Spotify account, ready to play.", aboutParas[0]);
   var steps = Array.from(aboutBox.querySelectorAll("ol li")).map((li) => li.textContent);
   check("How it works has your two reworded steps", steps[0] === "Connect to Spotify through a free developer app. This takes a few minutes to set up, but you\u2019ll only need to do it once." && steps[1] === "Define your recipe(s): which of your playlists to draw from, in what order, and for how long." && steps.length === 3, JSON.stringify(steps));
   check("the About section has a Reporting problems paragraph, then Privacy as its last, which points to the full section and says nothing about reporting", aboutParas[aboutParas.length - 1] === "PrivacyYour existing Spotify playlists are only read, never changed. Everything runs in this browser, and nothing about your music, such as playlist names or songs, goes anywhere except to you and Spotify. For the full details, see Privacy." && aboutParas[aboutParas.length - 2] === "Reporting problemsIf you run into a problem, choose Report a problem in the app menu." && !!aboutBox.querySelector("span.ui") && aboutBox.querySelector("span.ui").textContent === "Report a problem", aboutParas[aboutParas.length - 1]);
@@ -2751,7 +2751,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-01l", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-01m", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3194,7 +3194,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var wc_w = await boot({ url: "http://127.0.0.1:8000/" });
   var wc_h = Array.from(wc_w.document.querySelectorAll("#privacySection h3")).find((h) => h.textContent === "Anonymous visit counts");
   var wc_p = wc_h.nextElementSibling.textContent;
-  check("Anonymous visit counts opens by saying why anything is counted: to see how many people use the app and how it is used", /^The page keeps simple counts, to see how many people use the app and how it is used\. It counts visits with GoatCounter, /.test(wc_p));
+  check("Anonymous visit counts opens by saying why anything is counted: to see how many people use this app and how it is used", /^The page keeps simple counts, to see how many people use this app and how it is used\. It counts visits with GoatCounter, /.test(wc_p));
   check("and the rest is still there: no cookies, what a visit records, the few actions counted, what is never received, and the once-only marker", /uses no cookies/.test(wc_p) && /the browser, screen size, country, and the site you came from, but not who you are/.test(wc_p) && /how many playlists get created, when Donate is opened, and the kind of connection problem/.test(wc_p) && /never receives playlist names, recipes, song titles, or your Client ID/.test(wc_p) && /so it is counted once\.$/.test(wc_p));
   } catch (err) { areaCrashed("privacy: why the counts", err); } }
 
@@ -3880,7 +3880,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   await waitFor(() => mg_ups(mg_o10, "sx").length >= 1, 8000);
   await mg_settled(mg_w10);
   check("a damaged backup that has this format's name is not taken for a removed one: no question, and it is written again in place, not as a second one", !mg_w10.document.getElementById("feSyncDialog") && mg_w0.unpackFormat(mg_ups(mg_o10, "sx")[0].description).kind === "save" && mg_o10.writes.filter((x) => x.type === "create").length === 0);
-  check("the status says that a backup could not be read", /could not be read, or was saved by a newer version of the app, and was left alone/.test(capText(mg_w10)));
+  check("the status says that a backup could not be read", /could not be read, or was saved by a newer version of this app, and was left alone/.test(capText(mg_w10)));
 
   // a format whose backup is in Spotify but which is not here, and was not deleted here: added again
   var mg_o11 = { descStore: {}, nameStore: {}, extraPlaylists: [mg_pl("s1", "Alpha (recipe)", mg_remote("f1", "Alpha", 2, 30)), mg_pl("s2", "Beta (recipe)", mg_remote("f2", "Beta", 1, 40))] };
@@ -3908,7 +3908,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   if (want("spotify wording")) { try {
   // ================================================================ the wording that depends on the way the formats are backed up
   var sw_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("the privacy text says that with automatic backup each recipe is also kept in a private playlist in the person's own Spotify account, in its description, and goes nowhere else", /Recipes are saved to Spotify unless you choose otherwise: each recipe is also kept in a private playlist in your own Spotify account, in the playlist's description\. That is where the app saves it and reads it back, and it goes nowhere else\./.test(sw_html));
+  check("the privacy text says that with automatic backup each recipe is also kept in a private playlist in the person's own Spotify account, in its description, and goes nowhere else", /Recipes are saved to Spotify unless you choose otherwise: each recipe is also kept in a private playlist in your own Spotify account, in the playlist's description\. That is where this app saves it and reads it back, and it goes nowhere else\./.test(sw_html));
   var sw_m = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "manual" }, fetchOptions: {} });
   check("with the backup file as the way, Reset app on this device talks about restoring from the file, with Restore in the app menu", /Restore in the app menu/.test(sw_m.document.getElementById("clearRestoreHelp").textContent) && /Restore in the app menu/.test(sw_m.document.getElementById("clearConfirmHelp").textContent));
   var sw_s = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "spotify" }, fetchOptions: {} });
@@ -4452,7 +4452,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-01l"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-01m"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -4607,7 +4607,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   nv_b.eval("versionCheck.last = 0");
   await nv_check(nv_b);
   await new Promise((r) => setTimeout(r, 200));
-  check("the same newer version again in the same visit does not reload again, in case the upload is half done: it says so instead, with Reload", nv_b.__reloaded === 1 && /A newer version of the app is available\./.test(capText(nv_b)) && capLinks(nv_b).some((b) => b.textContent === "Reload"));
+  check("the same newer version again in the same visit does not reload again, in case the upload is half done: it says so instead, with Reload", nv_b.__reloaded === 1 && /A newer version of this app is available\./.test(capText(nv_b)) && capLinks(nv_b).some((b) => b.textContent === "Reload"));
   var nv_btn = capLinks(nv_b).find((b) => b.textContent === "Reload");
   nv_b.document.getElementById("feCaption").dispatchEvent(new nv_b.Event("pointerdown", { bubbles: true }));
   check("pressing on the message does not replace its buttons, so a press on Reload or OK still counts as a click", capLinks(nv_b).includes(nv_btn));
@@ -4617,15 +4617,15 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var nv_c = await nv_make({ serverVersion: "2099-01-01a" });
   nv_c.eval("notices.lastEditAt = Date.now()");
   await nv_check(nv_c);
-  check("the person has edited in the last few seconds: no reload, only the message", nv_c.__reloaded === 0 && nv_c.eval("notices.held && notices.held.text") === "A newer version of the app is available.");
+  check("the person has edited in the last few seconds: no reload, only the message", nv_c.__reloaded === 0 && nv_c.eval("notices.held && notices.held.text") === "A newer version of this app is available.");
   var nv_d = await nv_make({ serverVersion: "2099-01-01a" });
   nv_d.eval('(() => { const box = document.createElement("input"); box.type = "text"; document.body.appendChild(box); box.focus(); })()');   // someone typing in a box
   await nv_check(nv_d);
-  check("the person is typing in a box: no reload, only the message", nv_d.__reloaded === 0 && nv_d.eval("notices.held && notices.held.text") === "A newer version of the app is available.");
+  check("the person is typing in a box: no reload, only the message", nv_d.__reloaded === 0 && nv_d.eval("notices.held && notices.held.text") === "A newer version of this app is available.");
   var nv_e = await nv_make({ serverVersion: "2099-01-01a" });
   nv_e.eval("busy = true");
   await nv_check(nv_e);
-  check("something is being built or saved: no reload, only the message", nv_e.__reloaded === 0 && nv_e.eval("notices.held && notices.held.text") === "A newer version of the app is available.");
+  check("something is being built or saved: no reload, only the message", nv_e.__reloaded === 0 && nv_e.eval("notices.held && notices.held.text") === "A newer version of this app is available.");
   for (const [label, fetchOptions] of [["no connection", { versionFail: true }], ["a missing file", { versionStatus: 404, serverVersion: "Not found" }], ["an error page instead of a stamp", { serverVersion: "<html><body>Not found</body></html>" }], ["an empty answer", { serverVersion: "" }]]) {
     const w = await nv_make(fetchOptions);
     await nv_check(w);
