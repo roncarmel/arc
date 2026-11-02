@@ -20,7 +20,7 @@ A free, browser-only web app (playlists.roncarmel.com, GitHub Pages, no server) 
 | `theme.js` | Color themes as CSS variables. |
 | `engine.py` | The playlist engine: `pick`, `build_one`, naming (`name_pattern`, `existing_matches`), silence tracks. |
 | `version.txt` | Just the version stamp, fetched by the page to see if it is stale. |
-| `backup-cover.jpg`, `playlist-cover.jpg`, `apple-touch-icon.png`, `icons/` | Images. `backup-cover.jpg` (cloud with a check) is the cover of the cloud-save playlists and the picture on the menu button while saving. |
+| `backup-cover.jpg`, `playlist-cover.jpg`, `apple-touch-icon.png`, `ron.jpg`, `icons/` | Images. `ron.jpg` is Ron's face in the thank-you box after a build. `backup-cover.jpg` (cloud with a check) is the cover of the cloud-save playlists and the picture on the menu button while saving. |
 
 Naming: the person sees "recipe". The code still says "format" in identifiers (`formats`, `FORMATS`, `fe-` classes...). Recipe text is `RECIPES = {...}`; `FORMATS = {...}` is still read. Do not rename identifiers just for tidiness.
 
