@@ -16,7 +16,7 @@ const ADD_CHUNK = 10;      // songs added per request (kept small; Spotify tight
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-02j";
+const APP_VERSION = "2026-11-02k";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2192,20 +2192,20 @@ function whyLength(minutes) {
 }
 
 function fillWhyTable(plan) {
-  // "Why 4?": for each source playlist, what one playlist uses of it, its length, and how many playlists that is enough for.
+  // "Why 4?": for each source playlist, what one playlist uses of it, how much it has available, and how many playlists that is enough for.
   const box = $("planText");
   box.textContent = "";
   for (const b of plan.built) {
     if (plan.built.length > 1) box.appendChild(Object.assign(document.createElement("p"), { className: "bd-tablehead", textContent: `${formatLabel(b.key)}: ${plural(b.playlists.length, "playlist")}` }));
     const table = document.createElement("table");
-    table.innerHTML = "<thead><tr><th>Each playlist uses</th><th>Length</th><th>Enough for</th></tr></thead>";
+    table.innerHTML = "<thead><tr><th>Each playlist uses</th><th>Available</th><th>Enough for</th></tr></thead>";
     const body = document.createElement("tbody");
     const lowest = Math.min(...b.sources.map((r) => (r.enough == null ? Infinity : r.enough)));
     const limiting = b.ranOut ? b.ranOut.name : (b.sources.find((r) => r.enough === lowest) || {}).name;
     for (const r of b.sources) {
       const tr = document.createElement("tr");
       if (r.name === limiting) tr.className = "bd-limit";
-      const uses = document.createElement("td");
+      const uses = Object.assign(document.createElement("td"), { title: r.name });   // a long name ends in "…"; the full name shows on hover
       uses.append(whyLength(r.per), ` of ${r.name}`);
       const length = document.createElement("td");
       length.append(whyLength(r.has));
