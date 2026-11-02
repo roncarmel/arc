@@ -2986,7 +2986,7 @@ print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["pl
   var bt_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/<!--[\s\S]*?-->/g, "").replace(/<style>[\s\S]*?<\/style>/, "");
   var bt_app = fs.readFileSync(ROOT + "app.js", "utf8").split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
   check("the page calls the action Build everywhere: the only create playlists left is the Spotify permission it describes in Privacy", (bt_html.match(/create playlists/gi) || []).length === 1 && /read your playlists, create playlists, remove playlists/.test(bt_html) && !/create playlists/i.test(bt_app), String((bt_html.match(/create playlists/gi) || []).length));
-  check("the messages that follow a build say built and building", /Building \$\{created \+ 1\} of/.test(bt_app) && /are in your Spotify library/.test(bt_app) && /"was" : "were"\} built/.test(bt_app) && /Nothing can be built from/.test(bt_app));
+  check("the messages that follow a build say built and building", /Building \$\{created \+ 1\} of/.test(bt_app) && /"are"\} in your Spotify library/.test(bt_app) && /"was" : "were"\} built/.test(bt_app) && /Nothing can be built from/.test(bt_app));
   } catch (err) { areaCrashed("duplicate question, format names, empty note and equal widths", err); } }
 
   if (want("a new format scrolls into view")) { try {
