@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-03k";
+const APP_VERSION = "2026-11-03l";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1475,6 +1475,24 @@ function setTally(made, total, status, now) {
 
 const BD_SPARKS = [[-150, -64, 160], [138, -58, -120], [-118, 30, 90], [150, 22, -200], [-64, -96, 140], [92, -100, -90], [-160, 96, 60], [170, 92, -60], [-30, -112, 200], [40, 118, 120]];   // where each bit of confetti flies to from behind the covers, and how far it turns
 
+// Scrolls a box back to its top, easing in and out (longer for a longer way, at most about two thirds of a second). Resolves when it is there.
+function glideToTop(box) {
+  const from = box.scrollTop;
+  const still = typeof matchMedia !== "function" || matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (from <= 0 || still || typeof requestAnimationFrame !== "function") { box.scrollTop = 0; return Promise.resolve(); }
+  const duration = Math.min(650, 250 + from / 4);
+  const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  return new Promise((resolve) => {
+    const began = performance.now();
+    const step = (now) => {
+      const t = Math.min(1, (now - began) / duration);
+      box.scrollTop = from * (1 - ease(t));
+      if (t < 1) requestAnimationFrame(step); else resolve();
+    };
+    requestAnimationFrame(step);
+  });
+}
+
 function showFinale(made, minutes) {
   // After a build: the covers fanned out with a glow behind them and confetti, how many playlists and how much music (counting up), and a tile for each
   // that ripples once. It plays once, about two seconds, then holds still; with reduced motion it simply appears.
@@ -2580,7 +2598,7 @@ function detailsLink(more) {
   // "Details" opens the part of a box that is hidden at first, and "Hide details" closes it.
   more.hidden = true;
   more.classList.add("bd-info-more");
-  const b = linkButton("Details", () => { more.hidden = !more.hidden; b.textContent = more.hidden ? "Details" : "Hide details"; });
+  const b = linkButton("Details", () => { revealSmoothly(more, more.hidden); b.textContent = more.hidden ? "Details" : "Hide details"; });
   return b;
 }
 
@@ -2701,7 +2719,7 @@ function askToCreate(plan) {
     $("confirmYes").onclick = () => finish("create");
     $("confirmNo").onclick = () => finish("cancel");
     why.onclick = () => {
-      $("planText").hidden = !$("planText").hidden;
+      revealSmoothly($("planText"), $("planText").hidden);
       why.textContent = $("planText").hidden ? whyLabel : "Hide";
     };
   });
@@ -2892,6 +2910,7 @@ async function createFromPlan(plan) {
     else if (coverFailed) notes.push(`Spotify would not accept the cover art for ${plural(coverFailed, "playlist")}.`);
     createSucceeded = created > 0;
     if (created > 0) countEvent("playlists-created", String(created));
+    await glideToTop(body);   // the finale plays at the top, so it starts once the list is back there
     showFinale(created, planned.slice(0, created).reduce((n, p) => n + (p.minutes || 0), 0));
     // The first new playlist, at its ordinary Spotify address: on a phone it opens the Spotify app when it is installed, on a computer the web player, which offers the app.
     if (createdIds.length) $("createOpenLink").href = `https://open.spotify.com/playlist/${createdIds[0]}`;

@@ -272,20 +272,79 @@ const MOTION = {
   dim: { frames: [{ opacity: 0 }, { opacity: 1 }], in: 200, out: 150 },
   box: { frames: [{ opacity: 0, transform: "translateY(8px) scale(0.98)" }, { opacity: 1, transform: "none" }], in: 200, out: 150 },
   panel: { frames: [{ opacity: 0, transform: "translateY(16px)" }, { opacity: 1, transform: "none" }], in: 220, out: 150 },
-  menu: { frames: [{ opacity: 0, transform: "translateY(var(--fx-y, -4px)) scale(0.96)" }, { opacity: 1, transform: "none" }], in: 140, out: 100 },
+  menu: { in: 140, out: 100 },   // its frames depend on where it is: menuFrames
 };
 function playMotion(el, kind, coming) {
   const m = MOTION[kind];
-  return el.animate(coming ? m.frames : [m.frames[1], m.frames[0]], { duration: coming ? m.in : m.out, easing: coming ? EASE_OUT : EASE_IN, fill: coming ? "none" : "forwards" });   // nothing is left behind once it has arrived
+  const frames = m.frames || menuFrames(el);
+  return el.animate(coming ? frames : [frames[1], frames[0]], { duration: coming ? m.in : m.out, easing: coming ? EASE_OUT : EASE_IN, fill: coming ? "none" : "forwards" });   // nothing is left behind once it has arrived
 }
-// A menu grows out of the button that opened it: the part of its edge nearest that button stays put.
+// A menu grows out of the button that opened it: the point of it nearest that button stays put, and it moves a few pixels away from the button as
+// it comes. Its own transform is kept under the motion (a silence's panel is centered on its marker by one).
 function aimMenu(pop) {
   const r = pop.getBoundingClientRect();
-  const up = pop.classList.contains("fe-up");
-  const opener = [...document.querySelectorAll('[aria-expanded="true"]')].map((b) => b.getBoundingClientRect()).find((b) => b.right > r.left && b.left < r.right);
-  const x = opener ? Math.min(Math.max((opener.left + opener.right) / 2 - r.left, 0), r.width) + "px" : "50%";
-  pop.style.transformOrigin = `${x} ${up ? "100%" : "0"}`;
-  pop.style.setProperty("--fx-y", up ? "4px" : "-4px");
+  const near = (b) => Math.hypot(Math.max(b.left - r.right, r.left - b.right, 0), Math.max(b.top - r.bottom, r.top - b.bottom, 0));
+  const opener = [...document.querySelectorAll('[aria-expanded="true"]')].filter((b) => !pop.contains(b)).map((b) => b.getBoundingClientRect())
+    .filter((b) => b.width && near(b) < 40).sort((a, b) => near(a) - near(b))[0];
+  if (!opener) { pop._fxAim = pop._fxAim || { dx: 0, dy: 0 }; return; }
+  const cx = (opener.left + opener.right) / 2, cy = (opener.top + opener.bottom) / 2;
+  const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+  pop.style.transformOrigin = `${Math.round(clamp(cx, r.left, r.right) - r.left)}px ${Math.round(clamp(cy, r.top, r.bottom) - r.top)}px`;
+  pop._fxAim = { dx: cx < r.left ? -4 : cx > r.right ? 4 : 0, dy: cy < r.top ? -4 : cy > r.bottom ? 4 : 0 };
+}
+function menuFrames(pop) {
+  const own = getComputedStyle(pop).transform;
+  const aim = pop._fxAim || { dx: 0, dy: 0 };
+  return [{ opacity: 0, transform: (own === "none" ? "" : own + " ") + `translate(${aim.dx}px, ${aim.dy}px) scale(0.96)` }, { opacity: 1, transform: own }];
+}
+
+// A part that opens and closes in place (behind Details, Why N?, a <details> section) unfolds to its height and folds away again, fading as it goes.
+// Its hidden attribute changes at once; while it folds away the class fx-collapsing keeps it drawn. A popup that holds it follows its height as it
+// changes, so smoothResize leaves the popup alone meanwhile (fxUnfolding).
+let fxUnfolding = 0;
+function foldMotion(el, frames, opening, done) {
+  if (el._fxFold) el._fxFold.cancel();
+  fxUnfolding++;
+  const anim = el._fxFold = el.animate(frames, { duration: opening ? 240 : 180, easing: opening ? EASE_OUT : EASE_IN, fill: "forwards" });
+  let ended = false;
+  const end = () => {
+    if (ended) return;
+    ended = true;
+    fxUnfolding--;
+    if (el._fxFold === anim) el._fxFold = null;
+    if (done) done(anim.playState === "finished");
+    if (anim.playState === "finished") anim.cancel();   // held at its last frame until the change is made for real, then let go
+  };
+  anim.onfinish = end;
+  anim.oncancel = end;
+}
+function revealSmoothly(el, show) {
+  if (el.hidden === !show) return;
+  el.classList.remove("fx-collapsing");
+  el.hidden = !show;
+  if (!motionAllowed(el)) return;
+  if (!show) el.classList.add("fx-collapsing");
+  const css = getComputedStyle(el);
+  const full = el.getBoundingClientRect().height;
+  // its margins and padding fold too, or a gap would jump at the end
+  const room = { marginTop: css.marginTop, marginBottom: css.marginBottom, paddingTop: css.paddingTop, paddingBottom: css.paddingBottom };
+  const flat = { marginTop: "0px", marginBottom: "0px", paddingTop: "0px", paddingBottom: "0px" };
+  const frames = [{ height: "0px", opacity: 0, overflow: "clip", ...flat }, { height: full + "px", opacity: 1, overflow: "clip", ...room }];
+  foldMotion(el, show ? frames : frames.slice().reverse(), show, () => el.classList.remove("fx-collapsing"));
+}
+// A <details> section: the summary stays, the rest unfolds. Closing finishes by closing it for real.
+function toggleDetailsSmoothly(details) {
+  const opening = !details.open || details._fxClosing;
+  const from = details.getBoundingClientRect().height;
+  details._fxClosing = false;
+  details.open = false;
+  const shut = details.getBoundingClientRect().height;
+  details.open = true;
+  const full = details.getBoundingClientRect().height;
+  const frames = (to) => [{ height: from + "px", overflow: "hidden" }, { height: to + "px", overflow: "hidden" }];
+  if (opening) { foldMotion(details, frames(full), true); return; }
+  details._fxClosing = true;
+  foldMotion(details, frames(shut), false, (finished) => { if (finished && details._fxClosing) { details._fxClosing = false; details.open = false; } });
 }
 
 // Something that stays in the page and is shown and hidden with its hidden attribute (the build and menu popups, the Support me panel, the sign-in
@@ -320,13 +379,22 @@ function initMotion() {
   fadeWithHidden($("kofiDim"), "dim");
   fadeWithHidden($("kofiPanel"), "panel");
   fadeWithHidden($("themeList"), "menu");
+  fadeWithHidden($("premiumWhyText"), "menu");
+  // every <details> section unfolds (not the ones the menu's popup holds open, whose summary is hidden)
+  document.addEventListener("click", (event) => {
+    const summary = event.target.closest && event.target.closest("summary");
+    const details = summary && summary.parentElement;
+    if (!details || details.tagName !== "DETAILS" || summary !== details.querySelector(":scope > summary") || !motionAllowed(details) || event.defaultPrevented) return;
+    event.preventDefault();
+    toggleDetailsSmoothly(details);
+  });
   const ghost = (node, parent, rect) => {
     if (!motionAllowed(node)) return;
     node.classList.add("fx-ghost");
     node.setAttribute("aria-hidden", "true");
     node.inert = true;
     for (const el of [node, ...node.querySelectorAll("[id]")]) el.removeAttribute("id");   // the next popup may use the same names
-    if (rect) Object.assign(node.style, { position: "fixed", left: rect.left + "px", top: rect.top + "px", width: rect.width + "px", height: rect.height + "px", right: "auto", bottom: "auto", margin: "0" });
+    if (rect) Object.assign(node.style, { position: "fixed", left: rect.left + "px", top: rect.top + "px", width: rect.width + "px", height: rect.height + "px", right: "auto", bottom: "auto", margin: "0", transform: "none" });   // where it was drawn, its own transform included
     parent.appendChild(node);
     const kind = node.classList.contains("fe-overlay") ? "dim" : "menu";
     const parts = [playMotion(node, kind, false)];
@@ -393,7 +461,7 @@ function smoothResize(box, scroller) {
     const turned = Math.abs(rect.width - width) > 1;
     last = rect.height;
     width = rect.width;
-    if (!from || !rect.height || turned || Math.abs(from - rect.height) < 2 || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!from || !rect.height || turned || fxUnfolding || Math.abs(from - rect.height) < 2 || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const timing = { duration: 320, easing: EASE_OUT };
     anim = box.animate([{ height: from + "px", overflow: "hidden" }, { height: rect.height + "px", overflow: "hidden" }], timing);
     if (scroller) scroller.animate([{ overflowY: "hidden" }, { overflowY: "hidden" }], timing);   // no scroll bar coming and going while it grows
