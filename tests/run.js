@@ -798,9 +798,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-03l" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-03m" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-03l/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-03m/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -1998,7 +1998,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   am_w.document.getElementById("feDisconnect").click();
   await new Promise((r) => setTimeout(r, 60));
   var am_dlg = am_w.document.getElementById("feSyncDialog");
-  check("Disconnect asks first, says what stays, and says it takes a little longer to build next time", !!am_dlg && /Disconnect from Spotify\?/.test(am_dlg.textContent) && /Your recipes and your backups are not touched/.test(am_dlg.textContent) && /reads your playlists from Spotify again, which takes a little longer/.test(am_dlg.textContent) && !/delete/i.test(am_dlg.textContent) && am_w.sessionStorage.getItem("token") === am_before);
+  check("Disconnect asks first, says what stays, and says it takes a little longer to build next time", !!am_dlg && /Disconnect from Spotify\?/.test(am_dlg.textContent) && /Your recipes are not touched/.test(am_dlg.textContent) && /reads your playlists from Spotify again, which takes a little longer/.test(am_dlg.textContent) && !/delete/i.test(am_dlg.textContent) && am_w.sessionStorage.getItem("token") === am_before);
   check("it starts on Cancel, since signing out cannot be taken back with one tap", am_w.document.activeElement.id === "feSyncChoice1" && am_w.document.getElementById("feSyncChoice1").textContent === "Cancel" && am_w.document.getElementById("feSyncChoice0").textContent === "Disconnect");
   am_w.document.getElementById("feSyncChoice1").click();
   await new Promise((r) => setTimeout(r, 60));
@@ -3005,7 +3005,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-03l", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-03m", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3878,7 +3878,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var ss_o7 = { descStore: {}, nameStore: {} };
   var ss_w7 = await ss_started({ formats: ss_big, backupMode: "spotify" }, ss_o7);
   await waitFor(() => ss_writes(ss_o7, "create").length >= 1 && /too long/.test(ss_w7.document.getElementById("spotifySaveStatus").textContent), 8000);
-  check("a format whose save would not fit is not saved, the others are, and the line under the editor's bar says which one and that it is still saved in the browser", ss_writes(ss_o7, "create").length === 1 && ss_writes(ss_o7, "create")[0].name === "Alpha (recipe)" && /Huge is too long to back up to Spotify\. It is still saved in this browser\./.test(capText(ss_w7)));
+  check("a format whose save would not fit is not saved, the others are, and the line under the editor's bar says which one and that it is still saved in the browser", ss_writes(ss_o7, "create").length === 1 && ss_writes(ss_o7, "create")[0].name === "Alpha (recipe)" && /Huge is too long to save to Spotify\. It is still saved in this browser\./.test(capText(ss_w7)));
   var ss_files = [];
   ss_w7.saveFile = (name, text) => ss_files.push({ name, text });
   capLinks(ss_w7).find((b) => b.textContent === "Download it").click();
@@ -3895,7 +3895,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var ss_manualMenu = ss_menuTexts(ss_w4);
   check("for the manual way, it is the other way round: Back up now and Restore, and nothing about Spotify saving", ss_manualMenu.includes("Back up now") && ss_manualMenu.includes("Restore") && ss_manualMenu.some((t) => /^Manual backup to this deviceChange/.test(t)) && !ss_manualMenu.some((t) => /Saved to Spotify|Waiting to save/.test(t)) && ss_w4.document.getElementById("savedNote").hidden === false && ss_w4.document.getElementById("spotifySaveLine").hidden === true && ss_w4.document.getElementById("backupBlock").hidden === false);
   ss_w1.eval('askDeleteFormat()');
-  check("deleting a format says its backup playlist is deleted too, when Spotify is the way", /Its backup playlist in Spotify is deleted too\./.test(ss_w1.document.getElementById("feDeleteDialog").textContent) && !/restored from a backup/.test(ss_w1.document.getElementById("feDeleteDialog").textContent));
+  check("deleting a format says its backup playlist is deleted too, when Spotify is the way", /Its saved copy in Spotify is deleted too\./.test(ss_w1.document.getElementById("feDeleteDialog").textContent) && !/restored from a backup/.test(ss_w1.document.getElementById("feDeleteDialog").textContent));
   ss_w1.document.getElementById("feDeleteCancel").click();
   ss_w4.eval('askDeleteFormat()');
   check("and says it can be restored from a backup, when the backup file is", /restored from a backup/.test(ss_w4.document.getElementById("feDeleteDialog").textContent));
@@ -3998,7 +3998,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   bc_w4.eval("spotifySaveDelayMs = 30");
   await waitFor(() => bc_o4.writes.filter((x) => x.type === "create").length === 2, 8000);
   await waitFor(() => /did not accept the cover/.test(capText(bc_w4)), 8000);
-  check("when Spotify turns the cover down, the line under the bar says so, with what Spotify said", /Spotify did not accept the cover for the backup playlists: .+ They have no cover\./.test(capText(bc_w4)));
+  check("when Spotify turns the cover down, the line under the bar says so, with what Spotify said", /Spotify did not accept the cover for the recipe playlists: .+ They have no cover\./.test(capText(bc_w4)));
   check("when Spotify turns the cover down, the saves are still made and the status does not call it a failure", /Last saved at/.test(bc_w4.document.getElementById("spotifySaveStatus").textContent) && !/Couldn.t save/.test(bc_w4.document.getElementById("spotifySaveStatus").textContent));
   var bc_o5 = { descStore: {}, nameStore: {}, noCoverFile: true };
   var bc_w5 = await boot({ url: EDURL, session: signedIn(), local: { formats: bc_fmt, backupMode: "spotify" }, fetchOptions: bc_o5 });
@@ -4172,7 +4172,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   bs_leave(bs_w1);
   await waitFor(() => !!bs_w1.document.getElementById("feSyncDialog"), 5000);
   var bs_d = bs_w1.document.getElementById("feSyncDialog");
-  check("leaving Spotify for the backup file asks whether to remove the backups, saying how many there are and that another device would lose them, with keeping as the first answer", /Remove the backups from Spotify\?/.test(bs_d.textContent) && /There are 2 backups/.test(bs_d.textContent) && /Another device that backs up to Spotify would lose them too/.test(bs_d.textContent) && /Keep them/.test(bs_d.querySelector("#feSyncChoice0").textContent) && /Remove them/.test(bs_d.querySelector("#feSyncChoice1").textContent));
+  check("leaving Spotify for the backup file asks whether to remove the backups, saying how many there are and that another device would lose them, with keeping as the first answer", /Remove the saved recipes from Spotify\?/.test(bs_d.textContent) && /There are 2 saved recipes/.test(bs_d.textContent) && /Another device that saves to Spotify would lose them too/.test(bs_d.textContent) && /Keep them/.test(bs_d.querySelector("#feSyncChoice0").textContent) && /Remove them/.test(bs_d.querySelector("#feSyncChoice1").textContent));
   check("the choice itself is already made: the way is the backup file, and nothing more is saved to Spotify", bs_w1.localStorage.getItem("backupMode") === "manual" && bs_w1.document.getElementById("savedNote").hidden === false);
   check("this device forgets what it knew of the backups", bs_w1.localStorage.getItem("spotifySynced") === null && bs_w1.localStorage.getItem("spotifyPendingDeletes") === null);
   bs_w1.document.getElementById("feSyncChoice0").click();
@@ -4200,7 +4200,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => bs_writes(bs_o2, "remove").length >= 1, 5000);
   await new Promise((r) => setTimeout(r, 150));
   check("removing them removes every backup in the account, and only those", bs_writes(bs_o2, "remove").length === 1 && bs_writes(bs_o2, "remove")[0].uris.slice().sort().join() === "spotify:playlist:s1,spotify:playlist:s2" && !bs_w2.eval("playlists.some((p) => p.isSave)"));
-  check("it says how many were removed, that the formats are now only in this browser, and offers a backup file", /Removed 2 backups from Spotify\. Your recipes are now saved only in this browser\./.test(capText(bs_w2)) && !!capLinks(bs_w2).find((b) => b.textContent === "Back up now"));
+  check("it says how many were removed, that the formats are now only in this browser, and offers a backup file", /Removed 2 saved recipes from Spotify\. Your recipes are now saved only in this browser\./.test(capText(bs_w2)) && !!capLinks(bs_w2).find((b) => b.textContent === "Back up now"));
   check("and the formats here are untouched", !!bs_w2.eval("editor.model.formats.find((f) => f.id === 'f2')") && rowsOf(bs_w2).length >= 1);
 
   // closing the question keeps them
@@ -4493,9 +4493,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("it goes when it is fixed", /minutes? of music/.test(capText(nl_w)));
   // two things needing the person
   nl_w.eval('saveState.unread = 2; saveState.tooLong = [{ id: "f1", title: "Huge" }]; renderSaveStatus()');
-  check("two of them show one at a time, with a count that can be pressed, and no turning by itself", /2 backups in Spotify could not be read/.test(capText(nl_w)) && /\(1 of 2\)/.test(capText(nl_w)) && !!nl_cap().querySelector("button.fe-notice-count"));
+  check("two of them show one at a time, with a count that can be pressed, and no turning by itself", /2 recipes saved in Spotify could not be read/.test(capText(nl_w)) && /\(1 of 2\)/.test(capText(nl_w)) && !!nl_cap().querySelector("button.fe-notice-count"));
   await nl_sleep(700);
-  check("it stays on the first", /2 backups in Spotify could not be read/.test(capText(nl_w)));
+  check("it stays on the first", /2 recipes saved in Spotify could not be read/.test(capText(nl_w)));
   nl_cap().querySelector("button.fe-notice-count").click();
   check("pressing the count shows the next", /Huge is too long to back up/.test(capText(nl_w)) && /\(2 of 2\)/.test(capText(nl_w)) && capLinks(nl_w).some((b) => b.textContent === "Download it"));
   check("none of it puts a dot on the menu button: the dot is for a problem with the connection", !nl_w.document.getElementById("feAppMenuButton").classList.contains("fe-alert"));
@@ -4507,15 +4507,15 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await nl_sleep(450);
   // things that only need an OK
   nl_w.eval('saveState.unread = 2; renderSaveStatus()');
-  check("something that only needs to be known has an OK", /2 backups in Spotify could not be read/.test(capText(nl_w)) && capLinks(nl_w).some((b) => b.textContent === "OK"));
+  check("something that only needs to be known has an OK", /2 recipes saved in Spotify could not be read/.test(capText(nl_w)) && capLinks(nl_w).some((b) => b.textContent === "OK"));
   capLinks(nl_w).find((b) => b.textContent === "OK").click();
   check("OK puts it away, and it stays away", /minutes? of music/.test(capText(nl_w)) && !nl_w.document.getElementById("feAppMenuButton").classList.contains("fe-alert"));
   nl_w.eval('renderSaveStatus()');
   check("also when the line is drawn again", /minutes? of music/.test(capText(nl_w)));
   nl_w.eval('saveState.unread = 3; renderSaveStatus()');
-  check("but a different count is news again", /3 backups in Spotify could not be read/.test(capText(nl_w)));
+  check("but a different count is news again", /3 recipes saved in Spotify could not be read/.test(capText(nl_w)));
   nl_w.eval('saveState.unread = 0; saveState.tooLong = [{ id: "f1", title: "Huge" }]; renderSaveStatus()');
-  check("a format too long to back up has its link and an OK", /Huge is too long to back up to Spotify/.test(capText(nl_w)) && capLinks(nl_w).some((b) => b.textContent === "Download it") && capLinks(nl_w).some((b) => b.textContent === "OK"));
+  check("a format too long to back up has its link and an OK", /Huge is too long to save to Spotify/.test(capText(nl_w)) && capLinks(nl_w).some((b) => b.textContent === "Download it") && capLinks(nl_w).some((b) => b.textContent === "OK"));
   nl_w.eval('saveState.tooLong = []; renderSaveStatus()');
   // the record in the menu, and the page
   nl_w.eval('saveState.lastNews = { text: "Updated \\u2068TEST\\u2069 from Spotify.", at: Date.now() }; renderSaveStatus()');
@@ -4571,11 +4571,11 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await new Promise((r) => setTimeout(r, 400));
   check("and when there is nothing more to say, the line goes back to the minutes of music and silence", /minutes? of music/.test(capText(nl_m)) && !nl_m.document.getElementById("feCaption").classList.contains("fe-notice"));
   nl_w.eval('saveState.unread = 4; renderSaveStatus()');
-  check("trouble that has not been put away shows", /4 backups in Spotify could not be read/.test(capText(nl_w)));
+  check("trouble that has not been put away shows", /4 recipes saved in Spotify could not be read/.test(capText(nl_w)));
   nl_w.eval('showBackupMessage("Just done.")');
   check("a message about something the person has just done comes before trouble that is waiting", /Just done\./.test(capText(nl_w)) && !/could not be read/.test(capText(nl_w)));
   await nl_sleep(900);
-  check("and the trouble comes back after it", /4 backups in Spotify could not be read/.test(capText(nl_w)));
+  check("and the trouble comes back after it", /4 recipes saved in Spotify could not be read/.test(capText(nl_w)));
   nl_w.eval('saveState.unread = 0; renderSaveStatus()');
   // the merge hands its news over
   var nl_remote = nl_w.packFormat(nl_w.ensureGaps({ id: "f9", title: "Gamma", gap: 30, gaps: [], lead: 0, items: [{ id: "a", kind: "seg", lists: [{ name: "", id: "p2", weight: 1 }], minutes: 45 }], rev: 3, modified: 1790000000 }), ["p2"]);
@@ -4730,7 +4730,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-03l"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-03m"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

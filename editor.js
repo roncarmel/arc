@@ -1829,7 +1829,7 @@ function askDeleteFormat() {
   const overlay = feEl("div", { class: "fe-overlay", id: "feDeleteDialog", onClick: close },
     feEl("div", { class: "fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": "Delete recipe", onClick: (e) => e.stopPropagation() },
       feEl("h3", { text: `Delete ${named(f.title.trim() || "Untitled")}?` }),
-      feEl("p", { text: `This removes the recipe and its ${rows === 1 ? "1 row" : rows + " rows"}. Playlists already in Spotify are not affected.${typeof backupMode === "function" && backupMode() === "spotify" ? " Its backup playlist in Spotify is deleted too." : " Formats can be restored from a backup if you have one."}` }),
+      feEl("p", { text: `This removes the recipe and its ${rows === 1 ? "1 row" : rows + " rows"}. Playlists already in Spotify are not affected.${typeof backupMode === "function" && backupMode() === "spotify" ? " Its saved copy in Spotify is deleted too." : " Recipes can be restored from a backup file if you have one."}` }),
       feEl("div", { class: "row" }, cancel, confirm)));
   document.body.appendChild(overlay);
   document.addEventListener("keydown", onKey);

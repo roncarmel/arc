@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-03l";
+const APP_VERSION = "2026-11-03m";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -675,7 +675,7 @@ async function mergeFromSpotify() {
       choice = await askSyncChoice(`${named(label)} was changed in two places`, `This device has a version from ${whenText(a.local.modified)}, and Spotify has one from ${whenText(a.remote.modified)}, probably saved from another device. Which one do you want to keep? The other one is replaced.`,
         [{ label: "Keep this device\u2019s", value: "mine" }, { label: "Use Spotify\u2019s", value: "theirs" }], { required: true });
     } else {
-      choice = await askSyncChoice(`${named(label)} is no longer in Spotify`, "Its backup was removed from your Spotify, maybe on another device. Keep it here, and it will be saved to Spotify again, or remove it from this device too?",
+      choice = await askSyncChoice(`${named(label)} is no longer in Spotify`, "It was removed from your Spotify, maybe on another device. Keep it here, and it will be saved to Spotify again, or remove it from this device too?",
         [{ label: "Keep it here", value: "keep" }, { label: "Remove it here", value: "remove", danger: true }], { required: true });
     }
     if (a.kind === "conflict" && choice === "theirs") { adoptFormat(a.remote); synced[a.id] = { rev: a.remote.rev || 0, playlistId: a.playlist.id }; saveState.updated.push(a.remote.title); }
@@ -765,7 +765,7 @@ async function runSpotifySave() {
         putCover(unreadOfIt);
       } else {
         const made = await spotifyRequest("POST", "/me/playlists", { json: { name, public: false, description } });
-        if (made.public !== false) { try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); } catch (err) { logStep("save: could not make a backup playlist private"); } }
+        if (made.public !== false) { try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); } catch (err) { logStep("save: could not make a recipe playlist private"); } }
         const entry = { id: made.id, name, owner: me.id, collaborative: false, image: null, count: 0, description, snapshot: null, madeByApp: false };
         entry.save = unpackFormat(description);
         entry.isSave = true;
@@ -814,9 +814,9 @@ function spotifySaveParts(full = true) {
   // the menu keeps a record of the last news, which the line under the bar only shows for a few seconds
   if (saveState.lastNews) parts.push({ text: `${saveState.lastNews.text} (${new Date(saveState.lastNews.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })})` });
   if (saveState.coverProblem) parts.push({ text: saveState.coverProblem.text });
-  if (saveState.unread) parts.push({ text: `${saveState.unread === 1 ? "A backup in Spotify" : saveState.unread + " backups in Spotify"} could not be read, or ${saveState.unread === 1 ? "was" : "were"} saved by a newer version of this app, and ${saveState.unread === 1 ? "was" : "were"} left alone.` });
+  if (saveState.unread) parts.push({ text: `${saveState.unread === 1 ? "A recipe saved in Spotify" : saveState.unread + " recipes saved in Spotify"} could not be read, or ${saveState.unread === 1 ? "was" : "were"} saved by a newer version of this app, and ${saveState.unread === 1 ? "was" : "were"} left alone.` });
   for (const t of saveState.tooLong) {
-    parts.push({ text: `${named(t.title.trim() || "Untitled")} is too long to back up to Spotify. It is still saved in this browser.`, action: () => downloadOneFormat(t.id), label: "Download it" });
+    parts.push({ text: `${named(t.title.trim() || "Untitled")} is too long to save to Spotify. It is still saved in this browser.`, action: () => downloadOneFormat(t.id), label: "Download it" });
   }
   return parts;
 }
@@ -835,9 +835,9 @@ function attentionItems() {
   const name = (t) => named(String(t).trim() || "Untitled");
   if (connection === "ready" && saveState.error && !saveState.running) items.push({ key: "error", text: "Couldn\u2019t save to Spotify.", actions: [{ label: "Try again", run: () => { saveState.error = ""; runSpotifySave(); } }] });
   const n = saveState.unread;
-  if (n && !saveState.dismissed.has("unread:" + n)) items.push({ key: "unread:" + n, ok: true, text: `${n === 1 ? "A backup in Spotify" : n + " backups in Spotify"} could not be read, or ${n === 1 ? "was" : "were"} saved by a newer version of this app, and ${n === 1 ? "was" : "were"} left alone.` });
+  if (n && !saveState.dismissed.has("unread:" + n)) items.push({ key: "unread:" + n, ok: true, text: `${n === 1 ? "A recipe saved in Spotify" : n + " recipes saved in Spotify"} could not be read, or ${n === 1 ? "was" : "were"} saved by a newer version of this app, and ${n === 1 ? "was" : "were"} left alone.` });
   if (saveState.coverProblem && !saveState.dismissed.has("cover:" + saveState.coverProblem.key)) items.push({ key: "cover:" + saveState.coverProblem.key, ok: true, text: saveState.coverProblem.text });
-  for (const t of saveState.tooLong) if (!saveState.dismissed.has("long:" + t.id)) items.push({ key: "long:" + t.id, ok: true, text: `${name(t.title)} is too long to back up to Spotify. It is still saved in this browser.`, actions: [{ label: "Download it", run: () => downloadOneFormat(t.id) }] });
+  for (const t of saveState.tooLong) if (!saveState.dismissed.has("long:" + t.id)) items.push({ key: "long:" + t.id, ok: true, text: `${name(t.title)} is too long to save to Spotify. It is still saved in this browser.`, actions: [{ label: "Download it", run: () => downloadOneFormat(t.id) }] });
   return items;
 }
 
@@ -861,11 +861,11 @@ async function uploadCovers() {
   let problem = null, stopped = false;
   try {
     if (saveState.coverBlocked || !hasScope("ugc-image-upload")) {
-      problem = { key: "permission", text: "Your Spotify sign-in does not include permission to add cover art, so the backup playlists have no cover. Disconnect and connect again to allow it." };
+      problem = { key: "permission", text: "Your Spotify sign-in does not include permission to add cover art, so the recipe playlists have no cover. Disconnect and connect again to allow it." };
     } else {
       let cover = null;
       try { cover = await loadCover("backup-cover.jpg"); }
-      catch (err) { logStep("save: cover image not loaded"); problem = { key: "file", text: "The cover image for the backup playlists (backup-cover.jpg) could not be loaded from this site, so they have no cover." }; }
+      catch (err) { logStep("save: cover image not loaded"); problem = { key: "file", text: "The cover image for the recipe playlists (backup-cover.jpg) could not be loaded from this site, so they have no cover." }; }
       while (cover && saveState.coverQueue.length && backupMode() === "spotify" && connection === "ready") {
         const entry = saveState.coverQueue[0];
         if (entry.image) { saveState.coverQueue.shift(); continue; }
@@ -877,7 +877,7 @@ async function uploadCovers() {
           if (problemKind(String(err && err.message || err)) === "rate-limit") { stopped = true; logStep("save: covers wait, Spotify is limiting uploads"); break; }
           logStep("save: cover not accepted");
           if (/did not allow|sign-in expired/.test(err.message)) saveState.coverBlocked = true;
-          problem = { key: "refused", text: `Spotify did not accept the cover for the backup playlists: ${String(err.message || err).replace(/\.$/, "")}. They have no cover.` };
+          problem = { key: "refused", text: `Spotify did not accept the cover for the recipe playlists: ${String(err.message || err).replace(/\.$/, "")}. They have no cover.` };
           saveState.coverQueue.shift();   // the next save queues it again
         }
         if (saveState.coverGapMs) await new Promise((r) => setTimeout(r, saveState.coverGapMs));
@@ -995,20 +995,20 @@ async function leaveSpotifyBackups() {
   const offer = { label: "Back up now", onClick: () => { downloadBackup(); } };
   if (!saves.length) { showBackupMessage("Your recipes are now saved only in this browser.", false, offer); return; }
   const many = saves.length > 1;
-  if (connection !== "ready") { showBackupMessage(`The ${many ? "backups" : "backup"} in Spotify ${many ? "were" : "was"} left as ${many ? "they are" : "it is"}.`, false, offer); return; }
-  const choice = await askSyncChoice("Remove the backups from Spotify?",
-    `${many ? "There are " + saves.length + " backups" : "There is 1 backup"} of your recipes in Spotify, in private playlists ending in (recipe). Keep ${many ? "them" : "it"}, or remove ${many ? "them" : "it"}? Another device that backs up to Spotify would lose ${many ? "them" : "it"} too.`,
+  if (connection !== "ready") { showBackupMessage(`The ${many ? "recipes" : "recipe"} saved in Spotify ${many ? "were" : "was"} left as ${many ? "they are" : "it is"}.`, false, offer); return; }
+  const choice = await askSyncChoice("Remove the saved recipes from Spotify?",
+    `${many ? "There are " + saves.length + " saved recipes" : "There is 1 saved recipe"} in Spotify, in private playlists ending in (recipe). Keep ${many ? "them" : "it"}, or remove ${many ? "them" : "it"}? Another device that saves to Spotify would lose ${many ? "them" : "it"} too.`,
     [{ label: many ? "Keep them" : "Keep it", value: "keep" }, { label: many ? "Remove them" : "Remove it", value: "remove", danger: true }]);
-  if (choice !== "remove") { showBackupMessage(`The ${many ? "backups" : "backup"} in Spotify ${many ? "were" : "was"} left as ${many ? "they are" : "it is"}.`, false, offer); return; }
+  if (choice !== "remove") { showBackupMessage(`The ${many ? "recipes" : "recipe"} saved in Spotify ${many ? "were" : "was"} left as ${many ? "they are" : "it is"}.`, false, offer); return; }
   try {
     const ids = saves.map((p) => p.id);
     for (let i = 0; i < ids.length; i += REMOVE_CHUNK) {
       await spotifyRequest("DELETE", "/me/library", { params: { uris: ids.slice(i, i + REMOVE_CHUNK).map((id) => "spotify:playlist:" + id).join(",") } });
     }
     playlists = playlists.filter((p) => !ids.includes(p.id));
-    showBackupMessage(`Removed ${plural(ids.length, "backup")} from Spotify. Your recipes are now saved only in this browser.`, false, offer);
+    showBackupMessage(`Removed ${plural(ids.length, "saved recipe")} from Spotify. Your recipes are now saved only in this browser.`, false, offer);
   } catch (err) {
-    showBackupMessage("The backups could not be removed from Spotify: " + String(err && err.message || err), false, offer, true);
+    showBackupMessage("The saved recipes could not be removed from Spotify: " + String(err && err.message || err), false, offer, true);
   }
 }
 
@@ -1779,7 +1779,7 @@ function loadStoredToken() {
 // is not touched, because the second part is easy to take for something worse than it is.
 async function confirmDisconnect() {
   const choice = await askSyncChoice("Disconnect from Spotify?",
-    "This signs you out of Spotify on this device. Your recipes and your backups are not touched. The next time you build, this app reads your playlists from Spotify again, which takes a little longer.",
+    "This signs you out of Spotify on this device. Your recipes are not touched. The next time you build, this app reads your playlists from Spotify again, which takes a little longer.",
     [{ label: "Disconnect", value: "yes" }, { label: "Cancel", value: "no" }], { focusLast: true });
   if (choice === "yes") await disconnect();
 }
