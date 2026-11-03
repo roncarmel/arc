@@ -26,6 +26,9 @@ const html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/<script src="
 // the three scripts share one scope in a browser, so they are run together here
 const appJs = fs.readFileSync(ROOT + "theme.js", "utf8") + "\n" + fs.readFileSync(ROOT + "formats.js", "utf8") + "\n" + fs.readFileSync(ROOT + "editor.js", "utf8") + "\n" + fs.readFileSync(ROOT + "app.js", "utf8");
 
+// the sentence a finished build shows, from its parts (the music between them counts up)
+const doneSentence = (w) => { const q = (c) => (w.document.querySelector("#actionMessage ." + c) || { textContent: "" }).textContent; return `${q("bd-big")} ${q("bd-lib")}`; };
+
 // ---- fake Spotify
 // the plan text is shown in the question box (behind a link), or, when there is a problem, in the output box
 function outText(w) { return w.document.getElementById("output").hidden ? w.document.getElementById("planText").textContent : w.document.getElementById("output").textContent; }
@@ -794,9 +797,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-02zm" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-03a" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-02zm/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-03a/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -1823,7 +1826,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   pv_w.document.getElementById("confirmYes").click();
   await waitFor(() => /in your Spotify library\.$/.test(pv_w.document.getElementById("actionMessage").textContent), 30000);
   check("every playlist is created asking to stay off the profile (public: false)", pv_o.writes.filter((w) => w.type === "create").length === 2 && pv_o.writes.filter((w) => w.type === "create").every((w) => w.public === false));
-  check("when Spotify says they came out private, nothing more is sent, and the done message is just the one sentence", pv_o.writes.every((w) => w.type !== "update") && pv_w.document.getElementById("actionMessage").textContent === "2 playlists are in your Spotify library." && pv_w.document.getElementById("createNotes").hidden, pv_w.document.getElementById("actionMessage").textContent);
+  check("when Spotify says they came out private, nothing more is sent, and the done message is just the one sentence", pv_o.writes.every((w) => w.type !== "update") && doneSentence(pv_w) === "2 playlists are in your Spotify library." && pv_w.document.getElementById("createNotes").hidden, pv_w.document.getElementById("actionMessage").textContent);
   var pv_o2 = { ignorePublic: true };
   var pv_w2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: pv_o2 });
   await readyToPreview(pv_w2);
@@ -1833,7 +1836,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => visible(pv_w2, "confirmBox"), 30000);
   pv_w2.document.getElementById("confirmYes").click();
   await waitFor(() => /in your Spotify library\.$/.test(pv_w2.document.getElementById("actionMessage").textContent), 30000);
-  check("when Spotify makes them public anyway, the app changes each one to stay off the profile right after creating it", pv_o2.writes.filter((w) => w.type === "update").length === 2 && pv_o2.writes.filter((w) => w.type === "update").every((w) => w.public === false) && pv_o2.writes.filter((w) => w.type === "update").map((w) => w.id).join() === pv_o2.writes.filter((w) => w.type === "create").map((w) => w.id).join() && pv_w2.document.getElementById("actionMessage").textContent === "2 playlists are in your Spotify library." && pv_w2.document.getElementById("createNotes").hidden);
+  check("when Spotify makes them public anyway, the app changes each one to stay off the profile right after creating it", pv_o2.writes.filter((w) => w.type === "update").length === 2 && pv_o2.writes.filter((w) => w.type === "update").every((w) => w.public === false) && pv_o2.writes.filter((w) => w.type === "update").map((w) => w.id).join() === pv_o2.writes.filter((w) => w.type === "create").map((w) => w.id).join() && doneSentence(pv_w2) === "2 playlists are in your Spotify library." && pv_w2.document.getElementById("createNotes").hidden);
   var pv_o3 = { ignorePublic: true, putFails: true };
   var pv_w3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: pv_o3 });
   await readyToPreview(pv_w3);
@@ -1873,7 +1876,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var cv_covers = cv_o.writes.filter((w) => w.type === "cover");
   check("each playlist gets the cover: a JPEG, sent as base64 with the image content type, to its own playlist", cv_covers.length === 2 && cv_covers.every((c) => c.contentType === "image/jpeg" && c.base64 === cv_file.toString("base64")) && cv_covers.map((c) => c.id).join() === cv_o.writes.filter((w) => w.type === "create").map((w) => w.id).join(), JSON.stringify(cv_covers.map((c) => [c.id, c.contentType, (c.base64 || "").length])));
   check("the cover goes on after the songs, so a playlist is complete when it is finished", (() => { const order = cv_o.writes.map((w) => w.type + ":" + w.id); return order.indexOf("cover:new1") > order.indexOf("create:new1") && order.indexOf("cover:new1") < order.indexOf("create:new2"); })() || cv_o.writes.filter((w) => w.type === "cover").length === 2);
-  check("when all goes well the done message is just the one sentence", cv_w.document.getElementById("actionMessage").textContent === "2 playlists are in your Spotify library." && cv_w.document.getElementById("createNotes").hidden);
+  check("when all goes well the done message is just the one sentence", doneSentence(cv_w) === "2 playlists are in your Spotify library." && cv_w.document.getElementById("createNotes").hidden);
   var cv_oldToken = { token: JSON.stringify({ value: "t", expires: Date.now() + 3600000, scope: "playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public user-library-modify" }) };
   var cv_o2 = {};
   var cv_w2 = await cv_run(cv_oldToken, cv_o2);
@@ -2133,7 +2136,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("and clicking outside does nothing while it is creating", pp_w2.document.getElementById("createOverlay").hidden === false);
   await waitFor(() => /in your Spotify library\.$/.test(pp_w2.document.getElementById("actionMessage").textContent), 30000);
   await waitFor(() => pp_w2.document.getElementById("createCloseRow").hidden === false, 10000);
-  check("when it is done the popup shows the result and the playlists made, with a Close button", pp_w2.document.getElementById("createOverlay").hidden === false && pp_w2.document.querySelectorAll("#results .bd-row").length >= 2 && pp_w2.document.getElementById("createClose").textContent.trim() === "Close" && pp_w2.document.getElementById("actionMessage").textContent === "2 playlists are in your Spotify library.");
+  check("when it is done the popup shows the result and the playlists made, with a Close button", pp_w2.document.getElementById("createOverlay").hidden === false && pp_w2.document.querySelectorAll("#results .bd-row").length >= 2 && pp_w2.document.getElementById("createClose").textContent.trim() === "Close" && doneSentence(pp_w2) === "2 playlists are in your Spotify library.");
   pp_w2.document.getElementById("createClose").click();
   check("Close dismisses it and puts the focus back on Create", pp_w2.document.getElementById("createOverlay").hidden === true && pp_w2.document.activeElement === pp_w2.document.getElementById("create"));
   pp_w2.document.getElementById("create").click();
@@ -3000,7 +3003,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-02zm", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-03a", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3207,7 +3210,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var bt_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/<!--[\s\S]*?-->/g, "").replace(/<style>[\s\S]*?<\/style>/, "");
   var bt_app = fs.readFileSync(ROOT + "app.js", "utf8").split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
   check("the page calls the action Build everywhere: the only create playlists left is the Spotify permission it describes in Privacy", (bt_html.match(/create playlists/gi) || []).length === 1 && /read your playlists, create playlists, remove playlists/.test(bt_html) && !/create playlists/i.test(bt_app), String((bt_html.match(/create playlists/gi) || []).length));
-  check("the messages that follow a build say built and building", /Building \$\{created \+ 1\} of/.test(bt_app) && /"are"\} in your Spotify library/.test(bt_app) && /"was" : "were"\} built/.test(bt_app) && /Nothing can be built from/.test(bt_app));
+  check("the messages that follow a build say built and building", /Building your playlist/.test(bt_app) && /"are"\} in your Spotify library/.test(bt_app) && /"was" : "were"\} built/.test(bt_app) && /Nothing can be built from/.test(bt_app));
   } catch (err) { areaCrashed("duplicate question, format names, empty note and equal widths", err); } }
 
   if (want("a new format scrolls into view")) { try {
@@ -4725,7 +4728,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-02zm"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-03a"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -4835,8 +4838,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the popup's text can be selected", /#createDialog \.bd-body \{[^}]*user-select: text;/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   check("the title names the recipe", bp_text(bp_a, "bdTitle") === "Build “Ran”", bp_text(bp_a, "bdTitle"));
   check("while it asks, reading and planning are ticked and building has not started", bp_steps(bp_a) === "done,done,-,-", bp_steps(bp_a));
-  check("each planned playlist is a row with its songs, length and shape", bp_rows(bp_a).length === 2 && bp_rows(bp_a).every((r) => /^\d+ songs · \d+ h \d+ min$/.test(r.querySelector(".bd-meta").textContent) && r.querySelectorAll(".bd-mini span").length === 3 && r.querySelectorAll(".bd-mini .bd-sil").length === 1), bp_rows(bp_a).map((r) => r.textContent).join(" | "));
-  check("in the plan the bars are pale: nothing is built yet", bp_rows(bp_a).every((r) => r.querySelector(".bd-mini").dataset.fill === "0"));
+  check("each planned playlist is a row with its songs and length, and no bar", bp_rows(bp_a).length === 2 && bp_rows(bp_a).every((r) => /^\d+ songs · \d+ h \d+ min$/.test(r.querySelector(".bd-meta").textContent) && !r.querySelector(".bd-mini")), bp_rows(bp_a).map((r) => r.textContent).join(" | "));
   check("there is no separate progress bar any more", !bp_a.document.getElementById("bdProgress"));
   check("while the cover is sent, the row says so, not adding songs", /setRowState\(row, "now", "adding the cover"\);[^\n]*\n\s*try \{ await spotifyRequest\("PUT", `\/playlists\/\$\{made\.id\}\/images`/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
   check("Why 2? is offered, and the table starts hidden", bp_text(bp_a, "planToggle") === "Why 2?" && !visible(bp_a, "planText"));
@@ -4852,11 +4854,16 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("and the link then offers to hide it", bp_text(bp_a, "planToggle") === "Hide");
   check("only Build and Cancel are offered", visible(bp_a, "confirmButtons") && !visible(bp_a, "createCloseRow") && !visible(bp_a, "bdBusyRow") && /Build 2 playlists/.test(bp_text(bp_a, "confirmYes")));
   bp_a.document.getElementById("confirmYes").click();
+  await waitFor(() => visible(bp_a, "bdTally"), 20000);
+  check("while building: a count of the playlists made, a tile for each, and Keep this tab open", /^\d+of 2 playlists$/.test(bp_text(bp_a, "bdCount")) && bp_a.document.querySelectorAll("#bdTiles .bd-tile").length === 2 && bp_text(bp_a, "bdCountNote") === "Keep this tab open.", bp_text(bp_a, "bdCount"));
+  check("while building: a playlist not built yet shows nothing on the right", bp_rows(bp_a).filter((r) => r.classList.contains("bd-wait")).every((r) => r.querySelector(".bd-meta").textContent === ""));
   await waitFor(() => visible(bp_a, "createCloseRow"), 60000);
-  check("done: one sentence, every step ticked", bp_text(bp_a, "actionMessage") === "2 playlists are in your Spotify library." && bp_steps(bp_a) === "done,done,done,done", bp_text(bp_a, "actionMessage") + " " + bp_steps(bp_a));
-  check("done: the playlists are not links, each bar filled", bp_rows(bp_a).length === 2 && bp_rows(bp_a).every((r) => !r.querySelector("a") && r.querySelector(".bd-mini").dataset.fill === "100"));
+  check("done: every step ticked, and the count is gone", bp_steps(bp_a) === "done,done,done,done" && !visible(bp_a, "bdTally"), bp_steps(bp_a));
+  check("done: how many, how much music, and a tile for each", doneSentence(bp_a) === "2 playlists are in your Spotify library." && /^\d+ h( \d+ min)? of music$|^\d+ min of music$/.test(bp_a.document.querySelector("#actionMessage .bd-hours").textContent) && bp_a.document.querySelectorAll("#actionMessage .bd-tiles .bd-tile").length === 2, bp_text(bp_a, "actionMessage"));
+  check("done: a fanned cover for each playlist, five at most", bp_a.document.querySelectorAll("#actionMessage .bd-fan .bd-card-img").length === 2 && /Math\.min\(made, 5\)/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("done: the playlists are not links, each one ticked with its songs and length", bp_rows(bp_a).length === 2 && bp_rows(bp_a).every((r) => !r.querySelector("a") && /songs ·/.test(r.querySelector(".bd-meta").textContent)));
   check("done: Open in Spotify opens the first new playlist, then the thank-you box, then the list", visible(bp_a, "createOpen") && /^https:\/\/open\.spotify\.com\/playlist\/new\w+$/.test(bp_a.document.getElementById("createOpenLink").href) && bp_a.document.getElementById("createOpenLink").textContent === "Open in Spotify" && bp_a.document.getElementById("createOpen").nextElementSibling.id === "createSupport", bp_a.document.getElementById("createOpenLink").href);
-  check("done: the status line is no longer pinned", !bp_a.document.getElementById("output").classList.contains("bd-pinned") && bp_a.document.getElementById("output").hidden);
+  check("done: the status line is hidden", bp_a.document.getElementById("output").hidden);
   check("done: the thank-you line, Close and Support me", visible(bp_a, "createSupport") && visible(bp_a, "createDonate") && !visible(bp_a, "createNotes"));
 
   // with a limit on the number there is no hint, and the table says where the number comes from
@@ -4866,6 +4873,11 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await bp_open(bp_b);
   check("when the limit sets the number, the plan is the same one sentence", bp_text(bp_b, "confirmText") === "Ready to build 1 playlist. Why 1?", bp_text(bp_b, "confirmText"));
   check("and Why 1? says the limit set it", /Most playlists per recipe/.test(bp_text(bp_b, "planText")), bp_text(bp_b, "planText"));
+  bp_b.document.getElementById("confirmYes").click();
+  await waitFor(() => visible(bp_b, "bdTally"), 20000);
+  check("building one playlist says so, with no count and no tile", bp_text(bp_b, "bdCount") === "Building your playlist" && !visible(bp_b, "bdTiles"), bp_text(bp_b, "bdCount"));
+  await waitFor(() => visible(bp_b, "createCloseRow"), 60000);
+  check("one playlist done: one cover, no tiles, is in your library", doneSentence(bp_b) === "1 playlist is in your Spotify library." && bp_b.document.querySelectorAll("#actionMessage .bd-card-img").length === 1 && !bp_b.document.querySelector("#actionMessage .bd-tiles"), bp_text(bp_b, "actionMessage"));
 
   // a build that stops: what went wrong, what was built, what to do, and Close
   const bp_fail = async (how, extra = {}) => {
@@ -4877,9 +4889,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var bp_n = await bp_fail("network");
   check("no connection: it says so and what to do", /^Spotify stopped answering1 of 2 playlists was built, and “Ran 2” is incomplete\. Check your internet connection, then build again\. Building again replaces the ones made so far\.$/.test(bp_n.card), bp_n.card);
   check("the build stops there: nothing more is sent", bp_n.o.addCalls === bp_n.o.writes.filter((x) => x.type === "add").length + 1 && bp_n.o.writes.every((x) => x.type !== "add" || x.id === "new1") && bp_n.o.writes.filter((x) => x.type === "create").length === 2, bp_n.o.addCalls);
-  check("the rows say what happened to each", bp_rows(bp_n.w)[0].querySelector(".bd-mini").dataset.fill === "100" && bp_rows(bp_n.w)[1].querySelector(".bd-meta").textContent === "incomplete", bp_rows(bp_n.w).map((r) => r.textContent).join(" | "));
+  check("the rows say what happened to each", /songs ·/.test(bp_rows(bp_n.w)[0].querySelector(".bd-meta").textContent) && bp_rows(bp_n.w)[1].querySelector(".bd-meta").textContent === "incomplete", bp_rows(bp_n.w).map((r) => r.textContent).join(" | "));
   check("the Build step shows the failure", bp_steps(bp_n.w) === "done,done,fail,-", bp_steps(bp_n.w));
-  check("the bars show how far it got: the first full, the one that stopped empty (its first songs failed), the rest empty", JSON.stringify(bp_rows(bp_n.w).map((r) => r.querySelector(".bd-mini").dataset.fill)) === '["100","0"]', JSON.stringify(bp_rows(bp_n.w).map((r) => r.querySelector(".bd-mini").dataset.fill)));
+  check("after a stop the count is gone: the message and the rows say how far it got", !visible(bp_n.w, "bdTally"));
   check("only Close is offered: no Support me, no report link", visible(bp_n.w, "createCloseRow") && !visible(bp_n.w, "createDonate") && !visible(bp_n.w, "mainReportHint") && !visible(bp_n.w, "createSupport"));
   var bp_h = await bp_fail("hang", { answerMs: 200 });
   check("no answer at all reads the same", /^Spotify stopped answering/.test(bp_h.card), bp_h.card);

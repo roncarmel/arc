@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-02zm">
-<script src="theme.js?v=2026-11-02zm"></script>
+<meta name="app-version" content="2026-11-03a">
+<script src="theme.js?v=2026-11-03a"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -516,21 +516,46 @@
   #createDialog .bd-summary { margin: 0 0 12px; color: var(--fg); }
   #createDialog .bd-hint { color: var(--muted); }
   #createDialog .bd-list { list-style: none; margin: 0; padding: 0; }
-  #createDialog .bd-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
-  #createDialog .bd-row:last-child { border-bottom: none; }
+  #createDialog .bd-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 4px 0; }   /* a plain list: no lines between rows */
   #createDialog .bd-ic { display: flex; align-items: center; justify-content: center; line-height: 0; }
   #createDialog .bd-name { font-weight: 600; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #createDialog a.bd-name { color: var(--accent); text-decoration: underline; }
   #createDialog .bd-meta { color: var(--muted); font-size: 0.82rem; white-space: nowrap; text-align: right; }
-  #createDialog .bd-mini { grid-column: 2 / 4; display: flex; gap: 2px; height: 8px; }
-  #createDialog .bd-mini span { display: block; position: relative; overflow: hidden; box-sizing: border-box; min-width: 4px; border-radius: 4px; border: 1px solid var(--button); }
-  #createDialog .bd-mini span.bd-sil { border-color: var(--silence-line); }
-  #createDialog .bd-mini span i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--button); transition-property: width; transition-timing-function: linear; }   /* the fill: app.js sets its width, delay and duration */
-  #createDialog .bd-mini span.bd-sil i { background: #000; }   /* as in the editor bar: a black silence with a grey outline */
-  #createDialog .bd-row { scroll-margin-top: 44px; scroll-margin-bottom: 6px; }
-  /* while building, the status line stays at the top of the list as it scrolls */
-  #createDialog .bd-status.bd-pinned { position: sticky; top: -14px; z-index: 1; margin: -14px -18px 6px; padding: 14px 18px 8px; background: var(--bg); border-bottom: 1px solid var(--line); color: var(--fg); }
-  #createDialog .bd-row.bd-wait { opacity: 0.45; }
+  #createDialog .bd-row { scroll-margin-bottom: 6px; }
+  /* not built yet: plain grey, nothing on the right; under way: what is happening, in pink */
+  #createDialog .bd-row.bd-wait .bd-name { color: var(--muted); font-weight: 400; }
+  #createDialog .bd-row.bd-now .bd-meta { color: var(--accent); }
+  /* while building: the count, a tile for each playlist, and the status, kept at the top as the list scrolls */
+  #createDialog .bd-tally { position: sticky; top: -14px; z-index: 1; margin: -14px -18px 8px; padding: 14px 18px 12px; background: var(--bg); border-bottom: 1px solid var(--line); }
+  #createDialog .bd-count { display: flex; align-items: baseline; gap: 8px; margin: 0 0 2px; }
+  #createDialog .bd-count b { font-size: 2.2rem; line-height: 1; font-weight: 800; color: var(--fg); font-variant-numeric: tabular-nums; }
+  #createDialog .bd-count span { font-size: 1.05rem; color: var(--muted); }
+  #createDialog .bd-count.bd-count-one { font-size: 1.3rem; font-weight: 700; color: var(--fg); }
+  #createDialog .bd-count-note { font-size: 0.82rem; color: var(--muted); margin: 0; }
+  #createDialog .bd-tally .bd-tiles { margin-top: 10px; }
+  #createDialog .bd-tiles { display: flex; flex-wrap: wrap; gap: 5px; }
+  #createDialog .bd-tiles[hidden] { display: none; }
+  #createDialog .bd-tile { width: 15px; height: 15px; border-radius: 4px; box-sizing: border-box; border: 1.5px solid var(--line); transition: background-color 0.3s, border-color 0.3s; }
+  #createDialog .bd-tile.bd-on { background: var(--accent); border-color: var(--accent); }
+  #createDialog .bd-tile.bd-now { border-color: var(--accent); animation: bd-breathe 1.4s ease-in-out infinite; }
+  @keyframes bd-breathe { 50% { background-color: color-mix(in srgb, var(--accent) 35%, transparent); } }
+  /* when it is done: the covers fan out from a stack with a glow behind them, confetti bursts out and falls away, the tiles ripple once */
+  #createDialog .bd-finale { text-align: center; padding: 4px 0 0; margin: 0 0 14px; }
+  #createDialog .bd-fan { position: relative; height: 150px; margin: 0 0 10px; }
+  #createDialog .bd-glow { position: absolute; left: 50%; top: 72px; width: 260px; height: 180px; transform: translate(-50%, -50%); background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 38%, transparent), transparent); animation: bd-glow 0.9s ease-out both; }
+  @keyframes bd-glow { from { opacity: 0; } }
+  #createDialog .bd-card-img { position: absolute; left: 50%; top: 14px; width: 116px; height: 116px; margin-left: -58px; border-radius: 10px; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28); transform-origin: 50% 140%; transform: rotate(var(--r)); animation: bd-deal 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+  @keyframes bd-deal { from { opacity: 0; transform: translateY(24px) scale(0.85) rotate(0deg); } 30% { opacity: 1; } }
+  #createDialog .bd-spark { position: absolute; left: 50%; top: 72px; width: 7px; height: 7px; margin: -3.5px; border-radius: 2px; background: var(--accent); opacity: 0; z-index: 0; animation: bd-spark 1.6s ease-out both; }
+  #createDialog .bd-spark:nth-of-type(3n) { background: color-mix(in srgb, var(--accent) 55%, #fff); }
+  @keyframes bd-spark { 0% { opacity: 0; transform: translate(0, 0) rotate(0deg); } 12% { opacity: 1; } 45% { opacity: 1; transform: translate(var(--x), var(--y)) rotate(calc(var(--t) / 2)); } 100% { opacity: 0; transform: translate(var(--x), calc(var(--y) + 60px)) rotate(var(--t)); } }
+  #createDialog .bd-big { font-size: 1.9rem; font-weight: 800; line-height: 1.1; color: var(--fg); margin: 0; }
+  #createDialog .bd-hours { font-size: 1.05rem; color: var(--fg); margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+  #createDialog .bd-hours b { color: var(--accent); }
+  #createDialog .bd-lib { font-size: 0.9rem; color: var(--muted); margin: 0; }
+  #createDialog .bd-finale .bd-tiles { justify-content: center; margin: 14px 0 0; }
+  #createDialog .bd-ripple .bd-tile { animation: bd-ripple 0.6s ease-out both; }
+  @keyframes bd-ripple { 40% { transform: translateY(-6px) scale(1.25); } }
   #createDialog .bd-group { padding: 12px 0 2px; font-size: 0.85rem; color: var(--muted); }
   #createDialog .bd-group b { color: var(--fg); }
   #createDialog .bd-more { color: var(--muted); font-size: 0.85rem; padding: 8px 0 0 28px; }
@@ -549,8 +574,8 @@
   #createDialog .bd-support .bd-face { border-radius: 50%; display: block; }   /* Ron, since the box speaks in his voice */
   #createDialog .bd-support p { margin: 0 0 10px; line-height: 1.4; color: var(--fg); }
   #createDialog .bd-support button { min-height: 40px; }
-  #createDialog .bd-open { margin: -6px 0 12px; }
-  #createDialog .bd-open a { color: var(--accent); }
+  #createDialog .bd-open { margin: 0 0 16px; text-align: center; }
+  #createDialog .bd-open a { display: inline-block; text-decoration: none; background: var(--button); color: var(--on-button, #fff); font-weight: 700; padding: 12px 22px; border-radius: 999px; }
   #createDialog .bd-info { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; margin: 0 0 8px; font-size: 0.86rem; line-height: 1.35; color: var(--fg); }
   #createDialog .bd-info-ic { color: var(--accent); line-height: 0; padding-top: 1px; }
   #createDialog .bd-info p { margin: 0; }
@@ -592,13 +617,16 @@
   #createDialog .bd-foot button { flex: 1 1 0; min-height: 44px; justify-content: center; white-space: nowrap; min-width: 0; }
   #createDialog .bd-foot button.primary { flex-grow: 1.7; }
   #createDialog .bd-spin { animation: cn-spin 0.9s linear infinite; transform-origin: 50% 50%; }
-  @media (prefers-reduced-motion: reduce) { #createDialog .bd-spin { animation: none; } #createDialog .bd-mini span i { transition: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    #createDialog .bd-spin, #createDialog .bd-tile, #createDialog .bd-glow, #createDialog .bd-card-img { animation: none; transition: none; }
+    #createDialog .bd-spark { display: none; }
+  }
   @media (max-width: 759px) {
     #createDialog .bd-head, #createDialog .bd-body { padding-left: 14px; padding-right: 14px; }
     #createDialog .bd-foot { padding: 10px 14px 14px; }
     #createDialog .bd-steps { gap: 4px; font-size: 0.74rem; }
     #createDialog .bd-sep { width: 8px; }
-    #createDialog .bd-status.bd-pinned { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
+    #createDialog .bd-tally { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
   }
   .theme-list.theme-up { top: auto; bottom: calc(100% + 4px); }
   /* a menu or list too close to the bottom of the screen opens upward instead */
@@ -1040,6 +1068,11 @@
         <div id="bdSteps" class="bd-steps"></div>
       </div>
       <div class="bd-body">
+        <div id="bdTally" class="bd-tally" hidden>
+          <p id="bdCount" class="bd-count"></p>
+          <p id="bdCountNote" class="bd-count-note"></p>
+          <div id="bdTiles" class="bd-tiles" aria-hidden="true"></div>
+        </div>
         <div id="output" class="bd-status" hidden></div>
         <div id="actionMessage" aria-live="polite"></div>
         <p id="createOpen" class="bd-open" hidden><a id="createOpenLink" href="https://open.spotify.com/" target="_blank" rel="noopener noreferrer">Open in Spotify</a></p>
@@ -1221,8 +1254,8 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-02zm"></script>
-<script src="editor.js?v=2026-11-02zm"></script>
-<script src="app.js?v=2026-11-02zm"></script>
+<script src="formats.js?v=2026-11-03a"></script>
+<script src="editor.js?v=2026-11-03a"></script>
+<script src="app.js?v=2026-11-03a"></script>
 </body>
 </html>

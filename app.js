@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-02zm";
+const APP_VERSION = "2026-11-03a";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1365,7 +1365,8 @@ function resetBuildPopup() {
   setActionMessage("");
   clearResults();
   $("confirmBox").hidden = true;
-  $("output").classList.remove("bd-pinned");
+  $("bdTally").hidden = true;
+  $("bdTiles").textContent = "";
   $("bdInfo").textContent = "";
   $("planText").hidden = true;
   $("planText").textContent = "";
@@ -1417,66 +1418,93 @@ function lengthText(minutes) {
 }
 
 function playlistRow(p, icon) {
-  // One playlist in the popup's list: an icon for where it stands, its name, songs and length, and its shape.
+  // One playlist in the popup's list: an icon for where it stands, its name, and its songs and length (or what is under way).
   const li = document.createElement("li");
   li.className = "bd-row";
   const ic = Object.assign(document.createElement("span"), { className: "bd-ic" });
   const name = Object.assign(document.createElement("span"), { className: "bd-name", textContent: p.name });
   const meta = Object.assign(document.createElement("span"), { className: "bd-meta" });
   li.append(ic, name, meta);
-  if (p.pieces && p.pieces.length) {
-    const bar = Object.assign(document.createElement("span"), { className: "bd-mini" });
-    bar.setAttribute("aria-hidden", "true");
-    for (const [minutes, silence] of p.pieces) {
-      const piece = document.createElement("span");
-      if (silence) piece.className = "bd-sil";
-      piece.style.flex = `${Math.max(minutes, 0.5)} 0 0`;
-      piece.appendChild(document.createElement("i"));   // the fill
-      bar.appendChild(piece);
-    }
-    li.appendChild(bar);
-  }
-  li.bd = { p, ic, name, meta, bar: li.querySelector(".bd-mini") };
+  li.bd = { p, ic, name, meta };
   setRowState(li, icon);
   return li;
 }
 
 function setRowState(li, state, note) {
-  // state: a number (its place in the plan), "wait", "now", "done" or "fail". note replaces the songs and length.
+  // state: a number (its place in the plan), "wait", "now", "done" or "fail". note replaces the songs and length; a playlist waiting to be built shows neither.
   const { p, ic, meta } = li.bd;
   ic.innerHTML = typeof state === "number" ? BD_ICON.num(state) : BD_ICON[state];
   li.classList.toggle("bd-wait", state === "wait");
-  if (state === "done") setBarFill(li, 1);
-  else if (state === "wait" || typeof state === "number") setBarFill(li, 0);
-  meta.textContent = note || (p.songs != null ? `${plural(p.songs, "song")} · ${lengthText(p.length != null ? p.length : p.minutes)}` : "");
+  li.classList.toggle("bd-now", state === "now");
+  meta.textContent = note || (state !== "wait" && p.songs != null ? `${plural(p.songs, "song")} · ${lengthText(p.length != null ? p.length : p.minutes)}` : "");
 }
 
-const BAR_SWEEP_MS = 900;   // how long the fill takes to cross a whole bar
+function setTally(made, total, status, now) {
+  // While building, at the top of the popup: how many playlists are made, a tile for each (lit when made, breathing while under way), and what is happening.
+  const count = $("bdCount");
+  count.textContent = "";
+  count.classList.toggle("bd-count-one", total === 1);
+  if (total === 1) count.textContent = "Building your playlist";   // "0 of 1 playlist" reads oddly
+  else count.append(Object.assign(document.createElement("b"), { textContent: String(made) }), Object.assign(document.createElement("span"), { textContent: `of ${total} playlists` }));
+  $("bdCountNote").textContent = status;
+  const tiles = $("bdTiles");
+  tiles.hidden = total < 2;   // one tile alone says nothing
+  while (tiles.children.length < total) tiles.appendChild(Object.assign(document.createElement("span"), { className: "bd-tile" }));
+  Array.from(tiles.children).forEach((tile, i) => { tile.className = "bd-tile" + (i < made ? " bd-on" : i === made && now ? " bd-now" : ""); });
+  $("bdTally").hidden = false;
+}
 
-function setBarFill(li, fraction) {
-  // The playlist's shape doubles as its progress: outlined until built, filled from the left as its songs are added. The fill sweeps at one speed
-  // across the pieces in turn: each piece starts when the sweep reaches it, and takes as long as its share of the bar.
-  const bar = li.bd.bar;
-  if (!bar) return;
-  const pieces = li.bd.p.pieces;
-  const total = pieces.reduce((n, [minutes]) => n + minutes, 0) || 1;
-  const from = Number(bar.dataset.fill || 0) / 100;
+const BD_SPARKS = [[-150, -64, 160], [138, -58, -120], [-118, 30, 90], [150, 22, -200], [-64, -96, 140], [92, -100, -90], [-160, 96, 60], [170, 92, -60], [-30, -112, 200], [40, 118, 120]];   // where each bit of confetti flies to from behind the covers, and how far it turns
+
+function showFinale(made, minutes) {
+  // After a build: the covers fanned out with a glow behind them and confetti, how many playlists and how much music (counting up), and a tile for each
+  // that ripples once. It plays once, about two seconds, then holds still; with reduced motion it simply appears.
   const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let start = 0;
-  Array.from(bar.children).forEach((piece, i) => {
-    const length = pieces[i][0];
-    const share = length > 0 ? Math.min(1, Math.max(0, (fraction * total - start) / length)) : (fraction >= 1 ? 1 : 0);
-    const fill = piece.firstElementChild;
-    if (fill) {
-      const was = parseFloat(fill.style.width) / 100 || 0;
-      const forward = share > was && !still;
-      fill.style.transitionDuration = forward ? `${Math.round(((share - was) * length / total) * BAR_SWEEP_MS)}ms` : "0ms";
-      fill.style.transitionDelay = forward ? `${Math.round(Math.max(0, (start + was * length) / total - from) * BAR_SWEEP_MS)}ms` : "0ms";
-      fill.style.width = `${share * 100}%`;
-    }
-    start += length;
+  const el = (tag, className, text) => Object.assign(document.createElement(tag), { className, textContent: text || "" });
+  const box = el("div", "bd-finale");
+  const fan = el("div", "bd-fan");
+  fan.setAttribute("aria-hidden", "true");
+  fan.appendChild(el("div", "bd-glow"));
+  const cards = Math.min(made, 5), mid = (cards - 1) / 2;   // more than five look the same as five, and a wider fan leaves a phone's popup
+  for (let i = 0; i < cards; i++) {
+    const card = Object.assign(document.createElement("img"), { src: "playlist-cover.jpg", alt: "", className: "bd-card-img" });
+    card.style.setProperty("--r", `${(i - mid) * 8}deg`);
+    card.style.zIndex = String(10 - Math.abs(i - mid) * 2);   // the middle card on top
+    fan.appendChild(card);
+  }
+  BD_SPARKS.forEach(([x, y, turn], i) => {
+    const spark = el("span", "bd-spark");
+    spark.style.cssText = `--x: ${x}px; --y: ${y}px; --t: ${turn}deg; animation-delay: ${120 + (i % 4) * 50}ms`;
+    fan.appendChild(spark);
   });
-  bar.dataset.fill = String(Math.round(fraction * 100));
+  const hours = el("b", "", lengthText(still ? minutes : 0));
+  const music = el("p", "bd-hours");
+  music.append(hours, document.createTextNode(" of music"));
+  box.append(fan, el("p", "bd-big", plural(made, "playlist")), music, el("p", "bd-lib", `${made === 1 ? "is" : "are"} in your Spotify library.`));
+  if (made > 1) {
+    const tiles = el("div", "bd-tiles bd-ripple");
+    tiles.setAttribute("aria-hidden", "true");
+    const step = Math.min(45, 900 / made);   // the ripple crosses in under a second however many there are
+    for (let i = 0; i < made; i++) {
+      const tile = el("span", "bd-tile bd-on");
+      tile.style.animationDelay = `${Math.round(700 + i * step)}ms`;
+      tiles.appendChild(tile);
+    }
+    box.appendChild(tiles);
+  }
+  setActionMessage("");
+  $("actionMessage").appendChild(box);
+  if (still || typeof requestAnimationFrame !== "function") return;
+  // the music counts up over a second, slowing at the end; screen readers wait for the final number
+  $("actionMessage").setAttribute("aria-busy", "true");
+  const began = Date.now();
+  const tick = () => {
+    const t = Math.min(1, (Date.now() - began) / 1000);
+    hours.textContent = lengthText(minutes * (1 - Math.pow(1 - t, 3)));
+    if (t < 1) requestAnimationFrame(tick);
+    else $("actionMessage").removeAttribute("aria-busy");
+  };
+  requestAnimationFrame(tick);
 }
 
 function groupRow(title, text) {
@@ -2475,7 +2503,7 @@ function fillWhyTable(plan) {
 }
 
 function showPlanRows(plan) {
-  // The playlists about to be built, each with its shape. Ten at most; the rest are counted.
+  // The playlists about to be built, each with its songs and length. Ten at most; the rest are counted.
   clearResults();
   let shown = 0, hidden = 0;
   for (const b of plan.built) {
@@ -2746,16 +2774,20 @@ async function createFromPlan(plan) {
     rows.push(row);
     $("results").appendChild(row);
   }
-  // The status line stays at the top while the list scrolls, and the list keeps the row being built in view, until the person scrolls it themselves.
-  $("output").classList.add("bd-pinned");
+  // The count stays at the top while the list scrolls, and the list keeps the row being built in view, until the person scrolls it themselves.
   const body = $("createDialog").querySelector(".bd-body");
   let follow = true;
   const stopFollowing = () => { follow = false; };
   for (const type of ["wheel", "touchmove", "keydown"]) body.addEventListener(type, stopFollowing, { passive: true });
   const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const show = (row) => { if (follow && row.scrollIntoView) row.scrollIntoView({ block: "nearest", behavior: still ? "auto" : "smooth" }); };
-  const progress = (status) => setOutput(status);
+  const show = (row) => {
+    if (!follow || !row.scrollIntoView) return;
+    body.style.scrollPaddingTop = `${$("bdTally").offsetHeight}px`;   // so the row is not hidden behind the count
+    row.scrollIntoView({ block: "nearest", behavior: still ? "auto" : "smooth" });
+  };
   let created = 0;
+  const progress = (status, building) => setTally(created, planned.length, status, building);
+  progress("Keep this tab open.");
   let current = null;   // the playlist being made, if it exists in Spotify but is not finished
   let removing = renamed.length ? "renaming" : existing.length ? "removing" : null;   // what is under way before the building starts
   const createdIds = [];
@@ -2785,7 +2817,7 @@ async function createFromPlan(plan) {
     removing = null;
     for (const [i, p] of planned.entries()) {
       const row = rows[i];
-      progress(`Building ${created + 1} of ${planned.length}. Keep this tab open.`);
+      progress("Keep this tab open.", true);
       setRowState(row, "now", "starting");
       show(row);
       const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: `${APP_MARKER} from the recipe "${p.label}". Please leave this description as it is: the app uses it to recognize the playlists it made.` } });
@@ -2805,7 +2837,6 @@ async function createFromPlan(plan) {
           throw err;
         }
         k += n;
-        setBarFill(row, Math.min(1, k / p.uris.length));
       }
       if (cover && !coverBlocked) {   // the app's icon as the cover; a problem here never stops the playlists
         setRowState(row, "now", "adding the cover");   // an image upload, often the slowest step for a playlist
@@ -2822,8 +2853,7 @@ async function createFromPlan(plan) {
     }
     logStep(`create finished (${plural(created, "playlist")})`);
     invalidatePlan(true);
-    $("output").classList.remove("bd-pinned");
-    setOutput("");
+    $("bdTally").hidden = true;
     setBuildSteps("done");
     const notes = [];
     if (stillPublic.length) notes.push(`Spotify kept ${plural(stillPublic.length, "playlist")} on your profile and would not let this app change that. You can change that in the Spotify app.`);
@@ -2832,11 +2862,7 @@ async function createFromPlan(plan) {
     else if (coverFailed) notes.push(`Spotify would not accept the cover art for ${plural(coverFailed, "playlist")}.`);
     createSucceeded = created > 0;
     if (created > 0) countEvent("playlists-created", String(created));
-    const done = Object.assign(document.createElement("p"), { className: "bd-summary" });
-    done.appendChild(Object.assign(document.createElement("b"), { textContent: plural(created, "playlist") }));
-    done.appendChild(document.createTextNode(` ${created === 1 ? "is" : "are"} in your Spotify library.`));
-    setActionMessage("");
-    $("actionMessage").appendChild(done);
+    showFinale(created, planned.slice(0, created).reduce((n, p) => n + (p.minutes || 0), 0));
     // The first new playlist, at its ordinary Spotify address: on a phone it opens the Spotify app when it is installed, on a computer the web player, which offers the app.
     if (createdIds.length) $("createOpenLink").href = `https://open.spotify.com/playlist/${createdIds[0]}`;
     $("createOpen").hidden = !createdIds.length;
@@ -2853,8 +2879,7 @@ async function createFromPlan(plan) {
     }
   } catch (err) {
     if (created || current) invalidatePlan(true);   // some playlists exist now, so creating the plan again would duplicate them
-    $("output").classList.remove("bd-pinned");
-    setOutput("");
+    $("bdTally").hidden = true;
     // The row that was under way gets a cross; the ones after it stay as they were, marked "not built".
     rows.forEach((row, i) => {
       if (i < created) return;
