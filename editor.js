@@ -918,7 +918,9 @@ function paintNoticeNow(caption, view) {
   caption.classList.add("fe-notice", view.pause ? "fe-notice-pause" : view.warn ? "fe-notice-warn" : "fe-notice-news");
   caption.appendChild(feIcon(view.icon || (view.warn ? "warn" : "cloud")));
   caption.appendChild(feEl("span", { class: "fe-notice-text", text: view.text }));
-  for (const a of view.actions || []) caption.appendChild(feEl("button", { type: "button", class: a.ok ? "fe-notice-ok" : a.more ? "fe-notice-link fe-notice-more" : "fe-notice-link", onClick: a.run, text: a.label }));
+  for (const a of view.actions || []) caption.appendChild(a.more
+    ? feEl("button", { type: "button", class: "fe-notice-link fe-notice-more", onClick: a.run }, feEl("span", { class: "fe-more-word", text: a.label }), feEl("span", { class: "fe-more-arrow", "aria-hidden": "true", text: "\u203A" }))   // the word alone is underlined on hover
+    : feEl("button", { type: "button", class: a.ok ? "fe-notice-ok" : "fe-notice-link", onClick: a.run, text: a.label }));
   if (view.count) caption.appendChild(view.cycle
     ? feEl("button", { type: "button", class: "fe-notice-count", "aria-label": "Next message", onClick: view.cycle, text: `(${view.count})` })
     : feEl("span", { class: "fe-notice-count", text: `(${view.count})` }));

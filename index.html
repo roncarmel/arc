@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-02t">
-<script src="theme.js?v=2026-11-02t"></script>
+<meta name="app-version" content="2026-11-02u">
+<script src="theme.js?v=2026-11-02u"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -237,7 +237,7 @@
   #formatEditor .fe-notice-pause { background: var(--accent); color: #fff; font-weight: 600; border-radius: 8px; padding: 0 10px; margin-top: 4px; height: 28px; min-height: 28px; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
   #formatEditor .fe-notice-pause svg { color: #fff; }
   #formatEditor .fe-notice-pause .fe-notice-more { margin-left: auto; color: #fff; text-decoration: none; font-weight: 700; }
-  #formatEditor .fe-notice-more::before { content: "\203A"; order: 1; margin-left: 6px; font-size: 1.1em; }
+  #formatEditor .fe-more-arrow { margin-left: 6px; font-size: 1.1em; }
   #formatEditor .fe-notice-more { display: inline-flex; align-items: center; }
   #formatEditor .fe-notice-ok::after, #formatEditor .fe-notice-link::after { content: ""; position: absolute; left: -6px; right: -6px; top: -9px; bottom: -9px; }   /* a bigger target for a thumb */
   #formatEditor .fe-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -686,6 +686,8 @@
     #formatEditor .fe-step:not(:disabled):hover, #formatEditor .fe-more:hover, #formatEditor .fe-grip:hover { filter: none; outline: none; transform: scale(1.12); }
     #formatEditor .fe-main:hover, #formatEditor .fe-tag:hover { outline: none; }
     #formatEditor .fe-main:hover { filter: none; }
+    #formatEditor .fe-notice-pause .fe-notice-more:hover { filter: none; outline: none; }   /* no box on the pink line: the word is underlined */
+    #formatEditor .fe-notice-pause .fe-notice-more:hover .fe-more-word { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
     button.linklike:hover, #formatEditor .fe-linkbutton:hover { outline: none; filter: brightness(1.25); text-decoration-thickness: 2px; }
     #formatEditor .fe-item:not(.fe-static):hover, #formatEditor .fe-option:hover { filter: none; outline: none; background: rgba(127, 127, 127, 0.18); }
     #kofiPanel .kofi-bar button:hover { filter: none; outline: none; background: rgba(0, 0, 0, 0.08); }
@@ -1205,8 +1207,8 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-02t"></script>
-<script src="editor.js?v=2026-11-02t"></script>
-<script src="app.js?v=2026-11-02t"></script>
+<script src="formats.js?v=2026-11-02u"></script>
+<script src="editor.js?v=2026-11-02u"></script>
+<script src="app.js?v=2026-11-02u"></script>
 </body>
 </html>
