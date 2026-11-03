@@ -1731,7 +1731,7 @@ function tourPlaylistView(n, step, first) {
 
 const TOUR_STEPS = [
   { done: () => !!tourRecipe(), view: () => ({ el: $("feNewFormat"), side: "bottom", title: "Create a recipe", text: "A recipe says which of your playlists to play, in what order, and for how long. Press New recipe." }) },
-  { done: () => { const f = tourRecipe(); return !!f && !f.draft; }, view: () => { const d = document.querySelector("#feNewFormatDialog .fe-nf-dialog"), f = tourRecipe(); return { el: d, side: "bottom", wait: !!d && d.classList.contains("fe-nf-typing"), title: "Name the recipe", text: `Every recipe needs a name. This one’s called ${f ? f.title : "Sample recipe"} for now, and you can rename it any time. Tap Create recipe.` }; } },
+  { done: () => { const f = tourRecipe(); return !!f && !f.draft; }, view: () => { const d = document.querySelector("#feNewFormatDialog .fe-nf-dialog"), f = tourRecipe(); return { el: d, arrowAt: d && d.querySelector("#feNewFormatConfirm"), side: "bottom", wait: !!d && d.classList.contains("fe-nf-typing"), title: "Name the recipe", text: `Every recipe needs a name. This one’s called ${f ? f.title : "Sample recipe"} for now. Tap Create recipe.` }; } },
   { done: () => { const s = tourSegment(0); return !!s && !!s.lists[0].name; }, view: () => tourPlaylistView(0, 3, true) },
   { done: () => tour.lengthDone, view: () => { const s = tourSegment(0); const row = s && document.querySelector(`#feRows .fe-row[data-id="${s.id}"]`); return { el: row && row.querySelector(".fe-stepper"), side: "bottom", title: "Set the segment’s length", text: "Tap + or − to choose how many minutes of music this segment plays. Tap Next when you're ready.", next: () => { tour.lengthDone = true; tourSync(); } }; } },
   { done: () => !!tourSegment(1), view: () => ({ el: $("feAddSegment"), side: "bottom", title: "Add a second segment", text: "A session can have many segments. Tap New segment." }) },
@@ -1787,6 +1787,7 @@ function tourPanel(view, step, buttons) {
       pop.footer.appendChild(feEl("span", { class: "fe-tour-btns" }, ...buttons));
     } } });
   tour.el = view.el;
+  tour.arrowAt = view.arrowAt || null;
   // Driver.js focuses the panel's first button, which drew a focus ring on a button nobody had pressed: the panel itself takes the focus
   const pop = document.querySelector(".driver-popover.fe-tour");
   if (pop) { pop.setAttribute("tabindex", "-1"); pop.focus({ preventScroll: true }); }
@@ -1812,8 +1813,8 @@ function tourSync() {
   tourPanel(view, index + 1, buttons);
 }
 
-// Every frame while the tour is on: the blur keeps its hole over the highlighted element, and the panel's arrow points at the element's middle,
-// wherever the panel had to sit to fit on the screen.
+// Every frame while the tour is on: the blur keeps its hole over the highlighted element, and the panel's arrow points at the element's middle
+// (or at the one button in it to tap), wherever the panel had to sit to fit on the screen.
 function tourGeometry() {
   const blur = $("feTourBlur");
   const el = tour.el && tour.el.isConnected ? tour.el : null;
@@ -1831,7 +1832,7 @@ function tourGeometry() {
   const pop = document.querySelector(".driver-popover.fe-tour");
   const arrow = pop && pop.querySelector(".driver-popover-arrow");
   if (el && arrow) {
-    const t = el.getBoundingClientRect(), w = pop.getBoundingClientRect();
+    const t = (tour.arrowAt && tour.arrowAt.isConnected ? tour.arrowAt : el).getBoundingClientRect(), w = pop.getBoundingClientRect();
     if (/side-(left|right)/.test(arrow.className)) { arrow.style.bottom = "auto"; arrow.style.top = Math.max(16, Math.min(w.height - 16, t.top + t.height / 2 - w.top)) - 8 + "px"; }
     else { arrow.style.right = "auto"; arrow.style.left = Math.max(16, Math.min(w.width - 16, t.left + t.width / 2 - w.left)) - 8 + "px"; }
     arrow.style.margin = "0";
