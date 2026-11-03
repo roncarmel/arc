@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-03j">
-<script src="theme.js?v=2026-11-03j"></script>
+<meta name="app-version" content="2026-11-03k">
+<script src="theme.js?v=2026-11-03k"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
   [hidden] { display: none !important; }
-  :root { color-scheme: light dark; --bg: #ffffff; --fg: #1d1d1f; --muted: #6b6b70; --line: #d8d8dc; --card: #f5f5f7; --accent: #c2188f; --button: #ff38b8; }
+  :root { color-scheme: light dark; --bg: #ffffff; --fg: #1d1d1f; --muted: #6b6b70; --line: #d8d8dc; --card: #f5f5f7; --accent: #c2188f; --button: #ff38b8; --ease-out: cubic-bezier(0.2, 0, 0, 1); --ease-in: cubic-bezier(0.4, 0, 1, 1); }
   @media (prefers-color-scheme: dark) { :root { --bg: #161618; --fg: #f2f2f4; --muted: #9a9aa2; --line: #333338; --card: #202024; --accent: #ff38b8; --button: #ff38b8; } }
   /* on the app page, holding a finger on anything, text, a button or the background, must not select text or show the selection handles; only fields and the blocks of text that are there to be copied can be selected. The welcome and setup pages are for reading, so their text can be selected. */
   html.page-app { -webkit-user-select: none; user-select: none; }
@@ -32,13 +32,13 @@
   #startupProblem .report-hint { margin-top: 14px; }
   /* Back from Spotify's sign-in: a quiet screen until the editor is ready (see the connecting screen in app.js). Above the page, below the startup popup. */
   /* Each step is a ring while it waits, a turning arc while it runs, and a pink check when done. */
-  #connectingScreen { display: none; position: fixed; inset: 0; z-index: 1500; background: var(--bg); flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 0 16px; transition: opacity 450ms ease; }
+  #connectingScreen { display: none; position: fixed; inset: 0; z-index: 1500; background: var(--bg); flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 0 16px; transition: opacity 450ms var(--ease-out); }
   html.connecting #connectingScreen { display: flex; }
   #connectingScreen.cn-out { opacity: 0; pointer-events: none; }
   #connectingScreen > img { width: 72px; height: 72px; border-radius: 16px; }
   .cn-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
   html.cn-manual #cnRecipes { display: none; }   /* recipes kept by manual backup have no saves in Spotify to settle */
-  .cn-step { display: flex; align-items: center; gap: 12px; font-size: 1.02rem; color: var(--muted); transition: color 300ms ease; }
+  .cn-step { display: flex; align-items: center; gap: 12px; font-size: 1.02rem; color: var(--muted); transition: color 300ms var(--ease-out); }
   .cn-step.cn-done { color: var(--fg); }
   .cn-mark { width: 22px; height: 22px; flex: none; position: relative; }
   .cn-mark::before { content: ""; position: absolute; inset: 2px; border-radius: 50%; border: 2px solid var(--line); }
@@ -160,8 +160,8 @@
   #formatEditor .fe-bk-block { margin: 4px 2px; padding: 4px; border-radius: 12px; background: rgba(127, 127, 127, 0.13); }
   /* the menu button, showing the cloud-save picture while recipes are being saved */
   #formatEditor .fe-trigger { position: relative; overflow: hidden; }
-  #formatEditor .fe-saveicon { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; opacity: 0; pointer-events: none; transition: opacity 220ms ease; }
-  #formatEditor .fe-trigger > .fe-icon { transition: opacity 220ms ease; }
+  #formatEditor .fe-saveicon { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; opacity: 0; pointer-events: none; transition: opacity 220ms var(--ease-out); }
+  #formatEditor .fe-trigger > .fe-icon { transition: opacity 220ms var(--ease-out); }
   #formatEditor .fe-trigger.fe-saving .fe-saveicon { opacity: 1; }
   #formatEditor .fe-trigger.fe-saving > .fe-icon { opacity: 0; }
   @media (prefers-reduced-motion: reduce) { #formatEditor .fe-saveicon, #formatEditor .fe-trigger > .fe-icon { transition: none; } }
@@ -202,7 +202,7 @@
   #formatEditor .fe-tabs::-webkit-scrollbar { display: none; }
   #formatEditor .fe-tab { flex: none; white-space: nowrap; min-height: 44px; padding: 0 18px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--fg); }
   #formatEditor .fe-tab { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }   /* a held tab is picked up, not selected as text */
-  #formatEditor .fe-tab.fe-dragging { position: relative; z-index: 3; cursor: grabbing; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45); transition: box-shadow 200ms ease, background-color 200ms ease; }
+  #formatEditor .fe-tab.fe-dragging { position: relative; z-index: 3; cursor: grabbing; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45); transition: box-shadow 200ms var(--ease-out), background-color 200ms var(--ease-out); }
   #formatEditor .fe-tab.fe-dragging[aria-pressed="false"] { background-color: color-mix(in srgb, var(--card) 85%, var(--fg)); }
   .fe-haptic { position: fixed; left: -100px; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }   /* the hidden switch that gives an iPhone its tick */
   #formatEditor .fe-tabs.fe-reordering { cursor: grabbing; }
@@ -228,7 +228,7 @@
   #formatEditor .fe-piece-silence { background: #000; border: 1.5px solid var(--silence-line, #8a8a92); box-sizing: border-box; }
   #formatEditor .fe-bar.fe-hasHl .fe-piece:not(.fe-hl) { opacity: 0.35; }
   #formatEditor .fe-piece.fe-hl { outline: 2px solid var(--fg); outline-offset: 1px; }
-  #formatEditor .fe-caption { position: relative; font-size: 0.78rem; color: var(--muted); min-height: 24px; display: flex; align-items: center; transition: background-color 180ms ease; }
+  #formatEditor .fe-caption { position: relative; font-size: 0.78rem; color: var(--muted); min-height: 24px; display: flex; align-items: center; transition: background-color 180ms var(--ease-out); }
   #formatEditor .fe-ghost { position: absolute; left: 0; right: 0; top: 0; bottom: 0; pointer-events: none; background: none; }   /* what the line said, fading out as the new words fade in */
   /* the same line, carrying a notice: news in turn, or trouble that stays until it is dealt with (one line, so nothing below it moves) */
   #formatEditor .fe-notice { gap: 6px; white-space: nowrap; color: var(--fg); }
@@ -247,7 +247,7 @@
   #formatEditor .fe-notice-ok::after, #formatEditor .fe-notice-link::after { content: ""; position: absolute; left: -6px; right: -6px; top: -9px; bottom: -9px; }   /* a bigger target for a thumb */
   #formatEditor .fe-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   #formatEditor .fe-rows { position: relative; display: flex; flex-direction: column; gap: 6px; }
-  #formatEditor .fe-row { position: relative; height: 52px; transition: transform 160ms ease; }
+  #formatEditor .fe-row { position: relative; height: 52px; transition: transform 160ms var(--ease-out); }
   #formatEditor .fe-row.fe-open { z-index: 20; }
   #formatEditor .fe-row.fe-dragging { z-index: 10; transition: none; }
   #formatEditor .fe-still { transition: none !important; }
@@ -547,18 +547,18 @@
   #createDialog .bd-tally .bd-tiles { margin-top: 10px; }
   #createDialog .bd-tiles { display: flex; flex-wrap: wrap; gap: 5px; }
   #createDialog .bd-tiles[hidden] { display: none; }
-  #createDialog .bd-tile { width: 15px; height: 15px; border-radius: 4px; box-sizing: border-box; border: 1.5px solid var(--line); transition: background-color 0.3s, border-color 0.3s; }
+  #createDialog .bd-tile { width: 15px; height: 15px; border-radius: 4px; box-sizing: border-box; border: 1.5px solid var(--line); transition: background-color 0.3s var(--ease-out), border-color 0.3s var(--ease-out); }
   #createDialog .bd-tile.bd-on { background: var(--accent); border-color: var(--accent); }
   #createDialog .bd-tile.bd-now { border-color: var(--accent); animation: bd-breathe 1.4s ease-in-out infinite; }
   @keyframes bd-breathe { 50% { background-color: color-mix(in srgb, var(--accent) 35%, transparent); } }
   /* when it is done: the covers fan out from a stack with a glow behind them, confetti bursts out and falls away, the tiles ripple once */
   #createDialog .bd-finale { text-align: center; padding: 0; margin: 0 0 10px; }
   #createDialog .bd-fan { position: relative; height: 110px; margin: 0 0 6px; }
-  #createDialog .bd-glow { position: absolute; left: 50%; top: 54px; width: 210px; height: 140px; transform: translate(-50%, -50%); background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 38%, transparent), transparent); animation: bd-glow 0.9s ease-out both; }
+  #createDialog .bd-glow { position: absolute; left: 50%; top: 54px; width: 210px; height: 140px; transform: translate(-50%, -50%); background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 38%, transparent), transparent); animation: bd-glow 0.9s var(--ease-out) both; }
   @keyframes bd-glow { from { opacity: 0; } }
   #createDialog .bd-card-img { position: absolute; left: 50%; top: 12px; width: 86px; height: 86px; margin-left: -43px; border-radius: 8px; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28); transform-origin: 50% 140%; transform: rotate(var(--r)); animation: bd-deal 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
   @keyframes bd-deal { from { opacity: 0; transform: translateY(24px) scale(0.85) rotate(0deg); } 30% { opacity: 1; } }
-  #createDialog .bd-spark { position: absolute; left: 50%; top: 54px; width: 7px; height: 7px; margin: -3.5px; border-radius: 2px; background: var(--accent); opacity: 0; z-index: 0; animation: bd-spark 1.6s ease-out both; }
+  #createDialog .bd-spark { position: absolute; left: 50%; top: 54px; width: 7px; height: 7px; margin: -3.5px; border-radius: 2px; background: var(--accent); opacity: 0; z-index: 0; animation: bd-spark 1.6s var(--ease-out) both; }
   #createDialog .bd-spark:nth-of-type(3n) { background: color-mix(in srgb, var(--accent) 55%, #fff); }
   @keyframes bd-spark { 0% { opacity: 0; transform: translate(0, 0) rotate(0deg); } 12% { opacity: 1; } 45% { opacity: 1; transform: translate(var(--x), var(--y)) rotate(calc(var(--t) / 2)); } 100% { opacity: 0; transform: translate(var(--x), calc(var(--y) + 60px)) rotate(var(--t)); } }
   #createDialog .bd-big { font-size: 1.65rem; font-weight: 800; line-height: 1.1; color: var(--fg); margin: 0; }
@@ -566,7 +566,7 @@
   #createDialog .bd-hours b { color: var(--accent); }
   #createDialog .bd-lib { font-size: 0.9rem; color: var(--muted); margin: 0; }
   #createDialog .bd-finale .bd-tiles { justify-content: center; margin: 10px 0 0; }
-  #createDialog .bd-ripple .bd-tile { animation: bd-ripple 0.6s ease-out both; }
+  #createDialog .bd-ripple .bd-tile { animation: bd-ripple 0.6s var(--ease-out) both; }
   @keyframes bd-ripple { 40% { transform: translateY(-6px) scale(1.25); } }
   #createDialog .bd-group { padding: 12px 0 2px; font-size: 0.85rem; color: var(--muted); }
   #createDialog .bd-group b { color: var(--fg); }
@@ -652,10 +652,10 @@
   #kofiFrameHolder { flex: 1; display: flex; flex-direction: column; min-height: 0; }
   #kofiFrameHolder iframe { flex: 1; width: 100%; border: none; background: #fff; }
   @media (max-width: 520px) { #kofiPanel { right: 8px; bottom: 8px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); } }
-  /* the popups and the dimming behind them fade in and out, quickly and evenly (a quarter of a second) */
-  .app-overlay, #kofiDim, #kofiPanel { opacity: 1; transition: opacity 0.25s linear, display 0.25s linear allow-discrete; }
-  .app-overlay[hidden], #kofiDim[hidden], #kofiPanel[hidden] { opacity: 0; pointer-events: none; }
-  @starting-style { .app-overlay, #kofiDim, #kofiPanel { opacity: 0; } }
+  /* popups come and go with motion (initMotion in editor.js): one that is hidden stays drawn while it fades out, and cannot be touched */
+  .app-overlay.fx-leaving[hidden], #kofiPanel.fx-leaving[hidden], #reconnectScreen.fx-leaving[hidden] { display: flex !important; }
+  #kofiDim.fx-leaving[hidden], #themeList.fx-leaving[hidden] { display: block !important; }
+  .fx-leaving, .fx-ghost { pointer-events: none; }
   /* the Build button carries the name of the format it will build, cut short with an ellipsis when it does not fit */
   #create { max-width: 100%; min-width: 0; }
   #create .btn-label { display: inline-flex; min-width: 0; gap: 0.35em; align-items: baseline; }
@@ -718,7 +718,7 @@
      plain buttons and the other tabs keep their color, with a stronger outline and a slightly different fill;
      small controls grow a touch; and the playlist name in a segment does nothing of its own, because the whole segment lights up */
   @media (hover: hover) {
-    #formatEditor .fe-step, #formatEditor .fe-more, #formatEditor .fe-grip { transition: transform 0.12s ease; }
+    #formatEditor .fe-step, #formatEditor .fe-more, #formatEditor .fe-grip { transition: transform 0.12s var(--ease-out); }
     button:not(:disabled):hover, a.button-link:hover, #supportButton:hover { filter: brightness(1.12); outline: 1px solid var(--button); outline-offset: -1px; }
     @supports (color: color-mix(in srgb, red 50%, white)) {
       button:not(:disabled):hover, a.button-link:hover, #supportButton:hover { outline-color: color-mix(in srgb, var(--button) 50%, #fff); }
@@ -1269,8 +1269,8 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-03j"></script>
-<script src="editor.js?v=2026-11-03j"></script>
-<script src="app.js?v=2026-11-03j"></script>
+<script src="formats.js?v=2026-11-03k"></script>
+<script src="editor.js?v=2026-11-03k"></script>
+<script src="app.js?v=2026-11-03k"></script>
 </body>
 </html>

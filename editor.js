@@ -261,6 +261,122 @@ function putNamed(node, text) {
 }
 function plainText(text) { return String(text).replace(/[\u2068\u2069]/g, ""); }
 
+// Two curves for all motion: things arriving slow down as they settle, things leaving speed up as they go. The same two are --ease-out and
+// --ease-in in index.html's CSS. (Spinners turn at an even speed: eased, they look like they stutter.)
+const EASE_OUT = "cubic-bezier(0.2, 0, 0, 1)", EASE_IN = "cubic-bezier(0.4, 0, 1, 1)";
+function motionAllowed(el) { return !!(el && el.animate) && typeof matchMedia === "function" && !matchMedia("(prefers-reduced-motion: reduce)").matches; }
+
+// How each kind of thing comes and goes: a dim backdrop fades; a popup's box fades while it rises a little and grows to full size; the Support me
+// panel rises from its corner; a menu or list grows out of the button that opened it. Leaving is the same, backward and quicker.
+const MOTION = {
+  dim: { frames: [{ opacity: 0 }, { opacity: 1 }], in: 200, out: 150 },
+  box: { frames: [{ opacity: 0, transform: "translateY(8px) scale(0.98)" }, { opacity: 1, transform: "none" }], in: 200, out: 150 },
+  panel: { frames: [{ opacity: 0, transform: "translateY(16px)" }, { opacity: 1, transform: "none" }], in: 220, out: 150 },
+  menu: { frames: [{ opacity: 0, transform: "translateY(var(--fx-y, -4px)) scale(0.96)" }, { opacity: 1, transform: "none" }], in: 140, out: 100 },
+};
+function playMotion(el, kind, coming) {
+  const m = MOTION[kind];
+  return el.animate(coming ? m.frames : [m.frames[1], m.frames[0]], { duration: coming ? m.in : m.out, easing: coming ? EASE_OUT : EASE_IN, fill: coming ? "none" : "forwards" });   // nothing is left behind once it has arrived
+}
+// A menu grows out of the button that opened it: the part of its edge nearest that button stays put.
+function aimMenu(pop) {
+  const r = pop.getBoundingClientRect();
+  const up = pop.classList.contains("fe-up");
+  const opener = [...document.querySelectorAll('[aria-expanded="true"]')].map((b) => b.getBoundingClientRect()).find((b) => b.right > r.left && b.left < r.right);
+  const x = opener ? Math.min(Math.max((opener.left + opener.right) / 2 - r.left, 0), r.width) + "px" : "50%";
+  pop.style.transformOrigin = `${x} ${up ? "100%" : "0"}`;
+  pop.style.setProperty("--fx-y", up ? "4px" : "-4px");
+}
+
+// Something that stays in the page and is shown and hidden with its hidden attribute (the build and menu popups, the Support me panel, the sign-in
+// screen, the color list). The attribute changes at once, so the app always knows what is open; while it fades out, the class fx-leaving keeps it drawn.
+function fadeWithHidden(el, kind, box, boxKind) {
+  if (!el || typeof MutationObserver === "undefined") return;
+  let running = [];
+  new MutationObserver(() => {
+    const hidden = el.hidden;
+    if (hidden === el._fxHidden) return;
+    el._fxHidden = hidden;
+    running.forEach((a) => a.cancel());
+    running = [];
+    el.classList.remove("fx-leaving");
+    if (!motionAllowed(el)) return;
+    if (hidden) el.classList.add("fx-leaving");
+    if (kind === "menu") aimMenu(el);
+    running = [playMotion(el, kind, !hidden)].concat(box ? [playMotion(box, boxKind, !hidden)] : []);
+    const mine = running;
+    running[0].onfinish = () => { if (running !== mine) return; running.forEach((a) => a.cancel()); running = []; el.classList.remove("fx-leaving"); };
+  }).observe(el, { attributes: true, attributeFilter: ["hidden"] });
+  el._fxHidden = el.hidden;
+}
+
+// The editor's popups are made when they open and taken out when they close (and drawn again, the same popup, whenever the editor redraws). So
+// they are told apart by what they are and where, and one is animated only when it is really new or really gone. One that is gone is put back
+// for its fade, as a copy no one can reach, where it last was.
+function initMotion() {
+  fadeWithHidden($("createOverlay"), "dim", $("createDialog"), "box");
+  fadeWithHidden($("infoOverlay"), "dim", $("infoDialog"), "box");
+  fadeWithHidden($("reconnectScreen"), "dim", document.querySelector("#reconnectScreen .rc-card"), "box");
+  fadeWithHidden($("kofiDim"), "dim");
+  fadeWithHidden($("kofiPanel"), "panel");
+  fadeWithHidden($("themeList"), "menu");
+  const ghost = (node, parent, rect) => {
+    if (!motionAllowed(node)) return;
+    node.classList.add("fx-ghost");
+    node.setAttribute("aria-hidden", "true");
+    node.inert = true;
+    for (const el of [node, ...node.querySelectorAll("[id]")]) el.removeAttribute("id");   // the next popup may use the same names
+    if (rect) Object.assign(node.style, { position: "fixed", left: rect.left + "px", top: rect.top + "px", width: rect.width + "px", height: rect.height + "px", right: "auto", bottom: "auto", margin: "0" });
+    parent.appendChild(node);
+    const kind = node.classList.contains("fe-overlay") ? "dim" : "menu";
+    const parts = [playMotion(node, kind, false)];
+    const box = kind === "dim" && node.querySelector(".fe-dialog");
+    if (box) parts.push(playMotion(box, "box", false));
+    parts[0].onfinish = () => node.remove();
+  };
+  // the small question popups (New recipe, Duplicate, Delete, the pause, the save questions)
+  new MutationObserver((changes) => {
+    for (const change of changes) {
+      change.addedNodes.forEach((node) => {
+        if (node.nodeType !== 1 || !node.classList.contains("fe-overlay") || node.classList.contains("fx-ghost") || !motionAllowed(node)) return;
+        playMotion(node, "dim", true);
+        const box = node.querySelector(".fe-dialog");
+        if (box) playMotion(box, "box", true);
+      });
+      change.removedNodes.forEach((node) => {
+        if (node.nodeType === 1 && node.classList.contains("fe-overlay") && !node.classList.contains("fx-ghost")) ghost(node, document.body, null);
+      });
+    }
+  }).observe(document.body, { childList: true });
+  // the editor's menus and lists
+  const root = $("formatEditor");
+  if (!root) return;
+  const keyOf = (pop) => [...pop.classList].filter((c) => c !== "fe-up").join(" ") + "|" + ((pop.closest("[data-id]") || {}).dataset || {}).id;
+  let shown = new Map();   // key: the popup and where it was last seen
+  const look = () => { for (const seen of shown.values()) seen.rect = seen.pop.getBoundingClientRect(); };
+  window.addEventListener("scroll", () => { if (shown.size) look(); }, { passive: true, capture: true });
+  new MutationObserver((changes) => {
+    const now = new Map();
+    root.querySelectorAll(".fe-pop:not(.fx-ghost)").forEach((pop) => now.set(keyOf(pop), { pop, rect: pop.getBoundingClientRect() }));
+    for (const [key, seen] of now) {
+      if (shown.has(key) || !motionAllowed(seen.pop)) continue;
+      aimMenu(seen.pop);
+      playMotion(seen.pop, "menu", true);
+    }
+    const gone = new Set();
+    for (const change of changes) {
+      change.removedNodes.forEach((node) => {
+        if (node.nodeType !== 1) return;
+        (node.classList.contains("fe-pop") ? [node] : [...node.querySelectorAll(".fe-pop")]).forEach((pop) => gone.add(pop));
+      });
+    }
+    for (const [key, seen] of shown) {
+      if (!now.has(key) && gone.has(seen.pop) && !seen.pop.classList.contains("fx-ghost") && seen.rect && seen.rect.height) ghost(seen.pop, root, seen.rect);
+    }
+    shown = now;
+  }).observe(root, { childList: true, subtree: true });
+}
+
 // A popup whose contents change grows or shrinks to its new height instead of jumping. It watches what is inside (whose sizes do not follow the
 // popup's own height: the children of the popup, and of its scrolling part if it has one) and animates the popup from the old height to the new.
 // Opening, closing and a change of width (a turned phone) are not animated.
@@ -278,7 +394,7 @@ function smoothResize(box, scroller) {
     last = rect.height;
     width = rect.width;
     if (!from || !rect.height || turned || Math.abs(from - rect.height) < 2 || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const timing = { duration: 320, easing: "cubic-bezier(0.2, 0, 0, 1)" };
+    const timing = { duration: 320, easing: EASE_OUT };
     anim = box.animate([{ height: from + "px", overflow: "hidden" }, { height: rect.height + "px", overflow: "hidden" }], timing);
     if (scroller) scroller.animate([{ overflowY: "hidden" }, { overflowY: "hidden" }], timing);   // no scroll bar coming and going while it grows
     const mine = anim;
@@ -697,7 +813,7 @@ function placeDraggedTab() {
     if (!reduce) {
       for (const t of others) {
         const moved = before.get(t) - t.offsetLeft;
-        if (moved && typeof t.animate === "function") t.animate([{ transform: `translateX(${moved}px)` }, { transform: "translateX(0)" }], { duration: 160, easing: "ease-out" });
+        if (moved && typeof t.animate === "function") t.animate([{ transform: `translateX(${moved}px)` }, { transform: "translateX(0)" }], { duration: 160, easing: EASE_OUT });
       }
     }
   }
@@ -719,7 +835,7 @@ function liftTab(tab, up) {
   const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (reduce || typeof tab.animate !== "function") { tab.style.scale = up ? String(TAB_LIFT) : ""; return; }
   tab.animate(up ? [{ scale: 1 }, { scale: 1.12, offset: 0.55 }, { scale: TAB_LIFT }] : [{ scale: TAB_LIFT }, { scale: 1 }],
-    { duration: up ? 260 : 180, easing: "ease-out", fill: up ? "forwards" : "none" });
+    { duration: up ? 260 : 180, easing: EASE_OUT, fill: up ? "forwards" : "none" });
 }
 
 // A short tick on a phone. Android browsers have vibrate. Safari on an iPhone has no vibrate, but since iOS 18 switching a switch gives a light tick, so a hidden one
@@ -790,7 +906,7 @@ function endTabPress() {
   const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (dropped && !reduce && typeof dropped.animate === "function") {
     const moved = from - dropped.getBoundingClientRect().left;
-    dropped.animate([{ transform: `translateX(${moved}px)`, scale: TAB_LIFT }, { transform: "none", scale: 1 }], { duration: 200, easing: "ease-out" });
+    dropped.animate([{ transform: `translateX(${moved}px)`, scale: TAB_LIFT }, { transform: "none", scale: 1 }], { duration: 200, easing: EASE_OUT });
   }
 }
 
@@ -948,9 +1064,9 @@ function paintNotice(caption, view, options = {}) {
   notices.paintedKey = key;
   paintNoticeNow(caption, view);
   if (!fade) return;
-  for (const child of Array.from(caption.children)) child.animate([{ opacity: 0, transform: "translateY(4px)" }, { opacity: 1, transform: "none" }], { duration: 200, easing: "ease-out" });
+  for (const child of Array.from(caption.children)) child.animate([{ opacity: 0, transform: "translateY(4px)" }, { opacity: 1, transform: "none" }], { duration: 200, easing: EASE_OUT });
   caption.appendChild(ghost);
-  const out = ghost.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(-4px)" }], { duration: 160, easing: "ease-in", fill: "forwards" });
+  const out = ghost.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(-4px)" }], { duration: 160, easing: EASE_IN, fill: "forwards" });
   out.onfinish = () => ghost.remove();
 }
 
