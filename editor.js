@@ -261,6 +261,34 @@ function putNamed(node, text) {
 }
 function plainText(text) { return String(text).replace(/[\u2068\u2069]/g, ""); }
 
+// A popup whose contents change grows or shrinks to its new height instead of jumping. It watches what is inside (whose sizes do not follow the
+// popup's own height: the children of the popup, and of its scrolling part if it has one) and animates the popup from the old height to the new.
+// Opening, closing and a change of width (a turned phone) are not animated.
+function smoothResize(box, scroller) {
+  if (!box || !window.ResizeObserver || !box.animate) return;
+  let last = 0, width = 0, anim = null;
+  const watch = new ResizeObserver(() => {
+    const shown = box.getBoundingClientRect().height;   // as drawn now, partway through an animation if one runs
+    if (anim) anim.cancel();
+    const wasMoving = !!anim;
+    anim = null;
+    const rect = box.getBoundingClientRect();
+    const from = wasMoving ? shown : last;
+    const turned = Math.abs(rect.width - width) > 1;
+    last = rect.height;
+    width = rect.width;
+    if (!from || !rect.height || turned || Math.abs(from - rect.height) < 2 || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timing = { duration: 320, easing: "cubic-bezier(0.2, 0, 0, 1)" };
+    anim = box.animate([{ height: from + "px", overflow: "hidden" }, { height: rect.height + "px", overflow: "hidden" }], timing);
+    if (scroller) scroller.animate([{ overflowY: "hidden" }, { overflowY: "hidden" }], timing);   // no scroll bar coming and going while it grows
+    const mine = anim;
+    anim.onfinish = () => { if (anim === mine) anim = null; };
+  });
+  const parts = scroller ? [...box.children].filter((el) => el !== scroller).concat([...scroller.children]) : [...box.children];
+  parts.forEach((el) => watch.observe(el));
+  if (scroller) new MutationObserver((changes) => changes.forEach((c) => c.addedNodes.forEach((el) => { if (el.nodeType === 1) watch.observe(el); }))).observe(scroller, { childList: true });
+}
+
 function askSyncChoice(title, text, choices, options = {}) {
   if (typeof endConnectingScreen === "function") endConnectingScreen();   // a question needs the page in view
   return new Promise((resolve) => {
@@ -1553,6 +1581,7 @@ function askNewFormat() {
       feEl("div", { class: "row" }, cancel, confirm)));
   document.body.appendChild(overlay);
   document.addEventListener("keydown", onKey);
+  smoothResize(overlay.firstChild);   // the line about a name already in use comes and goes
   // A phone's keyboard would scroll the page to bring the field into view, taking the new tab off the top of the screen. So the page is held where
   // it was, and the popup is centered in what the keyboard leaves visible, which puts it below the tabs.
   const vv = window.visualViewport, scrollY = window.scrollY;

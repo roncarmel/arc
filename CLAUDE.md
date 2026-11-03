@@ -77,6 +77,7 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 - The app page is always compact (body class `minimal`); the old full view and its Compact view setting are gone. The ⋯ menu: app header, More options, About this app, Privacy, Report a problem (each opens in `#infoOverlay`: the block itself moves into the popup and back), a manual-backup block (only in manual mode), the Spotify row (connected with Disconnect / connecting / Connect Spotify), the version. Disconnect asks first.
 - The old numbered step sections (Connect, Edit, Build, Back up) are still in the markup but hidden on every page.
 - A phone and a wide window differ: below 760 px the silence stepper says "30 sec gaps", wide it says the whole sentence; its width is fixed to the widest wording so the buttons never move under a thumb.
+- Popups whose contents change grow or shrink to their new height over about 0.3 s instead of jumping (`smoothResize` in editor.js: the build popup, the menu's info popup, New recipe). Not on opening, closing, a width change, or under reduced motion.
 - Lesson: a short class name (`fe-main`) collided with an existing one and turned a title into a pill. Give new blocks their own prefix (`fe-bk-*`, `fe-sp-*`, `fe-notice-*`).
 
 ## Writing and working style (Ron's preferences)
