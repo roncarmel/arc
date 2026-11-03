@@ -20,7 +20,6 @@ A free, browser-only web app (playlists.roncarmel.com, GitHub Pages, no server) 
 | `theme.js` | Color themes as CSS variables. |
 | `engine.py` | The playlist engine: `pick`, `build_one`, naming (`name_pattern`, `existing_matches`), silence tracks. |
 | `cloudflare/retry-after.js` | Ron's Cloudflare Worker `spotify-wait` at spotify-wait.roncarmel.workers.dev (deployed by pasting into the dashboard, Workers Logs off; tests start with no relay): sends one GET /v1/me with the person's sign-in and returns only the status, Retry-After and reason. |
-| `vendor/driver.js`, `vendor/driver.css` | Driver.js 1.3.1 (MIT, license beside it), kept here rather than on a CDN, loaded only when the tour starts (the tour is turned off). |
 | `version.txt` | Just the version stamp, fetched by the page to see if it is stale. |
 | `backup-cover.jpg`, `playlist-cover.jpg`, `apple-touch-icon.png`, `ron.jpg`, `icons/` | Images. `ron.jpg` is Ron's face in the thank-you box after a build. `backup-cover.jpg` (cloud with a check) is the cover of the cloud-save playlists and the picture on the menu button while saving. |
 
@@ -56,15 +55,6 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 - After a rate limit with no readable wait, every user's page automatically asks the wait relay (`WAIT_RELAY_URL`, `askSpotifyWait`): one GET /me through Ron's worker, shared by requests refused together and reused for 30 s. Its wait goes into the usual message and the record. Not for cover uploads (their own limit). Disclosed in one Privacy paragraph (`privacyWaitRelay`); decided by Ron, 2026-11-02, as automatic for everyone.
 - A wait of over a minute (not for covers) is kept in localStorage (`spotifyPausedUntil`: until, when it began, reason, Client ID) and nothing goes to Spotify until it ends (`spotifyPause`, `tickPause`). The line under the bar turns accent pink with a clock and "Spotify paused · back in H:MM:SS" plus Details (`fe-notice-pause`); the Build button is hidden; the popup (`showPauseDialog` in editor.js: a ring with the countdown and end time that empties as the wait passes, one list of what works and what waits, why) opens by itself only when a wait starts. When it ends the app connects and saves by itself. Recipes stay editable, and the playlist menus use the list kept from the last good connection (`spotifyPlaylists`, no descriptions; Disconnect forgets it). Decided by Ron, 2026-11-02, over a blurred screen.
 - Ron's device is known by a SHA-256 hash of his Client ID (`OWNER_CLIENT_HASHES`). There only: a held message offers to copy the record after a refusal or a week, and the menu has Copy Spotify record. Ron pastes the record into the chat for analysis.
-
-**The tour** (turned off)
-- Turned off by Ron, 2026-11-02 (too complex for what it gives): nothing offers or starts it and the ⋯ menu has no Guided tour. The code and its tests stay (the tests call `startTour()`). What follows is how it worked.
-- A walk through one recipe on rails (`startTour` and the rest under "the tour" in editor.js): the page is dimmed and blurred 1.5 px (`#feTourBlur`, its hole kept over the target every frame) except the one thing to tap, and only that works. 7 steps: New recipe, name it, first segment's playlist, its length (Next), New segment, its playlist, Build (panel below the button). Tapping Build ends it. No step about silence (Ron, 2026-11-02).
-- The name step types "Sample recipe" (or "Sample recipe 2"...) into the name box by itself, then shows its panel; the box is read only and never focused, so no phone keyboard takes half the screen, and only Create recipe works (decided by Ron, 2026-11-02). No typing under reduced motion.
-- The step is worked out from the recipe after every change on the page (a MutationObserver), so a cancelled name popup goes back a step by itself. The panel's arrow always points at the middle of the target.
-- Panels are black on a light page and white on a dark one; the dim is black 55% on light, white 22% on dark. Footer: "N of 7", a Skip tour text link (not on the last step), and Next only on the stepper step (text ends "Tap Next when you're ready."). No Done (it read as the end).
-- Offered once per device (`tourOffered`), after startup, to someone with no recipes and a working connection. The ⋯ menu has Guided tour; without a connection or during a wait it says why instead. Anything else that takes the screen (sync question, wait popup, build popup, reconnect) ends the tour.
-- Decided by Ron, 2026-11-02: on rails, no step explaining the bar or the silence, Skip tour (not Cancel or End), blur over a pink ring.
 
 **Building**
 - A song is used once per playlist and once across the playlists made in one run, compared by ISRC (one recording, whatever release it is on), else Spotify ID (`song_id` in engine.py, `key` on each track; saved songs carry `v: SONGS_VERSION`). A song listed twice in one source counts once. A segment may come in up to 10% short; below that the plan says so instead of repeating songs.
@@ -103,7 +93,7 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 
 - Ron is collecting changes from user testing; he sent a partial list and more is coming.
 - Not yet verified on real devices or accounts: the refresh token renewal on a real account, ISRC in real track lists, whether "?highlight=" selects the song in Spotify, iPhone Safari behavior (double-tap guard, text selection, back-forward cache, the `pageshow` reset), a real Spotify account's handling of the full CJK range at exactly 300 characters, cover upload on empty playlists and its rate limit, merge between two real devices, the saving crossfade on a phone, the other color themes.
-- Decided against: detecting a completed donation (nothing reliable), auto-connect on load (the Connect button stays).
+- Decided against: detecting a completed donation (nothing reliable), auto-connect on load (the Connect button stays), a guided tour for first-time users (built on rails with Driver.js, then removed by Ron on 2026-11-02 as too complex for what it gave; it is in the git history before version 2026-11-02zm).
 
 ## Tests
 
