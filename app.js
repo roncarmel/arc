@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-02s";
+const APP_VERSION = "2026-11-02t";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -708,7 +708,7 @@ async function runSpotifySave() {
   if (saveState.running) { saveState.again = true; return; }
   if (busy) { saveState.timer = setTimeout(runSpotifySave, 3000); return; }   // a plan or a build is under way: wait for it to finish
   saveState.since = 0;
-  if (connection !== "ready" || !me || typeof editor === "undefined" || !editor.model) { renderSaveStatus(); return; }
+  if (connection !== "ready" || !me || typeof editor === "undefined" || !editor.model || spotifyPause()) { renderSaveStatus(); return; }   // after a wait, it is saved then
   saveState.running = true;
   saveState.error = "";
   renderSaveStatus();
@@ -797,7 +797,8 @@ async function runSpotifySave() {
 function spotifySaveParts(full = true) {
   const parts = [];   // each: { text } or { text, action, label }
   if (saveState.running) { parts.push({ text: "Saving to Spotify\u2026" }); return parts; }
-  if (connection !== "ready") { parts.push({ text: connection === "problem" ? "Waiting to save to Spotify: see the connection problem in the app menu." : "Waiting to save to Spotify: connect first." }); }
+  if (spotifyPause()) parts.push({ text: "Waiting to save to Spotify until it is back." });
+  else if (connection !== "ready") { parts.push({ text: connection === "problem" ? "Waiting to save to Spotify: see the connection problem in the app menu." : "Waiting to save to Spotify: connect first." }); }
   else if (saveState.error) parts.push({ text: "Couldn\u2019t save to Spotify.", action: () => { saveState.error = ""; runSpotifySave(); }, label: "Try again" });
   else if (saveState.timer) parts.push({ text: "Saving to Spotify\u2026" });
   else {
@@ -1213,6 +1214,10 @@ function updateButtonsNow() {
     $("spotifyNote").hidden = !noConnection;
   }
   $("removeNote").hidden = !noConnection;
+  const paused = !!spotifyPause();   // the line under the bar counts down instead
+  $("create").hidden = paused;
+  if (paused) $("spotifyNote").hidden = true;
+  if (buildAll && paused) buildAll.disabled = true;
   if (minimalActive() && (signingIn || connection === "connecting" || signInNote)) {
     $("spotifyNote").textContent = signingIn ? signInNote : connection === "connecting" ? "Connecting to Spotify. On a slow connection this can take a few seconds." : signInNote;
     $("spotifyNote").hidden = false;
@@ -1282,6 +1287,7 @@ async function connectToSpotify() {
     const message = String(err.message || err);
     recordError(message);
     logStep("connection failed");
+    if (spotifyPause()) useKeptPlaylists();
     setConnection("problem", message, /sign-in expired|did not allow/.test(message) ? "reconnect" : "retry");
     countEvent("connection-problem", problemKind(message));
     // A report link is for something unexpected. A rate limit, a quota, no internet and a lapsed sign-in are known, and nothing here can fix them.
@@ -1715,6 +1721,7 @@ async function confirmDisconnect() {
 async function disconnect() {
   sessionStorage.removeItem("token");
   keepRefresh(null);
+  try { localStorage.removeItem(KEPT_PLAYLISTS_KEY); } catch (err) { /* private browsing */ }
   await Promise.race([forgetAllSongs(), new Promise((r) => setTimeout(r, 1500))]);   // the songs kept from this account go with the sign-in
   location.reload();
 }
@@ -1831,6 +1838,76 @@ function recordNote(note) {
   writeRecord(LIMITS_KEY, limits.slice(-100));
 }
 
+// ---------------------------------------------------------------- a long wait from Spotify
+// When Spotify gives a wait of over a minute (its daily quota, say), the app keeps when it ends and sends Spotify nothing until then: whether asking
+// during the wait makes it longer is not known. The line under the bar counts down (Details opens the popup), the Build button is hidden, recipes can
+// still be edited (with the playlist list kept from the last visit), and when the time is up the app connects again by itself. The end is kept on the
+// device with the Client ID it belongs to, so a reload or a later visit picks it up.
+const PAUSE_KEY = "spotifyPausedUntil";   // {until, reason, clientId}
+const KEPT_PLAYLISTS_KEY = "spotifyPlaylists";   // {user, list}: the playlist list from the last time Spotify answered, for the menus during a wait
+let pauseTimer = null;
+let pauseOn = false;   // what the last tick saw, so the end of a wait is noticed once
+function spotifyPause() {
+  try {
+    const p = JSON.parse(localStorage.getItem(PAUSE_KEY) || "null");
+    if (p && p.until > Date.now() && p.clientId === (localStorage.getItem("clientId") || "")) return p;
+    if (p) localStorage.removeItem(PAUSE_KEY);
+  } catch (err) { /* private browsing, or unreadable: no wait */ }
+  return null;
+}
+function pausedSecondsLeft() {
+  const p = spotifyPause();
+  return p ? Math.max(1, Math.ceil((p.until - Date.now()) / 1000)) : 0;
+}
+function clockText(seconds) {
+  // 22564 seconds is "6:16:04"
+  const s = Math.max(0, Math.round(seconds));
+  return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+function startSpotifyPause(wait, reason) {
+  const first = !spotifyPause();
+  try { localStorage.setItem(PAUSE_KEY, JSON.stringify({ until: Date.now() + wait * 1000, reason: reason || "", clientId: localStorage.getItem("clientId") || "" })); } catch (err) { /* private browsing: the wait lasts this visit */ }
+  logStep(`paused for ${wait} s`);
+  tickPause();
+  updateButtons();
+  // when a wait starts, the popup explains; not over the build popup, which says it already
+  if (first && $("createOverlay").hidden && typeof showPauseDialog === "function") showPauseDialog();
+}
+function tickPause() {
+  clearTimeout(pauseTimer);
+  pauseTimer = null;
+  const left = pausedSecondsLeft();
+  if (typeof refreshPauseViews === "function") refreshPauseViews(left);   // the line under the bar and the popup
+  if (left) {
+    pauseOn = true;
+    pauseTimer = setTimeout(tickPause, 1000);
+    return;
+  }
+  if (!pauseOn) return;
+  pauseOn = false;   // the time is up: connect again, and save what waited
+  logStep("wait over");
+  updateButtons();
+  if (token && connection !== "ready" && connection !== "connecting") connectToSpotify().then(() => { if (connection === "ready") scheduleSpotifySave(500); });
+  else if (connection === "ready") scheduleSpotifySave(500);
+}
+
+function keepPlaylists() {
+  try {
+    const list = playlists.map((p) => ({ id: p.id, name: p.name, owner: p.owner, collaborative: p.collaborative, image: p.image, count: p.count, madeByApp: p.madeByApp, isSave: p.isSave }));
+    localStorage.setItem(KEPT_PLAYLISTS_KEY, JSON.stringify({ user: me && me.id, list }));
+  } catch (err) { /* private browsing, or too big: the menus are empty during a wait */ }
+}
+function useKeptPlaylists() {
+  // during a wait with no list from this visit, the menus show the one kept from the last
+  if (playlists.length) return;
+  try {
+    const kept = JSON.parse(localStorage.getItem(KEPT_PLAYLISTS_KEY) || "null");
+    if (!kept || !Array.isArray(kept.list) || !kept.list.length) return;
+    playlists = kept.list.map((p) => ({ ...p, description: null, snapshot: null, save: null }));
+  } catch (err) { return; }
+  if (typeof editorPlaylistsChanged === "function") editorPlaylistsChanged();
+}
+
 // Spotify's wait, through the relay. A page cannot read Retry-After, so after a rate limit with no readable wait the app sends one GET through
 // a small Cloudflare Worker (cloudflare/retry-after.js) that can. It carries only the sign-in and which kind of request was refused (Spotify limits
 // each kind on its own: /me answered while /me/playlists was refused), and answers with only the status, the wait and the reason.
@@ -1938,6 +2015,8 @@ async function spotifyRequest(method, path, { params, json, body, contentType, n
   let waitedMs = 0;
   let lastWait = null;   // the last wait Spotify gave that could be read
   let renewedHere = false;
+  const paused = spotifyPause();
+  if (paused) throw rateLimitError(pausedSecondsLeft(), paused.reason);   // nothing goes to Spotify until the wait is over
   for (let attempt = 0; attempt < 5; attempt++) {
     let response;
     try {
@@ -1963,6 +2042,7 @@ async function spotifyRequest(method, path, { params, json, body, contentType, n
       }
       if (wait) lastWait = wait;
       // A quota limit, or a wait over a minute, is not worth sitting through: stop at once and say what is known.
+      if (wait && wait > 60 && !noWait) startSpotifyPause(wait, reason);   // cover uploads have their own limit, which says nothing about the rest
       if (reason === "QUOTA_EXCEEDED" || (wait && wait > 60) || noWait) throw rateLimitError(wait || lastWait, reason);
       const pause = (wait || 2) * 1000 + 500;
       if (waitedMs + pause > RETRY_BUDGET_MS) break;
@@ -2052,6 +2132,7 @@ async function loadMyPlaylists() {
   for (const p of playlists) p.madeByApp = typeof p.description === "string" && p.description.startsWith(APP_MARKER);
   // A format's backup in Spotify is known by what its description decodes to, whatever the playlist is called.
   for (const p of playlists) { const u = unpackFormat(p.description); p.save = u.kind === "none" ? null : u; p.isSave = !!p.save; }
+  keepPlaylists();
   // The count shown in Step 1 always matches the list, including after playlists are created or removed.
   playlistsLoadedAt = Date.now();
   $("connectedMessage").textContent = `Connected as ${me.display_name || me.id}. ${plural(playlists.length, "playlist")} found.`;
@@ -3146,6 +3227,7 @@ async function main() {
     refreshFormatKeys();
   });
   refreshBackupStatus();
+  guarded("a wait from Spotify", () => tickPause());
 
   if (signingIn) { setLoginMessage(signInNote, true); updateButtons(); }   // coming back from Spotify: say so before the sign-in is finished
   const pythonReady = connectingScreen ? preparePython().then((ok) => { if (ok) connectingStep("Python", "done"); else connectingStepFailed("Python"); }) : null;   // behind the connecting screen Python loads alongside the sign-in, so the wait is the slower of the two
@@ -3185,6 +3267,9 @@ async function main() {
   await (pythonReady || preparePython());
   if (connectingScreen) await new Promise((r) => setTimeout(r, 400));   // the last check is seen before the screen fades
   endConnectingScreen();
+  // A visit that starts during a wait (the tab was closed, the wait forgotten) opens the popup once, so the missing Build button is explained. A reload does not.
+  const pause = spotifyPause();
+  if (pause && sessionStorage.getItem("pauseSeen") !== String(pause.until) && $("createOverlay").hidden) showPauseDialog();
 }
 
 async function preparePython() {

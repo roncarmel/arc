@@ -51,6 +51,7 @@ const FE_ICONS = {
   key: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/></svg>',
   check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
   reset: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg>',
+  clock: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   warn: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17.5v.1"/></svg>',
 };
 
@@ -434,7 +435,7 @@ function renderAppMenu() {
   if ((connection === "none" && hasClientId) || ((connection === "problem" || connection === "connecting") && (hasClientId || token))) {
     const connecting = connection === "connecting";
     // a problem that waiting can mend (the network, a rate limit) is tried again where it stopped; one in the sign-in itself, or no sign-in, starts a new sign-in
-    const press = () => (connection === "problem" && connectionKind === "retry" && token ? connectToSpotify() : startLogin());
+    const press = () => (typeof spotifyPause === "function" && spotifyPause() ? showPauseDialog() : connection === "problem" && connectionKind === "retry" && token ? connectToSpotify() : startLogin());
     connectItems.push(feEl("button", { type: "button", class: "fe-item", id: "feConnect", role: "menuitem", disabled: connecting, onClick: choose(press) }, feIcon("link"), connecting ? "Connecting\u2026" : "Connect to Spotify"));
     const why = connecting ? "On a slow connection this can take a few seconds." : connection === "problem" ? $("connectionMessage").textContent : "";
     if (why) connectItems.push(feEl("div", { class: "fe-itemnote", id: "feConnectionNote", text: why }));
@@ -884,7 +885,7 @@ function pauseNotices() {
 // What the line says changes with a short crossfade: the old words fade up and out as the new ones rise in. Not when the person is editing (the total is feedback for their
 // taps, so it comes back at once), not for the total as it changes minute by minute, and not for someone who has asked for less motion.
 function paintNotice(caption, view, options = {}) {
-  const key = view ? `${view.text}|${view.count || ""}` : "total";
+  const key = view ? (view.key || `${view.text}|${view.count || ""}`) : "total";   // a countdown keeps its key, so it is not faded every second
   if (view && notices.paintedKey === key && caption.classList.contains("fe-notice") && caption.querySelector("button")) return;   // the same message is already there: repainting on a press would replace the button under the finger before the click lands
   const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const fade = !options.instant && !reduce && typeof caption.animate === "function" && notices.paintedKey !== undefined && notices.paintedKey !== key;
@@ -914,10 +915,10 @@ function paintNoticeNow(caption, view) {
     if (live) live.textContent = "";
     return;
   }
-  caption.classList.add("fe-notice", view.warn ? "fe-notice-warn" : "fe-notice-news");
+  caption.classList.add("fe-notice", view.pause ? "fe-notice-pause" : view.warn ? "fe-notice-warn" : "fe-notice-news");
   caption.appendChild(feIcon(view.icon || (view.warn ? "warn" : "cloud")));
   caption.appendChild(feEl("span", { class: "fe-notice-text", text: view.text }));
-  for (const a of view.actions || []) caption.appendChild(feEl("button", { type: "button", class: a.ok ? "fe-notice-ok" : "fe-notice-link", onClick: a.run, text: a.label }));
+  for (const a of view.actions || []) caption.appendChild(feEl("button", { type: "button", class: a.ok ? "fe-notice-ok" : a.more ? "fe-notice-link fe-notice-more" : "fe-notice-link", onClick: a.run, text: a.label }));
   if (view.count) caption.appendChild(view.cycle
     ? feEl("button", { type: "button", class: "fe-notice-count", "aria-label": "Next message", onClick: view.cycle, text: `(${view.count})` })
     : feEl("span", { class: "fe-notice-count", text: `(${view.count})` }));
@@ -945,6 +946,11 @@ function refreshNoticeLine() {
     paintNotice(caption, { warn: !!held.warn, icon: held.icon, text: held.text, actions });
     return;
   }
+  const pauseLeft = typeof pausedSecondsLeft === "function" ? pausedSecondsLeft() : 0;
+  if (pauseLeft && !notices.batch.length) {   // a wait from Spotify: it stays, counting down, after any message that is showing
+    paintNotice(caption, { key: "pause", pause: true, icon: "clock", text: pauseLineText(pauseLeft), actions: [{ label: "Details", more: true, run: () => showPauseDialog() }] });
+    return;
+  }
   if (attention.length && !notices.batch.some((b) => b.transient)) {   // what was said about something the person has just done comes before trouble that is waiting
     notices.attn = Math.min(notices.attn, attention.length - 1);
     const item = attention[notices.attn];
@@ -970,6 +976,70 @@ function refreshNoticeLine() {
     return;
   }
   paintNotice(caption, null);
+}
+
+// ---------------------------------------------------------------- a wait from Spotify (see spotifyPause in app.js)
+function pauseLineText(left) {
+  return `Spotify paused \u00b7 back in ${clockText(left)}`;
+}
+
+// Each second while Spotify is paused: the countdown in the line and in the popup. The line is repainted only when it changes over (from the total, or at the end).
+function refreshPauseViews(left) {
+  const caption = $("feCaption");
+  if (caption && left && notices.paintedKey === "pause") {
+    const text = caption.querySelector(".fe-notice-text");
+    if (text) text.textContent = pauseLineText(left);
+  } else if (caption && (left ? notices.paintedKey === "total" : notices.paintedKey === "pause")) refreshNoticeLine();
+  const clock = $("fePauseClock");
+  if (clock && left) clock.textContent = clockText(left);
+  if (!left && $("fePauseDialog")) closePauseDialog();
+}
+
+function pauseBackAtText(until) {
+  // "Back at about 9:48 PM", or "Back tomorrow at about 9:48 AM", or the day's name further on
+  const at = new Date(until);
+  const time = at.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const days = Math.round((new Date(at).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000);
+  if (days <= 0) return `Back at about ${time}`;
+  if (days === 1) return `Back tomorrow at about ${time}`;
+  return `Back ${at.toLocaleDateString([], { weekday: "long" })} at about ${time}`;
+}
+
+function closePauseDialog() {
+  const overlay = $("fePauseDialog");
+  if (!overlay) return;
+  overlay.remove();
+  document.removeEventListener("keydown", pauseDialogKey);
+}
+function pauseDialogKey(event) { if (event.key === "Escape") closePauseDialog(); }
+
+function showPauseDialog() {
+  const pause = typeof spotifyPause === "function" ? spotifyPause() : null;
+  if (!pause || $("fePauseDialog")) return;
+  if (typeof endConnectingScreen === "function") endConnectingScreen();   // the popup needs the page in view
+  const quota = pause.reason === "QUOTA_EXCEEDED";
+  const works = ["Editing recipes"];
+  if (playlists.length || (typeof KEPT_PLAYLISTS_KEY === "string" && localStorage.getItem(KEPT_PLAYLISTS_KEY))) works.push("Choosing playlists");   // the kept list may be put in just after this opens
+  const waits = ["Building playlists"];
+  if (typeof backupMode === "function" && backupMode() === "spotify") waits.push("Saving recipes");
+  const column = (title, items) => feEl("div", { class: "fe-pause-col" }, feEl("div", { class: "fe-pause-coltitle", text: title }), ...items.map((t) => feEl("div", { text: t })));
+  const close = feEl("button", { type: "button", id: "fePauseClose", onClick: () => closePauseDialog() }, "Close");
+  const overlay = feEl("div", { class: "fe-overlay", id: "fePauseDialog", onClick: () => closePauseDialog() },
+    feEl("div", { class: "fe-dialog fe-pause-dialog", id: "fePauseBox", tabindex: "-1", role: "dialog", "aria-modal": "true", "aria-labelledby": "fePauseTitle", onClick: (e) => e.stopPropagation() },
+      feEl("div", { class: "fe-pause-icon" }, feIcon("clock")),
+      feEl("h3", { id: "fePauseTitle", text: "Spotify paused this app" }),
+      feEl("div", { class: "fe-pause-clock", id: "fePauseClock", text: clockText(pausedSecondsLeft()) }),
+      feEl("p", { class: "muted fe-pause-at", id: "fePauseAt", text: pauseBackAtText(pause.until) }),
+      feEl("p", { id: "fePauseWhy", text: (quota
+        ? "Spotify limits how much each app may ask of it in a day. This app reached that limit, so Spotify stopped answering it for a while."
+        : "Spotify limits how often each app may ask it for things. This app asked too often, so Spotify stopped answering it for a while.")
+        + " Asking sooner does not help, so the app waits, and connects again by itself when the time is up." }),
+      feEl("div", { class: "fe-pause-lists" }, column("Works now", works), column("Waits for Spotify", waits)),
+      feEl("div", { class: "row" }, close)));
+  document.body.appendChild(overlay);
+  document.addEventListener("keydown", pauseDialogKey);
+  try { sessionStorage.setItem("pauseSeen", String(pause.until)); } catch (err) { /* private browsing */ }
+  $("fePauseBox").focus();   // the popup itself, not Close: a ring on a button in a popup that opened by itself looked like a mistake
 }
 
 function renderTimeline() {

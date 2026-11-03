@@ -2,7 +2,7 @@ const { JSDOM } = require("jsdom");
 const { execFileSync } = require("child_process");
 // Run only some areas: node run.js --only=donate|tabs   (matches part of an area's name; --list shows the names)
 const ONLY = (process.argv.find((a) => a.startsWith("--only=")) || "").slice(7).toLowerCase().split("|").filter(Boolean);
-const SECTION_NAMES = ["sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version icon", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "marker colors", "marker hugs corners", "popups close only", "narrow more button", "the silence card", "privacy: why the counts", "build button centered in minimalist mode", "no double-tap zoom", "backup link in step 2", "hiding the donate button", "spotify premium", "step 3 order and text", "the build icon", "python status at the bottom", "hover feedback on buttons", "questions and feedback", "settings below the segments, pink outline", "the tagline", "disconnect below the status line on phones", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'the Donate panel', 'dimming, fading, and Donate in the Create popup', 'tabs that scroll sideways', 'Donate only after a success', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
+const SECTION_NAMES = ["a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version icon", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "marker colors", "marker hugs corners", "popups close only", "narrow more button", "the silence card", "privacy: why the counts", "build button centered in minimalist mode", "no double-tap zoom", "backup link in step 2", "hiding the donate button", "spotify premium", "step 3 order and text", "the build icon", "python status at the bottom", "hover feedback on buttons", "questions and feedback", "settings below the segments, pink outline", "the tagline", "disconnect below the status line on phones", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'the Donate panel', 'dimming, fading, and Donate in the Create popup', 'tabs that scroll sideways', 'Donate only after a success', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
 // areas that need another area's setup to have run first
 const NEEDS = {
   "the page's styles for tags and phones": ["silences, dragging and removing"],
@@ -791,9 +791,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-02s" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-02t" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-02s/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-02t/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -2331,6 +2331,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var cx_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: cx_o });
   var cx_sec = (w, id) => w.document.getElementById(id);
   check("rate limited at the start: the app does not call itself connected, and shows the problem with how long to wait", cx_w.eval("connection") === "problem" && cx_sec(cx_w, "connectedSection").hidden === true && cx_sec(cx_w, "connectionProblem").hidden === false && /^Spotify is rate limiting requests\. Try again in about 2 minutes\.$/.test(cx_sec(cx_w, "connectionMessage").textContent), cx_sec(cx_w, "connectionMessage").textContent);
+  cx_w.localStorage.removeItem("spotifyPausedUntil");   // a wait of two minutes is kept and counted down ("a wait from Spotify"); here it is the Try again that follows
+  cx_w.eval("updateButtonsNow()");
   check("a long wait is reported straight away, not sat through: over a minute is not retried, and neither is a quota limit", /wait && wait > 60/.test(fs.readFileSync(ROOT + "app.js", "utf8")) && /reason === "QUOTA_EXCEEDED"/.test(fs.readFileSync(ROOT + "app.js", "utf8")) && /waitText\(wait\)/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
   check("there is no Disconnect button in view: it is hidden, and so is the app menu's Disconnect Spotify", cx_sec(cx_w, "disconnect").hidden === true && (() => { cx_w.document.getElementById("feAppMenuButton").click(); const gone = !cx_w.document.getElementById("feDisconnect"); cx_w.document.getElementById("feAppMenuButton").click(); return gone; })());
   check("Build becomes Try again, with what went wrong under it, and Remove earlier playlists is off, with its note", cx_sec(cx_w, "create").textContent.trim() === "Try again" && cx_sec(cx_w, "removeOld").disabled === true && cx_sec(cx_w, "spotifyNote").hidden === false && cx_sec(cx_w, "spotifyNote").textContent === cx_sec(cx_w, "connectionMessage").textContent && cx_sec(cx_w, "removeNote").hidden === false);
@@ -2490,6 +2492,61 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   
   } catch (err) { areaCrashed("long waits from Spotify", err); }
 }
+  if (want('a wait from Spotify')) { try {
+  // ================================================================ a wait from Spotify: kept on the device, counted down in the line, nothing sent until it is over
+  var ws_o = { meStatus: 429, retryAfter: 14689, meBody: { error: { status: 429, reason: "QUOTA_EXCEEDED" } } };
+  var ws_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, clientId: "abc", spotifyPlaylists: JSON.stringify({ user: "ron", list: [{ id: "p1", name: "Kept list", owner: "ron", count: 3 }] }) }, fetchOptions: ws_o });
+  var ws_doc = ws_w.document;
+  var ws_pause = JSON.parse(ws_w.localStorage.getItem("spotifyPausedUntil") || "null");
+  check("a wait of over a minute is kept on the device, with its end, reason and Client ID", ws_pause && Math.abs(ws_pause.until - Date.now() - 14689000) < 10000 && ws_pause.reason === "QUOTA_EXCEEDED" && ws_pause.clientId === "abc", JSON.stringify(ws_pause));
+  check("the first time, the popup opens by itself, with the countdown, when it is back, and what works and what waits", !!ws_doc.getElementById("fePauseDialog") && /^4:04:\d\d$/.test(ws_doc.getElementById("fePauseClock").textContent) && /^Back (tomorrow )?at about /.test(ws_doc.getElementById("fePauseAt").textContent) && /in a day/.test(ws_doc.getElementById("fePauseWhy").textContent) && /Works nowEditing recipesChoosing playlists/.test(ws_doc.querySelector(".fe-pause-lists").textContent) && /Waits for SpotifyBuilding playlists$/.test(ws_doc.querySelector(".fe-pause-lists").textContent), ws_doc.getElementById("fePauseDialog") && ws_doc.getElementById("fePauseDialog").textContent);
+  ws_doc.getElementById("fePauseClose").click();
+  check("Close closes it", !ws_doc.getElementById("fePauseDialog"));
+  await waitFor(() => /Spotify paused/.test(ws_doc.getElementById("feCaption").textContent), 8000);
+  var ws_cap = ws_doc.getElementById("feCaption");
+  check("the line under the bar counts down in hours, minutes and seconds, in the accent color, with Details", ws_cap.classList.contains("fe-notice-pause") && /^Spotify paused · back in 4:04:\d\d$/.test(ws_cap.querySelector(".fe-notice-text").textContent) && ws_cap.querySelector(".fe-notice-more").textContent === "Details", ws_cap.textContent);
+  check("the Build button is hidden, with no note under it", ws_doc.getElementById("create").hidden === true && ws_doc.getElementById("spotifyNote").hidden === true);
+  check("the playlist menus use the list kept from the last visit", ws_w.eval("playlists.map((p) => p.name).join()") === "Kept list");
+  ws_cap.querySelector(".fe-notice-more").click();
+  check("Details opens the popup again", !!ws_doc.getElementById("fePauseDialog"));
+  ws_doc.dispatchEvent(new ws_w.KeyboardEvent("keydown", { key: "Escape" }));
+  check("and Escape closes it", !ws_doc.getElementById("fePauseDialog"));
+  var ws_sent = () => ws_w.eval("0") === 0 && log.filter((l) => l.url.startsWith("https://api.spotify.com/")).length;
+  var ws_before = ws_sent();
+  var ws_msg = "";
+  try { await ws_w.eval("spotifyRequest('GET', '/me')"); } catch (err) { ws_msg = err.message; }
+  check("during the wait nothing goes to Spotify: a request fails at once with the time left", ws_sent() === ws_before && /try again in about 4 hours and 5 minutes/.test(ws_msg), ws_msg);
+  var ws_t1 = ws_cap.querySelector(".fe-notice-text").textContent;
+  await new Promise((r) => setTimeout(r, 1300));
+  check("the countdown moves each second without repainting the line", ws_cap.querySelector(".fe-notice-text").textContent !== ws_t1 && ws_cap.classList.contains("fe-notice-pause"), ws_t1);
+  check("clockText writes hours:minutes:seconds", ws_w.eval("[clockText(22564), clockText(59), clockText(3600)].join(' ')") === "6:16:04 0:00:59 1:00:00");
+  // a reload during the wait: the line at once, no popup, nothing sent
+  var ws_o2 = { meStatus: 429, retryAfter: 14689 };
+  var ws_until = Date.now() + 3600000;
+  var ws_w3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, clientId: "abc", spotifyPausedUntil: JSON.stringify({ until: ws_until, reason: "", clientId: "abc" }) }, fetchOptions: { meStatus: 429, retryAfter: 14689 } });
+  await waitFor(() => !!ws_w3.document.getElementById("fePauseDialog"), 8000);
+  check("a new visit during a wait opens the popup once, over the Support me button", !!ws_w3.document.getElementById("fePauseDialog") && ws_w3.sessionStorage.getItem("pauseSeen") === String(ws_until) && /#fePauseDialog \{ z-index: 1040; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /#supportBox \{[^}]*z-index: 1001/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  var ws_n0 = log.length;
+  var ws_w2 = await boot({ url: "http://127.0.0.1:8000/", session: { ...signedIn(), pauseSeen: String(ws_until) }, local: { formats: MINI, clientId: "abc", spotifyPausedUntil: JSON.stringify({ until: ws_until, reason: "", clientId: "abc" }) }, fetchOptions: ws_o2 });
+  await new Promise((r) => setTimeout(r, 300));
+  check("after a reload the wait goes on: no popup, the line counts down, and Spotify is not asked", !ws_w2.document.getElementById("fePauseDialog") && ws_w2.document.getElementById("create").hidden === true && !log.slice(ws_n0).some((l) => l.url.startsWith("https://api.spotify.com/")));
+  ws_w2.document.getElementById("feAppMenuButton").click();
+  ws_w2.document.getElementById("feConnect").click();
+  check("the menu's Connect to Spotify opens the popup during a wait, with the wording for a rate limit that is not the quota", !!ws_w2.document.getElementById("fePauseDialog") && /asked too often/.test(ws_w2.document.getElementById("fePauseWhy").textContent));
+  check("saving recipes is listed as waiting only when they are saved to Spotify", (() => { ws_w2.document.getElementById("fePauseDialog") && ws_w2.eval("closePauseDialog()"); ws_w2.localStorage.setItem("backupMode", "spotify"); ws_w2.eval("showPauseDialog()"); const has = /Saving recipes/.test(ws_w2.document.querySelector(".fe-pause-lists").textContent); ws_w2.eval("closePauseDialog()"); ws_w2.localStorage.setItem("backupMode", "manual"); return has; })());
+  check("a wait kept for another Client ID does not count", (() => { ws_w2.localStorage.setItem("spotifyPausedUntil", JSON.stringify({ until: Date.now() + 3600000, clientId: "other" })); return ws_w2.eval("pausedSecondsLeft()") === 0; })());
+  // the time is up: it connects by itself, and Build is back
+  ws_w2.localStorage.setItem("spotifyPausedUntil", JSON.stringify({ until: Date.now() + 1200, reason: "", clientId: "abc" }));
+  ws_w2.eval("tickPause()");
+  delete ws_o2.meStatus;
+  await waitFor(() => ws_w2.eval("connection") === "ready", 15000);
+  check("when the time is up the app connects again by itself, the popup closes, and Build is back", ws_w2.eval("connection") === "ready" && !ws_w2.document.getElementById("fePauseDialog") && ws_w2.document.getElementById("create").hidden === false && !ws_w2.localStorage.getItem("spotifyPausedUntil"));
+  check("a good connection keeps the playlist list on the device, without descriptions", (() => { const k = JSON.parse(ws_w2.localStorage.getItem("spotifyPlaylists") || "null"); return k && k.user === "ron" && k.list.length > 0 && k.list.every((p) => p.id && p.name !== undefined && p.description === undefined); })());
+  check("Disconnect forgets the kept list", /removeItem\(KEPT_PLAYLISTS_KEY\)/.test(fs.readFileSync(ROOT + "app.js", "utf8").split("async function disconnect()")[1].split("\n}\n")[0]));
+  check("a short wait does not start one", (() => { ws_w2.localStorage.removeItem("spotifyPausedUntil"); return ws_w2.eval("spotifyPause()") === null; })() && /if \(wait && wait > 60 && !noWait\) startSpotifyPause/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("Privacy names the kept playlist list", /the list of your playlists/.test(ws_doc.getElementById("privacySection").textContent));
+  } catch (err) { areaCrashed("a wait from Spotify", err); }
+}
   if (want('a record of Spotify limits')) { try {
   // ================================================================ a record of Spotify limits
   const sr_record = (w, key) => JSON.parse(w.localStorage.getItem(key) || "null");
@@ -2549,6 +2606,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
     const seen = [];
     w.eval(`WAIT_RELAY_URL = ${JSON.stringify(relayUrl)}; waitRelayMs = 200; waitAsked.at = 0; waitAsked.result = null; retrySleep = () => Promise.resolve()`);
     w.localStorage.removeItem("spotifyLimits");
+    w.localStorage.removeItem("spotifyPausedUntil");   // each run starts with no wait kept from the one before
     w.fetch = async (url, init) => {
       if (url.startsWith("https://relay.example")) {
         seen.push({ url, auth: init && init.headers && init.headers.Authorization });
@@ -2628,7 +2686,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var pa_new = await boot({ url: EDURL, local: { minimalMode: "1", connectedBefore: "1" }, fetchOptions: {} });
   check("connected before, with no recipes of their own and not signed in, the page is still the app, with the editor", pa_new.document.getElementById("appSection").hidden === false && pa_new.document.body.classList.contains("minimal") && pa_new.document.documentElement.classList.contains("page-app"));
   // connected before, a problem now
-  var pa_o = { meStatus: 429, retryAfter: 120 };
+  var pa_o = { meStatus: 429, retryAfter: 45 };   // too long to wait out here, too short to be kept as a wait (over a minute: "a wait from Spotify")
   var pa_bad = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, minimalMode: "1", connectedBefore: "1" }, fetchOptions: pa_o });
   check("with a connection problem the page stays minimal, so nothing from Step 1 is squeezed above the editor", pa_bad.eval("connection") === "problem" && pa_bad.document.body.classList.contains("minimal"));
   check("the app menu button has no dot, whatever is wrong with Spotify: the page and the menu already say it", !pa_bad.document.getElementById("feAppMenuButton").classList.contains("fe-alert") && pa_bad.document.getElementById("feAppMenuButton").getAttribute("aria-label") === "App menu" && !/fe-alert/.test(fs.readFileSync(ROOT + "index.html", "utf8") + fs.readFileSync(ROOT + "editor.js", "utf8")));
@@ -2708,7 +2766,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("it says the app never sees the Spotify password, what it asks Spotify to allow, and that existing playlists are only read", /never sees your Spotify password/.test(pv_text) && /read your playlists, create playlists, remove playlists, and set their cover images/.test(pv_text) && /Your existing playlists are only read, never changed/.test(pv_text) && /anyone with a playlist's link can still open it/.test(pv_text));
   check("it says a problem report goes only to the developer, only if sent, and lists what is attached and what never is", /sent only if you choose to send it, and it goes only to me, the developer of this app/.test(pv_text) && /app version, browser, window size, last error, and recent steps/.test(pv_text) && /Your sign-in, Client ID, playlist names, and song titles are never included/.test(pv_text));
   check("it describes the counts honestly: GoatCounter, no cookies, what is recorded, the four actions, and what it never receives", /GoatCounter/.test(pv_text) && /uses no cookies/.test(pv_text) && /browser, screen size, country, and the site you came from/.test(pv_text) && /first time a browser connects to Spotify, how many playlists get created, when Support me is opened, and the kind of connection problem/.test(pv_text) && /never receives playlist names, recipes, song titles, or your Client ID/.test(pv_text));
-  check("it says what is kept in the browser and what Disconnect and Reset app on this device remove", /Your Client ID, your Spotify sign-in, your recipes, your color choice, a copy of the songs from your playlists, and a count of the requests this app sends to Spotify \(to learn how often Spotify limits them\) are saved in this browser/.test(pv_text) && /Disconnect removes your Spotify sign-in and the saved songs/.test(pv_text) && /Reset app on this device, in More options, removes everything/.test(pv_text));
+  check("it says what is kept in the browser and what Disconnect and Reset app on this device remove", /Your Client ID, your Spotify sign-in, your recipes, the list of your playlists, your color choice, a copy of the songs from your playlists, and a count of the requests this app sends to Spotify \(to learn how often Spotify limits them\) are saved in this browser/.test(pv_text) && /Disconnect removes your Spotify sign-in, the list of your playlists, and the saved songs/.test(pv_text) && /Reset app on this device, in More options, removes everything/.test(pv_text));
   check("About links to it, and the setup and welcome pages do not, since they leave Privacy out", pv_w.document.querySelectorAll("#about a.privacy-link").length === 1 && pv_w.document.querySelectorAll("#loginSection a.privacy-link").length === 0 && pv_w.document.querySelectorAll("#welcomePage a.privacy-link").length === 0 && /html\.page-welcome footer, /.test(pv_html) && Array.from(pv_w.document.querySelectorAll("a.privacy-link")).every((a) => a.getAttribute("href") === "#privacySection"));
   var pv_click2 = new pv_w.MouseEvent("click", { bubbles: true, cancelable: true });
   pv_w.document.querySelector("#about a.privacy-link").dispatchEvent(pv_click2);
@@ -2900,7 +2958,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-02s", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-02t", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4630,7 +4688,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-02s"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-02t"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -4712,7 +4770,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await new Promise((r) => setTimeout(r, 600));
   check("a problem signing in again cannot fix (here Premium) shows no reconnect screen", sr_w8.eval("connection") === "problem" && !sr_screen(sr_w8), sr_w8.eval("connection"));
   check("Disconnect forgets the refresh token too", /async function disconnect\(\) \{\s*sessionStorage\.removeItem\("token"\);\s*keepRefresh\(null\);/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
-  check("Privacy says the sign-in is saved in this browser, and why", /Your Client ID, your Spotify sign-in, your recipes, your color choice, and a copy of the songs from your playlists are saved in this browser, and nowhere else\. The saved sign-in lets this app reconnect to Spotify by itself when you come back\./.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  check("Privacy says the sign-in is saved in this browser, and why", /Your Client ID, your Spotify sign-in, your recipes, the list of your playlists, your color choice, and a copy of the songs from your playlists are saved in this browser, and nowhere else\. The saved sign-in lets this app reconnect to Spotify by itself when you come back\./.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   } catch (err) { areaCrashed("sign-in renewal", err); } }
   if (want("build popup")) { try {
   // The build popup: steps along the top, the plan as a list with "Why N?", and a build that stops with a plain message when something goes wrong.
