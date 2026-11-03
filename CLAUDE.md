@@ -20,6 +20,7 @@ A free, browser-only web app (playlists.roncarmel.com, GitHub Pages, no server) 
 | `theme.js` | Color themes as CSS variables. |
 | `engine.py` | The playlist engine: `pick`, `build_one`, naming (`name_pattern`, `existing_matches`), silence tracks. |
 | `cloudflare/retry-after.js` | Ron's Cloudflare Worker `spotify-wait` at spotify-wait.roncarmel.workers.dev (deployed by pasting into the dashboard, Workers Logs off; tests start with no relay): sends one GET /v1/me with the person's sign-in and returns only the status, Retry-After and reason. |
+| `vendor/driver.js`, `vendor/driver.css` | Driver.js 1.3.1 (MIT, license beside it), kept here rather than on a CDN, loaded only when the tour starts. |
 | `version.txt` | Just the version stamp, fetched by the page to see if it is stale. |
 | `backup-cover.jpg`, `playlist-cover.jpg`, `apple-touch-icon.png`, `ron.jpg`, `icons/` | Images. `ron.jpg` is Ron's face in the thank-you box after a build. `backup-cover.jpg` (cloud with a check) is the cover of the cloud-save playlists and the picture on the menu button while saving. |
 
@@ -56,6 +57,13 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 - A wait of over a minute (not for covers) is kept in localStorage (`spotifyPausedUntil`: until, when it began, reason, Client ID) and nothing goes to Spotify until it ends (`spotifyPause`, `tickPause`). The line under the bar turns accent pink with a clock and "Spotify paused · back in H:MM:SS" plus Details (`fe-notice-pause`); the Build button is hidden; the popup (`showPauseDialog` in editor.js: a ring with the countdown and end time that empties as the wait passes, one list of what works and what waits, why) opens by itself only when a wait starts. When it ends the app connects and saves by itself. Recipes stay editable, and the playlist menus use the list kept from the last good connection (`spotifyPlaylists`, no descriptions; Disconnect forgets it). Decided by Ron, 2026-11-02, over a blurred screen.
 - Ron's device is known by a SHA-256 hash of his Client ID (`OWNER_CLIENT_HASHES`). There only: a held message offers to copy the record after a refusal or a week, and the menu has Copy Spotify record. Ron pastes the record into the chat for analysis.
 
+**The tour**
+- A walk through one recipe on rails (`startTour` and the rest under "the tour" in editor.js): the page is dimmed and blurred 1.5 px (`#feTourBlur`, its hole kept over the target every frame) except the one thing to tap, and only that works. 8 steps: New recipe, name it, first segment's playlist, its length (Next), New segment, its playlist, silence (Next), Build. Tapping Build ends it.
+- The step is worked out from the recipe after every change on the page (a MutationObserver), so a cancelled name popup goes back a step by itself. The panel's arrow always points at the middle of the target.
+- Panels are black on a light page and white on a dark one; the dim is black 55% on light, white 22% on dark. Footer: "N of 8", a Skip tour text link, and Next only on the two stepper steps (text ends "Tap Next when you're ready."). No Done (it read as the end).
+- Offered once per device (`tourOffered`), after startup, to someone with no recipes and a working connection. The ⋯ menu has Take the tour; without a connection or during a wait it says why instead. Anything else that takes the screen (sync question, wait popup, build popup, reconnect) ends the tour.
+- Decided by Ron, 2026-11-02: on rails, no step explaining the bar, Skip tour (not Cancel or End), blur over a pink ring.
+
 **Building**
 - A song is used once per playlist and once across the playlists made in one run, compared by ISRC (one recording, whatever release it is on), else Spotify ID (`song_id` in engine.py, `key` on each track; saved songs carry `v: SONGS_VERSION`). A song listed twice in one source counts once. A segment may come in up to 10% short; below that the plan says so instead of repeating songs.
 - To get the most playlists from overlapping sources, `pick` takes songs only its own source has first, and `fill_order` fills the segment with the least to spare first.
@@ -74,7 +82,7 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 
 **Interface**
 - **Three pages in one**, chosen by a class on `<html>` (`page-welcome`, `page-setup`, `page-app`): an inline script in `<head>` picks it before anything is drawn, and `pageName()`/`showPage()` in app.js follow changes. Signed in or `connectedBefore` means the app; `setupStarted` ("1" after Start setup, "0" after Back) means setup; otherwise welcome. `setupAgain` (sessionStorage) is the setup page opened from the menu's Change Client ID. Start setup and Change Client ID push a history entry so the back button returns.
-- The app page is always compact (body class `minimal`); the old full view and its Compact view setting are gone. The ⋯ menu: app header, More options, About this app, Privacy, Report a problem (each opens in `#infoOverlay`: the block itself moves into the popup and back), a manual-backup block (only in manual mode), the Spotify row (connected with Disconnect / connecting / Connect Spotify), the version. Disconnect asks first.
+- The app page is always compact (body class `minimal`); the old full view and its Compact view setting are gone. The ⋯ menu: app header, More options, About this app, Privacy, Report a problem (each opens in `#infoOverlay`: the block itself moves into the popup and back), Take the tour, a manual-backup block (only in manual mode), the Spotify row (connected with Disconnect / connecting / Connect Spotify), the version. Disconnect asks first.
 - The old numbered step sections (Connect, Edit, Build, Back up) are still in the markup but hidden on every page.
 - A phone and a wide window differ: below 760 px the silence stepper says "30 sec gaps", wide it says the whole sentence; its width is fixed to the widest wording so the buttons never move under a thumb.
 - Lesson: a short class name (`fe-main`) collided with an existing one and turned a title into a pill. Give new blocks their own prefix (`fe-bk-*`, `fe-sp-*`, `fe-notice-*`).

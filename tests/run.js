@@ -2,7 +2,7 @@ const { JSDOM } = require("jsdom");
 const { execFileSync } = require("child_process");
 // Run only some areas: node run.js --only=donate|tabs   (matches part of an area's name; --list shows the names)
 const ONLY = (process.argv.find((a) => a.startsWith("--only=")) || "").slice(7).toLowerCase().split("|").filter(Boolean);
-const SECTION_NAMES = ["a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version icon", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "marker colors", "marker hugs corners", "popups close only", "narrow more button", "the silence card", "privacy: why the counts", "build button centered in minimalist mode", "no double-tap zoom", "backup link in step 2", "hiding the donate button", "spotify premium", "step 3 order and text", "the build icon", "python status at the bottom", "hover feedback on buttons", "questions and feedback", "settings below the segments, pink outline", "the tagline", "disconnect below the status line on phones", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'the Donate panel', 'dimming, fading, and Donate in the Create popup', 'tabs that scroll sideways', 'Donate only after a success', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
+const SECTION_NAMES = ["the tour", "a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version icon", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "marker colors", "marker hugs corners", "popups close only", "narrow more button", "the silence card", "privacy: why the counts", "build button centered in minimalist mode", "no double-tap zoom", "backup link in step 2", "hiding the donate button", "spotify premium", "step 3 order and text", "the build icon", "python status at the bottom", "hover feedback on buttons", "questions and feedback", "settings below the segments, pink outline", "the tagline", "disconnect below the status line on phones", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'the Donate panel', 'dimming, fading, and Donate in the Create popup', 'tabs that scroll sideways', 'Donate only after a success', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
 // areas that need another area's setup to have run first
 const NEEDS = {
   "the page's styles for tags and phones": ["silences, dragging and removing"],
@@ -245,7 +245,7 @@ async function boot({ url, session = {}, local = {}, fetchOptions = {}, before =
   w.indexedDB = idb || new FDBFactory();   // a browser's own database for saved songs; pass the same one to a second boot to pretend the page was reloaded
   if (before) before(w);
   w.__scriptsRequested = [];
-  w.eval(appJs.replace("let spotifyAnswerMs = 30000;", "var spotifyAnswerMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const BACKED_UP_MESSAGE =", "var BACKED_UP_MESSAGE =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let busy =", "var busy =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let isOwnerHere =", "var isOwnerHere =").replace("const OWNER_CLIENT_HASHES =", "var OWNER_CLIENT_HASHES =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("const GAP_STEPS =", "var GAP_STEPS ="));  // test harness only: lets a test replace the reload
+  w.eval(appJs.replace("let spotifyAnswerMs = 30000;", "var spotifyAnswerMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const BACKED_UP_MESSAGE =", "var BACKED_UP_MESSAGE =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let busy =", "var busy =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let isOwnerHere =", "var isOwnerHere =").replace("const OWNER_CLIENT_HASHES =", "var OWNER_CLIENT_HASHES =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("const tour = {", "var tour = {").replace("const GAP_STEPS =", "var GAP_STEPS ="));  // test harness only: lets a test replace the reload
   await Promise.race([w.__main, new Promise((r) => setTimeout(r, 1500))]);   // ready as soon as the page has finished starting up
   await new Promise((r) => setTimeout(r, 30));
   global.bootCount += 1; global.bootMs += Date.now() - bootStarted;
@@ -794,9 +794,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-02z" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-02za" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-02z/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-02za/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -1960,7 +1960,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   am_w.document.getElementById("feAppMenuButton").click();
   var am_items = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel .fe-item")).map((b) => b.textContent.trim());
   var am_ids = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel [id]")).map((n) => n.id).filter((id) => ["feMoreOptions", "feAbout", "feTips", "fePrivacy", "feReport", "feBackupMethod", "feBackup", "feRestore", "feDisconnect"].includes(id));
-  check("it offers Disconnect Spotify, then the backup block (what it is, a Change how your recipes are saved link, how it is going, then Back up now and Restore), then More options, Report a problem, Tips & tricks and Privacy, in that order", JSON.stringify(am_ids) === JSON.stringify(["feDisconnect", "feBackupMethod", "feBackup", "feRestore", "feMoreOptions", "feReport", "feTips", "fePrivacy"]) && /Manual backup to this device/.test(am_w.document.getElementById("feBackupMethod").closest(".fe-bk-block").textContent), JSON.stringify(am_ids));
+  check("it offers Disconnect Spotify, then the backup block (what it is, a Change how your recipes are saved link, how it is going, then Back up now and Restore), then More options, Report a problem and Privacy, in that order", JSON.stringify(am_ids) === JSON.stringify(["feDisconnect", "feBackupMethod", "feBackup", "feRestore", "feMoreOptions", "feReport", "fePrivacy"]) && /Manual backup to this device/.test(am_w.document.getElementById("feBackupMethod").closest(".fe-bk-block").textContent), JSON.stringify(am_ids));
   check("there is no Compact view item: the app page is always compact", !am_w.document.getElementById("feMinimal") && am_w.document.body.classList.contains("minimal") && !/minimalMode/.test(fs.readFileSync(ROOT + "editor.js", "utf8") + fs.readFileSync(ROOT + "app.js", "utf8")));
   var am_info = (id) => am_w.document.getElementById("infoSlot").firstElementChild && am_w.document.getElementById("infoSlot").firstElementChild.id === id && am_w.document.getElementById("infoOverlay").hidden === false;
   am_w.document.getElementById("feMoreOptions").click();
@@ -2990,7 +2990,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-02z", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-02za", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3271,7 +3271,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("Privacy then says the form sends only what you type, that an email goes only if you enter one and is used only to respond, and that the feedback form opens only if you choose to send feedback", /The form sends only what you type, and nothing else is attached\. An email address is included only if you choose to enter one, and it is used only to respond to you\./.test(qf_priv) && /the feedback form only if you choose to send feedback/.test(qf_priv) && qf_w.document.getElementById("privacyFeedback").hidden === false);
   check("the form that ships is the Tally one, at its real address", /const FEEDBACK_FORM_URL = "https:\/\/tally\.so\/r\/4aayDd";/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
   qf_w0.document.getElementById("feAppMenuButton").click();
-  check("without the form's address, the menu has no Questions and feedback", !qf_w0.document.getElementById("feFeedback") && !!qf_w0.document.getElementById("feTips"));
+  check("without the form's address, the menu has no Questions and feedback", !qf_w0.document.getElementById("feFeedback") && !!qf_w0.document.getElementById("fePrivacy"));
   } catch (err) { areaCrashed("questions and feedback", err); } }
 
   if (want("hover feedback on buttons")) { try {
@@ -4606,13 +4606,89 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the app icon is only a picture again: pressing it does nothing", !/showVersionNotice|APP_VERSION[^;]*fe-appicon/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && (() => { const icon = vl_minimal.document.querySelector("#formatEditor .fe-appicon"); const before = capText(vl_minimal); icon.click(); return capText(vl_minimal) === before; })());
   } catch (err) { areaCrashed("version line", err); } }
 
+  if (want("the tour")) { try {
+  // ================================================================ the tour: a walk through one recipe, on rails
+  var tr_src = fs.readFileSync(ROOT + "vendor/driver.js", "utf8");
+  var tr_boot = (local, fetchOptions) => boot({ url: EDURL, session: signedIn(), local: { connectedBefore: "1", ...local }, fetchOptions: fetchOptions || {}, before: (w) => { w.__scriptLoadHooks = { "vendor/driver.js": () => w.eval(tr_src) }; } });
+  var tr_wait = (ms) => new Promise((r) => setTimeout(r, ms || 60));
+  var tr_title = (w) => { const t = w.document.querySelector(".driver-popover.fe-tour .driver-popover-title"); return t ? t.textContent : ""; };
+  var tr_count = (w) => { const t = w.document.querySelector(".driver-popover.fe-tour .fe-tour-count"); return t ? t.textContent : ""; };
+  var tr_click = async (w, sel) => { w.document.querySelector(sel).click(); await tr_wait(); };
+  check("Driver.js is kept in the repository, with its license, not loaded from another site", fs.existsSync(ROOT + "vendor/driver.js") && fs.existsSync(ROOT + "vendor/driver.css") && /MIT License/.test(fs.readFileSync(ROOT + "vendor/driver-LICENSE.txt", "utf8")) && !/cdn[^"]*driver/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
+
+  var tr = await tr_boot({ formats: null });
+  await tr_wait(800);
+  check("someone with no recipes is offered the tour once the app is ready", tr_title(tr) === "Make your first playlists?", tr_title(tr));
+  check("the offer says the tour is in the ⋯ menu, and answers Not now or Show me", /any time from the ⋯ menu/.test(tr.document.querySelector(".driver-popover.fe-tour").textContent) && tr.document.getElementById("feTourLater").textContent === "Not now" && tr.document.getElementById("feTourStart").textContent === "Show me");
+  check("Driver.js is loaded only now, from this site, with the version stamp", tr.__scriptsRequested.some((u) => /vendor\/driver\.js\?v=/.test(u)) && !!tr.document.getElementById("driverStyles"));
+  check("the offer is remembered, so it comes once", tr.localStorage.getItem("tourOffered") === "1");
+  check("the page behind is blurred a little", !!tr.document.getElementById("feTourBlur") && /#feTourBlur \{[^}]*backdrop-filter: blur\(1\.5px\)/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  await tr_click(tr, "#feTourStart");
+  check("Show me starts with New recipe, step 1 of 8, with Skip tour and no button to go on", tr.eval("tour.on") === true && tr_title(tr) === "Start a recipe" && tr_count(tr) === "1 of 8" && tr.document.getElementById("feTourSkip").textContent === "Skip tour" && !tr.document.getElementById("feTourNext") && tr.document.querySelector(".driver-active-element") === tr.document.getElementById("feNewFormat"));
+  await tr_click(tr, "#feNewFormat");
+  check("tapping New recipe moves on to the name", tr_title(tr) === "Name it" && tr_count(tr) === "2 of 8" && /tap Create recipe/.test(tr.document.querySelector(".driver-popover.fe-tour").textContent));
+  check("the name box keeps the focus, so the name can be typed", tr.document.activeElement === tr.document.getElementById("feNewFormatName"));
+  await tr_click(tr, "#feNewFormatCancel");
+  check("Cancel on the name popup goes back to New recipe", tr_title(tr) === "Start a recipe");
+  await tr_click(tr, "#feNewFormat");
+  var tr_name = tr.document.getElementById("feNewFormatName");
+  tr_name.value = "Sunday circle"; tr_name.dispatchEvent(new tr.Event("input"));
+  await tr_click(tr, "#feNewFormatConfirm");
+  check("after Create recipe: choose the first segment's playlist", tr_title(tr) === "Choose a playlist" && tr_count(tr) === "3 of 8" && tr.document.querySelector(".driver-active-element").classList.contains("fe-main"));
+  await tr_click(tr, "#feRows .fe-row .fe-main");
+  check("its list open: pick one, still step 3", tr_title(tr) === "Pick one" && tr_count(tr) === "3 of 8" && tr.document.querySelector(".driver-active-element").classList.contains("fe-listpanel"));
+  await tr_click(tr, "#feOptions .fe-option");
+  check("a playlist picked: its length, with a Next button and the words to tap it when ready", tr_title(tr) === "Set its length" && tr.document.getElementById("feTourNext").textContent === "Next" && /Tap Next when you're ready\./.test(tr.document.querySelector(".driver-popover.fe-tour").textContent));
+  await tr_click(tr, "#feRows .fe-row .fe-inc");
+  check("tapping + keeps the step, on the stepper drawn again", tr_title(tr) === "Set its length" && tr.document.querySelector(".driver-active-element").classList.contains("fe-stepper") && tr.document.querySelector(".driver-active-element").isConnected);
+  await tr_click(tr, "#feTourNext");
+  check("Next: add a second segment", tr_title(tr) === "Add a second segment" && tr_count(tr) === "5 of 8");
+  await tr_click(tr, "#feAddSegment");
+  check("the new segment's list opens by itself: pick its playlist", tr_title(tr) === "Pick its playlist" && tr_count(tr) === "6 of 8");
+  await tr_click(tr, "#feOptions .fe-option:nth-child(2)");
+  check("then the silence, with Next", tr_title(tr) === "Add silence" && tr_count(tr) === "7 of 8" && !!tr.document.getElementById("feTourNext"));
+  await tr_click(tr, "#feGapLonger");
+  await tr_click(tr, "#feTourNext");
+  check("last, Build, 8 of 8", tr_title(tr) === "Build" && tr_count(tr) === "8 of 8" && tr.document.querySelector(".driver-active-element") === tr.document.getElementById("create"));
+  check("the recipe is a real one, kept like any other", /Sunday circle/.test(tr.document.getElementById("formats").value));
+  tr.document.getElementById("create").disabled = false;
+  await tr_click(tr, "#create");
+  await tr_wait();
+  check("tapping Build ends the tour: no panel, no blur, no dim", tr.eval("tour.on") === false && !tr.document.querySelector(".driver-popover") && !tr.document.getElementById("feTourBlur") && !tr.document.documentElement.classList.contains("fe-touring") && !tr.document.body.classList.contains("driver-active"));
+
+  var tr2 = await tr_boot({ formats: null, tourOffered: "1" });
+  await tr_wait(800);
+  check("the offer does not come a second time", !tr2.document.querySelector(".driver-popover"));
+  tr2.document.getElementById("feAppMenuButton").click();
+  var tr2_item = tr2.document.getElementById("feTour");
+  check("the menu has Take the tour, after Report a problem", !!tr2_item && tr2_item.textContent.trim() === "Take the tour" && tr2.document.getElementById("feReport").nextElementSibling === tr2_item);
+  tr2_item.click();
+  await tr_wait(100);
+  check("it starts the tour", tr2.eval("tour.on") === true && tr_title(tr2) === "Start a recipe");
+  await tr_click(tr2, "#feTourSkip");
+  check("Skip tour ends it at once", tr2.eval("tour.on") === false && !tr2.document.querySelector(".driver-popover") && !tr2.document.getElementById("feTourBlur"));
+
+  var tr3 = await tr_boot({ formats: MINI });
+  await tr_wait(800);
+  check("someone who already has recipes is not offered the tour", !tr3.document.querySelector(".driver-popover") && !tr3.localStorage.getItem("tourOffered"));
+
+  var tr4 = await tr_boot({ formats: null }, { listStatus: 500 });
+  tr4.eval("connection = 'problem'");
+  check("with no working connection the menu's Take the tour says why instead of starting", (tr4.eval("takeTour()"), tr4.eval("tour.on")) === false && /once Spotify is connected/.test(tr4.eval("tourBlocked()")));
+
+  var tr_text = fs.readFileSync(ROOT + "editor.js", "utf8");
+  var tr_block = tr_text.slice(tr_text.indexOf("// ---------------------------------------------------------------- the tour"), tr_text.indexOf("// ---------------------------------------------------------------- what the rest of the page asks"));
+  check("no em or en dashes in the tour", !/[–—]/.test(tr_block));
+  check("panels are black on a light page and white on a dark one", /\.driver-popover\.fe-tour \{ --tour-bg: #111113;/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /prefers-color-scheme: dark\) \{ \.driver-popover\.fe-tour \{ --tour-bg: #ffffff;/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  } catch (err) { areaCrashed("the tour", err); } }
+
   if (want("spotify last")) { try {
   // ================================================================ the Spotify item is always first in the menu, under the app's name; then the rest in a fixed order, and the version
   var sl_ids = (w) => { w.document.getElementById("feAppMenuButton").click(); const ids = Array.from(w.document.querySelectorAll("#feAppMenuPanel > *")).map((k) => k.id || k.className); w.document.body.click(); return ids; };
-  var sl_rest = ["fe-rule", "feMoreOptions", "feFeedback", "feReport", "feTips", "fePrivacy", "fe-rule", "feVersion"];
+  var sl_rest = ["fe-rule", "feMoreOptions", "feFeedback", "feReport", "feTour", "fePrivacy", "fe-rule", "feVersion"];
   var sl_ready = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: {}, feedbackUrl: "https://tally.so/r/X" });
   var sl_r = sl_ids(sl_ready);
-  check("connected: the app's name, the Spotify row, then More options, Questions and feedback, Report a problem, Tips & tricks, Privacy, and the version", JSON.stringify(sl_r) === JSON.stringify(["feMenuHead", "fe-sp-block"].concat(sl_rest)), JSON.stringify(sl_r));
+  check("connected: the app's name, the Spotify row, then More options, Questions and feedback, Report a problem, Take the tour, Privacy, and the version", JSON.stringify(sl_r) === JSON.stringify(["feMenuHead", "fe-sp-block"].concat(sl_rest)), JSON.stringify(sl_r));
   var sl_slow = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: { listDelayMs: 4000 }, feedbackUrl: "https://tally.so/r/X" });
   var sl_s = sl_ids(sl_slow);
   check("connecting: the Connecting item and its note come first, then the same order", sl_slow.eval("connection") === "connecting" && JSON.stringify(sl_s) === JSON.stringify(["feMenuHead", "feConnect", "feConnectionNote"].concat(sl_rest)), JSON.stringify(sl_s));
@@ -4714,7 +4790,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-02z"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-02za"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

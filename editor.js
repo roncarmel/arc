@@ -26,6 +26,7 @@ const editor = {
 
 // ---------------------------------------------------------------- small helpers
 const FE_ICONS = {
+  tour: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l5 3.5-5 3.5z"/></svg>',
   grip: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="5" cy="3" r="1.5" fill="currentColor"/><circle cx="11" cy="3" r="1.5" fill="currentColor"/><circle cx="5" cy="8" r="1.5" fill="currentColor"/><circle cx="11" cy="8" r="1.5" fill="currentColor"/><circle cx="5" cy="13" r="1.5" fill="currentColor"/><circle cx="11" cy="13" r="1.5" fill="currentColor"/></svg>',
   dots: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
   plus: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
@@ -475,7 +476,7 @@ function renderAppMenu() {
     // the form says all there is to say about itself, so the item opens it straight away, in a new tab, with nothing attached
     typeof FEEDBACK_FORM_URL !== "undefined" && FEEDBACK_FORM_URL ? feEl("a", { class: "fe-item", id: "feFeedback", role: "menuitem", href: FEEDBACK_FORM_URL, target: "_blank", rel: "noopener noreferrer", onClick: () => setTimeout(() => { editor.appMenu = false; renderAppMenu(); }, 0) }, feIcon("chat"), "Questions and feedback") : null,
     infoItem("feReport", "reportBlock", "flag", "Report a problem"),
-    infoItem("feTips", "tipsBlock", "info", "Tips & tricks"),
+    feEl("button", { type: "button", class: "fe-item", id: "feTour", role: "menuitem", onClick: choose(() => takeTour()) }, feIcon("tour"), "Take the tour"),
     infoItem("fePrivacy", "privacySection", "lock", "Privacy"),
     // only on the owner's device: the app's own record of Spotify's limits, for the chat where it is studied
     typeof isOwnerHere !== "undefined" && isOwnerHere ? feEl("button", { type: "button", class: "fe-item", id: "feCopyRecord", role: "menuitem", onClick: choose(() => copyLimitRecord()) }, feIcon("copy"), "Copy Spotify record") : null,
@@ -1659,6 +1660,212 @@ function applySettle(holder, settle) {
   };
   if (window.requestAnimationFrame) window.requestAnimationFrame(() => window.requestAnimationFrame(release));
   else setTimeout(release, 30);
+}
+
+// ---------------------------------------------------------------- the tour
+// A walk through making one recipe, on rails: the page is dimmed and softly blurred except the one thing to tap, and only that thing works. Driver.js (vendor/, MIT)
+// draws the dim and the panel; it is loaded the first time the tour starts. The step shown is worked out from the recipe itself after every change on the page,
+// so a step undone (the name popup cancelled, say) goes back by itself. The two steppers have a Next button, since any number of taps is right there.
+// Offered once, to someone with no recipes yet, when the app is ready; the ⋯ menu has Take the tour.
+const tour = { on: false, recipeId: null, lengthDone: false, silenceDone: false, driver: null, shown: null, el: null, observer: null, frame: 0 };
+const TOUR_TOTAL = 8;
+
+function tourRecipe() {
+  if (!editor.model) return null;
+  const known = editor.model.formats.find((f) => f.id === tour.recipeId);
+  if (known) return known;
+  // not started yet, or the name popup was cancelled (its draft is gone): the recipe is whichever draft the name popup opens next
+  const draft = editor.model.formats.find((f) => f.draft);
+  tour.recipeId = draft ? draft.id : null;
+  return draft || null;
+}
+
+function tourSegment(n) {
+  const f = tourRecipe();
+  return f ? f.items.filter((x) => x.kind === "seg")[n] || null : null;
+}
+
+// the playlist step of segment n: its list when open, else its playlist button
+function tourPlaylistView(n, step, first) {
+  const item = tourSegment(n);
+  if (!item) return null;
+  const row = document.querySelector(`#feRows .fe-row[data-id="${item.id}"]`);
+  const list = row && row.querySelector(".fe-listpanel");
+  if (list) return { el: list, side: "top", title: first ? "Pick one" : "Pick its playlist", text: first ? "Songs for this segment come from the playlist you pick." : "The new segment plays after the first one. Its length can stay as it is." };
+  return { el: row && row.querySelector(".fe-main"), side: "bottom", title: first ? "Choose a playlist" : "Pick its playlist", text: first ? "This is the first segment of the session. Tap to choose which of your playlists it plays." : "Tap to choose which of your playlists the new segment plays." };
+}
+
+const TOUR_STEPS = [
+  { done: () => !!tourRecipe(), view: () => ({ el: $("feNewFormat"), side: "bottom", title: "Start a recipe", text: "A recipe says which of your playlists to play, in what order, and for how long. Tap New recipe." }) },
+  { done: () => { const f = tourRecipe(); return !!f && !f.draft; }, view: () => ({ el: document.querySelector("#feNewFormatDialog .fe-nf-dialog"), side: "bottom", title: "Name it", text: "Your playlists will be called this, with a number. Type a name, then tap Create recipe.", focus: "feNewFormatName" }) },
+  { done: () => { const s = tourSegment(0); return !!s && !!s.lists[0].name; }, view: () => tourPlaylistView(0, 3, true) },
+  { done: () => tour.lengthDone, view: () => { const s = tourSegment(0); const row = s && document.querySelector(`#feRows .fe-row[data-id="${s.id}"]`); return { el: row && row.querySelector(".fe-stepper"), side: "bottom", title: "Set its length", text: "Tap + or − to choose how many minutes this segment plays. Tap Next when you're ready.", next: () => { tour.lengthDone = true; tourSync(); } }; } },
+  { done: () => !!tourSegment(1), view: () => ({ el: $("feAddSegment"), side: "bottom", title: "Add a second segment", text: "A session can have as many segments as you like. Tap New segment." }) },
+  { done: () => { const s = tourSegment(1); return !!s && !!s.lists[0].name; }, view: () => tourPlaylistView(1, 6, false) },
+  { done: () => tour.silenceDone, view: () => ({ el: document.querySelector("#feHead .fe-silence"), side: "top", title: "Add silence", text: "Tap + to add a pause between segments, for a breath or a word from you. Tap Next when you're ready.", next: () => { tour.silenceDone = true; tourSync(); } }) },
+  { done: () => false, view: () => ({ el: $("create"), side: "top", title: "Build", text: "Tap Build playlists. You see the plan first, and nothing is made in Spotify until you confirm." }) },
+];
+
+// The tour needs the person's playlists, so it waits for a working connection; during a wait from Spotify it says when.
+function tourBlocked() {
+  const pause = typeof spotifyPause === "function" ? spotifyPause() : null;
+  if (pause) return "The tour can start when Spotify is back.";
+  if (typeof connection === "undefined" || connection !== "ready" || !playlists.length) return "The tour can start once Spotify is connected and your playlists are in.";
+  return "";
+}
+
+// something else that needs the person took over the screen
+function tourInterrupted() {
+  const shown = (id) => { const el = $(id); return !!el && !el.hidden && getComputedStyle(el).display !== "none"; };
+  return !!$("feSyncDialog") || !!$("fePauseDialog") || shown("createOverlay") || shown("infoOverlay") || shown("startupProblem") || shown("reconnectScreen") || document.documentElement.classList.contains("connecting");
+}
+
+function loadDriver() {
+  if (window.driver && window.driver.js) return Promise.resolve(true);
+  const stamp = typeof APP_VERSION === "undefined" ? "" : APP_VERSION;
+  if (!document.getElementById("driverStyles")) document.head.appendChild(feEl("link", { rel: "stylesheet", id: "driverStyles", href: `vendor/driver.css?v=${stamp}` }));
+  return new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = `vendor/driver.js?v=${stamp}`;
+    script.onload = () => resolve(!!(window.driver && window.driver.js));
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  });
+}
+
+function tourDriver() {
+  if (tour.driver) return tour.driver;
+  const dark = !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  // a dark wash disappears on a dark page, so there it is a light one
+  tour.driver = window.driver.js.driver({ popoverClass: "fe-tour", overlayColor: dark ? "#fff" : "#000", overlayOpacity: dark ? 0.22 : 0.55, stagePadding: 6, stageRadius: 14,
+    allowClose: false, allowKeyboardControl: false, animate: false, smoothScroll: false, showButtons: [] });
+  return tour.driver;
+}
+
+// one panel: a title, a few words, then the step count, Skip tour and (where the step has one) a button
+function tourPanel(view, step, buttons) {
+  tourDriver().highlight({ element: view.el || undefined, popover: { title: view.title, description: view.text, side: view.side, align: "center",
+    onPopoverRender: (pop) => {
+      pop.footer.style.display = "flex";
+      pop.footer.innerHTML = "";
+      pop.footer.appendChild(feEl("span", { class: "fe-tour-count", text: step ? `${step} of ${TOUR_TOTAL}` : "" }));
+      pop.footer.appendChild(feEl("span", { class: "fe-tour-btns" }, ...buttons));
+    } } });
+  tour.el = view.el;
+  // Driver.js focuses the panel's first button, which drew a focus ring on a button nobody had pressed: the panel itself takes the focus, or the name box on its step
+  const pop = document.querySelector(".driver-popover.fe-tour");
+  if (view.focus && $(view.focus)) $(view.focus).focus();
+  else if (pop) { pop.setAttribute("tabindex", "-1"); pop.focus({ preventScroll: true }); }
+  tourGeometry();
+}
+
+function tourSkipLink() {
+  return feEl("button", { type: "button", class: "fe-tour-skip", id: "feTourSkip", onClick: () => endTour() }, "Skip tour");
+}
+
+// After any change on the page: the first step not yet done, on whatever element now stands for it (the editor redraws its rows often).
+function tourSync() {
+  if (!tour.on) return;
+  if (tourInterrupted()) { endTour(); return; }
+  const index = TOUR_STEPS.findIndex((s) => !s.done());
+  const view = TOUR_STEPS[index].view();
+  if (!view || !view.el) return;   // the page is between two drawings; the next change brings it back
+  const key = `${index}:${view.title}`;
+  if (tour.shown === key && tour.el === view.el && view.el.isConnected) return;
+  tour.shown = key;
+  const buttons = [tourSkipLink()];
+  if (view.next) buttons.push(feEl("button", { type: "button", class: "fe-tour-next", id: "feTourNext", onClick: view.next }, "Next"));
+  tourPanel(view, index + 1, buttons);
+}
+
+// Every frame while the tour is on: the blur keeps its hole over the highlighted element, and the panel's arrow points at the element's middle,
+// wherever the panel had to sit to fit on the screen.
+function tourGeometry() {
+  const blur = $("feTourBlur");
+  const el = tour.el && tour.el.isConnected ? tour.el : null;
+  if (blur) {
+    const W = window.innerWidth, H = window.innerHeight;
+    let hole = "";
+    if (el) {
+      const r = el.getBoundingClientRect(), pad = 6, rad = 14;
+      const x = r.left - pad, y = r.top - pad, w = r.width + pad * 2, h = r.height + pad * 2, k = Math.min(rad, w / 2, h / 2);
+      hole = ` M${x + k} ${y} H${x + w - k} A${k} ${k} 0 0 1 ${x + w} ${y + k} V${y + h - k} A${k} ${k} 0 0 1 ${x + w - k} ${y + h} H${x + k} A${k} ${k} 0 0 1 ${x} ${y + h - k} V${y + k} A${k} ${k} 0 0 1 ${x + k} ${y} Z`;
+    }
+    const clip = `path(evenodd, "M0 0 H${W} V${H} H0 Z${hole}")`;
+    if (blur.style.clipPath !== clip) blur.style.clipPath = clip;
+  }
+  const pop = document.querySelector(".driver-popover.fe-tour");
+  const arrow = pop && pop.querySelector(".driver-popover-arrow");
+  if (el && arrow) {
+    const t = el.getBoundingClientRect(), w = pop.getBoundingClientRect();
+    if (/side-(left|right)/.test(arrow.className)) { arrow.style.bottom = "auto"; arrow.style.top = Math.max(16, Math.min(w.height - 16, t.top + t.height / 2 - w.top)) - 8 + "px"; }
+    else { arrow.style.right = "auto"; arrow.style.left = Math.max(16, Math.min(w.width - 16, t.left + t.width / 2 - w.left)) - 8 + "px"; }
+    arrow.style.margin = "0";
+  }
+}
+
+function tourFrame() {
+  if (!tour.on) return;
+  tourGeometry();
+  tour.frame = requestAnimationFrame(tourFrame);
+}
+
+async function startTour() {
+  if (tour.on || tourBlocked()) return;
+  if (!(await loadDriver())) return;
+  closePanels();
+  Object.assign(tour, { on: true, recipeId: null, lengthDone: false, silenceDone: false, shown: null, el: null });
+  document.documentElement.classList.add("fe-touring");
+  document.body.appendChild(feEl("div", { id: "feTourBlur", "aria-hidden": "true" }));
+  tour.observer = new MutationObserver(() => requestAnimationFrame(tourSync));
+  tour.observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden", "class"] });
+  document.addEventListener("click", tourBuildClick, true);
+  tourSync();
+  tour.frame = requestAnimationFrame(tourFrame);
+}
+
+// Build is the last step: the tour ends there, and the build popup takes over
+function tourBuildClick(event) {
+  if (tour.on && event.target.closest && event.target.closest("#create")) setTimeout(endTour, 0);
+}
+
+function endTour() {
+  if (tour.observer) tour.observer.disconnect();
+  tour.observer = null;
+  cancelAnimationFrame(tour.frame);
+  document.removeEventListener("click", tourBuildClick, true);
+  const wasOn = tour.on;
+  tour.on = false;
+  tour.el = null;
+  tour.shown = null;
+  if (tour.driver) tour.driver.destroy();
+  tour.driver = null;
+  const blur = $("feTourBlur");
+  if (blur) blur.remove();
+  document.documentElement.classList.remove("fe-touring");
+  if (wasOn && editor.model) renderEditor();
+}
+
+// The offer, once on this device, to someone who has no recipes yet, when the app is ready and nothing else is on screen.
+async function maybeOfferTour() {
+  try { if (localStorage.getItem("tourOffered")) return; } catch (err) { return; }
+  if (tour.on || tourBlocked() || tourInterrupted() || !editor.model || editor.model.formats.some((f) => !f.draft)) return;
+  if (!(await loadDriver()) || tourInterrupted()) return;
+  try { localStorage.setItem("tourOffered", "1"); } catch (err) { /* offered again next time */ }
+  document.documentElement.classList.add("fe-touring");
+  document.body.appendChild(feEl("div", { id: "feTourBlur", "aria-hidden": "true" }));
+  const close = () => { tourDriver().destroy(); tour.driver = null; const blur = $("feTourBlur"); if (blur) blur.remove(); document.documentElement.classList.remove("fe-touring"); };
+  tourPanel({ title: "Make your first playlists?", text: "This walks you through one recipe, start to finish, in about a minute. You can take the tour again any time from the ⋯ menu." }, 0, [
+    feEl("button", { type: "button", class: "fe-tour-later", id: "feTourLater", onClick: close }, "Not now"),
+    feEl("button", { type: "button", class: "fe-tour-next", id: "feTourStart", onClick: () => { close(); startTour(); } }, "Show me"),
+  ]);
+}
+
+// from the menu: the tour, or why it cannot start yet
+function takeTour() {
+  const why = tourBlocked();
+  if (why) { showNotices([{ text: why, transient: true }]); return; }
+  startTour();
 }
 
 // ---------------------------------------------------------------- what the rest of the page asks

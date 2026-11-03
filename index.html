@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-02z">
-<script src="theme.js?v=2026-11-02z"></script>
+<meta name="app-version" content="2026-11-02za">
+<script src="theme.js?v=2026-11-02za"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -338,6 +338,28 @@
   .fe-dialog h3 { margin: 0 0 8px; font-size: 1.1rem; line-height: 1.25; }
   .fe-dialog p { margin: 0 0 12px; }
   .fe-dialog .row { margin-top: 4px; }
+  /* The tour (editor.js; Driver.js draws the dim and the panel): a black panel on a light page, a white one on a dark page, so it never looks like one of the controls.
+     Behind the dim, everything but the highlighted thing is blurred a little (#feTourBlur, its hole kept over the thing by the script). */
+  .driver-popover.fe-tour { --tour-bg: #111113; --tour-fg: #f4f4f6; --tour-muted: #a8a8b0; --tour-line: #46464c; background: var(--tour-bg); color: var(--tour-fg); border-radius: 16px; padding: 18px 18px 14px; max-width: 320px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25); outline: none; }
+  @media (prefers-color-scheme: dark) { .driver-popover.fe-tour { --tour-bg: #ffffff; --tour-fg: #1d1d1f; --tour-muted: #6b6b70; --tour-line: #d8d8dc; } }
+  .driver-popover.fe-tour, .driver-popover.fe-tour * { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .driver-popover.fe-tour .driver-popover-title { font-size: 1.1rem; font-weight: 700; line-height: 1.3; }
+  .driver-popover.fe-tour .driver-popover-description { font-size: 0.98rem; line-height: 1.45; color: var(--tour-fg); margin-top: 6px; }
+  .driver-popover.fe-tour .driver-popover-footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; }
+  .driver-popover.fe-tour .driver-popover-arrow { border-width: 8px; }
+  .driver-popover.fe-tour .driver-popover-arrow-side-bottom { border-bottom-color: var(--tour-bg); }
+  .driver-popover.fe-tour .driver-popover-arrow-side-top { border-top-color: var(--tour-bg); }
+  .driver-popover.fe-tour .driver-popover-arrow-side-left { border-left-color: var(--tour-bg); }
+  .driver-popover.fe-tour .driver-popover-arrow-side-right { border-right-color: var(--tour-bg); }
+  .fe-tour-count { font-size: 0.85rem; color: var(--tour-muted); }
+  .driver-popover.fe-tour .fe-tour-btns { display: flex; gap: 14px; margin-left: auto; align-items: center; }
+  .driver-popover.fe-tour .driver-popover-footer button { all: unset; cursor: pointer; font-size: 0.95rem; font-weight: 600; border-radius: 999px; padding: 8px 16px; border: 1px solid var(--tour-line); background: var(--tour-bg); color: var(--tour-fg); }
+  .driver-popover.fe-tour .driver-popover-footer button.fe-tour-next { background: var(--button); color: #fff; border-color: var(--button); }
+  .driver-popover.fe-tour .driver-popover-footer button.fe-tour-skip { font-size: 0.9rem; font-weight: 400; padding: 6px 0; border: 0; border-radius: 0; color: var(--tour-muted); text-decoration: underline; text-underline-offset: 3px; }
+  .driver-popover.fe-tour .driver-popover-footer button:focus-visible { outline: 2px solid var(--button); outline-offset: 2px; }
+  #feTourBlur { position: fixed; inset: 0; z-index: 9999; pointer-events: none; -webkit-backdrop-filter: blur(1.5px); backdrop-filter: blur(1.5px); }
+  html.fe-touring #feNewFormatDialog { background: transparent; }   /* the tour's dim is enough: two would make the name popup's step darker than the rest */
+  html.fe-touring #formatEditor .fe-row:has(> .driver-active-element) { overflow: visible !important; }   /* Driver.js clips the parent of what it highlights, which would cut off a playlist list */
   #fePauseDialog { z-index: 1040; }   /* over the Support me button, which is dimmed with the rest while the app waits */
   .fe-pause-dialog { text-align: center; outline: none; display: flex; flex-direction: column; }
   .fe-pause-dialog h3 { margin-bottom: 4px; }
@@ -487,13 +509,11 @@
   #infoTitle { margin: 0; font-size: 1.25rem; line-height: 1.3; color: var(--fg); }
   #infoClose { flex: none; margin: 0; }
   #infoSlot { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 18px 18px; }
-  #infoDialog details > summary, #infoSlot > #reportBlock > h3:first-child, #infoSlot > #tipsBlock > h3:first-child { display: none; }
+  #infoDialog details > summary, #infoSlot > #reportBlock > h3:first-child { display: none; }
   /* More options: one rhythm for every section, and everything under a heading indented a little */
   #moreOptions h3 { margin: 26px 0 8px; font-size: 1.05rem; }
   #infoSlot > #moreOptions { margin-top: -22px; }   /* the header already has its own room below it */
-  #moreOptions > :not(summary):not(h3), #reportBlock > :not(h3), #tipsBlock > :not(h3) { margin-left: 16px; }
-  #tipsBlock h4 { margin: 20px 0 6px 16px; font-size: 1.05rem; color: var(--fg); }
-  #tipsBlock p { margin-top: 0; margin-bottom: 10px; }
+  #moreOptions > :not(summary):not(h3), #reportBlock > :not(h3) { margin-left: 16px; }
   #moreOptions p, #moreOptions .row, #moreOptions select, #moreOptions pre.report-preview, #moreOptions .choice-row, #moreOptions .button-link, #reportBlock p, #reportBlock pre.report-preview, #reportBlock .button-link { margin-top: 0; margin-bottom: 10px; }
   #moreOptions .row select, #moreOptions .row .button-link { margin-bottom: 0; }   /* inside a row, the row supplies the space below, so the items centre on each other */
   body.minimal #feAppMenuButton { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
@@ -1208,14 +1228,6 @@
     </details>
   </footer>
 </main>
-  <!-- Tips & tricks: opened from the app menu in the info popup -->
-  <div id="tipsBlock" hidden>
-  <h3>Tips &amp; tricks</h3>
-  <h4>Change the order of your recipes</h4>
-  <p class="muted">Press and hold a recipe at the top, then drag it left or right. This works with a mouse too.</p>
-  <h4>Connect to Spotify again after a reset</h4>
-  <p class="muted">Reset app on this device copies your Client ID to the clipboard first. When the app asks for it, paste it in.</p>
-  </div>
     <!-- Report a problem: opened from the app menu in the info popup, so it is not part of More options -->
   <div id="reportBlock" hidden>
   <h3>Report a problem</h3>
@@ -1231,8 +1243,8 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-02z"></script>
-<script src="editor.js?v=2026-11-02z"></script>
-<script src="app.js?v=2026-11-02z"></script>
+<script src="formats.js?v=2026-11-02za"></script>
+<script src="editor.js?v=2026-11-02za"></script>
+<script src="app.js?v=2026-11-02za"></script>
 </body>
 </html>
