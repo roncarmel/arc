@@ -476,7 +476,7 @@ function renderAppMenu() {
     // the form says all there is to say about itself, so the item opens it straight away, in a new tab, with nothing attached
     typeof FEEDBACK_FORM_URL !== "undefined" && FEEDBACK_FORM_URL ? feEl("a", { class: "fe-item", id: "feFeedback", role: "menuitem", href: FEEDBACK_FORM_URL, target: "_blank", rel: "noopener noreferrer", onClick: () => setTimeout(() => { editor.appMenu = false; renderAppMenu(); }, 0) }, feIcon("chat"), "Questions and feedback") : null,
     infoItem("feReport", "reportBlock", "flag", "Report a problem"),
-    feEl("button", { type: "button", class: "fe-item", id: "feTour", role: "menuitem", onClick: choose(() => takeTour()) }, feIcon("tour"), "Take the tour"),
+    feEl("button", { type: "button", class: "fe-item", id: "feTour", role: "menuitem", onClick: choose(() => takeTour()) }, feIcon("tour"), "Guided tour"),
     infoItem("fePrivacy", "privacySection", "lock", "Privacy"),
     // only on the owner's device: the app's own record of Spotify's limits, for the chat where it is studied
     typeof isOwnerHere !== "undefined" && isOwnerHere ? feEl("button", { type: "button", class: "fe-item", id: "feCopyRecord", role: "menuitem", onClick: choose(() => copyLimitRecord()) }, feIcon("copy"), "Copy Spotify record") : null,
@@ -1666,7 +1666,7 @@ function applySettle(holder, settle) {
 // A walk through making one recipe, on rails: the page is dimmed and softly blurred except the one thing to tap, and only that thing works. Driver.js (vendor/, MIT)
 // draws the dim and the panel; it is loaded the first time the tour starts. The step shown is worked out from the recipe itself after every change on the page,
 // so a step undone (the name popup cancelled, say) goes back by itself. The two steppers have a Next button, since any number of taps is right there.
-// Offered once, to someone with no recipes yet, when the app is ready; the ⋯ menu has Take the tour.
+// Offered once, to someone with no recipes yet, when the app is ready; the ⋯ menu has Guided tour.
 const tour = { on: false, recipeId: null, lengthDone: false, silenceDone: false, driver: null, shown: null, el: null, observer: null, frame: 0 };
 const TOUR_TOTAL = 8;
 
@@ -1691,26 +1691,26 @@ function tourPlaylistView(n, step, first) {
   if (!item) return null;
   const row = document.querySelector(`#feRows .fe-row[data-id="${item.id}"]`);
   const list = row && row.querySelector(".fe-listpanel");
-  if (list) return { el: list, side: "top", title: first ? "Pick one" : "Pick its playlist", text: first ? "Songs for this segment come from the playlist you pick." : "The new segment plays after the first one. Its length can stay as it is." };
-  return { el: row && row.querySelector(".fe-main"), side: "bottom", title: first ? "Choose a playlist" : "Pick its playlist", text: first ? "This is the first segment of the session. Tap to choose which of your playlists it plays." : "Tap to choose which of your playlists the new segment plays." };
+  if (list) return { el: list, side: "top", title: first ? "Pick one" : "Pick its playlist", text: first ? "Songs for this segment are selected at random from the playlist you choose." : "The new segment plays after the first one. Its length can stay as it is." };
+  return { el: row && row.querySelector(".fe-main"), side: "bottom", title: first ? "Choose a playlist" : "Pick its playlist", text: first ? "This is the first segment of the recipe. Choose which of your playlists it plays." : "Tap to choose which of your playlists the new segment plays." };
 }
 
 const TOUR_STEPS = [
-  { done: () => !!tourRecipe(), view: () => ({ el: $("feNewFormat"), side: "bottom", title: "Start a recipe", text: "A recipe says which of your playlists to play, in what order, and for how long. Tap New recipe." }) },
-  { done: () => { const f = tourRecipe(); return !!f && !f.draft; }, view: () => ({ el: document.querySelector("#feNewFormatDialog .fe-nf-dialog"), side: "bottom", title: "Name it", text: "Your playlists will be called this, with a number. Type a name, then tap Create recipe.", focus: "feNewFormatName" }) },
+  { done: () => !!tourRecipe(), view: () => ({ el: $("feNewFormat"), side: "bottom", title: "Create a recipe", text: "A recipe says which of your playlists to play, in what order, and for how long. Press New recipe." }) },
+  { done: () => { const f = tourRecipe(); return !!f && !f.draft; }, view: () => ({ el: document.querySelector("#feNewFormatDialog .fe-nf-dialog"), side: "bottom", title: "Name the recipe", text: "Type a name, then tap Create recipe. Don’t think too hard, you can rename it any time.", focus: "feNewFormatName" }) },
   { done: () => { const s = tourSegment(0); return !!s && !!s.lists[0].name; }, view: () => tourPlaylistView(0, 3, true) },
-  { done: () => tour.lengthDone, view: () => { const s = tourSegment(0); const row = s && document.querySelector(`#feRows .fe-row[data-id="${s.id}"]`); return { el: row && row.querySelector(".fe-stepper"), side: "bottom", title: "Set its length", text: "Tap + or − to choose how many minutes this segment plays. Tap Next when you're ready.", next: () => { tour.lengthDone = true; tourSync(); } }; } },
-  { done: () => !!tourSegment(1), view: () => ({ el: $("feAddSegment"), side: "bottom", title: "Add a second segment", text: "A session can have as many segments as you like. Tap New segment." }) },
+  { done: () => tour.lengthDone, view: () => { const s = tourSegment(0); const row = s && document.querySelector(`#feRows .fe-row[data-id="${s.id}"]`); return { el: row && row.querySelector(".fe-stepper"), side: "bottom", title: "Set the segment’s length", text: "Tap + or − to choose how many minutes of music this segment plays. Tap Next when you're ready.", next: () => { tour.lengthDone = true; tourSync(); } }; } },
+  { done: () => !!tourSegment(1), view: () => ({ el: $("feAddSegment"), side: "bottom", title: "Add a second segment", text: "A session can have many segments. Tap New segment." }) },
   { done: () => { const s = tourSegment(1); return !!s && !!s.lists[0].name; }, view: () => tourPlaylistView(1, 6, false) },
-  { done: () => tour.silenceDone, view: () => ({ el: document.querySelector("#feHead .fe-silence"), side: "top", title: "Add silence", text: "Tap + to add a pause between segments, for a breath or a word from you. Tap Next when you're ready.", next: () => { tour.silenceDone = true; tourSync(); } }) },
-  { done: () => false, view: () => ({ el: $("create"), side: "top", title: "Build", text: "Tap Build playlists. You see the plan first, and nothing is made in Spotify until you confirm." }) },
+  { done: () => tour.silenceDone, view: () => ({ el: document.querySelector("#feHead .fe-silence"), side: "top", title: "Add silence", text: "Tap + to add a pause between segments. Helpful time marker for the facilitator or just some quiet time for participants. Tap Next when you're ready.", next: () => { tour.silenceDone = true; tourSync(); } }) },
+  { done: () => false, view: () => ({ el: $("create"), side: "top", title: "Build playlists from this recipe", text: "Tap Build playlists. You see the plan first, and nothing is made in Spotify until you confirm. This concludes your guided tour!" }) },
 ];
 
 // The tour needs the person's playlists, so it waits for a working connection; during a wait from Spotify it says when.
 function tourBlocked() {
   const pause = typeof spotifyPause === "function" ? spotifyPause() : null;
   if (pause) return "The tour can start when Spotify is back.";
-  if (typeof connection === "undefined" || connection !== "ready" || !playlists.length) return "The tour can start once Spotify is connected and your playlists are in.";
+  if (typeof connection === "undefined" || connection !== "ready" || !playlists.length) return "The tour can start once Spotify is connected.";
   return "";
 }
 
@@ -1855,10 +1855,12 @@ async function maybeOfferTour() {
   document.documentElement.classList.add("fe-touring");
   document.body.appendChild(feEl("div", { id: "feTourBlur", "aria-hidden": "true" }));
   const close = () => { tourDriver().destroy(); tour.driver = null; const blur = $("feTourBlur"); if (blur) blur.remove(); document.documentElement.classList.remove("fe-touring"); };
-  tourPanel({ title: "Make your first playlists?", text: "This walks you through one recipe, start to finish, in about a minute. You can take the tour again any time from the ⋯ menu." }, 0, [
-    feEl("button", { type: "button", class: "fe-tour-later", id: "feTourLater", onClick: close }, "Not now"),
-    feEl("button", { type: "button", class: "fe-tour-next", id: "feTourStart", onClick: () => { close(); startTour(); } }, "Show me"),
+  tourPanel({ title: "Would you like a guided tour?", text: "This walks you through creating a new recipe and building your first set of playlists from it, start to finish, in about a minute. You can take the tour any time from the ⋯ menu." }, 0, [
+    feEl("button", { type: "button", class: "fe-tour-later", id: "feTourLater", onClick: close }, "Nah, I’ll figure it out"),
+    feEl("button", { type: "button", class: "fe-tour-next", id: "feTourStart", onClick: () => { close(); startTour(); } }, "Yes, hold my hand!"),
   ]);
+  const pop = document.querySelector(".driver-popover.fe-tour");
+  if (pop) pop.classList.add("fe-tour-offer");   // its two answers are long, so they are stacked, the yes on top
 }
 
 // from the menu: the tour, or why it cannot start yet
