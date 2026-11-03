@@ -993,8 +993,17 @@ function refreshPauseViews(left) {
     if (text) text.textContent = pauseLineText(left);
   } else if (caption && (left ? notices.paintedKey === "total" : notices.paintedKey === "pause")) refreshNoticeLine();
   const clock = $("fePauseClock");
-  if (clock && left) clock.textContent = clockText(left);
+  if (clock && left) { clock.textContent = clockText(left); setPauseRing(); }
   if (!left && $("fePauseDialog")) closePauseDialog();
+}
+
+// The ring in the popup shows the part of the wait still to go. A wait kept before its start was recorded shows a full ring.
+function setPauseRing() {
+  const ring = $("fePauseRing");
+  const pause = typeof spotifyPause === "function" ? spotifyPause() : null;
+  if (!ring || !pause) return;
+  const share = pause.from && pause.until > pause.from ? Math.min(1, Math.max(0, (pause.until - Date.now()) / (pause.until - pause.from))) : 1;
+  ring.style.setProperty("--left", (share * 100).toFixed(2) + "%");
 }
 
 function pauseBackAtText(until) {
@@ -1021,25 +1030,28 @@ function showPauseDialog() {
   if (typeof endConnectingScreen === "function") endConnectingScreen();   // the popup needs the page in view
   if (editor.panel || editor.cardMenu || editor.gapPanel !== null || editor.appMenu) closePanels();   // an open list would take the first tap outside the popup
   const quota = pause.reason === "QUOTA_EXCEEDED";
-  const works = ["Editing recipes"];
-  if (playlists.length || (typeof KEPT_PLAYLISTS_KEY === "string" && localStorage.getItem(KEPT_PLAYLISTS_KEY))) works.push("Choosing playlists");   // the kept list may be put in just after this opens
-  const waits = ["Building playlists"];
-  if (typeof backupMode === "function" && backupMode() === "spotify") waits.push("Saving recipes");
-  const column = (title, items) => feEl("div", { class: "fe-pause-col" }, feEl("div", { class: "fe-pause-coltitle", text: title }), ...items.map((t) => feEl("div", { text: t })));
+  const kept = playlists.length || (typeof KEPT_PLAYLISTS_KEY === "string" && localStorage.getItem(KEPT_PLAYLISTS_KEY));   // the kept list may be put in just after this opens
+  const rows = [["Editing recipes", true], ["Choosing playlists", !!kept], ["Building playlists", false]];
+  if (typeof backupMode === "function" && backupMode() === "spotify") rows.push(["Saving recipes", false]);
+  rows.sort((a, b) => b[1] - a[1]);   // what works first
+  const row = ([label, works]) => feEl("div", { class: "fe-pause-row" }, feEl("span", { text: label }),
+    feEl("span", { class: "fe-pause-chip " + (works ? "fe-pause-works" : "fe-pause-waits") }, feIcon(works ? "check" : "clock"), works ? "Works" : "Waits"));
   const close = feEl("button", { type: "button", id: "fePauseClose", onClick: () => closePauseDialog() }, "Close");
   const overlay = feEl("div", { class: "fe-overlay", id: "fePauseDialog", onClick: () => closePauseDialog() },
     feEl("div", { class: "fe-dialog fe-pause-dialog", id: "fePauseBox", tabindex: "-1", role: "dialog", "aria-modal": "true", "aria-labelledby": "fePauseTitle", onClick: (e) => e.stopPropagation() },
-      feEl("div", { class: "fe-pause-icon" }, feIcon("clock")),
       feEl("h3", { id: "fePauseTitle", text: "Spotify paused this app" }),
-      feEl("div", { class: "fe-pause-clock", id: "fePauseClock", text: clockText(pausedSecondsLeft()) }),
-      feEl("p", { class: "muted fe-pause-at", id: "fePauseAt", text: pauseBackAtText(pause.until) }),
+      feEl("div", { class: "fe-pause-ring", id: "fePauseRing" },
+        feEl("div", { class: "fe-pause-label", text: "Back in" }),
+        feEl("div", { class: "fe-pause-clock", id: "fePauseClock", text: clockText(pausedSecondsLeft()) }),
+        feEl("div", { class: "fe-pause-at", id: "fePauseAt", text: "at " + new Date(pause.until).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) })),
       feEl("p", { id: "fePauseWhy", text: (quota
         ? "Spotify limits how much each app may ask of it in a day. This app reached that limit, so Spotify stopped answering it for a while."
         : "Spotify limits how often each app may ask it for things. This app asked too often, so Spotify stopped answering it for a while.")
         + " Asking sooner does not help, so the app waits, and connects again by itself when the time is up." }),
-      feEl("div", { class: "fe-pause-lists" }, column("Works now", works), column("Waits for Spotify", waits)),
+      feEl("div", { class: "fe-pause-lists", id: "fePauseList" }, ...rows.map(row)),
       feEl("div", { class: "row" }, close)));
   document.body.appendChild(overlay);
+  setPauseRing();
   document.addEventListener("keydown", pauseDialogKey);
   try { sessionStorage.setItem("pauseSeen", String(pause.until)); } catch (err) { /* private browsing */ }
   $("fePauseBox").focus();   // the popup itself, not Close: a ring on a button in a popup that opened by itself looked like a mistake

@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-02w";
+const APP_VERSION = "2026-11-02x";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1843,7 +1843,7 @@ function recordNote(note) {
 // during the wait makes it longer is not known. The line under the bar counts down (Details opens the popup), the Build button is hidden, recipes can
 // still be edited (with the playlist list kept from the last visit), and when the time is up the app connects again by itself. The end is kept on the
 // device with the Client ID it belongs to, so a reload or a later visit picks it up.
-const PAUSE_KEY = "spotifyPausedUntil";   // {until, reason, clientId}
+const PAUSE_KEY = "spotifyPausedUntil";   // {until, from, reason, clientId}: from is when the wait began, for the ring in the popup
 const KEPT_PLAYLISTS_KEY = "spotifyPlaylists";   // {user, list}: the playlist list from the last time Spotify answered, for the menus during a wait
 let pauseTimer = null;
 let pauseOn = false;   // what the last tick saw, so the end of a wait is noticed once
@@ -1865,8 +1865,9 @@ function clockText(seconds) {
   return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 function startSpotifyPause(wait, reason) {
-  const first = !spotifyPause();
-  try { localStorage.setItem(PAUSE_KEY, JSON.stringify({ until: Date.now() + wait * 1000, reason: reason || "", clientId: localStorage.getItem("clientId") || "" })); } catch (err) { /* private browsing: the wait lasts this visit */ }
+  const before = spotifyPause();
+  const first = !before;
+  try { localStorage.setItem(PAUSE_KEY, JSON.stringify({ until: Date.now() + wait * 1000, from: (before && before.from) || Date.now(), reason: reason || "", clientId: localStorage.getItem("clientId") || "" })); } catch (err) { /* private browsing: the wait lasts this visit */ }
   logStep(`paused for ${wait} s`);
   tickPause();
   updateButtons();
