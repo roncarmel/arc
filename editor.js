@@ -1807,7 +1807,7 @@ function tourSync() {
   const key = `${index}:${view.title}:${view.wait ? "wait" : ""}`;
   if (tour.shown === key && tour.el === view.el && view.el.isConnected) return;
   tour.shown = key;
-  const buttons = [tourSkipLink()];
+  const buttons = index === TOUR_STEPS.length - 1 ? [] : [tourSkipLink()];   // the last step ends the tour anyway
   if (view.next) buttons.push(feEl("button", { type: "button", class: "fe-tour-next", id: "feTourNext", onClick: view.next }, "Next"));
   tourPanel(view, index + 1, buttons);
 }
