@@ -613,12 +613,19 @@ function renderEditor() {
   if (typeof updateButtons === "function") updateButtons();   // the Build button names the format being edited
 }
 
-// The welcome's arrow sits under the middle of New recipe, wherever the row puts it (after the app icon when wide).
+// The welcome's arrow rests on the bottom edge of New recipe, under its middle, wherever the row puts it (after the app icon when wide).
+// Placed again whenever the button or the editor changes size, since the page may still be hidden or laying out when the welcome is drawn.
 function placeWelcomeArrow() {
   const arrow = $("feWelcomeArrow"), button = document.querySelector("#formatEditor .fe-newformat");
   if (!arrow || !button) return;
+  if (window.ResizeObserver) {
+    if (!editor.welcomeObserver) editor.welcomeObserver = new ResizeObserver(() => placeWelcomeArrow());
+    if (editor.welcomeObserved !== button) { editor.welcomeObserver.disconnect(); editor.welcomeObserver.observe(button); editor.welcomeObserver.observe($("formatEditor")); editor.welcomeObserved = button; }
+  }
   const b = button.getBoundingClientRect(), w = arrow.parentNode.getBoundingClientRect();
+  if (!b.width) return;   // not laid out yet: the observer places it once it is
   arrow.style.left = Math.round(b.left + b.width / 2 - w.left) + "px";
+  arrow.style.top = Math.round(b.bottom - w.top) + "px";
 }
 
 function brokenView() {

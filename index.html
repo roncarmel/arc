@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-03n">
-<script src="theme.js?v=2026-11-03n"></script>
+<meta name="app-version" content="2026-11-03o">
+<script src="theme.js?v=2026-11-03o"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -417,14 +417,24 @@
   /* the page's title goes (once the editor is there), and the icon takes its place at the left of the tabs, as tall as they are */
   body.minimal.has-editor h1.brand { display: none; }
   body.minimal.has-editor main { padding-top: 10px; }   /* the same gap as between the tabs and the card */
-  #formatEditor .fe-welcome { position: relative; padding-top: 26px; }
-  #formatEditor .fe-welcome-arrow { position: absolute; top: 2px; left: 50%; margin-left: -11px; width: 0; height: 0; border: 11px solid transparent; border-top: 0; border-bottom: 14px solid var(--accent); animation: fe-welcome-bob 1.1s infinite; }
-  @keyframes fe-welcome-bob { 0% { transform: translateY(0); animation-timing-function: var(--ease-out); } 50% { transform: translateY(-7px); animation-timing-function: var(--ease-in); } 100% { transform: translateY(0); } }
-  @media (prefers-reduced-motion: reduce) { #formatEditor .fe-welcome-arrow { animation: none; } }
+  #formatEditor .fe-welcome { position: relative; padding-top: 30px; }
+  /* A ball bouncing on New recipe with gravity pulling up: it leaves the button fast and slows (a parabola, so not the two shared curves), speeds back,
+     and squashes flat for a moment where it hits. Its top and middle are set by placeWelcomeArrow to the button's bottom edge and middle. */
+  #formatEditor .fe-welcome-arrow { position: absolute; top: 2px; left: 50%; margin-left: -11px; width: 0; height: 0; border: 11px solid transparent; border-top: 0; border-bottom: 14px solid var(--accent); transform-origin: 50% 0; animation: fe-welcome-bounce 0.9s infinite; }
+  @keyframes fe-welcome-bounce {
+    0% { transform: translateY(0) scale(1.25, 0.65); animation-timing-function: linear; }
+    7% { transform: translateY(1px) scale(1, 1); animation-timing-function: cubic-bezier(0.33, 0.67, 0.67, 1); }
+    50% { transform: translateY(15px) scale(1, 1); animation-timing-function: cubic-bezier(0.33, 0, 0.67, 0.33); }
+    93% { transform: translateY(1px) scale(1, 1); animation-timing-function: linear; }
+    100% { transform: translateY(0) scale(1.25, 0.65); }
+  }
+  @media (prefers-reduced-motion: reduce) { #formatEditor .fe-welcome-arrow { animation: none; transform: translateY(4px); } }
+  /* with no recipes the welcome is the only thing said: no status lines (Python, Spotify, notices) */
+  body.no-recipes #pythonNote, body.no-recipes #spotifyNote, body.no-recipes #editorNote, body.no-recipes #formatEditor .fe-caption { display: none; }
   #formatEditor .fe-welcome-card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 26px 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
-  #formatEditor .fe-welcome-card p { margin: 0; max-width: 380px; line-height: 1.45; }
+  #formatEditor .fe-welcome-card p { margin: 0; max-width: 380px; line-height: 1.45; text-wrap: pretty; }
   #formatEditor .fe-welcome-icon { width: 56px; height: 56px; border-radius: 22%; }
-  #formatEditor .fe-welcome-title { margin: 0; font-size: 1.35rem; }
+  #formatEditor .fe-welcome-title { margin: 0; font-size: 1.35rem; text-wrap: balance; }   /* if it wraps, two even lines, never one word alone */
   #formatEditor .fe-welcome-lead { font-weight: 500; }
   #formatEditor .fe-welcome-card .fe-welcome-text { margin-top: 4px; }
   #formatEditor .fe-appicon { display: none; }
@@ -1279,8 +1289,8 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-03n"></script>
-<script src="editor.js?v=2026-11-03n"></script>
-<script src="app.js?v=2026-11-03n"></script>
+<script src="formats.js?v=2026-11-03o"></script>
+<script src="editor.js?v=2026-11-03o"></script>
+<script src="app.js?v=2026-11-03o"></script>
 </body>
 </html>
