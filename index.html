@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-02x">
-<script src="theme.js?v=2026-11-02x"></script>
+<meta name="app-version" content="2026-11-02y">
+<script src="theme.js?v=2026-11-02y"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -359,6 +359,14 @@
   .fe-dialog .row button:not(.fe-danger-button) { background: transparent; color: var(--fg); border-color: var(--line); }
   .fe-dialog .fe-danger-button { background: #d11f2e; border-color: #d11f2e; color: #fff; }
   .fe-dialog .row button.primary { background: var(--button); color: var(--on-button, #fff); border-color: var(--button); }
+  .fe-dialog .row button.primary:disabled { opacity: 0.4; cursor: default; }
+  /* the new recipe's name is typed into a pink capsule with the selected tab's triangle under it, so it looks like the tab it becomes */
+  .fe-nf-capsule { position: relative; display: flex; align-items: center; min-height: 44px; box-sizing: border-box; padding: 0 18px; margin: 14px 0 20px; border-radius: 999px; background: var(--button); }
+  .fe-nf-capsule::after { content: ""; position: absolute; left: 50%; top: calc(100% - 1px); width: 16px; height: 11px; margin-left: -8px; background: var(--button); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+  .fe-nf-capsule input.fe-nf-input { flex: 1 1 auto; min-width: 0; width: 100%; background: transparent; border: none; border-radius: 0; outline: none; padding: 0; margin: 0; font: inherit; font-weight: 700; color: var(--on-button, #fff); }
+  .fe-nf-capsule input.fe-nf-input::placeholder { color: var(--on-button, #fff); opacity: 0.6; }
+  .fe-nf-clash { margin: -8px 0 12px; font-size: 0.9rem; color: var(--muted); }
+  .fe-nf-pencil { display: inline-flex; vertical-align: -3px; }
 
   /* names of buttons and links, so they are easy to spot in running text */
   .ui { color: var(--fg); }
@@ -1215,8 +1223,8 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-02x"></script>
-<script src="editor.js?v=2026-11-02x"></script>
-<script src="app.js?v=2026-11-02x"></script>
+<script src="formats.js?v=2026-11-02y"></script>
+<script src="editor.js?v=2026-11-02y"></script>
+<script src="app.js?v=2026-11-02y"></script>
 </body>
 </html>

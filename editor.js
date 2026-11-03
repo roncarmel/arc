@@ -1469,29 +1469,45 @@ function addSegment() {
   focusSearchBox();
 }
 
-// The + button asks first, since it sits close to the menu button and a stray tap would otherwise add a format.
+// A new recipe is named first: playlists are named after it, and a default like "Recipe 1" would make "Recipe 1 1". The field is a pink capsule like the
+// tab it becomes, and Create waits for a name that is not blank and not another recipe's.
 function askNewFormat() {
   closePanels();
-  if (!editor.model.formats.length) { addFormat(); return; }   // nothing to mistake it for when there are no formats
   const close = () => { overlay.remove(); document.removeEventListener("keydown", onKey); };
   const onKey = (event) => { if (event.key === "Escape") close(); };
+  const input = feEl("input", { type: "text", id: "feNewFormatName", class: "fe-nf-input", placeholder: "Type a name", autocomplete: "off", "aria-label": "Name of the new recipe", enterkeyhint: "done" });
+  const first = feEl("b", { class: "fe-nf-example" }), second = feEl("b", { class: "fe-nf-example" });
+  const clash = feEl("p", { class: "fe-nf-clash", id: "feNewFormatClash", text: "Another recipe has this name.", hidden: true });
   const cancel = feEl("button", { type: "button", id: "feNewFormatCancel", onClick: close }, "Cancel");
-  const confirm = feEl("button", { type: "button", class: "primary", id: "feNewFormatConfirm", onClick: () => { close(); addFormat(); } }, "Create recipe");
+  const confirm = feEl("button", { type: "button", class: "primary", id: "feNewFormatConfirm", disabled: true, onClick: () => { if (confirm.disabled) return; close(); addFormat(input.value.trim()); } }, "Create recipe");
+  const update = () => {
+    const cleaned = cleanTitle(input.value);
+    if (cleaned !== input.value) input.value = cleaned;
+    const name = cleaned.trim();
+    const taken = !!name && editor.model.formats.some((x) => normName(x.title) === normName(name));
+    first.textContent = `${name || "Playlist"} 1`;
+    second.textContent = `${name || "Playlist"} 2`;
+    clash.hidden = !taken;
+    confirm.disabled = !name || taken;
+  };
+  input.addEventListener("input", update);
+  input.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); confirm.click(); } });
+  update();
+  const pencil = feIcon("pencil");
+  pencil.classList.add("fe-nf-pencil");
   const overlay = feEl("div", { class: "fe-overlay", id: "feNewFormatDialog", onClick: close },
     feEl("div", { class: "fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": "New recipe", onClick: (e) => e.stopPropagation() },
-      feEl("h3", { text: "Create a new recipe?" }),
-      feEl("p", { text: "It starts with one empty segment, ready to rename and fill in." }),
+      feEl("h3", { text: "Name your new recipe" }),
+      feEl("div", { class: "fe-nf-capsule" }, input),
+      clash,
+      feEl("p", {}, "Your playlists are named after it: ", first, ", ", second, "... You can change the name any time with the ", pencil, " next to it."),
       feEl("div", { class: "row" }, cancel, confirm)));
   document.body.appendChild(overlay);
   document.addEventListener("keydown", onKey);
-  confirm.focus();
+  input.focus();
 }
 
-function addFormat() {
-  const taken = new Set(editor.model.formats.map((f) => normName(f.title)));
-  let number = 1;
-  while (taken.has(normName(`Recipe ${number}`))) number += 1;
-  const title = `Recipe ${number}`;
+function addFormat(title) {
   const fresh = newBlankFormat(editor.model, title);
   editor.model.formats.push(fresh);
   editor.activeId = fresh.id;

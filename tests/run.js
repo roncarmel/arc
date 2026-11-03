@@ -304,6 +304,9 @@ const MINI = '{"mini": {"name": "mini {n}", "silence between segments": "30 sec"
   const finishName = (w) => { const b = w.document.getElementById("feName"); if (b) b.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })); };
   const T = (w) => w.document.getElementById("formats").value.replace(/ \[id:[0-9A-Za-z_-]{1,64}\](?=["'])/g, "");   // the text as written, without the playlist IDs the app adds
   const tabsOf = (w) => Array.from(w.document.querySelectorAll("#feTabs .fe-tab")).map((t) => t.textContent);
+  // New recipe asks for a name: type it into the popup's field and press Create recipe
+  const typeNewName = (w, name) => { const i = w.document.getElementById("feNewFormatName"); i.value = name; i.dispatchEvent(new w.Event("input", { bubbles: true })); };
+  const addNamed = (w, name) => { w.document.getElementById("feNewFormat").click(); typeNewName(w, name); w.document.getElementById("feNewFormatConfirm").click(); };
   const pointer = (w, el, type, y) => el.dispatchEvent(new w.MouseEvent(type, { bubbles: true, cancelable: true, clientY: y, button: 0 }));
   const x_THREE = 'FORMATS = {"d": {"name": "Drag {n}", "segments": [("💗 spacious + gentle", 10), ("💗💗 evocative", 20), ("🛋 rest", 30)]}}';
   const x_titles = (w) => rowsOf(w).map((r) => r.querySelector(".fe-title").textContent).join("|");
@@ -791,9 +794,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-02x" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-02y" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-02x/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-02y/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -1219,11 +1222,11 @@ print(json.dumps(out))
   check("Delete recipe removes it and selects another", JSON.stringify(tabsOf(ed1)) === JSON.stringify(["Warm focus", "Cool"]) && !ed1.document.getElementById("feDeleteDialog") && ed1.document.querySelector('#feTabs .fe-tab[aria-pressed="true"]').textContent === "Warm focus");
   for (let i = 0; i < 2; i++) { ed1.document.getElementById("feDelete").click(); ed1.document.getElementById("feDeleteConfirm").click(); }
   check("every format can be deleted, leaving only the big New recipe button, and nothing to build", tabsOf(ed1).length === 0 && !ed1.document.getElementById("feCreateFirst") && !/You don't have any formats yet/.test(ed1.document.getElementById("formatEditor").textContent) && ed1.document.querySelector(".fe-toprow").classList.contains("fe-noformats") && ed1.document.getElementById("feNewFormat").textContent.trim() === "New recipe" && !ed1.document.getElementById("feCard") && ed1.document.getElementById("create").disabled === true && ed1.document.getElementById("buildAll").disabled === true, ed1.document.getElementById("formatEditor").textContent);
-  ed1.document.getElementById("feNewFormat").click();
-  check("the big New recipe button starts a new one, straight away, with no question, with a segment waiting for a playlist", JSON.stringify(tabsOf(ed1)) === JSON.stringify(["Recipe 1"]) && rowsOf(ed1).length === 1 && rowsOf(ed1)[0].querySelector(".fe-title").textContent === "Choose a playlist");
-  ed1.document.getElementById("feNewFormat").click();
-  ed1.document.getElementById("feNewFormatConfirm").click();
-  check("New recipe names are kept different", JSON.stringify(tabsOf(ed1)) === JSON.stringify(["Recipe 1", "Recipe 2"]));
+  addNamed(ed1, "Full moon");
+  check("the big New recipe button starts a new one with the name typed, with a segment waiting for a playlist", JSON.stringify(tabsOf(ed1)) === JSON.stringify(["Full moon"]) && rowsOf(ed1).length === 1 && rowsOf(ed1)[0].querySelector(".fe-title").textContent === "Choose a playlist");
+  addNamed(ed1, "Full moon");
+  check("a name another recipe has is not accepted", JSON.stringify(tabsOf(ed1)) === JSON.stringify(["Full moon"]) && !!ed1.document.getElementById("feNewFormatDialog"));
+  ed1.document.getElementById("feNewFormatCancel").click();
 
 
   
@@ -2268,8 +2271,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the row is the icon, the tabs, and the menu, and New recipe is the last thing in the scrolling tabs, after every tab", Array.from(sc_row.children).map((c) => c.id || c.className).join("|") === "fe-appicon|feTabs|feAppMenu" && sc_strip.lastElementChild === sc_w.document.getElementById("feNewFormat") && sc_strip.querySelectorAll(".fe-tab").length === 3);
   var sc_plus = sc_w.document.getElementById("feNewFormat");
   check("New recipe is a button with a plus and its name, on every screen, with no small plus-only form", sc_plus.textContent.trim() === "New recipe" && !!sc_plus.querySelector(".fe-newformat-label") && !!sc_plus.querySelector("svg") && !/fe-newformat-label \{ display: none/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
-  sc_plus.click();
-  sc_w.document.getElementById("feNewFormatConfirm").click();
+  addNamed(sc_w, "Fourth");
   check("pressing it adds a format and selects its tab, as before, and New recipe is still last", sc_cur().querySelectorAll(".fe-tab").length === 4 && sc_cur().querySelector('.fe-tab[aria-pressed="true"]') === sc_cur().querySelectorAll(".fe-tab")[3] && sc_cur().lastElementChild.id === "feNewFormat");
   check("the only fade is a short one, always there, where the row meets the menu button, over empty room at the row's end", !/fe-fade/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && !/updateTabFade/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && /#formatEditor \.fe-tabs \{ padding-right: 8px; -webkit-mask-image: linear-gradient\(to left, transparent, #000 8px\); mask-image: linear-gradient\(to left, transparent, #000 8px\); \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   var sc_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
@@ -2841,10 +2843,20 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var nf_count = () => nf_w.document.querySelectorAll("#feTabs .fe-tab").length;
   check("before anything is pressed there is no dialog", !nf_w.document.getElementById("feNewFormatDialog") && nf_count() === 1);
   nf_w.document.getElementById("feNewFormat").click();
-  check("pressing + asks first, and adds nothing yet", !!nf_w.document.getElementById("feNewFormatDialog") && nf_count() === 1);
+  check("pressing + asks for a name first, and adds nothing yet", !!nf_w.document.getElementById("feNewFormatDialog") && nf_count() === 1);
   var nf_dlg = nf_w.document.querySelector("#feNewFormatDialog .fe-dialog");
-  check("the dialog is a modal with the question, a line saying what a new format starts with, and Cancel and Create recipe", nf_dlg.getAttribute("role") === "dialog" && nf_dlg.getAttribute("aria-modal") === "true" && nf_dlg.querySelector("h3").textContent === "Create a new recipe?" && nf_dlg.querySelector("p").textContent === "It starts with one empty segment, ready to rename and fill in." && Array.from(nf_dlg.querySelectorAll(".row button")).map((b) => b.textContent).join("|") === "Cancel|Create recipe");
-  check("the focus starts on Create recipe, so Enter goes ahead and Escape or Cancel does not", nf_w.document.activeElement === nf_w.document.getElementById("feNewFormatConfirm") && nf_w.document.getElementById("feNewFormatConfirm").classList.contains("primary"));
+  var nf_in = nf_w.document.getElementById("feNewFormatName"), nf_ok = () => nf_w.document.getElementById("feNewFormatConfirm");
+  var nf_note = () => Array.from(nf_dlg.querySelectorAll("p")).find((p) => !p.classList.contains("fe-nf-clash")).textContent;
+  check("the dialog is a modal titled Name your new recipe, with an empty field in a pink capsule, a note, and Cancel and Create recipe", nf_dlg.getAttribute("role") === "dialog" && nf_dlg.getAttribute("aria-modal") === "true" && nf_dlg.querySelector("h3").textContent === "Name your new recipe" && nf_in.value === "" && nf_in.placeholder === "Type a name" && nf_in.parentElement.classList.contains("fe-nf-capsule") && Array.from(nf_dlg.querySelectorAll("button")).map((b) => b.textContent).join("|") === "Cancel|Create recipe");
+  check("the focus starts in the field, and with nothing typed the note says Playlist 1, Playlist 2 and Create recipe is off", nf_w.document.activeElement === nf_in && nf_note() === "Your playlists are named after it: Playlist 1, Playlist 2... You can change the name any time with the  next to it." && !!nf_dlg.querySelector("p .fe-nf-pencil") && nf_ok().disabled === true);
+  nf_ok().click();
+  check("pressing Create recipe with no name does nothing", !!nf_w.document.getElementById("feNewFormatDialog") && nf_count() === 1);
+  typeNewName(nf_w, "   ");
+  check("a name of only spaces is not accepted", nf_ok().disabled === true && /Playlist 1/.test(nf_note()));
+  typeNewName(nf_w, "mini");
+  check("a name another recipe has is not accepted, and the popup says so", nf_ok().disabled === true && !nf_w.document.getElementById("feNewFormatClash").hidden && nf_w.document.getElementById("feNewFormatClash").textContent === "Another recipe has this name.");
+  typeNewName(nf_w, " Full moon ");
+  check("the note follows what is typed, and Create recipe comes on", nf_note().startsWith("Your playlists are named after it: Full moon 1, Full moon 2...") && nf_ok().disabled === false && nf_w.document.getElementById("feNewFormatClash").hidden);
   nf_w.document.getElementById("feNewFormatCancel").click();
   check("Cancel closes it and adds nothing", !nf_w.document.getElementById("feNewFormatDialog") && nf_count() === 1);
   nf_w.document.getElementById("feNewFormat").click();
@@ -2856,17 +2868,16 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   nf_w.document.getElementById("feNewFormat").click();
   nf_w.document.querySelector("#feNewFormatDialog .fe-dialog").click();
   check("a click inside the dialog does not close it", !!nf_w.document.getElementById("feNewFormatDialog"));
-  nf_w.document.getElementById("feNewFormatConfirm").click();
-  check("Create recipe closes the dialog, adds one format, and selects its tab", !nf_w.document.getElementById("feNewFormatDialog") && nf_count() === 2 && nf_w.document.querySelector('#feTabs .fe-tab[aria-pressed="true"]').textContent === "Recipe 1");
+  typeNewName(nf_w, " Full moon ");
+  nf_ok().click();
+  check("Create recipe closes the dialog, adds one recipe with the name typed (without the spaces around it), and selects its tab", !nf_w.document.getElementById("feNewFormatDialog") && nf_count() === 2 && nf_w.document.querySelector('#feTabs .fe-tab[aria-pressed="true"]').textContent === "Full moon");
   nf_w.document.getElementById("feNewFormat").click();
-  nf_w.document.getElementById("feNewFormatConfirm").click();
-  check("a second one gets the next free name", nf_count() === 3 && nf_w.document.querySelector('#feTabs .fe-tab[aria-pressed="true"]').textContent === "Recipe 2");
-
-  nf_w.document.getElementById("feNewFormat").click();
-  nf_w.document.getElementById("feNewFormatCancel").click();
+  typeNewName(nf_w, "New moon");
+  nf_w.document.getElementById("feNewFormatName").dispatchEvent(new nf_w.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  check("Enter in the field creates it too", nf_count() === 3 && nf_w.document.querySelector('#feTabs .fe-tab[aria-pressed="true"]').textContent === "New moon");
   var nf_e = await boot({ url: EDURL, session: signedIn(), local: { formats: "FORMATS = {}" }, fetchOptions: {} });
   nf_e.document.getElementById("feNewFormat").click();
-  check("the big New recipe button, shown when there are no formats at all, goes straight ahead: there is nothing to mistake it for", !nf_e.document.getElementById("feNewFormatDialog") && nf_e.document.querySelectorAll("#feTabs .fe-tab").length === 1);
+  check("the big New recipe button, shown when there are no recipes at all, asks for a name too", !!nf_e.document.getElementById("feNewFormatDialog") && nf_e.document.querySelectorAll("#feTabs .fe-tab").length === 0);
   var nf_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("the confirming button is the accent color, like the other buttons that go ahead, and the dialog is the same one used for deleting", /\.fe-dialog \.row button\.primary \{ background: var\(--button\);/.test(nf_css) && /\.fe-overlay \{ position: fixed;/.test(nf_css));
   
@@ -2880,8 +2891,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("a new visitor who has connected starts with no formats at all: no tabs, no card, and the big New recipe button", bb_new.document.querySelectorAll("#feTabs .fe-tab").length === 0 && !bb_new.document.getElementById("feCard") && bb_new.document.querySelector(".fe-toprow").classList.contains("fe-noformats") && bb_new.document.getElementById("feNewFormat").textContent.trim() === "New recipe" && !/You don't have any formats yet/.test(bb_new.document.getElementById("formatEditor").textContent));
   check("with nothing to build, Build playlists is off, and so is Build all", bb_new.document.getElementById("create").disabled === true && bb_new.document.getElementById("buildAll").disabled === true);
   check("the empty state keeps the dark, dotted-outline look, sits first in the row, and shows its label", /\.fe-toprow\.fe-noformats \.fe-newformat \{ order: -1; \}/.test(bb_css) && !/fe-noformats \.fe-newformat \{[^}]*background: var\(--button\)/.test(bb_css));
-  bb_new.document.getElementById("feNewFormat").click();
-  check("pressing it adds the first format straight away, with no question, and the button moves to the end of the tabs", !bb_new.document.getElementById("feNewFormatDialog") && bb_new.document.querySelectorAll("#feTabs .fe-tab").length === 1 && !bb_new.document.querySelector(".fe-toprow").classList.contains("fe-noformats"));
+  addNamed(bb_new, "First");
+  check("naming the first recipe adds it, and the button moves to the end of the tabs", !bb_new.document.getElementById("feNewFormatDialog") && bb_new.document.querySelectorAll("#feTabs .fe-tab").length === 1 && !bb_new.document.querySelector(".fe-toprow").classList.contains("fe-noformats"));
   check("with formats the button keeps its label at every width", /#formatEditor \.fe-newformat \{ flex: none; height: 44px; padding: 0 16px; gap: 8px;/.test(bb_css) && !/fe-newformat \{ width: 44px/.test(bb_css));
   check("a brand new visitor who has not connected still sees only Step 1: there are no formats to show", (await boot({ url: "http://127.0.0.1:8000/" })).document.getElementById("appSection").hidden === true);
   // the Build button
@@ -2970,7 +2981,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-02x", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-02y", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3131,16 +3142,11 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   };
   var bt_w = await boot({ url: EDURL, session: signedIn(), local: { formats: 'FORMATS = {"a": {"name": "A {n}", "title": "Warm focus", "segments": [("x", 30), ("y", 30)]}}' }, fetchOptions: {} });
   var bt_tabs = () => Array.from(bt_w.document.querySelectorAll("#feTabs .fe-tab")).map((t) => t.textContent);
-  var bt_add = () => { bt_w.document.getElementById("feNewFormat").click(); bt_w.document.getElementById("feNewFormatConfirm").click(); };
-  bt_add(); bt_add();
-  check("new formats are called Recipe 1, Recipe 2, and so on, so the name never repeats the button that made it", JSON.stringify(bt_tabs()) === JSON.stringify(["Warm focus", "Recipe 1", "Recipe 2"]));
-  bt_w.document.querySelectorAll("#feTabs .fe-tab")[1].click();
-  bt_w.document.getElementById("feDelete").click(); bt_w.document.getElementById("feDeleteConfirm").click();
-  bt_add();
-  check("a number that is free again is used again: with Recipe 2 left, the next one is Recipe 1", JSON.stringify(bt_tabs()) === JSON.stringify(["Warm focus", "Recipe 2", "Recipe 1"]));
+  addNamed(bt_w, "Full moon"); addNamed(bt_w, "New moon");
+  check("new recipes get the names typed for them, never a made-up default", JSON.stringify(bt_tabs()) === JSON.stringify(["Warm focus", "Full moon", "New moon"]) && !/Recipe \$\{number\}/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
   var bt_e = await boot({ url: EDURL, session: signedIn(), local: { formats: "FORMATS = {}" }, fetchOptions: {} });
   check("with no formats the section says what to do: tap New recipe to create the first, then add as many segments as you like", bt_e.document.getElementById("feEmptyNote").textContent === "Tap New recipe to create your first recipe, then add as many segments to it as you like." && !bt_e.document.getElementById("feCard"));
-  bt_e.document.getElementById("feNewFormat").click();
+  addNamed(bt_e, "First");
   check("and the line goes away once there is a format", !bt_e.document.getElementById("feEmptyNote") && !!bt_e.document.getElementById("feCard"));
   check("with formats there is no such line", !bt_w.document.getElementById("feEmptyNote"));
   // Duplicate asks first
@@ -3189,15 +3195,14 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // ================================================================ a new format scrolls into view
   var ns_w = await boot({ url: EDURL, session: signedIn(), local: { formats: 'FORMATS = {"a": {"name": "A {n}", "title": "One", "segments": [("x", 10)]}, "b": {"name": "B {n}", "title": "Two", "segments": [("x", 10)]}}' }, fetchOptions: {} });
   ns_w.eval("window.__scrollLog = []; (function () { const orig = scrollSelectedTab; scrollSelectedTab = function () { window.__scrollLog.push({ menuThere: !!document.getElementById('feAppMenuButton'), selected: (document.querySelector('#feTabs .fe-tab[aria-pressed=\"true\"]') || {}).textContent }); return orig.apply(this, arguments); }; })();");
-  ns_w.document.getElementById("feNewFormat").click();
-  ns_w.document.getElementById("feNewFormatConfirm").click();
+  addNamed(ns_w, "Three");
   var ns_last = ns_w.__scrollLog[ns_w.__scrollLog.length - 1];
-  check("after a recipe is added, the tabs are scrolled to the new one once the menu button is in place, so the room it has is the room it will keep", !!ns_last && ns_last.menuThere === true && ns_last.selected === "Recipe 1", JSON.stringify(ns_w.__scrollLog));
+  check("after a recipe is added, the tabs are scrolled to the new one once the menu button is in place, so the room it has is the room it will keep", !!ns_last && ns_last.menuThere === true && ns_last.selected === "Three", JSON.stringify(ns_w.__scrollLog));
   ns_w.__scrollLog.length = 0;
   ns_w.document.getElementById("feDuplicate").click();
   ns_w.document.getElementById("feDuplicateConfirm").click();
   var ns_dup = ns_w.__scrollLog[ns_w.__scrollLog.length - 1];
-  check("so is a duplicate, which also joins the end", !!ns_dup && ns_dup.menuThere === true && ns_dup.selected === "Recipe 1 copy");
+  check("so is a duplicate, which also joins the end", !!ns_dup && ns_dup.menuThere === true && ns_dup.selected === "Three copy");
   ns_w.__scrollLog.length = 0;
   ns_w.document.querySelectorAll("#feTabs .fe-tab")[0].click();
   var ns_pick = ns_w.__scrollLog[ns_w.__scrollLog.length - 1];
@@ -4700,7 +4705,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-02x"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-02y"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
