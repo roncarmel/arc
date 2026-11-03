@@ -1419,6 +1419,14 @@ function listPanel(item, slot) {
     }
     if (!shown) list.appendChild(feEl("p", { class: "muted", style: "margin:8px", text: playlists.length ? "No playlists match." : (connection === "problem" ? "Your playlists could not be loaded. See the app menu." : connection === "none" ? "Connect to Spotify to see your playlists." : "Your playlists are still loading.") }));
   };
+  // During a wait with no list kept from an earlier visit there is nothing to search: say when the playlists come
+  const pause = typeof spotifyPause === "function" ? spotifyPause() : null;
+  if (pause && !playlists.length) {
+    const back = pauseBackAtText(pause.until).replace(/^Back/, "back");
+    list.appendChild(feEl("p", { class: "muted fe-pausenote", id: "fePauseNote" }, `Your playlists will show here when Spotify is ${back}. `,
+      feEl("button", { type: "button", class: "linklike", id: "fePauseNoteDetails", onClick: () => showPauseDialog() }, "Details")));
+    return feEl("div", { class: "fe-pop fe-listpanel" }, list);
+  }
   search.addEventListener("input", () => { editor.search = search.value; draw(); });
   draw();
   return feEl("div", { class: "fe-pop fe-listpanel" }, search, list);
