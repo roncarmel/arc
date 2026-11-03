@@ -1701,8 +1701,8 @@ function applySettle(holder, settle) {
 // draws the dim and the panel; it is loaded the first time the tour starts. The step shown is worked out from the recipe itself after every change on the page,
 // so a step undone (the name popup cancelled, say) goes back by itself. The two steppers have a Next button, since any number of taps is right there.
 // Offered once, to someone with no recipes yet, when the app is ready; the ⋯ menu has Guided tour.
-const tour = { on: false, recipeId: null, lengthDone: false, silenceDone: false, driver: null, shown: null, el: null, observer: null, frame: 0 };
-const TOUR_TOTAL = 8;
+const tour = { on: false, recipeId: null, lengthDone: false, driver: null, shown: null, el: null, observer: null, frame: 0 };
+const TOUR_TOTAL = 7;
 
 function tourRecipe() {
   if (!editor.model) return null;
@@ -1736,8 +1736,7 @@ const TOUR_STEPS = [
   { done: () => tour.lengthDone, view: () => { const s = tourSegment(0); const row = s && document.querySelector(`#feRows .fe-row[data-id="${s.id}"]`); return { el: row && row.querySelector(".fe-stepper"), side: "bottom", title: "Set the segment’s length", text: "Tap + or − to choose how many minutes of music this segment plays. Tap Next when you're ready.", next: () => { tour.lengthDone = true; tourSync(); } }; } },
   { done: () => !!tourSegment(1), view: () => ({ el: $("feAddSegment"), side: "bottom", title: "Add a second segment", text: "A session can have many segments. Tap New segment." }) },
   { done: () => { const s = tourSegment(1); return !!s && !!s.lists[0].name; }, view: () => tourPlaylistView(1, 6, false) },
-  { done: () => tour.silenceDone, view: () => ({ el: document.querySelector("#feHead .fe-silence"), side: "top", title: "Add silence", text: "Tap + to add a pause between segments. Helpful time marker for the facilitator or just some quiet time for participants. Tap Next when you're ready.", next: () => { tour.silenceDone = true; tourSync(); } }) },
-  { done: () => false, view: () => ({ el: $("create"), side: "top", title: "Build playlists from this recipe", text: "Tap Build playlists. You see the plan first, and nothing is made in Spotify until you confirm. This concludes your guided tour!" }) },
+  { done: () => false, view: () => ({ el: $("create"), side: "bottom", title: "Build playlists from this recipe", text: "Tap Build playlists. You see the plan first, and nothing is made in Spotify until you confirm. This concludes your guided tour!" }) },
 ];
 
 // The tour needs the person's playlists, so it waits for a working connection; during a wait from Spotify it says when.
@@ -1849,7 +1848,7 @@ async function startTour() {
   if (tour.on || tourBlocked()) return;
   if (!(await loadDriver())) return;
   closePanels();
-  Object.assign(tour, { on: true, recipeId: null, lengthDone: false, silenceDone: false, shown: null, el: null });
+  Object.assign(tour, { on: true, recipeId: null, lengthDone: false, shown: null, el: null });
   document.documentElement.classList.add("fe-touring");
   document.body.appendChild(feEl("div", { id: "feTourBlur", "aria-hidden": "true" }));
   tour.observer = new MutationObserver(() => requestAnimationFrame(tourSync));
