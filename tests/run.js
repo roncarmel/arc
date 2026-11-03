@@ -798,9 +798,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-03f" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-03g" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-03f/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-03g/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3004,7 +3004,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-03f", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-03g", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4729,7 +4729,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-03f"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-03g"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -4853,7 +4853,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   bp_a.fillWhyTable({ built: [{ key: "ran", playlists: [{}, {}], ranOut: { name: "a" }, sources: [{ name: "a", per: 60, has: 130, enough: 2 }, { name: "b", per: 60, has: 300, enough: 5 }, { name: "c", per: 30, has: 70, enough: 2 }] }] });
   check("every source with the same count as the one that ran out is marked too", Array.from(bp_a.document.querySelectorAll("#planText tbody tr")).map((t) => t.className).join(",") === "bd-limit,,bd-limit");
   bp_a.fillWhyTable({ built: [{ key: "ran", playlists: [{}, {}], sources: [{ name: "a", per: 60, has: 130, enough: 3 }, { name: "b", per: 60, has: 300, enough: 5 }, { name: "c", per: 30, has: 100, enough: 3 }] }] });
-  check("with no source run out, every source with the lowest count is marked", Array.from(bp_a.document.querySelectorAll("#planText tbody tr")).map((t) => t.className).join(",") === "bd-limit,,bd-limit");
+  check("when the cap sets the number, no row is marked, and a note above the table says so and how many the songs allow", Array.from(bp_a.document.querySelectorAll("#planText tbody tr")).map((t) => t.className).join(",") === ",," && bp_a.document.querySelector("#planText").firstElementChild.className === "bd-note bd-capnote" && bp_text(bp_a, "planText").startsWith("Capped at 2 by “Most playlists per recipe” in More options. Without it, the songs are enough for 3 playlists."), bp_text(bp_a, "planText"));
   var bp_html = fs.readFileSync(ROOT + "index.html", "utf8"), bp_js = fs.readFileSync(ROOT + "app.js", "utf8");
   check("a long name ends in an ellipsis instead of wrapping, with the full name on hover, and Available is left-aligned", /#planText td:first-child \{ max-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /#planText td:nth-child\(2\) \{ text-align: left;/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && bp_trs[0].children[0].title === "💗 spacious + gentle");
   check("the marked row is pale pink with its number in pink, and the rows are striped", /tr\.bd-limit td \{ background: color-mix\(in srgb, var\(--accent\)/.test(bp_html) && /tr\.bd-limit td:last-child \{ color: var\(--accent\);/.test(bp_html) && /tbody tr:nth-child\(odd\) td \{ background: var\(--card\); \}/.test(bp_html));
@@ -5115,6 +5115,22 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var nv_g = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "manual" }, fetchOptions: {} });
   await new Promise((r) => setTimeout(r, 5600));
   check("a few seconds after a clean start it is asked once, with no timer running after that", log.filter((e) => /version\.txt/.test(e.url)).length >= 1 && !/setInterval\(checkForNewVersion/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  // opening the app menu
+  var nv_h = await nv_make();
+  nv_h.eval("versionCheck.last = Date.now() - 31 * 1000; toggleAppMenu()");
+  await new Promise((r) => setTimeout(r, 200));
+  check("opening the menu asks, and with the same version its last line says which version this is", nv_seen(nv_h).length === 1 && nv_h.document.querySelector("#feVersion.fe-version") && nv_h.document.getElementById("feVersion").textContent === `App version ${nv_version}`);
+  nv_h.eval("toggleAppMenu(); toggleAppMenu()");
+  await new Promise((r) => setTimeout(r, 200));
+  check("opening it again within 30 seconds does not ask again", nv_seen(nv_h).length === 1);
+  var nv_i = await nv_make({ serverVersion: "2099-01-01a" });
+  nv_i.eval("versionCheck.last = Date.now() - 31 * 1000; toggleAppMenu()");
+  await new Promise((r) => setTimeout(r, 200));
+  var nv_box = nv_i.document.querySelector("#feAppMenuPanel .fe-vn-box");
+  check("a newer version found while the menu is open: no reload by itself, and the menu's last line turns into New version available, You have <stamp>, Update", nv_i.__reloaded === 0 && nv_box && /New version available/.test(nv_box.textContent) && nv_box.textContent.includes(`You have ${nv_version}`) && nv_i.document.getElementById("feVersionUpdate").textContent === "Update");
+  nv_i.document.getElementById("feVersionUpdate").click();
+  await new Promise((r) => setTimeout(r, 200));
+  check("Update closes the menu and loads fresh copies of the page", nv_i.__reloaded === 1 && !nv_i.eval("editor.appMenu"));
   } catch (err) { areaCrashed("newer version", err); } }
   console.log(failures ? `\n${failures} check(s) failed` : "\nall checks passed");
   if (areaPrev) areaTimes.push({ name: areaPrev, ms: Date.now() - areaStart });

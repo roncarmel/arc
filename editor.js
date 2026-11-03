@@ -423,6 +423,7 @@ function toggleAppMenu() {
   renderAppMenu();
   renderHead();
   renderRows();
+  if (editor.appMenu && typeof checkForNewVersion === "function" && Date.now() - versionCheck.last > versionCheck.menuEveryMs) checkForNewVersion();   // is there a newer version? the answer shows in the menu's last line
 }
 
 function renderAppMenu() {
@@ -490,7 +491,17 @@ function renderAppMenu() {
     // only on the owner's device: the app's own record of Spotify's limits, for the chat where it is studied
     typeof isOwnerHere !== "undefined" && isOwnerHere ? feEl("button", { type: "button", class: "fe-item", id: "feCopyRecord", role: "menuitem", onClick: choose(() => copyLimitRecord()) }, feIcon("copy"), "Copy Spotify record") : null,
     feEl("div", { class: "fe-rule" }),
-    feEl("div", { class: "fe-version", id: "feVersion", text: `App version ${typeof APP_VERSION === "undefined" ? "" : APP_VERSION}` })));
+    versionLine(choose)));
+}
+
+// The menu's last line: which version this is, or, when the site has a different one, a box that offers it
+function versionLine(choose) {
+  const current = typeof APP_VERSION === "undefined" ? "" : APP_VERSION;
+  const latest = typeof versionCheck !== "undefined" ? versionCheck.latest : "";
+  if (!latest || latest === current) return feEl("div", { class: "fe-version", id: "feVersion", text: `App version ${current}` });
+  return feEl("div", { class: "fe-vn-box", id: "feVersion" },
+    feEl("div", { class: "fe-vn-text" }, feEl("div", { class: "fe-vn-title", text: "New version available" }), feEl("div", { class: "fe-vn-current", text: `You have ${current}` })),
+    feEl("button", { type: "button", class: "fe-vn-update", id: "feVersionUpdate", role: "menuitem", onClick: choose(() => reloadForNewVersion(() => {})), text: "Update" }));
 }
 
 // While recipes are being saved to Spotify the menu button shows the cloud-save picture in place of its dots, with a short cross-fade, and keeps it for at least a second so a

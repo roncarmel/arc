@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-03f";
+const APP_VERSION = "2026-11-03g";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -60,8 +60,8 @@ function guarded(name, work) {
 // It is asked a few seconds after a clean start, and when the person comes back to the tab if the last time was over 10 minutes ago, which is a moment when nothing is going on.
 // Newer means different, since stamps do not sort once there are more than 26 in a day. If nothing is going on, the page loads again by itself (once for each new version, so a
 // half-finished upload cannot make it loop); otherwise a message in the line under the editor's bar offers it. A running page is never harmed by an upload: it keeps what it
-// loaded, and the Python engine is read once, at the start.
-const versionCheck = { last: 0, everyMs: 10 * 60 * 1000, running: false };
+// loaded, and the Python engine is read once, at the start. Opening the app menu asks too (at most every 30 seconds), and a newer version shows there with Update.
+const versionCheck = { last: 0, everyMs: 10 * 60 * 1000, menuEveryMs: 30 * 1000, running: false, latest: "" };
 
 async function checkForNewVersion() {
   if (versionCheck.running || navigator.onLine === false) return;
@@ -73,6 +73,8 @@ async function checkForNewVersion() {
     const latest = (await response.text()).trim();
     if (!/^[A-Za-z0-9._-]{4,40}$/.test(latest) || latest === APP_VERSION) return;   // nothing new, or not a stamp at all (an error page)
     logStep(`newer version found: ${latest}`);
+    versionCheck.latest = latest;
+    if (typeof editor !== "undefined" && editor.appMenu && typeof renderAppMenu === "function") renderAppMenu();   // the menu is open: its last line turns into the offer
     newerVersionFound(latest);
   } catch (err) {
     /* no connection, or the file is not there: the next time */
@@ -85,7 +87,8 @@ function nothingIsGoingOn() {
   const active = document.activeElement;
   const typing = active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName);
   const popup = document.querySelector(".fe-overlay:not([hidden]), #backupCard.opened, #createOverlay:not([hidden]), #infoOverlay:not([hidden])");
-  return !busy && !saveState.running && !connectingScreen && !typing && !popup && !(typeof notices !== "undefined" && Date.now() - notices.lastEditAt < 10000);
+  const menuOpen = typeof editor !== "undefined" && editor.appMenu;   // the menu offers Update itself
+  return !busy && !saveState.running && !connectingScreen && !typing && !popup && !menuOpen && !(typeof notices !== "undefined" && Date.now() - notices.lastEditAt < 10000);
 }
 
 function newerVersionFound(latest) {
@@ -2495,16 +2498,20 @@ function fillWhyTable(plan) {
   box.textContent = "";
   for (const b of plan.built) {
     if (plan.built.length > 1) box.appendChild(Object.assign(document.createElement("p"), { className: "bd-tablehead", textContent: `${formatLabel(b.key)}: ${plural(b.playlists.length, "playlist")}` }));
+    const lowest = Math.min(...b.sources.map((r) => (r.enough == null ? Infinity : r.enough)));
+    if (!b.ranOut) {
+      // The cap set the number, not the songs: say so first, and how many the songs would allow. No row is marked, since none of them is the reason.
+      const more = lowest !== Infinity && lowest > b.playlists.length ? ` Without it, the songs are enough for ${plural(lowest, "playlist")}.` : "";
+      box.appendChild(Object.assign(document.createElement("p"), { className: "bd-note bd-capnote", textContent: `Capped at ${b.playlists.length} by “Most playlists per recipe” in More options.${more}` }));
+    }
     const table = document.createElement("table");
     table.innerHTML = "<thead><tr><th>Each playlist uses</th><th>Available</th><th>Enough for</th></tr></thead>";
     const body = document.createElement("tbody");
-    const lowest = Math.min(...b.sources.map((r) => (r.enough == null ? Infinity : r.enough)));
     // every source that sets the number is marked: the one that ran out, and any other with the same count
     const ranOut = b.ranOut && b.sources.find((r) => r.name === b.ranOut.name);
-    const limit = ranOut ? ranOut.enough : lowest;
     for (const r of b.sources) {
       const tr = document.createElement("tr");
-      if (r === ranOut || (r.enough != null && r.enough === limit)) tr.className = "bd-limit";
+      if (ranOut && (r === ranOut || (r.enough != null && r.enough === ranOut.enough))) tr.className = "bd-limit";
       const uses = Object.assign(document.createElement("td"), { title: r.name });   // a long name ends in "…"; the full name shows on hover
       uses.append(whyLength(r.per), ` of ${r.name}`);
       const length = document.createElement("td");
@@ -2514,7 +2521,6 @@ function fillWhyTable(plan) {
     }
     table.appendChild(body);
     box.appendChild(table);
-    if (!b.ranOut) box.appendChild(Object.assign(document.createElement("p"), { className: "bd-note", textContent: `The number is set by “Most playlists per recipe” in More options (${b.playlists.length}).` }));
   }
 }
 
