@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-03o">
-<script src="theme.js?v=2026-11-03o"></script>
+<meta name="app-version" content="2026-11-03p">
+<script src="theme.js?v=2026-11-03p"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -117,7 +117,7 @@
   details.card .card, details.card pre, details.card figure.sample { background: var(--bg); }
   footer.debug h3 { font-size: 1rem; margin: 20px 0 6px; color: var(--fg); }
   /* More options: body text is gray, so the headings, buttons, links and widgets are what stand out. */
-  #moreOptions { color: var(--muted); }
+  #moreOptions, #privacySection { color: var(--muted); }
   #moreOptions input, #moreOptions select { color: var(--fg); }
   #moreOptions #removeConfirmBox, #moreOptions #clearConfirm { color: var(--fg); }
   .plan-links { margin: 8px 0 0; }
@@ -517,6 +517,11 @@
   #moreOptions h3 { margin: 26px 0 8px; font-size: 1.05rem; }
   #infoSlot > #moreOptions { margin-top: -22px; }   /* the header already has its own room below it */
   #moreOptions > :not(summary):not(h3), #reportBlock > :not(h3) { margin-left: 16px; }
+  /* Privacy: the same rhythm and indent as More options */
+  #privacySection h3 { margin: 26px 0 8px; font-size: 1.05rem; }
+  #infoSlot > #privacySection { margin-top: -22px; }
+  #privacySection > :not(summary):not(h3):not(#privacyFeedback), #privacyFeedback > p { margin-left: 16px; }
+  #privacySection p { margin-top: 0; margin-bottom: 10px; }
   #moreOptions p, #moreOptions .row, #moreOptions select, #moreOptions pre.report-preview, #moreOptions .choice-row, #moreOptions .button-link, #reportBlock p, #reportBlock pre.report-preview, #reportBlock .button-link { margin-top: 0; margin-bottom: 10px; }
   #moreOptions .row select, #moreOptions .row .button-link { margin-bottom: 0; }   /* inside a row, the row supplies the space below, so the items centre on each other */
   body.minimal #feAppMenuButton { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
@@ -1289,8 +1294,8 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-03o"></script>
-<script src="editor.js?v=2026-11-03o"></script>
-<script src="app.js?v=2026-11-03o"></script>
+<script src="formats.js?v=2026-11-03p"></script>
+<script src="editor.js?v=2026-11-03p"></script>
+<script src="app.js?v=2026-11-03p"></script>
 </body>
 </html>
