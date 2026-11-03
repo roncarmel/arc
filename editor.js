@@ -525,7 +525,7 @@ function initEditor() {
     closePanels();
   }, true);
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && (editor.panel || editor.cardMenu || editor.gapPanel !== null || editor.appMenu)) closePanels(); });
-  window.addEventListener("resize", () => { equalizeAmounts(); updateTagHang(); });   // the widget changes size when the page goes between phone and wide layouts
+  window.addEventListener("resize", () => { equalizeAmounts(); updateTagHang(); placeWelcomeArrow(); });   // the widget changes size when the page goes between phone and wide layouts
   applyMinimalMode();
   syncEditorFromText();
 }
@@ -581,7 +581,15 @@ function renderEditor() {
   // the menu button was not there yet when the tabs were drawn, so the tabs have less room than they were scrolled for
   scrollSelectedTab();
   if (!format) {   // no formats: the New format button, and what to do with it
-    root.appendChild(feEl("p", { class: "muted fe-emptynote", id: "feEmptyNote", text: "Tap New recipe to create your first recipe, then add as many segments to it as you like." }));
+    // a welcome with an arrow bobbing under New recipe; it goes as soon as there is a recipe (a draft counts), so a first visit needs no record of its own
+    root.appendChild(feEl("div", { class: "fe-welcome", id: "feWelcome" },
+      feEl("span", { class: "fe-welcome-arrow", id: "feWelcomeArrow", "aria-hidden": "true" }),
+      feEl("div", { class: "fe-welcome-card" },
+        feEl("img", { class: "fe-welcome-icon", src: "apple-touch-icon.png", alt: "", width: "56", height: "56" }),   // phones only: wide, the icon is already in the row above
+        feEl("h2", { class: "fe-welcome-title", text: "Time to make your first recipe!" }),
+        feEl("p", { class: "fe-welcome-lead", text: "Tap New recipe above to start." }),
+        feEl("p", { class: "muted fe-welcome-text", text: "A recipe says which of your playlists to play, in what order, and for how long. The app turns it into as many playlists as your songs allow, with no song used twice." }))));
+    placeWelcomeArrow();
     // the line for notices is here too, so a message about what was just done is never left without a place to show
     root.appendChild(feEl("div", { class: "fe-caption", id: "feCaption", onPointerDown: pauseNotices, onMouseEnter: pauseNotices }));
     root.appendChild(feEl("span", { class: "fe-sr", id: "feNoticeLive", "aria-live": "polite" }));
@@ -603,6 +611,14 @@ function renderEditor() {
   renderTimeline();
   renderRows();
   if (typeof updateButtons === "function") updateButtons();   // the Build button names the format being edited
+}
+
+// The welcome's arrow sits under the middle of New recipe, wherever the row puts it (after the app icon when wide).
+function placeWelcomeArrow() {
+  const arrow = $("feWelcomeArrow"), button = document.querySelector("#formatEditor .fe-newformat");
+  if (!arrow || !button) return;
+  const b = button.getBoundingClientRect(), w = arrow.parentNode.getBoundingClientRect();
+  arrow.style.left = Math.round(b.left + b.width / 2 - w.left) + "px";
 }
 
 function brokenView() {

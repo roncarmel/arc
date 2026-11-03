@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-03m";
+const APP_VERSION = "2026-11-03n";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1220,7 +1220,7 @@ function updateButtonsNow() {
   }
   $("removeNote").hidden = !noConnection;
   const paused = !!spotifyPause();   // the line under the bar counts down instead
-  $("create").hidden = paused;
+  $("create").hidden = paused || (!currentFormats.length && !action && !connectingNow);   // nothing to build yet: the welcome points at New recipe instead
   if (paused) $("spotifyNote").hidden = true;
   if (buildAll && paused) buildAll.disabled = true;
   if (minimalActive() && (signingIn || connection === "connecting" || signInNote)) {

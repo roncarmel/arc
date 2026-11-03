@@ -798,9 +798,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-03m" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-03n" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-03m/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-03n/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3005,7 +3005,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-03m", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-03n", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3169,10 +3169,16 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   addNamed(bt_w, "Full moon"); addNamed(bt_w, "New moon");
   check("new recipes get the names typed for them, never a made-up default", JSON.stringify(bt_tabs()) === JSON.stringify(["Warm focus", "Full moon", "New moon"]) && !/Recipe \$\{number\}/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
   var bt_e = await boot({ url: EDURL, session: signedIn(), local: { formats: "FORMATS = {}" }, fetchOptions: {} });
-  check("with no formats the section says what to do: tap New recipe to create the first, then add as many segments as you like", bt_e.document.getElementById("feEmptyNote").textContent === "Tap New recipe to create your first recipe, then add as many segments to it as you like." && !bt_e.document.getElementById("feCard"));
+  check("with no recipes a welcome says to make the first one, then what a recipe is", (() => { const c = bt_e.document.getElementById("feWelcome"); return !!c && c.querySelector(".fe-welcome-title").textContent === "Time to make your first recipe!" && c.querySelector(".fe-welcome-lead").textContent === "Tap New recipe above to start." && /^A recipe says which of your playlists to play, in what order, and for how long\. The app turns it into as many playlists as your songs allow, with no song used twice\.$/.test(c.querySelector(".fe-welcome-text").textContent) && !bt_e.document.getElementById("feCard"); })());
+  check("the welcome has an arrow pointing at New recipe and no button of its own", !!bt_e.document.getElementById("feWelcomeArrow") && /^-?\d+px$/.test(bt_e.document.getElementById("feWelcomeArrow").style.left) && !bt_e.document.querySelector("#feWelcome button"));
+  check("with no recipes Build playlists is hidden", bt_e.document.getElementById("create").hidden);
+  bt_e.document.getElementById("feNewFormat").click();
+  check("the welcome goes as soon as New recipe opens (the draft is a recipe)", !bt_e.document.getElementById("feWelcome"));
+  bt_e.document.getElementById("feNewFormatCancel").click();
+  check("and comes back on Cancel", !!bt_e.document.getElementById("feWelcome") && bt_e.document.getElementById("create").hidden);
   addNamed(bt_e, "First");
-  check("and the line goes away once there is a format", !bt_e.document.getElementById("feEmptyNote") && !!bt_e.document.getElementById("feCard"));
-  check("with formats there is no such line", !bt_w.document.getElementById("feEmptyNote"));
+  check("and goes once there is a recipe, and Build playlists is back", !bt_e.document.getElementById("feWelcome") && !!bt_e.document.getElementById("feCard") && !bt_e.document.getElementById("create").hidden);
+  check("with recipes there is no welcome", !bt_w.document.getElementById("feWelcome"));
   // Duplicate asks first
   bt_w.document.querySelectorAll("#feTabs .fe-tab")[0].click();
   bt_w.document.getElementById("feDuplicate").click();
@@ -3207,7 +3213,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("and when the longest one gets shorter, they all get narrower again", /^\d{1,2}(\.\d)? min$/.test(bt_text[2]) && new Set(bt_w8()).size === 1 && parseFloat(bt_w8()[0]) < 56, JSON.stringify(bt_text) + JSON.stringify(bt_w8()));
   rowsOf(bt_q)[0].querySelector(".fe-inc").click();
   check("the widths are worked out again after every change, so one row going wider widens them all", new Set(bt_w8()).size === 1);
-  check("the widths are also worked out again when the window changes size", /window\.addEventListener\("resize", \(\) => \{ equalizeAmounts\(\); updateTagHang\(\); \}\)/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
+  check("the widths are also worked out again when the window changes size", /window\.addEventListener\("resize", \(\) => \{ equalizeAmounts\(\); updateTagHang\(\); placeWelcomeArrow\(\); \}\)/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
   // the wording
   var bt_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/<!--[\s\S]*?-->/g, "").replace(/<style>[\s\S]*?<\/style>/, "");
   var bt_app = fs.readFileSync(ROOT + "app.js", "utf8").split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
@@ -4730,7 +4736,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-03m"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-03n"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
