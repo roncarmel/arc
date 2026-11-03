@@ -998,7 +998,7 @@ function refreshPauseViews(left) {
   if (!left && $("fePauseDialog")) closePauseDialog();
 }
 
-// The ring in the popup shows the part of the wait still to go. A wait kept before its start was recorded shows a full ring.
+// The ring in the popup shows the part of the wait still to go. A wait kept with no start gets one the first time it is read (spotifyPause), so its ring empties from then.
 function setPauseRing() {
   const ring = $("fePauseRing");
   const pause = typeof spotifyPause === "function" ? spotifyPause() : null;

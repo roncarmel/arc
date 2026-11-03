@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-02za";
+const APP_VERSION = "2026-11-02zb";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1851,7 +1851,10 @@ let pauseOn = false;   // what the last tick saw, so the end of a wait is notice
 function spotifyPause() {
   try {
     const p = JSON.parse(localStorage.getItem(PAUSE_KEY) || "null");
-    if (p && p.until > Date.now() && p.clientId === (localStorage.getItem("clientId") || "")) return p;
+    if (p && p.until > Date.now() && p.clientId === (localStorage.getItem("clientId") || "")) {
+      if (!p.from) { p.from = Date.now(); localStorage.setItem(PAUSE_KEY, JSON.stringify(p)); }   // a wait kept with no start: the ring empties from the first look at it
+      return p;
+    }
     if (p) localStorage.removeItem(PAUSE_KEY);
   } catch (err) { /* private browsing, or unreadable: no wait */ }
   return null;
