@@ -1056,6 +1056,25 @@ function showPauseDialog() {
   $("fePauseBox").focus();   // the popup itself, not Close: a ring on a button in a popup that opened by itself looked like a mistake
 }
 
+// The pieces of a recipe's bar (segments and silences, each with its width as a flex), and its minutes of music and seconds of silence.
+// The editor's bar and the build popup's header both draw from this.
+function recipeShape(f) {
+  const pieces = [];
+  let quiet = 0;
+  if (f.lead > 0) { pieces.push({ key: "lead", label: `Silence before the first segment, ${describeSeconds(f.lead)}`, style: `flex:${Math.max(f.lead / 60, 0.7)} 1 0`, silence: true }); quiet += f.lead; }
+  f.items.forEach((item, index) => {
+    const mixed = item.lists.length > 1;
+    pieces.push({ key: item.id, label: `${item.lists.map((l) => l.name || "No playlist yet").join(" + ")}, ${Math.round(item.minutes * 10) / 10} min`,
+      style: `flex:${item.minutes} 1 0;` + (mixed ? `background-image:${feStripes(mixPercentA(item) / 100, 16)}` : ""), silence: false });
+    const info = gapInfo(f, index + 1);
+    if (info.show && !info.zero) {
+      pieces.push({ key: `gap${index + 1}`, label: `Silence, ${describeSeconds(info.sec)}`, style: `flex:${Math.max(info.sec / 60, 0.5)} 1 0`, silence: true });
+      quiet += info.sec;
+    }
+  });
+  return { pieces, music: f.items.reduce((n, i) => n + i.minutes, 0), quiet };
+}
+
 function renderTimeline() {
   const f = activeFormat();
   const bar = $("feBar");
@@ -1063,25 +1082,13 @@ function renderTimeline() {
   if (!f || !bar) { editor.musicText = ""; refreshNoticeLine(); return; }
   editor.hover = null;
   bar.innerHTML = "";
-  const addPiece = (key, label, style, silence) => {
+  const { pieces, music, quiet } = recipeShape(f);
+  for (const { key, label, style, silence } of pieces) {
     const piece = feEl("div", { role: "img", class: "fe-piece" + (silence ? " fe-piece-silence" : ""), "data-id": key, "aria-label": label, style });
     piece.addEventListener("mouseenter", () => { editor.hover = key; applyHighlight(); });
     piece.addEventListener("mouseleave", () => { editor.hover = null; applyHighlight(); });
     bar.appendChild(piece);
-  };
-  let quiet = 0;
-  if (f.lead > 0) { addPiece("lead", `Silence before the first segment, ${describeSeconds(f.lead)}`, `flex:${Math.max(f.lead / 60, 0.7)} 1 0`, true); quiet += f.lead; }
-  f.items.forEach((item, index) => {
-    const mixed = item.lists.length > 1;
-    addPiece(item.id, `${item.lists.map((l) => l.name || "No playlist yet").join(" + ")}, ${Math.round(item.minutes * 10) / 10} min`,
-      `flex:${item.minutes} 1 0;` + (mixed ? `background-image:${feStripes(mixPercentA(item) / 100, 16)}` : ""), false);
-    const info = gapInfo(f, index + 1);
-    if (info.show && !info.zero) {
-      addPiece(`gap${index + 1}`, `Silence, ${describeSeconds(info.sec)}`, `flex:${Math.max(info.sec / 60, 0.5)} 1 0`, true);
-      quiet += info.sec;
-    }
-  });
-  const music = f.items.reduce((n, i) => n + i.minutes, 0);
+  }
   // Under an hour it is in minutes, with a decimal where there is one ("12.5 min"); from an hour up it is hours and whole minutes ("2 hr 40 min").
   const shownMusic = Math.round(music * 10) / 10;
   const musicWords = shownMusic >= 60 ? clockWords(shownMusic) : minuteWords(shownMusic);

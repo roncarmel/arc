@@ -396,6 +396,7 @@ print(json.dumps(out))
   console.log("\n--- all-formats output ---\n" + out8.split("\n").slice(0, 40).join("\n") + "\n--------------------------\n");
   check("all: both formats planned, headed by their readable names", JSON.stringify(planGroups(w8)) === '["evo","second"]', JSON.stringify(planGroups(w8)));
   check("all: one sentence for the whole build", /^Ready to build \d+ playlists for 2 recipes\. Why these numbers\?$/.test(w8.document.getElementById("confirmText").textContent) && w8.document.getElementById("bdTitle").textContent === "Build 2 recipes", w8.document.getElementById("confirmText").textContent);
+  check("all: no bar or length in the header, since there is more than one recipe", w8.document.getElementById("bdShape").hidden && w8.document.getElementById("bdShapeInfo").hidden);
 
   check("page sends at most 5 arguments to build_playlists (the last is the names to skip)", global.planTextArgCounts.length > 0 && Math.max(...global.planTextArgCounts) <= 5, String(global.planTextArgCounts));
   // two setup flows: nothing chosen at first, existing when a Client ID is already saved
@@ -797,9 +798,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-03a" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-03c" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-03a/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-03c/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -1301,7 +1302,7 @@ print(json.dumps(out))
   await readyToPreview(x_uiw);
   await runPreview(x_uiw);
   var uiOut = outText(x_uiw);
-  check("previewing it uses the format's name in the plan", x_uiw.document.getElementById("bdTitle").textContent === "Build \u201cUI test\u201d" && planRows(x_uiw)[0].name === "UI test 1", JSON.stringify(planRows(x_uiw).slice(0, 2)));
+  check("previewing it uses the format's name in the plan", x_uiw.document.getElementById("bdTitle").textContent === "UI test" && planRows(x_uiw)[0].name === "UI test 1", JSON.stringify(planRows(x_uiw).slice(0, 2)));
   x_uiw.document.getElementById("confirmYes").click();
   await waitFor(() => /in your Spotify library\.$/.test(x_uiw.document.getElementById("actionMessage").textContent), 20000);
   check("creating makes playlists named from the format, with the chosen songs", x_ui.writes.some((w) => w.type === "create" && /^UI test \d+$/.test(w.name)), JSON.stringify(x_ui.writes.slice(0, 2)));
@@ -2936,7 +2937,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   bb_w.document.getElementById("maxPlaylists").dispatchEvent(new bb_w.Event("input"));
   bb_w.document.getElementById("create").click();
   await waitFor(() => visible(bb_w, "confirmBox"), 30000);
-  check("the question names the format being built, with the count", bb_w.document.getElementById("confirmText").textContent === "Ready to build 2 playlists. Why 2?" && bb_w.document.getElementById("bdTitle").textContent === "Build \u201cRenamed\u201d" && /^Build 2 playlists$/.test(bb_w.document.getElementById("confirmYes").textContent) && bb_w.document.getElementById("createDialog").getAttribute("aria-labelledby") === "bdTitle");
+  check("the question names the format being built, with the count", bb_w.document.getElementById("confirmText").textContent === "Ready to build 2 playlists. Why 2?" && bb_w.document.getElementById("bdTitle").textContent === "Renamed" && /^Build 2 playlists$/.test(bb_w.document.getElementById("confirmYes").textContent) && bb_w.document.getElementById("createDialog").getAttribute("aria-labelledby") === "bdTitle");
   bb_w.document.getElementById("confirmNo").click();
   // Build all
   check("Build all recipes is in More options, with its own explanation and the building blocks icon", !!bb_w.document.querySelector("#moreOptions #buildAll") && bb_w.document.querySelector("#buildAll img").getAttribute("src") === "icons/build.svg" && /Builds, or rebuilds, the playlists for every recipe at once/.test(bb_w.document.querySelector("#moreOptions").textContent));
@@ -2948,7 +2949,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => bb_w.document.getElementById("createOverlay").hidden === true, 10000);
   bb_w.document.getElementById("create").click();
   await waitFor(() => visible(bb_w, "confirmBox"), 30000);
-  check("and the next press of Build playlists goes back to the one format", bb_w.document.getElementById("bdTitle").textContent === "Build \u201cRenamed\u201d", bb_w.document.getElementById("bdTitle").textContent);
+  check("and the next press of Build playlists goes back to the one format", bb_w.document.getElementById("bdTitle").textContent === "Renamed", bb_w.document.getElementById("bdTitle").textContent);
   bb_w.document.getElementById("confirmNo").click();
   check("the format dropdown is gone from Step 3, and the format picker in Remove earlier playlists stays", !bb_w.document.getElementById("formatKey") && !!bb_w.document.querySelector("#moreOptions #removeKey"));
   
@@ -3003,7 +3004,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-03a", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-03c", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4728,7 +4729,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-03a"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-03c"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -4836,7 +4837,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the plan says how many, with Why 2? on the same line, and no hint about one more", bp_text(bp_a, "confirmText") === "Ready to build 2 playlists. Why 2?" && !bp_a.document.querySelector("#confirmText .bd-hint") && !!bp_a.document.querySelector("#confirmText #planToggle"), bp_text(bp_a, "confirmText"));
   check("the Why table sits right under that line, before the boxes and the list", bp_a.document.getElementById("confirmText").nextElementSibling.id === "planText");
   check("the popup's text can be selected", /#createDialog \.bd-body \{[^}]*user-select: text;/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
-  check("the title names the recipe", bp_text(bp_a, "bdTitle") === "Build “Ran”", bp_text(bp_a, "bdTitle"));
+  check("the title names the recipe", bp_text(bp_a, "bdTitle") === "Ran", bp_text(bp_a, "bdTitle"));
+  check("under the name, the recipe's bar: a piece for each segment and silence, as in the editor", !bp_a.document.getElementById("bdShape").hidden && bp_a.document.querySelectorAll("#bdShape .bd-shape-piece").length === bp_a.document.querySelectorAll("#feBar .fe-piece").length && bp_a.document.querySelectorAll("#bdShape .bd-shape-silence").length === bp_a.document.querySelectorAll("#feBar .fe-piece-silence").length, bp_a.document.getElementById("bdShape").innerHTML);
+  check("and its length under the bar: music in bold, silence, and the segments", /^(\d+ h( \d+ min)?|\d+ min) of music( \+ (\d+ sec|\d+ min|\d+ h( \d+ min)?) of silence)? · \d+ segments?$/.test(bp_text(bp_a, "bdShapeInfo")) && !!bp_a.document.querySelector("#bdShapeInfo b"), bp_text(bp_a, "bdShapeInfo"));
   check("while it asks, reading and planning are ticked and building has not started", bp_steps(bp_a) === "done,done,-,-", bp_steps(bp_a));
   check("each planned playlist is a row with its songs and length, and no bar", bp_rows(bp_a).length === 2 && bp_rows(bp_a).every((r) => /^\d+ songs · \d+ h \d+ min$/.test(r.querySelector(".bd-meta").textContent) && !r.querySelector(".bd-mini")), bp_rows(bp_a).map((r) => r.textContent).join(" | "));
   check("there is no separate progress bar any more", !bp_a.document.getElementById("bdProgress"));

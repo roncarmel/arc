@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-03a">
-<script src="theme.js?v=2026-11-03a"></script>
+<meta name="app-version" content="2026-11-03c">
+<script src="theme.js?v=2026-11-03c"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -503,6 +503,13 @@
   #createDialog { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
   #createDialog .bd-head { padding: 16px 18px 12px; border-bottom: 1px solid var(--line); }
   #createDialog .bd-title { margin: 0 0 10px; font-size: 1.15rem; font-weight: 700; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* one recipe: its bar as in the editor, smaller, and its length under it */
+  #createDialog .bd-shape { display: flex; gap: 3px; height: 14px; margin: -1px 0 6px; }
+  #createDialog .bd-shape[hidden], #createDialog .bd-shape-info[hidden] { display: none; }
+  #createDialog .bd-shape-piece { display: block; min-width: 4px; border-radius: 4px; background: var(--button); }
+  #createDialog .bd-shape-silence { background: #000; border: 1.5px solid var(--silence-line, #8a8a92); box-sizing: border-box; }
+  #createDialog .bd-shape-info { font-size: 0.82rem; color: var(--muted); margin: 0 0 12px; }
+  #createDialog .bd-shape-info b { color: var(--fg); font-weight: 600; }
   #createDialog .bd-steps { display: flex; gap: 6px; align-items: center; font-size: 0.8rem; color: var(--muted); }
   #createDialog .bd-step { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
   #createDialog .bd-step svg { flex: none; }
@@ -540,20 +547,20 @@
   #createDialog .bd-tile.bd-now { border-color: var(--accent); animation: bd-breathe 1.4s ease-in-out infinite; }
   @keyframes bd-breathe { 50% { background-color: color-mix(in srgb, var(--accent) 35%, transparent); } }
   /* when it is done: the covers fan out from a stack with a glow behind them, confetti bursts out and falls away, the tiles ripple once */
-  #createDialog .bd-finale { text-align: center; padding: 4px 0 0; margin: 0 0 14px; }
-  #createDialog .bd-fan { position: relative; height: 150px; margin: 0 0 10px; }
-  #createDialog .bd-glow { position: absolute; left: 50%; top: 72px; width: 260px; height: 180px; transform: translate(-50%, -50%); background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 38%, transparent), transparent); animation: bd-glow 0.9s ease-out both; }
+  #createDialog .bd-finale { text-align: center; padding: 0; margin: 0 0 10px; }
+  #createDialog .bd-fan { position: relative; height: 110px; margin: 0 0 6px; }
+  #createDialog .bd-glow { position: absolute; left: 50%; top: 54px; width: 210px; height: 140px; transform: translate(-50%, -50%); background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 38%, transparent), transparent); animation: bd-glow 0.9s ease-out both; }
   @keyframes bd-glow { from { opacity: 0; } }
-  #createDialog .bd-card-img { position: absolute; left: 50%; top: 14px; width: 116px; height: 116px; margin-left: -58px; border-radius: 10px; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28); transform-origin: 50% 140%; transform: rotate(var(--r)); animation: bd-deal 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+  #createDialog .bd-card-img { position: absolute; left: 50%; top: 12px; width: 86px; height: 86px; margin-left: -43px; border-radius: 8px; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28); transform-origin: 50% 140%; transform: rotate(var(--r)); animation: bd-deal 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
   @keyframes bd-deal { from { opacity: 0; transform: translateY(24px) scale(0.85) rotate(0deg); } 30% { opacity: 1; } }
-  #createDialog .bd-spark { position: absolute; left: 50%; top: 72px; width: 7px; height: 7px; margin: -3.5px; border-radius: 2px; background: var(--accent); opacity: 0; z-index: 0; animation: bd-spark 1.6s ease-out both; }
+  #createDialog .bd-spark { position: absolute; left: 50%; top: 54px; width: 7px; height: 7px; margin: -3.5px; border-radius: 2px; background: var(--accent); opacity: 0; z-index: 0; animation: bd-spark 1.6s ease-out both; }
   #createDialog .bd-spark:nth-of-type(3n) { background: color-mix(in srgb, var(--accent) 55%, #fff); }
   @keyframes bd-spark { 0% { opacity: 0; transform: translate(0, 0) rotate(0deg); } 12% { opacity: 1; } 45% { opacity: 1; transform: translate(var(--x), var(--y)) rotate(calc(var(--t) / 2)); } 100% { opacity: 0; transform: translate(var(--x), calc(var(--y) + 60px)) rotate(var(--t)); } }
-  #createDialog .bd-big { font-size: 1.9rem; font-weight: 800; line-height: 1.1; color: var(--fg); margin: 0; }
-  #createDialog .bd-hours { font-size: 1.05rem; color: var(--fg); margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+  #createDialog .bd-big { font-size: 1.65rem; font-weight: 800; line-height: 1.1; color: var(--fg); margin: 0; }
+  #createDialog .bd-hours { font-size: 1.05rem; color: var(--fg); margin: 2px 0 0; font-variant-numeric: tabular-nums; }
   #createDialog .bd-hours b { color: var(--accent); }
   #createDialog .bd-lib { font-size: 0.9rem; color: var(--muted); margin: 0; }
-  #createDialog .bd-finale .bd-tiles { justify-content: center; margin: 14px 0 0; }
+  #createDialog .bd-finale .bd-tiles { justify-content: center; margin: 10px 0 0; }
   #createDialog .bd-ripple .bd-tile { animation: bd-ripple 0.6s ease-out both; }
   @keyframes bd-ripple { 40% { transform: translateY(-6px) scale(1.25); } }
   #createDialog .bd-group { padding: 12px 0 2px; font-size: 0.85rem; color: var(--muted); }
@@ -570,12 +577,12 @@
   #createDialog .bd-problems { margin: 4px 0 0; padding-left: 18px; font-size: 0.9rem; }
   #createDialog .bd-problems li { margin: 0 0 8px; }
   #createDialog .bd-problems li:last-child { margin-bottom: 0; }
-  #createDialog .bd-support { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 12px; align-items: start; border: 1px solid var(--accent-tint-border); background: var(--accent-tint); border-radius: 16px; padding: 14px; margin: 0 0 14px; }   /* after a build: the thank-you, where it is seen */
+  #createDialog .bd-support { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 10px; align-items: start; border: 1px solid var(--accent-tint-border); background: var(--accent-tint); border-radius: 16px; padding: 12px; margin: 0 0 10px; }   /* after a build: the thank-you, where it is seen */
   #createDialog .bd-support .bd-face { border-radius: 50%; display: block; }   /* Ron, since the box speaks in his voice */
-  #createDialog .bd-support p { margin: 0 0 10px; line-height: 1.4; color: var(--fg); }
-  #createDialog .bd-support button { min-height: 40px; }
-  #createDialog .bd-open { margin: 0 0 16px; text-align: center; }
-  #createDialog .bd-open a { display: inline-block; text-decoration: none; background: var(--button); color: var(--on-button, #fff); font-weight: 700; padding: 12px 22px; border-radius: 999px; }
+  #createDialog .bd-support p { margin: 0 0 8px; line-height: 1.4; color: var(--fg); }
+  #createDialog .bd-support button { min-height: 36px; }
+  #createDialog .bd-open { margin: 0 0 12px; text-align: center; }
+  #createDialog .bd-open a { display: inline-block; text-decoration: none; background: var(--button); color: var(--on-button, #fff); font-weight: 700; padding: 10px 22px; border-radius: 999px; }
   #createDialog .bd-info { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; margin: 0 0 8px; font-size: 0.86rem; line-height: 1.35; color: var(--fg); }
   #createDialog .bd-info-ic { color: var(--accent); line-height: 0; padding-top: 1px; }
   #createDialog .bd-info p { margin: 0; }
@@ -1065,6 +1072,8 @@
     <div id="createDialog" class="app-dialog" role="dialog" aria-modal="true" aria-labelledby="bdTitle" tabindex="-1">
       <div class="bd-head">
         <div id="bdTitle" class="bd-title" role="heading" aria-level="2">Build playlists</div>
+        <div id="bdShape" class="bd-shape" role="img" aria-label="Shape of one playlist" hidden></div>
+        <p id="bdShapeInfo" class="bd-shape-info" hidden></p>
         <div id="bdSteps" class="bd-steps"></div>
       </div>
       <div class="bd-body">
@@ -1254,8 +1263,8 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-03a"></script>
-<script src="editor.js?v=2026-11-03a"></script>
-<script src="app.js?v=2026-11-03a"></script>
+<script src="formats.js?v=2026-11-03c"></script>
+<script src="editor.js?v=2026-11-03c"></script>
+<script src="app.js?v=2026-11-03c"></script>
 </body>
 </html>

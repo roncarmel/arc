@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-03a";
+const APP_VERSION = "2026-11-03c";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1321,8 +1321,23 @@ function setCreateStage(stage) {
   $("createDonate").hidden = stage !== "done" || !createSucceeded;   // only after a success, never beside an error or a problem
 }
 
-function openCreateDialog(title) {
-  $("bdTitle").textContent = title;
+function openCreateDialog(keys) {
+  // The header: one recipe shows its name, its bar and its length; several just say how many.
+  $("bdTitle").textContent = keys.length === 1 ? formatLabel(keys[0]) : `Build ${plural(keys.length, "recipe")}`;
+  const f = keys.length === 1 && editor.model ? editor.model.formats.find((x) => x.id === keys[0]) : null;
+  const bar = $("bdShape"), info = $("bdShapeInfo");
+  bar.textContent = info.textContent = "";
+  bar.hidden = info.hidden = !f;
+  if (f) {
+    const { pieces, music, quiet } = recipeShape(f);
+    for (const piece of pieces) {
+      const span = Object.assign(document.createElement("span"), { className: "bd-shape-piece" + (piece.silence ? " bd-shape-silence" : "") });
+      span.style.cssText = piece.style;
+      bar.appendChild(span);
+    }
+    const silence = quiet ? ` + ${quiet < 60 ? `${quiet} sec` : lengthText(quiet / 60)} of silence` : "";
+    info.append(Object.assign(document.createElement("b"), { textContent: lengthText(music) }), ` of music${silence} · ${plural(f.items.length, "segment")}`);
+  }
   $("createOverlay").hidden = false;
   document.body.style.overflow = "hidden";
   setCreateStage("planning");
@@ -2688,7 +2703,7 @@ async function startCreate(keys = null) {
   $("editorNote").textContent = "";
   createSucceeded = false;
   const wanted = selectedKeys();
-  openCreateDialog(wanted.length === 1 ? `Build “${formatLabel(wanted[0])}”` : `Build ${plural(wanted.length, "recipe")}`);
+  openCreateDialog(wanted);
   setBuildSteps("read");
   logStep("plan started");
   invalidatePlan(false);
