@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-03r";
+const APP_VERSION = "2026-11-03s";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1474,7 +1474,57 @@ function setTally(made, total, status, now) {
   $("bdTally").hidden = false;
 }
 
-const BD_SPARKS = [[-150, -64, 160], [138, -58, -120], [-118, 30, 90], [150, 22, -200], [-64, -96, 140], [92, -100, -90], [-160, 96, 60], [170, 92, -60], [-30, -112, 200], [40, 118, 120]];   // where each bit of confetti flies to from behind the covers, and how far it turns
+// Confetti thrown from behind the covers: paper bits of a few shapes and shades that burst up in two puffs, slow in the air, then flutter down, turning over
+// as they fall (a flat bit seen edge on all but disappears), each at its own pace, fading near the end. Moved by hand each frame, so each one has its own path.
+function throwConfetti(fan) {
+  const kinds = [["bd-strip", 4, 11], ["bd-strip", 3, 9], ["bd-square", 7, 7], ["bd-square", 5, 5], ["bd-dot", 6, 6]];
+  const shades = ["var(--accent)", "var(--accent)", "color-mix(in srgb, var(--accent) 55%, #fff)", "color-mix(in srgb, var(--accent) 22%, #fff)", "color-mix(in srgb, var(--accent) 80%, #000)"];
+  const any = (list) => list[Math.floor(Math.random() * list.length)];
+  const span = (low, high) => low + Math.random() * (high - low);
+  const bits = [];
+  for (let i = 0; i < 38; i++) {
+    const [kind, w, h] = any(kinds);
+    const node = Object.assign(document.createElement("span"), { className: "bd-spark " + kind });
+    node.style.cssText = `width: ${w}px; height: ${h}px; margin: ${-h / 2}px 0 0 ${-w / 2}px; background: ${any(shades)}`;
+    fan.appendChild(node);
+    const angle = (-90 + span(-68, 68)) * Math.PI / 180, speed = span(440, 780);
+    bits.push({
+      node, x: span(-24, 24), y: span(-10, 10), vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+      start: i < 26 ? span(80, 160) : span(260, 340),   // most in the first puff, a few in a smaller second one
+      life: span(1700, 2500), drag: span(3.8, 4.8),     // lighter bits slow sooner and fall slower
+      turn: span(-1, 1) * 420, flip: span(5, 13) * (Math.random() < 0.5 ? -1 : 1), phase: span(0, 6.3),
+      sway: span(10, 26), swayRate: span(3, 6), z: span(0, 360),
+    });
+  }
+  const began = performance.now();
+  let last = began;
+  const frame = (now) => {
+    if (!fan.isConnected) return;
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    let left = 0;
+    for (const b of bits) {
+      const age = now - began - b.start;
+      if (age < 0) { left++; continue; }
+      if (age > b.life) { if (b.node.parentNode) b.node.remove(); continue; }
+      left++;
+      const slow = Math.exp(-b.drag * dt);
+      b.vy += 480 * dt;
+      b.vx *= slow;
+      b.vy *= slow;
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      const s = age / 1000;
+      const settled = Math.min(1, s / 0.7);   // the sway grows as the burst dies down
+      const sway = Math.sin(b.phase + s * b.swayRate) * b.sway * settled;
+      const fade = Math.min(1, age / 60, (b.life - age) / (b.life * 0.35));
+      b.node.style.opacity = fade.toFixed(3);
+      b.node.style.transform = `translate3d(${(b.x + sway).toFixed(1)}px, ${b.y.toFixed(1)}px, 0) rotate(${(b.z + b.turn * s + sway * 2).toFixed(1)}deg) rotateX(${(b.phase * 57 + b.flip * s * 60).toFixed(1)}deg)`;
+    }
+    if (left) requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+}
 
 // Scrolls a box back to its top, easing in and out (longer for a longer way, at most about two thirds of a second). Resolves when it is there.
 function glideToTop(box) {
@@ -1510,11 +1560,6 @@ function showFinale(made, minutes) {
     card.style.zIndex = String(10 - Math.abs(i - mid) * 2);   // the middle card on top
     fan.appendChild(card);
   }
-  BD_SPARKS.forEach(([x, y, turn], i) => {
-    const spark = el("span", "bd-spark");
-    spark.style.cssText = `--x: ${x}px; --y: ${y}px; --t: ${turn}deg; animation-delay: ${120 + (i % 4) * 50}ms`;
-    fan.appendChild(spark);
-  });
   const hours = el("b", "", lengthText(still ? minutes : 0));
   const music = el("p", "bd-hours");
   music.append(hours, document.createTextNode(" of music"));
@@ -1530,9 +1575,17 @@ function showFinale(made, minutes) {
     }
     box.appendChild(tiles);
   }
+  // TEMPORARY (Ron, 2026-11-03): Play again, to watch the finale more than once while it is being tuned. Take it out later.
+  if (!still) {
+    const again = el("button", "linklike bd-again", "Play again");
+    again.type = "button";
+    again.addEventListener("click", () => showFinale(made, minutes));
+    box.appendChild(again);
+  }
   setActionMessage("");
   $("actionMessage").appendChild(box);
   if (still || typeof requestAnimationFrame !== "function") return;
+  throwConfetti(fan);
   // the music counts up over a second, slowing at the end; screen readers wait for the final number
   $("actionMessage").setAttribute("aria-busy", "true");
   const began = Date.now();
