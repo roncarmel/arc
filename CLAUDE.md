@@ -88,7 +88,7 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 - Never use em dashes or en dashes in any text, including page text, comments and docs.
 - Page text: no first person except where already approved; plain, brief, specific; no hedging.
 - Recipe and playlist names are never in quotes. Inside a sentence a name is italic: write it as `named(name)` (editor.js; invisible Unicode isolate marks) and show the text with `putNamed` or `feEl`'s `text`. A name on its own (a title, the old → new rename list) is plain. The description on built playlists in Spotify has no quotes either. Decided by Ron, 2026-11-03.
-- Exception: anything about supporting Ron (for example the caption "I made this app for everyone...", the "Support me" buttons, the thank-you box after a build, the Ko-fi panel labels, and any new support text) speaks in Ron's own voice on purpose, and may use the first person.
+- Exception: anything about supporting Ron (for example the caption "Everyone is welcome to use this app...", the "Support me" buttons, the thank-you box after a build, the Ko-fi panel labels, and any new support text) speaks in Ron's own voice on purpose, and may use the first person.
 - Support wording: page text says "support" and "Support me", never "donate" or "donation" (identifiers such as `donateHidden`, `createDonate` stay as they are).
 - Answers to Ron: brief, essentials only; answer what was asked. Say what was done and what is next. Do not report passing tests (only failures), and do not report time breakdowns.
 - For anything visual, show a mockup early (screenshots of the real page with Playwright, Spotify stubbed with `page.route`) and let Ron pick before building. When he says "let's discuss", discuss and do not build.
