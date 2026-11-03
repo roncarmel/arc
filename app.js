@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-03s";
+const APP_VERSION = "2026-11-03t";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1574,13 +1574,6 @@ function showFinale(made, minutes) {
       tiles.appendChild(tile);
     }
     box.appendChild(tiles);
-  }
-  // TEMPORARY (Ron, 2026-11-03): Play again, to watch the finale more than once while it is being tuned. Take it out later.
-  if (!still) {
-    const again = el("button", "linklike bd-again", "Play again");
-    again.type = "button";
-    again.addEventListener("click", () => showFinale(made, minutes));
-    box.appendChild(again);
   }
   setActionMessage("");
   $("actionMessage").appendChild(box);
