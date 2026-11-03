@@ -61,7 +61,7 @@ function feEl(tag, props, ...children) {
     if (value === undefined || value === null || value === false) continue;
     if (key === "class") node.className = value;
     else if (key === "style") node.setAttribute("style", value);
-    else if (key === "text") node.textContent = value;
+    else if (key === "text") putNamed(node, value);
     else if (key === "html") node.innerHTML = value;
     else if (key.startsWith("on")) node.addEventListener(key.slice(2).toLowerCase(), value);
     else node.setAttribute(key, value === true ? "" : value);
@@ -250,6 +250,17 @@ function removeLocalFormat(id) {
 
 // A question with a few answers, in a dialog. Resolves with the answer's value. One that is required has to be answered: Escape and the backdrop do nothing. Otherwise
 // closing it resolves with null, to decide later.
+// A recipe or playlist name inside a sentence is shown in italics, with no quotes. named() marks it in the text with the Unicode isolate marks (which also keep a
+// right-to-left name from mixing with the sentence around it), putNamed() adds such text to an element, and plainText() is the text without the marks.
+function named(name) { return `\u2068${name}\u2069`; }
+function putNamed(node, text) {
+  String(text).split(/\u2068([^\u2069]*)\u2069/).forEach((part, i) => {
+    if (i % 2) node.appendChild(Object.assign(document.createElement("i"), { textContent: part }));
+    else if (part) node.appendChild(document.createTextNode(part));
+  });
+}
+function plainText(text) { return String(text).replace(/[\u2068\u2069]/g, ""); }
+
 function askSyncChoice(title, text, choices, options = {}) {
   if (typeof endConnectingScreen === "function") endConnectingScreen();   // a question needs the page in view
   return new Promise((resolve) => {
@@ -258,7 +269,7 @@ function askSyncChoice(title, text, choices, options = {}) {
     const onKey = (event) => { if (event.key === "Escape" && !required) done(null); };
     const buttons = choices.map((c, i) => feEl("button", { type: "button", id: "feSyncChoice" + i, class: c.danger ? "fe-danger-button" : undefined, onClick: () => done(c.value) }, c.label));
     const overlay = feEl("div", { class: "fe-overlay", id: "feSyncDialog", onClick: () => { if (!required) done(null); } },
-      feEl("div", { class: "fe-dialog", role: required ? "alertdialog" : "dialog", "aria-modal": "true", "aria-label": title, onClick: (e) => e.stopPropagation() },
+      feEl("div", { class: "fe-dialog", role: required ? "alertdialog" : "dialog", "aria-modal": "true", "aria-label": plainText(title), onClick: (e) => e.stopPropagation() },
         feEl("h3", { text: title }),
         feEl("p", { text }),
         options.detail ? feEl("p", { class: "muted", id: "feSyncDetail", text: options.detail }) : null,
@@ -923,7 +934,7 @@ function paintNoticeNow(caption, view) {
   if (view.count) caption.appendChild(view.cycle
     ? feEl("button", { type: "button", class: "fe-notice-count", "aria-label": "Next message", onClick: view.cycle, text: `(${view.count})` })
     : feEl("span", { class: "fe-notice-count", text: `(${view.count})` }));
-  if (live && notices.spoken !== view.text) { notices.spoken = view.text; live.textContent = view.text; }
+  if (live && notices.spoken !== view.text) { notices.spoken = view.text; live.textContent = plainText(view.text); }
 }
 
 function refreshNoticeLine() {
@@ -1555,7 +1566,7 @@ function askDuplicateFormat() {
   const overlay = feEl("div", { class: "fe-overlay", id: "feDuplicateDialog", onClick: close },
     feEl("div", { class: "fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": "Duplicate recipe", onClick: (event) => event.stopPropagation() },
       feEl("h3", { text: "Duplicate this recipe?" }),
-      feEl("p", { text: `A copy of \u201c${f.title.trim() || "Untitled"}\u201d is added, with the same segments and silences, ready to rename.` }),
+      feEl("p", { text: `A copy of ${named(f.title.trim() || "Untitled")} is added, with the same segments and silences, ready to rename.` }),
       feEl("div", { class: "row" }, cancel, confirm)));
   document.body.appendChild(overlay);
   document.addEventListener("keydown", onKey);
@@ -1593,7 +1604,7 @@ function askDeleteFormat() {
   } }, "Delete recipe");
   const overlay = feEl("div", { class: "fe-overlay", id: "feDeleteDialog", onClick: close },
     feEl("div", { class: "fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": "Delete recipe", onClick: (e) => e.stopPropagation() },
-      feEl("h3", { text: `Delete \u201c${f.title.trim() || "Untitled"}\u201d?` }),
+      feEl("h3", { text: `Delete ${named(f.title.trim() || "Untitled")}?` }),
       feEl("p", { text: `This removes the recipe and its ${rows === 1 ? "1 row" : rows + " rows"}. Playlists already in Spotify are not affected.${typeof backupMode === "function" && backupMode() === "spotify" ? " Its backup playlist in Spotify is deleted too." : " Formats can be restored from a backup if you have one."}` }),
       feEl("div", { class: "row" }, cancel, confirm)));
   document.body.appendChild(overlay);

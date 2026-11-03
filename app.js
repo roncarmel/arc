@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-03c";
+const APP_VERSION = "2026-11-03d";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -396,7 +396,8 @@ function setIcon(button, name) {
 
 function setOutput(text) {
   // The build popup's status line: what is happening now ("Reading songs from ..."). Problems that stop a plan are cards in the same place.
-  $("output").textContent = text;
+  $("output").textContent = "";
+  putNamed($("output"), text);
   $("output").hidden = !text;
 }
 
@@ -668,10 +669,10 @@ async function mergeFromSpotify() {
     const label = a.title.trim() || "Untitled";
     let choice;
     if (a.kind === "conflict") {
-      choice = await askSyncChoice(`\u201c${label}\u201d was changed in two places`, `This device has a version from ${whenText(a.local.modified)}, and Spotify has one from ${whenText(a.remote.modified)}, probably saved from another device. Which one do you want to keep? The other one is replaced.`,
+      choice = await askSyncChoice(`${named(label)} was changed in two places`, `This device has a version from ${whenText(a.local.modified)}, and Spotify has one from ${whenText(a.remote.modified)}, probably saved from another device. Which one do you want to keep? The other one is replaced.`,
         [{ label: "Keep this device\u2019s", value: "mine" }, { label: "Use Spotify\u2019s", value: "theirs" }], { required: true });
     } else {
-      choice = await askSyncChoice(`\u201c${label}\u201d is no longer in Spotify`, "Its backup was removed from your Spotify, maybe on another device. Keep it here, and it will be saved to Spotify again, or remove it from this device too?",
+      choice = await askSyncChoice(`${named(label)} is no longer in Spotify`, "Its backup was removed from your Spotify, maybe on another device. Keep it here, and it will be saved to Spotify again, or remove it from this device too?",
         [{ label: "Keep it here", value: "keep" }, { label: "Remove it here", value: "remove", danger: true }], { required: true });
     }
     if (a.kind === "conflict" && choice === "theirs") { adoptFormat(a.remote); synced[a.id] = { rev: a.remote.rev || 0, playlistId: a.playlist.id }; saveState.updated.push(a.remote.title); }
@@ -812,7 +813,7 @@ function spotifySaveParts(full = true) {
   if (saveState.coverProblem) parts.push({ text: saveState.coverProblem.text });
   if (saveState.unread) parts.push({ text: `${saveState.unread === 1 ? "A backup in Spotify" : saveState.unread + " backups in Spotify"} could not be read, or ${saveState.unread === 1 ? "was" : "were"} saved by a newer version of this app, and ${saveState.unread === 1 ? "was" : "were"} left alone.` });
   for (const t of saveState.tooLong) {
-    parts.push({ text: `\u201c${t.title.trim() || "Untitled"}\u201d is too long to back up to Spotify. It is still saved in this browser.`, action: () => downloadOneFormat(t.id), label: "Download it" });
+    parts.push({ text: `${named(t.title.trim() || "Untitled")} is too long to back up to Spotify. It is still saved in this browser.`, action: () => downloadOneFormat(t.id), label: "Download it" });
   }
   return parts;
 }
@@ -828,7 +829,7 @@ function downloadOneFormat(id) {
 function attentionItems() {
   const items = [];
   if (backupMode() !== "spotify") return items;
-  const name = (t) => `\u201c${String(t).trim() || "Untitled"}\u201d`;
+  const name = (t) => named(String(t).trim() || "Untitled");
   if (connection === "ready" && saveState.error && !saveState.running) items.push({ key: "error", text: "Couldn\u2019t save to Spotify.", actions: [{ label: "Try again", run: () => { saveState.error = ""; runSpotifySave(); } }] });
   const n = saveState.unread;
   if (n && !saveState.dismissed.has("unread:" + n)) items.push({ key: "unread:" + n, ok: true, text: `${n === 1 ? "A backup in Spotify" : n + " backups in Spotify"} could not be read, or ${n === 1 ? "was" : "were"} saved by a newer version of this app, and ${n === 1 ? "was" : "were"} left alone.` });
@@ -906,7 +907,7 @@ function dismissAttention(key) {
 
 // News from reading Spotify: one sentence for each kind, so a few formats added together are one message and not several.
 function newsText(verb, titles) {
-  const names = titles.map((t) => `\u201c${String(t).trim() || "Untitled"}\u201d`);
+  const names = titles.map((t) => named(String(t).trim() || "Untitled"));
   if (names.length === 1) return `${verb} ${names[0]} from Spotify.`;
   if (names.length === 2) return `${verb} ${names[0]} and ${names[1]} from Spotify.`;
   return `${verb} ${names.length} recipes from Spotify.`;
@@ -915,7 +916,7 @@ function newsText(verb, titles) {
 function writeSaveParts(into, full = true) {
   into.textContent = "";
   for (const part of spotifySaveParts(full)) {
-    into.appendChild(document.createTextNode((into.childNodes.length ? " " : "") + part.text + (part.action ? " " : "")));
+    putNamed(into, (into.childNodes.length ? " " : "") + part.text + (part.action ? " " : ""));
     if (part.action) {
       const link = document.createElement("button");
       link.type = "button"; link.className = "linklike"; link.textContent = part.label;
@@ -1195,7 +1196,7 @@ function updateButtonsNow() {
       label.appendChild(document.createTextNode(" "));   // so screen readers, and the text itself, read "Build playlists for ..."
       const name = document.createElement("span");
       name.className = "build-name";
-      name.textContent = `for \u201c${active.title}\u201d`;
+      putNamed(name, `for ${named(active.title)}`);
       label.appendChild(name);
     }
     setIcon($("create"), "build");
@@ -1542,8 +1543,8 @@ function problemCard(title, items, className = "bd-err") {
     const ul = Object.assign(document.createElement("ul"), { className: "bd-problems" });
     for (const [bold, rest] of items) {
       const li = document.createElement("li");
-      if (bold) li.appendChild(Object.assign(document.createElement("b"), { textContent: bold }));
-      if (rest) li.appendChild(document.createTextNode((bold ? " " : "") + rest));
+      if (bold) putNamed(li.appendChild(document.createElement("b")), bold);
+      if (rest) putNamed(li, (bold ? " " : "") + rest);
       ul.appendChild(li);
     }
     card.appendChild(ul);
@@ -1576,11 +1577,11 @@ function showBuildStop(err, done) {
   const problem = buildProblem(message);
   let what = "No playlists were built.";
   if (done && done.removing) what = `It stopped while ${done.removing} ${done.removing === "renaming" ? "playlists" : "earlier playlists"}, before anything new was built.`;
-  else if (done && (done.built || done.incomplete)) what = `${done.built} of ${plural(done.total, "playlist")} ${done.built === 1 ? "was" : "were"} built` + (done.incomplete ? `, and “${done.incomplete}” is incomplete.` : ".");
+  else if (done && (done.built || done.incomplete)) what = `${done.built} of ${plural(done.total, "playlist")} ${done.built === 1 ? "was" : "were"} built` + (done.incomplete ? `, and ${named(done.incomplete)} is incomplete.` : ".");
   const again = done && (done.built || done.incomplete) ? " Building again replaces the ones made so far." : "";
   setActionMessage("");
   const card = problemCard(problem.title, []);
-  card.appendChild(Object.assign(document.createElement("p"), { className: "bd-small", textContent: `${what} ${problem.advice}${again}` }));
+  putNamed(card.appendChild(Object.assign(document.createElement("p"), { className: "bd-small" })), `${what} ${problem.advice}${again}`);
   $("actionMessage").appendChild(card);
   setBuildSteps(buildStep === "done" ? "build" : buildStep, true);
   if (problem.unexpected) offerReport("mainReportHint", message);
@@ -2336,7 +2337,7 @@ async function gatherInputs() {
   const many = wanted.length > 1;
   const problems = [];
   for (const b of blankSegmentReport(wanted)) {
-    problems.push([b.count === 1 ? `A segment in “${b.title}” has no playlist yet.` : `${b.count} segments in “${b.title}” have no playlist yet.`, "Choose one in the recipe."]);
+    problems.push([b.count === 1 ? `A segment in ${named(b.title)} has no playlist yet.` : `${b.count} segments in ${named(b.title)} have no playlist yet.`, "Choose one in the recipe."]);
   }
   const plans = [];
   const failedNotes = [];
@@ -2344,17 +2345,17 @@ async function gatherInputs() {
     try {
       plans.push({ key, names: JSON.parse(py.neededSources(formatsText, key)) });
     } catch (err) {
-      failedNotes.push([`“${formatLabel(key)}” could not be planned.`, cleanError(err)]);
+      failedNotes.push([`${named(formatLabel(key))} could not be planned.`, cleanError(err)]);
     }
   }
   const names = [...new Set(plans.flatMap((p) => p.names))].filter((n) => String(n).trim());
   const match = JSON.parse(py.matchPlaylists(JSON.stringify(names), JSON.stringify(playlists), me.id));
-  for (const name of match.missing || []) problems.push([`“${name}” is not in your Spotify playlists.`, "Choose another playlist in the recipe, or check its name in Spotify."]);
-  for (const name of match.notMine || []) problems.push([`“${name}” is not yours.`, "Spotify only lets this app read playlists you own. Copy its songs into a playlist of your own and use that."]);
+  for (const name of match.missing || []) problems.push([`${named(name)} is not in your Spotify playlists.`, "Choose another playlist in the recipe, or check its name in Spotify."]);
+  for (const name of match.notMine || []) problems.push([`${named(name)} is not yours.`, "Spotify only lets this app read playlists you own. Copy its songs into a playlist of your own and use that."]);
   const tracks = {};
   for (const name of names) {
     if (!match.found[name]) continue;
-    setOutput(`Reading songs from “${name}”…`);
+    setOutput(`Reading songs from ${named(name)}…`);
     tracks[name] = await loadTracks(match.found[name]);
   }
   if (problems.length) {
@@ -2377,12 +2378,12 @@ async function gatherInputs() {
 
 function shortProblems(plan, many) {
   // Why a recipe gave no playlists: each source playlist that is too short for even one, in words.
-  const where = many ? `In “${formatLabel(plan.key)}”, ` : "";
+  const where = many ? `In ${named(formatLabel(plan.key))}, ` : "";
   return (plan.short || []).map((s) => s.fit
-    ? [`${where}The songs in \u201c${s.name}\u201d don\u2019t add up to ${lengthText(s.need)}.`, `A segment has to come within 10% of its length. Make the segment a little longer or shorter, or add a few shorter songs to \u201c${s.name}\u201d.`]
+    ? [`${where}The songs in ${named(s.name)} don\u2019t add up to ${lengthText(s.need)}.`, `A segment has to come within 10% of its length. Make the segment a little longer or shorter, or add a few shorter songs to ${named(s.name)}.`]
     : s.has <= 0
-    ? [`${where}“${s.name}” has no songs this app can use.`, "Local files and podcast episodes are skipped. Add songs to it, or choose another playlist."]
-    : [`${where}“${s.name}” is too short.`, `This recipe uses ${lengthText(s.need)} of it, and it has ${lengthText(s.has)} of songs. Add ${lengthText(Math.max(1, Math.ceil(s.need - s.has)))} of songs to it, or shorten its segments.`]);
+    ? [`${where}${named(s.name)} has no songs this app can use.`, "Local files and podcast episodes are skipped. Add songs to it, or choose another playlist."]
+    : [`${where}${named(s.name)} is too short.`, `This recipe uses ${lengthText(s.need)} of it, and it has ${lengthText(s.has)} of songs. Add ${lengthText(Math.max(1, Math.ceil(s.need - s.has)))} of songs to it, or shorten its segments.`]);
 }
 
 async function planSelected(startedWith) {
@@ -2406,7 +2407,7 @@ async function planSelected(startedWith) {
       else problems.push(...shortProblems(plan, inputs.many));
     } catch (err) {
       recordError(cleanError(err));
-      problems.push([`“${formatLabel(key)}” could not be planned.`, cleanError(err)]);
+      problems.push([`${named(formatLabel(key))} could not be planned.`, cleanError(err)]);
     }
   }
   if (planSignature() !== startedWith) {   // the user edited something while this was planning
@@ -2546,7 +2547,10 @@ function infoBox(icon, ...lines) {
   const box = Object.assign(document.createElement("div"), { className: "bd-info" });
   box.appendChild(Object.assign(document.createElement("span"), { className: "bd-info-ic", innerHTML: BD_ICON[icon] }));
   const text = document.createElement("div");
-  for (const line of lines) text.appendChild(typeof line === "string" ? Object.assign(document.createElement("p"), { textContent: line }) : line);
+  for (const line of lines) {
+    if (typeof line === "string") putNamed(text.appendChild(document.createElement("p")), line);
+    else text.appendChild(line);
+  }
   box.appendChild(text);
   $("bdInfo").appendChild(box);
   return text;
@@ -2554,7 +2558,8 @@ function infoBox(icon, ...lines) {
 
 function sentence(text, link) {
   // A line of text with a link at its end.
-  const p = Object.assign(document.createElement("p"), { textContent: text + " " });
+  const p = document.createElement("p");
+  putNamed(p, text + " ");
   if (link) p.appendChild(link);
   return p;
 }
@@ -2575,9 +2580,11 @@ function detailsLink(more) {
 
 function songLink(where) {
   // A source playlist's name, opening it in Spotify at the song
-  const name = `“${where.name}”`;
-  if (!where.id) return document.createTextNode(name);
-  return Object.assign(document.createElement("a"), { href: `https://open.spotify.com/playlist/${where.id}?highlight=${encodeURIComponent(where.uri)}`, target: "_blank", rel: "noopener noreferrer", textContent: name });
+  const name = Object.assign(document.createElement("i"), { textContent: where.name });
+  if (!where.id) return name;
+  const link = Object.assign(document.createElement("a"), { href: `https://open.spotify.com/playlist/${where.id}?highlight=${encodeURIComponent(where.uri)}`, target: "_blank", rel: "noopener noreferrer" });
+  link.appendChild(name);
+  return link;
 }
 
 function fillInfoBoxes(plan, keep) {
@@ -2589,7 +2596,9 @@ function fillInfoBoxes(plan, keep) {
     const more = document.createElement("div");
     more.appendChild(Object.assign(document.createElement("p"), { textContent: `Replacing ${one ? "it" : "them"} is the usual choice, but you can keep the old ${one ? "one" : "ones"} if you like.` }));
     const label = document.createElement("label");
-    label.append(keep, ` Keep ${one ? "it" : "them"}, renamed to “… (version ${nextVersionLetter(plan.marked)})”`);
+    const words = document.createElement("span");   // one piece of text beside the checkbox, so the label's gap does not split it
+    putNamed(words, `Keep ${one ? "it" : "them"}, renamed to ${named(`\u2026 (version ${nextVersionLetter(plan.marked)})`)}`);
+    label.append(keep, words);
     more.appendChild(label);
     infoBox("replace", sentence(`${plural(plan.marked.length, "earlier playlist")} from ${plan.many ? "these recipes" : "this recipe"} will be replaced.`, detailsLink(more)), more);
   }
@@ -2598,8 +2607,8 @@ function fillInfoBoxes(plan, keep) {
     const list = document.createElement("ul");
     for (const p of plan.others) {
       const li = document.createElement("li");
-      li.append(Object.assign(document.createElement("span"), { className: "bd-nowrap", textContent: `“${p.name}”` }), " → ",
-        Object.assign(document.createElement("span"), { className: "bd-nowrap", textContent: `“${p.name} (version ${letter})”` }));
+      li.append(Object.assign(document.createElement("span"), { className: "bd-nowrap", textContent: p.name }), " → ",
+        Object.assign(document.createElement("span"), { className: "bd-nowrap", textContent: `${p.name} (version ${letter})` }));
       list.appendChild(li);
     }
     const one = plan.others.length === 1;
@@ -2609,11 +2618,11 @@ function fillInfoBoxes(plan, keep) {
   if (repeats.length) {
     const list = document.createElement("ul");
     for (const r of repeats) {
-      for (const x of r.songs.slice(0, 10)) list.appendChild(Object.assign(document.createElement("li"), { textContent: `${x.label}: ${x.times} times${repeats.length > 1 ? ` in “${r.name}”` : ""}` }));
-      if (r.songs.length > 10) list.appendChild(Object.assign(document.createElement("li"), { textContent: `and ${r.songs.length - 10} more${repeats.length > 1 ? ` in “${r.name}”` : ""}` }));
+      for (const x of r.songs.slice(0, 10)) putNamed(list.appendChild(document.createElement("li")), `${x.label}: ${x.times} times${repeats.length > 1 ? ` in ${named(r.name)}` : ""}`);
+      if (r.songs.length > 10) putNamed(list.appendChild(document.createElement("li")), `and ${r.songs.length - 10} more${repeats.length > 1 ? ` in ${named(r.name)}` : ""}`);
     }
     const text = repeats.length === 1
-      ? `“${repeats[0].name}” lists ${plural(repeats[0].songs.length, "song")} more than once. Each is used once.`
+      ? `${named(repeats[0].name)} lists ${plural(repeats[0].songs.length, "song")} more than once. Each is used once.`
       : `${repeats.length} playlists list songs more than once. Each song is used once.`;
     infoBox("copy", sentence(text, detailsLink(list)), list);
   }
@@ -2657,8 +2666,8 @@ function askToCreate(plan) {
     notes.textContent = "";
     for (const [bold, rest] of plan.problems) {
       const li = document.createElement("li");
-      li.appendChild(Object.assign(document.createElement("b"), { textContent: bold }));
-      li.appendChild(document.createTextNode(" " + rest));
+      putNamed(li.appendChild(document.createElement("b")), bold);
+      putNamed(li, " " + rest);
       notes.appendChild(li);
     }
     const keep = Object.assign(document.createElement("input"), { type: "checkbox", id: "confirmKeepEarlier" });
@@ -2835,7 +2844,7 @@ async function createFromPlan(plan) {
       progress("Keep this tab open.", true);
       setRowState(row, "now", "starting");
       show(row);
-      const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: `${APP_MARKER} from the recipe "${p.label}". Please leave this description as it is: the app uses it to recognize the playlists it made.` } });
+      const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: `${APP_MARKER} from the recipe ${p.label}. Please leave this description as it is: the app uses it to recognize the playlists it made.` } });
       current = p.name;
       createdIds.push(made.id);
       if (made.public !== false) {   // asked to keep it off the profile; make sure
