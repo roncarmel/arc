@@ -1488,6 +1488,8 @@ function askNewFormat() {
     done = true;
     overlay.remove();
     document.removeEventListener("keydown", onKey);
+    window.removeEventListener("scroll", holdStill);
+    if (vv) { vv.removeEventListener("resize", holdStill); vv.removeEventListener("scroll", holdStill); }
     if (keep) { delete draft.draft; commit(); }
     else {
       editor.model.formats = editor.model.formats.filter((x) => x !== draft);
@@ -1497,7 +1499,6 @@ function askNewFormat() {
   };
   const onKey = (event) => { if (event.key === "Escape") close(false); };
   const input = feEl("input", { type: "text", id: "feNewFormatName", class: "fe-nf-input", placeholder: "Type a name", autocomplete: "off", "aria-label": "Name of the new recipe", enterkeyhint: "done" });
-  const first = feEl("li"), second = feEl("li");
   const clash = feEl("p", { class: "fe-nf-clash", id: "feNewFormatClash", text: "Another recipe has this name.", hidden: true });
   const cancel = feEl("button", { type: "button", id: "feNewFormatCancel", onClick: () => close(false) }, "Cancel");
   const confirm = feEl("button", { type: "button", class: "primary", id: "feNewFormatConfirm", disabled: true, onClick: () => { if (confirm.disabled) return; draft.title = input.value.trim(); close(true); } }, "Create recipe");
@@ -1508,8 +1509,6 @@ function askNewFormat() {
     const taken = !!name && editor.model.formats.some((x) => x !== draft && normName(x.title) === normName(name));
     draft.title = name;
     renderTabs();
-    first.textContent = `${name || "Playlist"} 1`;
-    second.textContent = `${name || "Playlist"} 2`;
     clash.hidden = !taken;
     confirm.disabled = !name || taken;
   };
@@ -1523,13 +1522,21 @@ function askNewFormat() {
       feEl("h3", { text: "Name your new recipe" }),
       feEl("div", { class: "fe-nf-capsule" }, input),
       clash,
-      feEl("p", { class: "fe-nf-note" }, "Playlists you build with this recipe are named after it:"),
-      feEl("ul", { class: "fe-nf-names", id: "feNewFormatNames" }, first, second, feEl("li", { text: "…" })),
       feEl("p", { class: "fe-nf-note" }, "You can change the name of this recipe at any time with the ", pencil, " button next to it."),
       feEl("div", { class: "row" }, cancel, confirm)));
   document.body.appendChild(overlay);
   document.addEventListener("keydown", onKey);
-  input.focus();
+  // A phone's keyboard would scroll the page to bring the field into view, taking the new tab off the top of the screen. So the page is held where
+  // it was, and the popup is centered in what the keyboard leaves visible, which puts it below the tabs.
+  const vv = window.visualViewport, scrollY = window.scrollY;
+  const holdStill = () => {
+    if (window.scrollY !== scrollY || (vv && vv.offsetTop > 0)) window.scrollTo(0, scrollY);   // (a short page is panned instead of scrolled, and this undoes that too)
+    if (vv) { overlay.style.top = Math.round(vv.offsetTop) + "px"; overlay.style.height = Math.round(vv.height) + "px"; overlay.style.bottom = "auto"; }
+  };
+  window.addEventListener("scroll", holdStill);
+  if (vv) { vv.addEventListener("resize", holdStill); vv.addEventListener("scroll", holdStill); }
+  try { input.focus({ preventScroll: true }); } catch (err) { input.focus(); }
+  holdStill();
 }
 
 function askDuplicateFormat() {
