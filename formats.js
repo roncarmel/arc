@@ -294,6 +294,7 @@ function joinPlaylistRef(list) {
 function modelToText(model) {
   const out = ["RECIPES = {"];
   for (const fmt of model.formats) {
+    if (fmt.draft) continue;   // a new recipe still being named (askNewFormat in editor.js) is not written until it is created
     ensureGaps(fmt);
     const n = fmt.items.length;
     out.push(`    ${pyString(fmt.id)}: {`);

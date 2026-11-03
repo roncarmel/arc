@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-02y">
-<script src="theme.js?v=2026-11-02y"></script>
+<meta name="app-version" content="2026-11-02z">
+<script src="theme.js?v=2026-11-02z"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -367,6 +367,14 @@
   .fe-nf-capsule input.fe-nf-input::placeholder { color: var(--on-button, #fff); opacity: 0.6; }
   .fe-nf-clash { margin: -8px 0 12px; font-size: 0.9rem; color: var(--muted); }
   .fe-nf-pencil { display: inline-flex; vertical-align: -3px; }
+  .fe-dialog .fe-nf-note { color: var(--muted); }
+  @media (prefers-color-scheme: dark) {   /* lighter than the page, so it stands out from the dimmed page; Cancel's outline is lighter to show on it */
+    .fe-nf-dialog { background: color-mix(in srgb, var(--bg) 88%, var(--fg)); }
+    .fe-dialog.fe-nf-dialog .row button:not(.primary) { border-color: color-mix(in srgb, var(--line) 75%, var(--fg)); }
+  }
+  #formatEditor .fe-tab-blank { opacity: 0.6; }
+  .fe-nf-names { margin: -4px 0 12px; padding-left: 22px; font-weight: 700; color: var(--fg); }
+  .fe-nf-names li { margin: 2px 0; }
 
   /* names of buttons and links, so they are easy to spot in running text */
   .ui { color: var(--fg); }
@@ -1223,8 +1231,8 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-02y"></script>
-<script src="editor.js?v=2026-11-02y"></script>
-<script src="app.js?v=2026-11-02y"></script>
+<script src="formats.js?v=2026-11-02z"></script>
+<script src="editor.js?v=2026-11-02z"></script>
+<script src="app.js?v=2026-11-02z"></script>
 </body>
 </html>

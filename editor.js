@@ -554,7 +554,7 @@ function renderTabs() {
       // the selected tab carries a pencil, and pressing it renames the format where it is
       tabs.appendChild(feEl("button", {
         type: "button", class: "fe-tab", "aria-pressed": "true", "data-id": f.id, title: "Rename recipe", onClick: startRename,
-      }, f.title.trim() || "Untitled", feIcon("pencil")));
+      }, f.title.trim() || (f.draft ? feEl("span", { class: "fe-tab-blank", text: "New recipe" }) : "Untitled"), feIcon("pencil")));
     } else {
       tabs.appendChild(feEl("button", {
         type: "button", class: "fe-tab", "aria-pressed": "false", "data-id": f.id,
@@ -1469,22 +1469,44 @@ function addSegment() {
   focusSearchBox();
 }
 
-// A new recipe is named first: playlists are named after it, and a default like "Recipe 1" would make "Recipe 1 1". The field is a pink capsule like the
-// tab it becomes, and Create waits for a name that is not blank and not another recipe's.
+// A new recipe is named first: playlists are named after it, and a default like "Recipe 1" would make "Recipe 1 1". The recipe is there at once, selected, as a
+// draft: its tab, with its pencil, takes the name as it is typed behind the dimmed page. A draft is not written or saved (modelToText and the save skip it);
+// Create makes it a recipe, and Cancel takes it away. The field is a pink capsule like the tab, and Create waits for a name that is not blank and not another recipe's.
 function askNewFormat() {
   closePanels();
-  const close = () => { overlay.remove(); document.removeEventListener("keydown", onKey); };
-  const onKey = (event) => { if (event.key === "Escape") close(); };
+  const before = editor.activeId;
+  const draft = newBlankFormat(editor.model, "");
+  draft.draft = true;
+  editor.model.formats.push(draft);
+  editor.activeId = draft.id;
+  editor.renaming = null;
+  renderEditor();
+  let done = false;
+  const close = (keep) => {
+    if (done) return;
+    done = true;
+    overlay.remove();
+    document.removeEventListener("keydown", onKey);
+    if (keep) { delete draft.draft; commit(); }
+    else {
+      editor.model.formats = editor.model.formats.filter((x) => x !== draft);
+      editor.activeId = editor.model.formats.some((x) => x.id === before) ? before : (editor.model.formats.length ? editor.model.formats[0].id : null);
+    }
+    renderEditor();
+  };
+  const onKey = (event) => { if (event.key === "Escape") close(false); };
   const input = feEl("input", { type: "text", id: "feNewFormatName", class: "fe-nf-input", placeholder: "Type a name", autocomplete: "off", "aria-label": "Name of the new recipe", enterkeyhint: "done" });
-  const first = feEl("b", { class: "fe-nf-example" }), second = feEl("b", { class: "fe-nf-example" });
+  const first = feEl("li"), second = feEl("li");
   const clash = feEl("p", { class: "fe-nf-clash", id: "feNewFormatClash", text: "Another recipe has this name.", hidden: true });
-  const cancel = feEl("button", { type: "button", id: "feNewFormatCancel", onClick: close }, "Cancel");
-  const confirm = feEl("button", { type: "button", class: "primary", id: "feNewFormatConfirm", disabled: true, onClick: () => { if (confirm.disabled) return; close(); addFormat(input.value.trim()); } }, "Create recipe");
+  const cancel = feEl("button", { type: "button", id: "feNewFormatCancel", onClick: () => close(false) }, "Cancel");
+  const confirm = feEl("button", { type: "button", class: "primary", id: "feNewFormatConfirm", disabled: true, onClick: () => { if (confirm.disabled) return; draft.title = input.value.trim(); close(true); } }, "Create recipe");
   const update = () => {
     const cleaned = cleanTitle(input.value);
     if (cleaned !== input.value) input.value = cleaned;
     const name = cleaned.trim();
-    const taken = !!name && editor.model.formats.some((x) => normName(x.title) === normName(name));
+    const taken = !!name && editor.model.formats.some((x) => x !== draft && normName(x.title) === normName(name));
+    draft.title = name;
+    renderTabs();
     first.textContent = `${name || "Playlist"} 1`;
     second.textContent = `${name || "Playlist"} 2`;
     clash.hidden = !taken;
@@ -1495,27 +1517,18 @@ function askNewFormat() {
   update();
   const pencil = feIcon("pencil");
   pencil.classList.add("fe-nf-pencil");
-  const overlay = feEl("div", { class: "fe-overlay", id: "feNewFormatDialog", onClick: close },
-    feEl("div", { class: "fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": "New recipe", onClick: (e) => e.stopPropagation() },
+  const overlay = feEl("div", { class: "fe-overlay", id: "feNewFormatDialog", onClick: () => close(false) },
+    feEl("div", { class: "fe-dialog fe-nf-dialog", role: "dialog", "aria-modal": "true", "aria-label": "New recipe", onClick: (e) => e.stopPropagation() },
       feEl("h3", { text: "Name your new recipe" }),
       feEl("div", { class: "fe-nf-capsule" }, input),
       clash,
-      feEl("p", {}, "Your playlists are named after it: ", first, ", ", second, "... You can change the name any time with the ", pencil, " next to it."),
+      feEl("p", { class: "fe-nf-note" }, "Playlists you build with this recipe are named after it:"),
+      feEl("ul", { class: "fe-nf-names", id: "feNewFormatNames" }, first, second, feEl("li", { text: "…" })),
+      feEl("p", { class: "fe-nf-note" }, "You can change the name of this recipe at any time with the ", pencil, " button next to it."),
       feEl("div", { class: "row" }, cancel, confirm)));
   document.body.appendChild(overlay);
   document.addEventListener("keydown", onKey);
   input.focus();
-}
-
-function addFormat(title) {
-  const fresh = newBlankFormat(editor.model, title);
-  editor.model.formats.push(fresh);
-  editor.activeId = fresh.id;
-  editor.panel = null;
-  editor.gapPanel = null;
-  editor.cardMenu = false;
-  commit();
-  renderEditor();
 }
 
 function askDuplicateFormat() {
