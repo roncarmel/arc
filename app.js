@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-02r";
+const APP_VERSION = "2026-11-02s";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1831,14 +1831,22 @@ function recordNote(note) {
   writeRecord(LIMITS_KEY, limits.slice(-100));
 }
 
-// Spotify's wait, through the relay. A page cannot read Retry-After, so after a rate limit with no readable wait the app sends one GET /me through
-// a small Cloudflare Worker (cloudflare/retry-after.js) that can. It carries only the sign-in, and answers with only the status, the wait and the reason.
-// Requests that are refused together share one ask, and an answer is reused for 30 seconds (counted down).
+// Spotify's wait, through the relay. A page cannot read Retry-After, so after a rate limit with no readable wait the app sends one GET through
+// a small Cloudflare Worker (cloudflare/retry-after.js) that can. It carries only the sign-in and which kind of request was refused (Spotify limits
+// each kind on its own: /me answered while /me/playlists was refused), and answers with only the status, the wait and the reason.
+// Requests of one kind that are refused together share one ask, and an answer is reused for 30 seconds (counted down).
 const WAIT_RELAY_URL = "https://spotify-wait.roncarmel.workers.dev";
 let waitRelayMs = 5000;
-const waitAsked = { at: 0, result: null, pending: null };
-async function askSpotifyWait() {
+const waitAsked = { at: 0, result: null, pending: null, path: "" };
+function relayPath(url) {
+  // the refused request's kind, as a read the relay may send: "/playlists/ID/items" from POST .../items?x=1, "/me" when nothing fits
+  const path = url.replace(SPOTIFY_API, "").split("?")[0];
+  return /^\/(me|me\/playlists|playlists\/[A-Za-z0-9]{22}(\/items|\/images)?)$/.test(path) ? path : "/me";
+}
+async function askSpotifyWait(url = SPOTIFY_API + "/me") {
   if (!WAIT_RELAY_URL) return null;
+  const path = relayPath(url);
+  if (waitAsked.path !== path) Object.assign(waitAsked, { path, at: 0, result: null, pending: null });
   if (waitAsked.pending) return waitAsked.pending;
   if (waitAsked.at && Date.now() - waitAsked.at < 30000) {   // no answer counts too: the relay is not asked again for 30 seconds
     const r = waitAsked.result;
@@ -1850,17 +1858,15 @@ async function askSpotifyWait() {
     let result = null;
     try {
       countCall("relay");
-      const response = await fetch(WAIT_RELAY_URL, { headers: { Authorization: "Bearer " + token }, signal: stop.signal });
+      const response = await fetch(WAIT_RELAY_URL + "?path=" + encodeURIComponent(path), { headers: { Authorization: "Bearer " + token }, signal: stop.signal });
       if (response.ok) { const data = await response.json(); result = { status: data.status, wait: Number(data.retryAfter) > 0 ? Number(data.retryAfter) : null, reason: data.reason || "" }; }
     } catch (err) { /* the relay is down or slow: the message says no time, as before */ }
     finally { clearTimeout(timer); }
     logStep(result ? `wait asked: ${result.status}${result.wait ? ", " + result.wait + " s" : ""}` : "wait asked: no answer");
     const limits = readRecord(LIMITS_KEY, []);
     const open = limits.length && !limits[limits.length - 1].note && !limits[limits.length - 1].relay ? limits[limits.length - 1] : null;
-    if (open) { open.relay = result ? { at: Date.now(), status: result.status, retryAfter: result.wait, reason: result.reason } : { at: Date.now(), status: "no answer" }; writeRecord(LIMITS_KEY, limits); }
-    waitAsked.at = Date.now();
-    waitAsked.result = result;
-    waitAsked.pending = null;
+    if (open) { open.relay = result ? { at: Date.now(), path: path.replace(/[A-Za-z0-9]{22}/, "{id}"), status: result.status, retryAfter: result.wait, reason: result.reason } : { at: Date.now(), status: "no answer" }; writeRecord(LIMITS_KEY, limits); }
+    if (waitAsked.path === path) Object.assign(waitAsked, { at: Date.now(), result, pending: null });   // a later ask of another kind replaced this one
     return result;
   })();
   return waitAsked.pending;
@@ -1952,7 +1958,7 @@ async function spotifyRequest(method, path, { params, json, body, contentType, n
       recordRefusal(method, url, reason);
       // the browser hides Retry-After, so Spotify is asked through the relay (not for cover uploads, which have their own limit that /me does not show)
       if (!wait && !noWait) {
-        const asked = await askSpotifyWait();
+        const asked = await askSpotifyWait(url);
         if (asked && asked.status === 429) { wait = asked.wait; if (!reason) reason = asked.reason; }
       }
       if (wait) lastWait = wait;

@@ -791,9 +791,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-02r" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-02s" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-02r/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-02s/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -2562,18 +2562,21 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
     return { seen, message, entry: (sr_record(w, "spotifyLimits") || [])[0] || {} };
   };
   var sr_r = await sr_relayRun(sr_x);
-  check("a rate limit with no readable wait asks the relay once, with only the sign-in", sr_r.seen.length === 1 && sr_r.seen[0].url === "https://relay.example.workers.dev/" && sr_r.seen[0].auth === "Bearer t", JSON.stringify(sr_r.seen));
+  check("a rate limit with no readable wait asks the relay once, with only the sign-in", sr_r.seen.length === 1 && sr_r.seen[0].url === "https://relay.example.workers.dev/?path=%2Fplaylists%2F0123456789abcdefABCDEF%2Fitems" && sr_r.seen[0].auth === "Bearer t", JSON.stringify(sr_r.seen));
   check("the wait it gets back is in the message, and nothing is retried", sr_r.message === "Spotify has reached the request quota for your developer account. Waiting is the only fix: try again in about 4 hours and 5 minutes.", sr_r.message);
-  check("and in the record", sr_r.entry.relay && sr_r.entry.relay.retryAfter === 14689 && sr_r.entry.relay.reason === "QUOTA_EXCEEDED", JSON.stringify(sr_r.entry));
+  check("and in the record", sr_r.entry.relay && sr_r.entry.relay.path === "/playlists/{id}/items" && sr_r.entry.relay.retryAfter === 14689 && sr_r.entry.relay.reason === "QUOTA_EXCEEDED", JSON.stringify(sr_r.entry));
   var sr_r2 = await sr_relayRun(sr_x, { answer: { status: 429, retryAfter: "2" } });
   check("a short wait from the relay is waited out and retried, with one ask for the whole request", sr_r2.seen.length === 1 && /Spotify is rate limiting requests\. Try again in about/.test(sr_r2.message), `${sr_r2.seen.length} ${sr_r2.message}`);
   var sr_r3 = await sr_relayRun(sr_x, { hang: true });
   check("a relay that does not answer leaves the message as before", sr_r3.seen.length === 1 && /did not say how long to wait/.test(sr_r3.message) && sr_r3.entry.relay && sr_r3.entry.relay.status === "no answer", `${sr_r3.message} ${JSON.stringify(sr_r3.entry)}`);
   var sr_r4 = await sr_relayRun(sr_x, { noWait: true, path: "/playlists/0123456789abcdefABCDEF/images" });
   check("cover uploads never ask the relay", sr_r4.seen.length === 0);
+  check("the relay asks the kind of request that was refused, as a read, and /me when nothing fits", sr_x.eval(`[relayPath("https://api.spotify.com/v1/me/playlists?limit=50&offset=50"), relayPath("https://api.spotify.com/v1/playlists/0123456789abcdefABCDEF/items?fields=x"), relayPath("https://api.spotify.com/v1/me/library?uris=a"), relayPath("https://api.spotify.com/v1/playlists/../me")].join(" ")`) === "/me/playlists /playlists/0123456789abcdefABCDEF/items /me /me");
+  var sr_r6 = await sr_relayRun(sr_x, { path: "/me/playlists" });
+  check("a refused /me/playlists asks the relay for /me/playlists", sr_r6.seen.length === 1 && /path=%2Fme%2Fplaylists$/.test(sr_r6.seen[0].url) && sr_r6.entry.relay.path === "/me/playlists", JSON.stringify(sr_r6.seen));
   var sr_r5 = await sr_relayRun(sr_x, { relayUrl: "" });
   check("with no relay set, nothing is asked", sr_r5.seen.length === 0 && /did not say how long to wait/.test(sr_r5.message));
-  check("Privacy describes the relay only when there is one", sr_x.document.getElementById("privacyWaitRelay").hidden === true && /temporary Spotify sign-in, which expires within an hour, and nothing else\. The relay passes it to Spotify, sends back only the wait, and keeps nothing\./.test(sr_x.document.getElementById("privacyWaitRelay").textContent));
+  check("Privacy describes the relay only when there is one", sr_x.document.getElementById("privacyWaitRelay").hidden === true && /temporary Spotify sign-in, which expires within an hour, and which kind of request was refused \(for a playlist, its Spotify ID\), and nothing else\. The relay passes it to Spotify, sends back only the wait, and keeps nothing\./.test(sr_x.document.getElementById("privacyWaitRelay").textContent));
   } catch (err) { areaCrashed("a record of Spotify limits", err); }
 }
   if (want("who sees the editor, and what a rate limit says")) { try {
@@ -2897,7 +2900,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-02r", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-02s", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4627,7 +4630,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-02r"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-02s"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
