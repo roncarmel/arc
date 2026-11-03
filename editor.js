@@ -1019,6 +1019,7 @@ function showPauseDialog() {
   const pause = typeof spotifyPause === "function" ? spotifyPause() : null;
   if (!pause || $("fePauseDialog")) return;
   if (typeof endConnectingScreen === "function") endConnectingScreen();   // the popup needs the page in view
+  if (editor.panel || editor.cardMenu || editor.gapPanel !== null || editor.appMenu) closePanels();   // an open list would take the first tap outside the popup
   const quota = pause.reason === "QUOTA_EXCEEDED";
   const works = ["Editing recipes"];
   if (playlists.length || (typeof KEPT_PLAYLISTS_KEY === "string" && localStorage.getItem(KEPT_PLAYLISTS_KEY))) works.push("Choosing playlists");   // the kept list may be put in just after this opens
