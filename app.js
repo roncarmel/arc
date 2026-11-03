@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-03e";
+const APP_VERSION = "2026-11-03f";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2499,10 +2499,12 @@ function fillWhyTable(plan) {
     table.innerHTML = "<thead><tr><th>Each playlist uses</th><th>Available</th><th>Enough for</th></tr></thead>";
     const body = document.createElement("tbody");
     const lowest = Math.min(...b.sources.map((r) => (r.enough == null ? Infinity : r.enough)));
-    const limiting = b.ranOut ? b.ranOut.name : (b.sources.find((r) => r.enough === lowest) || {}).name;
+    // every source that sets the number is marked: the one that ran out, and any other with the same count
+    const ranOut = b.ranOut && b.sources.find((r) => r.name === b.ranOut.name);
+    const limit = ranOut ? ranOut.enough : lowest;
     for (const r of b.sources) {
       const tr = document.createElement("tr");
-      if (r.name === limiting) tr.className = "bd-limit";
+      if (r === ranOut || (r.enough != null && r.enough === limit)) tr.className = "bd-limit";
       const uses = Object.assign(document.createElement("td"), { title: r.name });   // a long name ends in "…"; the full name shows on hover
       uses.append(whyLength(r.per), ` of ${r.name}`);
       const length = document.createElement("td");
