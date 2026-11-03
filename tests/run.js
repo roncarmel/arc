@@ -794,9 +794,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-02zk" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-02zl" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-02zk/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-02zl/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -1197,6 +1197,7 @@ print(json.dumps(out))
   ed1.document.getElementById("feAddSegment").click();
   var ed_added = rowsOf(ed1);
   check("New segment adds an empty row at the end and opens its playlist list", ed_added.length === 3 && ed_added[2].querySelector(".fe-title").textContent === "Choose a playlist" && !!ed1.document.getElementById("feOptions") && ed_added[2].querySelector(".fe-main-empty") !== null);
+  check("an empty row's Choose a playlist wraps to a second line instead of being cut short on a phone", /#formatEditor \.fe-main-empty \.fe-title \{[^}]*white-space: normal;/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   ed1.document.dispatchEvent(new ed1.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   check("Escape closes the list", !ed1.document.getElementById("feOptions"));
   rowsOf(ed1)[2].querySelector(".fe-more").click();
@@ -2999,7 +3000,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-02zk", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-02zl", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4628,13 +4629,11 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
 
   var tr = await tr_boot({ formats: null });
   await tr_wait(800);
-  check("someone with no recipes is offered the tour once the app is ready", tr_title(tr) === "Would you like a guided tour?", tr_title(tr));
-  check("the offer says the tour is in the ⋯ menu, and answers Nah, I’ll figure it out or Yes, hold my hand!", /any time from the ⋯ menu/.test(tr.document.querySelector(".driver-popover.fe-tour").textContent) && tr.document.getElementById("feTourLater").textContent === "Nah, I’ll figure it out" && tr.document.getElementById("feTourStart").textContent === "Yes, hold my hand!");
-  check("Driver.js is loaded only now, from this site, with the version stamp", tr.__scriptsRequested.some((u) => /vendor\/driver\.js\?v=/.test(u)) && !!tr.document.getElementById("driverStyles"));
-  check("the offer is remembered, so it comes once", tr.localStorage.getItem("tourOffered") === "1");
-  check("the page behind is blurred a little", !!tr.document.getElementById("feTourBlur") && /#feTourBlur \{[^}]*backdrop-filter: blur\(1\.5px\)/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
-  await tr_click(tr, "#feTourStart");
-  check("Yes, hold my hand! starts with New recipe, step 1 of 7, with Skip tour and no button to go on", tr.eval("tour.on") === true && tr_title(tr) === "Create a recipe" && tr_count(tr) === "1 of 7" && tr.document.getElementById("feTourSkip").textContent === "Skip tour" && !tr.document.getElementById("feTourNext") && tr.document.querySelector(".driver-active-element") === tr.document.getElementById("feNewFormat"));
+  check("the tour is turned off: nothing offers it, and Driver.js is never loaded", !tr.document.querySelector(".driver-popover") && !tr.__scriptsRequested.some((u) => /vendor\/driver/.test(u)) && !tr.localStorage.getItem("tourOffered"));
+  await tr.eval("startTour()");
+  await tr_wait();
+  check("started by hand (the code is kept): Driver.js is loaded from this site with the version stamp, and the page behind is blurred a little", tr.__scriptsRequested.some((u) => /vendor\/driver\.js\?v=/.test(u)) && !!tr.document.getElementById("driverStyles") && !!tr.document.getElementById("feTourBlur") && /#feTourBlur \{[^}]*backdrop-filter: blur\(1\.5px\)/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  check("it starts with New recipe, step 1 of 7, with Skip tour and no button to go on", tr.eval("tour.on") === true && tr_title(tr) === "Create a recipe" && tr_count(tr) === "1 of 7" && tr.document.getElementById("feTourSkip").textContent === "Skip tour" && !tr.document.getElementById("feTourNext") && tr.document.querySelector(".driver-active-element") === tr.document.getElementById("feNewFormat"));
   await tr_click(tr, "#feNewFormat");
   var tr_name = tr.document.getElementById("feNewFormatName"), tr_ok = () => tr.document.getElementById("feNewFormatConfirm");
   check("tapping New recipe: the name popup alone is lit while the name is typed for the person, with no panel yet and Create recipe off", (() => { const p = tr.document.querySelector(".driver-popover"); return !p || p.style.display === "none"; })() && tr.document.querySelector(".driver-active-element") === tr.document.querySelector("#feNewFormatDialog .fe-nf-dialog") && tr.document.querySelector(".fe-nf-dialog").classList.contains("fe-nf-typing") && tr_ok().disabled === true);
@@ -4666,25 +4665,15 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await tr_wait();
   check("tapping Build ends the tour: no panel, no blur, no dim", tr.eval("tour.on") === false && !tr.document.querySelector(".driver-popover") && !tr.document.getElementById("feTourBlur") && !tr.document.documentElement.classList.contains("fe-touring") && !tr.document.body.classList.contains("driver-active"));
 
-  var tr2 = await tr_boot({ formats: null, tourOffered: "1" });
+  var tr2 = await tr_boot({ formats: null });
   await tr_wait(800);
-  check("the offer does not come a second time", !tr2.document.querySelector(".driver-popover"));
   tr2.document.getElementById("feAppMenuButton").click();
-  var tr2_item = tr2.document.getElementById("feTour");
-  check("the menu has Guided tour, after Report a problem", !!tr2_item && tr2_item.textContent.trim() === "Guided tour" && tr2.document.getElementById("feReport").nextElementSibling === tr2_item);
-  tr2_item.click();
-  await tr_wait(100);
-  check("it starts the tour", tr2.eval("tour.on") === true && tr_title(tr2) === "Create a recipe");
+  check("the menu has no Guided tour", !tr2.document.getElementById("feTour"));
+  tr2.document.body.click();
+  await tr2.eval("startTour()");
+  await tr_wait();
   await tr_click(tr2, "#feTourSkip");
   check("Skip tour ends it at once", tr2.eval("tour.on") === false && !tr2.document.querySelector(".driver-popover") && !tr2.document.getElementById("feTourBlur"));
-
-  var tr3 = await tr_boot({ formats: MINI });
-  await tr_wait(800);
-  check("someone who already has recipes is not offered the tour", !tr3.document.querySelector(".driver-popover") && !tr3.localStorage.getItem("tourOffered"));
-
-  var tr4 = await tr_boot({ formats: null }, { listStatus: 500 });
-  tr4.eval("connection = 'problem'");
-  check("with no working connection the menu's Guided tour says why instead of starting", (tr4.eval("takeTour()"), tr4.eval("tour.on")) === false && /once Spotify is connected/.test(tr4.eval("tourBlocked()")));
 
   var tr_text = fs.readFileSync(ROOT + "editor.js", "utf8");
   var tr_block = tr_text.slice(tr_text.indexOf("// ---------------------------------------------------------------- the tour"), tr_text.indexOf("// ---------------------------------------------------------------- what the rest of the page asks"));
@@ -4695,10 +4684,10 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("spotify last")) { try {
   // ================================================================ the Spotify item is always first in the menu, under the app's name; then the rest in a fixed order, and the version
   var sl_ids = (w) => { w.document.getElementById("feAppMenuButton").click(); const ids = Array.from(w.document.querySelectorAll("#feAppMenuPanel > *")).map((k) => k.id || k.className); w.document.body.click(); return ids; };
-  var sl_rest = ["fe-rule", "feMoreOptions", "feFeedback", "feReport", "feTour", "fePrivacy", "fe-rule", "feVersion"];
+  var sl_rest = ["fe-rule", "feMoreOptions", "feFeedback", "feReport", "fePrivacy", "fe-rule", "feVersion"];
   var sl_ready = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: {}, feedbackUrl: "https://tally.so/r/X" });
   var sl_r = sl_ids(sl_ready);
-  check("connected: the app's name, the Spotify row, then More options, Feedback and questions, Report a problem, Guided tour, Privacy, and the version", JSON.stringify(sl_r) === JSON.stringify(["feMenuHead", "fe-sp-block"].concat(sl_rest)), JSON.stringify(sl_r));
+  check("connected: the app's name, the Spotify row, then More options, Feedback and questions, Report a problem, Privacy, and the version", JSON.stringify(sl_r) === JSON.stringify(["feMenuHead", "fe-sp-block"].concat(sl_rest)), JSON.stringify(sl_r));
   var sl_slow = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: { listDelayMs: 4000 }, feedbackUrl: "https://tally.so/r/X" });
   var sl_s = sl_ids(sl_slow);
   check("connecting: the Connecting item and its note come first, then the same order", sl_slow.eval("connection") === "connecting" && JSON.stringify(sl_s) === JSON.stringify(["feMenuHead", "feConnect", "feConnectionNote"].concat(sl_rest)), JSON.stringify(sl_s));
@@ -4800,7 +4789,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-02zk"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-02zl"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

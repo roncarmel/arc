@@ -476,7 +476,6 @@ function renderAppMenu() {
     // the form says all there is to say about itself, so the item opens it straight away, in a new tab, with nothing attached
     typeof FEEDBACK_FORM_URL !== "undefined" && FEEDBACK_FORM_URL ? feEl("a", { class: "fe-item", id: "feFeedback", role: "menuitem", href: FEEDBACK_FORM_URL, target: "_blank", rel: "noopener noreferrer", onClick: () => setTimeout(() => { editor.appMenu = false; renderAppMenu(); }, 0) }, feIcon("chat"), "Feedback and questions") : null,
     infoItem("feReport", "reportBlock", "flag", "Report a problem"),
-    feEl("button", { type: "button", class: "fe-item", id: "feTour", role: "menuitem", onClick: choose(() => takeTour()) }, feIcon("tour"), "Guided tour"),
     infoItem("fePrivacy", "privacySection", "lock", "Privacy"),
     // only on the owner's device: the app's own record of Spotify's limits, for the chat where it is studied
     typeof isOwnerHere !== "undefined" && isOwnerHere ? feEl("button", { type: "button", class: "fe-item", id: "feCopyRecord", role: "menuitem", onClick: choose(() => copyLimitRecord()) }, feIcon("copy"), "Copy Spotify record") : null,
@@ -1700,7 +1699,8 @@ function applySettle(holder, settle) {
 // A walk through making one recipe, on rails: the page is dimmed and softly blurred except the one thing to tap, and only that thing works. Driver.js (vendor/, MIT)
 // draws the dim and the panel; it is loaded the first time the tour starts. The step shown is worked out from the recipe itself after every change on the page,
 // so a step undone (the name popup cancelled, say) goes back by itself. The two steppers have a Next button, since any number of taps is right there.
-// Offered once, to someone with no recipes yet, when the app is ready; the ⋯ menu has Guided tour.
+// Turned off (Ron, 2026-11-02: too complex for what it gives): nothing offers or starts it, and the menu has no Guided tour. The code stays,
+// with its tests (they call startTour), in case it comes back. It was offered once, to someone with no recipes yet, when the app was ready.
 const tour = { on: false, recipeId: null, lengthDone: false, driver: null, shown: null, el: null, observer: null, frame: 0 };
 const TOUR_TOTAL = 7;
 
