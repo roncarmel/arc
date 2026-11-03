@@ -59,6 +59,7 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 
 **The tour**
 - A walk through one recipe on rails (`startTour` and the rest under "the tour" in editor.js): the page is dimmed and blurred 1.5 px (`#feTourBlur`, its hole kept over the target every frame) except the one thing to tap, and only that works. 8 steps: New recipe, name it, first segment's playlist, its length (Next), New segment, its playlist, silence (Next), Build. Tapping Build ends it.
+- The name step types "Sample recipe" (or "Sample recipe 2"...) into the name box by itself, then shows its panel; the box is read only and never focused, so no phone keyboard takes half the screen, and only Create recipe works (decided by Ron, 2026-11-02). No typing under reduced motion.
 - The step is worked out from the recipe after every change on the page (a MutationObserver), so a cancelled name popup goes back a step by itself. The panel's arrow always points at the middle of the target.
 - Panels are black on a light page and white on a dark one; the dim is black 55% on light, white 22% on dark. Footer: "N of 8", a Skip tour text link, and Next only on the two stepper steps (text ends "Tap Next when you're ready."). No Done (it read as the end).
 - Offered once per device (`tourOffered`), after startup, to someone with no recipes and a working connection. The ⋯ menu has Guided tour; without a connection or during a wait it says why instead. Anything else that takes the screen (sync question, wait popup, build popup, reconnect) ends the tour.

@@ -794,9 +794,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-02zg" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-02zh" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-02zg/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-02zh/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -2999,7 +2999,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-02zg", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-02zh", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4636,13 +4636,16 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await tr_click(tr, "#feTourStart");
   check("Yes, hold my hand! starts with New recipe, step 1 of 8, with Skip tour and no button to go on", tr.eval("tour.on") === true && tr_title(tr) === "Create a recipe" && tr_count(tr) === "1 of 8" && tr.document.getElementById("feTourSkip").textContent === "Skip tour" && !tr.document.getElementById("feTourNext") && tr.document.querySelector(".driver-active-element") === tr.document.getElementById("feNewFormat"));
   await tr_click(tr, "#feNewFormat");
-  check("tapping New recipe moves on to the name", tr_title(tr) === "Name the recipe" && tr_count(tr) === "2 of 8" && /tap Create recipe/.test(tr.document.querySelector(".driver-popover.fe-tour").textContent));
-  check("the name box keeps the focus, so the name can be typed", tr.document.activeElement === tr.document.getElementById("feNewFormatName"));
-  await tr_click(tr, "#feNewFormatCancel");
-  check("Cancel on the name popup goes back to New recipe", tr_title(tr) === "Create a recipe");
+  var tr_name = tr.document.getElementById("feNewFormatName"), tr_ok = () => tr.document.getElementById("feNewFormatConfirm");
+  check("tapping New recipe: the name popup alone is lit while the name is typed for the person, with no panel yet and Create recipe off", (() => { const p = tr.document.querySelector(".driver-popover"); return !p || p.style.display === "none"; })() && tr.document.querySelector(".driver-active-element") === tr.document.querySelector("#feNewFormatDialog .fe-nf-dialog") && tr.document.querySelector(".fe-nf-dialog").classList.contains("fe-nf-typing") && tr_ok().disabled === true);
+  check("the name box is read only and never takes the focus, so no keyboard comes up, and tapping it does nothing", tr_name.readOnly === true && tr_name.tabIndex === -1 && tr.document.activeElement !== tr_name && /html\.fe-touring #feNewFormatDialog \.fe-nf-input, html\.fe-touring #feNewFormatCancel \{ pointer-events: none; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  await tr_wait(1900);
+  check("once Sample recipe is typed: the panel, step 2, says to tap Create recipe, which now works", tr_name.value === "Sample recipe" && tr_title(tr) === "Name the recipe" && tr_count(tr) === "2 of 8" && /called Sample recipe for now.*Tap Create recipe\./.test(tr.document.querySelector(".driver-popover.fe-tour").textContent) && tr_ok().disabled === false && !tr.document.querySelector(".fe-nf-typing"));
+  tr.document.dispatchEvent(new tr.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  await tr_wait();
+  check("closing the name popup goes back to New recipe", tr_title(tr) === "Create a recipe");
   await tr_click(tr, "#feNewFormat");
-  var tr_name = tr.document.getElementById("feNewFormatName");
-  tr_name.value = "Sunday circle"; tr_name.dispatchEvent(new tr.Event("input"));
+  await tr_wait(1900);
   await tr_click(tr, "#feNewFormatConfirm");
   check("after Create recipe: choose the first segment's playlist", tr_title(tr) === "Choose a playlist" && tr_count(tr) === "3 of 8" && tr.document.querySelector(".driver-active-element").classList.contains("fe-main"));
   await tr_click(tr, "#feRows .fe-row .fe-main");
@@ -4660,7 +4663,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await tr_click(tr, "#feGapLonger");
   await tr_click(tr, "#feTourNext");
   check("last, Build, 8 of 8", tr_title(tr) === "Build playlists from this recipe" && tr_count(tr) === "8 of 8" && tr.document.querySelector(".driver-active-element") === tr.document.getElementById("create"));
-  check("the recipe is a real one, kept like any other", /Sunday circle/.test(tr.document.getElementById("formats").value));
+  check("the recipe is a real one, Sample recipe, kept like any other", /Sample recipe/.test(tr.document.getElementById("formats").value));
   tr.document.getElementById("create").disabled = false;
   await tr_click(tr, "#create");
   await tr_wait();
@@ -4800,7 +4803,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-02zg"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-02zh"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

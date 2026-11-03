@@ -1510,17 +1510,19 @@ function askNewFormat() {
     draft.title = name;
     renderTabs();
     clash.hidden = !taken;
-    confirm.disabled = !name || taken;
+    confirm.disabled = typing || !name || taken;
   };
+  let typing = false;
   input.addEventListener("input", update);
   input.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); confirm.click(); } });
   update();
+  const typed = feEl("span", { class: "fe-nf-typed", "aria-hidden": "true" });
   const pencil = feIcon("pencil");
   pencil.classList.add("fe-nf-pencil");
   const overlay = feEl("div", { class: "fe-overlay", id: "feNewFormatDialog", onClick: () => close(false) },
     feEl("div", { class: "fe-dialog fe-nf-dialog", role: "dialog", "aria-modal": "true", "aria-label": "New recipe", onClick: (e) => e.stopPropagation() },
       feEl("h3", { text: "Name your new recipe" }),
-      feEl("div", { class: "fe-nf-capsule" }, input),
+      feEl("div", { class: "fe-nf-capsule" }, input, typed),
       clash,
       feEl("p", { class: "fe-nf-note" }, "You can change the name of this recipe at any time with the ", pencil, " button next to it."),
       feEl("div", { class: "row" }, cancel, confirm)));
@@ -1535,8 +1537,33 @@ function askNewFormat() {
   };
   window.addEventListener("scroll", holdStill);
   if (vv) { vv.addEventListener("resize", holdStill); vv.addEventListener("scroll", holdStill); }
-  try { input.focus({ preventScroll: true }); } catch (err) { input.focus(); }
+  if (tour.on) typeTourName(overlay.querySelector(".fe-nf-dialog"));
+  else { try { input.focus({ preventScroll: true }); } catch (err) { input.focus(); } }
   holdStill();
+
+  // In the tour the name is typed for the person, so no keyboard comes up to take half the screen. The box can't be edited, and the tour's
+  // panel (and Create recipe) waits until the typing is done.
+  function typeTourName(dialog) {
+    input.readOnly = true;
+    input.tabIndex = -1;
+    let name = "Sample recipe";
+    for (let n = 2; editor.model.formats.some((x) => x !== draft && normName(x.title) === normName(name)); n++) name = `Sample recipe ${n}`;
+    const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const show = (i) => { input.value = name.slice(0, i); update(); typed.textContent = input.value; typed.appendChild(feEl("span", { class: "fe-nf-caret" })); };
+    const finish = () => { typing = false; input.value = name; update(); dialog.classList.remove("fe-nf-typing"); };
+    if (reduce) { finish(); return; }
+    typing = true;
+    dialog.classList.add("fe-nf-typing");
+    show(0);
+    let i = 0;
+    const next = () => {
+      if (done) return;
+      if (i >= name.length) { finish(); return; }
+      show(++i);
+      setTimeout(next, i === name.length ? 350 : 70);
+    };
+    setTimeout(next, 450);
+  }
 }
 
 function askDuplicateFormat() {
@@ -1704,7 +1731,7 @@ function tourPlaylistView(n, step, first) {
 
 const TOUR_STEPS = [
   { done: () => !!tourRecipe(), view: () => ({ el: $("feNewFormat"), side: "bottom", title: "Create a recipe", text: "A recipe says which of your playlists to play, in what order, and for how long. Press New recipe." }) },
-  { done: () => { const f = tourRecipe(); return !!f && !f.draft; }, view: () => ({ el: document.querySelector("#feNewFormatDialog .fe-nf-dialog"), side: "bottom", title: "Name the recipe", text: "Type a name, then tap Create recipe. Don’t think too hard, you can rename it any time.", focus: "feNewFormatName" }) },
+  { done: () => { const f = tourRecipe(); return !!f && !f.draft; }, view: () => { const d = document.querySelector("#feNewFormatDialog .fe-nf-dialog"), f = tourRecipe(); return { el: d, side: "bottom", wait: !!d && d.classList.contains("fe-nf-typing"), title: "Name the recipe", text: `Every recipe needs a name. This one’s called ${f ? f.title : "Sample recipe"} for now, and you can rename it any time. Tap Create recipe.` }; } },
   { done: () => { const s = tourSegment(0); return !!s && !!s.lists[0].name; }, view: () => tourPlaylistView(0, 3, true) },
   { done: () => tour.lengthDone, view: () => { const s = tourSegment(0); const row = s && document.querySelector(`#feRows .fe-row[data-id="${s.id}"]`); return { el: row && row.querySelector(".fe-stepper"), side: "bottom", title: "Set the segment’s length", text: "Tap + or − to choose how many minutes of music this segment plays. Tap Next when you're ready.", next: () => { tour.lengthDone = true; tourSync(); } }; } },
   { done: () => !!tourSegment(1), view: () => ({ el: $("feAddSegment"), side: "bottom", title: "Add a second segment", text: "A session can have many segments. Tap New segment." }) },
@@ -1751,6 +1778,7 @@ function tourDriver() {
 
 // one panel: a title, a few words, then the step count, Skip tour and (where the step has one) a button
 function tourPanel(view, step, buttons) {
+  if (view.wait) { tourDriver().highlight({ element: view.el }); tour.el = view.el; tourGeometry(); return; }   // the element alone, its panel comes later
   tourDriver().highlight({ element: view.el || undefined, popover: { title: view.title, description: view.text, side: view.side, align: "center",
     onPopoverRender: (pop) => {
       pop.footer.style.display = "flex";
@@ -1759,10 +1787,9 @@ function tourPanel(view, step, buttons) {
       pop.footer.appendChild(feEl("span", { class: "fe-tour-btns" }, ...buttons));
     } } });
   tour.el = view.el;
-  // Driver.js focuses the panel's first button, which drew a focus ring on a button nobody had pressed: the panel itself takes the focus, or the name box on its step
+  // Driver.js focuses the panel's first button, which drew a focus ring on a button nobody had pressed: the panel itself takes the focus
   const pop = document.querySelector(".driver-popover.fe-tour");
-  if (view.focus && $(view.focus)) $(view.focus).focus();
-  else if (pop) { pop.setAttribute("tabindex", "-1"); pop.focus({ preventScroll: true }); }
+  if (pop) { pop.setAttribute("tabindex", "-1"); pop.focus({ preventScroll: true }); }
   tourGeometry();
 }
 
@@ -1777,7 +1804,7 @@ function tourSync() {
   const index = TOUR_STEPS.findIndex((s) => !s.done());
   const view = TOUR_STEPS[index].view();
   if (!view || !view.el) return;   // the page is between two drawings; the next change brings it back
-  const key = `${index}:${view.title}`;
+  const key = `${index}:${view.title}:${view.wait ? "wait" : ""}`;
   if (tour.shown === key && tour.el === view.el && view.el.isConnected) return;
   tour.shown = key;
   const buttons = [tourSkipLink()];
