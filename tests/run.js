@@ -346,7 +346,7 @@ print(json.dumps(out))
   await waitFor(() => visible(w1, "confirmBox") || /Nothing can be built|Choose a playlist|Could not plan/.test(outText(w1)), 30000);
   var out = outText(w1);
   console.log("\n--- preview output ---\n" + out + "\n----------------------\n");
-  check("the plan says how many and lists no playlists: they are listed once they are being built", planRows(w1).length === 0 && /^Ready to build \d+ playlists\./.test(w1.document.getElementById("confirmText").textContent), JSON.stringify(planRows(w1).slice(0, 2)));
+  check("the plan says how many and lists no playlists: they are listed once they are being built", planRows(w1).length === 0 && /^(Your songs are enough for|You can build) up to \d+ playlists\./.test(w1.document.getElementById("confirmText").textContent), JSON.stringify(planRows(w1).slice(0, 2)));
   w1.document.getElementById("planToggle").click();
   check("songs from paged playlist items were all read (130 each minus skipped)", Array.from(w1.document.querySelectorAll("#planText tbody tr")).every((tr) => /8 hrh \d+ minm/.test(tr.children[1].textContent)), outText(w1));
 
@@ -485,10 +485,10 @@ print(json.dumps(out))
   check("the plan box starts hidden in the page itself, not only after a script runs", /<div id="output" class="bd-status" hidden><\/div>/.test(css0));
   check("the Step 3 row has one Build button and no dropdown; Remove and Build all live in More options", !!wB.document.querySelector("#create") && !wB.document.getElementById("formatKey") && !wB.document.getElementById("create").parentElement.querySelector("#removeOld, #preview, #buildAll") && !wB.document.querySelector("#appSection #removeOld") && !!wB.document.querySelector("#moreOptions #buildAll"));
   await runPreview(wB);
-  var plannedCount = Number((wB.document.getElementById("confirmText").textContent.match(/^Ready to build (\d+) playlists\./) || [])[1]);
+  var plannedCount = Number((wB.document.getElementById("confirmText").textContent.match(/up to (\d+) playlists\./) || [])[1]);
   var createLabel = wB.document.getElementById("confirmYes").textContent;
   check("after pressing Create, a question shows the exact count and offers to create it", visible(wB, "confirmBox") && plannedCount > 3 && createLabel === `Build ${plannedCount} playlists`, createLabel);
-  check("a plan with nothing to replace is one sentence ending in Why N?, the list and two buttons, and the numbers only behind Why N?", /^Ready to build \d+ playlists\. Why \d+\?$/.test(wB.document.getElementById("confirmText").textContent) && !visible(wB, "confirmNotes") && !/will be replaced|renamed/.test(wB.document.getElementById("bdInfo").textContent) && wB.document.getElementById("planText").hidden === true && wB.document.getElementById("planToggle").textContent === `Why ${plannedCount}?` && wB.document.getElementById("output").hidden === true, wB.document.getElementById("confirmText").textContent);
+  check("a plan with nothing to replace is one sentence, what more than one means, the count with Why N? beside it, and two buttons, the numbers only behind Why N?", /^Your songs are enough for up to \d+ playlists\.$/.test(wB.document.getElementById("confirmText").textContent) && visible(wB, "bdPickWhy") && !!wB.document.querySelector("#bdPickHead #planToggle") && !visible(wB, "confirmNotes") && !/will be replaced|renamed/.test(wB.document.getElementById("bdInfo").textContent) && wB.document.getElementById("planText").hidden === true && wB.document.getElementById("planToggle").textContent === `Why ${plannedCount}?` && wB.document.getElementById("output").hidden === true, wB.document.getElementById("confirmText").textContent);
   check("nothing has been created yet", oB.writes.length === 0);
   wB.document.getElementById("planToggle").click();
   check("Why N? shows the numbers, and the link then offers to hide them", wB.document.getElementById("planText").hidden === false && wB.document.getElementById("planToggle").textContent === "Hide");
@@ -573,7 +573,7 @@ print(json.dumps(out))
   await runPreview(wC);
   var earlier = wC.document.getElementById("bdInfo").textContent;
   check("the question counts only my matching earlier playlists to replace, without listing them", /^2 earlier playlists from this recipe will be replaced\. DetailsReplacing them is the usual choice/.test(earlier) && !/mini 1/.test(earlier), earlier);
-  check("one Build button, and keeping them is a checkbox that starts off", /^Build \d+ playlists$/.test(wC.document.getElementById("confirmYes").textContent) && wC.document.getElementById("confirmKeepEarlier").type === "checkbox" && wC.document.getElementById("confirmKeepEarlier").checked === false && /^Ready to build \d+ playlists\./.test(wC.document.getElementById("confirmText").textContent), wC.document.getElementById("confirmYes").textContent);
+  check("one Build button, and keeping them is a checkbox that starts off", /^Build \d+ playlists$/.test(wC.document.getElementById("confirmYes").textContent) && wC.document.getElementById("confirmKeepEarlier").type === "checkbox" && wC.document.getElementById("confirmKeepEarlier").checked === false && /up to \d+ playlists\./.test(wC.document.getElementById("confirmText").textContent), wC.document.getElementById("confirmYes").textContent);
   wC.document.getElementById("confirmNo").click();
   await waitFor(() => wC.document.getElementById("createOverlay").hidden);
   await waitFor(() => !wC.document.getElementById("create").disabled);
@@ -801,9 +801,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-03zd" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-03ze" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-03zd/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-03ze/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -2956,7 +2956,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   bb_w.document.getElementById("maxPlaylists").dispatchEvent(new bb_w.Event("input"));
   bb_w.document.getElementById("create").click();
   await waitFor(() => visible(bb_w, "confirmBox"), 30000);
-  check("the question names the format being built, with the count", bb_w.document.getElementById("confirmText").textContent === "Ready to build 2 playlists. Why 2?" && bb_w.document.getElementById("bdTitle").textContent === "Renamed" && /^Build 2 playlists$/.test(bb_w.document.getElementById("confirmYes").textContent) && bb_w.document.getElementById("createDialog").getAttribute("aria-labelledby") === "bdTitle");
+  check("the question names the format being built, with the count", bb_w.document.getElementById("confirmText").textContent === "You can build up to 2 playlists." && bb_w.document.getElementById("planToggle").textContent === "Why 2?" && bb_w.document.getElementById("bdTitle").textContent === "Renamed" && /^Build 2 playlists$/.test(bb_w.document.getElementById("confirmYes").textContent) && bb_w.document.getElementById("createDialog").getAttribute("aria-labelledby") === "bdTitle");
   bb_w.document.getElementById("confirmNo").click();
   // Build all
   check("Build all recipes is in More options, with its own explanation and the building blocks icon", !!bb_w.document.querySelector("#moreOptions #buildAll") && bb_w.document.querySelector("#buildAll img").getAttribute("src") === "icons/build.svg" && /Builds, or rebuilds, the playlists for every recipe at once/.test(bb_w.document.querySelector("#moreOptions").textContent));
@@ -3023,7 +3023,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-03zd", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-03ze", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4811,7 +4811,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-03zd"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-03ze"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -4916,8 +4916,15 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // the plan
   var bp_a = await boot({ url: EDURL, session: signedIn(), local: { formats: bp_RAN } });
   await bp_open(bp_a);
-  check("the plan says how many, with Why 2? on the same line, and no hint about one more", bp_text(bp_a, "confirmText") === "Ready to build 2 playlists. Why 2?" && !bp_a.document.querySelector("#confirmText .bd-hint") && !!bp_a.document.querySelector("#confirmText #planToggle"), bp_text(bp_a, "confirmText"));
-  check("the Why table sits right under that line, before the boxes and the list", bp_a.document.getElementById("confirmText").nextElementSibling.id === "planText");
+  check("the plan says how many the songs allow, then what more than one means", bp_text(bp_a, "confirmText") === "Your songs are enough for up to 2 playlists." && visible(bp_a, "bdPickWhy") && bp_text(bp_a, "bdPickWhy") === "Each playlist follows this recipe with its own songs. None are shared between them, so every session can have a fresh playlist.", bp_text(bp_a, "confirmText"));
+  check("then the count, all of them to start, with Why 2? beside it", visible(bp_a, "bdPickHead") && bp_text(bp_a, "bdPickNum") === "2" && bp_text(bp_a, "bdPickWord") === "playlists" && !!bp_a.document.querySelector("#bdPickHead #planToggle"));
+  check("the Why table opens right under the count, above the slider", bp_a.document.getElementById("bdPickHead").nextElementSibling.id === "planText" && bp_a.document.getElementById("planText").nextElementSibling.id === "bdPick");
+  check("a slider from 1 to the most, a number under each stop and a tile per playlist, all filled", visible(bp_a, "bdPick") && bp_a.document.getElementById("bdPickRange").min === "1" && bp_a.document.getElementById("bdPickRange").max === "2" && bp_a.document.getElementById("bdPickRange").value === "2" && bp_text(bp_a, "bdPickTicks") === "12" && bp_a.document.querySelectorAll("#bdPickTiles .bd-pick-tile.bd-on").length === 2);
+  bp_a.document.getElementById("bdPickRange").value = "1";
+  bp_a.document.getElementById("bdPickRange").dispatchEvent(new bp_a.Event("input"));
+  check("moving it to 1 changes the count, the tiles and the Build button", bp_text(bp_a, "bdPickNum") === "1" && bp_text(bp_a, "bdPickWord") === "playlist" && bp_a.document.querySelectorAll("#bdPickTiles .bd-pick-tile.bd-on").length === 1 && bp_text(bp_a, "confirmYes") === "Build 1 playlist", bp_text(bp_a, "confirmYes"));
+  bp_a.document.getElementById("bdPickRange").value = "2";
+  bp_a.document.getElementById("bdPickRange").dispatchEvent(new bp_a.Event("input"));
   check("the popup's text can be selected", /#createDialog \.bd-body \{[^}]*user-select: text;/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   check("the title names the recipe", bp_text(bp_a, "bdTitle") === "Ran", bp_text(bp_a, "bdTitle"));
   check("under the name, the recipe's bar: a piece for each segment and silence, as in the editor", !bp_a.document.getElementById("bdShape").hidden && bp_a.document.querySelectorAll("#bdShape .bd-shape-piece").length === bp_a.document.querySelectorAll("#feBar .fe-piece").length && bp_a.document.querySelectorAll("#bdShape .bd-shape-silence").length === bp_a.document.querySelectorAll("#feBar .fe-piece-silence").length, bp_a.document.getElementById("bdShape").innerHTML);
@@ -4962,11 +4969,21 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await bp_open(bp_b);
   check("when the limit sets the number, the plan is the same one sentence", bp_text(bp_b, "confirmText") === "Ready to build 1 playlist. Why 1?", bp_text(bp_b, "confirmText"));
   check("and Why 1? says the limit set it", /Most playlists per recipe/.test(bp_text(bp_b, "planText")), bp_text(bp_b, "planText"));
+  check("when only one can be made, no slider and no count: just the sentence", !visible(bp_b, "bdPick") && !visible(bp_b, "bdPickHead") && !visible(bp_b, "bdPickWhy"));
   bp_b.document.getElementById("confirmYes").click();
   await waitFor(() => visible(bp_b, "bdTally"), 20000);
   check("building one playlist says so, with no count and no tile", bp_text(bp_b, "bdCount") === "Building your playlist" && !visible(bp_b, "bdTiles"), bp_text(bp_b, "bdCount"));
   await waitFor(() => visible(bp_b, "createCloseRow"), 60000);
   check("one playlist done: one cover, no tiles, is in your library", doneSentence(bp_b) === "1 playlist is in your Spotify library." && bp_b.document.querySelectorAll("#actionMessage .bd-card-img").length === 1 && !bp_b.document.querySelector("#actionMessage .bd-tiles"), bp_text(bp_b, "actionMessage"));
+
+  // choosing fewer than the most with the slider builds only that many
+  var bp_c = await boot({ url: EDURL, session: signedIn(), local: { formats: bp_RAN } });
+  await bp_open(bp_c);
+  bp_c.document.getElementById("bdPickRange").value = "1";
+  bp_c.document.getElementById("bdPickRange").dispatchEvent(new bp_c.Event("input"));
+  bp_c.document.getElementById("confirmYes").click();
+  await waitFor(() => visible(bp_c, "createCloseRow"), 60000);
+  check("1 of 2 chosen: one playlist is built", doneSentence(bp_c) === "1 playlist is in your Spotify library." && bp_rows(bp_c).length === 1, doneSentence(bp_c));
 
   // a build that stops: what went wrong, what was built, what to do, and Close
   const bp_fail = async (how, extra = {}) => {

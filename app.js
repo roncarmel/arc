@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-03zd";
+const APP_VERSION = "2026-11-03ze";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1405,6 +1405,7 @@ function resetBuildPopup() {
   $("bdInfo").textContent = "";
   $("planText").hidden = true;
   $("planText").textContent = "";
+  for (const id of ["bdPickWhy", "bdPickHead", "bdPick"]) $(id).hidden = true;
   $("createNotes").hidden = true;
   $("createSupport").hidden = true;
   $("createOpen").hidden = true;
@@ -2717,12 +2718,52 @@ function askToCreate(plan) {
   return new Promise((resolve) => {
     setOutput("");
     const summary = $("confirmText");
-    summary.textContent = "Ready to build ";
-    summary.appendChild(Object.assign(document.createElement("b"), { textContent: plural(plan.total, "playlist") }));
-    summary.appendChild(document.createTextNode(plan.many ? ` for ${plural(plan.built.length, "recipe")}. ` : ". "));
+    const keep = Object.assign(document.createElement("input"), { type: "checkbox", id: "confirmKeepEarlier" });
     const whyLabel = plan.many ? "Why these numbers?" : `Why ${plan.total}?`;
     const why = Object.assign(document.createElement("button"), { type: "button", className: "linklike", id: "planToggle", textContent: whyLabel });
-    summary.appendChild(why);
+    // One recipe that can make more than one: the person chooses how many, from 1 up to all of them (the default), with a line on what more than one means.
+    const pick = !plan.many && plan.total > 1;
+    let chosen = plan.total, shownOthers = plan.others.length;
+    for (const id of ["bdPickWhy", "bdPickHead", "bdPick"]) $(id).hidden = !pick;
+    $("bdPickHead").querySelector("#planToggle")?.remove();
+    if (pick) {
+      summary.textContent = plan.built[0].ranOut ? `Your songs are enough for up to ${plan.total} playlists.` : `You can build up to ${plan.total} playlists.`;
+      $("bdPickHead").appendChild(why);
+      const range = $("bdPickRange");
+      range.max = String(plan.total);
+      range.value = String(plan.total);
+      const marks = plan.total <= 12;   // a number under every stop and a tile per playlist while they fit; past that, just the two ends
+      $("bdPickTicks").textContent = "";
+      for (let n = 1; n <= plan.total; n++) {
+        if (!marks && n !== 1 && n !== plan.total) continue;
+        $("bdPickTicks").appendChild(Object.assign(document.createElement("span"), { textContent: String(n) })).style.left = `${((n - 1) / (plan.total - 1)) * 100}%`;
+      }
+      $("bdPickTiles").textContent = "";
+      if (marks) for (let n = 0; n < plan.total; n++) $("bdPickTiles").appendChild(Object.assign(document.createElement("span"), { className: "bd-pick-tile", innerHTML: "<i></i><i></i><i></i>" }));
+      const show = () => {
+        chosen = Math.max(1, Math.min(plan.total, parseInt(range.value, 10) || plan.total));
+        $("bdPickNum").textContent = String(chosen);
+        $("bdPickWord").textContent = chosen === 1 ? "playlist" : "playlists";
+        range.style.setProperty("--fill", `${((chosen - 1) / (plan.total - 1)) * 100}%`);
+        range.setAttribute("aria-valuetext", plural(chosen, "playlist"));
+        for (const t of $("bdPickTicks").children) t.classList.toggle("bd-on", t.textContent === String(chosen));
+        Array.from($("bdPickTiles").children).forEach((t, i) => t.classList.toggle("bd-on", i < chosen));
+        setLabel($("confirmYes"), `Build ${plural(chosen, "playlist")}`);
+        // the person's own playlists in the way: only the ones whose names the chosen playlists use
+        const names = new Set(plan.built[0].playlists.slice(0, chosen).map((p) => normName(p.name)));
+        const inWay = plan.others.filter((p) => names.has(normName(p.name)));
+        if (inWay.length !== shownOthers) { shownOthers = inWay.length; fillInfoBoxes({ ...plan, others: inWay }, keep); }
+      };
+      range.oninput = show;
+      range.onchange = show;
+      show();
+    } else {
+      summary.textContent = "Ready to build ";
+      summary.appendChild(Object.assign(document.createElement("b"), { textContent: plural(plan.total, "playlist") }));
+      summary.appendChild(document.createTextNode(plan.many ? ` for ${plural(plan.built.length, "recipe")}. ` : ". "));
+      summary.appendChild(why);
+      $("bdPickRange").oninput = $("bdPickRange").onchange = null;
+    }
     // Recipes in this build that give nothing, and why
     $("confirmNotes").hidden = !plan.problems.length;
     const notes = $("confirmList");
@@ -2733,9 +2774,8 @@ function askToCreate(plan) {
       putNamed(li, " " + rest);
       notes.appendChild(li);
     }
-    const keep = Object.assign(document.createElement("input"), { type: "checkbox", id: "confirmKeepEarlier" });
     fillInfoBoxes(plan, keep);
-    setLabel($("confirmYes"), `Build ${plural(plan.total, "playlist")}`);
+    if (!pick) setLabel($("confirmYes"), `Build ${plural(plan.total, "playlist")}`);
     setLabel($("confirmNo"), "Cancel");
     clearResults();   // the plan says how many; the playlists are listed only once they are being built
     fillWhyTable(plan);
@@ -2746,6 +2786,7 @@ function askToCreate(plan) {
     const finish = (answer) => {
       openQuestion = null;
       plan.keep = keep.checked;
+      if (answer === "create" && chosen < plan.total) choosePlaylists(plan, chosen);
       $("confirmBox").hidden = true;
       $("planText").hidden = true;
       $("planText").textContent = "";
@@ -2762,6 +2803,16 @@ function askToCreate(plan) {
       why.textContent = $("planText").hidden ? whyLabel : "Hide";
     };
   });
+}
+
+function choosePlaylists(plan, count) {
+  // Fewer than the plan can make: build the first ones. Earlier playlists from the recipe are still replaced as a set; only the person's own playlists
+  // that have one of the names actually used are renamed.
+  const b = plan.built[0];
+  b.playlists = b.playlists.slice(0, count);
+  plan.total = count;
+  const names = new Set(b.playlists.map((p) => normName(p.name)));
+  plan.others = plan.others.filter((p) => names.has(normName(p.name)));
 }
 
 async function startCreate(keys = null) {
