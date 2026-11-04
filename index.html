@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-04n">
-<script src="theme.js?v=2026-11-04n"></script>
+<meta name="app-version" content="2026-11-04o">
+<script src="theme.js?v=2026-11-04o"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -470,7 +470,10 @@
   #formatEditor .fe-playtip-card { background: var(--tip-bg); border: 1.5px solid var(--accent); box-shadow: 0 0 0 4px var(--accent-tint), 0 6px 24px -8px var(--accent); border-radius: 18px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
   #formatEditor .fe-playtip-card p { margin: 0; line-height: 1.45; text-wrap: pretty; }
   #formatEditor .fe-playtip-title { font-weight: 600; color: var(--fg); padding-right: 30px; }   /* only the title needs room for the x */
-  #formatEditor .fe-playtip-close { position: absolute; top: 4px; right: 4px; width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: none; color: var(--muted); padding: 0; cursor: pointer; border-radius: 50%; }
+  #formatEditor .fe-playtip-close { position: absolute; top: 4px; right: 4px; width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: none; color: var(--accent); padding: 0; cursor: pointer; border-radius: 50%; }
+  #formatEditor .fe-playtip-close::before { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: var(--accent-tint); transition: background 0.15s var(--ease-out); }   /* a soft pink circle, smaller than the 44 px it answers to */
+  #formatEditor .fe-playtip-close:hover::before { background: var(--accent-wash); }
+  #formatEditor .fe-playtip-close > * { position: relative; }
   #formatEditor .fe-appicon { display: none; }
   @media (min-width: 760px) {
     body.minimal #formatEditor .fe-appicon { display: block; width: 44px; height: 44px; flex: none; border-radius: 22%; }   /* narrow screens need the room for the tabs */
@@ -1411,8 +1414,8 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-04n"></script>
-<script src="editor.js?v=2026-11-04n"></script>
-<script src="app.js?v=2026-11-04n"></script>
+<script src="formats.js?v=2026-11-04o"></script>
+<script src="editor.js?v=2026-11-04o"></script>
+<script src="app.js?v=2026-11-04o"></script>
 </body>
 </html>
