@@ -480,6 +480,8 @@ def build_playlists(formats_text, key, tracks_json, max_n=None, reserved_json="[
             "minutes": round(sum(r[3] for r in results) / 60000),
             "length": round((sum(r[3] for r in results) / 1000 + sum(gap_seconds(g[0]) for g in gaps)) / 60),
             "pieces": pieces,
+            # the segments in order, for the playlist's description: [source names joined with " + ", minutes of music]
+            "segments": [[" + ".join(n for n, _ in seg_parts(music[idx][0])), round(r[3] / 60_000)] for idx, r in enumerate(results)],
         })
     sources = source_report(cache, music)
     # What ran out, and how many more minutes of songs it needed for one more playlist. Not when the limit on the number was reached first.
