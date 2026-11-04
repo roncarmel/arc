@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-03zc">
-<script src="theme.js?v=2026-11-03zc"></script>
+<meta name="app-version" content="2026-11-03zd">
+<script src="theme.js?v=2026-11-03zd"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -279,13 +279,21 @@
   #formatEditor .fe-item { text-decoration: none; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 12px; border: none; border-radius: 12px; background: transparent; color: var(--fg); text-align: left; box-sizing: border-box; }
   #formatEditor a.fe-item { font-weight: 600; }   /* a link row (Feedback and questions) weighs the same as the button rows */
   #formatEditor .fe-danger { color: var(--danger); }
-  #formatEditor .fe-mixline { display: flex; align-items: center; gap: 8px; padding: 0 6px; }
+  #formatEditor .fe-mixpanel { padding: 6px; }
+  #formatEditor .fe-mixhead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 6px 8px 10px; }
+  #formatEditor .fe-mixwhat { all: unset; cursor: pointer; font-weight: 500; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+  #formatEditor .fe-mixwhat:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  #formatEditor .fe-mixexplain { margin: -2px 8px 12px 20px; font-size: 0.84rem; line-height: 1.4; }   /* What's a mix?, indented under its heading */
+  #formatEditor .fe-mixline { display: flex; align-items: center; gap: 8px; padding: 0 2px; }
+  #formatEditor .fe-mixline + .fe-mixline { margin-top: 8px; }
+  #formatEditor .fe-mixsplit { margin: 0; padding: 2px 8px 0; font-size: 0.82rem; line-height: 1.35; color: var(--muted); }
   #formatEditor .fe-minipick { flex: 1 1 0; min-width: 0; height: 42px; padding: 0 8px 0 4px; gap: 8px; background: rgba(127, 127, 127, 0.14); border: 1px solid rgba(127, 127, 127, 0.28); border-radius: 12px; color: var(--fg); font-weight: 600; text-align: left; }
   #formatEditor .fe-minipick-name { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #formatEditor .fe-pct { width: 44px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
-  #formatEditor .fe-sliderline { padding: 0 10px; }
-  #formatEditor .fe-sliderline input { width: 100%; height: 30px; margin: 0; padding: 0; accent-color: var(--button); background: none; border: none; }
+  #formatEditor .fe-sliderline { padding: 10px 8px 6px; }
+  #formatEditor .fe-sliderline input { display: block; width: 100%; height: 30px; margin: 0; padding: 0; accent-color: var(--button); background: none; border: none; }
   #formatEditor .fe-popbuttons { display: flex; gap: 8px; padding: 6px 6px 4px; }
+  #formatEditor .fe-mixpanel .fe-popbuttons { padding: 14px 2px 2px; }
   #formatEditor .fe-popbuttons button { flex: 1 1 0; min-height: 44px; justify-content: center; }
   #formatEditor .fe-popbuttons button:not(.primary) { background: transparent; color: var(--fg); border-color: var(--line); }
   #formatEditor .fe-listpanel { padding: 6px; }
@@ -1315,8 +1323,8 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-03zc"></script>
-<script src="editor.js?v=2026-11-03zc"></script>
-<script src="app.js?v=2026-11-03zc"></script>
+<script src="formats.js?v=2026-11-03zd"></script>
+<script src="editor.js?v=2026-11-03zd"></script>
+<script src="app.js?v=2026-11-03zd"></script>
 </body>
 </html>

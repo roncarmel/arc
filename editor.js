@@ -1637,7 +1637,7 @@ function menuPanel(f, item, index) {
         commit(); renderRows(); renderTimeline();
       },
     }, feIcon("plus"), "Add a mix"));
-    if (noRoom) pop.appendChild(feEl("div", { class: "fe-itemnote", id: "feMixNote", text: "No room: this recipe has reached its size limit." }));
+    pop.appendChild(feEl("div", { class: "fe-itemnote", id: "feMixNote", text: noRoom ? "No room: this recipe has reached its size limit." : "Blend a second playlist into this segment." }));
   } else {
     pop.appendChild(feEl("button", { type: "button", class: "fe-item", id: "feEditMix", onClick: () => setPanel(item.id, "mix") }, feIcon("sliders"), "Edit mix"));
     pop.appendChild(feEl("button", { type: "button", class: "fe-item", id: "feRemoveMix", onClick: () => removeMix(item) }, feIcon("minus"), "Remove mix"));
@@ -1650,6 +1650,7 @@ function menuPanel(f, item, index) {
       onClick: () => { editor.panel = null; renderRows(); refreshSongsFor(unwatched.map((l) => l.name)); },
     }, feIcon("reset"), "Refresh songs from Spotify"));
   }
+  pop.appendChild(feEl("div", { class: "fe-rule" }));   // the playlist choices above, the silences below
   // a silence can be added before or after this segment; the choice is dimmed where there is one already
   for (const [id, g, label] of [["feAddSilenceBefore", index, "Add silence before"], ["feAddSilence", index + 1, "Add silence after"]]) {
     pop.appendChild(feEl("button", {
@@ -1683,6 +1684,16 @@ function removeMix(item) {
   commit(); renderRows(); renderTimeline();
 }
 
+// What's a mix? stays open while the panel is drawn again (a playlist chosen, the panel reopened), until it is closed or the page is.
+let mixExplained = false;
+// "About 18 min from A and 12 min from B, shuffled together.": the slider's split in the segment's own minutes.
+function mixSentence(item) {
+  const a = mixPercentA(item) / 100;
+  const amount = (m) => (m >= 1 ? `${Math.round(m)} min` : `${Math.round(m * 60)} sec`);
+  const who = (i) => (item.lists[i].name ? named(item.lists[i].name) : (i ? "the second playlist" : "the first playlist"));
+  return `About ${amount(item.minutes * a)} from ${who(0)} and ${amount(item.minutes * (1 - a))} from ${who(1)}, shuffled together.`;
+}
+
 function mixPanel(item, rowCover) {
   const two = item.lists.length === 2;
   const pctA = feEl("span", { class: "fe-pct", id: "fePctA", text: `${mixPercentA(item)}%` });
@@ -1691,11 +1702,20 @@ function mixPanel(item, rowCover) {
     type: "button", class: "fe-minipick", id: index === 0 ? "feMixA" : "feMixB",
     onClick: () => setPanel(item.id, index === 0 ? "list-a" : "list-b"),
   }, coverEl(item.lists[index].name, 28), feEl("span", { class: "fe-minipick-name", text: item.lists[index].name || "Choose a playlist" }), feIcon("chevron"));
-  const pop = feEl("div", { class: "fe-pop fe-mixpanel" }, feEl("div", { class: "fe-poplabel", text: two ? "Mix two playlists" : `Mix of ${item.lists.length} playlists` }));
+  const explain = feEl("p", { class: "fe-mixexplain", id: "feMixExplain",
+    text: "A mix plays songs from two playlists in one segment. The slider sets how much of the segment\u2019s time each one gets, and their songs are shuffled together." });
+  explain.hidden = !mixExplained;
+  const what = feEl("button", { type: "button", class: "fe-mixwhat", id: "feMixWhat", "aria-expanded": String(mixExplained), "aria-controls": "feMixExplain",
+    onClick: () => { mixExplained = explain.hidden; what.setAttribute("aria-expanded", String(mixExplained)); revealSmoothly(explain, mixExplained); },
+  }, "What\u2019s a mix?");
+  const pop = feEl("div", { class: "fe-pop fe-mixpanel" }, feEl("div", { class: "fe-poplabel fe-mixhead" },
+    feEl("span", { text: two ? "Mix two playlists" : `Mix of ${item.lists.length} playlists` }), what), explain);
   if (!two) {
     pop.appendChild(feEl("p", { class: "muted", style: "margin:4px 8px", text: "This mix has more than two playlists. You can remove the mix to use just the first one." }));
   } else {
-    const slider = feEl("input", { type: "range", id: "feMixSlider", min: "10", max: "90", step: "5", "aria-label": "How much of each playlist" });
+    const sentence = feEl("p", { class: "fe-mixsplit", id: "feMixSplit" });
+    putNamed(sentence, mixSentence(item));
+    const slider = feEl("input", { type: "range", id: "feMixSlider", min: "10", max: "90", step: "5", "aria-label": "How much of each playlist", "aria-describedby": "feMixSplit" });
     slider.value = String(mixPercentA(item));
     slider.addEventListener("input", () => {
       const a = parseInt(slider.value, 10);
@@ -1703,15 +1723,19 @@ function mixPanel(item, rowCover) {
       item.lists[1].weight = 100 - a;
       pctA.textContent = `${a}%`;
       pctB.textContent = `${100 - a}%`;
+      sentence.textContent = "";
+      putNamed(sentence, mixSentence(item));
       if (rowCover) rowCover.style.backgroundImage = feStripes(a / 100, 12);
       const subline = document.querySelector(`#feRows .fe-row[data-id="${item.id}"] .fe-sub`);
       if (subline) subline.textContent = `${a}% / ${100 - a}% mix`;
       commit();
       renderTimeline();
     });
+    // the two playlists, then how much of each, then what that comes to
     pop.appendChild(feEl("div", { class: "fe-mixline" }, picker(0), pctA));
-    pop.appendChild(feEl("div", { class: "fe-sliderline" }, slider));
     pop.appendChild(feEl("div", { class: "fe-mixline" }, picker(1), pctB));
+    pop.appendChild(feEl("div", { class: "fe-sliderline" }, slider));
+    pop.appendChild(sentence);
   }
   pop.appendChild(feEl("div", { class: "fe-popbuttons" },
     feEl("button", { type: "button", id: "feMixRemove", onClick: () => removeMix(item) }, "Remove mix"),
