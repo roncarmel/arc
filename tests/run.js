@@ -653,7 +653,7 @@ print(json.dumps(out))
   check("the hidden text is not in the way: it is hidden from sight and from assistive tools", wB.document.getElementById("formats").hidden === true && wB.document.getElementById("formats").getAttribute("aria-hidden") === "true");
 
   // I3. the Python status moved out of the way
-  check("the Python status lives in More options, under a heading that says what it is, with plain wording", !!wB.document.querySelector("#moreOptions #pythonStatus") && /^Ready\. Python v[\d.]+ is running in your browser\.$/.test(wB.document.getElementById("pythonStatus").textContent) && !wB.document.querySelector("#appSection #pythonStatus") && Array.from(wB.document.querySelectorAll("#moreOptions h3")).some((h) => h.textContent === "Python status"), wB.document.getElementById("pythonStatus").textContent);
+  check("the Python status lives in More options, under a heading that says what it is, with plain wording", !!wB.document.querySelector("#moreOptions #pythonStatus") && /^Ready\. Python v[\d.]+ is running in your browser\.$/.test(wB.document.getElementById("pythonStatus").textContent) && !wB.document.querySelector("#appSection #pythonStatus") && Array.from(wB.document.querySelectorAll("#moreOptions details.gd-topic > summary")).some((h) => h.textContent === "Python status"), wB.document.getElementById("pythonStatus").textContent);
   check("More options no longer says planner anywhere, and explains Python in one sentence", !/planner/i.test(wB.document.getElementById("moreOptions").textContent) && /The code that builds your playlists is written in Python and runs inside your browser, so nothing about your music is sent to a server\./.test(wB.document.getElementById("moreOptions").textContent) && !/planner/i.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   check("More options does not show the app version", wB.document.getElementById("appVersionLabel") === null && !/App version/.test(wB.document.getElementById("moreOptions").textContent));
   check("while Python loads, the note beside Create says Python, not planner", /Getting Python ready/.test(fs.readFileSync(ROOT + "app.js", "utf8")) && /Python could not start, so building is unavailable/.test(fs.readFileSync(ROOT + "app.js", "utf8")) && !/planner/i.test(fs.readFileSync(ROOT + "app.js", "utf8")));
@@ -806,15 +806,15 @@ print(json.dumps(out))
   var rp = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, clientId: "SECRET-CLIENT-ID-9" } });
   await readyToPreview(rp);
   openMore(rp);
-  var firstH3 = Array.from(rp.document.querySelectorAll("#moreOptions h3")).filter((h) => !h.closest("[hidden]"))[0].textContent;   // the feedback section above it shows only once its form address is set
+  var firstH3 = Array.from(rp.document.querySelectorAll("#moreOptions details.gd-topic > summary")).filter((h) => !h.closest("[hidden]"))[0].textContent;   // the feedback section above it shows only once its form address is set
   check("Report a problem is not part of More options; it has its own block, opened from the app menu, that explains what happens", firstH3 !== "Report a problem" && !rp.document.getElementById("moreOptions").contains(rp.document.getElementById("reportBlock")) && rp.document.getElementById("reportBlock").hidden === true && /A person reads these, but may not respond to all of them/.test(rp.document.getElementById("reportBlock").textContent) && /nothing is sent until you submit it there/.test(rp.document.getElementById("reportBlock").textContent), firstH3);
   var rl = rp.document.getElementById("reportLink");
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-04e" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-04f" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-04e/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-04f/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -1536,7 +1536,7 @@ print(json.dumps(out))
   // ================================================================ the color theme
   var y_thm = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI } });
   var y_root = y_thm.document.documentElement.style;
-  check("More options has a Color heading and a list of 17 single-color names, Pink first, each with its color as a swatch", Array.from(y_thm.document.querySelectorAll("#moreOptions h3")).some((h) => h.textContent === "Color") && Array.from(y_thm.document.querySelectorAll("#themeList .theme-option")).length === 17 && y_thm.document.querySelector("#themeList .theme-option").textContent === "Pink" && y_thm.document.getElementById("themeName").textContent === "Pink" && /#ff38b8|rgb\(255, 56, 184\)/.test(y_thm.document.getElementById("themeSwatch").style.background) && Array.from(y_thm.document.querySelectorAll("#themeList .theme-option")).every((o) => o.querySelector(".swatch").style.background !== "" && !/\band\b/.test(o.textContent)));
+  check("More options has a Color heading and a list of 17 single-color names, Pink first, each with its color as a swatch", Array.from(y_thm.document.querySelectorAll("#moreOptions details.gd-topic > summary")).some((h) => h.textContent === "Color") && Array.from(y_thm.document.querySelectorAll("#themeList .theme-option")).length === 17 && y_thm.document.querySelector("#themeList .theme-option").textContent === "Pink" && y_thm.document.getElementById("themeName").textContent === "Pink" && /#ff38b8|rgb\(255, 56, 184\)/.test(y_thm.document.getElementById("themeSwatch").style.background) && Array.from(y_thm.document.querySelectorAll("#themeList .theme-option")).every((o) => o.querySelector(".swatch").style.background !== "" && !/\band\b/.test(o.textContent)));
   check("the theme's two colors become every color the page uses", y_root.getPropertyValue("--button") === "#ff38b8" && y_root.getPropertyValue("--silence-line") === "#8a8a92" && ["--bg", "--fg", "--muted", "--line", "--card", "--cover", "--accent", "--accent-deep", "--accent-tint", "--accent-tint-border", "--accent-wash", "--on-button", "--icon-filter"].every((v) => y_root.getPropertyValue(v) !== ""), y_root.getPropertyValue("--bg"));
   check("light mode: a white page, dark text, and white text on the pink buttons", y_root.getPropertyValue("--bg") === "#ffffff" && y_thm.contrastRatio(y_root.getPropertyValue("--fg"), y_root.getPropertyValue("--bg")) > 12 && y_root.getPropertyValue("--on-button") === "#ffffff" && y_root.getPropertyValue("--icon-filter") === "none");
   check("link and title text in light mode is darkened until it can be read (4.5 to 1 or better)", y_thm.contrastRatio(y_root.getPropertyValue("--accent"), y_root.getPropertyValue("--bg")) >= 4.5);
@@ -3041,7 +3041,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-04e", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-04f", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3416,9 +3416,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("python status at the bottom")) { try {
   // ================================================================ the Python status at the bottom of More options
   var py_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
-  var py_heads = Array.from(py_w.document.querySelectorAll("#moreOptions h3")).filter((h) => !h.closest("[hidden]")).map((h) => h.textContent);
+  var py_heads = Array.from(py_w.document.querySelectorAll("#moreOptions details.gd-topic > summary")).filter((h) => !h.closest("[hidden]")).map((h) => h.textContent);
   check("the Python status is the last section of More options, after Hiding the Support me button, since it is the only one with nothing to press", py_heads[py_heads.length - 1] === "Python status" && py_heads[py_heads.length - 2] === "Hiding the Support me button", JSON.stringify(py_heads));
-  check("it is the last line of More options (the app version is in the app menu now)", py_w.document.getElementById("pythonStatus").nextElementSibling === null && py_w.document.getElementById("pythonStatus").parentElement.id === "moreOptions");
+  check("it is the last line of More options (the app version is in the app menu now)", py_w.document.getElementById("pythonStatus").nextElementSibling === null && py_w.document.getElementById("pythonStatus").parentElement.matches("#moreOptions > details.gd-topic:last-of-type"));
   check("the Reset app on this device question still opens right under its button, ahead of the Hiding the Support me button section", !!(py_w.document.getElementById("clearConfirm").compareDocumentPosition(py_w.document.getElementById("donateHideBox")) & 4));
   } catch (err) { areaCrashed("python status at the bottom", err); } }
 
@@ -3493,7 +3493,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var dh_css = dh_html.replace(/\s+/g, " ");
   var dh_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var dh_d = dh_w.document;
-  var dh_h3 = Array.from(dh_d.querySelectorAll("#moreOptions h3")).map((h) => h.textContent);
+  var dh_h3 = Array.from(dh_d.querySelectorAll("#moreOptions details.gd-topic > summary")).map((h) => h.textContent);
   check("More options has a section called Hiding the Support me button, right after Reset app on this device and just before Python status", dh_h3.includes("Hiding the Support me button") && dh_h3.indexOf("Hiding the Support me button") === dh_h3.indexOf("Reset app on this device") + 1 && dh_h3.indexOf("Hiding the Support me button") + 1 === dh_h3.indexOf("Python status"), JSON.stringify(dh_h3));
   var dh_p = dh_d.querySelector("#donateHideBox").closest("label").previousElementSibling;
   check("it is direct and playful: the button is meant to be visible until you have donated, please give what feels right, thank you if you did, check the box and it leaves you alone, honor system, nobody is looking, and it waits patiently", dh_p.textContent === "The Support me button stays visible until you have... supported me 🙂. If this app has been helpful to you, please give whatever feels right. Already did? Thank you! Check the box and the button will leave you alone. This runs on the honor system, so nobody\u2019s looking, and the button waits patiently.");
@@ -4855,7 +4855,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-04e"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-04f"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-04e">
-<script src="theme.js?v=2026-11-04e"></script>
+<meta name="app-version" content="2026-11-04f">
+<script src="theme.js?v=2026-11-04f"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -119,7 +119,7 @@
   details.card .card, details.card pre, details.card figure.sample { background: var(--bg); }
   footer.debug h3 { font-size: 1rem; margin: 20px 0 6px; color: var(--fg); }
   /* More options: body text is gray, so the headings, buttons, links and widgets are what stand out. */
-  #moreOptions, #privacySection { color: var(--muted); }
+  #moreOptions, #privacySection, #guideSection { color: var(--muted); }
   #moreOptions input, #moreOptions select { color: var(--fg); }
   #moreOptions #removeConfirmBox, #moreOptions #clearConfirm { color: var(--fg); }
   .plan-links { margin: 8px 0 0; }
@@ -545,29 +545,29 @@
   #infoDialog details.card, #infoDialog .card { background: none; border: none; padding: 0; margin: 0; }
   /* the title and the Close button sit in a header that never scrolls; only the part below it does */
   #infoDialog { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
-  #infoHeader { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; }
-  #infoTitle { margin: 0; font-size: 1.25rem; line-height: 1.3; color: var(--fg); }
-  #infoClose { flex: none; margin: 0; }
+  /* the title sits in a band like the app menu's header, without the icon */
+  #infoHeader { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; margin-bottom: 6px; background: var(--accent-deep, #a8217c); background: linear-gradient(135deg, var(--accent-deep, #a8217c), color-mix(in srgb, var(--accent-deep, #a8217c) 76%, #fff 24%)); color: var(--on-deep, #fff); }
+  #infoTitle { margin: 0; font-size: 1.2rem; font-weight: 700; letter-spacing: 0.01em; line-height: 1.3; color: var(--on-deep, #fff); }
+  #infoDialog #infoClose { flex: none; margin: 0; background: rgba(255, 255, 255, 0.18); border-color: transparent; color: var(--on-deep, #fff); box-shadow: none; }
+  #infoDialog #infoClose:hover { background: rgba(255, 255, 255, 0.28); }
   #infoSlot { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 18px 18px; }
   #infoDialog details > summary, #infoSlot > #reportBlock > h3:first-child { display: none; }
   /* More options: one rhythm for every section, and everything under a heading indented a little */
-  #moreOptions h3 { margin: 26px 0 8px; font-size: 1.05rem; }
-  #infoSlot > #moreOptions { margin-top: -22px; }   /* the header already has its own room below it */
-  #moreOptions > :not(summary):not(h3), #reportBlock > :not(h3) { margin-left: 16px; }
+  #reportBlock > :not(h3) { margin-left: 16px; }
   /* Privacy: the same rhythm and indent as More options */
-  /* Privacy and A guide for facilitators: one row per topic, each opening in place, the text under a title grey */
-  #infoSlot > #privacySection { margin-top: -4px; }
-  :is(#guideSection, #privacySection) details.gd-topic { border-top: 1px solid var(--line); }
-  :is(#guideSection, #privacySection) details.gd-topic:last-of-type { border-bottom: 1px solid var(--line); }
-  #infoDialog :is(#guideSection, #privacySection) details.gd-topic > summary { display: flex; pointer-events: auto; font-size: inherit; margin: 0; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; font-weight: 600; color: var(--fg); cursor: pointer; list-style: none; }
-  :is(#guideSection, #privacySection) details.gd-topic > summary::-webkit-details-marker { display: none; }
-  :is(#guideSection, #privacySection) details.gd-topic > summary::after { content: ""; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: translateY(-3px) rotate(45deg); margin-right: 6px; transition: transform 0.2s var(--ease-out); }
-  :is(#guideSection, #privacySection) details.gd-topic[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
-  @media (prefers-reduced-motion: reduce) { :is(#guideSection, #privacySection) details.gd-topic > summary::after { transition: none; } }
-  :is(#guideSection, #privacySection) details.gd-topic > :not(summary) { margin: 0 0 12px; line-height: 1.5; color: var(--muted); }
-  :is(#guideSection, #privacySection) details.gd-topic > :last-child { margin-bottom: 18px; }
-  :is(#guideSection, #privacySection) details.gd-topic ul, :is(#guideSection, #privacySection) details.gd-topic ol { padding-left: 1.3em; }
-  :is(#guideSection, #privacySection) details.gd-topic li { margin-bottom: 6px; }
+  /* More options, Privacy and A guide for facilitators: one row per topic, each opening in place, the text under a title grey and indented */
+  :is(#guideSection, #privacySection, #moreOptions) details.gd-topic { border-top: 1px solid var(--line); }
+  :is(#guideSection, #privacySection, #moreOptions) details.gd-topic:last-of-type { border-bottom: 1px solid var(--line); }
+  #infoSlot :is(#guideSection, #privacySection, #moreOptions) details.gd-topic:first-of-type { border-top: none; }   /* the band above is line enough */
+  #infoDialog :is(#guideSection, #privacySection, #moreOptions) details.gd-topic > summary { display: flex; pointer-events: auto; font-size: inherit; margin: 0; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; font-weight: 600; color: var(--fg); cursor: pointer; list-style: none; }
+  :is(#guideSection, #privacySection, #moreOptions) details.gd-topic > summary::-webkit-details-marker { display: none; }
+  :is(#guideSection, #privacySection, #moreOptions) details.gd-topic > summary::after { content: ""; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: translateY(-3px) rotate(45deg); margin-right: 6px; transition: transform 0.2s var(--ease-out); }
+  :is(#guideSection, #privacySection, #moreOptions) details.gd-topic[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
+  @media (prefers-reduced-motion: reduce) { :is(#guideSection, #privacySection, #moreOptions) details.gd-topic > summary::after { transition: none; } }
+  :is(#guideSection, #privacySection, #moreOptions) details.gd-topic > :not(summary) { margin: 0 0 12px 16px; line-height: 1.5; }
+  :is(#guideSection, #privacySection, #moreOptions) details.gd-topic[open] { padding-bottom: 6px; }
+  :is(#guideSection, #privacySection, #moreOptions) details.gd-topic ul, :is(#guideSection, #privacySection, #moreOptions) details.gd-topic ol { padding-left: 1.3em; }
+  :is(#guideSection, #privacySection, #moreOptions) details.gd-topic li { margin-bottom: 6px; }
   #moreOptions p, #moreOptions .row, #moreOptions select, #moreOptions pre.report-preview, #moreOptions .choice-row, #moreOptions .button-link, #reportBlock p, #reportBlock pre.report-preview, #reportBlock .button-link { margin-top: 0; margin-bottom: 10px; }
   #moreOptions .row select, #moreOptions .row .button-link { margin-bottom: 0; }   /* inside a row, the row supplies the space below, so the items centre on each other */
   body.minimal #feAppMenuButton { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
@@ -1285,18 +1285,17 @@
 
     <details id="moreOptions" class="card">
       <summary>More options</summary>
-
-      <h3>Limit how many playlists are made</h3>
+      <details class="gd-topic"><summary>Limit how many playlists are made</summary>
       <p class="muted">By default, the app makes as many playlists as your songs allow, but here you can cap how many playlists get created per recipe:</p>
       <select id="maxPlaylists" aria-label="Most playlists per recipe" style="width:auto"><option value="">No limit</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select>
-
-      <h3>Build all recipes</h3>
+      </details>
+      <details class="gd-topic"><summary>Build all recipes</summary>
       <p class="muted">Builds, or rebuilds, the playlists for every recipe at once. It shows what it found and asks first, as it does for one recipe.</p>
       <div class="row">
         <button id="buildAll" type="button" disabled><img class="btn-icon" src="icons/build.svg" alt="" width="24" height="24"><span class="btn-label">Build all recipes</span></button>
       </div>
-
-      <h3>Remove playlists built from a recipe</h3>
+      </details>
+      <details class="gd-topic"><summary>Remove playlists built from a recipe</summary>
       <p class="muted">Removes the playlists this app built from a recipe from your Spotify library. Your recipes and your other playlists are not touched. It only looks at playlists that match the recipe’s name, and it asks before removing anything.</p>
       <div class="row">
         <label for="removeKey">Built from</label>
@@ -1317,8 +1316,8 @@
       </div>
       <p id="removeMessage" aria-live="polite"></p>
       <p id="removeReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Report this problem</a></p>
-
-      <h3>Color</h3>
+      </details>
+      <details class="gd-topic"><summary>Color</summary>
       <p class="muted">Choose the main color of this page. It's used for buttons, links, and highlights.</p>
       <div class="row" style="margin-top:0">
         <div class="theme-picker">
@@ -1327,12 +1326,12 @@
         </div>
       </div>
       <p id="themeNote" class="muted" hidden></p>
-
-      <h3>How your recipes are saved</h3>
+      </details>
+      <details class="gd-topic"><summary>How your recipes are saved</summary>
       <p class="muted">Your recipes are saved to Spotify automatically, and a change you make on one device shows up on your others. The other choice is a manual backup: you download a file yourself and restore from it later. Changing this is not recommended. With a manual backup, nothing is saved unless you remember to make a backup, so clearing your browser's data can lose your recipes, and your devices will not stay in step.</p>
       <p><button id="changeSaveMethod" class="linklike" type="button">Change how your recipes are saved</button></p>
-
-      <h3>Reset app on this device</h3>
+      </details>
+      <details class="gd-topic"><summary>Reset app on this device</summary>
       <p class="muted">Removes everything this app keeps on this device, including your Client ID, which is copied to the clipboard first in case you want to connect to Spotify again right away. Nothing in your Spotify account changes. Recipes saved to Spotify stay there, and connecting again brings them back. Recipes you only back up manually are erased unless you have a backup file.</p>
       <p id="clearRestoreHelp" class="muted">Your recipes are erased too. To get them back afterward, choose <span class="ui">Restore</span> in the app menu and pick the backup you made on this device. If you haven't backed up to this device, choose <span class="ui">Back up now</span> there first.</p>
       <p id="clearBackupNote"></p>
@@ -1348,16 +1347,16 @@
           <button id="clearNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
         </div>
       </div>
-
-      <h3>Hiding the Support me button</h3>
+      </details>
+      <details class="gd-topic"><summary>Hiding the Support me button</summary>
       <p class="muted">The Support me button stays visible until you have... supported me 🙂. If this app has been helpful to you, please give whatever feels right. Already did? Thank you! Check the box and the button will leave you alone. This runs on the honor system, so nobody’s looking, and the button waits patiently.</p>
       <label class="choice-row"><input type="checkbox" id="donateHideBox"> <span>I have supported you!</span></label>
       <p id="donateHiddenMessage" class="muted" hidden>The Support me button is hidden. Thank you for your support!</p>
-
-      <h3>Python status</h3>
+      </details>
+      <details class="gd-topic"><summary>Python status</summary>
       <p class="muted">The code that builds your playlists is written in Python and runs inside your browser, so nothing about your music is sent to a server. If <span class="ui">Build playlists</span> stays unavailable, the reason shows here.</p>
       <p id="pythonStatus">Starting...</p>
-
+      </details>
     </details>
 
     <details id="privacySection" class="card">
@@ -1407,8 +1406,8 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-04e"></script>
-<script src="editor.js?v=2026-11-04e"></script>
-<script src="app.js?v=2026-11-04e"></script>
+<script src="formats.js?v=2026-11-04f"></script>
+<script src="editor.js?v=2026-11-04f"></script>
+<script src="app.js?v=2026-11-04f"></script>
 </body>
 </html>
