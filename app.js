@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-04k";
+const APP_VERSION = "2026-11-04l";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1043,17 +1043,21 @@ async function leaveSpotifyBackups() {
   if (!saves.length) { showBackupMessage("Your recipes are now saved only in this browser.", false, offer); return; }
   const many = saves.length > 1;
   if (connection !== "ready") { showBackupMessage(`The ${many ? "recipes" : "recipe"} saved in Spotify ${many ? "were" : "was"} left as ${many ? "they are" : "it is"}.`, false, offer); return; }
-  const choice = await askSyncChoice("Remove the saved recipes from Spotify?",
-    `${many ? "There are " + saves.length + " saved recipes" : "There is 1 saved recipe"} in Spotify, in private playlists ending in (recipe). Keep ${many ? "them" : "it"}, or remove ${many ? "them" : "it"}? Another device that saves to Spotify would lose ${many ? "them" : "it"} too.`,
-    [{ label: many ? "Keep them" : "Keep it", value: "keep" }, { label: many ? "Remove them" : "Remove it", value: "remove", danger: true }]);
+  const them = many ? "them" : "it";
+  const answers = [{ label: "Keep " + them, value: "keep" }, { label: "Remove " + them, value: "remove", danger: true }];
+  let choice = await askSyncChoice("Remove saved recipes from Spotify?",
+    `${many ? "There are " + saves.length + " saved recipes" : "There is 1 saved recipe"} in Spotify, in private playlists ending in (recipe). Keeping ${them} is recommended. Another device that saves to Spotify would lose ${them} too.`, answers);
+  // Removing asks once more, and a backup file is downloaded before anything is removed, since from here this browser holds the only copy
+  if (choice === "remove") choice = await askSyncChoice("Are you sure?", `If you remove ${them}, a backup file of your recipes downloads to this device first.`, answers);
   if (choice !== "remove") { showBackupMessage(`The ${many ? "recipes" : "recipe"} saved in Spotify ${many ? "were" : "was"} left as ${many ? "they are" : "it is"}.`, false, offer); return; }
+  downloadBackup();
   try {
     const ids = saves.map((p) => p.id);
     for (let i = 0; i < ids.length; i += REMOVE_CHUNK) {
       await spotifyRequest("DELETE", "/me/library", { params: { uris: ids.slice(i, i + REMOVE_CHUNK).map((id) => "spotify:playlist:" + id).join(",") } });
     }
     playlists = playlists.filter((p) => !ids.includes(p.id));
-    showBackupMessage(`Removed ${plural(ids.length, "saved recipe")} from Spotify. Your recipes are now saved only in this browser.`, false, offer);
+    showBackupMessage(`Removed ${plural(ids.length, "saved recipe")} from Spotify. Your recipes are now saved only in this browser, and a backup file is on this device.`);
   } catch (err) {
     showBackupMessage("The saved recipes could not be removed from Spotify: " + String(err && err.message || err), false, offer, true);
   }

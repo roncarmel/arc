@@ -812,9 +812,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-04k" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-04l" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-04k/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-04l/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3041,7 +3041,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-04k", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-04l", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4298,7 +4298,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   bs_leave(bs_w1);
   await waitFor(() => !!bs_w1.document.getElementById("feSyncDialog"), 5000);
   var bs_d = bs_w1.document.getElementById("feSyncDialog");
-  check("leaving Spotify for the backup file asks whether to remove the backups, saying how many there are and that another device would lose them, with keeping as the first answer", /Remove the saved recipes from Spotify\?/.test(bs_d.textContent) && /There are 2 saved recipes/.test(bs_d.textContent) && /Another device that saves to Spotify would lose them too/.test(bs_d.textContent) && /Keep them/.test(bs_d.querySelector("#feSyncChoice0").textContent) && /Remove them/.test(bs_d.querySelector("#feSyncChoice1").textContent));
+  check("leaving Spotify for the backup file asks whether to remove the backups, saying how many there are and that another device would lose them, with keeping as the first answer", /Remove saved recipes from Spotify\?/.test(bs_d.textContent) && /There are 2 saved recipes/.test(bs_d.textContent) && /Keeping them is recommended\./.test(bs_d.textContent) && /Another device that saves to Spotify would lose them too/.test(bs_d.textContent) && /Keep them/.test(bs_d.querySelector("#feSyncChoice0").textContent) && /Remove them/.test(bs_d.querySelector("#feSyncChoice1").textContent));
   check("the choice itself is already made: the way is the backup file, and nothing more is saved to Spotify", bs_w1.localStorage.getItem("backupMode") === "manual" && bs_w1.document.getElementById("savedNote").hidden === false);
   check("this device forgets what it knew of the backups", bs_w1.localStorage.getItem("spotifySynced") === null && bs_w1.localStorage.getItem("spotifyPendingDeletes") === null);
   bs_w1.document.getElementById("feSyncChoice0").click();
@@ -4322,11 +4322,32 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await bs_settled(bs_w2);
   bs_leave(bs_w2);
   await waitFor(() => !!bs_w2.document.getElementById("feSyncDialog"), 5000);
+  var bs_files2 = [];
+  bs_w2.saveFile = (name, text) => bs_files2.push({ name, text });
   bs_w2.document.getElementById("feSyncChoice1").click();
+  await waitFor(() => /Are you sure\?/.test((bs_w2.document.getElementById("feSyncDialog") || {}).textContent || ""), 5000);
+  var bs_d2 = bs_w2.document.getElementById("feSyncDialog");
+  check("removing asks once more, saying a backup file downloads to this device first, with keeping first and nothing removed yet", /If you remove them, a backup file of your recipes downloads to this device first\./.test(bs_d2.textContent) && bs_d2.querySelector("#feSyncChoice0").textContent === "Keep them" && bs_d2.querySelector("#feSyncChoice1").textContent === "Remove them" && bs_writes(bs_o2, "remove").length === 0 && bs_files2.length === 0);
+  bs_d2.querySelector("#feSyncChoice1").click();
   await waitFor(() => bs_writes(bs_o2, "remove").length >= 1, 5000);
+  check("a backup file of the recipes is downloaded before they are removed", bs_files2.length === 1 && /FORMATS|RECIPES/.test(bs_files2[0].text));
   await new Promise((r) => setTimeout(r, 150));
   check("removing them removes every backup in the account, and only those", bs_writes(bs_o2, "remove").length === 1 && bs_writes(bs_o2, "remove")[0].uris.slice().sort().join() === "spotify:playlist:s1,spotify:playlist:s2" && !bs_w2.eval("playlists.some((p) => p.isSave)"));
-  check("it says how many were removed, that the formats are now only in this browser, and offers a backup file", /Removed 2 saved recipes from Spotify\. Your recipes are now saved only in this browser\./.test(capText(bs_w2)) && !!capLinks(bs_w2).find((b) => b.textContent === "Back up now"));
+  check("it says how many were removed, that the formats are now only in this browser and a backup file is on this device, with no second backup offered", /Removed 2 saved recipes from Spotify\. Your recipes are now saved only in this browser, and a backup file is on this device\./.test(capText(bs_w2)) && !capLinks(bs_w2).find((b) => b.textContent === "Back up now"));
+
+  // removing, then keeping them at Are you sure?
+  var bs_o2b = { descStore: {}, nameStore: {}, extraPlaylists: bs_account() };
+  var bs_w2b = await bs_go({ formats: bs_two, backupMode: "spotify", spotifySynced: bs_synced }, bs_o2b);
+  await bs_settled(bs_w2b);
+  var bs_files2b = [];
+  bs_w2b.saveFile = (name, text) => bs_files2b.push({ name, text });
+  bs_leave(bs_w2b);
+  await waitFor(() => !!bs_w2b.document.getElementById("feSyncDialog"), 5000);
+  bs_w2b.document.getElementById("feSyncChoice1").click();
+  await waitFor(() => /Are you sure\?/.test((bs_w2b.document.getElementById("feSyncDialog") || {}).textContent || ""), 5000);
+  bs_w2b.document.getElementById("feSyncChoice0").click();
+  await new Promise((r) => setTimeout(r, 200));
+  check("keeping them at Are you sure? removes nothing and downloads nothing, and says they were left", bs_writes(bs_o2b, "remove").length === 0 && bs_files2b.length === 0 && /left as they are/.test(capText(bs_w2b)));
   check("and the formats here are untouched", !!bs_w2.eval("editor.model.formats.find((f) => f.id === 'f2')") && rowsOf(bs_w2).length >= 1);
 
   // closing the question keeps them
@@ -4856,7 +4877,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-04k"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-04l"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
