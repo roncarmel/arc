@@ -380,6 +380,7 @@ function initMotion() {
   fadeWithHidden($("kofiPanel"), "panel");
   fadeWithHidden($("themeList"), "menu");
   fadeWithHidden($("premiumWhyText"), "menu");
+  fadeWithHidden($("recipeWhatText"), "menu");
   // every <details> section unfolds (not the ones the menu's popup holds open, whose summary is hidden)
   document.addEventListener("click", (event) => {
     const summary = event.target.closest && event.target.closest("summary");

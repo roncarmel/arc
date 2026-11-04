@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-03x";
+const APP_VERSION = "2026-11-03y";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -166,6 +166,21 @@ function showPage() {
 function showPremiumWhy(open) {
   $("premiumWhyText").hidden = !open;
   $("premiumWhy").setAttribute("aria-expanded", String(open));
+}
+
+// "recipe" in the welcome page's intro opens a note under the word, moved left if needed so it stays inside the paragraph.
+function showRecipeWhat(open) {
+  const note = $("recipeWhatText"), word = $("recipeWhat");
+  note.hidden = !open;
+  word.setAttribute("aria-expanded", String(open));
+  if (open) placeRecipeWhat();
+}
+function placeRecipeWhat() {
+  const note = $("recipeWhatText"), word = $("recipeWhat"), para = word.closest("p");
+  if (note.hidden || !para) return;
+  const box = para.getBoundingClientRect(), at = word.getBoundingClientRect();
+  note.style.top = Math.round(at.bottom - box.top + 6) + "px";
+  note.style.left = Math.round(Math.max(0, Math.min(at.left - box.left, box.width - note.offsetWidth))) + "px";
 }
 
 // ---------------------------------------------------------------- the connecting screen
@@ -3302,7 +3317,10 @@ async function main() {
   on("startSetup", "click", () => goToSetup(false));
   on("premiumWhy", "click", (event) => { event.stopPropagation(); showPremiumWhy($("premiumWhyText").hidden); });
   document.addEventListener("click", (event) => { if (!$("premiumWhyText").hidden && !$("premiumWhyText").contains(event.target)) showPremiumWhy(false); });
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape") showPremiumWhy(false); });
+  on("recipeWhat", "click", (event) => { event.stopPropagation(); showRecipeWhat($("recipeWhatText").hidden); });
+  document.addEventListener("click", (event) => { if (!$("recipeWhatText").hidden && !$("recipeWhatText").contains(event.target)) showRecipeWhat(false); });
+  window.addEventListener("resize", placeRecipeWhat);
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape") { showPremiumWhy(false); showRecipeWhat(false); } });
   on("setupBack", "click", setupBack);
   window.addEventListener("popstate", pageHistoryMoved);
   on("infoClose", "click", () => closeInfo());
