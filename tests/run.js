@@ -1037,7 +1037,7 @@ print(json.dumps(out))
 
   // ---------------- More options: gray body text, with headings, buttons, links and widgets standing out
   var moCss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("the More options box is gray by default", /#moreOptions \{ color: var\(--muted\); \}/.test(moCss));
+  check("the More options box is gray by default", /#moreOptions(, [#\w-]+)* \{ color: var\(--muted\); \}/.test(moCss));
   check("its headings stay in the normal text color, and its title stays pink", /footer\.debug h3 \{[^}]*color: var\(--fg\)/.test(moCss) && /details\.card > summary \{[^}]*color: var\(--accent\)/.test(moCss));
   check("its inputs, dropdowns and confirmation questions keep the normal text color, and the report details are gray like the rest", /#moreOptions input, #moreOptions select \{ color: var\(--fg\); \}/.test(moCss) && /#moreOptions #removeConfirmBox, #moreOptions #clearConfirm \{ color: var\(--fg\); \}/.test(moCss) && /#moreOptions pre\.report-preview \{ color: var\(--muted\); \}/.test(moCss) && !/#moreOptions pre, /.test(moCss));
   var moreBox = fresh.document.getElementById("moreOptions");
