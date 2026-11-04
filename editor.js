@@ -1461,8 +1461,8 @@ function refreshPlayTip() {
   if (tip) { if (tip.hidden) revealSmoothly(tip, true); return; }
   const made = feEl("div", { class: "fe-playtip", id: "fePlayTip", hidden: true },
     feEl("div", { class: "fe-playtip-card" },
-      feEl("p", { class: "fe-playtip-title", text: "That\u2019s your first segment. Now play!" }),
-      feEl("p", { class: "muted", text: "Change its length with \u2212 and +, add more segments, or set the silence between them. Nothing breaks. When it feels right, build your playlists below." })),
+      feEl("p", { class: "fe-playtip-title", text: "You got this, go play!" }),
+      feEl("p", { class: "muted", text: `Add more segments to this recipe and explore more of the options available to you here. When you\u2019re ready, ${actWord(false)} the Build playlists button below.` })),
     feEl("button", { type: "button", class: "fe-playtip-close", id: "fePlayTipClose", "aria-label": "Close tip", onClick: markPlayTipDone }, feIcon("close")));
   slot.appendChild(made);
   revealSmoothly(made, true);
