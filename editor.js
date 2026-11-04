@@ -48,6 +48,7 @@ const FE_ICONS = {
   lock: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
   flag: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>',
   chat: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/></svg>',
+  help: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01"/></svg>',
   info: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
   key: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/></svg>',
   check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
@@ -721,6 +722,9 @@ function renderAppMenu() {
     ...spotifyItems,
     ...(backupBlock ? [feEl("div", { class: "fe-rule" }), backupBlock] : []),
     ...(spotifyItems.length || backupBlock ? [feEl("div", { class: "fe-rule" })] : []),
+    // A guide for facilitators, with a line under its name that says what it is (the whole row opens it)
+    feEl("button", { type: "button", class: "fe-item fe-gditem", id: "feGuide", role: "menuitem", onClick: choose(() => openGuide()) }, feIcon("help"),
+      feEl("span", { class: "fe-gditem-text" }, feEl("span", { text: "A guide for facilitators" }), feEl("span", { class: "fe-gditem-note", text: "The thinking behind this app and how to use it well" }))),
     infoItem("feMoreOptions", "moreOptions", "sliders", "More options"),
     // the form says all there is to say about itself, so the item opens it straight away, in a new tab, with nothing attached
     typeof FEEDBACK_FORM_URL !== "undefined" && FEEDBACK_FORM_URL ? feEl("a", { class: "fe-item", id: "feFeedback", role: "menuitem", href: FEEDBACK_FORM_URL, target: "_blank", rel: "noopener noreferrer", onClick: () => setTimeout(() => { editor.appMenu = false; renderAppMenu(); }, 0) }, feIcon("chat"), "Feedback and questions") : null,
@@ -1085,6 +1089,7 @@ function renderHead(rebuild) {
           onShorter: () => { const lower = GAP_STEPS.filter((s) => s < f.gap); f.gap = lower.length ? lower[lower.length - 1] : 0; afterGapChange(); },
           onLonger: () => { const higher = GAP_STEPS.filter((s) => s > f.gap); f.gap = higher.length ? higher[0] : GAP_STEPS[GAP_STEPS.length - 1]; afterGapChange(); },
         })),
+      feEl("button", { type: "button", class: "fe-silencehelp", id: "feSilenceHelp", "aria-label": "Why silence between segments?", title: "Why silence between segments?", onClick: () => openGuide("gdSilence") }, feIcon("help")),
       feEl("button", { type: "button", class: "fe-iconbtn", id: "feDuplicate", "aria-label": "Duplicate recipe", title: "Duplicate recipe", onClick: askDuplicateFormat }, feIcon("copy")),
       feEl("button", { type: "button", class: "fe-iconbtn fe-danger", id: "feDelete", "aria-label": "Delete recipe", title: "Delete recipe", onClick: askDeleteFormat }, feIcon("trash"))));
     renderClash();
@@ -1419,7 +1424,10 @@ function firstSegmentTip(f) {
     feEl("span", { class: "fe-firsttip-arrow", id: "feFirstTipArrow", "aria-hidden": "true" }),
     feEl("div", { class: "fe-firsttip-card" },
       feEl("p", { class: "fe-firsttip-title", text: "Choose a playlist for the first segment of this recipe." }),
-      feEl("p", { class: "muted", text: `Songs will be picked at random from that playlist to fill this segment\u2019s ${Math.round(item.minutes * 10) / 10} min.` })));
+      feEl("p", { class: "muted", text: `Songs will be picked at random from that playlist to fill this segment\u2019s ${Math.round(item.minutes * 10) / 10} min.` }),
+      // in Ron's own voice on purpose (decided by Ron, 2026-11-04); the link opens the guide at Playlists to start from
+      feEl("p", { class: "muted fe-firsttip-more" }, "This app works best with long playlists, each one a mood or a stage of the ceremony. If your music isn\u2019t organized that way, you\u2019re welcome to use some of the playlists I, Ron, the developer of this app, made. ",
+        feEl("button", { type: "button", class: "linklike", id: "feFirstTipGuide", text: "Show me how to do that", onClick: () => openGuide("gdStart") }))));
 }
 
 // The tip's arrow bounces off the bottom of the playlist button above it, under its middle.

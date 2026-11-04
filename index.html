@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-04b">
-<script src="theme.js?v=2026-11-04b"></script>
+<meta name="app-version" content="2026-11-04c">
+<script src="theme.js?v=2026-11-04c"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -277,6 +277,12 @@
   #formatEditor .fe-poplabel { padding: 6px 10px 0; font-size: 0.76rem; font-weight: 600; color: var(--muted); }
   #formatEditor .fe-rule { height: 1px; background: var(--line); margin: 2px 6px; }
   #formatEditor .fe-item { text-decoration: none; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 12px; border: none; border-radius: 12px; background: transparent; color: var(--fg); text-align: left; box-sizing: border-box; }
+  #formatEditor .fe-gditem { align-items: flex-start; padding-top: 10px; padding-bottom: 10px; }
+  #formatEditor .fe-gditem > .fe-icon { margin-top: 1px; }
+  #formatEditor .fe-gditem-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  #formatEditor .fe-gditem-note { font-weight: 400; font-size: 0.85rem; line-height: 1.35; color: var(--muted); }
+  /* the ? beside the silence stepper, which opens the guide at Silence between segments */
+  #formatEditor .fe-silencehelp { flex: none; width: 40px; min-width: 40px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; background: none; box-shadow: none; color: var(--muted); border-radius: 50%; cursor: pointer; }
   #formatEditor a.fe-item { font-weight: 600; }   /* a link row (Feedback and questions) weighs the same as the button rows */
   #formatEditor .fe-danger { color: var(--danger); }
   #formatEditor .fe-mixpanel { padding: 6px; }
@@ -455,6 +461,8 @@
   #formatEditor .fe-firsttip-card { background: var(--card); border: 1.5px solid var(--accent); box-shadow: 0 0 0 4px var(--accent-tint), 0 6px 24px -8px var(--accent); border-radius: 18px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
   #formatEditor .fe-firsttip-card p { margin: 0; line-height: 1.45; text-wrap: pretty; }
   #formatEditor .fe-firsttip-title { font-weight: 600; }
+  #formatEditor .fe-firsttip-more { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 6px; }
+  #formatEditor .fe-firsttip-more .linklike { font: inherit; min-height: 0; }
   /* the second tip, at the bottom of the card, closed with its x */
   #formatEditor .fe-playtip { position: relative; margin-top: 16px; }
   #formatEditor .fe-playtip-card { background: var(--card); border: 1.5px solid var(--accent); box-shadow: 0 0 0 4px var(--accent-tint), 0 6px 24px -8px var(--accent); border-radius: 18px; padding: 16px 48px 16px 18px; display: flex; flex-direction: column; gap: 6px; }
@@ -551,6 +559,18 @@
   #infoSlot > #privacySection { margin-top: -22px; }
   #privacySection > :not(summary):not(h3):not(#privacyFeedback), #privacyFeedback > p { margin-left: 16px; }
   #privacySection p { margin-top: 0; margin-bottom: 10px; }
+  /* A guide for facilitators: one row per topic, each opening in place */
+  #guideSection details.gd-topic { border-top: 1px solid var(--line); }
+  #guideSection details.gd-topic:last-child { border-bottom: 1px solid var(--line); }
+  #infoDialog #guideSection details.gd-topic > summary { display: flex; pointer-events: auto; font-size: inherit; margin: 0; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; font-weight: 600; cursor: pointer; list-style: none; }
+  #guideSection details.gd-topic > summary::-webkit-details-marker { display: none; }
+  #guideSection details.gd-topic > summary::after { content: ""; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: translateY(-3px) rotate(45deg); margin-right: 6px; transition: transform 0.2s var(--ease-out); }
+  #guideSection details.gd-topic[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
+  @media (prefers-reduced-motion: reduce) { #guideSection details.gd-topic > summary::after { transition: none; } }
+  #guideSection details.gd-topic > :not(summary) { margin: 0 0 12px; line-height: 1.5; }
+  #guideSection details.gd-topic > :last-child { margin-bottom: 18px; }
+  #guideSection details.gd-topic ul, #guideSection details.gd-topic ol { padding-left: 1.3em; }
+  #guideSection details.gd-topic li { margin-bottom: 6px; }
   #moreOptions p, #moreOptions .row, #moreOptions select, #moreOptions pre.report-preview, #moreOptions .choice-row, #moreOptions .button-link, #reportBlock p, #reportBlock pre.report-preview, #reportBlock .button-link { margin-top: 0; margin-bottom: 10px; }
   #moreOptions .row select, #moreOptions .row .button-link { margin-bottom: 0; }   /* inside a row, the row supplies the space below, so the items centre on each other */
   body.minimal #feAppMenuButton { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
@@ -677,22 +697,22 @@
   #createDialog .bd-cardlink .linklike { text-align: left; }
   #createDialog .bd-note { font-size: 0.85rem; color: var(--muted); margin: 10px 0 0; white-space: pre-line; }
   #createDialog .bd-note .linklike { font-size: inherit; }
-  #createDialog #planText table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 6px 0 4px; color: var(--fg); }
-  #createDialog #planText th { text-align: left; font-weight: 600; color: var(--muted); font-size: 0.78rem; padding: 4px 6px 6px 0; border-bottom: 1px solid var(--line); }
-  #createDialog #planText td { padding: 6px 6px 6px 0; border-bottom: 1px solid var(--line); }
-  #createDialog #planText td:first-child { max-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #createDialog #planText th:not(:first-child), #createDialog #planText td:not(:first-child) { text-align: right; white-space: nowrap; }
-  #createDialog #planText th:nth-child(2), #createDialog #planText td:nth-child(2) { text-align: left; padding-left: 12px; }
-  #createDialog #planText tbody tr:nth-child(odd) td { background: var(--card); }
-  #createDialog #planText td:first-child, #createDialog #planText th:first-child { padding-left: 6px; }
-  #createDialog #planText tr.bd-limit td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
-  #createDialog #planText tr.bd-limit td:last-child { color: var(--accent); font-weight: 600; }
-  #createDialog #planText .bd-unit { color: var(--muted); font-size: 0.85em; }
-  #createDialog #planText .bd-narrow { display: none; }
-  @media (max-width: 759px) { #createDialog #planText .bd-wide { display: none; } #createDialog #planText .bd-narrow { display: inline; } }
+  #createDialog #planText table, #guideSection .gd-why table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 6px 0 4px; color: var(--fg); }
+  #createDialog #planText th, #guideSection .gd-why th { text-align: left; font-weight: 600; color: var(--muted); font-size: 0.78rem; padding: 4px 6px 6px 0; border-bottom: 1px solid var(--line); }
+  #createDialog #planText td, #guideSection .gd-why td { padding: 6px 6px 6px 0; border-bottom: 1px solid var(--line); }
+  #createDialog #planText td:first-child, #guideSection .gd-why td:first-child { max-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #createDialog #planText th:not(:first-child), #createDialog #planText td:not(:first-child), #guideSection .gd-why th:not(:first-child), #guideSection .gd-why td:not(:first-child) { text-align: right; white-space: nowrap; }
+  #createDialog #planText th:nth-child(2), #createDialog #planText td:nth-child(2), #guideSection .gd-why th:nth-child(2), #guideSection .gd-why td:nth-child(2) { text-align: left; padding-left: 12px; }
+  #createDialog #planText tbody tr:nth-child(odd) td, #guideSection .gd-why tbody tr:nth-child(odd) td { background: var(--card); }
+  #createDialog #planText td:first-child, #createDialog #planText th:first-child, #guideSection .gd-why td:first-child, #guideSection .gd-why th:first-child { padding-left: 6px; }
+  #createDialog #planText tr.bd-limit td, #guideSection .gd-why tr.bd-limit td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  #createDialog #planText tr.bd-limit td:last-child, #guideSection .gd-why tr.bd-limit td:last-child { color: var(--accent); font-weight: 600; }
+  #createDialog #planText .bd-unit, #guideSection .gd-why .bd-unit { color: var(--muted); font-size: 0.85em; }
+  #createDialog #planText .bd-narrow, #guideSection .gd-why .bd-narrow { display: none; }
+  @media (max-width: 759px) { #createDialog #planText .bd-wide, #guideSection .gd-why .bd-wide { display: none; } #createDialog #planText .bd-narrow, #guideSection .gd-why .bd-narrow { display: inline; } }
   @media (min-width: 760px) {   /* wide: the name gets half, the other two a quarter each, so the gaps between columns are even */
-    #createDialog #planText td:first-child, #createDialog #planText th:first-child { width: 50%; }
-    #createDialog #planText th:not(:first-child), #createDialog #planText td:not(:first-child) { width: 25%; }
+    #createDialog #planText td:first-child, #createDialog #planText th:first-child, #guideSection .gd-why td:first-child, #guideSection .gd-why th:first-child { width: 50%; }
+    #createDialog #planText th:not(:first-child), #createDialog #planText td:not(:first-child), #guideSection .gd-why th:not(:first-child), #guideSection .gd-why td:not(:first-child) { width: 25%; }
   }
   #createDialog #planText .bd-capnote { margin: 8px 0 0; }
   #createDialog #planText .bd-tablehead { font-weight: 700; margin: 12px 0 0; color: var(--fg); font-size: 0.9rem; }
@@ -1177,7 +1197,7 @@
         <div id="confirmBox" hidden>
           <p id="confirmText" class="bd-summary"></p>
           <div id="planText" hidden></div>
-          <p id="bdPickWhy" class="bd-summary bd-pick-why" hidden>Build one, or build several from the same recipe with no song repeated across them. Several helps with long term clients: each session gets its own playlist, so they never hear the same song twice.</p>
+          <p id="bdPickWhy" class="bd-summary bd-pick-why" hidden>Build one, or several from the same recipe with no song repeated across them. With <span id="bdPickWhyN">3 playlists</span>, a client can come to <span id="bdPickWhyC">3 ceremonies</span> and never hear the same song twice. <button type="button" class="linklike" id="bdPickGuide">More in <i>A guide for facilitators</i></button></p>
           <p id="bdPickHead" class="bd-pick-head" hidden>Choose how many playlists you’d like to build from this recipe.</p>
           <div id="bdPick" class="bd-pick" hidden>
             <div id="bdPickTiles" class="bd-pick-tiles" role="radiogroup" aria-labelledby="bdPickHead"></div>
@@ -1223,6 +1243,49 @@
   </div>
 
   <footer class="debug">
+    <!-- A guide for facilitators: opened from the app menu, the ? by the silence stepper, the first-segment tip and the build popup (openGuide in app.js, which opens one topic) -->
+    <details id="guideSection" class="card" hidden>
+      <summary>A guide for facilitators</summary>
+      <details class="gd-topic" id="gdLong"><summary>Designed for long playlists</summary>
+        <p>This app draws songs from playlists you already have. It works best with long playlists, each one a mood or a stage of the ceremony: settling, rising, the peak, landing, rest. A recipe puts them in order and says how long each part lasts. With shorter playlists it might be hard to fill a longer segment of a recipe, and the app won’t be able to build as many playlists out of it. If you don’t organize your music this way and would like a jump start, you’re welcome to <button type="button" class="linklike" data-guide="gdStart">use my public playlists</button>.</p>
+      </details>
+      <details class="gd-topic" id="gdNot"><summary>What it doesn’t do</summary>
+        <p>It doesn’t find new music or sort your library. It only picks from the playlists you have already created, so what plays is always your choice.</p>
+      </details>
+      <details class="gd-topic" id="gdSilence"><summary>Silence between segments</summary>
+        <p>A short silence between segments can do two things:</p>
+        <ul>
+          <li><b>Give space.</b> One part settles before the next begins.</li>
+          <li><b>Help you track time.</b> A short silence can signal to you, the facilitator, that the ceremony is moving into its next segment.</li>
+        </ul>
+        <p>You can use the same length of silence between all segments and you can edit each silence to have a different duration.</p>
+      </details>
+      <details class="gd-topic" id="gdSeveral"><summary>Several playlists from one recipe</summary>
+        <p>One recipe can build more than one playlist if desired, each with its own unique songs. With 3 playlists, a client can come to 3 ceremonies and never hear the same song twice. Play them in order, one per ceremony.</p>
+        <p>How many you can build depends on how long your playlists are. Because the app doesn’t repeat songs across playlists, with each new playlist it builds it is left with fewer songs to draw from for the next playlist it builds. Eventually, it won’t have enough songs to fill a segment. The playlist that runs out of options first determines the maximum number of playlists the app can build for a recipe. For example, in the table below, the recipe can build a maximum of 4 playlists from the given recipe.</p>
+        <div class="gd-why"><table>
+          <thead><tr><th>Each playlist uses</th><th>Available</th><th>Enough for</th></tr></thead>
+          <tbody>
+            <tr><td>30<span class="bd-unit"> <span class="bd-wide">min</span><span class="bd-narrow">m</span></span> of Settling</td><td>3<span class="bd-unit"> <span class="bd-wide">hr</span><span class="bd-narrow">h</span></span> 10<span class="bd-unit"> <span class="bd-wide">min</span><span class="bd-narrow">m</span></span></td><td>6 playlists</td></tr>
+            <tr class="bd-limit"><td>2<span class="bd-unit"> <span class="bd-wide">hr</span><span class="bd-narrow">h</span></span> of Journey</td><td>8<span class="bd-unit"> <span class="bd-wide">hr</span><span class="bd-narrow">h</span></span> 30<span class="bd-unit"> <span class="bd-wide">min</span><span class="bd-narrow">m</span></span></td><td>4 playlists</td></tr>
+            <tr><td>40<span class="bd-unit"> <span class="bd-wide">min</span><span class="bd-narrow">m</span></span> of Landing</td><td>3<span class="bd-unit"> <span class="bd-wide">hr</span><span class="bd-narrow">h</span></span> 50<span class="bd-unit"> <span class="bd-wide">min</span><span class="bd-narrow">m</span></span></td><td>5 playlists</td></tr>
+          </tbody>
+        </table></div>
+      </details>
+      <details class="gd-topic" id="gdNew"><summary>Adding new music</summary>
+        <p>If, like me, you add new music to your collection over time, I have good news for you: the app can re-build all the playlists it previously built and integrate all your new music into them. If you’ve added enough new music to your collection, it might even be able to build more playlists from a given recipe than it was able to before. This will replace the ones built before with the new music mixed in. A new build starts fresh, so songs from earlier playlists can come back. If a client is partway through a series, finish it before building again. The app gives you an option to keep the previously built playlists when you build new ones.</p>
+      </details>
+      <details class="gd-topic" id="gdStart"><summary>Playlists to start from</summary>
+        <p>If your music isn’t organized into long playlists yet, you’re welcome to use some of mine.</p>
+        <ol>
+          <li>Open <a href="https://open.spotify.com/user/1242285637/playlists" target="_blank" rel="noopener noreferrer">my public playlists</a> in Spotify.</li>
+          <li>Open one, then ⋯ › Add to other playlist › New playlist. This makes your own copy.</li>
+          <li>Choose your copy in a recipe.</li>
+        </ol>
+        <p>Copying matters: this app can only see playlists that you own, so following mine isn’t enough. Your copy is independent from mine, feel free to edit it.</p>
+      </details>
+    </details>
+
     <details id="moreOptions" class="card">
       <summary>More options</summary>
 
@@ -1349,8 +1412,8 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-04b"></script>
-<script src="editor.js?v=2026-11-04b"></script>
-<script src="app.js?v=2026-11-04b"></script>
+<script src="formats.js?v=2026-11-04c"></script>
+<script src="editor.js?v=2026-11-04c"></script>
+<script src="app.js?v=2026-11-04c"></script>
 </body>
 </html>

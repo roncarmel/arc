@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-04b";
+const APP_VERSION = "2026-11-04c";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -292,6 +292,28 @@ function openInfo(id) {
   $("infoDialog").focus({ preventScroll: true });
 }
 
+// A guide for facilitators, opened at one topic (or with every topic closed), that topic scrolled to just under the header
+// From inside the guide (a link with data-guide), that topic opens too and the guide glides to it; what was open stays open.
+function openGuide(topicId) {
+  const topic = topicId && $(topicId), slot = $("infoSlot");
+  if (info.node && info.node.id === "guideSection") {
+    if (!topic) return;
+    topic.open = true;
+    const top = Math.max(0, topic.offsetTop - slot.offsetTop);
+    if (slot.scrollTo) slot.scrollTo({ top, behavior: motionOk() ? "smooth" : "auto" }); else slot.scrollTop = top;
+    return;
+  }
+  for (const d of document.querySelectorAll("#guideSection details.gd-topic")) d.open = d.id === topicId;
+  openInfo("guideSection");
+  if (topic) slot.scrollTop = Math.max(0, topic.offsetTop - slot.offsetTop);
+}
+function motionOk() {
+  return !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+}
+document.addEventListener("click", (event) => {
+  const link = event.target.closest && event.target.closest("[data-guide]");
+  if (link) openGuide(link.dataset.guide);
+});
 function closeInfo(quiet = false) {
   if (!info.node) return;
   if (info.node.tagName === "DETAILS") info.node.open = info.wasOpen;
@@ -2774,7 +2796,12 @@ function askToCreate(plan) {
       const tiles = $("bdPickTiles");
       tiles.textContent = "";
       tiles.style.setProperty("--cols", String(Math.min(plan.total, 8)));
+      $("bdPickGuide").onclick = () => openGuide("gdSeveral");
       const show = () => {
+        // the line on what several means follows the choice (the most possible while none is chosen; 2 when only 1 is)
+        const many = chosen > 1 ? chosen : plan.total;
+        $("bdPickWhyN").textContent = plural(many, "playlist");
+        $("bdPickWhyC").textContent = `${many} ceremonies`;
         Array.from(tiles.children).forEach((t, i) => {
           t.classList.toggle("bd-on", i < chosen);
           t.setAttribute("aria-checked", String(i + 1 === chosen));
