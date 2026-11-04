@@ -730,9 +730,9 @@ print(json.dumps(out))
   check("an About this app section tells what it does, what it is good for, how it works, what is needed, and the privacy details", /^About this app$/.test(aboutFresh.querySelector("summary").textContent) && ["What it does", "What it's good for", "How it works", "What you need", "Privacy"].every((t) => aboutText.includes(t)) && aboutFresh.querySelectorAll("ol li").length === 3 && /Premium/.test(aboutText) && /never changed/.test(aboutText) && /Privacy/.test(aboutText));
   check("the More about this app section always starts closed, for first-time and returning visitors alike", aboutFresh.open === false && !/<details id="about"[^>]*\bopen\b/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && !/\$\("about"\)\.open/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
   check("it starts closed once a Client ID is saved, and once connected", returning.document.getElementById("about").open === false && t0.document.getElementById("about").open === false);
-  var staticText = pageHtml.replace("Yes, I have", "").replace("I have done this before", "").replace("No, this is my first time", "").replace('"I have supported you!"', "").replace(/<style>[\s\S]*?<\/style>/, "").replace(/<label class="choice-row"><input type="checkbox" id="donateHideBox">[\s\S]*?<\/label>/, "").replace(/<id="supportButton"[\s\S]*?<\/a>/, "").replace(/<a id="supportButton"[\s\S]*?<\/a>/, "").replace(/<p id="supportCaption">[\s\S]*?<\/p>/, "").replace(/<div id="createSupport"[\s\S]*?<\/p>/, "").replace(/<button id="createDonate"[\s\S]*?<\/button>/, "").replace(/<[^>]+>/g, " ");
+  var staticText = pageHtml.replace("Yes, I have", "").replace("I have done this before", "").replace("No, this is my first time", "").replace('"I have supported you!"', "").replace(/<style>[\s\S]*?<\/style>/, "").replace(/<details id="guideSection"[\s\S]*?<details id="moreOptions"/, "").replace(/<label class="choice-row"><input type="checkbox" id="donateHideBox">[\s\S]*?<\/label>/, "").replace(/<id="supportButton"[\s\S]*?<\/a>/, "").replace(/<a id="supportButton"[\s\S]*?<\/a>/, "").replace(/<p id="supportCaption">[\s\S]*?<\/p>/, "").replace(/<div id="createSupport"[\s\S]*?<\/p>/, "").replace(/<button id="createDonate"[\s\S]*?<\/button>/, "").replace(/<[^>]+>/g, " ");
   var firstPerson = staticText.match(/\b(my|mine|myself|I|I'm|I've|I'll)\b/gi) || [];
-  check("no first-person wording anywhere in the page text, apart from the setup choice you worded yourself and the checkbox for people who have donated (and Privacy quoting it), which is in the person's own voice", firstPerson.length === 0, JSON.stringify(firstPerson));
+  check("no first-person wording anywhere in the page text, apart from the setup choice you worded yourself, the checkbox for people who have donated (and Privacy quoting it), which is in the person's own voice, and the guide for facilitators, which is in Ron's", firstPerson.length === 0, JSON.stringify(firstPerson));
   check("the two setup answers are plain labels", /Yes, I have/.test(fresh.document.getElementById("loginSection").textContent) && /No, this is my first time/.test(fresh.document.getElementById("loginSection").textContent));
   var tpl = t0.document.getElementById("formats").value;
   check("the editor starts with one format called Generated playlist, with one segment waiting for a playlist", t0.document.querySelectorAll("#feTabs .fe-tab").length === 1 && t0.document.querySelector("#feTabs .fe-tab").textContent === "Generated playlist" && t0.document.querySelectorAll("#feRows .fe-row").length === 1 && t0.document.querySelector("#feRows .fe-row .fe-title").textContent === "Choose a playlist", t0.document.getElementById("formatEditor").textContent);
@@ -1246,7 +1246,7 @@ print(json.dumps(out))
 
   ed1.document.getElementById("feDelete").click();
   var ed_dlg = ed1.document.getElementById("feDeleteDialog");
-  check("Delete asks first, naming the format, its rows, and the backup option", !!ed_dlg && /Delete Warm focus copy\?/.test(ed_dlg.textContent) && ed_dlg.querySelector("h3 i").textContent === "Warm focus copy" && /removes the recipe and its 3 rows/.test(ed_dlg.textContent) && /Playlists already in Spotify are not affected/.test(ed_dlg.textContent) && /restored from a backup if you have one/.test(ed_dlg.textContent) && tabsOf(ed1).length === 3);
+  check("Delete asks first, naming the format, its rows, and its saved copy or the backup file", !!ed_dlg && /Delete Warm focus copy\?/.test(ed_dlg.textContent) && ed_dlg.querySelector("h3 i").textContent === "Warm focus copy" && /removes the recipe and its 3 rows/.test(ed_dlg.textContent) && /Playlists already in Spotify are not affected/.test(ed_dlg.textContent) && /Its saved copy in Spotify is deleted too\.|restored from a backup file if you have one\./.test(ed_dlg.textContent) && tabsOf(ed1).length === 3, ed_dlg && ed_dlg.textContent);
   ed1.document.getElementById("feDeleteCancel").click();
   check("Cancel keeps the format", !ed1.document.getElementById("feDeleteDialog") && tabsOf(ed1).length === 3);
 
@@ -1412,8 +1412,8 @@ print(json.dumps(out))
   check("headings, the two setup choices, code, results and confirmation boxes are white", /h2, h3, label\.choice, code, #confirmBox, #removeConfirmBox, #clearConfirm \{ color: var\(--fg\); \}/.test(gCss));
   var gh = fs.readFileSync(ROOT + "index.html", "utf8");
   var aboutRange = gh.slice(gh.indexOf('<details id="about"'), gh.indexOf("</details>", gh.indexOf('<details id="about"')));
-  var outside = gh.replace(aboutRange, "").slice(gh.indexOf("<body"));
-  check("bold is kept for the six headings in About this app, and nowhere else", (aboutRange.match(/<strong>/g) || []).length === 6 && (outside.match(/<strong[ >]/g) || []).length === 0 && !/<b>/.test(outside));
+  var outside = gh.replace(aboutRange, "").replace(/<details id="guideSection"[\s\S]*?<details id="moreOptions"/, "").slice(gh.indexOf("<body"));
+  check("bold is kept for the six headings in About this app (and the guide for facilitators), and nowhere else", (aboutRange.match(/<strong>/g) || []).length === 6 && (outside.match(/<strong[ >]/g) || []).length === 0 && !/<b>/.test(outside));
   var setupText = fresh.document.getElementById("spSteps");
   check("the setup steps' field names and buttons are highlighted in white, and nothing there is bold", setupText.querySelectorAll("strong, b").length === 0 && Array.from(setupText.querySelectorAll("span.ui")).map((x) => x.textContent).some((t) => /^Create app$/.test(t)) && Array.from(setupText.querySelectorAll("span.ui")).some((x) => /App name/.test(x.textContent)));
   check("the connected message and Step 4's text are plain gray text, not wrapped in any highlight", !fresh.document.getElementById("connectedMessage").querySelector(".ui") && !t0.document.getElementById("backupSection").nextElementSibling.querySelector(".ui") && t0.document.getElementById("backupSection").nextElementSibling.tagName === "P" && !t0.document.getElementById("backupSection").nextElementSibling.classList.contains("ui"));
@@ -3563,7 +3563,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("a silence at zero has no look of its own: the hollow dark style is gone from the page and from the code", !/fe-tag-zero/.test(sc_css) && !/fe-tag-zero|"zero"/.test(sc_src.replace(/\.zero|info\.zero|zero:/g, "")));
   var sc_w = await boot({ url: EDURL, session: signedIn(), local: { formats: 'FORMATS = {"a": {"name": "A {n}", "title": "T", "silence between segments": "1 min", "segments": [("x", 10), ("silence", "none"), ("y", 10), ("z", 10)]}}' }, fetchOptions: {} });
   var sc_tag = () => rowsOf(sc_w)[0].querySelector(".fe-tag"), sc_tag2 = () => rowsOf(sc_w)[1].querySelector(".fe-tag");
-  check("the default is a deep pink and anything changed is the buttons' bright pink, zero included", sc_tag().classList.contains("fe-tag-custom") && sc_tag2().classList.contains("fe-tag-default") && sc_tag().textContent === "0s" && /0 sec\. Tap to change\./.test(sc_tag().getAttribute("aria-label")));
+  check("the default is a deep pink and anything changed is the buttons' bright pink, zero included", sc_tag().classList.contains("fe-tag-custom") && sc_tag2().classList.contains("fe-tag-default") && sc_tag().textContent === "0s" && /0 sec\. (Tap|Click) to change\./.test(sc_tag().getAttribute("aria-label")));
   sc_tag().click();
   check("the card's length reads 0 sec, as the marker does, and there is a pink Reset to default link below it", sc_w.document.getElementById("feTagDuration").textContent === "0 sec" && sc_w.document.getElementById("feTagReset").textContent === "Reset to default");
   sc_w.document.getElementById("feTagReset").click();
@@ -4772,10 +4772,10 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("spotify last")) { try {
   // ================================================================ the Spotify item is always first in the menu, under the app's name; then the rest in a fixed order, and the version
   var sl_ids = (w) => { w.document.getElementById("feAppMenuButton").click(); const ids = Array.from(w.document.querySelectorAll("#feAppMenuPanel > *")).map((k) => k.id || k.className); w.document.body.click(); return ids; };
-  var sl_rest = ["fe-rule", "feMoreOptions", "feFeedback", "feReport", "fePrivacy", "fe-rule", "feVersion"];
+  var sl_rest = ["fe-rule", "feGuide", "feMoreOptions", "feFeedback", "feReport", "fePrivacy", "fe-rule", "feVersion"];
   var sl_ready = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: {}, feedbackUrl: "https://tally.so/r/X" });
   var sl_r = sl_ids(sl_ready);
-  check("connected: the app's name, the Spotify row, then More options, Feedback and questions, Report a problem, Privacy, and the version", JSON.stringify(sl_r) === JSON.stringify(["feMenuHead", "fe-sp-block"].concat(sl_rest)), JSON.stringify(sl_r));
+  check("connected: the app's name, the Spotify row, then A guide for facilitators, More options, Feedback and questions, Report a problem, Privacy, and the version", JSON.stringify(sl_r) === JSON.stringify(["feMenuHead", "fe-sp-block"].concat(sl_rest)), JSON.stringify(sl_r));
   var sl_slow = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: { listDelayMs: 4000 }, feedbackUrl: "https://tally.so/r/X" });
   var sl_s = sl_ids(sl_slow);
   check("connecting: the Connecting item and its note come first, then the same order", sl_slow.eval("connection") === "connecting" && JSON.stringify(sl_s) === JSON.stringify(["feMenuHead", "feConnect", "feConnectionNote"].concat(sl_rest)), JSON.stringify(sl_s));
