@@ -1088,10 +1088,12 @@ function renderHead(rebuild) {
           shorterLabel: "Shorter silence between segments", longerLabel: "Longer silence between segments",
           onShorter: () => { const lower = GAP_STEPS.filter((s) => s < f.gap); f.gap = lower.length ? lower[lower.length - 1] : 0; afterGapChange(); },
           onLonger: () => { const higher = GAP_STEPS.filter((s) => s > f.gap); f.gap = higher.length ? higher[0] : GAP_STEPS[GAP_STEPS.length - 1]; afterGapChange(); },
-        })),
-      feEl("button", { type: "button", class: "fe-silencehelp", id: "feSilenceHelp", "aria-label": "Why silence between segments?", title: "Why silence between segments?", onClick: () => openGuide("gdSilence") }, feIcon("help")),
-      feEl("button", { type: "button", class: "fe-iconbtn", id: "feDuplicate", "aria-label": "Duplicate recipe", title: "Duplicate recipe", onClick: askDuplicateFormat }, feIcon("copy")),
-      feEl("button", { type: "button", class: "fe-iconbtn fe-danger", id: "feDelete", "aria-label": "Delete recipe", title: "Delete recipe", onClick: askDeleteFormat }, feIcon("trash"))));
+        }),
+        feEl("button", { type: "button", class: "fe-silencehelp", id: "feSilenceHelp", "aria-label": "Why silence between segments?", title: "Why silence between segments?", onClick: () => openGuide("gdSilence") }, feIcon("help"))),
+      // Duplicate and Delete are one block that never breaks, so Delete can never end up alone on the next line
+      feEl("div", { class: "fe-headtools" },
+        feEl("button", { type: "button", class: "fe-iconbtn", id: "feDuplicate", "aria-label": "Duplicate recipe", title: "Duplicate recipe", onClick: askDuplicateFormat }, feIcon("copy")),
+        feEl("button", { type: "button", class: "fe-iconbtn fe-danger", id: "feDelete", "aria-label": "Delete recipe", title: "Delete recipe", onClick: askDeleteFormat }, feIcon("trash")))));
     renderClash();
   }
   $("feGapValue").textContent = f.gap ? describeSeconds(f.gap) : "No";

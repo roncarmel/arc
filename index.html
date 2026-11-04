@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-04h">
-<script src="theme.js?v=2026-11-04h"></script>
+<meta name="app-version" content="2026-11-04j">
+<script src="theme.js?v=2026-11-04j"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -282,7 +282,7 @@
   #formatEditor .fe-gditem-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   #formatEditor .fe-gditem-note { font-weight: 400; font-size: 0.85rem; line-height: 1.35; color: var(--muted); }
   /* the ? beside the silence stepper, which opens the guide at Silence between segments */
-  #formatEditor .fe-silencehelp { flex: none; width: 40px; min-width: 40px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; background: none; box-shadow: none; color: var(--muted); border-radius: 50%; cursor: pointer; }
+  #formatEditor .fe-silencehelp { flex: none; width: 28px; min-width: 28px; margin-left: -6px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; background: none; box-shadow: none; color: var(--muted); border-radius: 50%; cursor: pointer; }
   #formatEditor a.fe-item { font-weight: 600; }   /* a link row (Feedback and questions) weighs the same as the button rows */
   #formatEditor .fe-danger { color: var(--danger); }
   #formatEditor .fe-mixpanel { padding: 6px; }
@@ -764,7 +764,7 @@
   #formatEditor .fe-sizer { visibility: hidden; pointer-events: none; }
   #formatEditor .fe-sizer-label { display: none; }
   #formatEditor .fe-silence-label { display: none; }
-  #formatEditor #feDuplicate { margin-left: auto; }   /* Duplicate and Delete sit together at the right */
+  #formatEditor .fe-headtools { display: flex; flex: none; gap: 6px; margin-left: auto; }   /* Duplicate and Delete sit together at the right, and wrap only together */
   /* the selected tab: a pencil, a notch pointing down at the card, and the name edited in place */
   #formatEditor .fe-toprow { margin-bottom: 0; }
   #formatEditor .fe-tabs { padding-top: 6px; margin-top: -6px; padding-bottom: 14px; margin-bottom: -4px; }   /* room under the tabs for the notch, and around a held tab for its size and shadow, without moving anything */
@@ -1406,8 +1406,8 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-04h"></script>
-<script src="editor.js?v=2026-11-04h"></script>
-<script src="app.js?v=2026-11-04h"></script>
+<script src="formats.js?v=2026-11-04j"></script>
+<script src="editor.js?v=2026-11-04j"></script>
+<script src="app.js?v=2026-11-04j"></script>
 </body>
 </html>
