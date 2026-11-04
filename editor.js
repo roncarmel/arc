@@ -589,7 +589,7 @@ function renderEditor() {
       feEl("div", { class: "fe-welcome-card" },
         feEl("img", { class: "fe-welcome-icon", src: "apple-touch-icon.png", alt: "", width: "56", height: "56" }),   // phones only: wide, the icon is already in the row above
         feEl("h2", { class: "fe-welcome-title", text: "Time to make your first recipe!" }),
-        feEl("p", { class: "fe-welcome-lead", text: "Tap New recipe above to start." }),
+        feEl("p", { class: "fe-welcome-lead", text: `${actWord(true)} New recipe above to start.` }),
         feEl("p", { class: "muted fe-welcome-text", text: "A recipe says which of your playlists to play, in what order, and for how long. The app turns it into as many playlists as your songs allow, with no song used twice." }))));
     placeWelcomeArrow();
     // the line for notices is here too, so a message about what was just done is never left without a place to show
@@ -1433,7 +1433,7 @@ function placeFirstTipArrow() {
 }
 
 // The second tutorial tip: once the only recipe has a playlist, it says what else to try, with no arrows. It stays until the person closes
-// it (x) or starts a build, and never shows to someone whose Spotify already has playlists the app made: both are kept in "playTipDone".
+// it (x) or starts a build, kept in "playTipDone". Playlists the app made earlier do not hide it (decided by Ron, 2026-11-04).
 function playTipDone() {
   try { return localStorage.getItem("playTipDone") === "1"; } catch (err) { return false; }
 }
@@ -1538,7 +1538,7 @@ function tagEl(f, g) {
   const open = editor.gapPanel === g;
   const button = feEl("button", {
     type: "button", class: `fe-tag fe-trigger fe-tag-${kind}` + (g === 0 ? " fe-tag-lead" : ""), "data-id": key, "aria-expanded": String(open),
-    "aria-label": `${where}: ${info.zero ? "0 sec" : describeSeconds(info.sec)}. Tap to change.`,
+    "aria-label": `${where}: ${info.zero ? "0 sec" : describeSeconds(info.sec)}. ${actWord(true)} to change.`,
     onClick: () => { editor.gapPanel = open ? null : g; editor.panel = null; editor.cardMenu = false; editor.appMenu = false; editor.search = ""; renderAppMenu(); renderHead(); renderRows(); },
   }, feIcon("mute"), feEl("span", { class: "fe-tag-text", text: shortSeconds(info.sec) }));
   button.addEventListener("mouseenter", () => { editor.hover = key; applyHighlight(); });

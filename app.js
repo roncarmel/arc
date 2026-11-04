@@ -17,11 +17,21 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-03ze";
+const APP_VERSION = "2026-11-04a";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
 const APP_MARKER = "Made by Ceremony Playlist Builder";                    // change this whenever the page is updated
+// The word for pressing a button: "tap" on a touch screen, "click" with a mouse. Page text in the markup marks it with <span data-act>, filled in at startup.
+function actWord(capital) {
+  let touch = false;
+  try { touch = window.matchMedia("(pointer: coarse)").matches; } catch (err) { /* no media queries: a mouse */ }
+  const word = touch ? "tap" : "click";
+  return capital ? word[0].toUpperCase() + word.slice(1) : word;
+}
+function fillActWords() {
+  for (const el of document.querySelectorAll("[data-act]")) el.textContent = actWord(/^[A-Z]/.test(el.textContent));
+}
 const REPORT_FORM_URL = "https://tally.so/r/VppLZN"; // where problem reports go
 // The feedback and questions form (Tally). It collects only what someone types, so nothing is attached to its address. While this is empty,
 // the section and the matching lines in Privacy stay hidden.
@@ -1453,6 +1463,34 @@ function lengthText(minutes) {
   return h ? `${h} h${m % 60 ? ` ${m % 60} min` : ""}` : `${m} min`;
 }
 
+const DESCRIPTION_LIMIT = 300;   // what Spotify's own app shows (the API accepts 512)
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function builtDescription(p, number, count, when = new Date()) {
+  // The description of a built playlist: the marker the app recognizes its playlists by (it must come first), which one of the set
+  // and when, then the segments with their minutes of music. Segments that do not fit get shorter names, then "and N more".
+  const date = `${when.getDate()} ${MONTHS[when.getMonth()]} ${when.getFullYear()}`;
+  const head = `${APP_MARKER}. Please do not edit this description. The app uses it to recognize the playlists it made. `
+    + (count > 1 ? `Playlist ${number} of ${count}, built ${date}.` : `Built ${date}.`);
+  const segs = (p.segments || []).map(([name, minutes]) => ({ name: String(name), length: lengthText(minutes) }));
+  if (!segs.length) return head;
+  const text = (list, more) => `${head} ${list.map((s) => `${s.name} ${s.length}`).join(" · ")}${more ? ` · and ${more} more` : ""}.`;
+  for (let shown = segs.length; shown > 0; shown--) {
+    const more = segs.length - shown;
+    let list = segs.slice(0, shown);
+    if (text(list, more).length <= DESCRIPTION_LIMIT) return text(list, more);
+    // cut the longest names one character at a time, down to 12, until it fits
+    list = list.map((s) => ({ ...s }));
+    while (text(list, more).length > DESCRIPTION_LIMIT) {
+      const longest = list.reduce((a, b) => (b.name.length > a.name.length ? b : a));
+      if (longest.name.replace(/…$/, "").length <= 12) break;
+      longest.name = longest.name.replace(/…$/, "").slice(0, -1).trimEnd() + "…";
+    }
+    if (text(list, more).length <= DESCRIPTION_LIMIT) return text(list, more);
+  }
+  return head;
+}
+
 function playlistRow(p, icon) {
   // One playlist in the popup's list: an icon for where it stands, its name, and its songs and length (or what is under way).
   const li = document.createElement("li");
@@ -2190,7 +2228,7 @@ async function spotifyRequest(method, path, { params, json, body, contentType, n
         const renewed = await renewSignIn();
         if (renewed) { token = renewed; attempt -= 1; continue; }
       }
-      const message = "Your Spotify sign-in expired. Click Connect again.";
+      const message = `Your Spotify sign-in expired. ${actWord(true)} Connect again.`;
       if (connection === "ready") setConnection("problem", message, "reconnect");   // from here on nothing that needs Spotify is offered
       throw new Error(message);
     }
@@ -2198,7 +2236,7 @@ async function spotifyRequest(method, path, { params, json, body, contentType, n
       let body = "";
       try { body = await response.text(); } catch (err) { /* no body */ }
       if (/premium/i.test(body)) throw new Error(PREMIUM_REQUIRED_MESSAGE);   // reconnecting cannot fix this, so it gets its own message
-      throw new Error(`Spotify did not allow this (${what}). Click Disconnect, then Connect again and approve every permission it asks for.`);
+      throw new Error(`Spotify did not allow this (${what}). ${actWord(true)} Disconnect, then Connect again and approve every permission it asks for.`);
     }
     if (!response.ok) throw new Error(`Spotify returned ${response.status} for ${what}`);
     const text = await response.text();
@@ -2263,7 +2301,6 @@ async function loadMyPlaylists() {
     snapshot: typeof p.snapshot_id === "string" && p.snapshot_id ? p.snapshot_id : null,   // changes whenever the playlist does
   }));
   for (const p of playlists) p.madeByApp = typeof p.description === "string" && p.description.startsWith(APP_MARKER);
-  if (playlists.some((p) => p.madeByApp) && typeof markPlayTipDone === "function") markPlayTipDone();   // built before: no tutorial tip
   // A format's backup in Spotify is known by what its description decodes to, whatever the playlist is called.
   for (const p of playlists) { const u = unpackFormat(p.description); p.save = u.kind === "none" ? null : u; p.isSave = !!p.save; }
   keepPlaylists();
@@ -2721,48 +2758,56 @@ function askToCreate(plan) {
     const keep = Object.assign(document.createElement("input"), { type: "checkbox", id: "confirmKeepEarlier" });
     const whyLabel = plan.many ? "Why these numbers?" : `Why ${plan.total}?`;
     const why = Object.assign(document.createElement("button"), { type: "button", className: "linklike", id: "planToggle", textContent: whyLabel });
-    // One recipe that can make more than one: the person chooses how many, from 1 up to all of them (the default), with a line on what more than one means.
+    // One recipe that can make more than one: the person chooses how many, by a tile per playlist with its number above. None is chosen at first, so
+    // Build does nothing until one is.
     const pick = !plan.many && plan.total > 1;
-    let chosen = plan.total, shownOthers = plan.others.length;
+    let chosen = pick ? 0 : plan.total;
+    // the person's own playlists in the way: only the ones whose names the chosen playlists use
+    const inWayFor = (n) => { const names = new Set(plan.built[0].playlists.slice(0, n).map((p) => normName(p.name))); return plan.others.filter((p) => names.has(normName(p.name))); };
+    let shownOthers = pick ? inWayFor(0).length : plan.others.length;
     for (const id of ["bdPickWhy", "bdPickHead", "bdPick"]) $(id).hidden = !pick;
-    $("bdPickHead").querySelector("#planToggle")?.remove();
     if (pick) {
-      summary.textContent = plan.built[0].ranOut ? `Your songs are enough for up to ${plan.total} playlists.` : `You can build up to ${plan.total} playlists.`;
-      $("bdPickHead").appendChild(why);
-      const range = $("bdPickRange");
-      range.max = String(plan.total);
-      range.value = String(plan.total);
-      const marks = plan.total <= 12;   // a number under every stop and a tile per playlist while they fit; past that, just the two ends
-      $("bdPickTicks").textContent = "";
-      for (let n = 1; n <= plan.total; n++) {
-        if (!marks && n !== 1 && n !== plan.total) continue;
-        $("bdPickTicks").appendChild(Object.assign(document.createElement("span"), { textContent: String(n) })).style.left = `${((n - 1) / (plan.total - 1)) * 100}%`;
-      }
-      $("bdPickTiles").textContent = "";
-      if (marks) for (let n = 0; n < plan.total; n++) $("bdPickTiles").appendChild(Object.assign(document.createElement("span"), { className: "bd-pick-tile", innerHTML: "<i></i><i></i><i></i>" }));
+      summary.textContent = plan.built[0].ranOut ? "The playlists you chose for this recipe have enough songs to build up to " : "You can build up to ";
+      summary.appendChild(Object.assign(document.createElement("b"), { textContent: plural(plan.total, "playlist") }));
+      summary.appendChild(document.createTextNode(plan.built[0].ranOut ? ". " : " from this recipe. "));
+      summary.appendChild(why);
+      const tiles = $("bdPickTiles");
+      tiles.textContent = "";
+      tiles.style.setProperty("--cols", String(Math.min(plan.total, 8)));
       const show = () => {
-        chosen = Math.max(1, Math.min(plan.total, parseInt(range.value, 10) || plan.total));
-        $("bdPickNum").textContent = String(chosen);
-        $("bdPickWord").textContent = chosen === 1 ? "playlist" : "playlists";
-        range.style.setProperty("--fill", `${((chosen - 1) / (plan.total - 1)) * 100}%`);
-        range.setAttribute("aria-valuetext", plural(chosen, "playlist"));
-        for (const t of $("bdPickTicks").children) t.classList.toggle("bd-on", t.textContent === String(chosen));
-        Array.from($("bdPickTiles").children).forEach((t, i) => t.classList.toggle("bd-on", i < chosen));
-        setLabel($("confirmYes"), `Build ${plural(chosen, "playlist")}`);
-        // the person's own playlists in the way: only the ones whose names the chosen playlists use
-        const names = new Set(plan.built[0].playlists.slice(0, chosen).map((p) => normName(p.name)));
-        const inWay = plan.others.filter((p) => names.has(normName(p.name)));
+        Array.from(tiles.children).forEach((t, i) => {
+          t.classList.toggle("bd-on", i < chosen);
+          t.setAttribute("aria-checked", String(i + 1 === chosen));
+          t.tabIndex = i + 1 === (chosen || 1) ? 0 : -1;   // one stop in the tab order; the arrows move between them
+        });
+        $("confirmYes").disabled = !chosen;
+        setLabel($("confirmYes"), chosen ? `Build ${plural(chosen, "playlist")}` : "Build playlists");
+        const inWay = inWayFor(chosen);
         if (inWay.length !== shownOthers) { shownOthers = inWay.length; fillInfoBoxes({ ...plan, others: inWay }, keep); }
       };
-      range.oninput = show;
-      range.onchange = show;
+      const choose = (n, focus) => { chosen = n; show(); if (focus) tiles.children[n - 1].focus(); };
+      for (let n = 1; n <= plan.total; n++) {
+        const opt = Object.assign(document.createElement("button"), { type: "button", className: "bd-pick-opt" });
+        opt.setAttribute("role", "radio");
+        opt.setAttribute("aria-label", plural(n, "playlist"));
+        opt.append(Object.assign(document.createElement("span"), { textContent: String(n) }), Object.assign(document.createElement("span"), { className: "bd-pick-tile", innerHTML: "<i></i><i></i><i></i>" }));
+        opt.onclick = () => choose(n);
+        opt.onkeydown = (event) => {
+          const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+          if (!step) return;
+          event.preventDefault();
+          choose(Math.max(1, Math.min(plan.total, n + step)), true);
+        };
+        tiles.appendChild(opt);
+      }
       show();
     } else {
       summary.textContent = "Ready to build ";
       summary.appendChild(Object.assign(document.createElement("b"), { textContent: plural(plan.total, "playlist") }));
       summary.appendChild(document.createTextNode(plan.many ? ` for ${plural(plan.built.length, "recipe")}. ` : ". "));
       summary.appendChild(why);
-      $("bdPickRange").oninput = $("bdPickRange").onchange = null;
+      $("bdPickTiles").textContent = "";
+      $("confirmYes").disabled = false;
     }
     // Recipes in this build that give nothing, and why
     $("confirmNotes").hidden = !plan.problems.length;
@@ -2774,7 +2819,7 @@ function askToCreate(plan) {
       putNamed(li, " " + rest);
       notes.appendChild(li);
     }
-    fillInfoBoxes(plan, keep);
+    fillInfoBoxes(pick ? { ...plan, others: inWayFor(chosen) } : plan, keep);
     if (!pick) setLabel($("confirmYes"), `Build ${plural(plan.total, "playlist")}`);
     setLabel($("confirmNo"), "Cancel");
     clearResults();   // the plan says how many; the playlists are listed only once they are being built
@@ -2784,7 +2829,9 @@ function askToCreate(plan) {
     setBuildSteps("build", false, true);
     setCreateStage("question");
     const finish = (answer) => {
+      if (answer === "create" && !chosen) return;   // nothing chosen yet: Build does nothing
       openQuestion = null;
+      $("confirmYes").disabled = false;
       plan.keep = keep.checked;
       if (answer === "create" && chosen < plan.total) choosePlaylists(plan, chosen);
       $("confirmBox").hidden = true;
@@ -2959,7 +3006,7 @@ async function createFromPlan(plan) {
       progress("Keep this tab open.", true);
       setRowState(row, "now", "starting");
       show(row);
-      const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: `${APP_MARKER} from the recipe ${p.label}. Please leave this description as it is: the app uses it to recognize the playlists it made.` } });
+      const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: builtDescription(p, planned.filter((q, j) => q.key === p.key && j <= i).length, planned.filter((q) => q.key === p.key).length) } });
       current = p.name;
       createdIds.push(made.id);
       if (made.public !== false) {   // asked to keep it off the profile; make sure
@@ -2996,7 +3043,7 @@ async function createFromPlan(plan) {
     setBuildSteps("done");
     const notes = [];
     if (stillPublic.length) notes.push(`Spotify kept ${plural(stillPublic.length, "playlist")} on your profile and would not let this app change that. You can change that in the Spotify app.`);
-    if (coverBlocked) notes.push("The cover art was not added, because your Spotify sign-in does not include permission to upload images. Click Disconnect, then Connect again to allow it. Playlists you build after that will get the cover.");
+    if (coverBlocked) notes.push(`The cover art was not added, because your Spotify sign-in does not include permission to upload images. ${actWord(true)} Disconnect, then Connect again to allow it. Playlists you build after that will get the cover.`);
     else if (coverUnloaded) notes.push("The cover art could not be loaded, so the playlists have Spotify's default cover.");
     else if (coverFailed) notes.push(`Spotify would not accept the cover art for ${plural(coverFailed, "playlist")}.`);
     createSucceeded = created > 0;
@@ -3298,6 +3345,7 @@ function initThemeChooser() {
 async function main() {
   if (window.pageStart) window.pageStart.started = true;   // tells the page's watchdog that this script is running
   startFlowChoice();
+  fillActWords();
   logStep("page opened");
   const pageVersion = (document.querySelector('meta[name="app-version"]') || {}).content;
   if (pageVersion !== APP_VERSION) startupProblems.push(`page version ${pageVersion || "unknown"} and script version ${APP_VERSION} differ`);
