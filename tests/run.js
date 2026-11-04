@@ -812,9 +812,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-04d" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-04e" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-04d/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-04e/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -2818,7 +2818,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var pv_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var pv_sec = pv_w.document.getElementById("privacySection");
   check("the Privacy section is the last thing on the page, right below More options, in the same footer, and starts closed", !!pv_sec && pv_sec.tagName === "DETAILS" && pv_sec.open === false && pv_sec.previousElementSibling.id === "moreOptions" && pv_sec.nextElementSibling === null && pv_sec.parentElement.tagName === "FOOTER" && pv_sec.querySelector("summary").textContent === "Privacy");
-  check("it covers what stays in the browser, the Spotify account, who the page talks to, the visit counts, support, problem reports, and accounts and ads", JSON.stringify(Array.from(pv_sec.querySelectorAll("h3")).filter((h) => !h.closest("[hidden]")).map((h) => h.textContent)) === JSON.stringify(["What stays in this browser", "Your Spotify account", "Who the page talks to", "Anonymous visit counts", "Support me", "Problem reports", "Accounts and ads"]));
+  check("it covers what stays in the browser, the Spotify account, who the page talks to, the visit counts, support, problem reports, and accounts and ads", JSON.stringify(Array.from(pv_sec.querySelectorAll("details.gd-topic > summary")).filter((h) => !h.closest("[hidden]")).map((h) => h.textContent)) === JSON.stringify(["What stays in this browser", "Your Spotify account", "Who the page talks to", "Anonymous visit counts", "Support me", "Problem reports", "Accounts and ads"]));
   var pv_text = pv_sec.textContent.replace(/\s+/g, " ");
   check("it says the app never sees the Spotify password, what it asks Spotify to allow, and that existing playlists are only read", /never sees your Spotify password/.test(pv_text) && /read your playlists, create playlists, remove playlists, and set their cover images/.test(pv_text) && /Your existing playlists are only read, never changed/.test(pv_text) && /anyone with a playlist's link can still open it/.test(pv_text));
   check("it says a problem report goes only to the developer, only if sent, and lists what is attached and what never is", /sent only if you choose to send it, and it goes only to me, the developer of this app/.test(pv_text) && /app version, browser, window size, last error, and recent steps/.test(pv_text) && /Your sign-in, Client ID, playlist names, and song titles are never included/.test(pv_text));
@@ -3041,7 +3041,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-04d", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-04e", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3549,7 +3549,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("privacy: why the counts")) { try {
   // ================================================================ Privacy: why anything is counted
   var wc_w = await boot({ url: "http://127.0.0.1:8000/" });
-  var wc_h = Array.from(wc_w.document.querySelectorAll("#privacySection h3")).find((h) => h.textContent === "Anonymous visit counts");
+  var wc_h = Array.from(wc_w.document.querySelectorAll("#privacySection details.gd-topic > summary")).find((h) => h.textContent === "Anonymous visit counts");
   var wc_p = wc_h.nextElementSibling.textContent;
   check("Anonymous visit counts opens by saying why anything is counted: to see how many people use this app and how it is used", /^The page keeps simple counts, to see how many people use this app and how it is used\. It counts visits with GoatCounter, /.test(wc_p));
   check("and the rest is still there: no cookies, what a visit records, the few actions counted, what is never received, and the once-only marker", /uses no cookies/.test(wc_p) && /the browser, screen size, country, and the site you came from, but not who you are/.test(wc_p) && /how many playlists get created, when Support me is opened, and the kind of connection problem/.test(wc_p) && /never receives playlist names, recipes, song titles, or your Client ID/.test(wc_p) && /so it is counted once\.$/.test(wc_p));
@@ -4855,7 +4855,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-04d"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-04e"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
