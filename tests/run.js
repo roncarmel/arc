@@ -2,7 +2,7 @@ const { JSDOM } = require("jsdom");
 const { execFileSync } = require("child_process");
 // Run only some areas: node run.js --only=donate|tabs   (matches part of an area's name; --list shows the names)
 const ONLY = (process.argv.find((a) => a.startsWith("--only=")) || "").slice(7).toLowerCase().split("|").filter(Boolean);
-const SECTION_NAMES = ["a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version icon", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "marker colors", "marker hugs corners", "popups close only", "narrow more button", "the silence card", "privacy: why the counts", "build button centered in minimalist mode", "no double-tap zoom", "backup link in step 2", "hiding the donate button", "spotify premium", "step 3 order and text", "the build icon", "python status at the bottom", "hover feedback on buttons", "questions and feedback", "settings below the segments, pink outline", "the tagline", "disconnect below the status line on phones", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'the Donate panel', 'dimming, fading, and Donate in the Create popup', 'tabs that scroll sideways', 'Donate only after a success', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
+const SECTION_NAMES = ["first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version icon", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "marker colors", "marker hugs corners", "popups close only", "narrow more button", "the silence card", "privacy: why the counts", "build button centered in minimalist mode", "no double-tap zoom", "backup link in step 2", "hiding the donate button", "spotify premium", "step 3 order and text", "the build icon", "python status at the bottom", "hover feedback on buttons", "questions and feedback", "settings below the segments, pink outline", "the tagline", "disconnect below the status line on phones", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'the Donate panel', 'dimming, fading, and Donate in the Create popup', 'tabs that scroll sideways', 'Donate only after a success', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
 // areas that need another area's setup to have run first
 const NEEDS = {
   "the page's styles for tags and phones": ["silences, dragging and removing"],
@@ -801,9 +801,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-03zb" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-03zc" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-03zb/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-03zc/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3009,7 +3009,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-03zb", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-03zc", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3159,6 +3159,50 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   } catch (err) { areaCrashed("card header, pencil and notch", err); }
 }
 
+  if (want("first segment tip")) { try {
+  // ================================================================ the tip under a new recipe's only, empty segment
+  var ft_w = await boot({ url: EDURL, session: signedIn(), local: { formats: 'RECIPES = {"a": {"name": "A {n}", "segments": [("", 20)]}}' }, fetchOptions: {} });
+  var ft_tip = () => ft_w.document.getElementById("feFirstTip");
+  check("a recipe with one segment and no playlist shows the tip right under that segment, with its arrow", !!ft_tip() && ft_tip().previousElementSibling.classList.contains("fe-row") && !!ft_w.document.getElementById("feFirstTipArrow"));
+  check("the tip says to choose a playlist for the first segment and how its minutes are filled", ft_tip().querySelector(".fe-firsttip-title").textContent === "Choose a playlist for the first segment of this recipe." && ft_tip().querySelector(".muted").textContent === "Songs will be picked at random from that playlist to fill this segment\u2019s 20 min.");
+  ft_w.document.querySelector("#feRows .fe-inc").click();
+  check("the minutes follow the stepper", /fill this segment\u2019s 25 min\.$/.test(ft_tip().textContent));
+  ft_w.document.querySelector("#feRows .fe-main").click();
+  check("not while that segment's playlist list is open", !ft_tip());
+  ft_w.eval("editor.panel = null; activeFormat().items[0].lists[0].name = 'Calm'; renderRows();");
+  check("gone once a playlist is chosen", !ft_tip());
+  var ft_two = await boot({ url: EDURL, session: signedIn(), local: { formats: 'RECIPES = {"a": {"name": "A {n}", "segments": [("", 20), ("", 20)]}}' }, fetchOptions: {} });
+  check("not with more than one segment", !ft_two.document.getElementById("feFirstTip"));
+  var ft_more = await boot({ url: EDURL, session: signedIn(), local: { formats: 'RECIPES = {"a": {"name": "A {n}", "segments": [("Calm", 20)]}, "b": {"name": "B {n}", "segments": [("", 20)]}}' }, fetchOptions: {} });
+  ft_more.document.querySelectorAll("#feTabs .fe-tab")[1].click();
+  check("not when there is more than one recipe", !!ft_more.document.querySelector("#feRows .fe-main-empty") && !ft_more.document.getElementById("feFirstTip"));
+  check("the arrow does not bounce under reduced motion", /prefers-reduced-motion: reduce\) \{ #formatEditor \.fe-firsttip-arrow \{ animation: none;/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  } catch (err) { areaCrashed("first segment tip", err); } }
+
+  if (want("the play tip")) { try {
+  // ================================================================ the second tutorial tip: what else to try, closed with its x or by building
+  var pt_one = 'RECIPES = {"a": {"name": "A {n}", "segments": [("Calm", 20)]}}';
+  var pt_w = await boot({ url: EDURL, session: signedIn(), local: { formats: 'RECIPES = {"a": {"name": "A {n}", "segments": [("", 20)]}}' }, fetchOptions: {} });
+  var pt_tip = (w) => { const t = w.document.getElementById("fePlayTip"); return t && !t.hidden ? t : null; };
+  check("not before the only recipe has a playlist (the first tip shows then)", !pt_tip(pt_w) && !!pt_w.document.getElementById("feFirstTip"));
+  pt_w.eval("activeFormat().items[0].lists[0].name = 'Calm'; renderRows();");
+  check("once it has one, the play tip shows at the bottom of the card, and the first tip goes", !!pt_tip(pt_w) && pt_tip(pt_w).parentNode.id === "fePlayTipSlot" && pt_w.document.getElementById("feCard").lastElementChild.id === "fePlayTipSlot" && !pt_w.document.getElementById("feFirstTip"));
+  check("it says what to try and how to finish, with nothing about saving", pt_tip(pt_w).querySelector(".fe-playtip-title").textContent === "That\u2019s your first segment. Now play!" && pt_tip(pt_w).querySelector(".muted").textContent === "Change its length with \u2212 and +, add more segments, or set the silence between them. Nothing breaks. When it feels right, build your playlists below.");
+  check("it has a Close tip button", pt_w.document.getElementById("fePlayTipClose").getAttribute("aria-label") === "Close tip");
+  pt_w.document.getElementById("feAddSegment").click();
+  check("it stays while the recipe grows", !!pt_tip(pt_w));
+  pt_w.document.dispatchEvent(new pt_w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));   // New segment opened its playlist list
+  pt_w.document.getElementById("fePlayTipClose").click();
+  check("the x closes it and it is remembered", !pt_tip(pt_w) && pt_w.localStorage.getItem("playTipDone") === "1");
+  var pt_back = await boot({ url: EDURL, session: signedIn(), local: { formats: pt_one, playTipDone: "1" }, fetchOptions: {} });
+  check("closed once, it does not come back", !pt_tip(pt_back));
+  var pt_two = await boot({ url: EDURL, session: signedIn(), local: { formats: 'RECIPES = {"a": {"name": "A {n}", "segments": [("Calm", 20)]}, "b": {"name": "B {n}", "segments": [("Calm", 20)]}}' }, fetchOptions: {} });
+  check("not with more than one recipe", !pt_tip(pt_two));
+  var pt_src = fs.readFileSync(ROOT + "app.js", "utf8");
+  check("starting a build marks it done", /logStep\(`create started[^\n]*\n\s*if \(typeof markPlayTipDone === "function"\) markPlayTipDone\(\);/.test(pt_src));
+  check("so does finding playlists the app made", /if \(playlists\.some\(\(p\) => p\.madeByApp\) && typeof markPlayTipDone === "function"\) markPlayTipDone\(\);/.test(pt_src));
+  } catch (err) { areaCrashed("the play tip", err); } }
+
   if (want("duplicate question, format names, empty note and equal widths")) { try {
   // ================================================================ duplicate question, format names, empty note, equal widths, and the wording
   var bt_stub = (w) => {
@@ -3218,7 +3262,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("and when the longest one gets shorter, they all get narrower again", /^\d{1,2}(\.\d)? min$/.test(bt_text[2]) && new Set(bt_w8()).size === 1 && parseFloat(bt_w8()[0]) < 56, JSON.stringify(bt_text) + JSON.stringify(bt_w8()));
   rowsOf(bt_q)[0].querySelector(".fe-inc").click();
   check("the widths are worked out again after every change, so one row going wider widens them all", new Set(bt_w8()).size === 1);
-  check("the widths are also worked out again when the window changes size", /window\.addEventListener\("resize", \(\) => \{ equalizeAmounts\(\); updateTagHang\(\); placeWelcomeArrow\(\); \}\)/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
+  check("the widths are also worked out again when the window changes size", /window\.addEventListener\("resize", \(\) => \{ equalizeAmounts\(\); updateTagHang\(\); placeWelcomeArrow\(\); placeFirstTipArrow\(\); \}\)/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
   // the wording
   var bt_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/<!--[\s\S]*?-->/g, "").replace(/<style>[\s\S]*?<\/style>/, "");
   var bt_app = fs.readFileSync(ROOT + "app.js", "utf8").split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
@@ -4753,7 +4797,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-03zb"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-03zc"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

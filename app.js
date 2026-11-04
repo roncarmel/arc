@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-03zb";
+const APP_VERSION = "2026-11-03zc";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2262,6 +2262,7 @@ async function loadMyPlaylists() {
     snapshot: typeof p.snapshot_id === "string" && p.snapshot_id ? p.snapshot_id : null,   // changes whenever the playlist does
   }));
   for (const p of playlists) p.madeByApp = typeof p.description === "string" && p.description.startsWith(APP_MARKER);
+  if (playlists.some((p) => p.madeByApp) && typeof markPlayTipDone === "function") markPlayTipDone();   // built before: no tutorial tip
   // A format's backup in Spotify is known by what its description decodes to, whatever the playlist is called.
   for (const p of playlists) { const u = unpackFormat(p.description); p.save = u.kind === "none" ? null : u; p.isSave = !!p.save; }
   keepPlaylists();
@@ -2840,6 +2841,7 @@ async function createFromPlan(plan) {
   const renamed = plan.others.concat(plan.keep ? plan.ours : []);   // renamed first, so the new playlists can have their names
   const planned = plan.built.flatMap((b) => b.playlists.map((p) => ({ ...p, label: formatLabel(b.key), key: b.key })));
   logStep(`create started (${plural(planned.length, "playlist")})`);
+  if (typeof markPlayTipDone === "function") markPlayTipDone();   // the tutorial tip's last step is done
   // The playlists being made, listed for the first time, each row ticked off as it is made.
   clearResults();
   let removeRow = null, renameRow = null;

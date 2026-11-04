@@ -28,6 +28,7 @@ const editor = {
 const FE_ICONS = {
   grip: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="5" cy="3" r="1.5" fill="currentColor"/><circle cx="11" cy="3" r="1.5" fill="currentColor"/><circle cx="5" cy="8" r="1.5" fill="currentColor"/><circle cx="11" cy="8" r="1.5" fill="currentColor"/><circle cx="5" cy="13" r="1.5" fill="currentColor"/><circle cx="11" cy="13" r="1.5" fill="currentColor"/></svg>',
   dots: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  close: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   plus: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
   minus: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg>',
   chevron: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
@@ -526,7 +527,7 @@ function initEditor() {
     closePanels();
   }, true);
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && (editor.panel || editor.cardMenu || editor.gapPanel !== null || editor.appMenu)) closePanels(); });
-  window.addEventListener("resize", () => { equalizeAmounts(); updateTagHang(); placeWelcomeArrow(); });   // the widget changes size when the page goes between phone and wide layouts
+  window.addEventListener("resize", () => { equalizeAmounts(); updateTagHang(); placeWelcomeArrow(); placeFirstTipArrow(); });   // the widget changes size when the page goes between phone and wide layouts
   applyMinimalMode();
   syncEditorFromText();
 }
@@ -606,7 +607,8 @@ function renderEditor() {
       feEl("div", { class: "fe-caption", id: "feCaption", onPointerDown: pauseNotices, onMouseEnter: pauseNotices }),
       feEl("span", { class: "fe-sr", id: "feNoticeLive", "aria-live": "polite" })),
     feEl("div", { class: "fe-rows", id: "feRows" }),
-    feEl("div", { id: "feHead" }));   // the silence between segments, Duplicate and Delete: settings for the whole format, below the segments
+    feEl("div", { id: "feHead" }),
+    feEl("div", { id: "fePlayTipSlot" }));   // the second tutorial tip, at the bottom of the card   // the silence between segments, Duplicate and Delete: settings for the whole format, below the segments
   root.appendChild(card);
   renderHead(true);
   renderTimeline();
@@ -1388,6 +1390,8 @@ function renderRows(settle) {
   editor.hover = null;   // the old elements are gone, so whatever was under the pointer no longer is
   holder.innerHTML = "";
   f.items.forEach((item, index) => holder.appendChild(rowEl(f, item, index)));
+  const tip = firstSegmentTip(f);
+  if (tip) holder.firstChild.after(tip);
   equalizeAmounts();
   const full = noRoomForSegment(f);
   holder.appendChild(feEl("button", { type: "button", class: "fe-add", id: "feAddSegment", disabled: full ? true : undefined, onClick: addSegment }, feIcon("plus"), "New segment"));
@@ -1396,10 +1400,62 @@ function renderRows(settle) {
   if (rootEl) rootEl.classList.toggle("fe-hastags", gapInfo(f, 0).show || f.items.some((x, index) => gapInfo(f, index + 1).show));
   updateTagHang();
   // the markers only have a size once the editor is on screen, so measure again whenever the rows change size
-  if (window.ResizeObserver) { if (!editor.tagObserver) editor.tagObserver = new ResizeObserver(() => updateTagHang()); editor.tagObserver.disconnect(); editor.tagObserver.observe(holder); }
+  if (window.ResizeObserver) { if (!editor.tagObserver) editor.tagObserver = new ResizeObserver(() => { updateTagHang(); placeFirstTipArrow(); }); editor.tagObserver.disconnect(); editor.tagObserver.observe(holder); }
+  placeFirstTipArrow();
   if (settle) applySettle(holder, settle);
   applyHighlight();
   fitPops();
+  refreshPlayTip();
+}
+
+// A tutorial tip, decided by what is on screen (nothing records that it was shown): while there is only one recipe and it is one segment with no playlist yet, a tip under it, with a pink
+// arrow at the playlist button. Not while that segment's list is open: the person is already doing what it says. It goes once a playlist is chosen.
+function firstSegmentTip(f) {
+  if (editor.model.formats.length !== 1) return null;
+  const item = f.items.length === 1 ? f.items[0] : null;
+  if (!item || item.kind !== "seg" || item.lists.length !== 1 || item.lists[0].name) return null;
+  if (editor.panel && editor.panel.id === item.id) return null;
+  return feEl("div", { class: "fe-firsttip", id: "feFirstTip" },
+    feEl("span", { class: "fe-firsttip-arrow", id: "feFirstTipArrow", "aria-hidden": "true" }),
+    feEl("div", { class: "fe-firsttip-card" },
+      feEl("p", { class: "fe-firsttip-title", text: "Choose a playlist for the first segment of this recipe." }),
+      feEl("p", { class: "muted", text: `Songs will be picked at random from that playlist to fill this segment\u2019s ${Math.round(item.minutes * 10) / 10} min.` })));
+}
+
+// The tip's arrow bounces off the bottom of the playlist button above it, under its middle.
+function placeFirstTipArrow() {
+  const arrow = $("feFirstTipArrow"), button = document.querySelector("#feRows .fe-row .fe-main");
+  if (!arrow || !button) return;
+  const b = button.getBoundingClientRect(), w = arrow.parentNode.getBoundingClientRect();
+  if (!b.width) return;
+  arrow.style.left = Math.round(b.left + b.width / 2 - w.left) + "px";
+  arrow.style.top = Math.round(b.bottom - w.top) + "px";   // resting on the button's bottom edge, as the welcome's rests on New recipe
+}
+
+// The second tutorial tip: once the only recipe has a playlist, it says what else to try, with no arrows. It stays until the person closes
+// it (x) or starts a build, and never shows to someone whose Spotify already has playlists the app made: both are kept in "playTipDone".
+function playTipDone() {
+  try { return localStorage.getItem("playTipDone") === "1"; } catch (err) { return false; }
+}
+function markPlayTipDone() {
+  try { localStorage.setItem("playTipDone", "1"); } catch (err) { /* it shows again next visit, nothing worse */ }
+  refreshPlayTip();
+}
+function refreshPlayTip() {
+  const slot = $("fePlayTipSlot");
+  if (!slot) return;
+  const f = activeFormat();
+  const show = !!f && editor.model.formats.length === 1 && !playTipDone() && f.items.some((x) => x.kind === "seg" && x.lists.some((l) => l.name));
+  const tip = $("fePlayTip");
+  if (!show) { if (tip && !tip.hidden) revealSmoothly(tip, false); return; }
+  if (tip) { if (tip.hidden) revealSmoothly(tip, true); return; }
+  const made = feEl("div", { class: "fe-playtip", id: "fePlayTip", hidden: true },
+    feEl("div", { class: "fe-playtip-card" },
+      feEl("p", { class: "fe-playtip-title", text: "That\u2019s your first segment. Now play!" }),
+      feEl("p", { class: "muted", text: "Change its length with \u2212 and +, add more segments, or set the silence between them. Nothing breaks. When it feels right, build your playlists below." })),
+    feEl("button", { type: "button", class: "fe-playtip-close", id: "fePlayTipClose", "aria-label": "Close tip", onClick: markPlayTipDone }, feIcon("close")));
+  slot.appendChild(made);
+  revealSmoothly(made, true);
 }
 
 function rowEl(f, item, index) {
