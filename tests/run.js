@@ -1831,6 +1831,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await readyToPreview(v_w3);
   v_w3.document.getElementById("create").click();
   await waitFor(() => visible(v_w3, "confirmBox"), 30000);
+  check("before a number is chosen, none of the person's own playlists is said to be renamed", !/will be renamed/.test(v_w3.document.getElementById("bdInfo").textContent), v_w3.document.getElementById("bdInfo").textContent);
+  v_w3.document.getElementById("bdPickTiles").lastElementChild.click();   // the most, which uses the name mini 3
   var v_info = v_w3.document.getElementById("bdInfo").textContent;
   check("with marked and unmarked ones, the marked ones are replaced and mine is renamed", /2 earlier playlists from this recipe will be replaced\./.test(v_info) && /One of your own playlists will be renamed to free its name\./.test(v_info) && /^Build \d+ playlists$/.test(v_w3.document.getElementById("confirmYes").textContent), v_info);
   pressBuild(v_w3);
