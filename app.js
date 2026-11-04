@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-03y";
+const APP_VERSION = "2026-11-03z";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -168,7 +168,7 @@ function showPremiumWhy(open) {
   $("premiumWhy").setAttribute("aria-expanded", String(open));
 }
 
-// "recipe" in the welcome page's intro opens a note under the word, moved left if needed so it stays inside the paragraph.
+// "recipe" in the welcome page's intro opens a note above the word (the text above it has been read), moved left if needed so it stays inside the paragraph.
 function showRecipeWhat(open) {
   const note = $("recipeWhatText"), word = $("recipeWhat");
   note.hidden = !open;
@@ -179,7 +179,7 @@ function placeRecipeWhat() {
   const note = $("recipeWhatText"), word = $("recipeWhat"), para = word.closest("p");
   if (note.hidden || !para) return;
   const box = para.getBoundingClientRect(), at = word.getBoundingClientRect();
-  note.style.top = Math.round(at.bottom - box.top + 6) + "px";
+  note.style.top = Math.round(at.top - box.top - 6 - note.offsetHeight) + "px";   // above the word, over text already read
   note.style.left = Math.round(Math.max(0, Math.min(at.left - box.left, box.width - note.offsetWidth))) + "px";
 }
 
