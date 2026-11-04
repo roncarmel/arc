@@ -812,9 +812,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-04o" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-04p" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-04o/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-04p/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -1729,12 +1729,10 @@ print(json.dumps(out))
   var k_creates = k_o.writes.filter((w) => w.type === "create");
   check("creating renames them first, removes nothing, and gives every new playlist a name of its own", k_o.writes.every((w) => w.type !== "remove") && JSON.stringify(k_o.writes.slice(0, 2).map((w) => [w.type, w.id, w.name])) === JSON.stringify([["update", "m1", "mini 1 (version a)"], ["update", "m2", "mini 2 (version a)"]]) && new Set(k_creates.map((w) => w.name)).size === k_creates.length && k_creates[0].name === "mini 1", JSON.stringify(k_o.writes.slice(0, 3)));
   var k_desc = k_o.writes.filter((w) => w.type === "create").map((w) => w.description);
-  check("each playlist it creates starts with the mark and the request to leave it, then which one of the set, when, and its segments", k_desc.length > 1 && k_desc.every((d, i) => d.startsWith("Made by Ceremony Playlist Builder. Please do not edit this description. The app uses it to recognize the playlists it made. Playlist " + (i + 1) + " of " + k_desc.length + ", built ") && /, built \d{1,2} [A-Z][a-z]{2} \d{4}\. .+ \d+ min\.$/.test(d) && d.length <= 300), JSON.stringify(k_desc.slice(0, 2)));
+  check("each playlist it creates has the mark and the request to leave it, then which one of the set and when, and nothing more", k_desc.length > 1 && k_desc.every((d, i) => d.startsWith("Made by Ceremony Playlist Builder. Please do not edit this description. The app uses it to recognize the playlists it made. Playlist " + (i + 1) + " of " + k_desc.length + ", built ") && /, built \d{1,2} [A-Z][a-z]{2} \d{4}\.$/.test(d)), JSON.stringify(k_desc.slice(0, 2)));
   var k_bd = (segs, n, c) => k_w.eval("builtDescription")({ segments: segs }, n, c, new Date(2026, 10, 4));
-  check("a description reads: one of the set, the date, then each segment with its minutes (hours from an hour), mixes joined with +", k_bd([["Arrival", 20], ["Drums + Voices", 90], ["Return", 30]], 3, 5) === "Made by Ceremony Playlist Builder. Please do not edit this description. The app uses it to recognize the playlists it made. Playlist 3 of 5, built 4 Nov 2026. Arrival 20 min · Drums + Voices 1 h 30 min · Return 30 min.", k_bd([["Arrival", 20], ["Drums + Voices", 90], ["Return", 30]], 3, 5));
-  check("a single playlist says only when it was built", /made\. Built 4 Nov 2026\. Arrival 20 min\.$/.test(k_bd([["Arrival", 20]], 1, 1)));
-  var k_long = k_bd(Array.from({ length: 12 }, (_, i) => ["A rather long source playlist name " + i, 15]), 1, 2);
-  check("too many or too long segments still fit in 300 characters: names are cut, then the rest is counted", k_long.length <= 300 && /…/.test(k_long) && / · and \d+ more\.$/.test(k_long), k_long);
+  check("a description reads: one of the set and the date, no segments", k_bd([["Arrival", 20], ["Drums + Voices", 90]], 3, 5) === "Made by Ceremony Playlist Builder. Please do not edit this description. The app uses it to recognize the playlists it made. Playlist 3 of 5, built 4 Nov 2026.", k_bd([["Arrival", 20], ["Drums + Voices", 90]], 3, 5));
+  check("a single playlist says only when it was built", /made\. Built 4 Nov 2026\.$/.test(k_bd([["Arrival", 20]], 1, 1)));
   check("nothing about it is stored in this browser: the mark in the description is the only record", k_w.localStorage.getItem("madeIds") === null);
   await waitFor(() => k_w.eval("playlists").some((p) => /^mini 3$/.test(p.name)), 10000);
   check("after creating, those playlists count as the app's own and stay out of the segment list", k_w.eval("playlists").filter((p) => p.madeByApp).length === 1 + k_o.writes.filter((w) => w.type === "create").length && !k_names().some((n) => /^mini \d+$/.test(n)) && !/Note: Spotify's playlist list/.test(k_w.document.getElementById("actionMessage").textContent));
@@ -3041,7 +3039,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-04o", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-04p", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4877,7 +4875,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-04o"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-04p"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

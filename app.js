@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-04o";
+const APP_VERSION = "2026-11-04p";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1489,32 +1489,14 @@ function lengthText(minutes) {
   return h ? `${h} h${m % 60 ? ` ${m % 60} min` : ""}` : `${m} min`;
 }
 
-const DESCRIPTION_LIMIT = 300;   // what Spotify's own app shows (the API accepts 512)
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function builtDescription(p, number, count, when = new Date()) {
-  // The description of a built playlist: the marker the app recognizes its playlists by (it must come first), which one of the set
-  // and when, then the segments with their minutes of music. Segments that do not fit get shorter names, then "and N more".
+  // The description of a built playlist: the marker the app recognizes its playlists by (it must come first), the request
+  // to leave it, then which one of the set and when. No segments (decided by Ron, 2026-11-04).
   const date = `${when.getDate()} ${MONTHS[when.getMonth()]} ${when.getFullYear()}`;
-  const head = `${APP_MARKER}. Please do not edit this description. The app uses it to recognize the playlists it made. `
+  return `${APP_MARKER}. Please do not edit this description. The app uses it to recognize the playlists it made. `
     + (count > 1 ? `Playlist ${number} of ${count}, built ${date}.` : `Built ${date}.`);
-  const segs = (p.segments || []).map(([name, minutes]) => ({ name: String(name), length: lengthText(minutes) }));
-  if (!segs.length) return head;
-  const text = (list, more) => `${head} ${list.map((s) => `${s.name} ${s.length}`).join(" · ")}${more ? ` · and ${more} more` : ""}.`;
-  for (let shown = segs.length; shown > 0; shown--) {
-    const more = segs.length - shown;
-    let list = segs.slice(0, shown);
-    if (text(list, more).length <= DESCRIPTION_LIMIT) return text(list, more);
-    // cut the longest names one character at a time, down to 12, until it fits
-    list = list.map((s) => ({ ...s }));
-    while (text(list, more).length > DESCRIPTION_LIMIT) {
-      const longest = list.reduce((a, b) => (b.name.length > a.name.length ? b : a));
-      if (longest.name.replace(/…$/, "").length <= 12) break;
-      longest.name = longest.name.replace(/…$/, "").slice(0, -1).trimEnd() + "…";
-    }
-    if (text(list, more).length <= DESCRIPTION_LIMIT) return text(list, more);
-  }
-  return head;
 }
 
 function playlistRow(p, icon) {
