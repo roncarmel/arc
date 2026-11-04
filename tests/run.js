@@ -3327,7 +3327,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sb_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   var sb_w = await boot({ url: EDURL, session: signedIn(), local: { formats: 'FORMATS = {"a": {"name": "A {n}", "title": "Same", "segments": [("x", 10), ("y", 10)]}, "b": {"name": "B {n}", "title": "Other", "segments": [("x", 10)]}}' }, fetchOptions: {} });
   var sb_card = sb_w.document.getElementById("feCard");
-  check("the card holds, top to bottom: the name warning, the bar, the segments, then the settings row", JSON.stringify(Array.from(sb_card.children).map((c) => c.id || c.className.split(" ")[0])) === JSON.stringify(["feClash", "fe-barwrap", "feRows", "feHead"]));
+  check("the card holds, top to bottom: the name warning, the bar, the segments, the settings row, then the play tip's place", JSON.stringify(Array.from(sb_card.children).map((c) => c.id || c.className.split(" ")[0])) === JSON.stringify(["feClash", "fe-barwrap", "feRows", "feHead", "fePlayTipSlot"]));
   check("New segment is the last thing among the segments, so the settings row is below it", sb_w.document.getElementById("feRows").lastElementChild.id === "feAddSegment" && !!(sb_w.document.getElementById("feAddSegment").compareDocumentPosition(sb_w.document.getElementById("feHead")) & 4));
   check("the settings row still has the silence control, Duplicate and Delete, in that order", JSON.stringify(Array.from(sb_w.document.querySelectorAll("#feHead .fe-headrow > *")).map((el) => el.id || "silence")) === JSON.stringify(["silence", "feDuplicate", "feDelete"]) && !sb_w.document.getElementById("feHead").querySelector("#feClash"));
   sb_w.document.querySelectorAll("#feTabs .fe-tab")[1].click();
@@ -4578,7 +4578,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await nl_sleep(700);
   check("it stays on the first", /2 recipes saved in Spotify could not be read/.test(capText(nl_w)));
   nl_cap().querySelector("button.fe-notice-count").click();
-  check("pressing the count shows the next", /Huge is too long to back up/.test(capText(nl_w)) && /\(2 of 2\)/.test(capText(nl_w)) && capLinks(nl_w).some((b) => b.textContent === "Download it"));
+  check("pressing the count shows the next", /Huge is too long to save to Spotify/.test(capText(nl_w)) && /\(2 of 2\)/.test(capText(nl_w)) && capLinks(nl_w).some((b) => b.textContent === "Download it"));
   check("none of it puts a dot on the menu button: the dot is for a problem with the connection", !nl_w.document.getElementById("feAppMenuButton").classList.contains("fe-alert"));
   // news waits behind trouble
   nl_w.eval('showNotices(["Behind the trouble."])');
@@ -4893,7 +4893,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await new Promise((r) => setTimeout(r, 600));
   check("a problem signing in again cannot fix (here Premium) shows no reconnect screen", sr_w8.eval("connection") === "problem" && !sr_screen(sr_w8), sr_w8.eval("connection"));
   check("Disconnect forgets the refresh token too", /async function disconnect\(\) \{\s*sessionStorage\.removeItem\("token"\);\s*keepRefresh\(null\);/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
-  check("Privacy says the sign-in is saved in this browser, and why", /Your Client ID, your Spotify sign-in, your recipes, the list of your playlists, your color choice, and a copy of the songs from your playlists are saved in this browser, and nowhere else\. The saved sign-in lets this app reconnect to Spotify by itself when you come back\./.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  check("Privacy says the sign-in is saved in this browser, and why", /Your Client ID, your Spotify sign-in, your recipes, the list of your playlists, your color choice, a copy of the songs from your playlists, and a count of the requests this app sends to Spotify \(to learn how often Spotify limits them\) are saved in this browser, and nowhere else\. The saved sign-in lets this app reconnect to Spotify by itself when you come back\./.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   } catch (err) { areaCrashed("sign-in renewal", err); } }
   if (want("build popup")) { try {
   // The build popup: steps along the top, the plan as a list with "Why N?", and a build that stops with a plain message when something goes wrong.
