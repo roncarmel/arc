@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-03za";
+const APP_VERSION = "2026-11-03zb";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1466,9 +1466,9 @@ function playlistRow(p, icon) {
 }
 
 function setRowState(li, state, note) {
-  // state: a number (its place in the plan), "wait", "now", "done" or "fail". note replaces the songs and length; a playlist waiting to be built shows neither.
+  // state: "wait", "now", "done" or "fail". note replaces the songs and length; a playlist waiting to be built shows neither.
   const { p, ic, meta } = li.bd;
-  ic.innerHTML = typeof state === "number" ? BD_ICON.num(state) : BD_ICON[state];
+  ic.innerHTML = BD_ICON[state];
   li.classList.toggle("bd-wait", state === "wait");
   li.classList.toggle("bd-now", state === "now");
   meta.textContent = note || (state !== "wait" && p.songs != null ? `${plural(p.songs, "song")} · ${lengthText(p.length != null ? p.length : p.minutes)}` : "");
@@ -2604,30 +2604,6 @@ function fillWhyTable(plan) {
   }
 }
 
-function showPlanRows(plan) {
-  // The playlists about to be built, each with its songs and length. Ten at most; the rest are counted.
-  clearResults();
-  let shown = 0, hidden = 0;
-  for (const b of plan.built) {
-    if (plan.many) $("results").appendChild(groupRow(formatLabel(b.key), ""));
-    b.playlists.forEach((p, i) => {
-      if (shown < 10) { $("results").appendChild(playlistRow(p, i + 1)); shown += 1; } else hidden += 1;
-    });
-  }
-  if (hidden) {
-    const li = Object.assign(document.createElement("li"), { className: "bd-more" });
-    const more = Object.assign(document.createElement("button"), { type: "button", className: "linklike", id: "bdShowAll", textContent: `and ${hidden} more` });
-    more.onclick = () => {
-      // the rest of the list, in its place
-      li.remove();
-      let n = 0;
-      for (const b of plan.built) b.playlists.forEach((p, i) => { if (n++ >= 10) $("results").appendChild(playlistRow(p, i + 1)); });
-    };
-    li.appendChild(more);
-    $("results").appendChild(li);
-  }
-}
-
 function infoBox(icon, ...lines) {
   // One of the small boxes above the list of playlists: an icon, then its lines (elements or text).
   const box = Object.assign(document.createElement("div"), { className: "bd-info" });
@@ -2760,7 +2736,7 @@ function askToCreate(plan) {
     fillInfoBoxes(plan, keep);
     setLabel($("confirmYes"), `Build ${plural(plan.total, "playlist")}`);
     setLabel($("confirmNo"), "Cancel");
-    showPlanRows(plan);
+    clearResults();   // the plan says how many; the playlists are listed only once they are being built
     fillWhyTable(plan);
     $("planText").hidden = true;
     $("confirmBox").hidden = false;
@@ -2864,7 +2840,7 @@ async function createFromPlan(plan) {
   const renamed = plan.others.concat(plan.keep ? plan.ours : []);   // renamed first, so the new playlists can have their names
   const planned = plan.built.flatMap((b) => b.playlists.map((p) => ({ ...p, label: formatLabel(b.key), key: b.key })));
   logStep(`create started (${plural(planned.length, "playlist")})`);
-  // The same list as the plan, now all of it, each row ticked off as it is made.
+  // The playlists being made, listed for the first time, each row ticked off as it is made.
   clearResults();
   let removeRow = null, renameRow = null;
   if (renamed.length) {
