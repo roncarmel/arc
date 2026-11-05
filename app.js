@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-04r";
+const APP_VERSION = "2026-11-04s";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -268,13 +268,14 @@ function pageHistoryMoved() {
 
 // About, Privacy, More options and Report a problem sit at the bottom of the welcome and setup pages. In the app they open from the menu in a
 // popup: the block itself moves into it, and goes back to its place when the popup closes.
-const info = { node: null, marker: null, wasOpen: false, wasHidden: false };
+const info = { node: null, marker: null, wasOpen: false, wasHidden: false, opener: null };
 
 function openInfo(id) {
   closeInfo(true);
   const node = $(id);
   if (!node) return;
   info.node = node;
+  info.opener = document.activeElement;   // the guide also opens from inside the build popup, and focus goes back there
   info.wasOpen = !!node.open;
   info.marker = document.createComment(id);
   node.before(info.marker);
@@ -322,8 +323,13 @@ function closeInfo(quiet = false) {
   info.node = null;
   info.marker = null;
   $("infoOverlay").hidden = true;
-  document.body.style.overflow = "";
-  if (!quiet && $("feAppMenuButton")) $("feAppMenuButton").focus();
+  const under = document.querySelector(".app-overlay:not([hidden])");   // the build popup, when the guide opened from it, stays open underneath
+  if (!under) document.body.style.overflow = "";
+  const opener = info.opener;
+  info.opener = null;
+  if (quiet) return;
+  if (under && opener && under.contains(opener)) opener.focus({ preventScroll: true });
+  else if (!under && $("feAppMenuButton")) $("feAppMenuButton").focus();
 }
 
 function startFlowChoice() {
@@ -3375,10 +3381,11 @@ async function main() {
   showFlow($("clientId").value ? "existing" : null);
   showPage();
 
-  for (const button of document.querySelectorAll(".copy-redirect")) {
+  // each Copy button copies the text in the box beside it (the redirect address is filled in at startup)
+  for (const button of document.querySelectorAll(".copy-field")) {
     button.addEventListener("click", async () => {
       try {
-        await navigator.clipboard.writeText(redirectUri());
+        await navigator.clipboard.writeText(button.parentNode.querySelector("code").textContent);
         setLabel(button, "Copied");
         setIcon(button, "confirm");   // the one icon change: a check shows the copy worked
       } catch (err) {
@@ -3418,7 +3425,7 @@ async function main() {
   window.addEventListener("popstate", pageHistoryMoved);
   on("infoClose", "click", () => closeInfo());
   on("infoOverlay", "click", (event) => { if (event.target === $("infoOverlay")) closeInfo(); });
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && info.node && !event.defaultPrevented && !(event.target.closest && event.target.closest("#themeList"))) closeInfo(); });   // an Escape that closed something inside it (the color list) is not for the popup
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && info.node && !event.defaultPrevented && !(event.target.closest && event.target.closest("#themeList"))) { event.preventDefault(); closeInfo(); } });   // an Escape that closed something inside it (the color list) is not for the popup
   on("disconnect", "click", confirmDisconnect);
   on("connectionRetry", "click", connectToSpotify);
   on("connectionReconnect", "click", startLogin);
@@ -3442,7 +3449,7 @@ async function main() {
   smoothResize($("infoDialog"), $("infoSlot"));
   on("createDonate", "click", () => { closeCreateDialog(); openDonatePanel(); });
   on("createOverlay", "click", (event) => { if (event.target === $("createOverlay")) dismissCreateDialog(); });
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !$("createOverlay").hidden) dismissCreateDialog(); });
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !event.defaultPrevented && !$("createOverlay").hidden) dismissCreateDialog(); });   // an Escape that closed the guide above it is not for the build popup
   guarded("tip note", () => trackTipHeight());
   guarded("donation panel", () => initDonatePanel());
   guarded("hiding the Donate button", () => initDonateChoice());
