@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-05k";
+const APP_VERSION = "2026-11-05l";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1377,7 +1377,6 @@ function setConnection(state, message = "", kind = "retry") {
   // kind says what can fix a problem: "retry" (waiting, or the network) or "reconnect" (the sign-in itself)
   connection = state;
   $("connectedSection").hidden = !(state === "connecting" || state === "ready");
-  $("disconnect").hidden = state !== "ready";   // there is nothing to disconnect from unless the connection works
   $("connectionProblem").hidden = state !== "problem";
   if (state === "problem") $("connectionMessage").textContent = message;
   $("connectionRetry").hidden = state === "problem" && kind === "reconnect";
@@ -1948,23 +1947,6 @@ function loadStoredToken() {
     }
   } catch (err) { /* ignore */ }
   return null;
-}
-
-// Disconnecting signs out on this device and deletes the songs the app keeps of the playlists, which are only there to make building quicker. It asks first, and says what
-// is not touched, because the second part is easy to take for something worse than it is.
-async function confirmDisconnect() {
-  const choice = await askSyncChoice("Disconnect from Spotify?",
-    "This signs you out of Spotify on this device. Your recipes are not touched. The next time you build, this app reads your playlists from Spotify again, which takes a little longer.",
-    [{ label: "Disconnect", value: "yes" }, { label: "Cancel", value: "no" }], { focusLast: true });
-  if (choice === "yes") await disconnect();
-}
-
-async function disconnect() {
-  sessionStorage.removeItem("token");
-  keepRefresh(null);
-  try { localStorage.removeItem(KEPT_PLAYLISTS_KEY); } catch (err) { /* private browsing */ }
-  await Promise.race([forgetAllSongs(), new Promise((r) => setTimeout(r, 1500))]);   // the songs kept from this account go with the sign-in
-  location.reload();
 }
 
 // ---------------------------------------------------------------- talking to Spotify
@@ -3509,7 +3491,6 @@ async function main() {
   on("infoClose", "click", () => closeInfo());
   on("infoOverlay", "click", (event) => { if (event.target === $("infoOverlay")) closeInfo(); });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && info.node && !event.defaultPrevented && !(event.target.closest && event.target.closest("#themeList"))) { event.preventDefault(); closeInfo(); } });   // an Escape that closed something inside it (the color list) is not for the popup
-  on("disconnect", "click", confirmDisconnect);
   on("connectionRetry", "click", connectToSpotify);
   on("connectionReconnect", "click", startLogin);
   on("reconnectButton", "click", startLogin);
