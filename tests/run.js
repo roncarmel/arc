@@ -826,9 +826,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-05g" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-05h" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-05g/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-05h/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3074,7 +3074,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-05g", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-05h", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3455,8 +3455,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // ================================================================ the Python status at the bottom of More options
   var py_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var py_heads = Array.from(py_w.document.querySelectorAll("#moreOptions details.gd-topic > summary")).filter((h) => !h.closest("[hidden]")).map((h) => h.textContent);
-  check("More options ends with Hiding the Support me button; Python status is in Developer options", py_heads[py_heads.length - 1] === "Hiding the Support me button" && !py_heads.includes("Python status") && !!py_w.document.querySelector("#devOptions #pythonStatus"), JSON.stringify(py_heads));
-  check("the Sign out and clear data question still opens right under its button, ahead of the Hiding the Support me button section", !!(py_w.document.getElementById("clearConfirm").compareDocumentPosition(py_w.document.getElementById("donateHideBox")) & 4));
+  check("More options ends with Hide support button; Python status is in Developer options", py_heads[py_heads.length - 1] === "Hide support button" && !py_heads.includes("Python status") && !!py_w.document.querySelector("#devOptions #pythonStatus"), JSON.stringify(py_heads));
+  check("the Sign out and clear data question still opens right under its button, ahead of the Hide support button section", !!(py_w.document.getElementById("clearConfirm").compareDocumentPosition(py_w.document.getElementById("donateHideBox")) & 4));
   } catch (err) { areaCrashed("python status at the bottom", err); } }
 
   if (want("the build icon")) { try {
@@ -3531,7 +3531,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var dh_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var dh_d = dh_w.document;
   var dh_h3 = Array.from(dh_d.querySelectorAll("#moreOptions details.gd-topic > summary")).map((h) => h.textContent);
-  check("More options has a section called Hiding the Support me button, right after Sign out and clear data", dh_h3.includes("Hiding the Support me button") && dh_h3.indexOf("Hiding the Support me button") === dh_h3.indexOf("Sign out and clear data") + 1, JSON.stringify(dh_h3));
+  check("More options has a section called Hide support button, right after Sign out and clear data", dh_h3.includes("Hide support button") && dh_h3.indexOf("Hide support button") === dh_h3.indexOf("Sign out and clear data") + 1, JSON.stringify(dh_h3));
   var dh_p = dh_d.querySelector("#donateHideBox").closest("label").previousElementSibling;
   check("it is direct and playful: the button is meant to be visible until you have donated, please give what feels right, thank you if you did, check the box and it leaves you alone, honor system, nobody is looking, and it waits patiently", dh_p.textContent === "The Support me button stays visible until you have... supported me 🙂. If this app has been helpful to you, please give whatever feels right. Already did? Thank you! Check the box and the button will leave you alone. This runs on the honor system, so nobody\u2019s looking, and the button waits patiently.");
   check("there is one checkbox, labeled I have supported you!, for people who have donated, and no second answer for people who have not", dh_d.getElementById("donateHideBox").type === "checkbox" && dh_d.getElementById("donateHideBox").closest("label").textContent.trim() === "I have supported you!" && !dh_d.getElementById("hideDonated") && !dh_d.getElementById("hideDeclined") && !dh_d.getElementById("showDonate"));
@@ -5035,7 +5035,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-05g"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-05h"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
