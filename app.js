@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-05e";
+const APP_VERSION = "2026-11-05f";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -993,11 +993,10 @@ async function uploadCovers() {
 async function askSaveFailure(message) {
   const unexpected = problemKind(message) === "other";
   if (unexpected) recordError(message);
-  const choices = [{ label: "Back up now", value: "backup" }, { label: "Try again", value: "retry" }];
-  if (unexpected) choices.push({ label: "Report this problem", value: "report" });
-  choices.push({ label: "Close", value: "close" });
+  const choices = [{ label: "Back up now", value: "backup", main: true, icon: "download" }, { label: "Try again", value: "retry", icon: "retry" }, { label: "Close", value: "close" }];
+  if (unexpected) choices.push({ label: "Report this problem", value: "report", link: true, icon: "flag" });
   const choice = await askSyncChoice("Your recipes couldn\u2019t be saved to Spotify",
-    "Your latest changes haven\u2019t been saved to Spotify yet. A backup on this device keeps them safe.", choices, { detail: `What happened: ${saveFailureDetail(message)}` });
+    "Your latest changes haven\u2019t been saved to Spotify yet. A backup on this device keeps them safe.", choices, { problem: "cloud", what: saveFailureDetail(message) });
   if (choice === "backup") downloadBackup();
   else if (choice === "retry") { saveState.error = ""; runSpotifySave(); }
   else if (choice === "report") window.open(reportUrl(), "_blank", "noopener");

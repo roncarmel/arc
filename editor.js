@@ -483,13 +483,27 @@ function askSyncChoice(title, text, choices, options = {}) {
     const required = !!options.required;
     const done = (value) => { overlay.remove(); document.removeEventListener("keydown", onKey); resolve(value); };
     const onKey = (event) => { if (event.key === "Escape" && !required) done(null); };
-    const buttons = choices.map((c, i) => feEl("button", { type: "button", id: "feSyncChoice" + i, class: c.danger ? "fe-danger-button" : undefined, onClick: () => done(c.value) }, c.label));
-    const overlay = feEl("div", { class: "fe-overlay", id: "feSyncDialog", onClick: () => { if (!required) done(null); } },
-      feEl("div", { class: "fe-dialog", role: required ? "alertdialog" : "dialog", "aria-modal": "true", "aria-label": plainText(title), onClick: (e) => e.stopPropagation() },
+    // options.problem (an icon name) draws a popup about a problem (pb- in index.html): the icon in a pink circle, options.what in a box, the choice marked main in pink
+    // on its own row, the plain ones side by side, and one marked link as a small grey link under them
+    const problem = options.problem;
+    const buttons = choices.map((c, i) => feEl("button", { type: "button", id: "feSyncChoice" + i,
+      class: problem ? (c.main ? "pb-main" : c.link ? "pb-report" : undefined) : (c.danger ? "fe-danger-button" : undefined), onClick: () => done(c.value) },
+      problem && c.icon ? feIcon(c.icon) : null, c.label));
+    const body = problem
+      ? [feEl("div", { class: "pb-badge" }, feIcon(problem)),
         feEl("h3", { text: title }),
         feEl("p", { text }),
+        options.what ? feEl("div", { class: "pb-what", id: "feSyncDetail" }, feIcon("info"), feEl("span", {}, feEl("b", { text: "What happened: " }), options.what)) : null,
+        feEl("div", { class: "pb-buttons" },
+          ...buttons.filter((b, i) => choices[i].main).map((b) => feEl("div", { class: "pb-row" }, b)),
+          feEl("div", { class: "pb-row" }, ...buttons.filter((b, i) => !choices[i].main && !choices[i].link))),
+        ...buttons.filter((b, i) => choices[i].link)]
+      : [feEl("h3", { text: title }),
+        feEl("p", { text }),
         options.detail ? feEl("p", { class: "muted", id: "feSyncDetail", text: options.detail }) : null,
-        feEl("div", { class: "row" }, ...buttons)));
+        feEl("div", { class: "row" }, ...buttons)];
+    const overlay = feEl("div", { class: "fe-overlay", id: "feSyncDialog", onClick: () => { if (!required) done(null); } },
+      feEl("div", { class: "fe-dialog" + (problem ? " pb-dialog" : ""), role: required ? "alertdialog" : "dialog", "aria-modal": "true", "aria-label": plainText(title), onClick: (e) => e.stopPropagation() }, ...body));
     document.body.appendChild(overlay);
     document.addEventListener("keydown", onKey);
     (options.focusLast ? buttons[buttons.length - 1] : buttons[0]).focus();   // a question about something that cannot be taken back starts on the safe answer
