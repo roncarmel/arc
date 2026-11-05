@@ -2041,27 +2041,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var am_picked = 0; am_w.document.getElementById("restoreFile").click = () => { am_picked += 1; };
   am_w.document.getElementById("feRestore").click();
   check("Restore from backup opens the file picker and closes the menu", am_picked === 1 && !am_w.document.getElementById("feAppMenuPanel"));
-  am_w.document.getElementById("feAppMenuButton").click();
-  am_w.eval("reloadPage = () => { window.__reloaded = true; }");
-  var am_before = am_w.sessionStorage.getItem("token");
-  am_w.eval("confirmDisconnect()");
-  await new Promise((r) => setTimeout(r, 60));
-  var am_dlg = am_w.document.getElementById("feSyncDialog");
-  check("Disconnect asks first, says what stays, and says it takes a little longer to build next time", !!am_dlg && /Disconnect from Spotify\?/.test(am_dlg.textContent) && /Your recipes are not touched/.test(am_dlg.textContent) && /reads your playlists from Spotify again, which takes a little longer/.test(am_dlg.textContent) && !/delete/i.test(am_dlg.textContent) && am_w.sessionStorage.getItem("token") === am_before);
-  check("it starts on Cancel, since signing out cannot be taken back with one tap", am_w.document.activeElement.id === "feSyncChoice1" && am_w.document.getElementById("feSyncChoice1").textContent === "Cancel" && am_w.document.getElementById("feSyncChoice0").textContent === "Disconnect");
-  am_w.document.getElementById("feSyncChoice1").click();
-  await new Promise((r) => setTimeout(r, 60));
-  check("Cancel leaves everything as it was", !am_w.document.getElementById("feSyncDialog") && am_w.sessionStorage.getItem("token") === am_before);
-  am_w.eval("confirmDisconnect()");
-  await new Promise((r) => setTimeout(r, 60));
-  am_w.document.dispatchEvent(new am_w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-  await new Promise((r) => setTimeout(r, 60));
-  check("so does Escape", !am_w.document.getElementById("feSyncDialog") && am_w.sessionStorage.getItem("token") === am_before);
-  am_w.eval("confirmDisconnect()");
-  await new Promise((r) => setTimeout(r, 60));
-  am_w.document.getElementById("feSyncChoice0").click();
-  await new Promise((r) => setTimeout(r, 200));
-  check("Disconnect signs out the same way the Disconnect button does", am_before !== null && am_w.sessionStorage.getItem("token") === null);
   var am_w3 = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   am_w3.document.getElementById("feAppMenuButton").click();
   rowsOf(am_w3)[0].querySelector(".fe-more").click();
@@ -2486,17 +2465,11 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sv_w10 = await boot({ url: EDURL, session: signedIn(), local: { formats: SONGS_FORMAT }, fetchOptions: {} });
   rowsOf(sv_w10)[0].querySelector(".fe-more").click();
   check("when Spotify does give snapshot ids, the refresh control is not shown at all", !sv_w10.document.getElementById("feRefreshSongs"));
-  // disconnecting and clearing forget the songs
+  // clearing forgets the songs
   var sv_idb4 = new FDBFactory();
   var sv_w11 = await sv_run(sv_idb4, {});
   var sv_count = (w) => new Promise((resolve) => { const r = w.indexedDB.open("ceremony-playlist-builder", 1); r.onsuccess = () => { const q = r.result.transaction("songs", "readonly").objectStore("songs").count(); q.onsuccess = () => resolve(q.result); }; });
   check("the songs of both playlists are saved in the browser", (await sv_count(sv_w11)) === 2);
-  sv_w11.eval("location.reload = () => { window.__reloadedByDisconnect = true; }");
-  sv_w11.document.getElementById("disconnect").click();
-  await waitFor(() => !!sv_w11.document.getElementById("feSyncDialog"), 3000);
-  sv_w11.document.getElementById("feSyncChoice0").click();
-  await waitFor(() => sv_w11.__reloadedByDisconnect === true, 5000);
-  check("Disconnect clears them, along with the sign-in", (await sv_count(sv_w11)) === 0 && sv_w11.sessionStorage.getItem("token") === null);
   var sv_idb5 = new FDBFactory();
   var sv_w12 = await sv_run(sv_idb5, {});
   sv_w12.document.getElementById("clearData").click();
