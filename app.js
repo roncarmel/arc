@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-04u";
+const APP_VERSION = "2026-11-04v";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -200,6 +200,7 @@ function placeRecipeWhat() {
 // A step that fails is marked for a moment, then the screen goes and the problem shows as usual. A question takes it down at once.
 let connectingScreen = document.documentElement.classList.contains("connecting");
 let connectingFailedMs = 1200;   // how long a failed step's mark is in view before the screen goes
+const firstConnect = connectingScreen && storedItem(localStorage, "connectedBefore") !== "1";   // the end of setup: the screen says so and waits for a click (setupComplete)
 
 // step: "Signin", "Playlists", "Recipes" or "Python"; state: "active", "done" or "failed"
 function connectingStep(step, state) {
@@ -221,6 +222,15 @@ function endConnectingScreen() {
   screen.classList.add("cn-out");
   setTimeout(() => { document.documentElement.classList.remove("connecting"); screen.classList.remove("cn-out"); }, 450);   // after the fade
   showPage();   // the app, or, if the sign-in did not work, the setup page with what went wrong
+}
+
+// The first time ever, with every step ticked, the screen says "Setup complete!" over the ticked steps and stays until its button is used (a user test found the editor
+// arriving by itself left it unclear that setup was over). Any other visit, or a step that failed, goes straight on.
+function setupComplete() {
+  if (!connectingScreen || !firstConnect) return Promise.resolve();
+  $("connectingScreen").classList.add("cn-finished");
+  const button = $("cnContinue");   // a plain listener: it only lets the startup go on, so nothing in it can fail
+  return new Promise((resolve) => button.addEventListener("click", resolve, { once: true }));
 }
 
 // The first save settles the recipes with their saves in Spotify (it may add or change some), so it is done before the screen goes,
@@ -3515,6 +3525,7 @@ async function main() {
   if (connectingScreen) await settleFirstSave();
   await (pythonReady || preparePython());
   if (connectingScreen) await new Promise((r) => setTimeout(r, 400));   // the last check is seen before the screen fades
+  await setupComplete();
   endConnectingScreen();
   // A visit that starts during a wait (the tab was closed, the wait forgotten) opens the popup once, so the missing Build button is explained. A reload does not.
   const pause = spotifyPause();

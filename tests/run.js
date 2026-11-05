@@ -818,9 +818,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-04u" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-04v" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-04u/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-04v/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3052,7 +3052,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-04u", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-04v", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4479,14 +4479,19 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("signing in and starting Python are under way from the first moment; the other two wait", /id="cnSignin" class="cn-step cn-active"/.test(cn_html) && /id="cnPython" class="cn-step cn-active"/.test(cn_html) && /id="cnPlaylists" class="cn-step"/.test(cn_html) && /id="cnRecipes" class="cn-step"/.test(cn_html));
   check("with manual backup the recipes step is left out, from the first moment", /if \(localStorage\.getItem\("backupMode"\) === "manual"\) document\.documentElement\.classList\.add\("cn-manual"\)/.test(cn_html) && /html\.cn-manual #cnRecipes \{ display: none; \}/.test(cn_html));
   check("the screen sits below the startup problem popup, so a page that cannot start still says so", /#connectingScreen \{[^}]*z-index: 1500/.test(cn_html) && /#startupProblem \{ z-index: 2000/.test(cn_html));
-  check("with reduced motion nothing turns or fades", /prefers-reduced-motion: reduce\) \{ #connectingScreen, \.cn-step \{ transition: none; \} \.cn-active \.cn-mark::before \{ animation: none; \} \}/.test(cn_html));
+  check("with reduced motion nothing turns or fades", /prefers-reduced-motion: reduce\) \{ #connectingScreen, \.cn-step \{ transition: none; \} \.cn-active \.cn-mark::before \{ animation: none; \} #connectingScreen\.cn-finished > \* \{ animation: none; \} \}/.test(cn_html));
   var cn_on = (w) => w.document.documentElement.classList.contains("connecting");
   var cn_back = { url: "http://127.0.0.1:8000/?code=abc123&state=st1", session: { pkceState: "st1", pkceVerifier: "v" }, before: (w) => w.document.documentElement.classList.add("connecting") };
   var cn_w = await boot({ ...cn_back, local: { clientId: "client-1", setupStarted: "1", formats: MINI, backupMode: "spotify" }, fetchOptions: { tokenDelayMs: 2500 } });
   check("while the sign-in is finished, the connecting screen is up and the page under it is the app, not the setup page", cn_on(cn_w) && cn_w.document.documentElement.classList.contains("page-app") && !cn_w.document.documentElement.classList.contains("page-setup"));
   var cn_state = (w) => ["Signin", "Playlists", "Recipes", "Python"].map((s) => w.document.getElementById("cn" + s).className.replace("cn-step", "").trim() || "waiting").join(",");
   check("meanwhile Python is ready and ticked, the sign-in still turns, and the playlists and recipes wait", cn_state(cn_w) === "cn-active,waiting,waiting,cn-done", cn_state(cn_w));
-  await waitFor(() => !cn_on(cn_w), 15000);
+  await waitFor(() => cn_w.document.getElementById("connectingScreen").classList.contains("cn-finished"), 15000);
+  check("the first time, with every step ticked, the screen stays and says Setup complete! with a button to go on", cn_on(cn_w) && cn_state(cn_w) === "cn-done,cn-done,cn-done,cn-done" && cn_w.document.querySelector("#connectingScreen h2.cn-finish").textContent === "Setup complete!" && cn_w.document.getElementById("cnContinue").textContent === "Start making playlists", cn_state(cn_w));
+  await new Promise((r) => setTimeout(r, 800));
+  check("it waits for the button", cn_on(cn_w));
+  cn_w.document.getElementById("cnContinue").click();
+  await waitFor(() => !cn_on(cn_w), 3000);
   check("by the time the screen goes, every step is ticked", cn_state(cn_w) === "cn-done,cn-done,cn-done,cn-done", cn_state(cn_w));
   check("the screen goes once everything is ready: connected, the recipes saved to Spotify, Python running", cn_w.eval("connection") === "ready" && cn_w.eval("saveState.savedAt") !== null && !cn_w.eval("saveState.running") && /Ready/.test(cn_w.document.getElementById("pythonStatus").textContent));
   check("and the app is what is left", cn_w.document.documentElement.classList.contains("page-app") && !cn_w.document.getElementById("formatEditor").closest("[hidden]"));
@@ -4510,6 +4515,11 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   cn_q.askSyncChoice("A question", "Which one?", [{ label: "This", value: 1 }]);
   await new Promise((r) => setTimeout(r, 600));
   check("a question that needs an answer takes the screen down at once", !cn_on(cn_q) && !!cn_q.document.getElementById("feSyncDialog"));
+  // signing in again later (connected before): no Setup complete, the screen goes by itself
+  var cn_r = await boot({ ...cn_back, local: { clientId: "client-1", formats: MINI, connectedBefore: "1" } });
+  await waitFor(() => !cn_on(cn_r), 15000);
+  check("a later sign-in (connected before) skips Setup complete and goes to the app by itself", !cn_on(cn_r) && !cn_r.document.getElementById("connectingScreen").classList.contains("cn-finished") && cn_r.eval("connection") === "ready");
+  check("Setup complete has no motion under reduced motion", /#connectingScreen\.cn-finished > \* \{ animation: none; \}/.test(cn_html));
   // no sign-in code: no screen, and nothing waits for it
   var cn_n = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" } });
   check("an ordinary visit has no connecting screen", !cn_on(cn_n) && cn_n.document.documentElement.classList.contains("page-app"));
@@ -4888,7 +4898,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-04u"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-04v"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
