@@ -826,9 +826,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-05b" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-05c" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-05b/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-05c/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -2006,6 +2006,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
 
 
   
+  check("the limit is not offered in More options: its topic is hidden (kept for a developer panel and for these checks)", lm_w.document.getElementById("limitTopic").hidden === true && lm_w.document.getElementById("limitTopic").contains(lm_w.document.getElementById("maxPlaylists")));
   } catch (err) { areaCrashed("the limit list, and the format's title", err); }
 }
   if (want('the app menu, and minimalist mode')) { try {
@@ -2021,7 +2022,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   am_w.document.getElementById("feAppMenuButton").click();
   var am_items = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel .fe-item")).map((b) => b.textContent.trim());
   var am_ids = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel [id]")).map((n) => n.id).filter((id) => ["feMoreOptions", "feAbout", "feTips", "fePrivacy", "feReport", "feBackupMethod", "feBackup", "feRestore", "feDisconnect"].includes(id));
-  check("it offers Disconnect Spotify, then the backup block (what it is, a Change how your recipes are saved link, how it is going, then Back up now and Restore), then More options, Report a problem and Privacy, in that order", JSON.stringify(am_ids) === JSON.stringify(["feDisconnect", "feBackupMethod", "feBackup", "feRestore", "feMoreOptions", "feReport", "fePrivacy"]) && /Manual backup to this device/.test(am_w.document.getElementById("feBackupMethod").closest(".fe-bk-block").textContent), JSON.stringify(am_ids));
+  check("it has no Disconnect, then the backup block (what it is, a Change how your recipes are saved link, how it is going, then Back up now and Restore), then More options, Report a problem and Privacy, in that order", JSON.stringify(am_ids) === JSON.stringify(["feBackupMethod", "feBackup", "feRestore", "feMoreOptions", "feReport", "fePrivacy"]) && /Manual backup to this device/.test(am_w.document.getElementById("feBackupMethod").closest(".fe-bk-block").textContent), JSON.stringify(am_ids));
   check("there is no Compact view item: the app page is always compact", !am_w.document.getElementById("feMinimal") && am_w.document.body.classList.contains("minimal") && !/minimalMode/.test(fs.readFileSync(ROOT + "editor.js", "utf8") + fs.readFileSync(ROOT + "app.js", "utf8")));
   var am_info = (id) => am_w.document.getElementById("infoSlot").firstElementChild && am_w.document.getElementById("infoSlot").firstElementChild.id === id && am_w.document.getElementById("infoOverlay").hidden === false;
   am_w.document.getElementById("feMoreOptions").click();
@@ -2051,7 +2052,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   am_w.document.getElementById("feAppMenuButton").click();
   am_w.eval("reloadPage = () => { window.__reloaded = true; }");
   var am_before = am_w.sessionStorage.getItem("token");
-  am_w.document.getElementById("feDisconnect").click();
+  am_w.eval("confirmDisconnect()");
   await new Promise((r) => setTimeout(r, 60));
   var am_dlg = am_w.document.getElementById("feSyncDialog");
   check("Disconnect asks first, says what stays, and says it takes a little longer to build next time", !!am_dlg && /Disconnect from Spotify\?/.test(am_dlg.textContent) && /Your recipes are not touched/.test(am_dlg.textContent) && /reads your playlists from Spotify again, which takes a little longer/.test(am_dlg.textContent) && !/delete/i.test(am_dlg.textContent) && am_w.sessionStorage.getItem("token") === am_before);
@@ -2059,14 +2060,12 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   am_w.document.getElementById("feSyncChoice1").click();
   await new Promise((r) => setTimeout(r, 60));
   check("Cancel leaves everything as it was", !am_w.document.getElementById("feSyncDialog") && am_w.sessionStorage.getItem("token") === am_before);
-  am_w.document.getElementById("feAppMenuButton").click();
-  am_w.document.getElementById("feDisconnect").click();
+  am_w.eval("confirmDisconnect()");
   await new Promise((r) => setTimeout(r, 60));
   am_w.document.dispatchEvent(new am_w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   await new Promise((r) => setTimeout(r, 60));
   check("so does Escape", !am_w.document.getElementById("feSyncDialog") && am_w.sessionStorage.getItem("token") === am_before);
-  am_w.document.getElementById("feAppMenuButton").click();
-  am_w.document.getElementById("feDisconnect").click();
+  am_w.eval("confirmDisconnect()");
   await new Promise((r) => setTimeout(r, 60));
   am_w.document.getElementById("feSyncChoice0").click();
   await new Promise((r) => setTimeout(r, 200));
@@ -2117,9 +2116,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var mm_svgPaths = (svg) => (svg.match(/<path d="([^"]+)"/g) || []).map((x) => x.slice(9, -1)).join("|");
   var mm_iconFile = fs.readFileSync(ROOT + "icons/disconnect.svg", "utf8");
   check("the Disconnect button on the page keeps the broken-link icon", mm_svgPaths(fs.readFileSync(ROOT + "icons/disconnect.svg", "utf8")).split("|").length === 3 && /<button id="disconnect" class="quiet" type="button"><img class="btn-icon" src="icons\/disconnect\.svg"/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
-  var mm_row = mm_w.document.querySelector("#feAppMenuPanel .fe-sp-block");
-  check("when connected, the menu has a row that says Spotify connected, with a small Disconnect at its right on the same line, and who it is under it", !!mm_row && mm_row.querySelector(".fe-sp-title").textContent === "Spotify connected" && mm_row.querySelector(".fe-sp-row").lastElementChild.id === "feDisconnect" && mm_row.querySelector(".fe-sp-row").lastElementChild.textContent === "Disconnect" && /^Connected as .+, \d+ playlists? found\.$/.test(mm_row.querySelector(".fe-sp-status").textContent) && mm_row.querySelector(".fe-sp-row").nextElementSibling === mm_row.querySelector(".fe-sp-status"));
-  check("that button is outlined, not the color of the buttons that do the page's work, and the Disconnect on the page is outlined too", /\.fe-sp-disconnect \{[^}]*border: 1px solid var\(--line\); background: var\(--bg\)/.test(mm_css) && /button\.quiet \{ background: transparent;/.test(mm_css));
+  var mm_mo = mm_w.document.getElementById("moreOptions");
+  check("when connected, the menu has no Spotify row and no Disconnect: Change Spotify login is in More options instead", !mm_w.document.querySelector("#feAppMenuPanel .fe-sp-block") && !mm_w.document.getElementById("feDisconnect") && !!mm_mo.querySelector("#changeSpotifyLogin") && /Change Spotify login/.test(mm_mo.textContent));
+  check("the Disconnect on the page is outlined", /button\.quiet \{ background: transparent;/.test(mm_css));
   check("the app menu's button ends where the card does: the row above the card has no padding on its right, on any screen width", /\.fe-toprow \{ display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; \}/.test(mm_css) && !/\.fe-toprow \{[^}]*padding-right/.test(mm_css));
   var mm_cap = mm_w.document.getElementById("supportCaption");
 
@@ -2418,7 +2417,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // Remove starts with no recipe chosen, and is on once one is
   var cx_removeOn = () => { const k = cx_sec(cx_w, "removeKey"); const blank = cx_sec(cx_w, "removeOld").disabled; k.value = k.options[k.options.length - 1].value; k.dispatchEvent(new cx_w.Event("change")); return blank && cx_sec(cx_w, "removeOld").disabled === false; };
   check("Try again, once Spotify answers, makes everything available: Disconnect is back, the problem is gone, Create and Remove are on", cx_sec(cx_w, "connectedSection").hidden === false && cx_sec(cx_w, "disconnect").hidden === false && cx_sec(cx_w, "connectionProblem").hidden === true && cx_sec(cx_w, "create").disabled === false && cx_removeOn() && cx_sec(cx_w, "spotifyNote").hidden === true && /^Connected as Ron\./.test(cx_sec(cx_w, "connectedMessage").textContent));
-  check("and the app menu offers Disconnect Spotify again", (() => { cx_w.document.getElementById("feAppMenuButton").click(); const there = !!cx_w.document.getElementById("feDisconnect"); cx_w.document.getElementById("feAppMenuButton").click(); return there; })());
+  check("and the app menu no longer offers Connect to Spotify", (() => { cx_w.document.getElementById("feAppMenuButton").click(); const gone = !cx_w.document.getElementById("feConnect"); cx_w.document.getElementById("feAppMenuButton").click(); return gone; })());
   var cx_w2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { meNetworkFail: true } });
   check("with no connection to the internet it says so, in plain words", cx_w2.eval("connection") === "problem" && /^Could not reach Spotify\. Check your internet connection and try again\.$/.test(cx_sec(cx_w2, "connectionMessage").textContent) && cx_sec(cx_w2, "disconnect").hidden === true);
   var cx_w3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { meStatus: 401 } });
@@ -2848,7 +2847,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("it says the app never sees the Spotify password, what it asks Spotify to allow, and that existing playlists are only read", /never sees your Spotify password/.test(pv_text) && /read your playlists, create playlists, remove playlists, and set their cover images/.test(pv_text) && /Your existing playlists are only read, never changed/.test(pv_text) && /anyone with a playlist's link can still open it/.test(pv_text));
   check("it says a problem report goes only to the developer, only if sent, and lists what is attached and what never is", /sent only if you choose to send it, and it goes only to me, the developer of this app/.test(pv_text) && /app version, browser, window size, last error, and recent steps/.test(pv_text) && /Your sign-in, Client ID, playlist names, and song titles are never included/.test(pv_text));
   check("it describes the counts honestly: GoatCounter, no cookies, what is recorded, the four actions, and what it never receives", /GoatCounter/.test(pv_text) && /uses no cookies/.test(pv_text) && /browser, screen size, country, and the site you came from/.test(pv_text) && /first time a browser connects to Spotify, how many playlists get created, when Support me is opened, and the kind of connection problem/.test(pv_text) && /never receives playlist names, recipes, song titles, or your Client ID/.test(pv_text));
-  check("it says what is kept in the browser and what Disconnect and Reset app on this device remove", /Your Client ID, your Spotify sign-in, your recipes, the list of your playlists, your color choice, a copy of the songs from your playlists, and a count of the requests this app sends to Spotify \(to learn how often Spotify limits them\) are saved in this browser/.test(pv_text) && /Disconnect removes your Spotify sign-in, the list of your playlists, and the saved songs/.test(pv_text) && /Reset app on this device, in More options, removes everything/.test(pv_text));
+  check("it says what is kept in the browser and that Reset app on this device removes it, with no Disconnect to mention", /Your Client ID, your Spotify sign-in, your recipes, the list of your playlists, your color choice, a copy of the songs from your playlists, and a count of the requests this app sends to Spotify \(to learn how often Spotify limits them\) are saved in this browser/.test(pv_text) && !/Disconnect/.test(pv_text) && /Reset app on this device, in More options, removes everything/.test(pv_text));
   check("About links to it, and the setup and welcome pages do not, since they leave Privacy out", pv_w.document.querySelectorAll("#about a.privacy-link").length === 1 && pv_w.document.querySelectorAll("#loginSection a.privacy-link").length === 0 && pv_w.document.querySelectorAll("#welcomePage a.privacy-link").length === 0 && /html\.page-welcome footer, /.test(pv_html) && Array.from(pv_w.document.querySelectorAll("a.privacy-link")).every((a) => a.getAttribute("href") === "#privacySection"));
   var pv_click2 = new pv_w.MouseEvent("click", { bubbles: true, cancelable: true });
   pv_w.document.querySelector("#about a.privacy-link").dispatchEvent(pv_click2);
@@ -3066,7 +3065,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-05b", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-05c", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4830,18 +4829,27 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("spotify row")) { try {
   // ================================================================ the Spotify row of the app menu
   var sr_ready = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: {} });
+  await waitFor(() => sr_ready.eval("connection") === "ready", 15000);
   sr_ready.document.getElementById("feAppMenuButton").click();
-  var sr_count = (sr_ready.document.getElementById("connectedMessage").textContent.match(/(\d+) playlists? found/) || [])[1];
-  check("the menu says how many playlists were found, the same number as Step 1 does", !!sr_count && new RegExp("^Connected as .+, " + sr_count + " playlists? found\\.$").test(sr_ready.document.getElementById("feConnectedStatus").textContent));
-  check("it says Spotify, so there is no doubt what is connected", sr_ready.document.querySelector("#feAppMenuPanel .fe-sp-title").textContent === "Spotify connected");
-  check("the row is at the top of the menu, right under the app's name", sr_ready.document.querySelectorAll("#feAppMenuPanel > *")[1] === sr_ready.document.querySelector("#feAppMenuPanel .fe-sp-block"));
+  check("connected, the menu has no Spotify row: the app's name is followed by what comes next (here the manual backup block)", !sr_ready.document.querySelector("#feAppMenuPanel .fe-sp-block") && !sr_ready.document.getElementById("feConnect") && sr_ready.document.querySelectorAll("#feAppMenuPanel > *")[1].className === "fe-bk-block", Array.from(sr_ready.document.querySelectorAll("#feAppMenuPanel > *")).map((k) => k.id || k.className).join(","));
+  sr_ready.document.body.click();
+  sr_ready.eval("window.__go = []"); sr_ready.eval("startLogin = (o) => { window.__go.push(o); }");
+  sr_ready.document.getElementById("changeSpotifyLogin").click();
+  check("Change Spotify login in More options starts a sign-in that lets another account be chosen", sr_ready.eval("window.__go.length") === 1 && sr_ready.eval("window.__go[0].switchAccount") === true);
+  check("that sign-in asks Spotify to show its page (show_dialog), and only for this, not the usual sign-in", /if \(switchAccount\) params\.set\("show_dialog", "true"\)/.test(fs.readFileSync(ROOT + "app.js", "utf8")) && /options\.switchAccount === true/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  var sr_sw = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", spotifyAccount: "someone-else", spotifySynced: '{"x":{"rev":1,"playlistId":"p"}}', spotifyPendingDeletes: '["q"]' }, fetchOptions: {} });
+  await waitFor(() => sr_sw.eval("connection") === "ready", 15000);
+  check("signed in to a different account, this device forgets what it knew of the old account's saves", sr_sw.localStorage.getItem("spotifyAccount") === "ron" && sr_sw.localStorage.getItem("spotifyAccount") !== "someone-else" && !/"x"/.test(sr_sw.localStorage.getItem("spotifySynced") || "") && !sr_sw.localStorage.getItem("spotifyPendingDeletes"));
+  var sr_same = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: {} });
+  await waitFor(() => sr_same.eval("connection") === "ready", 15000);
+  check("a device with no record just starts one", sr_same.localStorage.getItem("spotifyAccount") === "ron");
   sr_ready.document.body.click();
   var sr_slow = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: { listDelayMs: 4000 } });
   sr_slow.document.getElementById("feAppMenuButton").click();
   check("while Spotify is being connected, the menu has the same item, disabled, saying Connecting, with a note for a slow connection, and no Disconnect yet", sr_slow.eval("connection") === "connecting" && sr_slow.document.getElementById("feConnect").disabled && /^Connecting.$/.test(sr_slow.document.getElementById("feConnect").textContent.trim()) && /slow connection/.test(sr_slow.document.getElementById("feConnectionNote").textContent) && !sr_slow.document.getElementById("feDisconnect"));
   var sr_out = await boot({ url: EDURL, local: { formats: MINI, connectedBefore: "1", clientId: "c1" }, fetchOptions: {} });
   sr_out.document.getElementById("feAppMenuButton").click();
-  check("when not connected there is Connect to Spotify, and no Spotify connected row", !!sr_out.document.getElementById("feConnect") && !sr_out.document.querySelector("#feAppMenuPanel .fe-sp-title"));
+  check("when not connected there is Connect to Spotify, and no Spotify connected row (there is none any more)", !!sr_out.document.getElementById("feConnect") && !sr_out.document.querySelector("#feAppMenuPanel .fe-sp-title"));
   } catch (err) { areaCrashed("spotify row", err); } }
 
   if (want("version line")) { try {
@@ -4869,7 +4877,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sl_rest = ["fe-rule", "feGuide", "feMoreOptions", "feFeedback", "feReport", "fePrivacy", "fe-rule", "feVersion"];
   var sl_ready = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: {}, feedbackUrl: "https://tally.so/r/X" });
   var sl_r = sl_ids(sl_ready);
-  check("connected: the app's name, the Spotify row, then A guide for facilitators, More options, Feedback and questions, Report a problem, Privacy, and the version", JSON.stringify(sl_r) === JSON.stringify(["feMenuHead", "fe-sp-block"].concat(sl_rest)), JSON.stringify(sl_r));
+  check("connected: the app's name, then A guide for facilitators, More options, Feedback and questions, Report a problem, Privacy, and the version", JSON.stringify(sl_r) === JSON.stringify(["feMenuHead"].concat(sl_rest.slice(1))), JSON.stringify(sl_r));
   var sl_slow = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: { listDelayMs: 4000 }, feedbackUrl: "https://tally.so/r/X" });
   var sl_s = sl_ids(sl_slow);
   check("connecting: the Connecting item and its note come first, then the same order", sl_slow.eval("connection") === "connecting" && JSON.stringify(sl_s) === JSON.stringify(["feMenuHead", "feConnect", "feConnectionNote"].concat(sl_rest)), JSON.stringify(sl_s));
@@ -4878,7 +4886,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("not connected: Connect to Spotify comes first, then the same order", JSON.stringify(sl_o) === JSON.stringify(["feMenuHead", "feConnect"].concat(sl_rest)), JSON.stringify(sl_o));
   var sl_man = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "manual" }, fetchOptions: {}, feedbackUrl: "https://tally.so/r/X" });
   var sl_m = sl_ids(sl_man);
-  check("with manual backup, its block comes right after Spotify", JSON.stringify(sl_m) === JSON.stringify(["feMenuHead", "fe-sp-block", "fe-rule", "fe-bk-block"].concat(sl_rest)), JSON.stringify(sl_m));
+  check("with manual backup, its block comes right after the app's name", JSON.stringify(sl_m) === JSON.stringify(["feMenuHead", "fe-bk-block"].concat(sl_rest)), JSON.stringify(sl_m));
   } catch (err) { areaCrashed("spotify last", err); } }
 
   if (want("batch seven")) { try {
@@ -4971,7 +4979,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-05b"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-05c"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

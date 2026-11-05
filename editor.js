@@ -708,20 +708,14 @@ function renderAppMenu() {
         feEl("button", { type: "button", id: "feBackup", role: "menuitem", onClick: choose(() => downloadBackup()) }, feIcon("download"), "Back up now"),
         feEl("button", { type: "button", id: "feRestore", role: "menuitem", onClick: choose(() => $("restoreFile").click()) }, feIcon("restore"), "Restore")));
   }
-  // Spotify, when it is connected: what is connected and who to, and the way out, small and to the side, since it is hardly ever wanted
-  const who = typeof me !== "undefined" && me ? (me.display_name || me.id) : "";
-  const spotifyRow = feEl("div", { class: "fe-sp-block" },
-    feEl("div", { class: "fe-sp-row" }, feIcon("link"), feEl("span", { class: "fe-sp-title", text: "Spotify connected" }),
-      feEl("button", { type: "button", class: "fe-sp-disconnect", id: "feDisconnect", role: "menuitem", onClick: choose(() => confirmDisconnect()), text: "Disconnect" })),
-    who ? feEl("div", { class: "fe-sp-status", id: "feConnectedStatus", text: `Connected as ${who}, ${plural(playlists.length, "playlist")} found.` }) : null);
   // what the welcome and setup pages have at the bottom, each in a popup
   const infoItem = (id, target, icon, label) => feEl("button", { type: "button", class: "fe-item", id, role: "menuitem", onClick: choose(() => openInfo(target)) }, feIcon(icon), label);
   // Spotify is the first thing in the menu under its name, in whatever state it is in (connected, connecting, not connected, a problem), so it is always found in the same place.
-  const spotifyItems = connection === "ready" ? [spotifyRow] : connectItems;
+  const spotifyItems = connection === "ready" ? [] : connectItems;   // connected needs nothing here (Change Spotify login is in More options); a problem keeps its Connect
   slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" },
     feEl("div", { class: "fe-menuhead", id: "feMenuHead" }, feEl("img", { class: "fe-menuicon", src: "apple-touch-icon.png", alt: "", width: "40", height: "40" }), feEl("span", { class: "fe-menuname", text: "Ceremony Playlist Builder" })),
     ...spotifyItems,
-    ...(backupBlock ? [feEl("div", { class: "fe-rule" }), backupBlock] : []),
+    ...(backupBlock ? [...(spotifyItems.length ? [feEl("div", { class: "fe-rule" })] : []), backupBlock] : []),
     ...(spotifyItems.length || backupBlock ? [feEl("div", { class: "fe-rule" })] : []),
     // A guide for facilitators, with a line under its name that says what it is (the whole row opens it)
     feEl("button", { type: "button", class: "fe-item fe-gditem", id: "feGuide", role: "menuitem", onClick: choose(() => openGuide()) }, feIcon("help"),

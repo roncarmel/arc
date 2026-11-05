@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-05b";
+const APP_VERSION = "2026-11-05c";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1785,8 +1785,13 @@ function setSigningIn(flag, note = "") {
   updateButtons();
 }
 
-async function startLogin() {
+// Change Spotify login: the usual sign-in, but Spotify shows its page even when it is already signed in, where "Not you?" picks another account.
+// The current sign-in stays until a new one arrives, so going back from Spotify's page changes nothing.
+function changeSpotifyLogin() { startLogin({ switchAccount: true }); }
+
+async function startLogin(options) {
   if (signingIn) return;
+  const switchAccount = !!(options && options.switchAccount === true);
   const clientId = $("clientId").value.trim();
   if (!clientId) {
     setLoginMessage("Paste your Client ID first.");
@@ -1811,6 +1816,7 @@ async function startLogin() {
     code_challenge: challenge,
     state,
   });
+  if (switchAccount) params.set("show_dialog", "true");
   // if Spotify has not opened after this long, say so, so the buttons are not left waiting for good
   signInTimer = setTimeout(() => {
     if (!signingIn) return;
@@ -2348,8 +2354,19 @@ async function pagedItems(path) {
   }
 }
 
+// What this device knows of the recipe saves belongs to one Spotify account. Signed in to a different one (Change Spotify login), it is forgotten, so the new account's
+// saves are read as new and this device's recipes are saved there, instead of each old save looking removed. A device from before this record just starts it.
+function forgetOtherAccount(id) {
+  try {
+    const was = localStorage.getItem("spotifyAccount");
+    if (was && was !== id) for (const key of ["spotifySynced", "spotifyPendingDeletes", "spotifySavedAt"]) localStorage.removeItem(key);
+    localStorage.setItem("spotifyAccount", id);
+  } catch (err) { /* private browsing */ }
+}
+
 async function loadMyPlaylists() {
   me = await spotify("/me");
+  forgetOtherAccount(me.id);
   const raw = await pagedItems("/me/playlists?limit=50");
   playlists = raw.filter(Boolean).map((p) => ({
     id: p.id,
@@ -3249,6 +3266,7 @@ function initDonateChoice() {
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && backupCardOpen) dismissBackupCard(); });
   on("backupOk", "click", () => { const radio = document.querySelector('input[name="backupMode"]:checked'); if (radio) chooseBackupMode(radio.value); else dismissBackupCard(); });
   on("backupCancel", "click", dismissBackupCard);
+  on("changeSpotifyLogin", "click", () => changeSpotifyLogin());
   on("changeSaveMethod", "click", () => { closeInfo(true); openBackupCard(); });   // More options is a popup too, and would cover the card
   on("backupBackdrop", "click", dismissBackupCard);
   // Back from Spotify's page, a browser may show this page as it was left, with the buttons still waiting
