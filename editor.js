@@ -22,6 +22,7 @@ const editor = {
   gapPanel: null,     // the silence (by its place, 1 to the number of segments) whose card is open
   appMenu: false,     // the app-level menu beside the format tabs
   hover: null,        // the row, silence or bar piece under the pointer
+  playTipDue: false,  // the first-segment tip was on screen in this visit, so choosing a playlist brings the play tip
 };
 
 // ---------------------------------------------------------------- small helpers
@@ -1487,7 +1488,7 @@ function renderRows(settle) {
   holder.innerHTML = "";
   f.items.forEach((item, index) => holder.appendChild(rowEl(f, item, index)));
   const tip = firstSegmentTip(f);
-  if (tip) holder.firstChild.after(tip);
+  if (tip) { holder.firstChild.after(tip); editor.playTipDue = true; }
   equalizeAmounts();
   const full = noRoomForSegment(f);
   holder.appendChild(feEl("button", { type: "button", class: "fe-add", id: "feAddSegment", disabled: full ? true : undefined, onClick: addSegment }, feIcon("plus"), "New segment"));
@@ -1531,20 +1532,18 @@ function placeFirstTipArrow() {
   arrow.style.top = Math.round(b.bottom - w.top) + "px";   // resting on the button's bottom edge, as the welcome's rests on New recipe
 }
 
-// The second tutorial tip: once the only recipe has a playlist, it says what else to try, with no arrows. It stays until the person closes
-// it (x) or starts a build, kept in "playTipDone". Playlists the app made earlier do not hide it (decided by Ron, 2026-11-04).
-function playTipDone() {
-  try { return localStorage.getItem("playTipDone") === "1"; } catch (err) { return false; }
-}
+// The second tutorial tip: it follows the first one. When the first tip was on screen in this visit and a playlist is then chosen, it says what
+// else to try, with no arrows. Nothing is recorded: the x or a build closes it until the first tip shows again, and a later visit (where the
+// first tip is not showing) does not bring it back. Playlists the app made earlier do not hide it (decided by Ron, 2026-11-04).
 function markPlayTipDone() {
-  try { localStorage.setItem("playTipDone", "1"); } catch (err) { /* it shows again next visit, nothing worse */ }
+  editor.playTipDue = false;
   refreshPlayTip();
 }
 function refreshPlayTip() {
   const slot = $("fePlayTipSlot");
   if (!slot) return;
   const f = activeFormat();
-  const show = !!f && editor.model.formats.length === 1 && !playTipDone() && f.items.some((x) => x.kind === "seg" && x.lists.some((l) => l.name));
+  const show = !!f && editor.model.formats.length === 1 && editor.playTipDue && f.items.some((x) => x.kind === "seg" && x.lists.some((l) => l.name));
   const tip = $("fePlayTip");
   if (!show) { if (tip && !tip.hidden) revealSmoothly(tip, false); return; }
   if (tip) { if (tip.hidden) revealSmoothly(tip, true); return; }
