@@ -818,9 +818,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-04t" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-04u" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-04t/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-04u/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -2260,7 +2260,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   dnp_btn.dispatchEvent(new dnp_w.MouseEvent("click", { bubbles: true, cancelable: true }));
   check("clicking Donate again closes it, rather than closing and reopening", dnp_panel.hidden === true);
   var dnp_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("the panel and its dimming sit above the tip strip, so they cover the button and its note, and below the Create popup", /#kofiPanel \{[^}]*z-index: 1003;/.test(dnp_css) && /#kofiDim \{ position: fixed;[^}]*z-index: 1002; background: rgba\(0, 0, 0, 0\.65\); \}/.test(dnp_css) && /#supportBox \{ position: fixed; right: 16px; bottom: 16px; z-index: 1001;/.test(dnp_css) && /\.app-overlay \{ position: fixed;[^}]*z-index: 1100;/.test(dnp_css));
+  check("the panel and its dimming sit above the tip strip, so they cover the button and its note, and above the build popup, which stays open behind them", /#kofiPanel \{[^}]*z-index: 1111;/.test(dnp_css) && /#kofiDim \{ position: fixed;[^}]*z-index: 1110; background: rgba\(0, 0, 0, 0\.65\); \}/.test(dnp_css) && /#supportBox \{ position: fixed; right: 16px; bottom: 16px; z-index: 1001;/.test(dnp_css) && /\.app-overlay \{ position: fixed;[^}]*z-index: 1100;/.test(dnp_css));
   check("nothing in the page still says tip or tipping, except the word donate", !/\btip me\b|\bTip me\b|Tipping/.test(fs.readFileSync(ROOT + "index.html", "utf8").replace(/<style>[\s\S]*?<\/style>/, "") + fs.readFileSync(ROOT + "app.js", "utf8")));
 
 
@@ -2296,9 +2296,14 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var dd_btns = Array.from(dd_w2.document.querySelectorAll("#createCloseRow button"));
   check("when it is done, the footer offers only Close, and Support me with the cup is a pink button in the thank-you box", dd_btns.map((b) => b.textContent.trim()).join("|") === "Close" && dd_w2.document.getElementById("createDonate").closest("#createSupport") !== null && !!dd_w2.document.getElementById("createDonate").querySelector('img[src="cup-border.png"]') && dd_w2.document.getElementById("createDonate").classList.contains("primary"));
   dd_w2.document.getElementById("createDonate").click();
-  check("Donate closes the Create popup and opens the donation popup, with the screen dimmed behind it", dd_w2.document.getElementById("createOverlay").hidden === true && dd_w2.document.body.style.overflow === "" && dd_w2.document.getElementById("kofiPanel").hidden === false && dd_w2.document.getElementById("kofiDim").hidden === false && !!dd_w2.document.querySelector("#kofiPanel iframe"));
+  check("Support me opens the Ko-fi panel above the build popup, which stays open behind it", dd_w2.document.getElementById("createOverlay").hidden === false && Number(dd_w2.getComputedStyle(dd_w2.document.getElementById("kofiPanel")).zIndex) > Number(dd_w2.getComputedStyle(dd_w2.document.getElementById("createOverlay")).zIndex) && dd_w2.document.getElementById("kofiPanel").hidden === false && dd_w2.document.getElementById("kofiDim").hidden === false && !!dd_w2.document.querySelector("#kofiPanel iframe"));
+  dd_w2.document.dispatchEvent(new dd_w2.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  check("Escape closes only the Ko-fi panel: the build popup is still there, with focus back on Support me", dd_w2.document.getElementById("kofiPanel").hidden === true && dd_w2.document.getElementById("kofiDim").hidden === true && dd_w2.document.getElementById("createOverlay").hidden === false && dd_w2.document.activeElement === dd_w2.document.getElementById("createDonate"));
+  dd_w2.document.getElementById("createDonate").click();
   dd_w2.document.getElementById("kofiClose").click();
-  check("and closing that leaves a clean page: nothing dimmed, nothing open, Create ready again", dd_w2.document.getElementById("kofiDim").hidden === true && dd_w2.document.getElementById("kofiPanel").hidden === true && dd_w2.document.getElementById("createOverlay").hidden === true && !dd_w2.document.getElementById("create").disabled);
+  check("closing the panel with its x also returns to the build popup", dd_w2.document.getElementById("kofiPanel").hidden === true && dd_w2.document.getElementById("createOverlay").hidden === false);
+  dd_w2.document.getElementById("createClose").click();
+  check("and closing the build popup then leaves a clean page: nothing dimmed, nothing open, Create ready again", dd_w2.document.getElementById("kofiDim").hidden === true && dd_w2.document.getElementById("kofiPanel").hidden === true && dd_w2.document.getElementById("createOverlay").hidden === true && !dd_w2.document.getElementById("create").disabled);
   dd_w2.document.getElementById("create").click();
   await waitFor(() => visible(dd_w2, "confirmBox") || dd_w2.document.getElementById("createCloseRow").hidden === false, 30000);
   check("Close in the Create popup still just closes it", (() => { if (visible(dd_w2, "confirmBox")) dd_w2.document.getElementById("confirmNo").click(); return true; })());
@@ -3047,7 +3052,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-04t", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-04u", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4883,7 +4888,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-04t"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-04u"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

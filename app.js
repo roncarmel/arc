@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-04t";
+const APP_VERSION = "2026-11-04u";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -3258,20 +3258,22 @@ function initDonatePanel() {
     logStep("donate panel opened");
     countEvent("donate-opened");
   };
+  let opener = button;   // focus goes back to the button that opened it (the build popup's Support me stays open behind it)
   const close = () => {
     if (panel.hidden) return;
     dim.hidden = true;
     panel.hidden = true;
     button.setAttribute("aria-expanded", "false");
-    button.focus();
+    (opener && opener.isConnected && !opener.closest("[hidden]") ? opener : button).focus();
+    opener = button;
   };
-  openDonatePanel = () => { if (panel.hidden) open(); };
+  openDonatePanel = (from) => { if (panel.hidden) { opener = from || button; open(); } };
   button.addEventListener("click", (event) => {
     event.preventDefault();
     if (panel.hidden) open(); else close();
   });
   on("kofiClose", "click", close);
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !panel.hidden) close(); });
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !panel.hidden) { event.preventDefault(); close(); } });
   document.addEventListener("click", (event) => { if (!panel.hidden && !panel.contains(event.target) && !button.contains(event.target) && !(event.target.closest && event.target.closest("#createDonate"))) close(); });   // the Create popup's Donate button opens it, so that click must not close it again
   window.addEventListener("resize", () => { if (!panel.hidden) place(); });
 }
@@ -3447,9 +3449,9 @@ async function main() {
   initMotion();
   smoothResize($("createDialog"), document.querySelector("#createDialog .bd-body"));
   smoothResize($("infoDialog"), $("infoSlot"));
-  on("createDonate", "click", () => { closeCreateDialog(); openDonatePanel(); });
+  on("createDonate", "click", () => openDonatePanel($("createDonate")));   // the build popup stays open behind the panel, to come back to
   on("createOverlay", "click", (event) => { if (event.target === $("createOverlay")) dismissCreateDialog(); });
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !event.defaultPrevented && !$("createOverlay").hidden) dismissCreateDialog(); });   // an Escape that closed the guide above it is not for the build popup
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !event.defaultPrevented && !$("createOverlay").hidden && $("kofiPanel").hidden) dismissCreateDialog(); });   // an Escape that closed the guide or the Support me panel above it is not for the build popup
   guarded("tip note", () => trackTipHeight());
   guarded("donation panel", () => initDonatePanel());
   guarded("hiding the Donate button", () => initDonateChoice());
