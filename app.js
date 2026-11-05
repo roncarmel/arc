@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-04zh";
+const APP_VERSION = "2026-11-05a";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -3549,7 +3549,7 @@ async function main() {
   }
   if (connectingScreen) await settleFirstSave();
   await (pythonReady || preparePython());
-  if (connectingScreen) await new Promise((r) => setTimeout(r, 400));   // the last check is seen before the screen fades
+  if (connectingScreen) await new Promise((r) => setTimeout(r, 100));   // the last check is seen before the screen fades
   await setupComplete();
   endConnectingScreen();
   // A visit that starts during a wait (the tab was closed, the wait forgotten) opens the popup once, so the missing Build button is explained. A reload does not.
