@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-05m";
+const APP_VERSION = "2026-11-05n";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -79,10 +79,10 @@ function guarded(name, work) {
 }
 
 // Is there a newer version of the page than the one that is running? version.txt, on the site, holds only the stamp of the version uploaded last, so asking costs a few bytes.
-// It is asked a few seconds after a clean start, and when the person comes back to the tab if the last time was over 10 minutes ago, which is a moment when nothing is going on.
-// Newer means different, since stamps do not sort once there are more than 26 in a day. If nothing is going on, the page loads again by itself (once for each new version, so a
-// half-finished upload cannot make it loop); otherwise a message in the line under the editor's bar offers it. A running page is never harmed by an upload: it keeps what it
-// loaded, and the Python engine is read once, at the start. Opening the app menu asks too (at most every 30 seconds), and a newer version shows there with Update.
+// It is asked a few seconds after a clean start, when the person comes back to the tab if the last time was over 10 minutes ago, and when the app menu opens (at most every
+// 30 seconds). Newer means different, since stamps do not sort once there are more than 26 in a day. The page never loads again by itself: a card at the bottom of the screen,
+// in place of Support me, says Update available with both stamps and Get it (decided by Ron, 2026-11-05: updating should feel good, so the person does it). A running page is
+// never harmed by an upload: it keeps what it loaded, and the Python engine is read once, at the start.
 const versionCheck = { last: 0, everyMs: 10 * 60 * 1000, menuEveryMs: 30 * 1000, running: false, latest: "" };
 
 async function checkForNewVersion() {
@@ -96,8 +96,7 @@ async function checkForNewVersion() {
     if (!/^[A-Za-z0-9._-]{4,40}$/.test(latest) || latest === APP_VERSION) return;   // nothing new, or not a stamp at all (an error page)
     logStep(`newer version found: ${latest}`);
     versionCheck.latest = latest;
-    if (typeof editor !== "undefined" && editor.appMenu && typeof renderAppMenu === "function") renderAppMenu();   // the menu is open: its last line turns into the offer
-    newerVersionFound(latest);
+    showUpdateCard(latest);
   } catch (err) {
     /* no connection, or the file is not there: the next time */
   } finally {
@@ -105,32 +104,18 @@ async function checkForNewVersion() {
   }
 }
 
-function nothingIsGoingOn() {
-  const active = document.activeElement;
-  const typing = active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName);
-  const popup = document.querySelector(".fe-overlay:not([hidden]), #backupCard.opened, #createOverlay:not([hidden]), #infoOverlay:not([hidden])");
-  const menuOpen = typeof editor !== "undefined" && editor.appMenu;   // the menu offers Update itself
-  return !busy && !saveState.running && !connectingScreen && !typing && !popup && !menuOpen && !(typeof notices !== "undefined" && Date.now() - notices.lastEditAt < 10000);
-}
-
-function newerVersionFound(latest) {
-  let tried = false;
-  try { tried = sessionStorage.getItem("versionTried") === latest; } catch (err) { tried = true; }
-  if (nothingIsGoingOn() && !tried) {
-    try { sessionStorage.setItem("versionTried", latest); } catch (err) { /* no storage: no second try either */ }
-    reloadForNewVersion(() => offerNewVersion());
-    return;
-  }
-  offerNewVersion();
+function showUpdateCard(latest) {
+  const card = $("updateCard");
+  if (!card) return;
+  $("updateFrom").textContent = APP_VERSION;
+  $("updateTo").textContent = latest;
+  card.hidden = false;
+  document.documentElement.classList.add("update-ready");   // Support me and its note step aside while the card shows
 }
 
 function reloadForNewVersion(failed) {
   if (window.pageStart && window.pageStart.refresh) window.pageStart.refresh(failed || (() => {}));   // fresh copies of every file, then the page again
   else location.reload();
-}
-
-function offerNewVersion() {
-  if (typeof showNotices === "function") showNotices([{ text: "A newer version of this app is available.", icon: "cloud", hold: true, actions: [{ label: "Reload", run: () => reloadForNewVersion(() => {}) }] }]);
 }
 
 function showStartupProblems() {
@@ -3516,6 +3501,7 @@ async function main() {
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !event.defaultPrevented && !$("createOverlay").hidden && $("kofiPanel").hidden) dismissCreateDialog(); });   // an Escape that closed the guide or the Support me panel above it is not for the build popup
   guarded("tip note", () => trackTipHeight());
   guarded("donation panel", () => initDonatePanel());
+  on("updateGet", "click", () => reloadForNewVersion(() => {}));
   guarded("hiding the Donate button", () => initDonateChoice());
   on("removeOld", "click", removeEarlier);
   on("removeKey", "change", updateButtons);

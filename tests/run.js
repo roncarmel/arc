@@ -823,9 +823,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-05m" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-05n" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-05m/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-05n/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3018,7 +3018,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-05m", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-05n", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3488,7 +3488,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("a later visit starts with it hidden and the box checked", dh_w2.document.documentElement.classList.contains("donate-hidden") && dh_w2.document.getElementById("donateHideBox").checked === true && dh_w2.document.getElementById("donateHiddenMessage").hidden === false);
   var dh_w5 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, donateHidden: "declined" }, fetchOptions: {} });
   check("an answer saved by the earlier version of this section (declined) still hides it, with the box checked", dh_w5.document.documentElement.classList.contains("donate-hidden") && dh_w5.document.getElementById("donateHideBox").checked === true);
-  check("the CSS hides the Donate button with its note, and the Donate button in the Build popup", /\.donate-hidden #supportBox, \.donate-hidden #createDonate \{ display: none !important; \}/.test(dh_css));
+  check("the CSS hides the Donate button with its note, and the Donate button in the Build popup (the box stays for an update card)", /\.donate-hidden:not\(\.update-ready\) #supportBox, \.donate-hidden #createDonate, \.donate-hidden #supportButton, \.donate-hidden #supportCaption \{ display: none !important; \}/.test(dh_css));
   var dh_early = dh_html.match(/try \{ if \(localStorage\.getItem\("donateHidden"\)\) document\.documentElement\.classList\.add\("donate-hidden"\); \} catch \(e\) \{[^}]*\}/);
   check("a tiny script in the page's head sets the class before the page is drawn, so a hidden Donate button never flashes up", !!dh_early && dh_html.indexOf(dh_early[0]) < dh_html.indexOf("</head>"));
   if (dh_early) { var dh_w3 = await boot({ url: "http://127.0.0.1:8000/", local: { donateHidden: "donated" } }); dh_w3.document.documentElement.classList.remove("donate-hidden"); dh_w3.eval(dh_early[0]); check("and that script does it when an answer is saved", dh_w3.document.documentElement.classList.contains("donate-hidden")); }
@@ -4975,7 +4975,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-05m"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-05n"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5315,8 +5315,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var nv_src = fs.readFileSync(ROOT + "index.html", "utf8").match(/<script>\n  \/\/ If the page's own script never starts[\s\S]*?<\/script>/)[0].replace(/^<script>|<\/script>$/g, "");
   var nv_version = fs.readFileSync(ROOT + "app.js", "utf8").match(/const APP_VERSION = "([^"]+)"/)[1];
   check("version.txt holds just the version of the files, so a check costs a few bytes, and it is the same stamp as the page's", fs.readFileSync(ROOT + "version.txt", "utf8").trim() === nv_version && fs.readFileSync(ROOT + "version.txt", "utf8").length < 40 && fs.readFileSync(ROOT + "index.html", "utf8").split(nv_version).length - 1 === 5);
-  var nv_make = async (fetchOptions = {}, session = {}) => {
-    const w = await boot({ url: EDURL, session: Object.assign(signedIn(), session), local: { formats: MINI, connectedBefore: "1", backupMode: "manual" }, fetchOptions });
+  var nv_make = async (fetchOptions = {}, session = {}, local = {}) => {
+    const w = await boot({ url: EDURL, session: Object.assign(signedIn(), session), local: Object.assign({ formats: MINI, connectedBefore: "1", backupMode: "manual" }, local), fetchOptions });
     w.eval(nv_src);
     w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=${nv_version}"></script>`).join(""));
     w.__fetched = []; w.__reloaded = 0;
@@ -5332,36 +5332,28 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await nv_check(nv_a);
   check("the check asks for version.txt, fresh and not from the cache, with a changing address so nothing in between can answer for the site", nv_seen(nv_a).length === 1 && nv_seen(nv_a)[0].cache === "no-store" && /version\.txt\?t=\d+$/.test(nv_seen(nv_a)[0].url));
   check("the same version: nothing happens, no reload, no message", nv_a.__reloaded === 0 && !/newer version/i.test(capText(nv_a)));
+  check("the same version: no update card", nv_a.document.getElementById("updateCard").hidden && !nv_a.document.documentElement.classList.contains("update-ready"));
   var nv_b = await nv_make({ serverVersion: "2099-01-01a\n" });
   await nv_check(nv_b);
   await new Promise((r) => setTimeout(r, 200));
-  check("a different version, with nothing going on: fresh copies of the page and its scripts are asked for, and the page loads again, by itself, once", nv_b.__fetched.filter((f) => f.cache === "reload").length >= 5 && nv_b.__reloaded === 1 && !/newer version/i.test(capText(nv_b)));
-  nv_b.eval("versionCheck.last = 0");
-  await nv_check(nv_b);
+  var nv_card = nv_b.document.getElementById("updateCard");
+  check("a different version, with nothing going on: the page does not load again by itself, and asks for no fresh copies", nv_b.__reloaded === 0 && nv_b.__fetched.filter((f) => f.cache === "reload").length === 0);
+  check("a card says Update available, the version running and the new one, and Get it", !nv_card.hidden && /Update available/.test(nv_card.textContent) && nv_b.document.getElementById("updateFrom").textContent === nv_version && nv_b.document.getElementById("updateTo").textContent === "2099-01-01a" && nv_b.document.getElementById("updateGet").textContent === "Get it");
+  check("the card sits in the Support me box, which hides Support me and its note while it shows", nv_card.parentElement.id === "supportBox" && nv_b.document.documentElement.classList.contains("update-ready") && /\.update-ready #supportButton, \.update-ready #supportCaption \{ display: none; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  check("no message under the bar about it", !/newer version|update available/i.test(capText(nv_b)));
+  nv_b.document.getElementById("updateGet").click();
   await new Promise((r) => setTimeout(r, 200));
-  check("the same newer version again in the same visit does not reload again, in case the upload is half done: it says so instead, with Reload", nv_b.__reloaded === 1 && /A newer version of this app is available\./.test(capText(nv_b)) && capLinks(nv_b).some((b) => b.textContent === "Reload"));
-  var nv_btn = capLinks(nv_b).find((b) => b.textContent === "Reload");
-  nv_b.document.getElementById("feCaption").dispatchEvent(new nv_b.Event("pointerdown", { bubbles: true }));
-  check("pressing on the message does not replace its buttons, so a press on Reload or OK still counts as a click", capLinks(nv_b).includes(nv_btn));
-  capLinks(nv_b).find((b) => b.textContent === "Reload").click();
+  check("Get it loads fresh copies of the page and its scripts, then the page again", nv_b.__fetched.filter((f) => f.cache === "reload").length >= 5 && nv_b.__reloaded === 1);
+  nv_b.document.getElementById("updateGet").click();
   await new Promise((r) => setTimeout(r, 200));
-  check("Reload loads the page again whenever it is pressed", nv_b.__reloaded === 2);
-  var nv_c = await nv_make({ serverVersion: "2099-01-01a" });
-  nv_c.eval("notices.lastEditAt = Date.now()");
+  check("and again whenever it is pressed", nv_b.__reloaded === 2);
+  var nv_c = await nv_make({ serverVersion: "2099-01-01a" }, {}, { donateHidden: "1" });
   await nv_check(nv_c);
-  check("the person has edited in the last few seconds: no reload, only the message", nv_c.__reloaded === 0 && nv_c.eval("notices.held && notices.held.text") === "A newer version of this app is available.");
-  var nv_d = await nv_make({ serverVersion: "2099-01-01a" });
-  nv_d.eval('(() => { const box = document.createElement("input"); box.type = "text"; document.body.appendChild(box); box.focus(); })()');   // someone typing in a box
-  await nv_check(nv_d);
-  check("the person is typing in a box: no reload, only the message", nv_d.__reloaded === 0 && nv_d.eval("notices.held && notices.held.text") === "A newer version of this app is available.");
-  var nv_e = await nv_make({ serverVersion: "2099-01-01a" });
-  nv_e.eval("busy = true");
-  await nv_check(nv_e);
-  check("something is being built or saved: no reload, only the message", nv_e.__reloaded === 0 && nv_e.eval("notices.held && notices.held.text") === "A newer version of this app is available.");
+  check("with Support me hidden by choice, the card still shows", !nv_c.document.getElementById("updateCard").hidden && nv_c.document.documentElement.classList.contains("donate-hidden") && nv_c.document.documentElement.classList.contains("update-ready"));
   for (const [label, fetchOptions] of [["no connection", { versionFail: true }], ["a missing file", { versionStatus: 404, serverVersion: "Not found" }], ["an error page instead of a stamp", { serverVersion: "<html><body>Not found</body></html>" }], ["an empty answer", { serverVersion: "" }]]) {
     const w = await nv_make(fetchOptions);
     await nv_check(w);
-    check(`${label}: nothing happens`, w.__reloaded === 0 && !w.eval("notices.held"));
+    check(`${label}: nothing happens`, w.__reloaded === 0 && !w.eval("notices.held") && w.document.getElementById("updateCard").hidden);
   }
   // when it is asked
   var nv_f = await nv_make();
@@ -5392,11 +5384,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var nv_i = await nv_make({ serverVersion: "2099-01-01a" });
   nv_i.eval("versionCheck.last = Date.now() - 31 * 1000; toggleAppMenu()");
   await new Promise((r) => setTimeout(r, 200));
-  var nv_box = nv_i.document.querySelector("#feAppMenuPanel .fe-vn-box");
-  check("a newer version found while the menu is open: no reload by itself, and the menu's last line turns into New version available, You have <stamp>, Update", nv_i.__reloaded === 0 && nv_box && /New version available/.test(nv_box.textContent) && nv_box.textContent.includes(`You have ${nv_version}`) && nv_i.document.getElementById("feVersionUpdate").textContent === "Update");
-  nv_i.document.getElementById("feVersionUpdate").click();
-  await new Promise((r) => setTimeout(r, 200));
-  check("Update closes the menu and loads fresh copies of the page", nv_i.__reloaded === 1 && !nv_i.eval("editor.appMenu"));
+  check("a newer version found while the menu is open: no reload by itself, the menu's last line stays plain, and the card shows", nv_i.__reloaded === 0 && nv_i.document.getElementById("feVersion").textContent === `App version ${nv_version}` && !nv_i.document.getElementById("updateCard").hidden);
   } catch (err) { areaCrashed("newer version", err); } }
   console.log(failures ? `\n${failures} check(s) failed` : "\nall checks passed");
   if (areaPrev) areaTimes.push({ name: areaPrev, ms: Date.now() - areaStart });
