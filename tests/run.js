@@ -613,7 +613,7 @@ print(json.dumps(out))
   await runPreview(wE);
   pressBuild(wE);
   await waitFor(() => /did not allow/.test(wE.document.getElementById("actionMessage").textContent));
-  check("a refused permission tells the user to reconnect, and Create is available again", /Disconnect, then Connect again/.test(wE.document.getElementById("actionMessage").textContent) && true, wE.document.getElementById("actionMessage").textContent);
+  check("a refused permission tells the user to sign in again with Change Spotify login, and Create is available again", /Sign in again with Change Spotify login in More options, and approve every permission/.test(wE.document.getElementById("actionMessage").textContent) && true, wE.document.getElementById("actionMessage").textContent);
 
   // G. when nothing can be made there is no Create and nothing is touched
   var oF = { extraPlaylists: [{ id: "old1", name: "huge 1", owner: { id: "ron" }, description: MADE }] };
@@ -823,9 +823,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-05l" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-05m" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-05l/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-05m/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -1938,13 +1938,13 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var cv_oldToken = { token: JSON.stringify({ value: "t", expires: Date.now() + 3600000, scope: "playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public user-library-modify" }) };
   var cv_o2 = {};
   var cv_w2 = await cv_run(cv_oldToken, cv_o2);
-  check("an older sign-in, without the permission, still creates the playlists, sends no covers, and says how to allow them", cv_o2.writes.filter((w) => w.type === "create").length === 2 && cv_o2.writes.every((w) => w.type !== "cover") && /^The cover art was not added, because your Spotify sign-in does not include permission to upload images\. Click Disconnect, then Connect again to allow it\. Playlists you build after that will get the cover\.$/.test(cv_w2.document.getElementById("createNotes").textContent), cv_w2.document.getElementById("createNotes").textContent);
+  check("an older sign-in, without the permission, still creates the playlists, sends no covers, and says how to allow them", cv_o2.writes.filter((w) => w.type === "create").length === 2 && cv_o2.writes.every((w) => w.type !== "cover") && /^The cover art was not added, because your Spotify sign-in does not include permission to upload images\. Sign in again with Change Spotify login in More options to allow it\. Playlists you build after that will get the cover\.$/.test(cv_w2.document.getElementById("createNotes").textContent), cv_w2.document.getElementById("createNotes").textContent);
   var cv_o3 = { coverStatus: 400 };
   var cv_w3 = await cv_run(signedIn(), cv_o3);
   check("if Spotify will not take a cover, the playlists are still made, every one is tried, and the note says how many", cv_o3.writes.filter((w) => w.type === "create").length === 2 && cv_o3.writes.filter((w) => w.type === "cover").length === 2 && /^Spotify would not accept the cover art for 2 playlists\.$/.test(cv_w3.document.getElementById("createNotes").textContent), cv_w3.document.getElementById("createNotes").textContent);
   var cv_o4 = { coverStatus: 403 };
   var cv_w4 = await cv_run(signedIn(), cv_o4, 3);
-  check("if Spotify says the permission is missing, it stops asking after the first, finishes the rest, and says how to allow it", cv_o4.writes.filter((w) => w.type === "create").length === 3 && cv_o4.writes.filter((w) => w.type === "cover").length === 1 && /Click Disconnect, then Connect again to allow it\./.test(cv_w4.document.getElementById("createNotes").textContent), cv_w4.document.getElementById("createNotes").textContent);
+  check("if Spotify says the permission is missing, it stops asking after the first, finishes the rest, and says how to allow it", cv_o4.writes.filter((w) => w.type === "create").length === 3 && cv_o4.writes.filter((w) => w.type === "cover").length === 1 && /Sign in again with Change Spotify login in More options to allow it\./.test(cv_w4.document.getElementById("createNotes").textContent), cv_w4.document.getElementById("createNotes").textContent);
   var cv_o5 = { noCoverFile: true };
   var cv_w5 = await cv_run(signedIn(), cv_o5);
   check("if the cover file cannot be loaded, the playlists are still made, and the note says they have Spotify's default cover", cv_o5.writes.filter((w) => w.type === "create").length === 2 && cv_o5.writes.every((w) => w.type !== "cover") && /^The cover art could not be loaded, so the playlists have Spotify's default cover\.$/.test(cv_w5.document.getElementById("createNotes").textContent));
@@ -3018,7 +3018,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-05l", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-05m", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3453,7 +3453,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("it is a known problem, so there is no report link for it", pr_e.document.getElementById("connectionReportHint").hidden === true);
   check("and it is counted as its own kind of connection problem, premium", pr_e.eval('problemKind("' + PRM + '")') === "premium" && pr_e.eval('problemKind("Spotify did not allow this (x). Click Disconnect")') === "sign-in");
   var pr_o = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { denyCreate: true } });
-  check("a 403 that does not mention Premium keeps its old advice about reconnecting and approving every permission", fs.readFileSync(ROOT + "app.js", "utf8").includes('const PREMIUM_REQUIRED_MESSAGE = "' + PRM + '";') && /Spotify did not allow this \(\$\{what\}\)\. \$\{actWord\(true\)\} Disconnect, then Connect again and approve every permission it asks for\./.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("a 403 that does not mention Premium keeps its advice about signing in again and approving every permission", fs.readFileSync(ROOT + "app.js", "utf8").includes('const PREMIUM_REQUIRED_MESSAGE = "' + PRM + '";') && /Spotify did not allow this \(\$\{what\}\)\. Sign in again with Change Spotify login in More options, and approve every permission it asks for\./.test(fs.readFileSync(ROOT + "app.js", "utf8")));
   } catch (err) { areaCrashed("spotify premium", err); } }
 
   if (want("welcome recipe link")) { try {
@@ -4147,7 +4147,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   bc_w3.eval("spotifySaveDelayMs = 30");
   await waitFor(() => bc_o3.writes.filter((x) => x.type === "create").length === 2, 8000);
   check("with a sign-in that does not allow uploading images, no cover is sent, and the saves are made all the same", bc_covers(bc_o3).length === 0 && /Last saved at/.test(bc_w3.document.getElementById("spotifySaveStatus").textContent));
-  check("and the line under the bar says why there is no cover, and what to do about it", /does not include permission to add cover art/.test(capText(bc_w3)) && /Disconnect and connect again/.test(capText(bc_w3)) && capLinks(bc_w3).some((b) => b.textContent === "OK"));
+  check("and the line under the bar says why there is no cover, and what to do about it", /does not include permission to add cover art/.test(capText(bc_w3)) && /Sign in again with Change Spotify login in More options to allow it/.test(capText(bc_w3)) && capLinks(bc_w3).some((b) => b.textContent === "OK"));
   capLinks(bc_w3).find((b) => b.textContent === "OK").click();
   check("OK puts it away", !/permission to add cover art/.test(capText(bc_w3)));
   var bc_o4 = { descStore: {}, nameStore: {}, coverStatus: 500 };
@@ -4975,7 +4975,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-05l"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-05m"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5173,7 +5173,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var bp_x = await bp_fail(401);
   check("an expired sign-in: connect again", /^Your Spotify sign-in expired.*Connect again, then build again\./.test(bp_x.card), bp_x.card);
   var bp_d = await bp_fail(403);
-  check("a refused permission: what to do about it", /^Spotify did not allow this.*Click Disconnect, then Connect again/.test(bp_d.card), bp_d.card);
+  check("a refused permission: what to do about it", /^Spotify did not allow this.*Sign in again with Change Spotify login in More options/.test(bp_d.card), bp_d.card);
   var bp_e = await bp_fail(500);
   check("anything else: the error in plain words, try again later, and a report link", /^Something went wrong1 of 2 playlists was built, and Ran 2 is incomplete\. Spotify returned an error \(500\)\. Try again later\./.test(bp_e.card) && visible(bp_e.w, "mainReportHint"), bp_e.card);
 

@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-05l";
+const APP_VERSION = "2026-11-05m";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -965,7 +965,7 @@ async function uploadCovers() {
   let problem = null, stopped = false;
   try {
     if (saveState.coverBlocked || !hasScope("ugc-image-upload")) {
-      problem = { key: "permission", text: "Your Spotify sign-in does not include permission to add cover art, so the recipe playlists have no cover. Disconnect and connect again to allow it." };
+      problem = { key: "permission", text: "Your Spotify sign-in does not include permission to add cover art, so the recipe playlists have no cover. Sign in again with Change Spotify login in More options to allow it." };
     } else {
       let cover = null;
       try { cover = await loadCover("recipe-cover.jpg"); }
@@ -1342,7 +1342,7 @@ function updateButtonsNow() {
   refreshReconnectScreen();
 }
 
-// On the app page with no working sign-in (it ran out and could not be renewed, or Disconnect), nothing that needs Spotify works, so the app dims behind
+// On the app page with no working sign-in (it ran out and could not be renewed), nothing that needs Spotify works, so the app dims behind
 // one button that goes through Spotify's sign-in again. A network problem is not this: the page's own Try again is for that.
 function refreshReconnectScreen() {
   const screen = $("reconnectScreen");
@@ -1871,7 +1871,7 @@ async function finishLoginIfReturning() {
 }
 
 // The sign-in lasts between visits. Spotify's sign-in also gives a refresh token, kept in this browser with the Client ID it belongs to, so a sign-in that
-// has run out (after an hour, or when the tab was closed) is renewed in the background, without leaving the page. Disconnect and Reset remove it. When
+// has run out (after an hour, or when the tab was closed) is renewed in the background, without leaving the page. Sign out and clear data removes it. When
 // Spotify refuses it (access removed in Spotify, or too old), the person reconnects.
 const REFRESH_KEY = "spotifyRefresh";
 function storedRefresh() {
@@ -2292,7 +2292,7 @@ async function spotifyRequest(method, path, { params, json, body, contentType, n
       let body = "";
       try { body = await response.text(); } catch (err) { /* no body */ }
       if (/premium/i.test(body)) throw new Error(PREMIUM_REQUIRED_MESSAGE);   // reconnecting cannot fix this, so it gets its own message
-      throw new Error(`Spotify did not allow this (${what}). ${actWord(true)} Disconnect, then Connect again and approve every permission it asks for.`);
+      throw new Error(`Spotify did not allow this (${what}). Sign in again with Change Spotify login in More options, and approve every permission it asks for.`);
     }
     if (!response.ok) throw new Error(`Spotify returned ${response.status} for ${what}`);
     const text = await response.text();
@@ -3115,7 +3115,7 @@ async function createFromPlan(plan) {
     setBuildSteps("done");
     const notes = [];
     if (stillPublic.length) notes.push(`Spotify kept ${plural(stillPublic.length, "playlist")} on your profile and would not let this app change that. You can change that in the Spotify app.`);
-    if (coverBlocked) notes.push(`The cover art was not added, because your Spotify sign-in does not include permission to upload images. ${actWord(true)} Disconnect, then Connect again to allow it. Playlists you build after that will get the cover.`);
+    if (coverBlocked) notes.push(`The cover art was not added, because your Spotify sign-in does not include permission to upload images. Sign in again with Change Spotify login in More options to allow it. Playlists you build after that will get the cover.`);
     else if (coverUnloaded) notes.push("The cover art could not be loaded, so the playlists have Spotify's default cover.");
     else if (coverFailed) notes.push(`Spotify would not accept the cover art for ${plural(coverFailed, "playlist")}.`);
     createSucceeded = created > 0;
