@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-04za">
-<script src="theme.js?v=2026-11-04za"></script>
+<meta name="app-version" content="2026-11-04zb">
+<script src="theme.js?v=2026-11-04zb"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -10,11 +10,6 @@
 <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
 <link rel="icon" href="favicon-16.png" type="image/png" sizes="16x16">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<!-- added to a phone's Home Screen, the app opens on its own, without the browser's address bar; "Playlists" is the name under the icon (decided by Ron, 2026-11-04) -->
-<link rel="manifest" href="manifest.webmanifest">
-<meta name="apple-mobile-web-app-title" content="Playlists">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
 <style>
   [hidden] { display: none !important; }
   :root { color-scheme: light dark; --bg: #ffffff; --fg: #1d1d1f; --muted: #6b6b70; --line: #d8d8dc; --card: #f5f5f7; --accent: #c2188f; --button: #ff38b8; --ease-out: cubic-bezier(0.2, 0, 0, 1); --ease-in: cubic-bezier(0.4, 0, 1, 1); }
@@ -591,22 +586,7 @@
   #infoDialog #infoClose { flex: none; margin: 0; background: rgba(255, 255, 255, 0.18); border-color: transparent; color: var(--on-deep, #fff); box-shadow: none; }
   #infoDialog #infoClose:hover { background: rgba(255, 255, 255, 0.28); }
   #infoSlot { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 18px 18px; }
-  #infoDialog details > summary, #infoSlot > #reportBlock > h3:first-child, #infoSlot > #homeScreenBlock > h3:first-child { display: none; }
-  /* Add to Home Screen: the box under Start setup on the welcome page, and the iPhone steps popup (homeScreen in app.js) */
-  .hs-line { display: flex; gap: 10px; align-items: flex-start; margin: 18px 0 0; max-width: 360px; padding: 12px 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); text-align: left; line-height: 1.4; }
-  .hs-line[hidden] { display: none; }
-  .hs-line .hs-ic { color: var(--accent); flex: none; margin-top: 1px; }
-  .hs-line p { margin: 0; text-wrap: pretty; }
-  .hs-line .linklike { font-weight: 600; }
-  .hs-line .hs-install { margin-top: 10px; background: transparent; color: var(--accent); border: 1.5px solid var(--accent); box-shadow: none; }
-  .ios-btn { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; margin: 0 3px; padding: 6px 11px; border-radius: 999px; background: #fff; color: #0a7aff; border: 1px solid rgba(0, 0, 0, 0.12);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); font: 600 14px/1 -apple-system, "Helvetica Neue", Arial, sans-serif; white-space: nowrap; }
-  .ios-btn.ios-row { color: #111; border-radius: 10px; padding: 8px 12px; gap: 10px; }
-  .hs-steps { margin: 4px 0 0; padding: 0; list-style: none; counter-reset: hs; }
-  .hs-steps li { counter-increment: hs; position: relative; padding: 10px 0 10px 40px; line-height: 2.1; }
-  .hs-steps li::before { content: counter(hs); position: absolute; left: 0; top: 12px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; font-size: 0.9rem; line-height: 26px; text-align: center; }
-  .hs-lead { margin: 0 0 6px; color: var(--muted); line-height: 1.45; }
-  .hs-small { color: var(--muted); font-size: 0.9rem; }
+  #infoDialog details > summary, #infoSlot > #reportBlock > h3:first-child { display: none; }
   /* More options: one rhythm for every section, and everything under a heading indented a little */
   #reportBlock > :not(h3) { margin-left: 16px; }
   /* Privacy: the same rhythm and indent as More options */
@@ -1061,12 +1041,6 @@
       <li><span class="wp-num">3</span><div><span class="ui">Build.</span> The new playlists appear in your Spotify account, ready to play.</div></li>
     </ol>
     <div class="row wp-go"><button id="startSetup" class="primary" type="button"><img class="btn-icon" src="icons/start.svg" alt="" width="20" height="20"><span class="btn-label">Start setup</span></button></div>
-    <!-- only on a phone that can add this app to its Home Screen and has not (homeScreen in app.js): before setup, since a Home Screen app on an iPhone may keep its own storage -->
-    <div id="hsWelcome" class="hs-line" hidden>
-      <span class="hs-ic" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M12 9v6M9 12h6"/></svg></span>
-      <div><p>Add this app to your Home Screen before setup, so it opens like an app. <button id="hsWelcomeHow" class="linklike" type="button">How</button></p>
-      <button id="hsWelcomeInstall" class="hs-install" type="button" hidden>Add to Home Screen</button></div>
-    </div>
     <p class="muted wp-screens">Works in any browser, easiest on a bigger screen.</p>
   </section>
 
@@ -1456,16 +1430,6 @@
   </footer>
 </main>
     <!-- Report a problem: opened from the app menu in the info popup, so it is not part of More options -->
-  <!-- iPhone Safari cannot add a page to the Home Screen by itself, so this popup shows the steps, with Safari's buttons drawn -->
-  <div id="homeScreenBlock" hidden>
-  <h3>Add to Home Screen</h3>
-  <p class="hs-lead">Ceremony Playlist Builder then opens from its own icon, full screen, like an app.</p>
-  <ol class="hs-steps">
-    <li>Tap <span class="ios-btn" role="img" aria-label="Share"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M8 10H6a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2"/></svg></span> at the bottom of Safari.<div class="hs-small">Not there? Tap <span class="ios-btn" role="img" aria-label="More"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></span> first.</div></li>
-    <li>Scroll down and tap <span class="ios-btn ios-row"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M12 8v8M8 12h8"/></svg>Add to Home Screen</span></li>
-    <li>Tap <span class="ios-btn">Add</span> at the top right.</li>
-  </ol>
-  </div>
   <div id="reportBlock" hidden>
   <h3>Report a problem</h3>
   <p class="muted">Something not working? Send a report. A person reads these, but may not respond to all of them. The form opens in a new tab, and nothing is sent until you submit it there.</p>
@@ -1480,8 +1444,8 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-04za"></script>
-<script src="editor.js?v=2026-11-04za"></script>
-<script src="app.js?v=2026-11-04za"></script>
+<script src="formats.js?v=2026-11-04zb"></script>
+<script src="editor.js?v=2026-11-04zb"></script>
+<script src="app.js?v=2026-11-04zb"></script>
 </body>
 </html>
