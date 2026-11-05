@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-05q";
+const APP_VERSION = "2026-11-05r";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -302,6 +302,7 @@ function openInfo(id) {
   if (titleIcon && typeof feIcon === "function") $("infoTitle").appendChild(feIcon(titleIcon)).className = "info-ticon";
   $("infoTitle").appendChild(Object.assign(document.createElement("span"), { textContent: title ? title.textContent.trim() : "" }));
   if (id === "reportBlock" || id === "moreOptions") refreshReportBox();
+  if (id === "devOptions") renderStarterPicker();
   $("infoOverlay").hidden = false;
   document.body.style.overflow = "hidden";
   $("infoSlot").scrollTop = 0;
@@ -2348,6 +2349,7 @@ async function loadMyPlaylists() {
     owner: p.owner && p.owner.id,
     collaborative: !!p.collaborative,
     image: Array.isArray(p.images) && p.images.length ? p.images[p.images.length - 1].url : null,   // Spotify lists the largest first
+    cover: Array.isArray(p.images) && p.images.length ? p.images[0].url : null,   // the largest, for Copy starter playlists
     count: p.tracks && typeof p.tracks.total === "number" ? p.tracks.total : (p.items && typeof p.items.total === "number" ? p.items.total : null),
     description: typeof p.description === "string" ? p.description : null,
     snapshot: typeof p.snapshot_id === "string" && p.snapshot_id ? p.snapshot_id : null,   // changes whenever the playlist does
@@ -2387,6 +2389,55 @@ async function loadTracks(id) {
   trackCache.set(id, tracks);
   await saveSongs({ id, snapshot, tracks, v: SONGS_VERSION, savedAt: Date.now() });
   return tracks;
+}
+
+// Developer options, Copy starter playlists: the person's own playlists with a checkbox each; the chosen ones are copied as manifests (name, description,
+// cover address unless it is Spotify's automatic grid, song IDs in order) to paste into the chat, for starters.js.
+function starterCandidates() { return me ? playlists.filter((p) => p.owner === me.id && !p.isSave && !p.madeByApp) : []; }
+
+function renderStarterPicker() {
+  const list = $("devStarterList");
+  list.textContent = "";
+  const own = starterCandidates();
+  if (!own.length) list.appendChild(Object.assign(document.createElement("p"), { className: "muted", textContent: me ? "No playlists of your own found." : "Connect to Spotify first." }));
+  for (const p of own) {
+    const row = document.createElement("label");
+    row.className = "choice-row";
+    const box = Object.assign(document.createElement("input"), { type: "checkbox", value: p.id });
+    box.addEventListener("change", () => { $("devCopyStarters").disabled = !list.querySelector("input:checked"); });
+    row.append(box, Object.assign(document.createElement("span"), { textContent: p.name }));
+    list.appendChild(row);
+  }
+  $("devCopyStarters").disabled = true;
+}
+
+async function copyStarterManifests() {
+  const ids = Array.from($("devStarterList").querySelectorAll("input:checked"), (b) => b.value);
+  if (!ids.length) return;
+  closeInfo();
+  showNotices([{ text: `Reading ${plural(ids.length, "playlist")}...`, transient: true }]);
+  const out = [];
+  try {
+    for (const id of ids) {
+      const p = playlists.find((q) => q.id === id);
+      const entries = await pagedItems(`/playlists/${id}/items?limit=50`);
+      const songs = [];
+      for (const entry of entries) {
+        const t = entry && (entry.item || entry.track);
+        if (t && !t.is_local && t.type === "track" && /^spotify:track:[\w-]+$/.test(t.uri || "")) songs.push(t.uri.slice(14));
+      }
+      out.push({ id, name: p.name, description: p.description || "", cover: p.cover && !/mosaic\.scdn\.co/.test(p.cover) ? p.cover : null, songs });
+    }
+  } catch (err) {
+    showNotices([{ text: `The manifests could not be copied: ${String(err && err.message || err).replace(/\.$/, "")}.`, transient: true }]);
+    return;
+  }
+  const text = JSON.stringify(out);
+  const done = () => showNotices([{ text: `${out.length === 1 ? "Manifest" : "Manifests"} for ${plural(out.length, "playlist")} copied. Paste into the chat with Claude.`, transient: true }]);
+  try { await navigator.clipboard.writeText(text); done(); }
+  catch (err) {   // some browsers allow copying only right after a click, and reading took a while: one more click
+    showNotices([{ text: `${plural(out.length, "playlist")} read.`, icon: "copy", hold: true, actions: [{ label: "Copy", run: async () => { try { await navigator.clipboard.writeText(text); done(); } catch (e) { showNotices([{ text: "The manifests could not be copied.", transient: true }]); } } }] }]);
+  }
 }
 
 async function removePlaylists(ids) {
@@ -3463,6 +3514,7 @@ async function main() {
     if (choice === "yes") await startOver();
   });
   on("devCopyRecord", "click", () => { closeInfo(); copyLimitRecord(); });
+  on("devCopyStarters", "click", () => copyStarterManifests());
   on("connect", "click", startLogin);
   on("startSetup", "click", () => goToSetup(false));
   on("premiumWhy", "click", (event) => { event.stopPropagation(); showPremiumWhy($("premiumWhyText").hidden); });

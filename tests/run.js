@@ -823,9 +823,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-05q" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-05r" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-05q/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-05r/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3018,7 +3018,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-05q", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-05r", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4842,7 +4842,18 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   dv_w.eval("window.__t[window.__t.length - 1]()");
   check("held to the end, the menu closes and Developer options opens in the info popup", !dv_w.document.getElementById("feAppMenuPanel") && dv_w.document.getElementById("infoOverlay").hidden === false && dv_w.document.getElementById("infoSlot").firstElementChild.id === "devOptions" && dv_w.document.getElementById("infoTitle").textContent === "Developer options");
   var dv_topics = Array.from(dv_w.document.querySelectorAll("#devOptions details.gd-topic > summary")).map((h) => h.textContent);
-  check("it has Start over, Copy Spotify record and Python status, all open, and no way to turn it off", JSON.stringify(dv_topics) === JSON.stringify(["Start over", "Copy Spotify record", "Python status"]) && Array.from(dv_w.document.querySelectorAll("#devOptions details.gd-topic")).every((d) => d.open) && !/Turn off/.test(dv_w.document.getElementById("devOptions").textContent), JSON.stringify(dv_topics));
+  check("it has Start over, Copy Spotify record, Copy starter playlists and Python status, all open, and no way to turn it off", JSON.stringify(dv_topics) === JSON.stringify(["Start over", "Copy Spotify record", "Copy starter playlists", "Python status"]) && Array.from(dv_w.document.querySelectorAll("#devOptions details.gd-topic")).every((d) => d.open) && !/Turn off/.test(dv_w.document.getElementById("devOptions").textContent), JSON.stringify(dv_topics));
+  var dv_rows = Array.from(dv_w.document.querySelectorAll("#devStarterList input[type=checkbox]"));
+  var dv_own = dv_w.eval("starterCandidates().map((p) => p.id)");
+  check("Copy starter playlists lists the person's own playlists with a checkbox each, none checked, and Copy manifests waits for one", dv_rows.length > 0 && JSON.stringify(dv_rows.map((b) => b.value)) === JSON.stringify(dv_own) && dv_rows.every((b) => !b.checked) && dv_w.document.getElementById("devCopyStarters").disabled === true, JSON.stringify(dv_own));
+  dv_rows[0].click();
+  check("checking one enables Copy manifests", dv_w.document.getElementById("devCopyStarters").disabled === false);
+  dv_w.eval("window.__copied = null; navigator.clipboard.writeText = (t) => { window.__copied = t; return Promise.resolve(); }");
+  dv_w.document.getElementById("devCopyStarters").click();
+  await waitFor(() => dv_w.eval("window.__copied") !== null, 5000);
+  var dv_man = (() => { try { return JSON.parse(dv_w.eval("window.__copied")); } catch (e) { return null; } })();
+  check("the copy is one manifest per chosen playlist: its ID, name, description, cover and song IDs", Array.isArray(dv_man) && dv_man.length === 1 && dv_man[0].id === dv_rows[0].value && typeof dv_man[0].name === "string" && typeof dv_man[0].description === "string" && "cover" in dv_man[0] && Array.isArray(dv_man[0].songs) && dv_man[0].songs.length > 0 && dv_man[0].songs.every((x) => !/:/.test(x)), dv_w.eval("window.__copied"));
+  dv_w.eval("openInfo('devOptions')");
   dv_w.document.getElementById("infoClose").click();
   check("closed, it goes back to its place, hidden", dv_w.document.getElementById("devOptions").hidden === true && !dv_w.document.getElementById("devOptions").closest("#infoSlot"));
   check("the header takes no callout, selection or scrolling, and its icon cannot be dragged", /\.fe-menuhead \{ -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: none; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && (() => { const h = dv_open(); const ok = h.querySelector("img").draggable === false; const e = new dv_w.MouseEvent("contextmenu", { bubbles: true, cancelable: true }); h.dispatchEvent(e); dv_w.document.getElementById("feAppMenuButton").click(); return ok && e.defaultPrevented; })());
@@ -4975,7 +4986,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-05q"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-05r"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
