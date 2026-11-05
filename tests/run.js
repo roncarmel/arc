@@ -818,9 +818,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-04s" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-04t" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-04s/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-04t/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3047,7 +3047,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-04s", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-04t", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4883,7 +4883,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-04s"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-04t"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -4996,6 +4996,12 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("choosing 1 lights one tile and names it on the Build button", bp_a.document.querySelectorAll("#bdPickTiles .bd-on").length === 1 && bp_opts()[0].getAttribute("aria-checked") === "true" && !bp_a.document.getElementById("confirmYes").disabled && bp_text(bp_a, "confirmYes") === "Build 1 playlist", bp_text(bp_a, "confirmYes"));
   bp_opts()[1].click();
   check("choosing 2 lights both", bp_a.document.querySelectorAll("#bdPickTiles .bd-on").length === 2 && bp_text(bp_a, "confirmYes") === "Build 2 playlists", bp_text(bp_a, "confirmYes"));
+  // the guide opens over the build popup and closes back to it
+  var bp_gl = bp_a.document.getElementById("bdPickGuide");
+  bp_gl.focus(); bp_gl.click();
+  check("the guide link opens the guide over the build popup, which stays open", visible(bp_a, "infoOverlay") && visible(bp_a, "createOverlay") && bp_a.document.getElementById("gdSeveral").open);
+  bp_a.document.dispatchEvent(new bp_a.KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+  check("Escape closes only the guide: the build popup stays, the page behind still cannot scroll, and focus is back on the link", !visible(bp_a, "infoOverlay") && visible(bp_a, "createOverlay") && bp_a.document.body.style.overflow === "hidden" && bp_a.document.activeElement === bp_gl && bp_text(bp_a, "confirmYes") === "Build 2 playlists");
   check("the popup's text can be selected", /#createDialog \.bd-body \{[^}]*user-select: text;/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   check("the title names the recipe", bp_text(bp_a, "bdTitle") === "Ran", bp_text(bp_a, "bdTitle"));
   check("under the name, the recipe's bar: a piece for each segment and silence, as in the editor", !bp_a.document.getElementById("bdShape").hidden && bp_a.document.querySelectorAll("#bdShape .bd-shape-piece").length === bp_a.document.querySelectorAll("#feBar .fe-piece").length && bp_a.document.querySelectorAll("#bdShape .bd-shape-silence").length === bp_a.document.querySelectorAll("#feBar .fe-piece-silence").length, bp_a.document.getElementById("bdShape").innerHTML);
