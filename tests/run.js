@@ -541,8 +541,7 @@ print(json.dumps(out))
   // C. the limit (in More options) caps the plan
   var oC2 = {};
   var wC2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: oC2 });
-  wC2.document.getElementById("maxPlaylists").value = "3";
-  wC2.document.getElementById("maxPlaylists").dispatchEvent(new wC2.Event("input"));
+  wC2.eval("setPlaylistLimit(3)");
   await runPreview(wC2);
   check("with a limit of 3, the question offers to build 3", wC2.document.getElementById("confirmYes").textContent === "Build 3 playlists", wC2.document.getElementById("confirmYes").textContent);
   pressBuild(wC2);
@@ -559,8 +558,7 @@ print(json.dumps(out))
   check("editing the formats closes the question and re-enables Create", (wD0.document.getElementById("output").hidden && outText(wD0) === "") && !visible(wD0, "confirmBox") && wD0.document.getElementById("create").disabled === false);
   await runPreview(wD0);
   await new Promise((r) => setTimeout(r, 40));
-  await runPreview(wD0);
-  wD0.document.getElementById("maxPlaylists").dispatchEvent(new wD0.Event("input"));
+  wD0.eval("setPlaylistLimit(2)");
   await new Promise((r) => setTimeout(r, 40));
   check("changing the limit closes the question and re-enables Create", (wD0.document.getElementById("output").hidden && outText(wD0) === "") && !visible(wD0, "confirmBox") && wD0.document.getElementById("create").disabled === false);
   await runPreview(wD0);
@@ -630,7 +628,7 @@ print(json.dumps(out))
   await readyToPreview(wG);
   var removeOpts = Array.from(wG.document.getElementById("removeKey").options).map((o) => o.value);
   check("the removal dropdown lists a blank, the formats, then All recipes", JSON.stringify(removeOpts) === JSON.stringify(["", "a", "b", "__all__"]), JSON.stringify(removeOpts));
-  check("removal is inside More options", !!wG.document.querySelector("#moreOptions #removeOld") && !!wG.document.querySelector("#devOptions #maxPlaylists") && !!wG.document.querySelector("#moreOptions #clearData") && /More options/.test(wG.document.querySelector("#moreOptions summary").textContent));
+  check("removal is inside More options", !!wG.document.querySelector("#moreOptions #removeOld") && !!wG.document.querySelector("#moreOptions #clearData") && /More options/.test(wG.document.querySelector("#moreOptions summary").textContent));
   check("the removal dropdown starts blank and Remove waits for a choice", wG.document.getElementById("removeKey").value === "" && wG.document.getElementById("removeOld").disabled === true);
   wG.document.getElementById("removeKey").value = "b";
   removeNow(wG);
@@ -795,8 +793,7 @@ print(json.dumps(out))
   var wCount = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: oCount });
   var countText = () => wCount.document.getElementById("connectedMessage").textContent;
   check("Step 1 starts with the real count", countText() === "Connected as Ron. 5 playlists found.", countText());
-  wCount.document.getElementById("maxPlaylists").value = "3";
-  wCount.document.getElementById("maxPlaylists").dispatchEvent(new wCount.Event("input"));
+  wCount.eval("setPlaylistLimit(3)");
   await runPreview(wCount);
   pressBuild(wCount);
   await waitFor(() => /in your Spotify library\.$/.test(wCount.document.getElementById("actionMessage").textContent), 20000);
@@ -826,9 +823,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-05i" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-05j" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-05i/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-05j/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -933,8 +930,7 @@ print(json.dumps(out))
   check("Download a backup lives in Step 4, after the editor", !!(st.document.getElementById("formats").compareDocumentPosition($s("backupDownload")) & 4) && !!(st.document.getElementById("backupSection").compareDocumentPosition($s("backupDownload")) & 4));
   // no nudge after a successful create
   var x_nudge = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
-  x_nudge.document.getElementById("maxPlaylists").value = "1";
-  x_nudge.document.getElementById("maxPlaylists").dispatchEvent(new x_nudge.Event("input"));
+  x_nudge.eval("setPlaylistLimit(1)");
   await runPreview(x_nudge);
   pressBuild(x_nudge);
   await waitFor(() => /in your Spotify library\.$/.test(x_nudge.document.getElementById("actionMessage").textContent), 20000);
@@ -1073,7 +1069,7 @@ print(json.dumps(out))
   var moCss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("the More options box is gray by default", /#moreOptions(, [#\w-]+)* \{ color: var\(--muted\); \}/.test(moCss));
   check("its headings stay in the normal text color, and its title stays pink", /footer\.debug h3 \{[^}]*color: var\(--fg\)/.test(moCss) && /details\.card > summary \{[^}]*color: var\(--accent\)/.test(moCss));
-  check("its inputs, dropdowns and confirmation questions keep the normal text color, and the report details are gray like the rest", /#moreOptions input, #moreOptions select, #devOptions select \{ color: var\(--fg\); \}/.test(moCss) && /#moreOptions #removeConfirmBox, #moreOptions #clearConfirm \{ color: var\(--fg\); \}/.test(moCss) && /#moreOptions pre\.report-preview \{ color: var\(--muted\); \}/.test(moCss) && !/#moreOptions pre, /.test(moCss));
+  check("its inputs, dropdowns and confirmation questions keep the normal text color, and the report details are gray like the rest", /#moreOptions input, #moreOptions select \{ color: var\(--fg\); \}/.test(moCss) && /#moreOptions #removeConfirmBox, #moreOptions #clearConfirm \{ color: var\(--fg\); \}/.test(moCss) && /#moreOptions pre\.report-preview \{ color: var\(--muted\); \}/.test(moCss) && !/#moreOptions pre, /.test(moCss));
   var moreBox = fresh.document.getElementById("moreOptions");
   var loud = Array.from(moreBox.querySelectorAll("p, label, span")).filter((el) => el.closest("#removeConfirmBox, #clearConfirm, .btn-label") === null && el.hasAttribute("style") && /color\s*:/.test(el.getAttribute("style")));
   check("no paragraph in More options sets its own text color, so the gray applies everywhere", loud.length === 0, loud.map((e) => e.id || e.textContent.slice(0, 30)).join(","));
@@ -1885,8 +1881,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var pv_o = {};
   var pv_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: pv_o });
   await readyToPreview(pv_w);
-  pv_w.document.getElementById("maxPlaylists").value = "2";
-  pv_w.document.getElementById("maxPlaylists").dispatchEvent(new pv_w.Event("input"));
+  pv_w.eval("setPlaylistLimit(2)");
   pv_w.document.getElementById("create").click();
   await waitFor(() => visible(pv_w, "confirmBox"), 30000);
   pressBuild(pv_w);
@@ -1896,8 +1891,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var pv_o2 = { ignorePublic: true };
   var pv_w2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: pv_o2 });
   await readyToPreview(pv_w2);
-  pv_w2.document.getElementById("maxPlaylists").value = "2";
-  pv_w2.document.getElementById("maxPlaylists").dispatchEvent(new pv_w2.Event("input"));
+  pv_w2.eval("setPlaylistLimit(2)");
   pv_w2.document.getElementById("create").click();
   await waitFor(() => visible(pv_w2, "confirmBox"), 30000);
   pressBuild(pv_w2);
@@ -1906,8 +1900,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var pv_o3 = { ignorePublic: true, putFails: true };
   var pv_w3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: pv_o3 });
   await readyToPreview(pv_w3);
-  pv_w3.document.getElementById("maxPlaylists").value = "2";
-  pv_w3.document.getElementById("maxPlaylists").dispatchEvent(new pv_w3.Event("input"));
+  pv_w3.eval("setPlaylistLimit(2)");
   pv_w3.document.getElementById("create").click();
   await waitFor(() => visible(pv_w3, "confirmBox"), 30000);
   pressBuild(pv_w3);
@@ -1929,9 +1922,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var cv_run = async (token, fetchOptions, count = 2) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: token, local: { formats: MINI }, fetchOptions });
     await readyToPreview(w);
-    w.document.getElementById("maxPlaylists").value = String(count);
-    w.document.getElementById("maxPlaylists").dispatchEvent(new w.Event("input"));
-    w.document.getElementById("create").click();
+    w.eval("setPlaylistLimit(" + count + ")");
+      w.document.getElementById("create").click();
     await waitFor(() => visible(w, "confirmBox"), 30000);
     pressBuild(w);
     await waitFor(() => /in your Spotify library\.$/.test(w.document.getElementById("actionMessage").textContent), 30000);
@@ -2006,16 +1998,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("the limit list, and the format's title")) { try {
   // ================================================================ the limit list, and the format's title
   var lm_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI } });
-  var lm_sel = lm_w.document.getElementById("maxPlaylists");
-  check("the playlist limit is a list: No limit first, then 1 to 10", lm_sel.tagName === "SELECT" && Array.from(lm_sel.options).map((o) => o.textContent).join("|") === "No limit|1|2|3|4|5|6|7|8|9|10" && lm_sel.value === "" && Array.from(lm_sel.options).map((o) => o.value).join("|") === "|1|2|3|4|5|6|7|8|9|10");
-  var lm_text = Array.from(lm_w.document.querySelectorAll("#devOptions p")).find((p) => /Caps how many playlists/.test(p.textContent));
-  check("it sits under your sentence, which no longer says plans or asks for a number", !!lm_text && lm_text.textContent === "Caps how many playlists each recipe makes, for quicker test builds. Kept until the page reloads." && lm_text.nextElementSibling === lm_sel && !/enter a number/.test(lm_w.document.getElementById("devOptions").textContent));
-  check("choosing a number limits the plan, and No limit takes the limit off", (() => { lm_sel.value = "3"; return lm_w.eval("playlistLimit()") === 3; })() && (() => { lm_sel.value = ""; return lm_w.eval("playlistLimit()") === undefined; })());
-  var lm_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-
-
-  
-  check("the limit is not in More options: it is in Developer options", !lm_w.document.querySelector("#moreOptions #maxPlaylists") && lm_w.document.getElementById("devOptions").contains(lm_w.document.getElementById("limitTopic")) && lm_w.document.getElementById("limitTopic").contains(lm_w.document.getElementById("maxPlaylists")));
+  check("the limit is gone from the page; tests set it, and 0 takes it off", !lm_w.document.getElementById("maxPlaylists") && !lm_w.document.getElementById("limitTopic") && !/Limit how many/.test(lm_w.document.body.textContent) && (() => { lm_w.eval("setPlaylistLimit(3)"); return lm_w.eval("playlistLimit()") === 3; })() && (() => { lm_w.eval("setPlaylistLimit(0)"); return lm_w.eval("playlistLimit()") === undefined; })());
   } catch (err) { areaCrashed("the limit list, and the format's title", err); }
 }
   if (want('the app menu, and minimalist mode')) { try {
@@ -2191,8 +2174,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var pp_o = {};
   var pp_w2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: pp_o });
   await readyToPreview(pp_w2);
-  pp_w2.document.getElementById("maxPlaylists").value = "2";
-  pp_w2.document.getElementById("maxPlaylists").dispatchEvent(new pp_w2.Event("input"));
+  pp_w2.eval("setPlaylistLimit(2)");
   pp_w2.document.getElementById("create").click();
   await waitFor(() => visible(pp_w2, "confirmBox"), 30000);
   pressBuild(pp_w2);
@@ -2308,8 +2290,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var dd_o = {};
   var dd_w2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: dd_o });
   await readyToPreview(dd_w2);
-  dd_w2.document.getElementById("maxPlaylists").value = "1";
-  dd_w2.document.getElementById("maxPlaylists").dispatchEvent(new dd_w2.Event("input"));
+  dd_w2.eval("setPlaylistLimit(1)");
   dd_w2.document.getElementById("create").click();
   await waitFor(() => visible(dd_w2, "confirmBox"), 30000);
   check("the Create popup has no Close or Donate button while it asks", dd_w2.document.getElementById("createCloseRow").hidden === true);
@@ -2371,8 +2352,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // ================================================================ Donate only after a success
   var ds_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { denyCreate: true } });
   await readyToPreview(ds_w);
-  ds_w.document.getElementById("maxPlaylists").value = "2";
-  ds_w.document.getElementById("maxPlaylists").dispatchEvent(new ds_w.Event("input"));
+  ds_w.eval("setPlaylistLimit(2)");
   ds_w.document.getElementById("create").click();
   await waitFor(() => visible(ds_w, "confirmBox"), 30000);
   pressBuild(ds_w);
@@ -2385,8 +2365,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("when there is a problem with the plan, the popup offers only Close too", ds_w2.document.getElementById("createDonate").hidden === true && ds_w2.document.getElementById("output").hidden === false);
   var ds_w3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   await readyToPreview(ds_w3);
-  ds_w3.document.getElementById("maxPlaylists").value = "1";
-  ds_w3.document.getElementById("maxPlaylists").dispatchEvent(new ds_w3.Event("input"));
+  ds_w3.eval("setPlaylistLimit(1)");
   ds_w3.document.getElementById("create").click();
   await waitFor(() => visible(ds_w3, "confirmBox"), 30000);
   check("while the popup asks, there is no Donate either", ds_w3.document.getElementById("createDonate").hidden === true);
@@ -2460,9 +2439,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sv_run = async (idb, options, formats = SONGS_FORMAT, all = false) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats }, fetchOptions: options, idb });
     await readyToPreview(w);
-    w.document.getElementById("maxPlaylists").value = "1";
-    w.document.getElementById("maxPlaylists").dispatchEvent(new w.Event("input"));
-    w.document.getElementById(all ? "buildAll" : "create").click();
+    w.eval("setPlaylistLimit(1)");
+      w.document.getElementById(all ? "buildAll" : "create").click();
     await waitFor(() => visible(w, "confirmBox") || w.document.getElementById("createCloseRow").hidden === false, 30000);
     if (visible(w, "confirmBox")) w.document.getElementById("confirmNo").click();
     await waitFor(() => w.document.getElementById("createOverlay").hidden === true || w.document.getElementById("createCloseRow").hidden === false, 10000);
@@ -2850,7 +2828,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var pv_html = fs.readFileSync(ROOT + "index.html", "utf8");
   var pv_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var pv_sec = pv_w.document.getElementById("privacySection");
-  check("the Privacy section is the last thing on the page, right below More options, in the same footer, and starts closed", !!pv_sec && pv_sec.tagName === "DETAILS" && pv_sec.open === false && pv_sec.previousElementSibling.id === "moreOptions" && pv_sec.nextElementSibling === null && pv_sec.parentElement.tagName === "FOOTER" && pv_sec.querySelector("summary").textContent === "Privacy");
+  check("the Privacy section is the last thing on the page, below More options and the hidden Developer options, in the same footer, and starts closed", !!pv_sec && pv_sec.tagName === "DETAILS" && pv_sec.open === false && pv_sec.previousElementSibling.id === "devOptions" && pv_sec.previousElementSibling.previousElementSibling.id === "moreOptions" && pv_sec.nextElementSibling === null && pv_sec.parentElement.tagName === "FOOTER" && pv_sec.querySelector("summary").textContent === "Privacy");
   check("it covers what stays in the browser, the Spotify account, who the page talks to, the visit counts, support, problem reports, and accounts and ads", JSON.stringify(Array.from(pv_sec.querySelectorAll("details.gd-topic > summary")).filter((h) => !h.closest("[hidden]")).map((h) => h.textContent)) === JSON.stringify(["What stays in this browser", "Your Spotify account", "Who the page talks to", "Anonymous visit counts", "Support me", "Problem reports", "Accounts and ads"]));
   var pv_text = pv_sec.textContent.replace(/\s+/g, " ");
   check("it says the app never sees the Spotify password, what it asks Spotify to allow, and that existing playlists are only read", /never sees your Spotify password/.test(pv_text) && /read your playlists, create playlists, remove playlists, and set their cover images/.test(pv_text) && /Your existing playlists are only read, never changed/.test(pv_text) && /anyone with a playlist's link can still open it/.test(pv_text));
@@ -2881,8 +2859,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   }
   var pv_c4 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, counted: "1" }, fetchOptions: {}, before: pv_before });
   await readyToPreview(pv_c4);
-  pv_c4.document.getElementById("maxPlaylists").value = "2";
-  pv_c4.document.getElementById("maxPlaylists").dispatchEvent(new pv_c4.Event("input"));
+  pv_c4.eval("setPlaylistLimit(2)");
   pv_c4.document.getElementById("create").click();
   await waitFor(() => visible(pv_c4, "confirmBox"), 30000);
   pressBuild(pv_c4);
@@ -3003,8 +2980,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   finishName(bb_w);
   check("the Step 3 heading says Build, and the note above the button describes building the format being edited", /3\. Build playlists/.test(bb_w.document.getElementById("createHeading").textContent) && /^Builds playlists for the selected recipe\./.test(bb_w.document.getElementById("createNote").textContent) && /^Building playlists needs a working connection/.test(bb_w.document.getElementById("spotifyNote").textContent));
   // the question
-  bb_w.document.getElementById("maxPlaylists").value = "2";
-  bb_w.document.getElementById("maxPlaylists").dispatchEvent(new bb_w.Event("input"));
+  bb_w.eval("setPlaylistLimit(2)");
   bb_w.document.getElementById("create").click();
   await waitFor(() => visible(bb_w, "confirmBox"), 30000);
   check("the question names the format being built, with the count", bb_w.document.getElementById("confirmText").textContent === "You can build up to 2 playlists from this recipe. Why 2?" && bb_w.document.getElementById("planToggle").textContent === "Why 2?" && bb_w.document.getElementById("bdTitle").textContent === "Renamed" && /^Build playlists$/.test(bb_w.document.getElementById("confirmYes").textContent) && bb_w.document.getElementById("createDialog").getAttribute("aria-labelledby") === "bdTitle");
@@ -3074,7 +3050,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-05i", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-05j", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4907,7 +4883,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   dv_w.eval("window.__t[window.__t.length - 1]()");
   check("held to the end, the menu closes and Developer options opens in the info popup", !dv_w.document.getElementById("feAppMenuPanel") && dv_w.document.getElementById("infoOverlay").hidden === false && dv_w.document.getElementById("infoSlot").firstElementChild.id === "devOptions" && dv_w.document.getElementById("infoTitle").textContent === "Developer options");
   var dv_topics = Array.from(dv_w.document.querySelectorAll("#devOptions details.gd-topic > summary")).map((h) => h.textContent);
-  check("it has Start over, Disconnect, Copy Spotify record, Limit how many playlists are made and Python status, and no way to turn it off", JSON.stringify(dv_topics) === JSON.stringify(["Start over", "Disconnect", "Copy Spotify record", "Limit how many playlists are made", "Python status"]) && !/Turn off/.test(dv_w.document.getElementById("devOptions").textContent), JSON.stringify(dv_topics));
+  check("it has Start over, Disconnect, Copy Spotify record and Python status, all open, and no way to turn it off", JSON.stringify(dv_topics) === JSON.stringify(["Start over", "Disconnect", "Copy Spotify record", "Python status"]) && Array.from(dv_w.document.querySelectorAll("#devOptions details.gd-topic")).every((d) => d.open) && !/Turn off/.test(dv_w.document.getElementById("devOptions").textContent), JSON.stringify(dv_topics));
   dv_w.document.getElementById("infoClose").click();
   check("closed, it goes back to its place, hidden", dv_w.document.getElementById("devOptions").hidden === true && !dv_w.document.getElementById("devOptions").closest("#infoSlot"));
   check("the header takes no callout, selection or scrolling, and its icon cannot be dragged", /\.fe-menuhead \{ -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: none; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && (() => { const h = dv_open(); const ok = h.querySelector("img").draggable === false; const e = new dv_w.MouseEvent("contextmenu", { bubbles: true, cancelable: true }); h.dispatchEvent(e); dv_w.document.getElementById("feAppMenuButton").click(); return ok && e.defaultPrevented; })());
@@ -5044,7 +5020,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-05i"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-05j"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5203,8 +5179,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
 
   // with a limit on the number there is no hint, and the table says where the number comes from
   var bp_b = await boot({ url: EDURL, session: signedIn(), local: { formats: bp_RAN } });
-  bp_b.document.getElementById("maxPlaylists").value = "1";
-  bp_b.document.getElementById("maxPlaylists").dispatchEvent(new bp_b.Event("input"));
+  bp_b.eval("setPlaylistLimit(1)");
   await bp_open(bp_b);
   check("when the limit sets the number, the plan is the same one sentence", bp_text(bp_b, "confirmText") === "Ready to build 1 playlist. Why 1?", bp_text(bp_b, "confirmText"));
   check("and Why 1? says the limit set it", /Most playlists per recipe/.test(bp_text(bp_b, "planText")), bp_text(bp_b, "planText"));

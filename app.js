@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-05i";
+const APP_VERSION = "2026-11-05j";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -306,6 +306,7 @@ function openInfo(id) {
   node.before(info.marker);
   $("infoSlot").appendChild(node);
   if (node.tagName === "DETAILS") node.open = true;
+  if (id === "devOptions") for (const d of node.querySelectorAll("details")) d.open = true;   // short, and only for Ron: everything shows at once
   info.wasHidden = node.hidden;
   node.hidden = false;
   const title = node.querySelector("summary, h3");
@@ -1201,7 +1202,7 @@ function invalidatePlan(resetOutput = !busy) {
 
 function planSignature() {
   // What a plan depends on. If it changes while a plan is being made, that plan is thrown away.
-  return [$("formats").value, selectedKeys().join(","), $("maxPlaylists").value].join("\u0000");
+  return [$("formats").value, selectedKeys().join(","), String(playlistCap || "")].join("\u0000");
 }
 
 function setFormatsText(text) {
@@ -2510,10 +2511,10 @@ function refreshFormatKeys() {
   updateButtons();
 }
 
-function playlistLimit() {
-  const n = parseInt($("maxPlaylists").value, 10);
-  return Number.isFinite(n) && n > 0 ? n : undefined;
-}
+// A cap on how many playlists each recipe makes, for tests only (the build popup's chooser is how people pick fewer)
+let playlistCap;
+function setPlaylistLimit(n) { playlistCap = n > 0 ? n : undefined; invalidatePlan(); }
+function playlistLimit() { return playlistCap; }
 
 let buildScope = null;   // the formats a build in progress is for, when it is not just the one being edited
 
@@ -3539,7 +3540,6 @@ async function main() {
   on("removeOld", "click", removeEarlier);
   on("removeKey", "change", updateButtons);
   on("buildAll", "click", () => startCreate(currentFormats.map((f) => f.id)));
-  on("maxPlaylists", "input", () => invalidatePlan());
   on("backupDownload", "click", downloadBackup);
   on("backupRestore", "click", () => $("restoreFile").click());
   on("backupDownloadLink", "click", () => downloadBackup());   // the same as the menu's Back up now a backup
