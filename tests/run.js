@@ -440,6 +440,12 @@ print(json.dumps(out))
   // 6e. dashboard link opens in a new tab, safely
   var link = w1.document.querySelector('a[href="https://developer.spotify.com/dashboard"]');
   check("dashboard link opens in a new tab", !!link && link.target === "_blank" && /noopener/.test(link.rel), link && link.outerHTML);
+  check("in a browser the setup text still says tab", /it will open in a new tab\)/.test(w1.document.getElementById("flowNew").textContent) && /Switch back to this tab/.test(w1.document.getElementById("flowExisting").textContent));
+  var hs = await boot({ url: "http://127.0.0.1:8000/", before: (w) => { Object.defineProperty(w.navigator, "standalone", { value: true, configurable: true }); } });
+  var hsLinks = [...hs.document.querySelectorAll('a[href*="developer.spotify.com"]')];
+  check("opened from an iPhone's Home Screen, both dashboard links open in Safari, not a panel", hsLinks.length === 2 && hsLinks.every((a) => a.getAttribute("href") === "x-safari-https://developer.spotify.com/dashboard" && !a.hasAttribute("target")), hsLinks.map((a) => a.outerHTML).join(" "));
+  check("and the setup text says Safari and this app", /it will open in Safari\), log in with your Spotify Premium account/.test(hs.document.getElementById("flowNew").textContent) && /Switch back to this app any time/.test(hs.document.getElementById("flowExisting").textContent) && /between this app and Safari, so keep both open\./.test(hs.document.getElementById("loginSection").textContent));
+  check("other links are left alone there", [...hs.document.querySelectorAll("a[href]")].filter((a) => /^x-safari/.test(a.getAttribute("href"))).length === 2);
 
   // 6f. copy button gives feedback
   w1.document.getElementById("copyRedirect").click();
@@ -820,9 +826,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-05a" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-05b" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-05a/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-05b/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3060,7 +3066,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-05a", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-05b", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3486,7 +3492,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("when connected, the welcome page and its notice are not shown", pr_w3.document.documentElement.classList.contains("page-app"));
   check("the welcome page says it works in any browser, easiest on a bigger screen", /Works in any browser, easiest on a bigger screen\./.test(pr_w.document.getElementById("welcomePage").textContent));
   check("the welcome page shows a recipe screenshot in a tilted frame", !!pr_w.document.querySelector("#welcomePage .wp-frame img[src='welcome-recipe.jpg']") && /\.wp-frame \{[^}]*transform: rotate\(-3deg\)/.test(pr_html) && fs.existsSync(ROOT + "welcome-recipe.jpg"));
-  check("the first instruction for making the developer app says to log in with the Premium account", /\(it will open in a new tab\), log in with your Spotify Premium account, and <span data-act>press<\/span> the <span class="ui">Create app<\/span> button\./.test(pr_html));
+  check("the first instruction for making the developer app says to log in with the Premium account", /\(it will open in <span data-home="Safari">a new tab<\/span>\), log in with your Spotify Premium account, and <span data-act>press<\/span> the <span class="ui">Create app<\/span> button\./.test(pr_html));
   // the error
   var pr_e = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { premiumRequired: true } });
   await waitFor(() => !pr_e.document.getElementById("connectionProblem").hidden, 30000);
@@ -4965,7 +4971,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-05a"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-05b"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

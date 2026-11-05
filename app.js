@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-05a";
+const APP_VERSION = "2026-11-05b";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -50,6 +50,18 @@ document.addEventListener("touchend", (e) => {
   if (now - lastBareTap < 300 && e.cancelable) e.preventDefault();
   lastBareTap = now;
 }, { passive: false });
+
+// Opened from an iPhone's Home Screen, a link to another site shows in a panel over the app, and closing it is the only way back to the setup steps.
+// So there the developer dashboard links open in Safari instead (x-safari-https, iOS 17 and later; Apple does not document it), and the setup
+// text says "Safari" and "this app" (data-home). Elsewhere nothing changes. Decided by Ron, 2026-11-05: only the dashboard, not other links.
+function sendDashboardToSafari() {
+  if (navigator.standalone !== true) return;
+  document.querySelectorAll('a[href^="https://developer.spotify.com"]').forEach((a) => {
+    a.href = a.href.replace(/^https:/, "x-safari-https:");
+    a.removeAttribute("target");
+  });
+  document.querySelectorAll("[data-home]").forEach((el) => { el.textContent = el.dataset.home; });
+}
 
 // Things that did not start properly are collected here and shown in a banner, so a half-started page says so instead of just not responding.
 const startupProblems = [];
@@ -3409,6 +3421,7 @@ async function main() {
   for (const el of document.querySelectorAll(".redirect-address")) el.textContent = redirectUri();
   $("clientId").value = localStorage.getItem("clientId") || "";
   $("formats").value = localStorage.getItem("formats") || DEFAULT_FORMATS;
+  guarded("dashboard links", () => sendDashboardToSafari());
   guarded("color choice", () => initThemeChooser());
   guarded("editor", () => initEditor());
   guarded("formats", () => refreshFormatKeys());
