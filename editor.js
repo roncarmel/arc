@@ -793,7 +793,7 @@ function showSaveTip() {
   saveTip.blur = feEl("div", { class: "fe-st-blur", "aria-hidden": "true" });
   const ok = feEl("button", { type: "button", class: "fe-st-ok", text: "Got it", onClick: () => closeSaveTip() });
   saveTip.tip = feEl("div", { class: "fe-st-tip", role: "status" },
-    feEl("p", { class: "fe-st-text", text: "Recipes save to Spotify as you edit. You’ll see this cloud while saving." }),
+    feEl("p", { class: "fe-st-text", text: "Recipes automatically save to Spotify as you edit. You’ll see this cloud while saving." }),
     feEl("div", { class: "fe-st-row" }, ok));
   document.body.append(saveTip.blur, saveTip.tip);
   applySavingIcon();
