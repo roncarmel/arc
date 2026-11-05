@@ -41,6 +41,7 @@ const FE_ICONS = {
   link: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
   retry: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg>',
   cloud: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 19h9a4.2 4.2 0 0 0 .5-8.37A5.6 5.6 0 0 0 6.3 11.7 3.7 3.7 0 0 0 7.5 19z"/><path d="M12 16.5v-5M9.7 13.7 12 11.4l2.3 2.3"/></svg>',
+  phoneadd: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M12 9v6M9 12h6"/></svg>',
   device: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
   download: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>',
   restore: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V5M7 9l5-5 5 5M5 20h14"/></svg>',
@@ -722,6 +723,9 @@ function renderAppMenu() {
     ...spotifyItems,
     ...(backupBlock ? [feEl("div", { class: "fe-rule" }), backupBlock] : []),
     ...(spotifyItems.length || backupBlock ? [feEl("div", { class: "fe-rule" })] : []),
+    // Add to Home Screen, only on a phone where it works and not yet done (homeScreenWay in app.js)
+    typeof homeScreenWay === "function" && homeScreenWay() ? feEl("button", { type: "button", class: "fe-item fe-gditem", id: "feHomeScreen", role: "menuitem", onClick: choose(() => addToHomeScreen()) }, feIcon("phoneadd"),
+      feEl("span", { class: "fe-gditem-text" }, feEl("span", { text: "Add to Home Screen" }), feEl("span", { class: "fe-gditem-note", text: "Opens like an app, without the browser" }))) : null,
     // A guide for facilitators, with a line under its name that says what it is (the whole row opens it)
     feEl("button", { type: "button", class: "fe-item fe-gditem", id: "feGuide", role: "menuitem", onClick: choose(() => openGuide()) }, feIcon("help"),
       feEl("span", { class: "fe-gditem-text" }, feEl("span", { text: "A guide for facilitators" }), feEl("span", { class: "fe-gditem-note", text: "The thinking behind this app and how to use it well" }))),

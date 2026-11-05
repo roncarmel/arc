@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-04y";
+const APP_VERSION = "2026-11-04z";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -148,6 +148,48 @@ const PAGES = ["welcome", "setup", "app"];
 function storedItem(store, key) {
   try { return store.getItem(key); } catch (err) { return null; }
 }
+
+// Add to Home Screen, so the app opens on its own without the browser. Offered only where it works in one tap or a few simple steps (decided by Ron, 2026-11-04):
+// Android browsers that offer their own install popup (beforeinstallprompt: Chrome, Edge, Samsung Internet...) get a button that opens it, and iPhone Safari,
+// which cannot do it by itself, gets a popup with the steps. Everyone else (computers, other browsers, browsers inside other apps) sees nothing, and so does
+// the app once it runs from the Home Screen. Shown in a box under Start setup on the welcome page and as an item in the menu; no message under the bar.
+const homeScreen = { prompt: null };
+function homeScreenStandalone() {
+  if (navigator.standalone === true) return true;
+  try { return window.matchMedia("(display-mode: standalone)").matches; } catch (err) { return false; }
+}
+function homeScreenIphoneSafari() {
+  const ua = navigator.userAgent || "";
+  // Safari's own address has Version/ and Safari/; other browsers on an iPhone and the browsers inside other apps do not, or name themselves
+  return /iPhone|iPod/.test(ua) && /Version\//.test(ua) && /Safari\//.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS|GSA\/|FBAN|FBAV|Instagram|Line\//.test(ua);
+}
+// "install" (the browser's own popup), "steps" (the iPhone popup) or "" (nothing to offer)
+function homeScreenWay() {
+  if (homeScreenStandalone()) return "";
+  if (homeScreen.prompt) return "install";
+  return homeScreenIphoneSafari() ? "steps" : "";
+}
+function refreshHomeScreen() {
+  const way = homeScreenWay();
+  if ($("hsWelcome")) $("hsWelcome").hidden = !way;
+  if ($("hsWelcomeHow")) $("hsWelcomeHow").hidden = way !== "steps";
+  if ($("hsWelcomeInstall")) $("hsWelcomeInstall").hidden = way !== "install";
+}
+async function addToHomeScreen() {
+  const way = homeScreenWay();
+  if (way === "steps") { openInfo("homeScreenBlock"); return; }
+  if (way !== "install") return;
+  const prompt = homeScreen.prompt;
+  homeScreen.prompt = null;   // the browser's popup can be shown only once; the browser offers it again later if it was turned down
+  try { await prompt.prompt(); await prompt.userChoice; } catch (err) { /* the browser would not show it */ }
+  refreshHomeScreen();
+}
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();   // no banner of the browser's own: the welcome box and the menu offer it instead
+  homeScreen.prompt = event;
+  refreshHomeScreen();
+});
+window.addEventListener("appinstalled", () => { homeScreen.prompt = null; refreshHomeScreen(); });
 
 function pageName() {
   if (token || connectingScreen) return "app";
@@ -3448,6 +3490,9 @@ async function main() {
   on("clearYes", "click", clearSavedData);
   on("connect", "click", startLogin);
   on("startSetup", "click", () => goToSetup(false));
+  on("hsWelcomeHow", "click", addToHomeScreen);
+  on("hsWelcomeInstall", "click", addToHomeScreen);
+  refreshHomeScreen();
   on("premiumWhy", "click", (event) => { event.stopPropagation(); showPremiumWhy($("premiumWhyText").hidden); });
   document.addEventListener("click", (event) => { if (!$("premiumWhyText").hidden && !$("premiumWhyText").contains(event.target)) showPremiumWhy(false); });
   on("recipeWhat", "click", (event) => { event.stopPropagation(); showRecipeWhat($("recipeWhatText").hidden); });

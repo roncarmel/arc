@@ -12,7 +12,7 @@ function pressBuild(w) {
   if (tiles && !w.document.getElementById("bdPick").hidden && !tiles.querySelector('[aria-checked="true"]') && tiles.lastElementChild) tiles.lastElementChild.click();
   w.document.getElementById("confirmYes").click();
 }
-const SECTION_NAMES = ["the save pointer", "a guide for facilitators", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version icon", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "marker colors", "marker hugs corners", "popups close only", "narrow more button", "the silence card", "privacy: why the counts", "build button centered in minimalist mode", "no double-tap zoom", "backup link in step 2", "hiding the donate button", "spotify premium", "step 3 order and text", "the build icon", "python status at the bottom", "hover feedback on buttons", "questions and feedback", "settings below the segments, pink outline", "the tagline", "disconnect below the status line on phones", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'the Donate panel', 'dimming, fading, and Donate in the Create popup', 'tabs that scroll sideways', 'Donate only after a success', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
+const SECTION_NAMES = ["add to home screen", "the save pointer", "a guide for facilitators", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version icon", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "marker colors", "marker hugs corners", "popups close only", "narrow more button", "the silence card", "privacy: why the counts", "build button centered in minimalist mode", "no double-tap zoom", "backup link in step 2", "hiding the donate button", "spotify premium", "step 3 order and text", "the build icon", "python status at the bottom", "hover feedback on buttons", "questions and feedback", "settings below the segments, pink outline", "the tagline", "disconnect below the status line on phones", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'the Donate panel', 'dimming, fading, and Donate in the Create popup', 'tabs that scroll sideways', 'Donate only after a success', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
 // areas that need another area's setup to have run first
 const NEEDS = {
   "the page's styles for tags and phones": ["silences, dragging and removing"],
@@ -819,9 +819,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-04y" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-04z" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-04y/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-04z/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3053,7 +3053,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-04y", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-04z", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3931,6 +3931,51 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("and it can be made shorter, one segment at a time, until it fits", rowsOf(sl_b).length === sl_fit + 5);
   } catch (err) { areaCrashed("size limit", err); } }
 
+  if (want("add to home screen")) { try {
+  // ================================================================ Add to Home Screen: iPhone Safari gets the steps, Android's install popup gets a button, others nothing
+  const hs_ua = (ua) => (w) => Object.defineProperty(w.navigator, "userAgent", { value: ua, configurable: true });
+  const HS_IOS = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1";
+  const HS_IOS_CHROME = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/130.0 Mobile/15E148 Safari/604.1";
+  const HS_IOS_INAPP = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 300.0";
+  const hs_html = require("fs").readFileSync(ROOT + "index.html", "utf8");
+  const hs_man = JSON.parse(require("fs").readFileSync(ROOT + "manifest.webmanifest", "utf8"));
+  check("the page links a manifest that opens on its own, named Playlists under the icon", /<link rel="manifest" href="manifest.webmanifest">/.test(hs_html) && hs_man.display === "standalone" && hs_man.short_name === "Playlists" && /<meta name="apple-mobile-web-app-title" content="Playlists">/.test(hs_html) && hs_man.icons.some((i) => i.sizes === "512x512"));
+  var hs_w = await boot({ url: EDURL, before: hs_ua(HS_IOS) });
+  check("iPhone Safari: the welcome page shows the box with How, no install button", !hs_w.document.getElementById("hsWelcome").hidden && !hs_w.document.getElementById("hsWelcomeHow").hidden && hs_w.document.getElementById("hsWelcomeInstall").hidden && /Add this app to your Home Screen before setup, so it opens like an app\./.test(hs_w.document.getElementById("hsWelcome").textContent));
+  hs_w.document.getElementById("hsWelcomeHow").click();
+  check("How opens the steps popup titled Add to Home Screen", !hs_w.document.getElementById("infoOverlay").hidden && hs_w.document.getElementById("infoTitle").textContent === "Add to Home Screen" && hs_w.document.querySelectorAll("#infoSlot .hs-steps li").length === 3);
+  hs_w.document.getElementById("infoClose").click();
+  for (const [label, ua] of [["Chrome on an iPhone", HS_IOS_CHROME], ["a browser inside another app", HS_IOS_INAPP], ["a computer", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Safari/605.1.15"]]) {
+    var hs_o = await boot({ url: EDURL, before: hs_ua(ua) });
+    check(label + ": nothing is offered", hs_o.document.getElementById("hsWelcome").hidden && hs_o.eval("homeScreenWay()") === "");
+  }
+  var hs_s = await boot({ url: EDURL, before: (w) => { hs_ua(HS_IOS)(w); Object.defineProperty(w.navigator, "standalone", { value: true, configurable: true }); } });
+  check("opened from the Home Screen: nothing is offered", hs_s.document.getElementById("hsWelcome").hidden);
+  // Android: the browser offers its own install popup
+  var hs_a = await boot({ url: EDURL });
+  check("before the browser offers it, nothing shows", hs_a.document.getElementById("hsWelcome").hidden);
+  var hs_shown = 0, hs_prevented = false;
+  var hs_ev = new hs_a.Event("beforeinstallprompt");
+  hs_ev.preventDefault = () => { hs_prevented = true; };
+  hs_ev.prompt = async () => { hs_shown += 1; };
+  hs_ev.userChoice = Promise.resolve({ outcome: "accepted" });
+  hs_a.dispatchEvent(hs_ev);
+  check("Android: the box shows an Add to Home Screen button and no How, and the browser's own banner is held back", hs_prevented && !hs_a.document.getElementById("hsWelcome").hidden && !hs_a.document.getElementById("hsWelcomeInstall").hidden && hs_a.document.getElementById("hsWelcomeHow").hidden);
+  hs_a.document.getElementById("hsWelcomeInstall").click();
+  await new Promise((r) => setTimeout(r, 50));
+  check("the button opens the browser's popup once, then the box goes", hs_shown === 1 && hs_a.document.getElementById("hsWelcome").hidden);
+  // the menu on the app page
+  var hs_m = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, before: hs_ua(HS_IOS) });
+  hs_m.document.getElementById("feAppMenuButton").click();
+  var hs_item = hs_m.document.getElementById("feHomeScreen");
+  check("iPhone Safari: the menu has Add to Home Screen with its line, above the guide", hs_item && /Add to Home Screen/.test(hs_item.textContent) && /Opens like an app, without the browser/.test(hs_item.textContent) && hs_item.nextElementSibling && hs_item.nextElementSibling.id === "feGuide");
+  hs_item.click();
+  await new Promise((r) => setTimeout(r, 50));
+  check("the menu item opens the steps popup", !hs_m.document.getElementById("infoOverlay").hidden && hs_m.document.getElementById("infoTitle").textContent === "Add to Home Screen");
+  var hs_d = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI } });
+  hs_d.document.getElementById("feAppMenuButton").click();
+  check("a computer: no menu item", !hs_d.document.getElementById("feHomeScreen"));
+  } catch (err) { areaCrashed("add to home screen", err); } }
   if (want("the save pointer")) { try {
   // ================================================================ the first save to Spotify: a pointer under the menu button, once
   var sp_fmt = 'FORMATS = {"f1": {"title": "Alpha", "name": "Alpha {n}", "silence between segments": "30 sec", "segments": [("rest", 30)]}}';
@@ -4950,7 +4995,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-04y"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-04z"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
