@@ -37,7 +37,8 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 
 **Messages**
 - One place for messages: the line under the editor's colored bar (`#feCaption`), which normally shows "N min of music + N min of silence" (hours from an hour up). `showNotices` takes sentences (shown in turn, with "(1 of 3)") or objects with `hold: true` (kept until used, dismissed, or the recipe is edited). `attentionItems()` in app.js lists trouble that stays until fixed (failed save, unreadable saves, too-long recipe, cover problems). A message about something the person just did (`transient`) comes first. Messages wait while the person is editing. Crossfade between texts, none under reduced motion.
-- The ⋯ menu button crossfades to `backup-cover.jpg` while a save runs, for at least a second. No dots or badges anywhere.
+- The ⋯ menu button crossfades to `backup-cover.jpg` while a save runs, for at least a second. No dots or badges anywhere. While the cloud shows, the button's border is transparent (it showed as a pink rim).
+- The first time a save writes a recipe to Spotify, a pointer hangs under the menu button: "Recipes save to Spotify as you edit. You'll see this cloud while saving." and Got it (`offerSaveTip`/`showSaveTip` in editor.js, `fe-st-*`). The button keeps the cloud while it is open, and the rest of the page is blurred 1 px (a hole 6 px larger than the button, so its pink is not smeared). It waits for quiet (no popup, menu, build, focus in a field, 3 s since the last edit), blocks nothing, closes on any click, tap or key, and never shows again (`saveTipShown`, set when it opens). Not in manual mode. Decided by Ron, 2026-11-04, over a "Saving..." status line.
 - Dialogs that need an answer are `askSyncChoice` (editor.js); `required: true` makes them undismissable.
 
 **Startup and versions**

@@ -767,14 +767,14 @@ function offerSaveTip() {
 }
 function saveTipQuiet() {
   const button = $("feAppMenuButton");
-  if (!button || !button.offsetParent || document.visibilityState === "hidden") return false;
+  if (!button || !document.documentElement.classList.contains("page-app") || button.closest("[hidden]") || document.visibilityState === "hidden") return false;
   if (typeof backupMode === "function" && backupMode() !== "spotify") return false;
   if (typeof busy !== "undefined" && busy) return false;
   if (typeof connectingScreen !== "undefined" && connectingScreen) return false;
   if (editor.appMenu) return false;
   const active = document.activeElement;
   if (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return false;
-  if (document.querySelector(".fe-overlay:not(.fx-ghost), .fe-pop:not(.fx-ghost), #createOverlay:not([hidden]), #infoOverlay:not([hidden]), #reconnectScreen:not([hidden]), #startupProblem:not([hidden]), #kofiPanel:not([hidden])")) return false;
+  if (document.querySelector(".fe-overlay:not(.fx-ghost):not([hidden]), .fe-pop:not(.fx-ghost), #createOverlay:not([hidden]), #infoOverlay:not([hidden]), #reconnectScreen:not([hidden]), #kofiPanel:not([hidden])")) return false;
   return Date.now() - notices.lastEditAt >= saveTip.quietMs;
 }
 function trySaveTip() {
