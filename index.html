@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-05o">
-<script src="theme.js?v=2026-11-05o"></script>
+<meta name="app-version" content="2026-11-05p">
+<script src="theme.js?v=2026-11-05p"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -158,8 +158,8 @@
     84% { transform: rotate(-10deg) scale(1.1); } 88% { transform: rotate(10deg) scale(1.1); } 92% { transform: rotate(-10deg) scale(1.1); } 96% { transform: rotate(10deg) scale(1.1); } 100% { transform: rotate(0) scale(1); } }
   @media (prefers-reduced-motion: reduce) { #supportButton img { animation: none; } }
   #supportCaption { margin: 0 0 0 auto; width: max-content; max-width: 160px; box-sizing: border-box; padding: 0; color: var(--muted); font-size: 0.72rem; line-height: 1.35; text-align: right; text-wrap: balance; }   /* above the button, its right edge level with the button's, and four lines at most, narrow enough to stay clear of the silence tags that hang out of the page */
-  /* Update available: a card in place of Support me and its note (showUpdateCard in app.js), light pink with a pink edge and glow, the gift in a pink circle, Get it */
-  #updateCard { display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 14px; border-radius: 16px; box-sizing: border-box; background: color-mix(in srgb, var(--accent) 12%, var(--bg)); border: 1.5px solid var(--accent);
+  /* Update available: a capsule in place of Support me and its note (showUpdateCard in app.js; a capsule so a phone's rounded screen corners do not clip it), light pink with a pink edge and glow, the gift in a pink circle, Get it */
+  #updateCard { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 999px; box-sizing: border-box; background: color-mix(in srgb, var(--accent) 12%, var(--bg)); border: 1.5px solid var(--accent);
     box-shadow: 0 6px 24px color-mix(in srgb, var(--accent) 35%, transparent); animation: uc-arrive 0.45s var(--ease-out) both; }
   #updateCard[hidden] { display: none; }
   .update-ready #supportButton, .update-ready #supportCaption { display: none; }
@@ -1488,8 +1488,8 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-05o"></script>
-<script src="editor.js?v=2026-11-05o"></script>
-<script src="app.js?v=2026-11-05o"></script>
+<script src="formats.js?v=2026-11-05p"></script>
+<script src="editor.js?v=2026-11-05p"></script>
+<script src="app.js?v=2026-11-05p"></script>
 </body>
 </html>
