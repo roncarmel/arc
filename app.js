@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-05d";
+const APP_VERSION = "2026-11-05e";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1257,9 +1257,12 @@ async function restoreFromFile(file) {
 const BACKED_UP_MESSAGE = "Backed up to this device. Find the file in Downloads, or in the Files app on a phone.";   // after a manual backup, wherever it is made from
 let reloadPage = () => location.reload();   // a separate function so tests can replace it
 
-async function clearSavedData() {
-  // The Client ID goes to the clipboard first (while the click still counts), so connecting again is a paste (the More options text says so).
-  const savedId = localStorage.getItem("clientId");
+// Sign out and clear data (More options) erases everything and copies nothing: it is for leaving a computer that is not yours. Start over (developer options)
+// does the same but puts the Client ID on the clipboard first (while the click still counts), so setting up again is a paste.
+function startOver() { return clearSavedData({ copyClientId: true }); }
+
+async function clearSavedData(options) {
+  const savedId = options && options.copyClientId === true ? localStorage.getItem("clientId") : null;
   if (savedId) { try { await Promise.race([navigator.clipboard.writeText(savedId), new Promise((r) => setTimeout(r, 1000))]); } catch (err) { /* no clipboard access: the reset goes on */ } }
   // Everything this page saves lives in this browser's storage for this address, so clearing it forgets it all.
   localStorage.clear();
@@ -3480,7 +3483,7 @@ async function main() {
     $("clearConfirm").hidden = true;
     $("clearData").disabled = false;
   });
-  on("clearYes", "click", clearSavedData);
+  on("clearYes", "click", () => clearSavedData());
   on("connect", "click", startLogin);
   on("startSetup", "click", () => goToSetup(false));
   on("premiumWhy", "click", (event) => { event.stopPropagation(); showPremiumWhy($("premiumWhyText").hidden); });
