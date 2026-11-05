@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-04v";
+const APP_VERSION = "2026-11-04w";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -785,7 +785,9 @@ async function runSpotifySave() {
     const tooLong = [], newer = [];
     const allIds = playlists.map((p) => p.id);
     // A backup playlist that has no cover yet is put in a queue for one. The covers are sent after the save is done and never make it wait (see uploadCovers).
-    const putCover = (entry) => { if (!entry.image && !saveState.coverQueue.includes(entry)) saveState.coverQueue.push(entry); };
+    // A save written before the cover said SAVED RECIPE (its description began with the old note) is given the new cover once.
+    const putCover = (entry) => { if ((!entry.image || coverDue().includes(entry.id)) && !saveState.coverQueue.includes(entry)) saveState.coverQueue.push(entry); };
+    const oldCover = (entry) => { if (String(entry.description || "").startsWith(OLD_SAVE_PREFIX)) markCoverDue(entry.id, true); };
     // formats deleted here: their saves go too, unless a format with that ID is here again
     let pending = pendingSaveDeletes();
     for (const id of pending.slice()) {
@@ -815,6 +817,7 @@ async function runSpotifySave() {
         if (have.save.format.rev > (fmt.rev || 0)) { newer.push(fmt.title); continue; }
         if (have.description === description && have.name === name) { synced[fmt.id] = { rev: fmt.rev || 0, playlistId: have.id }; putCover(have); continue; }   // already as it should be
         await spotifyRequest("PUT", `/playlists/${have.id}`, { json: { name, description } });
+        oldCover(have);
         have.name = name;
         have.description = description;
         have.save = unpackFormat(description);
@@ -822,6 +825,7 @@ async function runSpotifySave() {
         putCover(have);
       } else if (unreadOfIt) {
         await spotifyRequest("PUT", `/playlists/${unreadOfIt.id}`, { json: { name, description } });
+        markCoverDue(unreadOfIt.id, true);
         unreadOfIt.description = description;
         unreadOfIt.save = unpackFormat(description);
         synced[fmt.id] = { rev: fmt.rev || 0, playlistId: unreadOfIt.id };
@@ -911,7 +915,18 @@ function saveFailureDetail(message) {
   return String(message).replace(/\s*\/playlists\/[A-Za-z0-9]+/g, "").trim();
 }
 
-// The cover of a backup playlist is a picture of a cloud with a check. It is sent once, to a playlist that has none, after the save is done, and it never makes a save wait:
+// Saves that still have the old cover (a cloud with a check and no words) and are to get the new one: their IDs, kept until it is sent, so a cover held up by
+// Spotify's limit is sent on a later visit too.
+function coverDue() {
+  try { const list = JSON.parse(localStorage.getItem("recipeCoverDue") || "[]"); return Array.isArray(list) ? list : []; } catch (err) { return []; }
+}
+function markCoverDue(id, due) {
+  const list = coverDue().filter((x) => x !== id);
+  if (due) list.push(id);
+  try { if (list.length) localStorage.setItem("recipeCoverDue", JSON.stringify(list)); else localStorage.removeItem("recipeCoverDue"); } catch (err) { /* private browsing */ }
+}
+
+// The cover of a backup playlist is a picture of a cloud with a check above the words SAVED RECIPE, white with a pink glow on black (recipe-cover.jpg). It is sent once, to a playlist that has none, after the save is done, and it never makes a save wait:
 // Spotify limits image uploads on their own, so one that is turned away for asking too often stops the rest, quietly, and they go with a later save. Anything else that goes
 // wrong with a cover is said in the line under the editor's bar.
 async function uploadCovers() {
@@ -927,14 +942,15 @@ async function uploadCovers() {
       problem = { key: "permission", text: "Your Spotify sign-in does not include permission to add cover art, so the recipe playlists have no cover. Disconnect and connect again to allow it." };
     } else {
       let cover = null;
-      try { cover = await loadCover("backup-cover.jpg"); }
-      catch (err) { logStep("save: cover image not loaded"); problem = { key: "file", text: "The cover image for the recipe playlists (backup-cover.jpg) could not be loaded from this site, so they have no cover." }; }
+      try { cover = await loadCover("recipe-cover.jpg"); }
+      catch (err) { logStep("save: cover image not loaded"); problem = { key: "file", text: "The cover image for the recipe playlists (recipe-cover.jpg) could not be loaded from this site, so they have no cover." }; }
       while (cover && saveState.coverQueue.length && backupMode() === "spotify" && connection === "ready") {
         const entry = saveState.coverQueue[0];
-        if (entry.image) { saveState.coverQueue.shift(); continue; }
+        if (entry.image && !coverDue().includes(entry.id)) { saveState.coverQueue.shift(); continue; }
         try {
           await spotifyRequest("PUT", `/playlists/${entry.id}/images`, { body: cover, contentType: "image/jpeg", noWait: true });
           entry.image = "set";
+          markCoverDue(entry.id, false);
           saveState.coverQueue.shift();
         } catch (err) {
           if (problemKind(String(err && err.message || err)) === "rate-limit") { stopped = true; logStep("save: covers wait, Spotify is limiting uploads"); break; }

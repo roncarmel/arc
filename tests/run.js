@@ -99,9 +99,10 @@ function makeFetch(options = {}) {
       const body = options.serverVersion !== undefined ? options.serverVersion : fs.readFileSync(ROOT + "version.txt", "utf8");
       return { ok: options.versionStatus ? options.versionStatus < 400 : true, status: options.versionStatus || 200, headers: { get: () => null }, text: async () => body, json: async () => ({}) };
     }
-    if (url.endsWith("playlist-cover.jpg") || url.endsWith("backup-cover.jpg")) {
+    const coverFile = ["playlist-cover.jpg", "backup-cover.jpg", "recipe-cover.jpg"].find((f) => url.endsWith(f));
+    if (coverFile) {
       if (options.noCoverFile) return { ok: false, status: 404, headers: { get: () => null }, arrayBuffer: async () => new ArrayBuffer(0) };
-      const file = fs.readFileSync(ROOT + (url.endsWith("backup-cover.jpg") ? "backup-cover.jpg" : "playlist-cover.jpg"));
+      const file = fs.readFileSync(ROOT + coverFile);
       return { ok: true, status: 200, headers: { get: () => null }, arrayBuffer: async () => file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength) };
     }
     if (method === "PUT" && /\/v1\/playlists\/\w+\/images$/.test(url)) {
@@ -818,9 +819,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-04v" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-04w" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-04v/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-04w/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3052,7 +3053,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-04v", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-04w", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3783,7 +3784,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sp_f = sp_build(5, true), sp_all = sp_f.items.flatMap((i) => i.lists.map((l) => l.id)), sp_d = sp_w.packFormat(sp_f, sp_all), sp_back = sp_w.unpackFormat(sp_d);
   sp_w.resolveSaveTails(sp_back.format, sp_all);
   check("a format packs into a description and comes back identical: its ID, title with an emoji, revision, edit time, silences, minutes, playlists and weights", sp_back.kind === "save" && sp_same(sp_f, sp_back.format));
-  check("the description starts with a plain Do not edit, and the rest is all in the CJK block", sp_d.startsWith("Do not edit. ") && Array.from(sp_d.slice(13)).every((c) => c.charCodeAt(0) >= 0x4e00 && c.charCodeAt(0) < 0x4e00 + 16384));
+  check("the description starts with a plain Holds a recipe, not music. Do not edit., and the rest is all in the CJK block", sp_d.startsWith("Holds a recipe, not music. Do not edit. ") && Array.from(sp_d.slice(40)).every((c) => c.charCodeAt(0) >= 0x4e00 && c.charCodeAt(0) < 0x4e00 + 16384));
   check("with each playlist kept as the last 6 bytes of its ID, the sizes fit the 300 characters Spotify's own app allows: 3 segments, 5 mixed, 8 mixed, 12 mixed and even 16 mixed", [sp_build(3, false), sp_build(5, true), sp_build(8, true), sp_build(12, true), sp_build(16, true)].every((f) => sp_w.packFormat(f).length <= 300), [3, 5, 8, 12, 16].map((n) => sp_w.packFormat(sp_build(n, true)).length).join());
   var sp_odd = sp_w.ensureGaps({ id: "mini", title: "Odd one", gap: 0, gaps: [], lead: 0, items: [{ id: "a", kind: "seg", lists: [{ name: "No ID yet", weight: 1 }], minutes: 7.5 }, { id: "b", kind: "seg", lists: [{ name: "", id: "p2", weight: 60 }, { name: "Plain name", weight: 40 }], minutes: 20 }], rev: 0, modified: 0 });
   var sp_oddBack = sp_w.unpackFormat(sp_w.packFormat(sp_odd));
@@ -3810,7 +3811,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sp_editorial = ["37i9dQZF1DXcBWIGoYBM5M", "37i9dQZF1DX0XUsuxWHRQd", "37i9dQZF1DX4JAvHpjipBk"];
   check("Spotify's own playlists, which share a long beginning, still tell apart by their endings", new Set(sp_editorial.map((x) => sp_w.tailOfId(x))).size === 3);
 
-  check("anything that is not a save is told apart: an empty description, plain text, a description with a different note, and ordinary text with emoji", ["", "Made by Ceremony Playlist Builder from the format x", "My favourite songs 🎵", null, undefined, "Do not edit. just words"].every((t) => sp_w.unpackFormat(t).kind === "none"));
+  check("anything that is not a save is told apart: an empty description, plain text, a description with a different note, and ordinary text with emoji", ["", "Made by Ceremony Playlist Builder from the format x", "My favourite songs 🎵", null, undefined, "Do not edit. just words", "Holds a recipe, not music. Do not edit. just words"].every((t) => sp_w.unpackFormat(t).kind === "none"));
   var sp_chars = Array.from(sp_d);
   var sp_flip = sp_chars.slice(); sp_flip[40] = String.fromCharCode(sp_flip[40].charCodeAt(0) ^ 1);
   check("one changed character makes it damaged, and so does cutting it short, or adding something on the end", sp_w.unpackFormat(sp_flip.join("")).kind === "damaged" && sp_w.unpackFormat(sp_d.slice(0, 60)).kind === "damaged" && sp_w.unpackFormat(sp_d + "!").kind === "damaged");
@@ -3819,6 +3820,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sp_all = []; sp_w.writeVarint(sp_all, sp_newer.length); sp_newer.forEach((b) => sp_all.push(b));
   check("a save from a newer version of the app is recognized as one and left alone: it is neither damaged nor ignored", sp_w.unpackFormat("Do not edit. " + sp_w.denseEncode(sp_all)).kind === "newer");
   check("a description is read even if Spotify trims the space after Do not edit", sp_w.unpackFormat(sp_d.replace("Do not edit. ", "Do not edit.")).kind === "save");
+  check("a save from before the note said Holds a recipe, not music (only Do not edit.) is still read", sp_w.unpackFormat(sp_d.replace("Holds a recipe, not music. ", "")).kind === "save" && sp_w.unpackFormat(sp_d.replace("Holds a recipe, not music. ", "")).format.title === sp_f.title);
 
   // revisions
   var sp_text = 'FORMATS = {"a": {"title": "T", "name": "T {n}", "silence between segments": "30 sec", "segments": [("One", 30), ("Two", 20)]}}';
@@ -3949,7 +3951,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var ss_c = ss_writes(ss_o1, "create");
   check("each format gets a private playlist of its own, named like the recipe and ending in (recipe)", ss_c.length === 2 && ss_c.map((x) => x.name).sort().join("|") === "Alpha (recipe)|Beta (recipe)" && ss_c.every((x) => x.public === false));
   var ss_dec = ss_c.map((x) => ss_w0.unpackFormat(x.description));
-  check("the description of each is a good save of that format, with its ID, title, segments and revision", ss_dec.every((d) => d.kind === "save") && ss_dec.map((d) => d.format.id).sort().join() === "f1,f2" && ss_dec.find((d) => d.format.id === "f1").format.items.length === 2 && ss_c.every((x) => x.description.startsWith("Do not edit. ")));
+  check("the description of each is a good save of that format, with its ID, title, segments and revision", ss_dec.every((d) => d.kind === "save") && ss_dec.map((d) => d.format.id).sort().join() === "f1,f2" && ss_dec.find((d) => d.format.id === "f1").format.items.length === 2 && ss_c.every((x) => x.description.startsWith("Holds a recipe, not music. Do not edit. ")));
   check("the saves are on the page's list of playlists, known as saves, and are not offered as a source of songs", ss_w1.eval("playlists.filter((p) => p.isSave).length") === 2 && ss_w1.eval("readablePlaylists().some((p) => p.isSave || /format backup/.test(p.name))") === false);
   await waitFor(() => !ss_w1.eval("saveState.coverRunning") && ss_w1.eval("saveState.coverQueue.length") === 0, 8000);   // the covers are sent after the save
   var ss_n = ss_o1.writes.length;
@@ -4094,8 +4096,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
 
   if (want("backup cover")) { try {
   // ================================================================ the cover of a format backup
-  var bc_file = fs.readFileSync(ROOT + "backup-cover.jpg");
-  var bc_dims = execFileSync("python3", ["-c", `from PIL import Image; im = Image.open("${ROOT}backup-cover.jpg"); print(im.format, im.size[0], im.size[1])`], { encoding: "utf8" }).trim();
+  var bc_file = fs.readFileSync(ROOT + "recipe-cover.jpg");
+  var bc_dims = execFileSync("python3", ["-c", `from PIL import Image; im = Image.open("${ROOT}recipe-cover.jpg"); print(im.format, im.size[0], im.size[1])`], { encoding: "utf8" }).trim();
   check("the backup cover is a square JPEG, 640 by 640, well under the 256 KB Spotify allows", bc_dims === "JPEG 640 640" && bc_file.length < 256 * 1024, bc_dims + " " + bc_file.length);
   var bc_fmt = 'FORMATS = {"f1": {"title": "Alpha", "name": "Alpha {n}", "silence between segments": "30 sec", "segments": [("💗 spacious + gentle", 30)]}, "f2": {"title": "Beta", "name": "Beta {n}", "silence between segments": "30 sec", "segments": [("🛋 rest", 20)]}}';
   var bc_covers = (o) => o.writes.filter((x) => x.type === "cover");
@@ -4121,6 +4123,15 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => bc_o2.writes.some((x) => x.type === "update"), 8000);
   await new Promise((r) => setTimeout(r, 300));
   check("a backup that has no cover yet gets one, and one that has a cover is left as it is", bc_covers(bc_o2).length === 1 && bc_covers(bc_o2)[0].id === "s1");
+  // a save from before the cover said SAVED RECIPE (its description begins with only Do not edit.) gets the new cover once, even though it has a cover
+  var bc_oldPack = (id, title) => bc_pack(id, title).replace("Holds a recipe, not music. ", "");
+  var bc_o6 = { descStore: {}, nameStore: {}, extraPlaylists: [{ id: "s1", name: "Alpha (recipe)", owner: { id: "ron" }, description: bc_oldPack("f1", "Alpha"), images: [{ url: "https://img.example/x.jpg" }] }, { id: "s2", name: "Beta (recipe)", owner: { id: "ron" }, description: bc_pack("f2", "Beta"), images: [{ url: "https://img.example/y.jpg" }] }] };
+  var bc_w6 = await boot({ url: EDURL, session: signedIn(), local: { formats: bc_fmt, backupMode: "spotify", spotifySynced: JSON.stringify({ f1: { rev: 0 }, f2: { rev: 0 } }) }, fetchOptions: bc_o6 });
+  bc_w6.eval("spotifySaveDelayMs = 30");
+  await waitFor(() => bc_covers(bc_o6).length >= 1, 8000);
+  await new Promise((r) => setTimeout(r, 300));
+  check("a save with the old note is rewritten with the new one and gets the new cover; a save already new is left alone", bc_covers(bc_o6).length === 1 && bc_covers(bc_o6)[0].id === "s1" && bc_covers(bc_o6)[0].base64 === bc_file.toString("base64") && bc_o6.writes.some((x) => x.type === "update" && /^Holds a recipe, not music\. /.test(x.description || "")));
+  check("once the new cover is sent, nothing is left waiting for one", bc_w6.localStorage.getItem("recipeCoverDue") === null);
   // without permission to upload images, or when the image is refused or missing, the saves still happen
   var bc_o3 = { descStore: {}, nameStore: {} };
   var bc_w3 = await boot({ url: EDURL, session: { token: JSON.stringify({ value: "t", expires: Date.now() + 3600000, scope: SCOPE_ALL.replace(" ugc-image-upload", "") }) }, local: { formats: bc_fmt, backupMode: "spotify" }, fetchOptions: bc_o3 });
@@ -4141,7 +4152,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var bc_w5 = await boot({ url: EDURL, session: signedIn(), local: { formats: bc_fmt, backupMode: "spotify" }, fetchOptions: bc_o5 });
   bc_w5.eval("spotifySaveDelayMs = 30");
   await waitFor(() => bc_o5.writes.filter((x) => x.type === "create").length === 2, 8000);
-  check("when the cover file is not on the site, the line under the bar says which file", /backup-cover\.jpg\) could not be loaded from this site, so they have no cover\./.test(capText(bc_w5)));
+  check("when the cover file is not on the site, the line under the bar says which file", /recipe-cover\.jpg\) could not be loaded from this site, so they have no cover\./.test(capText(bc_w5)));
   check("when the cover file cannot be loaded, the saves are made without one", bc_covers(bc_o5).length === 0 && /Last saved at/.test(bc_w5.document.getElementById("spotifySaveStatus").textContent));
   } catch (err) { areaCrashed("backup cover", err); } }
 
@@ -4898,7 +4909,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-04v"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-04w"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

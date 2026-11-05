@@ -423,13 +423,15 @@ function contentSignature(fmt) {
 
 // ---------------------------------------------------------------- packing a format into a Spotify description
 // A format is packed into bytes, and the bytes into characters of the CJK block (14 bits each, U+4E00 to U+8DFF), so that a format of any usual size fits the
-// 300 characters Spotify's own app allows in a description. The description is a plain "Do not edit." followed by those characters.
+// 300 characters Spotify's own app allows in a description. The description is a plain "Holds a recipe, not music. Do not edit." followed by those characters
+// (saves from before 2026-11-04 begin with only "Do not edit.", and are read the same).
 //   bytes:  length of what follows | "C" "P" version | the format | CRC-16 of "C" "P" version and the format
 //   format: id, title (each a length and UTF-8), revision, edit time (seconds since the start of 2026), default silence, silence before the first segment,
 //           the silences of their own (count; place and seconds), then the segments (count; seconds, and the playlists of each: count; for each, a kind
 //           byte, then the last 6 bytes of a Spotify ID, or all 16 where another playlist ends the same way, or the ID as text, or the name as text, and the weight),
 //           then the place and the time it was last moved (seconds since the start of 2026, 0 for never)
-const SAVE_PREFIX = "Do not edit. ";
+const SAVE_PREFIX = "Holds a recipe, not music. Do not edit. ";
+const OLD_SAVE_PREFIX = "Do not edit.";
 const SAVE_VERSION = 2;   // 2 added the place, at the end
 const SAVE_EPOCH = 1767225600;
 const DENSE_BASE = 0x4e00;
@@ -569,7 +571,8 @@ function unpackFormat(description) {
     const c = text.charCodeAt(i);
     if (c >= DENSE_BASE && c < DENSE_BASE + 16384) { start = i; break; }
   }
-  if (start < 0 || text.slice(0, start).trim() !== SAVE_PREFIX.trim()) return { kind: "none" };
+  const note = text.slice(0, start).trim();
+  if (start < 0 || (note !== SAVE_PREFIX.trim() && note !== OLD_SAVE_PREFIX)) return { kind: "none" };
   const bytes = [];
   let acc = 0, bits = 0;
   for (let i = start; i < text.length; i++) {
