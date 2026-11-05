@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-04p";
+const APP_VERSION = "2026-11-04q";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -3397,6 +3397,9 @@ async function main() {
   on("clearData", "click", () => {
     $("clearConfirm").hidden = false;
     $("clearData").disabled = true;    // the question is already open, so the button that opened it waits
+    // the question and its buttons can open below the bottom of the screen: bring them into view once the popup has grown (smoothResize, 0.32 s)
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if ($("clearConfirm").scrollIntoView) setTimeout(() => $("clearConfirm").scrollIntoView({ block: "nearest", behavior: still ? "auto" : "smooth" }), still ? 0 : 340);
   });
   on("clearNo", "click", () => {
     $("clearConfirm").hidden = true;
