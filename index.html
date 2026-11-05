@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-05f">
-<script src="theme.js?v=2026-11-05f"></script>
+<meta name="app-version" content="2026-11-05g">
+<script src="theme.js?v=2026-11-05g"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -138,8 +138,8 @@
   details.card .card, details.card pre, details.card figure.sample { background: var(--bg); }
   footer.debug h3 { font-size: 1rem; margin: 20px 0 6px; color: var(--fg); }
   /* More options: body text is gray, so the headings, buttons, links and widgets are what stand out. */
-  #moreOptions, #privacySection, #guideSection { color: var(--muted); }
-  #moreOptions input, #moreOptions select { color: var(--fg); }
+  #moreOptions, #devOptions, #privacySection, #guideSection { color: var(--muted); }
+  #moreOptions input, #moreOptions select, #devOptions select { color: var(--fg); }
   #moreOptions #removeConfirmBox, #moreOptions #clearConfirm { color: var(--fg); }
   #clearConfirm { scroll-margin-bottom: 16px; }   /* a little room under its buttons when it is scrolled into view */
   .plan-links { margin: 8px 0 0; }
@@ -204,6 +204,7 @@
   #formatEditor .fe-bk-change::after { content: ""; position: absolute; left: -8px; right: -14px; top: -4px; bottom: -4px; }   /* a bigger target for a thumb */
   #formatEditor .fe-bk-status { color: var(--muted); font-size: 0.8rem; line-height: 1.3; padding-bottom: 2px; }
   /* the app's icon and name, as the header of the menu: a band in the deep pink right to the menu's edges, who this menu belongs to and nothing to press */
+  #formatEditor .fe-menuhead { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: none; }   /* held for Developer options: no callout, selection or scrolling gets in the way */
   #formatEditor .fe-menuhead { display: flex; align-items: center; gap: 12px; margin: -4px -4px 6px; padding: 12px 16px; border-radius: 15px 15px 0 0; background: var(--accent-deep, #a8217c); background: linear-gradient(135deg, var(--accent-deep, #a8217c), color-mix(in srgb, var(--accent-deep, #a8217c) 76%, #fff 24%)); color: var(--on-deep, #fff); }
   #formatEditor .fe-menuicon { width: 40px; height: 40px; flex: none; border-radius: 22%; display: block; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4); }
   #formatEditor .fe-menuname { font-weight: 700; font-size: 1.1rem; letter-spacing: 0.01em; }
@@ -606,19 +607,19 @@
   #reportBlock > :not(h3) { margin-left: 16px; }
   /* Privacy: the same rhythm and indent as More options */
   /* More options, Privacy and A guide for facilitators: one row per topic, each opening in place, the text under a title grey and indented */
-  :is(#guideSection, #privacySection, #moreOptions) details.gd-topic { border-top: 1px solid var(--line); }
-  :is(#guideSection, #privacySection, #moreOptions) details.gd-topic:last-of-type { border-bottom: 1px solid var(--line); }
-  #infoSlot :is(#guideSection, #privacySection, #moreOptions) details.gd-topic:first-of-type { border-top: none; }   /* the band above is line enough */
-  #infoDialog :is(#guideSection, #privacySection, #moreOptions) details.gd-topic > summary { display: flex; pointer-events: auto; font-size: inherit; margin: 0; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; font-weight: 600; color: var(--fg); cursor: pointer; list-style: none; }
-  :is(#guideSection, #privacySection, #moreOptions) details.gd-topic > summary::-webkit-details-marker { display: none; }
-  :is(#guideSection, #privacySection, #moreOptions) details.gd-topic > summary::after { content: ""; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: translateY(-3px) rotate(45deg); margin-right: 6px; transition: transform 0.2s var(--ease-out); }
-  :is(#guideSection, #privacySection, #moreOptions) details.gd-topic[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
-  @media (prefers-reduced-motion: reduce) { :is(#guideSection, #privacySection, #moreOptions) details.gd-topic > summary::after { transition: none; } }
-  :is(#guideSection, #privacySection, #moreOptions) details.gd-topic > :not(summary) { margin: 0 0 12px 16px; line-height: 1.5; }
-  :is(#guideSection, #privacySection, #moreOptions) details.gd-topic[open] { padding-bottom: 6px; }
-  :is(#guideSection, #privacySection, #moreOptions) details.gd-topic ul, :is(#guideSection, #privacySection, #moreOptions) details.gd-topic ol { padding-left: 1.3em; }
-  :is(#guideSection, #privacySection, #moreOptions) details.gd-topic li { margin-bottom: 6px; }
-  #moreOptions p, #moreOptions .row, #moreOptions select, #moreOptions pre.report-preview, #moreOptions .choice-row, #moreOptions .button-link, #reportBlock p, #reportBlock pre.report-preview, #reportBlock .button-link { margin-top: 0; margin-bottom: 10px; }
+  :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic { border-top: 1px solid var(--line); }
+  :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic:last-of-type { border-bottom: 1px solid var(--line); }
+  #infoSlot :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic:first-of-type { border-top: none; }   /* the band above is line enough */
+  #infoDialog :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic > summary { display: flex; pointer-events: auto; font-size: inherit; margin: 0; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; font-weight: 600; color: var(--fg); cursor: pointer; list-style: none; }
+  :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic > summary::-webkit-details-marker { display: none; }
+  :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic > summary::after { content: ""; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: translateY(-3px) rotate(45deg); margin-right: 6px; transition: transform 0.2s var(--ease-out); }
+  :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
+  @media (prefers-reduced-motion: reduce) { :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic > summary::after { transition: none; } }
+  :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic > :not(summary) { margin: 0 0 12px 16px; line-height: 1.5; }
+  :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic[open] { padding-bottom: 6px; }
+  :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic ul, :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic ol { padding-left: 1.3em; }
+  :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic li { margin-bottom: 6px; }
+  #moreOptions p, #moreOptions .row, #moreOptions select, #devOptions p, #devOptions .row, #devOptions select, #moreOptions pre.report-preview, #moreOptions .choice-row, #moreOptions .button-link, #reportBlock p, #reportBlock pre.report-preview, #reportBlock .button-link { margin-top: 0; margin-bottom: 10px; }
   #moreOptions .row select, #moreOptions .row .button-link { margin-bottom: 0; }   /* inside a row, the row supplies the space below, so the items centre on each other */
   body.minimal #feAppMenuButton { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
   /* the popup that holds everything after a click on Create: the plan, the question, the progress, and the result */
@@ -1340,10 +1341,6 @@
 
     <details id="moreOptions" class="card">
       <summary>More options</summary>
-      <details class="gd-topic" id="limitTopic" hidden><summary>Limit how many playlists are made</summary>
-      <p class="muted">By default, the app makes as many playlists as your songs allow, but here you can cap how many playlists get created per recipe:</p>
-      <select id="maxPlaylists" aria-label="Most playlists per recipe" style="width:auto"><option value="">No limit</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select>
-      </details>
       <details class="gd-topic"><summary>Build all recipes</summary>
       <p class="muted">Builds, or rebuilds, the playlists for every recipe at once. It shows what it found and asks first, as it does for one recipe.</p>
       <div class="row">
@@ -1411,8 +1408,29 @@
       <label class="choice-row"><input type="checkbox" id="donateHideBox"> <span>I have supported you!</span></label>
       <p id="donateHiddenMessage" class="muted" hidden>The Support me button is hidden. Thank you for your support!</p>
       </details>
+    </details>
+
+    <!-- Developer options: opened only by holding the app menu's header for 3 seconds (editor.js, watchDevHold), with nothing on screen that shows it -->
+    <details id="devOptions" class="card" hidden>
+      <summary>Developer options</summary>
+      <details class="gd-topic"><summary>Start over</summary>
+      <p class="muted">Signs out and erases everything this app keeps in this browser, like Sign out and clear data, but copies the Client ID to the clipboard first, so setting up again is a paste.</p>
+      <div class="row"><button id="devStartOver" type="button"><img class="btn-icon" src="icons/clear.svg" alt="" width="20" height="20"><span class="btn-label">Start over</span></button></div>
+      </details>
+      <details class="gd-topic"><summary>Disconnect</summary>
+      <p class="muted">Signs out of Spotify on this device and forgets the list of playlists and the saved songs. Recipes stay.</p>
+      <div class="row"><button id="devDisconnect" type="button"><img class="btn-icon" src="icons/disconnect.svg" alt="" width="20" height="20"><span class="btn-label">Disconnect</span></button></div>
+      </details>
+      <details class="gd-topic"><summary>Copy Spotify record</summary>
+      <p class="muted">The app’s record of requests to Spotify and its rate limits, to paste into the chat.</p>
+      <div class="row"><button id="devCopyRecord" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy Spotify record</span></button></div>
+      </details>
+      <details class="gd-topic" id="limitTopic"><summary>Limit how many playlists are made</summary>
+      <p class="muted">Caps how many playlists each recipe makes, for quicker test builds. Kept until the page reloads.</p>
+      <select id="maxPlaylists" aria-label="Most playlists per recipe" style="width:auto"><option value="">No limit</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select>
+      </details>
       <details class="gd-topic"><summary>Python status</summary>
-      <p class="muted">The code that builds your playlists is written in Python and runs inside your browser, so nothing about your music is sent to a server. If <span class="ui">Build playlists</span> stays unavailable, the reason shows here.</p>
+      <p class="muted">The code that builds your playlists is written in Python and runs inside your browser, so nothing about your music is sent to a server.</p>
       <p id="pythonStatus">Starting...</p>
       </details>
     </details>
@@ -1464,8 +1482,8 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-05f"></script>
-<script src="editor.js?v=2026-11-05f"></script>
-<script src="app.js?v=2026-11-05f"></script>
+<script src="formats.js?v=2026-11-05g"></script>
+<script src="editor.js?v=2026-11-05g"></script>
+<script src="app.js?v=2026-11-05g"></script>
 </body>
 </html>

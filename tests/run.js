@@ -12,7 +12,7 @@ function pressBuild(w) {
   if (tiles && !w.document.getElementById("bdPick").hidden && !tiles.querySelector('[aria-checked="true"]') && tiles.lastElementChild) tiles.lastElementChild.click();
   w.document.getElementById("confirmYes").click();
 }
-const SECTION_NAMES = ["the save pointer", "a guide for facilitators", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version icon", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "marker colors", "marker hugs corners", "popups close only", "narrow more button", "the silence card", "privacy: why the counts", "build button centered in minimalist mode", "no double-tap zoom", "backup link in step 2", "hiding the donate button", "spotify premium", "step 3 order and text", "the build icon", "python status at the bottom", "hover feedback on buttons", "questions and feedback", "settings below the segments, pink outline", "the tagline", "disconnect below the status line on phones", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'the Donate panel', 'dimming, fading, and Donate in the Create popup', 'tabs that scroll sideways', 'Donate only after a success', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
+const SECTION_NAMES = ["developer options", "the save pointer", "a guide for facilitators", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version icon", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "marker colors", "marker hugs corners", "popups close only", "narrow more button", "the silence card", "privacy: why the counts", "build button centered in minimalist mode", "no double-tap zoom", "backup link in step 2", "hiding the donate button", "spotify premium", "step 3 order and text", "the build icon", "python status at the bottom", "hover feedback on buttons", "questions and feedback", "settings below the segments, pink outline", "the tagline", "disconnect below the status line on phones", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'the Donate panel', 'dimming, fading, and Donate in the Create popup', 'tabs that scroll sideways', 'Donate only after a success', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
 // areas that need another area's setup to have run first
 const NEEDS = {
   "the page's styles for tags and phones": ["silences, dragging and removing"],
@@ -392,7 +392,7 @@ print(json.dumps(out))
 
   // 6c. every version unavailable: clear message, dropdown says so
   var w7 = await boot({ url: "http://127.0.0.1:8000/", session: { token: JSON.stringify({ value: "t", expires: Date.now() + 3600000, scope: SCOPE_ALL }) }, fetchOptions: { brokenVersions: ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"] } });
-  check("clear message when Python cannot load", /Could not load Python/.test(w7.document.getElementById("pythonStatus").textContent) && /Python could not start/.test(w7.document.getElementById("pythonNote").textContent) && /More options/.test(w7.document.getElementById("pythonNote").textContent), w7.document.getElementById("pythonStatus").textContent);
+  check("clear message when Python cannot load", /Could not load Python/.test(w7.document.getElementById("pythonStatus").textContent) && /Python could not start/.test(w7.document.getElementById("pythonNote").textContent) && !/More options/.test(w7.document.getElementById("pythonNote").textContent), w7.document.getElementById("pythonStatus").textContent);
 
   // 6d. bad formats text: dropdown explains instead of staying blank
   check("a bad formats box is explained where the formats are, and Build is off", /could not be read/.test(w4.document.getElementById("formatEditor").textContent) && w4.document.getElementById("create").disabled === true, w4.document.getElementById("formatEditor").textContent);
@@ -630,7 +630,7 @@ print(json.dumps(out))
   await readyToPreview(wG);
   var removeOpts = Array.from(wG.document.getElementById("removeKey").options).map((o) => o.value);
   check("the removal dropdown lists a blank, the formats, then All recipes", JSON.stringify(removeOpts) === JSON.stringify(["", "a", "b", "__all__"]), JSON.stringify(removeOpts));
-  check("removal is inside More options", !!wG.document.querySelector("#moreOptions #removeOld") && !!wG.document.querySelector("#moreOptions #maxPlaylists") && !!wG.document.querySelector("#moreOptions #clearData") && /More options/.test(wG.document.querySelector("#moreOptions summary").textContent));
+  check("removal is inside More options", !!wG.document.querySelector("#moreOptions #removeOld") && !!wG.document.querySelector("#devOptions #maxPlaylists") && !!wG.document.querySelector("#moreOptions #clearData") && /More options/.test(wG.document.querySelector("#moreOptions summary").textContent));
   check("the removal dropdown starts blank and Remove waits for a choice", wG.document.getElementById("removeKey").value === "" && wG.document.getElementById("removeOld").disabled === true);
   wG.document.getElementById("removeKey").value = "b";
   removeNow(wG);
@@ -667,8 +667,8 @@ print(json.dumps(out))
   check("the hidden text is not in the way: it is hidden from sight and from assistive tools", wB.document.getElementById("formats").hidden === true && wB.document.getElementById("formats").getAttribute("aria-hidden") === "true");
 
   // I3. the Python status moved out of the way
-  check("the Python status lives in More options, under a heading that says what it is, with plain wording", !!wB.document.querySelector("#moreOptions #pythonStatus") && /^Ready\. Python v[\d.]+ is running in your browser\.$/.test(wB.document.getElementById("pythonStatus").textContent) && !wB.document.querySelector("#appSection #pythonStatus") && Array.from(wB.document.querySelectorAll("#moreOptions details.gd-topic > summary")).some((h) => h.textContent === "Python status"), wB.document.getElementById("pythonStatus").textContent);
-  check("More options no longer says planner anywhere, and explains Python in one sentence", !/planner/i.test(wB.document.getElementById("moreOptions").textContent) && /The code that builds your playlists is written in Python and runs inside your browser, so nothing about your music is sent to a server\./.test(wB.document.getElementById("moreOptions").textContent) && !/planner/i.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  check("the Python status lives in Developer options, under a heading that says what it is, with plain wording", !!wB.document.querySelector("#devOptions #pythonStatus") && /^Ready\. Python v[\d.]+ is running in your browser\.$/.test(wB.document.getElementById("pythonStatus").textContent) && !wB.document.querySelector("#appSection #pythonStatus") && Array.from(wB.document.querySelectorAll("#devOptions details.gd-topic > summary")).some((h) => h.textContent === "Python status"), wB.document.getElementById("pythonStatus").textContent);
+  check("Developer options never says planner, and explains Python in one sentence", !/planner/i.test(wB.document.getElementById("devOptions").textContent) && /The code that builds your playlists is written in Python and runs inside your browser, so nothing about your music is sent to a server\./.test(wB.document.getElementById("devOptions").textContent) && !/planner/i.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   check("More options does not show the app version", wB.document.getElementById("appVersionLabel") === null && !/App version/.test(wB.document.getElementById("moreOptions").textContent));
   check("while Python loads, the note beside Create says Python, not planner", /Getting Python ready/.test(fs.readFileSync(ROOT + "app.js", "utf8")) && /Python could not start, so building is unavailable/.test(fs.readFileSync(ROOT + "app.js", "utf8")) && !/planner/i.test(fs.readFileSync(ROOT + "app.js", "utf8")));
 
@@ -826,9 +826,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-05f" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-05g" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-05f/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-05g/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -959,9 +959,9 @@ print(json.dumps(out))
   var ab = t0.document.getElementById("about");
   var leads = Array.from(ab.querySelectorAll("strong")).map((x) => x.textContent);
   check("the headings in What is this app? stand on their own line, without trailing periods", JSON.stringify(leads) === JSON.stringify(["What it does", "What it's good for", "How it works", "What you need", "Reporting problems", "Privacy"]) && Array.from(ab.querySelectorAll("p")).filter((p) => p.querySelector("strong + br")).length === 5, JSON.stringify(leads));
-  var pill = Array.from(t0.document.querySelectorAll("button:not(.linklike):not(.theme-button):not(#kofiClose):not(#createDonate):not(#cnContinue), a.button-link")).filter((b) => !b.closest("#formatEditor"));   // the Setup complete button has words only
+  var pill = Array.from(t0.document.querySelectorAll("button:not(.linklike):not(.theme-button):not(#kofiClose):not(#createDonate):not(#cnContinue), a.button-link")).filter((b) => !b.closest("#formatEditor") && !b.closest("#startupProblem") && b.id !== "infoClose");   // the Setup complete button has words only; the startup popup and the info popup's close draw their icons inline
   var pillsIn = pill.filter((b) => b.querySelector("img.btn-icon"));
-  check("every pink button has an icon in front of its label (the Donate button has the cup)", pill.length >= 15 && pillsIn.length === pill.length, `${pillsIn.length} of ${pill.length}`);
+  check("every pink button has an icon in front of its label (the Donate button has the cup)", pill.length >= 15 && pillsIn.length === pill.length, `${pillsIn.length} of ${pill.length} ` + pill.filter((b) => !b.querySelector("img.btn-icon")).map((b) => b.id || b.outerHTML.slice(0, 60)).join(","));
   check("each icon is a small file, 20 by 20 (the Build sparkles 24 by 24), decorative, and the file exists", pill.every((b) => { const i = b.querySelector("img.btn-icon"); const size = i.getAttribute("src") === "icons/build.svg" ? "24" : "20"; return i.getAttribute("width") === size && i.getAttribute("height") === size && i.getAttribute("alt") === "" && /^icons\/[a-z]+\.svg$/.test(i.getAttribute("src")) && fs.existsSync(ROOT + i.getAttribute("src")); }));
   check("text-style links (Restore, Reset, Undo) have no icons", Array.from(t0.document.querySelectorAll("button.linklike")).every((b) => !b.querySelector("img")));
   check("each icon sits left of a label, and the label is its own element", pill.every((b) => { const i = b.querySelector("img.btn-icon, img"); return i === b.firstElementChild && !!b.querySelector(".btn-label, span"); }));
@@ -1073,7 +1073,7 @@ print(json.dumps(out))
   var moCss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("the More options box is gray by default", /#moreOptions(, [#\w-]+)* \{ color: var\(--muted\); \}/.test(moCss));
   check("its headings stay in the normal text color, and its title stays pink", /footer\.debug h3 \{[^}]*color: var\(--fg\)/.test(moCss) && /details\.card > summary \{[^}]*color: var\(--accent\)/.test(moCss));
-  check("its inputs, dropdowns and confirmation questions keep the normal text color, and the report details are gray like the rest", /#moreOptions input, #moreOptions select \{ color: var\(--fg\); \}/.test(moCss) && /#moreOptions #removeConfirmBox, #moreOptions #clearConfirm \{ color: var\(--fg\); \}/.test(moCss) && /#moreOptions pre\.report-preview \{ color: var\(--muted\); \}/.test(moCss) && !/#moreOptions pre, /.test(moCss));
+  check("its inputs, dropdowns and confirmation questions keep the normal text color, and the report details are gray like the rest", /#moreOptions input, #moreOptions select, #devOptions select \{ color: var\(--fg\); \}/.test(moCss) && /#moreOptions #removeConfirmBox, #moreOptions #clearConfirm \{ color: var\(--fg\); \}/.test(moCss) && /#moreOptions pre\.report-preview \{ color: var\(--muted\); \}/.test(moCss) && !/#moreOptions pre, /.test(moCss));
   var moreBox = fresh.document.getElementById("moreOptions");
   var loud = Array.from(moreBox.querySelectorAll("p, label, span")).filter((el) => el.closest("#removeConfirmBox, #clearConfirm, .btn-label") === null && el.hasAttribute("style") && /color\s*:/.test(el.getAttribute("style")));
   check("no paragraph in More options sets its own text color, so the gray applies everywhere", loud.length === 0, loud.map((e) => e.id || e.textContent.slice(0, 30)).join(","));
@@ -2008,14 +2008,14 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var lm_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI } });
   var lm_sel = lm_w.document.getElementById("maxPlaylists");
   check("the playlist limit is a list: No limit first, then 1 to 10", lm_sel.tagName === "SELECT" && Array.from(lm_sel.options).map((o) => o.textContent).join("|") === "No limit|1|2|3|4|5|6|7|8|9|10" && lm_sel.value === "" && Array.from(lm_sel.options).map((o) => o.value).join("|") === "|1|2|3|4|5|6|7|8|9|10");
-  var lm_text = Array.from(lm_w.document.querySelectorAll("#moreOptions p")).find((p) => /By default, the app makes/.test(p.textContent));
-  check("it sits under your sentence, which no longer says plans or asks for a number", !!lm_text && lm_text.textContent === "By default, the app makes as many playlists as your songs allow, but here you can cap how many playlists get created per recipe:" && lm_text.nextElementSibling === lm_sel && !/enter a number/.test(lm_w.document.getElementById("moreOptions").textContent));
+  var lm_text = Array.from(lm_w.document.querySelectorAll("#devOptions p")).find((p) => /Caps how many playlists/.test(p.textContent));
+  check("it sits under your sentence, which no longer says plans or asks for a number", !!lm_text && lm_text.textContent === "Caps how many playlists each recipe makes, for quicker test builds. Kept until the page reloads." && lm_text.nextElementSibling === lm_sel && !/enter a number/.test(lm_w.document.getElementById("devOptions").textContent));
   check("choosing a number limits the plan, and No limit takes the limit off", (() => { lm_sel.value = "3"; return lm_w.eval("playlistLimit()") === 3; })() && (() => { lm_sel.value = ""; return lm_w.eval("playlistLimit()") === undefined; })());
   var lm_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
 
 
   
-  check("the limit is not offered in More options: its topic is hidden (kept for a developer panel and for these checks)", lm_w.document.getElementById("limitTopic").hidden === true && lm_w.document.getElementById("limitTopic").contains(lm_w.document.getElementById("maxPlaylists")));
+  check("the limit is not in More options: it is in Developer options", !lm_w.document.querySelector("#moreOptions #maxPlaylists") && lm_w.document.getElementById("devOptions").contains(lm_w.document.getElementById("limitTopic")) && lm_w.document.getElementById("limitTopic").contains(lm_w.document.getElementById("maxPlaylists")));
   } catch (err) { areaCrashed("the limit list, and the format's title", err); }
 }
   if (want('the app menu, and minimalist mode')) { try {
@@ -2682,7 +2682,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await sr_ow.eval("offerLimitRecord()");
   check("the owner is offered the record when Spotify refused since the last copy", /Spotify refused requests once since the last copy/.test((sr_ow.eval("notices.held") || {}).text || ""), JSON.stringify(sr_ow.eval("notices.held")));
   sr_ow.eval("editor.appMenu = true; renderAppMenu()");
-  check("and has Copy Spotify record in the menu", !!sr_ow.document.getElementById("feCopyRecord") && /Copy Spotify record/.test(sr_ow.document.getElementById("feCopyRecord").textContent));
+  check("Copy Spotify record is not in the menu, even for the owner: it is in Developer options", !sr_ow.document.getElementById("feCopyRecord") && !!sr_ow.document.querySelector("#devOptions #devCopyRecord"));
   var sr_copied = "";
   sr_ow.navigator.clipboard = { writeText: async (t) => { sr_copied = t; } };
   await sr_ow.eval("copyLimitRecord()");
@@ -3074,7 +3074,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-05f", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-05g", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3455,8 +3455,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // ================================================================ the Python status at the bottom of More options
   var py_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var py_heads = Array.from(py_w.document.querySelectorAll("#moreOptions details.gd-topic > summary")).filter((h) => !h.closest("[hidden]")).map((h) => h.textContent);
-  check("the Python status is the last section of More options, after Hiding the Support me button, since it is the only one with nothing to press", py_heads[py_heads.length - 1] === "Python status" && py_heads[py_heads.length - 2] === "Hiding the Support me button", JSON.stringify(py_heads));
-  check("it is the last line of More options (the app version is in the app menu now)", py_w.document.getElementById("pythonStatus").nextElementSibling === null && py_w.document.getElementById("pythonStatus").parentElement.matches("#moreOptions > details.gd-topic:last-of-type"));
+  check("More options ends with Hiding the Support me button; Python status is in Developer options", py_heads[py_heads.length - 1] === "Hiding the Support me button" && !py_heads.includes("Python status") && !!py_w.document.querySelector("#devOptions #pythonStatus"), JSON.stringify(py_heads));
   check("the Sign out and clear data question still opens right under its button, ahead of the Hiding the Support me button section", !!(py_w.document.getElementById("clearConfirm").compareDocumentPosition(py_w.document.getElementById("donateHideBox")) & 4));
   } catch (err) { areaCrashed("python status at the bottom", err); } }
 
@@ -3532,7 +3531,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var dh_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var dh_d = dh_w.document;
   var dh_h3 = Array.from(dh_d.querySelectorAll("#moreOptions details.gd-topic > summary")).map((h) => h.textContent);
-  check("More options has a section called Hiding the Support me button, right after Sign out and clear data and just before Python status", dh_h3.includes("Hiding the Support me button") && dh_h3.indexOf("Hiding the Support me button") === dh_h3.indexOf("Sign out and clear data") + 1 && dh_h3.indexOf("Hiding the Support me button") + 1 === dh_h3.indexOf("Python status"), JSON.stringify(dh_h3));
+  check("More options has a section called Hiding the Support me button, right after Sign out and clear data", dh_h3.includes("Hiding the Support me button") && dh_h3.indexOf("Hiding the Support me button") === dh_h3.indexOf("Sign out and clear data") + 1, JSON.stringify(dh_h3));
   var dh_p = dh_d.querySelector("#donateHideBox").closest("label").previousElementSibling;
   check("it is direct and playful: the button is meant to be visible until you have donated, please give what feels right, thank you if you did, check the box and it leaves you alone, honor system, nobody is looking, and it waits patiently", dh_p.textContent === "The Support me button stays visible until you have... supported me 🙂. If this app has been helpful to you, please give whatever feels right. Already did? Thank you! Check the box and the button will leave you alone. This runs on the honor system, so nobody\u2019s looking, and the button waits patiently.");
   check("there is one checkbox, labeled I have supported you!, for people who have donated, and no second answer for people who have not", dh_d.getElementById("donateHideBox").type === "checkbox" && dh_d.getElementById("donateHideBox").closest("label").textContent.trim() === "I have supported you!" && !dh_d.getElementById("hideDonated") && !dh_d.getElementById("hideDeclined") && !dh_d.getElementById("showDonate"));
@@ -4880,6 +4879,54 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the app icon is only a picture again: pressing it does nothing", !/showVersionNotice|APP_VERSION[^;]*fe-appicon/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && (() => { const icon = vl_minimal.document.querySelector("#formatEditor .fe-appicon"); const before = capText(vl_minimal); icon.click(); return capText(vl_minimal) === before; })());
   } catch (err) { areaCrashed("version line", err); } }
 
+  if (want("developer options")) { try {
+  // ================================================================ Developer options: held open from the app menu's header, with nothing that gives it away
+  var dv_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: {} });
+  await waitFor(() => dv_w.eval("connection") === "ready", 15000);
+  dv_w.eval("window.__t = []; const st = window.setTimeout; window.setTimeout = (f, ms, ...a) => { if (ms === 3000) { window.__t.push(f); return 0; } return st(f, ms, ...a); }");
+  var dv_ev = (type, x) => new dv_w.MouseEvent(type, { bubbles: true, button: 0, clientX: x || 10, clientY: 10 });
+  var dv_PE = (type, x) => { const e = dv_ev(type, x); return e; };
+  var dv_open = () => { dv_w.document.getElementById("feAppMenuButton").click(); return dv_w.document.getElementById("feMenuHead"); };
+  var dv_head = dv_open();
+  var dv_before = dv_head.outerHTML;
+  dv_head.dispatchEvent(dv_PE("pointerdown"));
+  check("holding the header starts a 3 second wait, and nothing on screen changes", dv_w.eval("window.__t.length") === 1 && /const DEV_HOLD_MS = 3000;/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && dv_head.outerHTML === dv_before && !!dv_w.document.getElementById("feAppMenuPanel"));
+  dv_head.dispatchEvent(dv_PE("pointerup"));
+  check("Developer options is not in the menu, and no menu item names it", !/Developer/.test(dv_w.document.getElementById("feAppMenuPanel").textContent) && dv_w.document.getElementById("devOptions").hidden === true);
+  dv_head = dv_w.document.getElementById("feMenuHead");
+  dv_head.dispatchEvent(dv_PE("pointerdown"));
+  dv_w.eval("window.__t[window.__t.length - 1]()");
+  check("held to the end, the menu closes and Developer options opens in the info popup", !dv_w.document.getElementById("feAppMenuPanel") && dv_w.document.getElementById("infoOverlay").hidden === false && dv_w.document.getElementById("infoSlot").firstElementChild.id === "devOptions" && dv_w.document.getElementById("infoTitle").textContent === "Developer options");
+  var dv_topics = Array.from(dv_w.document.querySelectorAll("#devOptions details.gd-topic > summary")).map((h) => h.textContent);
+  check("it has Start over, Disconnect, Copy Spotify record, Limit how many playlists are made and Python status, and no way to turn it off", JSON.stringify(dv_topics) === JSON.stringify(["Start over", "Disconnect", "Copy Spotify record", "Limit how many playlists are made", "Python status"]) && !/Turn off/.test(dv_w.document.getElementById("devOptions").textContent), JSON.stringify(dv_topics));
+  dv_w.document.getElementById("infoClose").click();
+  check("closed, it goes back to its place, hidden", dv_w.document.getElementById("devOptions").hidden === true && !dv_w.document.getElementById("devOptions").closest("#infoSlot"));
+  check("the header takes no callout, selection or scrolling, and its icon cannot be dragged", /\.fe-menuhead \{ -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: none; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && (() => { const h = dv_open(); const ok = h.querySelector("img").draggable === false; const e = new dv_w.MouseEvent("contextmenu", { bubbles: true, cancelable: true }); h.dispatchEvent(e); dv_w.document.getElementById("feAppMenuButton").click(); return ok && e.defaultPrevented; })());
+  dv_head = dv_open();
+  dv_head.dispatchEvent(dv_PE("pointerdown", 10));
+  var dv_n = dv_w.eval("window.__t.length");
+  dv_head.dispatchEvent(dv_PE("pointermove", 40));
+  dv_head.dispatchEvent(dv_PE("pointerup", 40));
+  check("moving the finger more than a little cancels it", dv_w.document.getElementById("devOptions").hidden === true && dv_n >= 1);
+  dv_w.document.getElementById("feAppMenuButton").click();
+  dv_w.eval("openInfo('devOptions')");
+  dv_w.document.getElementById("devDisconnect").click();
+  await new Promise((r) => setTimeout(r, 80));
+  check("Disconnect closes the popup and asks first, as before", dv_w.document.getElementById("infoOverlay").hidden === true && /Disconnect from Spotify\?/.test((dv_w.document.getElementById("feSyncDialog") || {}).textContent || ""));
+  dv_w.document.getElementById("feSyncChoice1").click();
+  await new Promise((r) => setTimeout(r, 80));
+  dv_w.eval("openInfo('devOptions')");
+  dv_w.document.getElementById("devStartOver").click();
+  await new Promise((r) => setTimeout(r, 80));
+  check("Start over asks first, and says the Client ID is copied", /Start over\?/.test((dv_w.document.getElementById("feSyncDialog") || {}).textContent || "") && /Client ID is copied to the clipboard/.test(dv_w.document.getElementById("feSyncDialog").textContent));
+  var dv_copied = []; dv_w.navigator.clipboard = { writeText: async (t) => { dv_copied.push(t); } };
+  dv_w.localStorage.setItem("clientId", "dv-id");
+  dv_w.eval("reloadPage = () => { window.__dvReloaded = true; }");
+  dv_w.document.getElementById("feSyncChoice0").click();
+  await waitFor(() => dv_w.__dvReloaded === true, 5000);
+  check("and then clears everything, with the Client ID copied", dv_w.localStorage.length === 0 && dv_copied.join("|") === "dv-id");
+  } catch (err) { areaCrashed("developer options", err); } }
+
   if (want("spotify last")) { try {
   // ================================================================ the Spotify item is always first in the menu, under the app's name; then the rest in a fixed order, and the version
   var sl_ids = (w) => { w.document.getElementById("feAppMenuButton").click(); const ids = Array.from(w.document.querySelectorAll("#feAppMenuPanel > *")).map((k) => k.id || k.className); w.document.body.click(); return ids; };
@@ -4988,7 +5035,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-05f"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-05g"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

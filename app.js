@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-05f";
+const APP_VERSION = "2026-11-05g";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -3483,6 +3483,15 @@ async function main() {
     $("clearData").disabled = false;
   });
   on("clearYes", "click", () => clearSavedData());
+  // Developer options (held open from the menu's header): each closes the popup first, so its question or message is in view
+  on("devStartOver", "click", async () => {
+    closeInfo();
+    const choice = await askSyncChoice("Start over?", "This signs you out and erases everything this app keeps in this browser. The Client ID is copied to the clipboard first.",
+      [{ label: "Start over", value: "yes" }, { label: "Cancel", value: "no" }], { focusLast: true });
+    if (choice === "yes") await startOver();
+  });
+  on("devDisconnect", "click", () => { closeInfo(); confirmDisconnect(); });
+  on("devCopyRecord", "click", () => { closeInfo(); copyLimitRecord(); });
   on("connect", "click", startLogin);
   on("startSetup", "click", () => goToSetup(false));
   on("premiumWhy", "click", (event) => { event.stopPropagation(); showPremiumWhy($("premiumWhyText").hidden); });
@@ -3599,7 +3608,7 @@ async function preparePython() {
     return true;
   } catch (err) {
     $("pythonStatus").textContent = String(err.message || err);
-    $("pythonNote").textContent = "Python could not start, so building is unavailable. Check your internet connection and reload the page. Details are under More options.";
+    $("pythonNote").textContent = "Python could not start, so building is unavailable. Check your internet connection and reload the page.";
     offerReport("mainReportHint", String(err.message || err));
     return false;
   }

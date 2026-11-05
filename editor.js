@@ -739,10 +739,34 @@ function renderAppMenu() {
     typeof FEEDBACK_FORM_URL !== "undefined" && FEEDBACK_FORM_URL ? feEl("a", { class: "fe-item", id: "feFeedback", role: "menuitem", href: FEEDBACK_FORM_URL, target: "_blank", rel: "noopener noreferrer", onClick: () => setTimeout(() => { editor.appMenu = false; renderAppMenu(); }, 0) }, feIcon("chat"), "Feedback and questions") : null,
     infoItem("feReport", "reportBlock", "flag", "Report a problem"),
     infoItem("fePrivacy", "privacySection", "lock", "Privacy"),
-    // only on the owner's device: the app's own record of Spotify's limits, for the chat where it is studied
-    typeof isOwnerHere !== "undefined" && isOwnerHere ? feEl("button", { type: "button", class: "fe-item", id: "feCopyRecord", role: "menuitem", onClick: choose(() => copyLimitRecord()) }, feIcon("copy"), "Copy Spotify record") : null,
     feEl("div", { class: "fe-rule" }),
     versionLine(choose)));
+  watchDevHold($("feMenuHead"));
+}
+
+// Developer options open by holding the menu's header for 3 seconds. Nothing shows while holding, on purpose: it is not for people to find.
+// The header takes no text selection, image callout or browser menu, so a long press on a phone reaches the end.
+const DEV_HOLD_MS = 3000;
+function watchDevHold(head) {
+  if (!head) return;
+  const img = head.querySelector("img");
+  if (img) img.draggable = false;
+  let timer = null, from = null;
+  const stop = () => { clearTimeout(timer); timer = null; };
+  head.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    from = { x: event.clientX, y: event.clientY };
+    stop();
+    timer = setTimeout(() => {
+      timer = null;
+      editor.appMenu = false;
+      renderAppMenu();
+      openInfo("devOptions");
+    }, DEV_HOLD_MS);
+  });
+  head.addEventListener("pointermove", (event) => { if (timer && from && Math.hypot(event.clientX - from.x, event.clientY - from.y) > 10) stop(); });
+  for (const type of ["pointerup", "pointercancel", "pointerleave"]) head.addEventListener(type, stop);
+  head.addEventListener("contextmenu", (event) => event.preventDefault());
 }
 
 // The menu's last line: which version this is, or, when the site has a different one, a box that offers it
