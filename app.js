@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-04z";
+const APP_VERSION = "2026-11-04za";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -271,7 +271,10 @@ function endConnectingScreen() {
 function setupComplete() {
   if (!connectingScreen || !firstConnect) return Promise.resolve();
   $("connectingScreen").classList.add("cn-finished");
-  const button = $("cnContinue");   // a plain listener: it only lets the startup go on, so nothing in it can fail
+  const button = $("cnContinue");
+  // someone setting up again (a new device, or an iPhone's Home Screen app, which keeps its own storage) already has recipes saved to Spotify by now (decided by Ron, 2026-11-04)
+  const hasRecipes = typeof editor !== "undefined" && !!editor.model && editor.model.formats.some((f) => !f.draft);
+  button.textContent = hasRecipes ? "Show me my recipes!" : "Let’s make a recipe!";   // a plain listener: it only lets the startup go on, so nothing in it can fail
   return new Promise((resolve) => button.addEventListener("click", resolve, { once: true }));
 }
 
