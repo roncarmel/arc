@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-05h">
-<script src="theme.js?v=2026-11-05h"></script>
+<meta name="app-version" content="2026-11-05i">
+<script src="theme.js?v=2026-11-05i"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ceremony Playlist Builder</title>
@@ -597,7 +597,15 @@
   #infoDialog { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
   /* the title sits in a band like the app menu's header, without the icon */
   #infoHeader { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; margin-bottom: 6px; background: var(--accent-deep, #a8217c); background: linear-gradient(135deg, var(--accent-deep, #a8217c), color-mix(in srgb, var(--accent-deep, #a8217c) 76%, #fff 24%)); color: var(--on-deep, #fff); }
-  #infoTitle { margin: 0; font-size: 1.2rem; font-weight: 700; letter-spacing: 0.01em; line-height: 1.3; color: var(--on-deep, #fff); }
+  /* below about 350 px the title shrinks with the room beside the Close button (the screen less about 140 px), so A guide for facilitators stays on one line at 320 px */
+  #infoTitle { margin: 0; font-size: min(1.2rem, calc((100vw - 140px) / 11)); font-weight: 700; letter-spacing: 0.01em; line-height: 1.3; color: var(--on-deep, #fff); display: flex; align-items: center; gap: 10px; min-width: 0; }
+  #infoTitle .info-ticon { flex: none; display: flex; }
+  #infoTitle .info-ticon svg { width: 22px; height: 22px; }
+  /* a topic heading's icon: grey, pink while the topic is open */
+  details.gd-topic > summary .gd-thead { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  details.gd-topic > summary .gd-ticon { flex: none; display: flex; color: var(--muted); }
+  details.gd-topic > summary .gd-ticon svg { width: 18px; height: 18px; stroke-width: 2; }
+  details.gd-topic[open] > summary .gd-ticon { color: var(--accent); }
   /* a circled X, not a Close button: these popups are for reading, and the band has room for only the title */
   #infoDialog #infoClose { flex: none; margin: 0; width: 40px; height: 40px; min-height: 0; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.16); border: 1.5px solid rgba(255, 255, 255, 0.55); color: var(--on-deep, #fff); box-shadow: none; }
   #infoDialog #infoClose:hover { background: rgba(255, 255, 255, 0.28); }
@@ -1299,13 +1307,13 @@
     <!-- A guide for facilitators: opened from the app menu, the ? by the silence stepper, the first-segment tip and the build popup (openGuide in app.js, which opens one topic) -->
     <details id="guideSection" class="card" hidden>
       <summary>A guide for facilitators</summary>
-      <details class="gd-topic" id="gdLong"><summary>Designed for long playlists</summary>
+      <details class="gd-topic" id="gdLong" data-icon="clock"><summary>Designed for long playlists</summary>
         <p>This app draws songs from playlists you already have. It works best with long playlists, each one a mood or a stage of the ceremony: settling, rising, the peak, landing, rest. A recipe puts them in order and says how long each part lasts. With shorter playlists it might be hard to fill a longer segment of a recipe, and the app won’t be able to build as many playlists out of it. If you don’t organize your music this way and would like a jump start, you’re welcome to <button type="button" class="linklike" data-guide="gdStart">use my public playlists</button>.</p>
       </details>
-      <details class="gd-topic" id="gdNot"><summary>What it doesn’t do</summary>
+      <details class="gd-topic" id="gdNot" data-icon="ban"><summary>What it doesn’t do</summary>
         <p>It doesn’t find new music or sort your library. It only picks from the playlists you have already created, so what plays is always your choice.</p>
       </details>
-      <details class="gd-topic" id="gdSilence"><summary>Silence between segments</summary>
+      <details class="gd-topic" id="gdSilence" data-icon="mute"><summary>Silence between segments</summary>
         <p>A short silence between segments can do two things:</p>
         <ul>
           <li><b>Give space.</b> One part settles before the next begins.</li>
@@ -1313,7 +1321,7 @@
         </ul>
         <p>You can use the same length of silence between all segments and you can edit each silence to have a different duration.</p>
       </details>
-      <details class="gd-topic" id="gdSeveral"><summary>One recipe, many playlists</summary>
+      <details class="gd-topic" id="gdSeveral" data-icon="layers"><summary>One recipe, many playlists</summary>
         <p>One recipe can build more than one playlist if desired, each with its own unique songs. With 3 playlists, a client can come to 3 ceremonies and never hear the same song twice. Play them in order, one per ceremony.</p>
         <p>How many you can build depends on how long your playlists are. Because the app doesn’t repeat songs across playlists, with each new playlist it builds it is left with fewer songs to draw from for the next playlist it builds. Eventually, it won’t have enough songs to fill a segment. The playlist that runs out of options first determines the maximum number of playlists the app can build for a recipe. For example, in the table below, the recipe can build a maximum of 4 playlists from the given recipe.</p>
         <div class="gd-why"><table>
@@ -1325,10 +1333,10 @@
           </tbody>
         </table></div>
       </details>
-      <details class="gd-topic" id="gdNew"><summary>Adding new music</summary>
+      <details class="gd-topic" id="gdNew" data-icon="musicplus"><summary>Adding new music</summary>
         <p>If, like me, you add new music to your collection over time, I have good news for you: the app can re-build all the playlists it previously built and integrate all your new music into them. If you’ve added enough new music to your collection, it might even be able to build more playlists from a given recipe than it was able to before. This will replace the ones built before with the new music mixed in. A new build starts fresh, so songs from earlier playlists can come back. If a client is partway through a series, finish it before building again. The app gives you an option to keep the previously built playlists when you build new ones.</p>
       </details>
-      <details class="gd-topic" id="gdStart"><summary>Playlists to start from</summary>
+      <details class="gd-topic" id="gdStart" data-icon="sprout"><summary>Playlists to start from</summary>
         <p>If your music isn’t organized into long playlists yet, you’re welcome to use some of mine.</p>
         <p>Copying matters: this app can only see playlists that you own, so following mine isn’t enough. Your copy is independent from mine, feel free to edit it.</p>
         <ol>
@@ -1341,13 +1349,13 @@
 
     <details id="moreOptions" class="card">
       <summary>More options</summary>
-      <details class="gd-topic"><summary>Build all recipes</summary>
+      <details class="gd-topic" data-icon="sparkle"><summary>Build all recipes</summary>
       <p class="muted">Builds, or rebuilds, the playlists for every recipe at once. It shows what it found and asks first, as it does for one recipe.</p>
       <div class="row">
         <button id="buildAll" type="button" disabled><img class="btn-icon" src="icons/build.svg" alt="" width="24" height="24"><span class="btn-label">Build all recipes</span></button>
       </div>
       </details>
-      <details class="gd-topic"><summary>Remove built playlists</summary>
+      <details class="gd-topic" data-icon="trash"><summary>Remove built playlists</summary>
       <p class="muted">Removes the playlists this app built from a recipe from your Spotify library. Your recipes and your other playlists are not touched. It only looks at playlists that match the recipe’s name, and it asks before removing anything.</p>
       <div class="row">
         <label for="removeKey">Built from</label>
@@ -1369,7 +1377,7 @@
       <p id="removeMessage" aria-live="polite"></p>
       <p id="removeReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Report this problem</a></p>
       </details>
-      <details class="gd-topic"><summary>Color</summary>
+      <details class="gd-topic" data-icon="palette"><summary>Color</summary>
       <p class="muted">Choose the main color of this page. It's used for buttons, links, and highlights.</p>
       <div class="row" style="margin-top:0">
         <div class="theme-picker">
@@ -1379,15 +1387,15 @@
       </div>
       <p id="themeNote" class="muted" hidden></p>
       </details>
-      <details class="gd-topic"><summary>Autosave or backup</summary>
+      <details class="gd-topic" data-icon="cloud"><summary>Autosave or backup</summary>
       <p class="muted">Your recipes are saved to Spotify automatically, and a change you make on one device shows up on your others. The other choice is a manual backup: you download a file yourself and restore from it later. Changing this is not recommended. With a manual backup, nothing is saved unless you remember to make a backup, so clearing your browser's data can lose your recipes, and your devices will not stay in step.</p>
       <p><button id="changeSaveMethod" class="linklike" type="button">Change how your recipes are saved</button></p>
       </details>
-      <details class="gd-topic"><summary>Change Spotify login</summary>
+      <details class="gd-topic" data-icon="user"><summary>Change Spotify login</summary>
       <p class="muted">Sign in with a different Spotify account. Spotify’s sign-in page opens, where <span class="ui">Not you?</span> lets you choose another account. Your recipes stay as they are and are saved to the account you sign in with.</p>
       <p><button id="changeSpotifyLogin" class="linklike" type="button">Change Spotify login</button></p>
       </details>
-      <details class="gd-topic"><summary>Sign out and clear data</summary>
+      <details class="gd-topic" data-icon="logout"><summary>Sign out and clear data</summary>
       <p class="muted">For when you’re done on a computer that isn’t yours, or when something here isn’t working. This signs you out of Spotify and erases everything this app keeps in this browser: your Client ID, your recipes, and your settings. Nothing in your Spotify account changes.</p>
       <p id="clearRestoreHelp" class="muted">Your recipes are erased too. To get them back afterward, choose <span class="ui">Restore</span> in the app menu and pick the backup you made on this device. If you haven't backed up to this device, choose <span class="ui">Back up now</span> there first.</p>
       <p id="clearBackupNote"></p>
@@ -1403,7 +1411,7 @@
         </div>
       </div>
       </details>
-      <details class="gd-topic"><summary>Hide support button</summary>
+      <details class="gd-topic" data-icon="eyeoff"><summary>Hide support button</summary>
       <p class="muted">The Support me button stays visible until you have... supported me 🙂. If this app has been helpful to you, please give whatever feels right. Already did? Thank you! Check the box and the button will leave you alone. This runs on the honor system, so nobody’s looking, and the button waits patiently.</p>
       <label class="choice-row"><input type="checkbox" id="donateHideBox"> <span>I have supported you!</span></label>
       <p id="donateHiddenMessage" class="muted" hidden>The Support me button is hidden. Thank you for your support!</p>
@@ -1413,23 +1421,23 @@
     <!-- Developer options: opened only by holding the app menu's header for 3 seconds (editor.js, watchDevHold), with nothing on screen that shows it -->
     <details id="devOptions" class="card" hidden>
       <summary>Developer options</summary>
-      <details class="gd-topic"><summary>Start over</summary>
+      <details class="gd-topic" data-icon="reset"><summary>Start over</summary>
       <p class="muted">Signs out and erases everything this app keeps in this browser, like Sign out and clear data, but copies the Client ID to the clipboard first, so setting up again is a paste.</p>
       <div class="row"><button id="devStartOver" type="button"><img class="btn-icon" src="icons/clear.svg" alt="" width="20" height="20"><span class="btn-label">Start over</span></button></div>
       </details>
-      <details class="gd-topic"><summary>Disconnect</summary>
+      <details class="gd-topic" data-icon="unplug"><summary>Disconnect</summary>
       <p class="muted">Signs out of Spotify on this device and forgets the list of playlists and the saved songs. Recipes stay.</p>
       <div class="row"><button id="devDisconnect" type="button"><img class="btn-icon" src="icons/disconnect.svg" alt="" width="20" height="20"><span class="btn-label">Disconnect</span></button></div>
       </details>
-      <details class="gd-topic"><summary>Copy Spotify record</summary>
+      <details class="gd-topic" data-icon="copy"><summary>Copy Spotify record</summary>
       <p class="muted">The app’s record of requests to Spotify and its rate limits, to paste into the chat.</p>
       <div class="row"><button id="devCopyRecord" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy Spotify record</span></button></div>
       </details>
-      <details class="gd-topic" id="limitTopic"><summary>Limit how many playlists are made</summary>
+      <details class="gd-topic" id="limitTopic" data-icon="sliders"><summary>Limit how many playlists are made</summary>
       <p class="muted">Caps how many playlists each recipe makes, for quicker test builds. Kept until the page reloads.</p>
       <select id="maxPlaylists" aria-label="Most playlists per recipe" style="width:auto"><option value="">No limit</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option></select>
       </details>
-      <details class="gd-topic"><summary>Python status</summary>
+      <details class="gd-topic" data-icon="cpu"><summary>Python status</summary>
       <p class="muted">The code that builds your playlists is written in Python and runs inside your browser, so nothing about your music is sent to a server.</p>
       <p id="pythonStatus">Starting...</p>
       </details>
@@ -1437,31 +1445,31 @@
 
     <details id="privacySection" class="card">
       <summary>Privacy</summary>
-      <details class="gd-topic"><summary>What stays in this browser</summary>
+      <details class="gd-topic" data-icon="device"><summary>What stays in this browser</summary>
       <p>Your Client ID, your Spotify sign-in, your recipes, the list of your playlists, your color choice, a copy of the songs from your playlists, and a count of the requests this app sends to Spotify (to learn how often Spotify limits them) are saved in this browser, and nowhere else. The saved sign-in lets this app reconnect to Spotify by itself when you come back. The copy of your songs lets this app skip asking Spotify for them again. <span class="ui">Sign out and clear data</span>, in <span class="ui">More options</span>, removes everything.</p>
       <p>Recipes are saved to Spotify unless you choose otherwise: each recipe is also kept in a private playlist in your own Spotify account, in the playlist's description. That is where this app saves it and reads it back, and it goes nowhere else. You can change this at any time in More options.</p>
       </details>
-      <details class="gd-topic"><summary>Your Spotify account</summary>
+      <details class="gd-topic" data-icon="user"><summary>Your Spotify account</summary>
       <p>You sign in on Spotify's own page, and this app never sees your Spotify password. It asks Spotify for permission to read your playlists, create playlists, remove playlists, and set their cover images. Your existing playlists are only read, never changed. Removing only touches the playlists this app made, unless you choose to remove others too.</p>
       <p>Playlists created by this app stay off your Spotify profile and out of search, though anyone with a playlist's link can still open it. To change that, use Make private in the Spotify app.</p>
       </details>
-      <details class="gd-topic"><summary>Who the page talks to</summary>
+      <details class="gd-topic" data-icon="globe"><summary>Who the page talks to</summary>
       <p>Spotify, for everything about your music. The page's code comes from GitHub, and the Python it runs comes from a public code host (jsDelivr). Ko-fi's page loads only if you <span data-act>press</span> Support me, and the report form opens only if you choose to report a problem<span id="privacyFeedbackWho" hidden>, and the feedback form only if you choose to send feedback</span>.</p>
       <p id="privacyWaitRelay" hidden>When Spotify limits how often this app may ask it for things, it says how long to wait, but in a way a web page cannot read. So the page asks once more through a small relay on Cloudflare, run by the developer of this app, which can read it. That request carries your temporary Spotify sign-in, which expires within an hour, and which kind of request was refused (for a playlist, its Spotify ID), and nothing else. The relay passes it to Spotify, sends back only the wait, and keeps nothing.</p>
       </details>
-      <details class="gd-topic"><summary>Anonymous visit counts</summary>
+      <details class="gd-topic" data-icon="chart"><summary>Anonymous visit counts</summary>
       <p>The page keeps simple counts, to see how many people use this app and how it is used. It counts visits with GoatCounter, a service that uses no cookies and does not use unique identifiers to follow people around the web. It records that the page was opened, with the browser, screen size, country, and the site you came from, but not who you are. It also counts a few actions: the first time a browser connects to Spotify, how many playlists get created, when Support me is opened, and the kind of connection problem that happened. It never receives playlist names, recipes, song titles, or your Client ID. A small marker in this browser remembers that your first connection was counted, so it is counted once.</p>
       </details>
-      <details class="gd-topic"><summary>Support me</summary>
+      <details class="gd-topic" data-icon="heart"><summary>Support me</summary>
       <p>Ko-fi handles any support you give, along with its payment providers, so this app never sees your payment details. If you check "I have supported you!" in <span class="ui">More options</span>, that choice is saved in this browser and goes nowhere else.</p>
       </details>
-      <details class="gd-topic"><summary>Problem reports</summary>
+      <details class="gd-topic" data-icon="flag"><summary>Problem reports</summary>
       <p>A problem report is sent only if you choose to send it, and it goes only to me, the developer of this app. The form opens in a new tab, and nothing is sent until you submit it there. The details attached are shown in <span class="ui">More options</span> first: the app version, browser, window size, last error, and recent steps. Your sign-in, Client ID, playlist names, and song titles are never included.</p>
       </details>
-      <details class="gd-topic" id="privacyFeedback" hidden><summary>Feedback and questions</summary>
+      <details class="gd-topic" id="privacyFeedback" hidden data-icon="chat"><summary>Feedback and questions</summary>
       <p>The form sends only what you type, and nothing else is attached. An email address is included only if you choose to enter one, and it is used only to respond to you. The form opens in a new tab, and nothing is sent until you submit it there.</p>
       </details>
-      <details class="gd-topic"><summary>Accounts and ads</summary>
+      <details class="gd-topic" data-icon="ban"><summary>Accounts and ads</summary>
       <p>There are no accounts and no ads.</p>
       </details>
     </details>
@@ -1482,8 +1490,8 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-05h"></script>
-<script src="editor.js?v=2026-11-05h"></script>
-<script src="app.js?v=2026-11-05h"></script>
+<script src="formats.js?v=2026-11-05i"></script>
+<script src="editor.js?v=2026-11-05i"></script>
+<script src="app.js?v=2026-11-05i"></script>
 </body>
 </html>
