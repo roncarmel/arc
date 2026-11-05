@@ -751,7 +751,96 @@ function versionLine(choose) {
 const savingIcon = { on: false, since: 0, timer: null };
 function applySavingIcon() {
   const button = $("feAppMenuButton");
-  if (button) button.classList.toggle("fe-saving", savingIcon.on);
+  if (button) button.classList.toggle("fe-saving", savingIcon.on || saveTip.open);   // the pointer below talks about the cloud, so it shows while the pointer is open
+  if (saveTip.open) placeSaveTip();
+}
+
+// The first time recipes are saved to Spotify, a small pointer under the menu button says so, once, and the rest of the page is blurred by a pixel so the
+// button stands out. Nothing is blocked: a click or tap anywhere, a key, or Got it closes it, and it never comes back (saveTipShown). It waits until
+// nothing else is going on and the person has stopped editing for a moment.
+const saveTip = { open: false, waiting: false, timer: null, tip: null, blur: null, quietMs: 3000 };
+function saveTipSeen() { try { return localStorage.getItem("saveTipShown") === "1"; } catch (err) { return false; } }
+function offerSaveTip() {
+  if (saveTip.open || saveTip.waiting || saveTipSeen()) return;
+  saveTip.waiting = true;
+  trySaveTip();
+}
+function saveTipQuiet() {
+  const button = $("feAppMenuButton");
+  if (!button || !button.offsetParent || document.visibilityState === "hidden") return false;
+  if (typeof backupMode === "function" && backupMode() !== "spotify") return false;
+  if (typeof busy !== "undefined" && busy) return false;
+  if (typeof connectingScreen !== "undefined" && connectingScreen) return false;
+  if (editor.appMenu) return false;
+  const active = document.activeElement;
+  if (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return false;
+  if (document.querySelector(".fe-overlay:not(.fx-ghost), .fe-pop:not(.fx-ghost), #createOverlay:not([hidden]), #infoOverlay:not([hidden]), #reconnectScreen:not([hidden]), #startupProblem:not([hidden]), #kofiPanel:not([hidden])")) return false;
+  return Date.now() - notices.lastEditAt >= saveTip.quietMs;
+}
+function trySaveTip() {
+  clearTimeout(saveTip.timer);
+  saveTip.timer = null;
+  if (!saveTip.waiting) return;
+  if (saveTipSeen() || (typeof backupMode === "function" && backupMode() !== "spotify")) { saveTip.waiting = false; return; }
+  if (!saveTipQuiet()) { saveTip.timer = setTimeout(trySaveTip, 1000); return; }
+  saveTip.waiting = false;
+  showSaveTip();
+}
+function showSaveTip() {
+  try { localStorage.setItem("saveTipShown", "1"); } catch (err) { /* private browsing: it may show again on a later visit */ }
+  saveTip.open = true;
+  saveTip.blur = feEl("div", { class: "fe-st-blur", "aria-hidden": "true" });
+  const ok = feEl("button", { type: "button", class: "fe-st-ok", text: "Got it", onClick: () => closeSaveTip() });
+  saveTip.tip = feEl("div", { class: "fe-st-tip", role: "status" },
+    feEl("p", { class: "fe-st-text", text: "Recipes save to Spotify as you edit. You’ll see this cloud while saving." }),
+    feEl("div", { class: "fe-st-row" }, ok));
+  document.body.append(saveTip.blur, saveTip.tip);
+  applySavingIcon();
+  if (motionAllowed(saveTip.tip)) {
+    playMotion(saveTip.blur, "dim", true);
+    saveTip.tip._fxAim = { dx: 0, dy: -4 };
+    playMotion(saveTip.tip, "menu", true);
+  }
+  document.addEventListener("pointerdown", saveTipOutside, true);
+  document.addEventListener("keydown", saveTipKey, true);
+  addEventListener("resize", placeSaveTip);
+  addEventListener("scroll", placeSaveTip, true);
+}
+function saveTipOutside(event) { if (!saveTip.tip || !saveTip.tip.contains(event.target)) closeSaveTip(); }   // the click itself still goes where it was aimed
+function saveTipKey(event) { if (event.key !== "Tab" && event.key !== "Shift") closeSaveTip(); }
+// The pointer hangs under the menu button, its arrow on the button's middle, kept on the screen with a 16 px edge. The blur has a hole a little larger than the
+// button: blurring right up to the button's edge would smear its pink outward.
+function placeSaveTip() {
+  const button = $("feAppMenuButton"), tip = saveTip.tip, blur = saveTip.blur;
+  if (!button || !tip || !blur) return;
+  const r = button.getBoundingClientRect();
+  const width = tip.offsetWidth, edge = 16;
+  const left = Math.max(edge, Math.min(r.right + 8 - width, innerWidth - edge - width));
+  tip.style.left = left + "px";
+  tip.style.top = (r.bottom + 14) + "px";
+  tip.style.setProperty("--st-arrow", Math.round(r.left + r.width / 2 - left - 7) + "px");
+  tip.style.transformOrigin = `${Math.round(r.left + r.width / 2 - left)}px 0`;
+  const m = 6, rad = (parseFloat(getComputedStyle(button).borderRadius) || 0) + m;
+  const x = r.left - m, y = r.top - m, w = r.width + 2 * m, h = r.height + 2 * m;
+  const hole = `M${x + rad} ${y} H${x + w - rad} A${rad} ${rad} 0 0 1 ${x + w} ${y + rad} V${y + h - rad} A${rad} ${rad} 0 0 1 ${x + w - rad} ${y + h} H${x + rad} A${rad} ${rad} 0 0 1 ${x} ${y + h - rad} V${y + rad} A${rad} ${rad} 0 0 1 ${x + rad} ${y} Z`;
+  blur.style.clipPath = `path(evenodd, "M0 0 H${innerWidth} V${innerHeight} H0 Z ${hole}")`;
+}
+function closeSaveTip() {
+  if (!saveTip.open) return;
+  saveTip.open = false;
+  document.removeEventListener("pointerdown", saveTipOutside, true);
+  document.removeEventListener("keydown", saveTipKey, true);
+  removeEventListener("resize", placeSaveTip);
+  removeEventListener("scroll", placeSaveTip, true);
+  const tip = saveTip.tip, blur = saveTip.blur;
+  saveTip.tip = saveTip.blur = null;
+  for (const [el, kind] of [[tip, "menu"], [blur, "dim"]]) {
+    if (!el) continue;
+    if (!motionAllowed(el)) { el.remove(); continue; }
+    el.style.pointerEvents = "none";
+    playMotion(el, kind, false).onfinish = () => el.remove();
+  }
+  applySavingIcon();
 }
 function setSavingIcon(flag) {
   if (flag) {

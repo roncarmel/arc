@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-04w";
+const APP_VERSION = "2026-11-04x";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -779,6 +779,7 @@ async function runSpotifySave() {
   saveState.running = true;
   saveState.error = "";
   renderSaveStatus();
+  let wroteRecipe = false;
   try {
     await mergeFromSpotify();
     const synced = readSynced();
@@ -817,6 +818,7 @@ async function runSpotifySave() {
         if (have.save.format.rev > (fmt.rev || 0)) { newer.push(fmt.title); continue; }
         if (have.description === description && have.name === name) { synced[fmt.id] = { rev: fmt.rev || 0, playlistId: have.id }; putCover(have); continue; }   // already as it should be
         await spotifyRequest("PUT", `/playlists/${have.id}`, { json: { name, description } });
+        wroteRecipe = true;
         oldCover(have);
         have.name = name;
         have.description = description;
@@ -825,6 +827,7 @@ async function runSpotifySave() {
         putCover(have);
       } else if (unreadOfIt) {
         await spotifyRequest("PUT", `/playlists/${unreadOfIt.id}`, { json: { name, description } });
+        wroteRecipe = true;
         markCoverDue(unreadOfIt.id, true);
         unreadOfIt.description = description;
         unreadOfIt.save = unpackFormat(description);
@@ -832,6 +835,7 @@ async function runSpotifySave() {
         putCover(unreadOfIt);
       } else {
         const made = await spotifyRequest("POST", "/me/playlists", { json: { name, public: false, description } });
+        wroteRecipe = true;
         if (made.public !== false) { try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); } catch (err) { logStep("save: could not make a recipe playlist private"); } }
         const entry = { id: made.id, name, owner: me.id, collaborative: false, image: null, count: 0, description, snapshot: null, madeByApp: false };
         entry.save = unpackFormat(description);
@@ -862,6 +866,7 @@ async function runSpotifySave() {
     askSaveFailure(saveState.error);
   }
   if (!saveState.error) uploadCovers();   // not waited for: the save is already done
+  if (!saveState.error && wroteRecipe && typeof offerSaveTip === "function") offerSaveTip();   // the first time, a pointer says recipes save by themselves
   if (saveState.again) { saveState.again = false; scheduleSpotifySave(300); }
 }
 
