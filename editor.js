@@ -773,6 +773,10 @@ function renderAppMenu() {
     // A guide for facilitators, with a line under its name that says what it is (the whole row opens it)
     feEl("button", { type: "button", class: "fe-item fe-gditem", id: "feGuide", role: "menuitem", onClick: choose(() => openGuide()) }, feIcon("help"),
       feEl("span", { class: "fe-gditem-text" }, feEl("span", { text: "A guide for facilitators" }), feEl("span", { class: "fe-gditem-note", text: "The thinking behind this app and how to use it well" }))),
+    // Music sharing is not open yet: a greyed row that does nothing, with Coming soon in pink (it opens from Developer options for now)
+    feEl("div", { class: "fe-item fe-gditem fe-static fe-soon", id: "feMusicSharing", role: "menuitem", "aria-disabled": "true" }, feIcon("swap"),
+      feEl("span", { class: "fe-gditem-text" }, feEl("span", { class: "fe-soon-title" }, feEl("span", { text: "Music sharing" }), feEl("span", { class: "fe-soon-tag", text: "Coming soon" })),
+        feEl("span", { class: "fe-gditem-note", text: "Find playlists other facilitators share, and share your own" }))),
     infoItem("feMoreOptions", "moreOptions", "sliders", "More options"),
     // the form says all there is to say about itself, so the item opens it straight away, in a new tab, with nothing attached
     typeof FEEDBACK_FORM_URL !== "undefined" && FEEDBACK_FORM_URL ? feEl("a", { class: "fe-item", id: "feFeedback", role: "menuitem", href: FEEDBACK_FORM_URL, target: "_blank", rel: "noopener noreferrer", onClick: () => setTimeout(() => { editor.appMenu = false; renderAppMenu(); }, 0) }, feIcon("chat"), "Feedback and questions") : null,
