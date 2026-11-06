@@ -1,7 +1,7 @@
 -- Music sharing: the database (Cloudflare D1, which is SQLite) behind cloudflare/music-sharing/worker.js.
 -- Apply with: npx wrangler d1 execute music-sharing --remote --file=schema.sql
 
--- One row per shared playlist. Only what the sharer wrote, the songs as IDs, and a short summary made on their device when they shared it.
+-- One row per shared playlist. Only what the sharer chose and wrote, the songs as IDs, and a short summary made on their device when they shared it.
 CREATE TABLE IF NOT EXISTS shares (
   id TEXT PRIMARY KEY,                -- random, the shared playlist's own ID here
   owner TEXT NOT NULL,                -- HMAC of the sharer's Spotify user ID (never the ID itself)
@@ -9,8 +9,9 @@ CREATE TABLE IF NOT EXISTS shares (
   snapshot TEXT,                      -- Spotify's snapshot ID when shared, to say "Changed since you shared it"
   name TEXT NOT NULL,
   shown_as TEXT,                      -- the name shown as the sharer; NULL is Anonymous
-  music TEXT NOT NULL,                -- The music, written by the sharer
-  use TEXT NOT NULL,                  -- How I use it, written by the sharer
+  phases INTEGER NOT NULL,            -- the phases of a session it suits, a bit each: Opening 1, Coming up 2, Plateau 4, Landing 8, Rest 16
+  tags TEXT NOT NULL,                 -- JSON: the sharer's tags, lower case, 3 to 10
+  notes TEXT,                         -- the sharer's optional notes
   cover TEXT,                         -- the address of the playlist's picture at Spotify, or NULL
   songs TEXT NOT NULL,                -- JSON: [[spotify track ID, ISRC or ""], ...] in order
   song_count INTEGER NOT NULL,

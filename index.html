@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-06c">
-<script src="theme.js?v=2026-11-06c"></script>
+<meta name="app-version" content="2026-11-06e">
+<script src="theme.js?v=2026-11-06e"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ceremony Playlist Builder</title>
@@ -934,7 +934,7 @@
   #msHead { margin: 0; font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 10px; color: var(--on-deep, #fff); min-width: 0; }
   #msHead .fe-icon { display: flex; } #msHead .fe-icon svg { width: 22px; height: 22px; }
   /* a playlist's page: Back to the list, a pink pill that stays at the top while the page scrolls */
-  .ms-back { position: sticky; top: -14px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; margin: -4px 0 12px -4px; min-height: 0; height: 38px; padding: 0 16px 0 8px; border-radius: 999px; border: 1px solid var(--accent-tint-border); background: var(--bg); background-image: linear-gradient(var(--accent-tint), var(--accent-tint)); color: var(--accent); font-weight: 700; font-size: 0.95rem; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18); }
+  .ms-back { position: sticky; top: 10px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; margin: -4px 0 12px -4px; min-height: 0; height: 38px; padding: 0 16px 0 8px; border-radius: 999px; border: 1px solid var(--accent-tint-border); background: var(--bg); background-image: linear-gradient(var(--accent-tint), var(--accent-tint)); color: var(--accent); font-weight: 700; font-size: 0.95rem; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18); }
   .ms-back .fe-icon { display: flex; } .ms-back .fe-icon svg { width: 20px; height: 20px; }
   /* list and playlist page slide past each other (slideBody); the leaving one is a copy */
   #msDialog { position: relative; }
@@ -943,7 +943,8 @@
   #msBody { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 14px 18px 24px; }
   #msFoot { flex: none; border-top: 1px solid var(--line); padding: 12px 18px 16px; background: var(--bg); }
   /* the chosen tab is pink like a chosen tag, so it reads in both light and dark */
-  .ms-tabs { display: flex; gap: 6px; margin: 0 0 14px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; }
+  #msTabsBar { flex: none; padding: 12px 18px 10px; border-bottom: 1px solid var(--line); background: var(--bg); }
+  .ms-tabs { display: flex; gap: 6px; margin: 0; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; }
   .ms-tabs button { flex: 1; justify-content: center; margin: 0; min-height: 0; padding: 8px; border-radius: 999px; border: 1px solid transparent; background: none; box-shadow: none; font-weight: 600; color: var(--fg); opacity: 0.75; }
   .ms-tabs button.ms-on { opacity: 1; background: var(--button); color: var(--on-button, #fff); border-color: transparent; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18); }
   .ms-search { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--muted); box-sizing: border-box; }
@@ -969,7 +970,10 @@
   .ms-name { font-weight: 600; overflow-wrap: anywhere; }
   .ms-dim { color: var(--muted); }
   .ms-sub { color: var(--muted); font-size: 0.85rem; margin-top: 1px; }
-  .ms-desc { color: var(--muted); font-size: 0.92rem; line-height: 1.4; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ms-rowtags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .ms-rowtag { padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); font-size: 0.76rem; color: var(--muted); }
+  .ms-rowside { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+  .ms-mini-curve { display: block; width: 60px; height: 16px; }
   .ms-ov { font-size: 0.82rem; font-weight: 600; color: var(--accent); margin-top: 4px; }
   .ms-add { flex: none; margin: 0; min-height: 0; padding: 6px 12px; font-size: 0.88rem; font-weight: 600; background: transparent; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; box-shadow: none; white-space: nowrap; }
   .ms-add.ms-done, .ms-add.ms-busy, .ms-add.ms-yours { border-color: var(--line); color: var(--muted); opacity: 1; }
@@ -1001,13 +1005,42 @@
   .ms-state.ms-ok { font-weight: 600; }
   .ms-state.ms-dis { font-weight: 400; }
   .ms-inline { margin-left: 8px; font-weight: 600; }
-  .ms-fields { margin: 8px 0 2px; display: flex; flex-direction: column; gap: 8px; }
+  .ms-srow { flex-wrap: wrap; }
+  .ms-fields { flex: 1 1 100%; min-width: 0; margin: 2px 0 2px; display: flex; flex-direction: column; gap: 10px; }   /* under the row, the full width, so the curve's names fit */
   .ms-fields[hidden] { display: none; }
   .ms-flabel { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 3px; font-size: 0.86rem; }
   .ms-ta { display: block; width: 100%; min-height: 0; height: auto; box-sizing: border-box; border-radius: 10px; border: 1px solid var(--line); padding: 6px 10px; font: inherit; font-size: 0.92rem; line-height: 1.35; background: var(--bg); color: var(--fg); resize: none; overflow: hidden; }
   .ms-ta:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
   .ms-meter { font-size: 0.78rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .ms-meter.ms-short { color: var(--accent); }
+  /* the curve of a session (sharing.js curveSvg): five parts, chosen ones pink */
+  .ms-curve { display: block; width: 100%; height: 100%; overflow: visible; }
+  .ms-curve-base { fill: none; stroke: var(--muted); stroke-opacity: 0.5; stroke-width: 2.5; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .ms-curve-lit { fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .ms-curve-area { fill: var(--accent-tint); }
+  .ms-curve-div { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 4; vector-effect: non-scaling-stroke; }
+  .ms-phases { position: relative; height: 84px; padding-bottom: 22px; box-sizing: border-box; }
+  .ms-phases-pick { height: 104px; padding: 10px 8px 30px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+  .ms-phase-names { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(5, 1fr); }
+  .ms-phases-pick .ms-phase-names { inset: 10px 8px 6px; }
+  #msDialog .ms-phase-names > * { display: flex; align-items: flex-end; justify-content: center; text-align: center; font-size: 0.74rem; font-weight: 600; line-height: 1.15; color: var(--muted); }
+  #msDialog .ms-phase-names button { margin: 0; padding: 0; min-height: 0; border: 0; border-radius: 8px; background: none; box-shadow: none; font: inherit; font-size: 0.74rem; font-weight: 600; color: var(--muted); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  #msDialog .ms-phase-names button:hover { background: none; color: var(--fg); }
+  #msDialog .ms-phase-names .ms-on, #msDialog .ms-phase-names button.ms-on:hover { color: var(--accent); }
+  .ms-phase-names button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .ms-phase-label { margin: 12px 0 6px; }
+  .ms-tagbox { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 38px; box-sizing: border-box; padding: 5px 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); cursor: text; }
+  .ms-tagbox:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+  .ms-tagchip { display: inline-flex; align-items: center; gap: 2px; padding: 3px 4px 3px 10px; cursor: default; }
+  .ms-tagx { margin: 0; padding: 0 5px; min-height: 0; border: 0; background: none; box-shadow: none; color: inherit; font-size: 1rem; line-height: 1; opacity: 0.7; cursor: pointer; }
+  .ms-tagx:hover { background: none; opacity: 1; }
+  #msDialog .ms-taginput { flex: 1 1 80px; width: auto; min-width: 80px; height: auto; margin: 0; border: 0; border-radius: 0; box-shadow: none; outline: none; background: none; color: var(--fg); font: inherit; font-size: 0.92rem; padding: 3px 4px; }
+  #msDialog .ms-taginput[hidden] { display: none; }
+  .ms-taghint { margin: 4px 0 0; font-size: 0.8rem; color: var(--muted); }
+  .ms-suggest { margin-top: 2px; font-size: 0.8rem; color: var(--muted); }
+  .ms-suggest:empty { display: none; }
+  .ms-sugg { font-size: 0.8rem; font-weight: 600; }
+  .ms-tags-plain .ms-tag { cursor: default; }
   .ms-shown { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; font-size: 0.9rem; margin-bottom: 10px; }
   .ms-shown-select { flex: 1 1 0; min-width: 0; width: auto; margin: 0; height: 34px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--fg); font: inherit; font-weight: 600; padding: 0 10px; max-width: 100%; }
   .ms-shown-name { flex: 1 1 100%; height: 36px; border-radius: 10px; border: 1px solid var(--line); padding: 0 10px; font: inherit; background: var(--bg); color: var(--fg); box-sizing: border-box; }
@@ -1560,7 +1593,7 @@
       <p id="privacyWaitRelay" hidden>When Spotify limits how often this app may ask it for things, it says how long to wait, but in a way a web page cannot read. So the page asks once more through a small relay on Cloudflare, run by the developer of this app, which can read it. That request carries your temporary Spotify sign-in, which expires within an hour, and which kind of request was refused (for a playlist, its Spotify ID), and nothing else. The relay passes it to Spotify, sends back only the wait, and keeps nothing.</p>
       </details>
       <details class="gd-topic" data-icon="swap" id="privacyMusicSharing" hidden><summary>Music sharing</summary>
-      <p>Music sharing runs on a small service on Cloudflare, run by the developer of this app. Browsing it sends nothing about you. When you share a playlist, it keeps the playlist's name, its picture's address, the name you chose to be shown as (or none), your two descriptions, its songs as Spotify IDs and recording codes (no titles), how many songs and how long, and the few artists heard most. It does not keep your Spotify username: your temporary sign-in is checked with Spotify and only a scrambled code made from your Spotify ID is kept, so it knows which shares are yours. Stop sharing a playlist and it is deleted.</p>
+      <p>Music sharing runs on a small service on Cloudflare, run by the developer of this app. Browsing it sends nothing about you. When you share a playlist, it keeps the playlist's name, its picture's address, the name you chose to be shown as (or none), the phases and tags you chose and your notes, its songs as Spotify IDs and recording codes (no titles), how many songs and how long, and the few artists heard most. It does not keep your Spotify username: your temporary sign-in is checked with Spotify and only a scrambled code made from your Spotify ID is kept, so it knows which shares are yours. Stop sharing a playlist and it is deleted.</p>
       <p>A report keeps its reason, your note and the same kind of scrambled code, and is emailed to the developer. Adding a shared playlist makes a private copy in your Spotify, and this browser remembers it is a copy so it is not shared again. Nothing records who added what.</p>
       </details>
       <details class="gd-topic" data-icon="chart"><summary>Anonymous visit counts</summary>
@@ -1600,13 +1633,14 @@
 <div id="msOverlay" class="app-overlay" hidden>
   <div id="msDialog" class="app-dialog" role="dialog" aria-modal="true" aria-label="Music sharing" tabindex="-1">
     <div id="msBand"><h2 id="msHead"></h2><button id="msClose" type="button" aria-label="Close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div id="msTabsBar"></div>
     <div id="msBody"></div>
     <div id="msFoot" hidden></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-06c"></script>
-<script src="editor.js?v=2026-11-06c"></script>
-<script src="app.js?v=2026-11-06c"></script>
-<script src="sharing.js?v=2026-11-06c"></script>
+<script src="formats.js?v=2026-11-06e"></script>
+<script src="editor.js?v=2026-11-06e"></script>
+<script src="app.js?v=2026-11-06e"></script>
+<script src="sharing.js?v=2026-11-06e"></script>
 </body>
 </html>

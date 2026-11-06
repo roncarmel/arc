@@ -1,12 +1,15 @@
-// sharing.js: Music sharing. People share their own playlists (with a few words on the music and how they use it) and copy each other's into
+// sharing.js: Music sharing. People share their own playlists (the phases of a session they suit, tags, optional notes) and copy each other's into
 // their own Spotify. Opened from Developer options until it is ready for the app menu (decided by Ron, 2026-11-06).
 // The library lives in a Cloudflare Worker with a D1 database (cloudflare/music-sharing). It keeps only what people write, the songs as Spotify IDs
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
-// The page does the rest itself: search, sorting, tags (words that turn up in more than one description) and overlap with the person's recipes.
+// The page does the rest itself: search, sorting, the phase filter, tags (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
-const SHARE_TEXT_MIN = 40, SHARE_TEXT_MAX = 400, SHARE_MIN_MS = 60 * 60 * 1000;
+const SHARE_MIN_MS = 2 * 60 * 60 * 1000;
+const SHARE_TAGS_MIN = 3, SHARE_TAGS_MAX = 10, SHARE_TAG_CHARS = 30, SHARE_NOTES_MAX = 400;   // the worker checks the same
+// The phases of a session, drawn as one curve: low and flat, rising, high and flat, falling, low and flat (decided by Ron, 2026-11-06).
+const PHASES = ["Opening", "Coming up", "Plateau", "Landing", "Rest"];
 const SHARING_COPIES_KEY = "sharingCopies";   // { shared playlist id: the person's copy's Spotify id }
 const SHARING_SHOWN_KEY = "sharingShownAs";   // { mode: "spotify" | "custom" | "anon", name }
 const SHARING_MINE_KEY = "sharingMineIds";    // the ids of the person's own shares, so Find playlists says Shared by you at once (refreshed by loadMine)
@@ -14,17 +17,12 @@ const OVERLAP_MIN_SONGS = 100, OVERLAP_MIN_PLAYLISTS = 2, OVERLAP_MIN_SHARES = 3
 const OVERLAP_READ_GAP_MS = 2000;   // reading recipe playlists the browser does not have yet: one request every 2 seconds
 const TAGS_STEP = 10;
 
-// Words that are never tags (ordinary English), and words this app's people use everywhere, which start hidden (the owner can show one).
-const TAG_STOP = new Set(("a about above after again all also am an and any are as at be because been before being below between both but by can could did do does doing down during each even ever every few for from "
-  + "further get gets got had has have having he her here hers him his how i if in into is it its itself just less lot lots me more most much my myself no nor not now of off often on once one only or other our ours "
-  + "out over own quite rather really same she should so some such than that the their theirs them then there these they this those through to too under until up us use used uses using very was we were what when "
-  + "where which while who whom why will with without would you your yours yourself into onto upon via etc i'm it's don't doesn't isn't can't i've i'll").split(" "));
+// Tags this app's people would use everywhere start hidden (the owner can show one).
 const TAG_COMMON = new Set("music musical playlist playlists session sessions ceremony ceremonies people person song songs track tracks time times like feel feels feeling something things thing way well good great part parts start end".split(" "));
-const TAG_NEGATION = new Set(["no", "not", "without", "never", "nothing", "none"]);
 
 const sharing = {
   tab: "find", detail: null, library: null, libraryAt: 0, loading: false, error: "",
-  search: "", sort: "newest", hideAdded: true, tags: new Set(), tagsShown: TAGS_STEP,
+  search: "", sort: "newest", hideAdded: true, tags: new Set(), tagsShown: TAGS_STEP, phases: new Set(),
   mine: null, mineError: "", picks: {}, shownAs: null, applying: false, adding: new Set(), addErrors: {},
   overlap: null, overlapShown: null, reading: false, readStop: false, showOverlapSongs: false,
 };
@@ -68,7 +66,7 @@ async function loadMine() {
     try { localStorage.setItem(SHARING_MINE_KEY, JSON.stringify(sharing.mine.map((s) => s.id))); } catch (err) { /* private browsing */ }
     for (const s of sharing.mine) {
       const pick = sharing.picks[s.playlist];
-      if (!pick || !pick.touched) sharing.picks[s.playlist] = { on: true, music: s.music, use: s.use, shared: s, touched: false, update: false };
+      if (!pick || !pick.touched) sharing.picks[s.playlist] = pickFromShare(s);
     }
   } catch (err) { sharing.mineError = err.message; }
   renderSharing();
@@ -108,38 +106,71 @@ function shareFacts(s) {
   if (s.artists && s.artists.length) text += ` Artists heard most: ${s.artists.join(", ")}.`;
   return text;
 }
+const phaseNames = (list) => list.map((i) => PHASES[i]).join(", ");
 function cleanSpotifyDescription(text) {
   // Spotify gives descriptions with HTML entities and links; the app's own markers and recipe saves are not offered as text
   if (!text || text.startsWith(APP_MARKER)) return "";
   const box = document.createElement("textarea");
   box.innerHTML = String(text).replace(/<[^>]*>/g, "");
-  return box.value.trim().slice(0, SHARE_TEXT_MAX);
+  return box.value.trim().slice(0, SHARE_NOTES_MAX);
+}
+// a tag as it is kept: lower case, single spaces, letters, numbers and a few marks (the worker does the same)
+function cleanTag(t) {
+  return String(t || "").toLowerCase().replace(/^#+/, "").replace(/[^\p{L}\p{N}' &-]+/gu, " ").replace(/\s+/g, " ").trim().slice(0, SHARE_TAG_CHARS).trim();
 }
 
-// ---------------------------------------------------------------- tags: words that turn up in more than one shared playlist
-function tagWords(text) {
-  // the words and two-word phrases of one description, without ordinary words or words right after no, not or without
-  const words = String(text || "").toLowerCase().replace(/[’']/g, "'").split(/[^\p{L}\p{N}'-]+/u).map((w) => w.replace(/^['-]+|['-]+$/g, "")).filter(Boolean);
-  const found = new Set();
-  let prev = null;   // the previous word that counts, for phrases
-  for (let i = 0; i < words.length; i++) {
-    const w = words[i];
-    const negated = i > 0 && TAG_NEGATION.has(words[i - 1]);
-    if (TAG_STOP.has(w) || TAG_NEGATION.has(w) || /^\d+$/.test(w) || w.length < 3) { prev = null; continue; }
-    if (negated) { prev = null; continue; }
-    found.add(w);
-    if (prev) found.add(prev + " " + w);
-    prev = w;
-  }
-  return found;
+// ---------------------------------------------------------------- the curve of a session
+// Five parts of one line, each 100 wide: Opening low, Coming up rising, Plateau high, Landing falling, Rest low. Chosen parts are pink.
+const CURVE_LOW = 82, CURVE_HIGH = 18;
+const CURVE_PARTS = [`M0,${CURVE_LOW} L100,${CURVE_LOW}`, `M100,${CURVE_LOW} C150,${CURVE_LOW} 150,${CURVE_HIGH} 200,${CURVE_HIGH}`, `M200,${CURVE_HIGH} L300,${CURVE_HIGH}`,
+  `M300,${CURVE_HIGH} C350,${CURVE_HIGH} 350,${CURVE_LOW} 400,${CURVE_LOW}`, `M400,${CURVE_LOW} L500,${CURVE_LOW}`];
+function curveSvg(on, { area = true, dividers = false, cls = "ms-curve" } = {}) {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  const add = (tag, attrs) => { const el = document.createElementNS(NS, tag); for (const k in attrs) el.setAttribute(k, attrs[k]); svg.appendChild(el); };
+  svg.setAttribute("viewBox", "0 -6 500 112");
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.setAttribute("class", cls);
+  svg.setAttribute("aria-hidden", "true");
+  if (dividers) for (const x of [100, 200, 300, 400]) add("line", { class: "ms-curve-div", x1: x, y1: -6, x2: x, y2: 106 });
+  if (area) on.forEach((i) => add("path", { class: "ms-curve-area", d: `${CURVE_PARTS[i]} L${(i + 1) * 100},106 L${i * 100},106 Z` }));
+  CURVE_PARTS.forEach((d, i) => { if (!on.includes(i)) add("path", { class: "ms-curve-base", d }); });
+  on.forEach((i) => add("path", { class: "ms-curve-lit", d: CURVE_PARTS[i] }));
+  return svg;
 }
+// the curve with the names under it; with choose, each part is a button that turns it on and off
+function phaseCurve(on, choose = null, label = "Phases") {
+  const box = feEl("div", { class: "ms-phases" + (choose ? " ms-phases-pick" : ""), role: choose ? "group" : null, "aria-label": choose ? label : null });
+  const draw = () => {
+    box.textContent = "";
+    const list = [...on].sort();
+    box.appendChild(curveSvg(list, { dividers: !!choose }));
+    const names = feEl("div", { class: "ms-phase-names" });
+    PHASES.forEach((name, i) => {
+      const lit = list.includes(i);
+      names.appendChild(choose
+        ? feEl("button", { type: "button", class: lit ? "ms-on" : "", "aria-pressed": String(lit), onClick: () => { if (on.has(i)) on.delete(i); else on.add(i); draw(); box.querySelectorAll("button")[i].focus(); choose(); } }, name)
+        : feEl("span", { class: lit ? "ms-on" : "" }, name));
+    });
+    box.appendChild(names);
+  };
+  draw();
+  return box;
+}
+function miniCurve(list) {
+  const box = feEl("span", { class: "ms-mini-curve", role: "img", "aria-label": "Suits " + phaseNames(list) });
+  box.appendChild(curveSvg(list, { area: false, cls: "ms-curve ms-curve-mini" }));
+  return box;
+}
+
+// ---------------------------------------------------------------- tags: the ones used on more than one shared playlist
 function computeTagIndex() {
   const lib = sharing.library;
   if (!lib) return;
   const counts = new Map();   // word: set of shared playlist ids
   const perShare = new Map();
   for (const s of lib.shares) {
-    const words = tagWords(`${s.music} ${s.use}`);
+    const words = new Set((s.tags || []).map(cleanTag).filter(Boolean));
     perShare.set(s.id, words);
     for (const w of words) { if (!counts.has(w)) counts.set(w, new Set()); counts.get(w).add(s.id); }
   }
@@ -153,10 +184,16 @@ function computeTagIndex() {
   }
   const overrides = lib.words || {};
   sharing.tagIndex = [...counts.entries()].filter(([, ids]) => ids.size > 1)
-    .map(([word, ids]) => ({ word, ids, count: ids.size, hidden: word in overrides ? overrides[word] === 1 : TAG_COMMON.has(word) || word.split(" ").some((p) => TAG_COMMON.has(p)) }))
+    .map(([word, ids]) => ({ word, ids, count: ids.size, hidden: word in overrides ? overrides[word] === 1 : TAG_COMMON.has(word) }))
     .sort((a, b) => b.count - a.count || a.word.localeCompare(b.word));
-  // a phrase that always comes with the same playlists as its words adds nothing; keep it only when it is the more telling one
-  sharing.tagIndex = sharing.tagIndex.filter((t) => !t.word.includes(" ") || t.count >= 2);
+}
+// tags others use, most used first, for suggestions while typing (hidden ones are left out)
+function knownTags() {
+  const lib = sharing.library, counts = new Map();
+  if (!lib) return [];
+  const overrides = lib.words || {};
+  for (const s of lib.shares) for (const t of new Set((s.tags || []).map(cleanTag))) if (t && overrides[t] !== 1) counts.set(t, (counts.get(t) || 0) + 1);
+  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([t]) => t);
 }
 function visibleTags() { return (sharing.tagIndex || []).filter((t) => !t.hidden); }
 
@@ -242,7 +279,7 @@ async function addShared(s) {
   renderSharing();
   let made = null;
   try {
-    made = await spotifyRequest("POST", "/me/playlists", { json: { name: s.name, public: false, description: s.music } });
+    made = await spotifyRequest("POST", "/me/playlists", { json: { name: s.name, public: false, description: copyDescription(s) } });
     if (made.public !== false) { try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); } catch (err) { logStep("shared copy: could not make it private"); } }
     const uris = s.songs.map(([id]) => "spotify:track:" + id);
     for (let k = 0; k < uris.length;) {
@@ -271,10 +308,13 @@ async function addShared(s) {
   if (made) {
     rememberCopy(s.id, made.id);
     try { await loadMyPlaylists(); }
-    catch (err) { playlists.push({ id: made.id, name: s.name, owner: me.id, collaborative: false, image: null, cover: null, count: s.songs.length, description: s.music, snapshot: null, madeByApp: false, save: null, isSave: false }); keepPlaylists(); }
+    catch (err) { playlists.push({ id: made.id, name: s.name, owner: me.id, collaborative: false, image: null, cover: null, count: s.songs.length, description: copyDescription(s), snapshot: null, madeByApp: false, save: null, isSave: false }); keepPlaylists(); }
   }
   renderSharing();
 }
+
+// the copy's description in Spotify: the sharer's notes, else the tags
+function copyDescription(s) { return (s.notes || (s.tags || []).join(", ")).slice(0, 300); }
 
 // ---------------------------------------------------------------- the popup
 function openSharing(tab = "find") {
@@ -298,6 +338,7 @@ async function closeSharing() {
 }
 async function switchTab(tab) {
   if (tab === sharing.tab && !sharing.detail) return;
+  if (tab === sharing.tab) { closeDetail(); return; }   // the open tab, from a playlist's page: back to the list as All playlists does
   if (sharing.tab === "share" && !(await settlePending())) return;
   sharing.tab = tab;
   sharing.detail = null;
@@ -326,10 +367,13 @@ function renderSharing() {
   const keepScroll = body.scrollTop;
   body.textContent = "";
   $("msFoot").hidden = true;
-  if (sharing.detail) { renderDetail(body); return; }
-  body.appendChild(feEl("div", { class: "ms-tabs", role: "tablist" },
+  // the tabs stay above the scrolling part on every page, a playlist's page included, so the person always sees where they are
+  const bar = $("msTabsBar");
+  bar.textContent = "";
+  bar.appendChild(feEl("div", { class: "ms-tabs", role: "tablist" },
     feEl("button", { type: "button", role: "tab", "aria-selected": String(sharing.tab === "find"), class: sharing.tab === "find" ? "ms-on" : "", onClick: () => switchTab("find") }, "Find playlists"),
     feEl("button", { type: "button", role: "tab", "aria-selected": String(sharing.tab === "share"), class: sharing.tab === "share" ? "ms-on" : "", onClick: () => switchTab("share") }, "Share yours")));
+  if (sharing.detail) { renderDetail(body); return; }
   if (sharing.tab === "find") renderFind(body); else renderShareYours(body);
   body.scrollTop = keepScroll;
 }
@@ -339,6 +383,8 @@ function renderFind(body) {
   const search = feEl("input", { type: "search", class: "ms-search-input", id: "msSearch", placeholder: "Keyword search", "aria-label": "Keyword search", value: sharing.search });
   search.addEventListener("input", () => { sharing.search = search.value; renderResults(); });
   body.appendChild(feEl("label", { class: "ms-search" }, feIcon("search"), search));
+  body.appendChild(feEl("div", { class: "ms-flabel ms-phase-label" }, feEl("b", {}, "Phase"), feEl("span", { class: "ms-meter" }, sharing.phases.size ? "" : "Tap one or more")));
+  body.appendChild(phaseCurve(sharing.phases, () => { phaseFilterLabel(); renderResults(); }, "Phase"));
   body.appendChild(feEl("div", { id: "msTags", class: "ms-tags" }));
   const sort = feEl("select", { id: "msSort", class: "ms-sort", "aria-label": "Sort" });
   const usable = sharing.overlapShown && sharing.overlapShown.usable;
@@ -352,9 +398,13 @@ function renderFind(body) {
   body.appendChild(feEl("div", { id: "msResults" }));
   renderResults();
 }
+function phaseFilterLabel() {
+  const m = document.querySelector("#msBody .ms-phase-label .ms-meter");
+  if (m) m.textContent = sharing.phases.size ? "" : "Tap one or more";
+}
 function matchesSearch(s, q) {
   if (!q) return true;
-  const hay = `${s.name} ${s.by || ""} ${s.music} ${s.use} ${(s.artists || []).join(" ")}`.toLowerCase();
+  const hay = `${s.name} ${s.by || ""} ${(s.tags || []).join(" ")} ${s.notes || ""} ${phaseNames(s.phases || [])} ${(s.artists || []).join(" ")}`.toLowerCase();
   return q.toLowerCase().split(/\s+/).filter(Boolean).every((w) => hay.includes(w));
 }
 function renderTags() {
@@ -363,13 +413,13 @@ function renderTags() {
   box.textContent = "";
   const tags = visibleTags();
   if (!tags.length) return;
-  const chosen = tags.filter((t) => sharing.tags.has(t.word));
-  const rest = tags.filter((t) => !sharing.tags.has(t.word)).slice(0, Math.max(0, sharing.tagsShown - chosen.length));
-  for (const t of [...chosen, ...rest]) {
+  // tags keep their places when chosen; a chosen one past the shown ones stays shown
+  const shown = tags.filter((t, i) => i < sharing.tagsShown || sharing.tags.has(t.word));
+  for (const t of shown) {
     box.appendChild(feEl("button", { type: "button", class: "ms-tag" + (sharing.tags.has(t.word) ? " ms-on" : ""), "aria-pressed": String(sharing.tags.has(t.word)),
       onClick: () => { if (sharing.tags.has(t.word)) sharing.tags.delete(t.word); else sharing.tags.add(t.word); renderResults(); } }, t.word));
   }
-  if (chosen.length + rest.length < tags.length) box.appendChild(feEl("button", { type: "button", class: "ms-tag ms-more", onClick: () => { sharing.tagsShown += TAGS_STEP; renderTags(); } }, "More tags..."));
+  if (shown.length < tags.length) box.appendChild(feEl("button", { type: "button", class: "ms-tag ms-more", onClick: () => { sharing.tagsShown += TAGS_STEP; renderTags(); } }, "More tags..."));
 }
 function renderResults() {
   renderTags();
@@ -385,7 +435,7 @@ function renderResults() {
   if (!sharing.library) return;
   const tagSets = (sharing.tagIndex || []).filter((t) => sharing.tags.has(t.word)).map((t) => t.ids);
   const ov = sharing.overlapShown && sharing.overlapShown.usable && (sharing.sort === "most" || sharing.sort === "least") ? sharing.overlapShown : null;
-  let list = sharing.library.shares.filter((s) => matchesSearch(s, sharing.search) && tagSets.every((ids) => ids.has(s.id)) && !(sharing.hideAdded && isAdded(s)));
+  let list = sharing.library.shares.filter((s) => matchesSearch(s, sharing.search) && tagSets.every((ids) => ids.has(s.id)) && [...sharing.phases].every((i) => (s.phases || []).includes(i)) && !(sharing.hideAdded && (isAdded(s) || isMine(s))));
   if (sharing.sort === "longest") list = list.slice().sort((a, b) => b.ms - a.ms);
   else if (ov) list = list.slice().sort((a, b) => ((ov.per[b.id] || {}).pct || 0) - ((ov.per[a.id] || {}).pct || 0)) ;
   if (ov && sharing.sort === "least") list.reverse();
@@ -411,10 +461,10 @@ function shareRow(s, ov) {
     feEl("div", { class: "ms-text" },
       feEl("div", { class: "ms-name", text: s.name }),
       feEl("div", { class: "ms-sub" }, `${s.by || "Anonymous"} · ${lengthText(s.ms / 60000)}`),
-      feEl("div", { class: "ms-desc" }, s.music),
+      (s.tags || []).length ? feEl("div", { class: "ms-rowtags" }, ...s.tags.slice(0, 3).map((t) => feEl("span", { class: "ms-rowtag" }, t))) : null,
       per ? feEl("div", { class: "ms-ov" }, `${per.pct}% already in your recipes`) : null,
       sharing.addErrors[s.id] ? feEl("div", { class: "ms-error" }, sharing.addErrors[s.id]) : null),
-    addButton(s));
+    feEl("div", { class: "ms-rowside" }, addButton(s), (s.phases || []).length ? miniCurve(s.phases) : null));
   row.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === row) { e.preventDefault(); row.click(); } });
   return row;
 }
@@ -457,10 +507,14 @@ function renderDetail(body) {
     feEl("div", {}, feEl("h3", { text: s.name }), feEl("div", { class: "ms-sub" }, isMine(s) ? "Shared by you" : s.by ? `Shared by ${s.by}` : "Shared anonymously"), feEl("div", { class: "ms-sub" }, `${songCountText(s.count)} · ${lengthText(s.ms / 60000)}`))));
   body.appendChild(feEl("div", { class: "ms-actions" }, addButton(s, true)));
   if (sharing.addErrors[s.id]) body.appendChild(feEl("p", { class: "ms-error" }, sharing.addErrors[s.id]));
-  body.appendChild(feEl("div", { class: "ms-sec" }, "The music"));
-  body.appendChild(feEl("p", { class: "ms-long" }, s.music));
-  body.appendChild(feEl("div", { class: "ms-sec" }, "How I use it"));
-  body.appendChild(feEl("p", { class: "ms-long" }, s.use));
+  body.appendChild(feEl("div", { class: "ms-sec" }, "Phases"));
+  body.appendChild(phaseCurve(new Set(s.phases || [])));
+  body.appendChild(feEl("div", { class: "ms-sec" }, "Tags"));
+  body.appendChild(feEl("div", { class: "ms-tags ms-tags-plain" }, ...(s.tags || []).map((t) => feEl("span", { class: "ms-tag" }, t))));
+  if (s.notes) {
+    body.appendChild(feEl("div", { class: "ms-sec" }, "Notes"));
+    body.appendChild(feEl("p", { class: "ms-long" }, s.notes));
+  }
   body.appendChild(feEl("div", { class: "ms-facts" }, feEl("div", { class: "ms-facts-h" }, feIcon("notes"), "The songs"), shareFacts(s)));
   const ov = sharing.overlap && sharing.overlap.playlists ? sharing.overlap.per[s.id] : null;
   if (ov && ov.same) {
@@ -511,24 +565,28 @@ function shareCandidates() {
   const copies = new Set(Object.values(sharingCopies()));
   return playlists.filter((p) => p.owner === me.id && !p.isSave && !p.madeByApp).map((p) => ({ p, copy: copies.has(p.id) }));
 }
+function emptyPick() { return { on: false, phases: new Set(), tags: [], notes: "", shared: null, touched: false, update: false }; }
+function pickFromShare(s) { return { on: true, phases: new Set(s.phases || []), tags: (s.tags || []).slice(), notes: s.notes || "", shared: s, touched: false, update: false }; }
 function pickFor(p) {
-  if (!sharing.picks[p.id]) sharing.picks[p.id] = { on: false, music: "", use: "", shared: null, touched: false, update: false };
+  if (!sharing.picks[p.id]) sharing.picks[p.id] = emptyPick();
   return sharing.picks[p.id];
 }
+// whether what is ticked and typed differs from what is shared
+function pickDiffers(pick, shared) {
+  return [...pick.phases].sort().join() !== (shared.phases || []).slice().sort().join() || pick.tags.join("|") !== (shared.tags || []).join("|") || pick.notes.trim() !== (shared.notes || "");
+}
+const pickComplete = (pick) => pick.phases.size > 0 && pick.tags.length >= SHARE_TAGS_MIN;
 function sharedFor(p) { return sharing.mine ? sharing.mine.find((s) => s.playlist === p.id) || null : null; }
 function pickState(p, pick) {
   // what a row says, and whether it is ready to share
   const shared = sharedFor(p);
   if (pick.checking) return { text: "Checking its length...", ready: false };
-  if (pick.short) return { text: "Under an hour, so it cannot be shared.", ready: false, cls: "ms-dis" };
+  if (pick.short) return { text: "Under two hours, so it cannot be shared.", ready: false, cls: "ms-dis" };
   if (pick.error) return { text: pick.error, ready: false, cls: "ms-need" };
-  const m = pick.music.trim().length, u = pick.use.trim().length;
-  if (pick.on) {
-    // too short: the counter beside the box's label says so in pink, so the row says nothing more
-    if (m < SHARE_TEXT_MIN || u < SHARE_TEXT_MIN) return { text: "", ready: false };
-  }
+  // not complete: the counters beside the labels say what is missing in pink, so the row says nothing more
+  if (pick.on && !pickComplete(pick)) return { text: "", ready: false };
   if (shared && !pick.on) return { text: "Will stop being shared", ready: true, cls: "ms-need" };
-  if (shared && (pick.update || pick.music.trim() !== shared.music || pick.use.trim() !== shared.use)) return { text: "Changes ready", ready: true, cls: "ms-ok" };
+  if (shared && (pick.update || pickDiffers(pick, shared))) return { text: "Changes ready", ready: true, cls: "ms-ok" };
   if (shared && p.snapshot && shared.snapshot && p.snapshot !== shared.snapshot) return { text: `Shared ${shortDate(shared.sharedAt)}. Changed in Spotify since then.`, ready: true, offerUpdate: true };
   if (shared) return { text: `Shared ${shortDate(shared.sharedAt)}${shared.hidden ? ", hidden after reports" : ""}`, ready: true };
   return { text: "", ready: !!pick.on };   // ticked and filled in: nothing to say, the bottom button counts it
@@ -543,7 +601,7 @@ function pendingChanges() {
     const shared = sharedFor(p), state = pickState(p, pick);
     if (shared && !pick.on) out.stop.push(p);
     else if (!shared && pick.on && state.ready) out.share.push(p);
-    else if (shared && pick.on && state.ready && (pick.update || pick.music.trim() !== shared.music || pick.use.trim() !== shared.use || sharing.shownChanged)) out.update.push(p);
+    else if (shared && pick.on && state.ready && (pick.update || pickDiffers(pick, shared) || sharing.shownChanged)) out.update.push(p);
   }
   out.total = out.share.length + out.update.length + out.stop.length;
   return out;
@@ -551,13 +609,13 @@ function pendingChanges() {
 function resetPicks() {
   for (const id of Object.keys(sharing.picks)) {
     const shared = sharing.mine && sharing.mine.find((s) => s.playlist === id);
-    sharing.picks[id] = shared ? { on: true, music: shared.music, use: shared.use, shared, touched: false, update: false } : { on: false, music: "", use: "", shared: null, touched: false, update: false };
+    sharing.picks[id] = shared ? pickFromShare(shared) : emptyPick();
   }
   sharing.shownChanged = false;
 }
 function renderShareYours(body) {
   if (connection !== "ready" || !me) { body.appendChild(feEl("p", { class: "ms-note" }, "Connect to Spotify to share your playlists.")); return; }
-  body.appendChild(feEl("p", { class: "ms-intro" }, `Tick the playlists you'd like to share. Each needs a few words on the music and how you use it, and at least an hour of songs.`));
+  body.appendChild(feEl("p", { class: "ms-intro" }, `Tick the playlists you'd like to share. Each needs the phases it suits, at least ${SHARE_TAGS_MIN} tags, and at least two hours of songs.`));
   if (sharing.mineError) body.appendChild(feEl("p", { class: "ms-error" }, sharing.mineError));
   if (!sharing.mine && !sharing.mineError) { body.appendChild(feEl("p", { class: "ms-note" }, "Loading...")); return; }
   const list = feEl("div", { class: "ms-share-list" });
@@ -578,13 +636,13 @@ function shareYoursRow(p, copy) {
   if (copy) text.appendChild(feEl("div", { class: "ms-state ms-dis" }, "Added from Music sharing, so it cannot be shared again."));
   else {
     text.appendChild(stateLine(p, pick));
-    if (fieldsShown(p, pick)) text.appendChild(shareFields(p, pick));
   }
   row.append(box, cover, text);
+  if (!copy && fieldsShown(p, pick)) row.appendChild(shareFields(p, pick));   // under the row, the full width
   return row;
 }
-// A shared playlist folds to its name, its songs and "Shared 6 Nov · Edit details"; Edit details unfolds the same two boxes a new share has, and Done folds them again.
-// It stays open while its words are too short to share. After a share goes through, the row folds (applyShares).
+// A shared playlist folds to its name, its songs and "Shared 6 Nov · Edit details"; Edit details unfolds the same fields a new share has, and Done folds them again.
+// It stays open while something it needs is missing. After a share goes through, the row folds (applyShares).
 function fieldsShown(p, pick) {
   if (!pick.on || pick.short || pick.checking) return false;
   return !sharedFor(p) || pick.open || !pickState(p, pick).ready;
@@ -619,20 +677,77 @@ function songsLine(p, pick, folded = false) {
   return pub && pub.ms && pub.count ? facts(pub) : "";
 }
 function shareFields(p, pick) {
-  const field = (key, label, hint) => {
-    // two lines to start, growing with the text (no scrolling inside the box)
-    const ta = feEl("textarea", { class: "ms-ta", rows: "2", maxlength: String(SHARE_TEXT_MAX), "aria-label": label, placeholder: hint });
-    ta.value = pick[key];
-    const meter = feEl("span", { class: "ms-meter" });
-    const show = () => { const n = ta.value.trim().length; meter.textContent = n < SHARE_TEXT_MIN ? `${n}, at least ${SHARE_TEXT_MIN}` : `${n} of ${SHARE_TEXT_MAX}`; meter.classList.toggle("ms-short", n < SHARE_TEXT_MIN); };
-    ta.addEventListener("input", () => { pick[key] = ta.value; pick.touched = true; show(); growBox(ta); refreshState(p); });
-    show();
-    requestAnimationFrame(() => growBox(ta));
-    return feEl("div", { class: "ms-field" }, feEl("label", { class: "ms-flabel" }, feEl("b", {}, label), meter), ta);
+  const changed = () => { pick.touched = true; refreshState(p); };
+  // phases: the curve, each part a button
+  const phaseMeter = feEl("span", { class: "ms-meter" });
+  const showPhases = () => { phaseMeter.textContent = pick.phases.size ? phaseNames([...pick.phases].sort()) : "Choose one or more"; phaseMeter.classList.toggle("ms-short", !pick.phases.size); };
+  showPhases();
+  const phases = feEl("div", { class: "ms-field" }, feEl("div", { class: "ms-flabel" }, feEl("b", {}, "Phases it suits"), phaseMeter),
+    phaseCurve(pick.phases, () => { showPhases(); changed(); }, "Phases it suits"));
+  // notes: optional, two lines to start, growing with the text (no scrolling inside the box)
+  const ta = feEl("textarea", { class: "ms-ta", rows: "2", maxlength: String(SHARE_NOTES_MAX), "aria-label": "Notes", placeholder: "Anything else about this playlist" });
+  ta.value = pick.notes;
+  const noteMeter = feEl("span", { class: "ms-meter" });
+  const showNotes = () => { const n = ta.value.trim().length; noteMeter.textContent = n ? `${n} of ${SHARE_NOTES_MAX}` : "Optional"; };
+  ta.addEventListener("input", () => { pick.notes = ta.value; showNotes(); growBox(ta); changed(); });
+  showNotes();
+  requestAnimationFrame(() => growBox(ta));
+  return feEl("div", { class: "ms-fields" }, phases, tagField(p, pick, changed),
+    feEl("div", { class: "ms-field" }, feEl("label", { class: "ms-flabel" }, feEl("b", {}, "Notes"), noteMeter), ta));
+}
+// Tags are typed as words with commas between them; each becomes a chip with an x. Tags other people use are offered under the box.
+function tagField(p, pick, changed) {
+  const input = feEl("input", { type: "text", class: "ms-taginput", maxlength: String(SHARE_TAG_CHARS + 20), "aria-label": "Add a tag", enterkeyhint: "done", autocapitalize: "none", spellcheck: "false" });
+  const box = feEl("div", { class: "ms-tagbox", onClick: (e) => { if (e.target === box) input.focus(); } });
+  const meter = feEl("span", { class: "ms-meter" });
+  const suggest = feEl("div", { class: "ms-suggest" });
+  const add = (text) => {
+    for (const part of String(text).split(",")) {
+      const t = cleanTag(part);
+      if (t.length >= 2 && !pick.tags.includes(t) && pick.tags.length < SHARE_TAGS_MAX) pick.tags.push(t);
+    }
   };
-  return feEl("div", { class: "ms-fields" },
-    field("music", "Description of music", "What kind of music is it?"),
-    field("use", "How I use it", "How and where do you use it in a ceremony?"));
+  const showSuggestions = () => {
+    suggest.textContent = "";
+    if (pick.tags.length >= SHARE_TAGS_MAX) return;
+    const q = cleanTag(input.value);
+    const found = knownTags().filter((t) => !pick.tags.includes(t) && (!q || t.startsWith(q) || t.includes(" " + q))).slice(0, q ? 5 : 6);
+    if (!found.length) return;
+    suggest.appendChild(document.createTextNode(q ? "Tags others use: " : "Tags others use often: "));
+    found.forEach((t, i) => {
+      if (i) suggest.appendChild(document.createTextNode(", "));
+      // mousedown keeps the focus in the box, so the half-typed word is not added on the way
+      const b = feEl("button", { type: "button", class: "linklike ms-sugg", onClick: () => { add(t); input.value = ""; draw(); changed(); input.focus(); } }, t);
+      b.addEventListener("mousedown", (e) => e.preventDefault());
+      suggest.appendChild(b);
+    });
+  };
+  const draw = () => {
+    box.textContent = "";
+    for (const t of pick.tags) {
+      box.appendChild(feEl("span", { class: "ms-tag ms-on ms-tagchip" }, t,
+        feEl("button", { type: "button", class: "ms-tagx", "aria-label": "Remove " + t, onClick: () => { pick.tags = pick.tags.filter((x) => x !== t); draw(); changed(); input.focus(); } }, "×")));
+    }
+    input.placeholder = pick.tags.length ? "" : "ambient, no vocals, piano";
+    input.hidden = pick.tags.length >= SHARE_TAGS_MAX;
+    box.appendChild(input);
+    const n = pick.tags.length;
+    meter.textContent = n < SHARE_TAGS_MIN ? `${n}, at least ${SHARE_TAGS_MIN}` : `${n} of ${SHARE_TAGS_MAX}`;
+    meter.classList.toggle("ms-short", n < SHARE_TAGS_MIN);
+    showSuggestions();
+  };
+  input.addEventListener("input", () => {
+    if (input.value.includes(",")) { const parts = input.value.split(","); const rest = parts.pop(); add(parts.join(",")); input.value = rest; draw(); changed(); input.focus(); }
+    else showSuggestions();
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); if (input.value.trim()) { add(input.value); input.value = ""; draw(); changed(); input.focus(); } }
+    else if (e.key === "Backspace" && !input.value && pick.tags.length) { pick.tags.pop(); draw(); changed(); input.focus(); }
+  });
+  input.addEventListener("blur", () => { if (input.value.trim()) { add(input.value); input.value = ""; draw(); changed(); } });
+  draw();
+  return feEl("div", { class: "ms-field" }, feEl("div", { class: "ms-flabel" }, feEl("b", {}, "Tags"), meter), box,
+    feEl("p", { class: "ms-taghint" }, "Words for the music. Type a comma after each."), suggest);
 }
 function growBox(ta) {
   if (!ta.isConnected) return;
@@ -661,7 +776,7 @@ async function toggleShare(p, on) {
   pick.touched = true;
   pick.error = "";
   if (on && !sharedFor(p)) {
-    if (!pick.music) { const d = cleanSpotifyDescription(p.description); if (d) { pick.music = d; pick.fromSpotify = true; } }
+    if (!pick.notes) { const d = cleanSpotifyDescription(p.description); if (d) { pick.notes = d; pick.fromSpotify = true; } }
     pick.checking = true;
     refreshRow(p);
     try {
@@ -734,8 +849,8 @@ async function applyShares() {
       const tracks = await loadTracks(p.id);
       const ms = tracks.reduce((n, t) => n + (t.ms || 0), 0);
       const songs = tracks.map((t) => [String(t.uri).replace("spotify:track:", ""), t.key ? t.key.slice(5) : ""]);
-      const cover = p.cover && !/mosaic\.scdn\.co/.test(p.cover) ? p.cover : null;
-      await sharingFetch("POST", "/share", { playlist: p.id, snapshot: p.snapshot || null, name: p.name, by, music: pick.music.trim(), use: pick.use.trim(), cover, songs, ms, artists: topArtists(tracks) });
+      const cover = p.cover || null;   // a custom cover or Spotify's square of four album covers
+      await sharingFetch("POST", "/share", { playlist: p.id, snapshot: p.snapshot || null, name: p.name, by, phases: [...pick.phases].sort(), tags: pick.tags.slice(), notes: pick.notes.trim(), cover, songs, ms, artists: topArtists(tracks) });
       pick.touched = false;
       pick.update = false;
       pick.open = false;   // shared: the row folds
