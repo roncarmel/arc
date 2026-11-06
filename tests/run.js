@@ -843,9 +843,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-06e" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-06f" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-06e/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-06f/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -2817,7 +2817,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var pv_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var pv_sec = pv_w.document.getElementById("privacySection");
   check("the Privacy section is the last thing on the page, below More options and the hidden Developer options, in the same footer, and starts closed", !!pv_sec && pv_sec.tagName === "DETAILS" && pv_sec.open === false && pv_sec.previousElementSibling.id === "devOptions" && pv_sec.previousElementSibling.previousElementSibling.id === "moreOptions" && pv_sec.nextElementSibling === null && pv_sec.parentElement.tagName === "FOOTER" && pv_sec.querySelector("summary").textContent === "Privacy");
-  check("it covers what stays in the browser, the Spotify account, who the page talks to, the visit counts, support, problem reports, and accounts and ads", JSON.stringify(Array.from(pv_sec.querySelectorAll("details.gd-topic > summary")).filter((h) => !h.closest("[hidden]")).map((h) => h.textContent)) === JSON.stringify(["What stays in this browser", "Your Spotify account", "Who the page talks to", "Anonymous visit counts", "Support me", "Problem reports", "Accounts and ads"]));
+  check("it covers what stays in the browser, the Spotify account, who the page talks to, Music sharing, the visit counts, support, problem reports, and accounts and ads", JSON.stringify(Array.from(pv_sec.querySelectorAll("details.gd-topic > summary")).filter((h) => !h.closest("[hidden]")).map((h) => h.textContent)) === JSON.stringify(["What stays in this browser", "Your Spotify account", "Who the page talks to", "Music sharing", "Anonymous visit counts", "Support me", "Problem reports", "Accounts and ads"]));
   var pv_text = pv_sec.textContent.replace(/\s+/g, " ");
   check("it says the app never sees the Spotify password, what it asks Spotify to allow, and that existing playlists are only read", /never sees your Spotify password/.test(pv_text) && /read your playlists, create playlists, remove playlists, and set their cover images/.test(pv_text) && /Your existing playlists are only read, never changed/.test(pv_text) && /anyone with a playlist's link can still open it/.test(pv_text));
   check("it says a problem report goes only to the developer, only if sent, and lists what is attached and what never is", /sent only if you choose to send it, and it goes only to me, the developer of this app/.test(pv_text) && /app version, browser, window size, last error, and recent steps/.test(pv_text) && /Your sign-in, Client ID, playlist names, and song titles are never included/.test(pv_text));
@@ -3038,7 +3038,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-06e", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-06f", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4858,7 +4858,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var ms_d = ms_w.document;
   await ms_w.eval("Promise.all([loadTracks('p2'), loadTracks('p4')])");   // the recipe's playlists are kept in the browser, so overlap can be measured
   ms_w.eval("openInfo('devOptions')");
-  check("Developer options has a Music sharing topic whose button opens Music sharing", !!ms_d.getElementById("devOpenSharing") && (ms_d.getElementById("devOpenSharing").click(), ms_d.getElementById("msOverlay").hidden === false) && ms_d.getElementById("infoOverlay").hidden === true);
+  check("Developer options no longer opens Music sharing, the app menu does, and Privacy has its topic", !ms_d.getElementById("devOpenSharing") && ms_d.getElementById("privacyMusicSharing").hidden === false && (ms_w.eval("closeInfo(true)"), ms_d.getElementById("feAppMenuButton").click(), ms_d.getElementById("feMusicSharing").click(), ms_d.getElementById("msOverlay").hidden === false));
   var ms_names = () => Array.from(ms_d.querySelectorAll("#msResults .ms-row .ms-name")).map((e) => e.textContent);
   var ms_sort = (v) => { const s = ms_d.getElementById("msSort"); s.value = v; s.dispatchEvent(new ms_w.Event("change")); };
   await waitFor(() => ms_names().length === 4 && ms_d.querySelectorAll("#msSort option").length === 4, 5000);
@@ -5013,7 +5013,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   dv_w.eval("window.__t[window.__t.length - 1]()");
   check("held to the end, the menu closes and Developer options opens in the info popup", !dv_w.document.getElementById("feAppMenuPanel") && dv_w.document.getElementById("infoOverlay").hidden === false && dv_w.document.getElementById("infoSlot").firstElementChild.id === "devOptions" && dv_w.document.getElementById("infoTitle").textContent === "Developer options");
   var dv_topics = Array.from(dv_w.document.querySelectorAll("#devOptions details.gd-topic > summary")).map((h) => h.textContent);
-  check("it has the three Music sharing topics, Start over, Copy Spotify record and Python status, all open, and no way to turn it off", JSON.stringify(dv_topics) === JSON.stringify(["Music sharing", "Music sharing tags", "Music sharing reports", "Start over", "Copy Spotify record", "Python status"]) && Array.from(dv_w.document.querySelectorAll("#devOptions details.gd-topic")).every((d) => d.open) && !/Turn off/.test(dv_w.document.getElementById("devOptions").textContent), JSON.stringify(dv_topics));
+  check("it has the two Music sharing topics (tags and reports), Start over, Copy Spotify record and Python status, all open, and no way to turn it off", JSON.stringify(dv_topics) === JSON.stringify(["Music sharing tags", "Music sharing reports", "Start over", "Copy Spotify record", "Python status"]) && Array.from(dv_w.document.querySelectorAll("#devOptions details.gd-topic")).every((d) => d.open) && !/Turn off/.test(dv_w.document.getElementById("devOptions").textContent), JSON.stringify(dv_topics));
   dv_w.eval("openInfo('devOptions')");
   dv_w.document.getElementById("infoClose").click();
   check("closed, it goes back to its place, hidden", dv_w.document.getElementById("devOptions").hidden === true && !dv_w.document.getElementById("devOptions").closest("#infoSlot"));
@@ -5046,10 +5046,11 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sl_rest = ["fe-rule", "feGuide", "feMusicSharing", "feMoreOptions", "feFeedback", "feReport", "fePrivacy", "fe-rule", "feVersion"];
   var sl_ready = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: {}, feedbackUrl: "https://tally.so/r/X" });
   var sl_r = sl_ids(sl_ready);
-  check("connected: the app's name, then A guide for facilitators, Music sharing (coming soon), More options, Feedback and questions, Report a problem, Privacy, and the version", JSON.stringify(sl_r) === JSON.stringify(["feMenuHead"].concat(sl_rest.slice(1))), JSON.stringify(sl_r));
+  check("connected: the app's name, then A guide for facilitators, Music sharing, More options, Feedback and questions, Report a problem, Privacy, and the version", JSON.stringify(sl_r) === JSON.stringify(["feMenuHead"].concat(sl_rest.slice(1))), JSON.stringify(sl_r));
   var sl_ms = sl_ready.document; sl_ready.document.getElementById("feAppMenuButton").click();
   var sl_msi = sl_ms.getElementById("feMusicSharing");
-  check("Music sharing is in the menu, greyed and not a button, with Coming soon", !!sl_msi && sl_msi.tagName === "DIV" && sl_msi.getAttribute("aria-disabled") === "true" && /^Music sharingComing soon/.test(sl_msi.textContent) && (sl_msi.click(), sl_ms.getElementById("msOverlay").hidden !== false), sl_msi ? sl_msi.textContent : "");
+  check("Music sharing is in the menu with its line, and opens Music sharing on Find playlists", !!sl_msi && sl_msi.tagName === "BUTTON" && sl_msi.textContent === "Music sharingFind playlists other facilitators share, and share your own" && !sl_ms.querySelector(".fe-soon-tag") && (sl_msi.click(), sl_ms.getElementById("msOverlay").hidden === false) && sl_ms.querySelector("#msTabsBar .ms-on").textContent === "Find playlists", sl_msi ? sl_msi.textContent : "");
+  sl_ready.eval("closeSharing()");
   sl_ready.document.body.click();
   var sl_slow = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: { listDelayMs: 4000 }, feedbackUrl: "https://tally.so/r/X" });
   var sl_s = sl_ids(sl_slow);
@@ -5152,7 +5153,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-06e"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-06f"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

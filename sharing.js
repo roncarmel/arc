@@ -1,5 +1,5 @@
 // sharing.js: Music sharing. People share their own playlists (the phases of a session they suit, tags, optional notes) and copy each other's into
-// their own Spotify. Opened from Developer options until it is ready for the app menu (decided by Ron, 2026-11-06).
+// their own Spotify. Opened from the app menu (opened to everyone by Ron, 2026-11-06).
 // The library lives in a Cloudflare Worker with a D1 database (cloudflare/music-sharing). It keeps only what people write, the songs as Spotify IDs
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, the phase filter, tags (the ones used on more than one shared playlist) and overlap with the person's recipes.
@@ -926,8 +926,6 @@ async function loadDevReports() {
 
 // ---------------------------------------------------------------- wiring
 (function wireSharing() {
-  const open = $("devOpenSharing");
-  if (open) open.addEventListener("click", () => openSharing("find"));
   if ($("msClose")) $("msClose").addEventListener("click", () => closeSharing());
   if ($("msOverlay")) $("msOverlay").addEventListener("click", (e) => { if (e.target === $("msOverlay")) closeSharing(); });
   document.addEventListener("keydown", (e) => {
