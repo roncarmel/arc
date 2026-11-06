@@ -34,7 +34,7 @@ const fs = require("fs");
 const ROOT = (process.env.APP_DIR || require("path").join(__dirname, "..")).replace(/\/?$/, "/");
 const html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/<script src="(theme|formats|editor|app)\.js(\?v=[^"]*)?"><\/script>/g, "");
 // the three scripts share one scope in a browser, so they are run together here
-const appJs = fs.readFileSync(ROOT + "theme.js", "utf8") + "\n" + fs.readFileSync(ROOT + "formats.js", "utf8") + "\n" + fs.readFileSync(ROOT + "editor.js", "utf8") + "\n" + fs.readFileSync(ROOT + "app.js", "utf8");
+const appJs = fs.readFileSync(ROOT + "theme.js", "utf8") + "\n" + fs.readFileSync(ROOT + "starters.js", "utf8") + "\n" + fs.readFileSync(ROOT + "formats.js", "utf8") + "\n" + fs.readFileSync(ROOT + "editor.js", "utf8") + "\n" + fs.readFileSync(ROOT + "app.js", "utf8");
 
 // the sentence a finished build shows, from its parts (the music between them counts up)
 const doneSentence = (w) => { const q = (c) => (w.document.querySelector("#actionMessage ." + c) || { textContent: "" }).textContent; return `${q("bd-big")} ${q("bd-lib")}`; };
@@ -99,7 +99,7 @@ function makeFetch(options = {}) {
       const body = options.serverVersion !== undefined ? options.serverVersion : fs.readFileSync(ROOT + "version.txt", "utf8");
       return { ok: options.versionStatus ? options.versionStatus < 400 : true, status: options.versionStatus || 200, headers: { get: () => null }, text: async () => body, json: async () => ({}) };
     }
-    const coverFile = ["playlist-cover.jpg", "backup-cover.jpg", "recipe-cover.jpg"].find((f) => url.endsWith(f));
+    const coverFile = ["playlist-cover.jpg", "backup-cover.jpg", "recipe-cover.jpg"].find((f) => url.endsWith(f)) || (url.match(/starters\/\w+\.jpg$/) || [])[0];
     if (coverFile) {
       if (options.noCoverFile) return { ok: false, status: 404, headers: { get: () => null }, arrayBuffer: async () => new ArrayBuffer(0) };
       const file = fs.readFileSync(ROOT + coverFile);
@@ -823,9 +823,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-05r" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-05s" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-05r/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-05s/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -1091,7 +1091,7 @@ print(json.dumps(out))
 
   // ---------------- after the embeds experiment was reverted
   var finalHtml = fs.readFileSync(ROOT + "index.html", "utf8");
-  check("the page has four scripts of its own, with the theme first, and nothing about embeds", finalHtml.match(/<script src="[^"]+"><\/script>/g).join("").replace(/\?v=[^"]+/g, "") === '<script src="theme.js"></script><script src="formats.js"></script><script src="editor.js"></script><script src="app.js"></script>' && finalHtml.indexOf('<script src="theme.js">') < finalHtml.indexOf("</head>") && !/embeds/i.test(finalHtml) && !/embeds/i.test(fs.readFileSync(ROOT + "app.js", "utf8")) && !fs.existsSync(ROOT + "embeds.js"));
+  check("the page has five scripts of its own, with the theme first, and nothing about embeds", finalHtml.match(/<script src="[^"]+"><\/script>/g).join("").replace(/\?v=[^"]+/g, "") === '<script src="theme.js"></script><script src="starters.js"></script><script src="formats.js"></script><script src="editor.js"></script><script src="app.js"></script>' && finalHtml.indexOf('<script src="theme.js">') < finalHtml.indexOf("</head>") && !/embeds/i.test(finalHtml) && !/embeds/i.test(fs.readFileSync(ROOT + "app.js", "utf8")) && !fs.existsSync(ROOT + "embeds.js"));
   check("the app never names an outside script, so no Ko-fi or Tally code can run in the page", !/tally\.so\/widgets|overlay-widget|storage\.ko-fi\.com\/cdn\/scripts/.test(fs.readFileSync(ROOT + "app.js", "utf8") + finalHtml));
   check("Tip me and the report links are the new-tab links again", (() => { const a = t0.document.getElementById("supportButton"); const r = t0.document.getElementById("reportLink"); return a.target === "_blank" && a.href === "https://ko-fi.com/roncarmel" && r.target === "_blank" && r.href.startsWith("https://tally.so/r/VppLZN"); })());
   var stale = await boot({ url: "http://127.0.0.1:8000/?embeds=on", session: { ...signedIn(), embeds: "on" }, local: { formats: MINI } });
@@ -3018,7 +3018,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-05r", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-05s", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4850,6 +4850,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("checking one enables Copy manifests", dv_w.document.getElementById("devCopyStarters").disabled === false);
   dv_w.eval("window.__copied = null; navigator.clipboard.writeText = (t) => { window.__copied = t; return Promise.resolve(); }");
   dv_w.document.getElementById("devCopyStarters").click();
+  await waitFor(() => /playlist read\./.test(dv_w.document.getElementById("feCaption").textContent), 5000);
+  check("reading copies nothing by itself (a late copy makes Chrome ask for clipboard permission): a Copy button waits under the bar", dv_w.eval("window.__copied") === null && Array.from(dv_w.document.querySelectorAll("#feCaption button")).some((b) => b.textContent === "Copy"), dv_w.document.getElementById("feCaption").textContent);
+  Array.from(dv_w.document.querySelectorAll("#feCaption button")).find((b) => b.textContent === "Copy").click();
   await waitFor(() => dv_w.eval("window.__copied") !== null, 5000);
   var dv_man = (() => { try { return JSON.parse(dv_w.eval("window.__copied")); } catch (e) { return null; } })();
   check("the copy is one manifest per chosen playlist: its ID, name, description, cover and song IDs", Array.isArray(dv_man) && dv_man.length === 1 && dv_man[0].id === dv_rows[0].value && typeof dv_man[0].name === "string" && typeof dv_man[0].description === "string" && "cover" in dv_man[0] && Array.isArray(dv_man[0].songs) && dv_man[0].songs.length > 0 && dv_man[0].songs.every((x) => !/:/.test(x)), dv_w.eval("window.__copied"));
@@ -4877,6 +4880,45 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => dv_w.__dvReloaded === true, 5000);
   check("and then clears everything, with the Client ID copied", dv_w.localStorage.length === 0 && dv_copied.join("|") === "dv-id");
   } catch (err) { areaCrashed("developer options", err); } }
+
+  if (want("starter playlists")) { try {
+  // ================================================================ A guide for facilitators, Playlists to start from: Ron's playlists (starters.js), each copied into the person's account by a button
+  var ST = (() => { const c = {}; require("vm").runInNewContext(fs.readFileSync(ROOT + "starters.js", "utf8") + ";this.S = STARTERS;", c); return c.S; })();
+  var st_opts = { writes: [], removedIds: new Set(["p2"]) };   // spacious + gentle (the one with its own picture) not in the list yet
+  var st_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: st_opts });
+  await waitFor(() => st_w.eval("connection") === "ready", 15000);
+  st_w.eval("openGuide('gdStart')");
+  var st_rows = () => Array.from(st_w.document.querySelectorAll("#gdStartList li.st-row"));
+  var st_row = (name) => st_rows().find((r) => r.querySelector(".st-name").textContent === name.trim());
+  var st_names = JSON.stringify(ST.map((s) => s.name));
+  check("a row for each playlist in starters.js, with its name, song count and description", st_rows().length === JSON.parse(st_names).length && st_rows().length >= 6 && st_row("☘️ intro / outro").querySelector(".st-sub").textContent === `${ST[0].songs.length} songs` && st_row("☘️ intro / outro").querySelector(".st-desc").textContent === ST[0].description && !st_row("🔮 strange / mysterious").querySelector(".st-desc") === !ST[1].description, st_names);
+  var st_btn = (name) => st_row(name).querySelector("button.st-add");
+  check("a playlist the person already has (same name) says Added in a capsule, and cannot be clicked", st_btn("🛋 rest ").textContent === "Added" && st_btn("🛋 rest ").disabled && st_btn("🛋 rest ").classList.contains("st-done") && !!st_btn("🛋 rest ").querySelector("svg"));
+  check("the others say Add to my Spotify", st_btn("☘️ intro / outro").textContent === "Add to my Spotify" && !st_btn("☘️ intro / outro").disabled);
+  check("the old copy steps are gone, and the public playlists link stays", !/Add to other playlist/.test(st_w.document.getElementById("gdStart").textContent) && !!st_w.document.querySelector('#gdStart a[href="https://open.spotify.com/user/1242285637/playlists"]'));
+  st_btn("☘️ intro / outro").click();
+  check("while adding, the button says Adding... and cannot be clicked", st_btn("☘️ intro / outro").textContent === "Adding..." && st_btn("☘️ intro / outro").disabled);
+  await waitFor(() => st_btn("☘️ intro / outro").textContent === "Added", 5000);
+  var st_made = st_opts.writes.filter((w) => w.type === "create");
+  check("the copy is a private playlist with the same name and description", st_made.length === 1 && st_made[0].name === "☘️ intro / outro" && st_made[0].public === false && st_made[0].description === ST[0].description, JSON.stringify(st_made));
+  check("its songs go in 100 at a time, in order", st_opts.addCalls === Math.ceil(ST[0].songs.length / 100));
+  check("a playlist with Spotify's grid gets no cover", !st_opts.writes.some((w) => w.type === "cover"));
+  check("once added, the row says Added, and the playlist is in the person's list", st_btn("☘️ intro / outro").disabled && st_w.eval("playlists.some((p) => p.name === '☘️ intro / outro')"));
+  st_btn("💗 spacious + gentle").click();
+  await waitFor(() => st_btn("💗 spacious + gentle").textContent === "Added", 5000);
+  check("a playlist with its own picture gets it as the cover", st_opts.writes.some((w) => w.type === "cover" && w.id === "new2" && w.contentType === "image/jpeg"));
+  check("every starter cover is a file in starters/", ST.map((s) => s.cover).filter(Boolean).every((f) => /^starters\//.test(f) && fs.existsSync(ROOT + f)));
+  check("every starter song is a Spotify ID", ST.every((s) => s.songs.length && s.songs.every((x) => /^[A-Za-z0-9]{22}$/.test(x))));
+
+  var st_opts2 = { writes: [], buildFailIn: "new1", buildFail: 500 };
+  var st_w2 = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: st_opts2 });
+  await waitFor(() => st_w2.eval("connection") === "ready", 15000);
+  st_w2.eval("openGuide('gdStart')");
+  var st_b2 = () => Array.from(st_w2.document.querySelectorAll("#gdStartList li.st-row")).find((r) => r.querySelector(".st-name").textContent === "☘️ intro / outro");
+  st_b2().querySelector("button").click();
+  await waitFor(() => !!st_b2().querySelector(".st-error"), 5000);
+  check("when adding fails, the half-made copy is removed, the row says why, and the button is back", st_opts2.writes.filter((w) => w.type === "create").length === 1 && st_opts2.removedIds && st_opts2.removedIds.has("new1") && /^Not added: .+\. Try again\.$/.test(st_b2().querySelector(".st-error").textContent) && st_b2().querySelector("button").textContent === "Add to my Spotify" && !st_b2().querySelector("button").disabled, st_b2().textContent);
+  } catch (err) { areaCrashed("starter playlists", err); } }
 
   if (want("spotify last")) { try {
   // ================================================================ the Spotify item is always first in the menu, under the app's name; then the rest in a fixed order, and the version
@@ -4986,7 +5028,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-05r"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-05s"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5325,7 +5367,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // ================================================================ a newer version on the site
   var nv_src = fs.readFileSync(ROOT + "index.html", "utf8").match(/<script>\n  \/\/ If the page's own script never starts[\s\S]*?<\/script>/)[0].replace(/^<script>|<\/script>$/g, "");
   var nv_version = fs.readFileSync(ROOT + "app.js", "utf8").match(/const APP_VERSION = "([^"]+)"/)[1];
-  check("version.txt holds just the version of the files, so a check costs a few bytes, and it is the same stamp as the page's", fs.readFileSync(ROOT + "version.txt", "utf8").trim() === nv_version && fs.readFileSync(ROOT + "version.txt", "utf8").length < 40 && fs.readFileSync(ROOT + "index.html", "utf8").split(nv_version).length - 1 === 5);
+  check("version.txt holds just the version of the files, so a check costs a few bytes, and it is the same stamp as the page's", fs.readFileSync(ROOT + "version.txt", "utf8").trim() === nv_version && fs.readFileSync(ROOT + "version.txt", "utf8").length < 40 && fs.readFileSync(ROOT + "index.html", "utf8").split(nv_version).length - 1 === 6);
   var nv_make = async (fetchOptions = {}, session = {}, local = {}) => {
     const w = await boot({ url: EDURL, session: Object.assign(signedIn(), session), local: Object.assign({ formats: MINI, connectedBefore: "1", backupMode: "manual" }, local), fetchOptions });
     w.eval(nv_src);

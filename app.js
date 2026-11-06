@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-05r";
+const APP_VERSION = "2026-11-05s";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -303,6 +303,7 @@ function openInfo(id) {
   $("infoTitle").appendChild(Object.assign(document.createElement("span"), { textContent: title ? title.textContent.trim() : "" }));
   if (id === "reportBlock" || id === "moreOptions") refreshReportBox();
   if (id === "devOptions") renderStarterPicker();
+  if (id === "guideSection") renderStarters();
   $("infoOverlay").hidden = false;
   document.body.style.overflow = "hidden";
   $("infoSlot").scrollTop = 0;
@@ -2391,6 +2392,71 @@ async function loadTracks(id) {
   return tracks;
 }
 
+// A guide for facilitators, Playlists to start from: a row per playlist in STARTERS (starters.js) with Add to my Spotify, which copies it into the person's account,
+// private, with the same name, description, songs in order and, when it has its own picture, cover. A playlist of theirs with the same name shows Added, which cannot be clicked.
+const starterAdding = new Set();   // ids being added now
+const starterErrors = {};          // id: what went wrong last time
+
+function renderStarters() {
+  const list = $("gdStartList");
+  if (!list || typeof STARTERS === "undefined") return;
+  list.textContent = "";
+  const mine = new Set(me ? playlists.filter((p) => p.owner === me.id).map((p) => p.name) : []);
+  for (const s of STARTERS) {
+    const added = mine.has(s.name), busy = starterAdding.has(s.id);
+    const button = feEl("button", { type: "button", class: "st-add" + (added ? " st-done" : busy ? " st-busy" : "") });
+    if (added) { button.disabled = true; button.append(feIcon("check"), document.createTextNode("Added")); }
+    else if (busy) { button.disabled = true; button.textContent = "Adding..."; }
+    else {
+      button.textContent = "Add to my Spotify";
+      button.disabled = connection !== "ready";
+      button.addEventListener("click", () => addStarter(s));
+    }
+    const text = feEl("div", { class: "st-text" },
+      feEl("div", { class: "st-name", text: s.name.trim() }),
+      feEl("div", { class: "st-sub", text: plural(s.songs.length, "song") }),
+      s.description ? feEl("div", { class: "st-desc", text: s.description }) : null);
+    if (starterErrors[s.id]) text.appendChild(feEl("div", { class: "st-error", text: starterErrors[s.id] }));
+    list.appendChild(feEl("li", { class: "st-row" }, text, button));
+  }
+}
+
+async function addStarter(s) {
+  if (starterAdding.has(s.id) || connection !== "ready") return;
+  starterAdding.add(s.id);
+  delete starterErrors[s.id];
+  renderStarters();
+  let made = null;
+  try {
+    made = await spotifyRequest("POST", "/me/playlists", { json: { name: s.name, public: false, description: s.description } });
+    if (made.public !== false) { try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); } catch (err) { logStep("starter: could not make it private"); } }
+    const uris = s.songs.map((id) => "spotify:track:" + id);
+    for (let k = 0; k < uris.length;) {
+      const n = addChunk;
+      try { await spotifyRequest("POST", `/playlists/${made.id}/items`, { json: { uris: uris.slice(k, k + n) } }); }
+      catch (err) {
+        if (n > ADD_CHUNK_SMALL && /returned 400/.test(err.message)) { addChunk = ADD_CHUNK_SMALL; recordNote(`${n} songs per add refused (400)`); continue; }
+        throw err;
+      }
+      k += n;
+    }
+    if (s.cover && hasScope("ugc-image-upload")) {   // a problem with the picture never undoes the playlist
+      try { await spotifyRequest("PUT", `/playlists/${made.id}/images`, { body: await loadCover(s.cover), contentType: "image/jpeg", noWait: true }); }
+      catch (err) { logStep("starter: cover not accepted"); }
+    }
+  } catch (err) {
+    if (made) { try { await removePlaylists([made.id]); } catch (e) { logStep("starter: half-made copy not removed"); } }   // all or nothing
+    made = null;
+    starterErrors[s.id] = `Not added: ${String(err && err.message || err).replace(/\.$/, "")}. Try again.`;
+  }
+  starterAdding.delete(s.id);
+  if (made) {
+    try { await loadMyPlaylists(); }
+    catch (err) { playlists.push({ id: made.id, name: s.name, owner: me.id, collaborative: false, image: null, cover: null, count: s.songs.length, description: s.description, snapshot: null, madeByApp: false, save: null, isSave: false }); keepPlaylists(); }
+  }
+  renderStarters();
+}
+
 // Developer options, Copy starter playlists: the person's own playlists with a checkbox each; the chosen ones are copied as manifests (name, description,
 // cover address unless it is Spotify's automatic grid, song IDs in order) to paste into the chat, for starters.js.
 function starterCandidates() { return me ? playlists.filter((p) => p.owner === me.id && !p.isSave && !p.madeByApp) : []; }
@@ -2434,10 +2500,8 @@ async function copyStarterManifests() {
   }
   const text = JSON.stringify(out);
   const done = () => showNotices([{ text: `${out.length === 1 ? "Manifest" : "Manifests"} for ${plural(out.length, "playlist")} copied. Paste into the chat with Claude.`, transient: true }]);
-  try { await navigator.clipboard.writeText(text); done(); }
-  catch (err) {   // some browsers allow copying only right after a click, and reading took a while: one more click
-    showNotices([{ text: `${plural(out.length, "playlist")} read.`, icon: "copy", hold: true, actions: [{ label: "Copy", run: async () => { try { await navigator.clipboard.writeText(text); done(); } catch (e) { showNotices([{ text: "The manifests could not be copied.", transient: true }]); } } }] }]);
-  }
+  // Reading takes seconds, and a copy that late no longer counts as part of the click: Chrome then asks for clipboard permission (worded as reading it). So the copy waits for a click of its own.
+  showNotices([{ text: `${plural(out.length, "playlist")} read.`, icon: "copy", hold: true, actions: [{ label: "Copy", run: async () => { try { await navigator.clipboard.writeText(text); done(); } catch (e) { showNotices([{ text: "The manifests could not be copied.", transient: true }]); } } }] }]);
 }
 
 async function removePlaylists(ids) {

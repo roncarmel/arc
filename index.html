@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-05r">
-<script src="theme.js?v=2026-11-05r"></script>
+<meta name="app-version" content="2026-11-05s">
+<script src="theme.js?v=2026-11-05s"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ceremony Playlist Builder</title>
@@ -123,6 +123,24 @@
   #confirmBox ul, #removeConfirmBox ul { margin: 6px 0 10px; padding-left: 20px; }
   .choice-row { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 0 0 8px; cursor: pointer; }
   .choice-row input { width: 20px; height: 20px; accent-color: var(--button); flex: none; }
+  .st-list { list-style: none; padding: 0 !important; margin: 4px 0 12px 16px !important; }
+  .st-list li.st-row { display: flex; align-items: center; gap: 12px; min-height: 56px; margin: 0 !important; border-top: 1px solid var(--line); }
+  .st-list li.st-row:first-child { border-top: none; }
+  .st-text { flex: 1; min-width: 0; }
+  .st-name { color: var(--fg); font-weight: 600; overflow-wrap: anywhere; }
+  .st-sub { color: var(--muted); font-size: 0.9em; }
+  .st-desc { color: var(--muted); margin-top: 4px; line-height: 1.45; }
+  .st-list li.st-row { padding: 10px 0; align-items: flex-start; }   /* the button beside the name, not floating beside a long description */
+  .st-add { flex: none; padding: 6px 12px; font-size: 0.92em; background: transparent; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; }
+  .st-add:disabled { opacity: 1; }
+  .st-add.st-busy { color: var(--muted); border-color: var(--line); }
+  .st-add.st-done { border-color: var(--line); color: var(--muted); }   /* a grey capsule, like Adding... */
+  .st-add svg { width: 16px; height: 16px; }
+  .st-error { color: var(--accent); font-size: 0.9em; margin-top: 2px; }
+  @media (max-width: 759px) {   /* phones: the button on its own line, so the names do not wrap */
+    .st-list li.st-row { flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px 0 12px; }
+    .st-add { align-self: flex-end; }
+  }
   .dev-starter-list { max-height: 50vh; overflow-y: auto; margin: 0 0 10px; }
   .dev-starter-list .choice-row { margin: 0; min-height: 40px; color: var(--fg); }
   .choice-note { margin: -4px 0 12px 30px; font-size: 0.9rem; }
@@ -1347,12 +1365,9 @@
       </details>
       <details class="gd-topic" id="gdStart" data-icon="sprout"><summary>Playlists to start from</summary>
         <p>If your music isn’t organized into long playlists yet, you’re welcome to use some of mine.</p>
-        <p>Copying matters: this app can only see playlists that you own, so following mine isn’t enough. Your copy is independent from mine, feel free to edit it.</p>
-        <ol>
-          <li>Open <a href="https://open.spotify.com/user/1242285637/playlists" target="_blank" rel="noopener noreferrer">my public playlists</a> in Spotify.</li>
-          <li>Open one, then ⋯ › Add to other playlist › New playlist. This makes your own copy.</li>
-          <li>Choose your copy in a recipe.</li>
-        </ol>
+        <p>Add one to your Spotify and it becomes your own private copy, yours to change as you like. Then choose it in a recipe.</p>
+        <ul id="gdStartList" class="st-list"></ul>
+        <p>You can listen to them first on <a href="https://open.spotify.com/user/1242285637/playlists" target="_blank" rel="noopener noreferrer">my public playlists</a>.</p>
       </details>
     </details>
 
@@ -1496,8 +1511,9 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-05r"></script>
-<script src="editor.js?v=2026-11-05r"></script>
-<script src="app.js?v=2026-11-05r"></script>
+<script src="starters.js?v=2026-11-05s"></script>
+<script src="formats.js?v=2026-11-05s"></script>
+<script src="editor.js?v=2026-11-05s"></script>
+<script src="app.js?v=2026-11-05s"></script>
 </body>
 </html>
