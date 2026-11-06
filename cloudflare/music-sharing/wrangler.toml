@@ -1,0 +1,17 @@
+# Music sharing worker. Deploy from this folder with: npx wrangler deploy
+# Secrets (set once each with npx wrangler secret put NAME): SECRET, OWNER_SPOTIFY_IDS, RESEND_KEY, REPORT_TO
+name = "music-sharing"
+main = "worker.js"
+compatibility_date = "2025-05-01"
+workers_dev = true
+
+[vars]
+ORIGINS = "https://playlists.roncarmel.com,http://127.0.0.1:8000,http://localhost:8000"
+
+[observability]
+enabled = false
+
+[[d1_databases]]
+binding = "DB"
+database_name = "music-sharing"
+database_id = "4ac18368-4057-4dcb-a16f-dcd253cb8a66"

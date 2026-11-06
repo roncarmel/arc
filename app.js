@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-05s";
+const APP_VERSION = "2026-11-06a";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -302,8 +302,7 @@ function openInfo(id) {
   if (titleIcon && typeof feIcon === "function") $("infoTitle").appendChild(feIcon(titleIcon)).className = "info-ticon";
   $("infoTitle").appendChild(Object.assign(document.createElement("span"), { textContent: title ? title.textContent.trim() : "" }));
   if (id === "reportBlock" || id === "moreOptions") refreshReportBox();
-  if (id === "devOptions") renderStarterPicker();
-  if (id === "guideSection") renderStarters();
+  if (id === "devOptions" && typeof sharingDevOpened === "function") sharingDevOpened();   // Music sharing's tags and reports (sharing.js)
   $("infoOverlay").hidden = false;
   document.body.style.overflow = "hidden";
   $("infoSlot").scrollTop = 0;
@@ -2350,7 +2349,7 @@ async function loadMyPlaylists() {
     owner: p.owner && p.owner.id,
     collaborative: !!p.collaborative,
     image: Array.isArray(p.images) && p.images.length ? p.images[p.images.length - 1].url : null,   // Spotify lists the largest first
-    cover: Array.isArray(p.images) && p.images.length ? p.images[0].url : null,   // the largest, for Copy starter playlists
+    cover: Array.isArray(p.images) && p.images.length ? p.images[0].url : null,   // the largest, for Music sharing
     count: p.tracks && typeof p.tracks.total === "number" ? p.tracks.total : (p.items && typeof p.items.total === "number" ? p.items.total : null),
     description: typeof p.description === "string" ? p.description : null,
     snapshot: typeof p.snapshot_id === "string" && p.snapshot_id ? p.snapshot_id : null,   // changes whenever the playlist does
@@ -2375,7 +2374,14 @@ async function loadTracks(id) {
     trackCache.set(id, saved.tracks);
     return saved.tracks;
   }
-  const entries = await pagedItems(`/playlists/${id}/items?limit=50`);
+  const tracks = songsFromEntries(await pagedItems(`/playlists/${id}/items?limit=50`));
+  trackCache.set(id, tracks);
+  await saveSongs({ id, snapshot, tracks, v: SONGS_VERSION, savedAt: Date.now() });
+  return tracks;
+}
+
+// A playlist's items from Spotify, as the songs the app keeps (also used by Music sharing's slow reading, sharing.js)
+function songsFromEntries(entries) {
   const tracks = [];
   for (const entry of entries) {
     const t = entry && (entry.item || entry.track);  // "item" is the 2026 field name
@@ -2387,121 +2393,7 @@ async function loadTracks(id) {
     if (t.album && t.album.name) song.album = t.album.name + (t.album.release_date ? `, ${String(t.album.release_date).slice(0, 4)}` : "");
     tracks.push(song);
   }
-  trackCache.set(id, tracks);
-  await saveSongs({ id, snapshot, tracks, v: SONGS_VERSION, savedAt: Date.now() });
   return tracks;
-}
-
-// A guide for facilitators, Playlists to start from: a row per playlist in STARTERS (starters.js) with Add to my Spotify, which copies it into the person's account,
-// private, with the same name, description, songs in order and, when it has its own picture, cover. A playlist of theirs with the same name shows Added, which cannot be clicked.
-const starterAdding = new Set();   // ids being added now
-const starterErrors = {};          // id: what went wrong last time
-
-function renderStarters() {
-  const list = $("gdStartList");
-  if (!list || typeof STARTERS === "undefined") return;
-  list.textContent = "";
-  const mine = new Set(me ? playlists.filter((p) => p.owner === me.id).map((p) => p.name) : []);
-  for (const s of STARTERS) {
-    const added = mine.has(s.name), busy = starterAdding.has(s.id);
-    const button = feEl("button", { type: "button", class: "st-add" + (added ? " st-done" : busy ? " st-busy" : "") });
-    if (added) { button.disabled = true; button.append(feIcon("check"), document.createTextNode("Added")); }
-    else if (busy) { button.disabled = true; button.textContent = "Adding..."; }
-    else {
-      button.textContent = "Add to my Spotify";
-      button.disabled = connection !== "ready";
-      button.addEventListener("click", () => addStarter(s));
-    }
-    const text = feEl("div", { class: "st-text" },
-      feEl("div", { class: "st-name", text: s.name.trim() }),
-      feEl("div", { class: "st-sub", text: plural(s.songs.length, "song") }),
-      s.description ? feEl("div", { class: "st-desc", text: s.description }) : null);
-    if (starterErrors[s.id]) text.appendChild(feEl("div", { class: "st-error", text: starterErrors[s.id] }));
-    list.appendChild(feEl("li", { class: "st-row" }, text, button));
-  }
-}
-
-async function addStarter(s) {
-  if (starterAdding.has(s.id) || connection !== "ready") return;
-  starterAdding.add(s.id);
-  delete starterErrors[s.id];
-  renderStarters();
-  let made = null;
-  try {
-    made = await spotifyRequest("POST", "/me/playlists", { json: { name: s.name, public: false, description: s.description } });
-    if (made.public !== false) { try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); } catch (err) { logStep("starter: could not make it private"); } }
-    const uris = s.songs.map((id) => "spotify:track:" + id);
-    for (let k = 0; k < uris.length;) {
-      const n = addChunk;
-      try { await spotifyRequest("POST", `/playlists/${made.id}/items`, { json: { uris: uris.slice(k, k + n) } }); }
-      catch (err) {
-        if (n > ADD_CHUNK_SMALL && /returned 400/.test(err.message)) { addChunk = ADD_CHUNK_SMALL; recordNote(`${n} songs per add refused (400)`); continue; }
-        throw err;
-      }
-      k += n;
-    }
-    if (s.cover && hasScope("ugc-image-upload")) {   // a problem with the picture never undoes the playlist
-      try { await spotifyRequest("PUT", `/playlists/${made.id}/images`, { body: await loadCover(s.cover), contentType: "image/jpeg", noWait: true }); }
-      catch (err) { logStep("starter: cover not accepted"); }
-    }
-  } catch (err) {
-    if (made) { try { await removePlaylists([made.id]); } catch (e) { logStep("starter: half-made copy not removed"); } }   // all or nothing
-    made = null;
-    starterErrors[s.id] = `Not added: ${String(err && err.message || err).replace(/\.$/, "")}. Try again.`;
-  }
-  starterAdding.delete(s.id);
-  if (made) {
-    try { await loadMyPlaylists(); }
-    catch (err) { playlists.push({ id: made.id, name: s.name, owner: me.id, collaborative: false, image: null, cover: null, count: s.songs.length, description: s.description, snapshot: null, madeByApp: false, save: null, isSave: false }); keepPlaylists(); }
-  }
-  renderStarters();
-}
-
-// Developer options, Copy starter playlists: the person's own playlists with a checkbox each; the chosen ones are copied as manifests (name, description,
-// cover address unless it is Spotify's automatic grid, song IDs in order) to paste into the chat, for starters.js.
-function starterCandidates() { return me ? playlists.filter((p) => p.owner === me.id && !p.isSave && !p.madeByApp) : []; }
-
-function renderStarterPicker() {
-  const list = $("devStarterList");
-  list.textContent = "";
-  const own = starterCandidates();
-  if (!own.length) list.appendChild(Object.assign(document.createElement("p"), { className: "muted", textContent: me ? "No playlists of your own found." : "Connect to Spotify first." }));
-  for (const p of own) {
-    const row = document.createElement("label");
-    row.className = "choice-row";
-    const box = Object.assign(document.createElement("input"), { type: "checkbox", value: p.id });
-    box.addEventListener("change", () => { $("devCopyStarters").disabled = !list.querySelector("input:checked"); });
-    row.append(box, Object.assign(document.createElement("span"), { textContent: p.name }));
-    list.appendChild(row);
-  }
-  $("devCopyStarters").disabled = true;
-}
-
-async function copyStarterManifests() {
-  const ids = Array.from($("devStarterList").querySelectorAll("input:checked"), (b) => b.value);
-  if (!ids.length) return;
-  closeInfo();
-  showNotices([{ text: `Reading ${plural(ids.length, "playlist")}...`, transient: true }]);
-  const out = [];
-  try {
-    for (const id of ids) {
-      const p = playlists.find((q) => q.id === id);
-      const entries = await pagedItems(`/playlists/${id}/items?limit=50`);
-      const songs = [];
-      for (const entry of entries) {
-        const t = entry && (entry.item || entry.track);
-        if (t && !t.is_local && t.type === "track" && /^spotify:track:[\w-]+$/.test(t.uri || "")) songs.push(t.uri.slice(14));
-      }
-      out.push({ id, name: p.name, description: p.description || "", cover: p.cover && !/mosaic\.scdn\.co/.test(p.cover) ? p.cover : null, songs });
-    }
-  } catch (err) {
-    showNotices([{ text: `The manifests could not be copied: ${String(err && err.message || err).replace(/\.$/, "")}.`, transient: true }]);
-    return;
-  }
-  const text = JSON.stringify(out);
-  const done = () => showNotices([{ text: `${out.length === 1 ? "Manifest" : "Manifests"} for ${plural(out.length, "playlist")} copied. Paste into the chat with Claude.`, transient: true }]);
-  // Reading takes seconds, and a copy that late no longer counts as part of the click: Chrome then asks for clipboard permission (worded as reading it). So the copy waits for a click of its own.
-  showNotices([{ text: `${plural(out.length, "playlist")} read.`, icon: "copy", hold: true, actions: [{ label: "Copy", run: async () => { try { await navigator.clipboard.writeText(text); done(); } catch (e) { showNotices([{ text: "The manifests could not be copied.", transient: true }]); } } }] }]);
 }
 
 async function removePlaylists(ids) {
@@ -3578,7 +3470,6 @@ async function main() {
     if (choice === "yes") await startOver();
   });
   on("devCopyRecord", "click", () => { closeInfo(); copyLimitRecord(); });
-  on("devCopyStarters", "click", () => copyStarterManifests());
   on("connect", "click", startLogin);
   on("startSetup", "click", () => goToSetup(false));
   on("premiumWhy", "click", (event) => { event.stopPropagation(); showPremiumWhy($("premiumWhyText").hidden); });

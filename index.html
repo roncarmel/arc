@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-05s">
-<script src="theme.js?v=2026-11-05s"></script>
+<meta name="app-version" content="2026-11-06a">
+<script src="theme.js?v=2026-11-06a"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ceremony Playlist Builder</title>
@@ -123,26 +123,6 @@
   #confirmBox ul, #removeConfirmBox ul { margin: 6px 0 10px; padding-left: 20px; }
   .choice-row { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 0 0 8px; cursor: pointer; }
   .choice-row input { width: 20px; height: 20px; accent-color: var(--button); flex: none; }
-  .st-list { list-style: none; padding: 0 !important; margin: 4px 0 12px 16px !important; }
-  .st-list li.st-row { display: flex; align-items: center; gap: 12px; min-height: 56px; margin: 0 !important; border-top: 1px solid var(--line); }
-  .st-list li.st-row:first-child { border-top: none; }
-  .st-text { flex: 1; min-width: 0; }
-  .st-name { color: var(--fg); font-weight: 600; overflow-wrap: anywhere; }
-  .st-sub { color: var(--muted); font-size: 0.9em; }
-  .st-desc { color: var(--muted); margin-top: 4px; line-height: 1.45; }
-  .st-list li.st-row { padding: 10px 0; align-items: flex-start; }   /* the button beside the name, not floating beside a long description */
-  .st-add { flex: none; padding: 6px 12px; font-size: 0.92em; background: transparent; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; }
-  .st-add:disabled { opacity: 1; }
-  .st-add.st-busy { color: var(--muted); border-color: var(--line); }
-  .st-add.st-done { border-color: var(--line); color: var(--muted); }   /* a grey capsule, like Adding... */
-  .st-add svg { width: 16px; height: 16px; }
-  .st-error { color: var(--accent); font-size: 0.9em; margin-top: 2px; }
-  @media (max-width: 759px) {   /* phones: the button on its own line, so the names do not wrap */
-    .st-list li.st-row { flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px 0 12px; }
-    .st-add { align-self: flex-end; }
-  }
-  .dev-starter-list { max-height: 50vh; overflow-y: auto; margin: 0 0 10px; }
-  .dev-starter-list .choice-row { margin: 0; min-height: 40px; color: var(--fg); }
   .choice-note { margin: -4px 0 12px 30px; font-size: 0.9rem; }
   #backupCard { margin: 12px 0; }
   /* Opened from the app menu, the card is a popup over the page, so it never moves the editor (in minimalist mode too) and its Done button is never out of reach. Before a way is chosen it stays in the page. */
@@ -538,8 +518,6 @@
   #formatEditor .fe-firsttip-card { background: var(--tip-bg); border: 1.5px solid var(--accent); box-shadow: 0 0 0 4px var(--accent-tint), 0 6px 24px -8px var(--accent); border-radius: 18px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
   #formatEditor .fe-firsttip-card p { margin: 0; line-height: 1.45; text-wrap: pretty; }
   #formatEditor .fe-firsttip-title { font-weight: 600; color: var(--fg); }
-  #formatEditor .fe-firsttip-more { border-top: 1px solid var(--tip-line); padding-top: 10px; margin-top: 6px; }
-  #formatEditor .fe-firsttip-more .linklike { font: inherit; min-height: 0; }
   /* the second tip, at the bottom of the card, closed with its x */
   #formatEditor .fe-playtip { position: relative; margin-top: 16px; }
   #formatEditor .fe-playtip-card { background: var(--tip-bg); border: 1.5px solid var(--accent); box-shadow: 0 0 0 4px var(--accent-tint), 0 6px 24px -8px var(--accent); border-radius: 18px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
@@ -942,6 +920,96 @@
   @media (prefers-color-scheme: dark) {
     #formatEditor .fe-pop, .theme-list { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 6px 14px rgba(0, 0, 0, 0.5), 0 18px 40px rgba(0, 0, 0, 0.6); background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)); }
   }
+
+  /* Music sharing (sharing.js): its own popup, ms- classes; Developer options' tags and reports, msd- classes */
+  #msOverlay:not([hidden]) ~ .fe-overlay { z-index: 1150; }   /* its questions and the report form sit over it */
+  #msDialog { padding: 0; overflow: hidden; display: flex; flex-direction: column; max-width: 620px; height: calc(100vh - 32px); height: calc(100dvh - 32px); max-height: 900px; }
+  @media (max-width: 500px) { #msOverlay { padding: 0; } #msDialog { border-radius: 0; border: 0; height: 100vh; height: 100dvh; max-height: none; } }
+  #msBand { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; background: var(--accent-deep, #a8217c); background: linear-gradient(135deg, var(--accent-deep, #a8217c), color-mix(in srgb, var(--accent-deep, #a8217c) 76%, #fff 24%)); color: var(--on-deep, #fff); }
+  #msHead { margin: 0; font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 10px; color: var(--on-deep, #fff); min-width: 0; }
+  #msHead .fe-icon { display: flex; } #msHead .fe-icon svg { width: 22px; height: 22px; }
+  #msHead .ms-back { background: none; border: 0; box-shadow: none; padding: 0; margin: 0 0 0 -8px; width: 40px; height: 40px; min-height: 0; color: var(--on-deep, #fff); display: inline-flex; align-items: center; justify-content: center; }
+  #msClose { flex: none; margin: 0; width: 40px; height: 40px; min-height: 0; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.16); border: 1.5px solid rgba(255, 255, 255, 0.55); color: var(--on-deep, #fff); box-shadow: none; }
+  #msBody { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 14px 18px 24px; }
+  #msFoot { flex: none; border-top: 1px solid var(--line); padding: 12px 18px 16px; background: var(--bg); }
+  .ms-tabs { display: flex; gap: 6px; margin: 0 0 14px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; }
+  .ms-tabs button { flex: 1; justify-content: center; margin: 0; min-height: 0; padding: 8px; border-radius: 999px; border: 0; background: none; box-shadow: none; font-weight: 600; color: var(--muted); }
+  .ms-tabs button.ms-on { background: var(--bg); color: var(--fg); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); }
+  .ms-search { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--muted); box-sizing: border-box; }
+  .ms-search .fe-icon { display: flex; }
+  .ms-search-input { flex: 1; min-width: 0; border: 0; background: none; color: var(--fg); font: inherit; outline: none; padding: 0; height: 40px; }
+  .ms-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 2px; }
+  .ms-tags:empty { display: none; }
+  .ms-tag { margin: 0; min-height: 0; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); box-shadow: none; font-size: 0.85rem; font-weight: 600; color: var(--fg); }
+  .ms-tag.ms-on { background: var(--accent-tint); border-color: var(--accent-tint-border); color: var(--accent); }
+  .ms-tag.ms-more { background: none; color: var(--accent); border-style: dashed; }
+  .ms-bar { display: flex; align-items: center; gap: 8px; margin: 12px 0 2px; }
+  .ms-sort { margin: 0; height: 36px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--fg); font: inherit; font-weight: 600; font-size: 0.9rem; }
+  .ms-toggle { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; font-weight: 600; }
+  .ms-switch { appearance: none; -webkit-appearance: none; margin: 0; width: 36px; height: 22px; border-radius: 999px; background: var(--line); position: relative; cursor: pointer; transition: background 0.15s var(--ease-out); }
+  .ms-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); transition: left 0.15s var(--ease-out); }
+  .ms-switch:checked { background: var(--button); } .ms-switch:checked::after { left: 16px; }
+  .ms-row, .ms-srow { display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); align-items: flex-start; }
+  #msResults > .ms-row:first-child, .ms-share-list > .ms-srow:first-child { border-top: 0; }
+  .ms-row { cursor: pointer; }
+  .ms-cover { flex: none; width: 60px; height: 60px; border-radius: 8px; object-fit: cover; background: var(--card); }
+  .ms-nocover { display: flex; align-items: center; justify-content: center; color: var(--muted); border: 1px solid var(--line); box-sizing: border-box; }
+  .ms-text { flex: 1; min-width: 0; }
+  .ms-name { font-weight: 600; overflow-wrap: anywhere; }
+  .ms-dim { color: var(--muted); }
+  .ms-sub { color: var(--muted); font-size: 0.85rem; margin-top: 1px; }
+  .ms-desc { color: var(--muted); font-size: 0.92rem; line-height: 1.4; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ms-ov { font-size: 0.82rem; font-weight: 600; color: var(--accent); margin-top: 4px; }
+  .ms-add { flex: none; margin: 0; min-height: 0; padding: 6px 12px; font-size: 0.88rem; font-weight: 600; background: transparent; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; box-shadow: none; white-space: nowrap; }
+  .ms-add.ms-done, .ms-add.ms-busy { border-color: var(--line); color: var(--muted); opacity: 1; }
+  .ms-add .fe-icon, .ms-addbig .fe-icon { display: flex; }
+  .ms-error { color: var(--accent); font-size: 0.88rem; margin: 4px 0 0; }
+  .ms-note { color: var(--muted); margin: 16px 0; }
+  .ms-intro { color: var(--muted); font-size: 0.9rem; margin: 0 0 6px; line-height: 1.45; }
+  .ms-hero { display: flex; gap: 16px; align-items: flex-end; }
+  .ms-hero h3 { margin: 0 0 4px; font-size: 1.3rem; line-height: 1.2; }
+  .ms-cover-big { width: 120px; height: 120px; border-radius: 12px; box-shadow: 0 10px 26px -8px rgba(0, 0, 0, 0.4); }
+  .ms-actions { display: flex; gap: 10px; margin: 18px 0 10px; }
+  .ms-addbig { flex: 1; justify-content: center; margin: 0; padding: 12px 16px; border-radius: 999px; border: 0; background: var(--button); color: var(--on-button, #fff); font-weight: 700; font-size: 1rem; }
+  .ms-addbig.ms-done, .ms-addbig.ms-busy { background: var(--bg); border: 1px solid var(--line); color: var(--muted); opacity: 1; }
+  .ms-sec { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 18px 0 4px; }
+  .ms-long { line-height: 1.5; margin: 0 0 6px; white-space: pre-line; }
+  .ms-facts { margin-top: 14px; font-size: 0.88rem; line-height: 1.5; padding: 10px 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); }
+  .ms-facts-h { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 4px; }
+  .ms-facts-h .fe-icon, .ms-overlap .fe-icon, .ms-mini .fe-icon { display: flex; color: var(--accent); }
+  .ms-overlap { display: flex; gap: 8px; align-items: flex-start; font-size: 0.88rem; padding: 9px 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); margin: 10px 0 0; }
+  .ms-songs { margin: 8px 0 0; padding-left: 1.2em; font-size: 0.9rem; color: var(--muted); }
+  .ms-foot-links { margin-top: 22px; }
+  .ms-report { color: var(--muted); text-decoration: none; display: inline-flex; gap: 6px; align-items: center; font-size: 0.88rem; }
+  .ms-check { flex: none; width: 20px; height: 20px; margin: 20px 0 0; accent-color: var(--button); }
+  .ms-srow .ms-cover { width: 56px; height: 56px; }
+  .ms-state { font-size: 0.85rem; margin-top: 3px; color: var(--muted); }
+  .ms-state.ms-need { color: var(--accent); font-weight: 600; }
+  .ms-state.ms-ok { font-weight: 600; }
+  .ms-state.ms-dis { font-weight: 400; }
+  .ms-inline { margin-left: 8px; font-weight: 600; }
+  .ms-fields { margin: 10px 0 2px; display: flex; flex-direction: column; gap: 10px; }
+  .ms-field label { display: block; margin-bottom: 4px; font-size: 0.88rem; }
+  .ms-hint { color: var(--muted); }
+  .ms-ta { width: 100%; min-height: 0; height: auto; box-sizing: border-box; border-radius: 12px; border: 1px solid var(--line); padding: 9px 11px; font: inherit; font-size: 0.92rem; line-height: 1.4; background: var(--bg); color: var(--fg); resize: vertical; }
+  .ms-ta:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+  .ms-meter { font-size: 0.78rem; color: var(--muted); text-align: right; margin-top: 3px; }
+  .ms-meter.ms-short { color: var(--accent); }
+  .ms-mini { font-size: 0.82rem; color: var(--muted); display: flex; gap: 6px; align-items: flex-start; }
+  .ms-shown { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; font-size: 0.9rem; margin-bottom: 10px; }
+  .ms-shown-select { flex: 1 1 0; min-width: 0; width: auto; margin: 0; height: 34px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--fg); font: inherit; font-weight: 600; padding: 0 10px; max-width: 100%; }
+  .ms-shown-name { flex: 1 1 100%; height: 36px; border-radius: 10px; border: 1px solid var(--line); padding: 0 10px; font: inherit; background: var(--bg); color: var(--fg); box-sizing: border-box; }
+  .ms-apply { width: 100%; justify-content: center; margin: 0; padding: 13px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--muted); font-weight: 700; font-size: 1rem; }
+  .ms-apply.ms-has { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
+  .ms-apply .fe-icon { display: flex; }
+  .ms-radios { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 12px; }
+  .ms-radio { display: flex; gap: 10px; align-items: center; }
+  .msd-cloud { line-height: 2; margin: 4px 0 10px; }
+  .msd-word { display: inline; margin: 0 10px 0 0; padding: 0; min-height: 0; background: none; border: 0; box-shadow: none; font: inherit; font-weight: 600; color: var(--fg); white-space: nowrap; cursor: pointer; }
+  .msd-n { color: var(--muted); font-weight: 400; }
+  .msd-word.msd-hidden { text-decoration: line-through; text-decoration-thickness: 1.5px; color: var(--muted); font-weight: 400; }
+  .msd-report { border-top: 1px solid var(--line); padding: 8px 0; font-size: 0.9rem; }
+  .msd-report .row { margin: 6px 0 0; }
 </style>
 <script>
   // If the page's own script never starts (a file that did not load, an old copy kept by the browser, an error), the page says so,
@@ -1335,7 +1403,7 @@
     <details id="guideSection" class="card" hidden>
       <summary>A guide for facilitators</summary>
       <details class="gd-topic" id="gdLong" data-icon="clock"><summary>Designed for long playlists</summary>
-        <p>This app draws songs from playlists you already have. It works best with long playlists, each one a mood or a stage of the ceremony: settling, rising, the peak, landing, rest. A recipe puts them in order and says how long each part lasts. With shorter playlists it might be hard to fill a longer segment of a recipe, and the app won’t be able to build as many playlists out of it. If you don’t organize your music this way and would like a jump start, you’re welcome to <button type="button" class="linklike" data-guide="gdStart">use my public playlists</button>.</p>
+        <p>This app draws songs from playlists you already have. It works best with long playlists, each one a mood or a stage of the ceremony: settling, rising, the peak, landing, rest. A recipe puts them in order and says how long each part lasts. With shorter playlists it might be hard to fill a longer segment of a recipe, and the app won’t be able to build as many playlists out of it.</p>
       </details>
       <details class="gd-topic" id="gdNot" data-icon="ban"><summary>What it doesn’t do</summary>
         <p>It doesn’t find new music or sort your library. It only picks from the playlists you have already created, so what plays is always your choice.</p>
@@ -1362,12 +1430,6 @@
       </details>
       <details class="gd-topic" id="gdNew" data-icon="musicplus"><summary>Adding new music</summary>
         <p>If, like me, you add new music to your collection over time, I have good news for you: the app can re-build all the playlists it previously built and integrate all your new music into them. If you’ve added enough new music to your collection, it might even be able to build more playlists from a given recipe than it was able to before. This will replace the ones built before with the new music mixed in. A new build starts fresh, so songs from earlier playlists can come back. If a client is partway through a series, finish it before building again. The app gives you an option to keep the previously built playlists when you build new ones.</p>
-      </details>
-      <details class="gd-topic" id="gdStart" data-icon="sprout"><summary>Playlists to start from</summary>
-        <p>If your music isn’t organized into long playlists yet, you’re welcome to use some of mine.</p>
-        <p>Add one to your Spotify and it becomes your own private copy, yours to change as you like. Then choose it in a recipe.</p>
-        <ul id="gdStartList" class="st-list"></ul>
-        <p>You can listen to them first on <a href="https://open.spotify.com/user/1242285637/playlists" target="_blank" rel="noopener noreferrer">my public playlists</a>.</p>
       </details>
     </details>
 
@@ -1445,6 +1507,18 @@
     <!-- Developer options: opened only by holding the app menu's header for 3 seconds (editor.js, watchDevHold), with nothing on screen that shows it -->
     <details id="devOptions" class="card" hidden>
       <summary>Developer options</summary>
+      <details class="gd-topic" data-icon="swap"><summary>Music sharing</summary>
+      <p class="muted">Find playlists other facilitators share, and share your own. Here until it moves to the app menu.</p>
+      <div class="row"><button id="devOpenSharing" type="button"><img class="btn-icon" src="icons/start.svg" alt="" width="20" height="20"><span class="btn-label">Open Music sharing</span></button></div>
+      </details>
+      <details class="gd-topic" data-icon="tag"><summary>Music sharing tags</summary>
+      <p class="muted">Every word and phrase in more than one shared playlist, by how many use it. <span data-act>Click</span> a word to hide it or show it again. <b>Bold</b> is shown as a tag, <s>struck</s> is hidden. Words such as music, session and people start hidden, and uses after no, not or without are not counted.</p>
+      <div id="devTagWords"></div>
+      </details>
+      <details class="gd-topic" data-icon="flag"><summary>Music sharing reports</summary>
+      <p class="muted">Shared playlists that were reported, or hidden. Each report is also emailed to you. Three reports from different people hide a playlist until you look.</p>
+      <div id="devReportList"></div>
+      </details>
       <details class="gd-topic" data-icon="reset"><summary>Start over</summary>
       <p class="muted">Signs out and erases everything this app keeps in this browser, like Sign out and clear data, but copies the Client ID to the clipboard first, so setting up again is a paste.</p>
       <div class="row"><button id="devStartOver" type="button"><img class="btn-icon" src="icons/clear.svg" alt="" width="20" height="20"><span class="btn-label">Start over</span></button></div>
@@ -1452,11 +1526,6 @@
       <details class="gd-topic" data-icon="copy"><summary>Copy Spotify record</summary>
       <p class="muted">The app’s record of requests to Spotify and its rate limits, to paste into the chat.</p>
       <div class="row"><button id="devCopyRecord" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy Spotify record</span></button></div>
-      </details>
-      <details class="gd-topic" data-icon="sprout"><summary>Copy starter playlists</summary>
-      <p class="muted">Choose your playlists to offer in Playlists to start from. Their songs, name, description and cover are copied, to paste into the chat.</p>
-      <div id="devStarterList" class="dev-starter-list"></div>
-      <div class="row"><button id="devCopyStarters" type="button" disabled><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy manifests</span></button></div>
       </details>
       <details class="gd-topic" data-icon="cpu"><summary>Python status</summary>
       <p class="muted">The code that builds your playlists is written in Python and runs inside your browser, so nothing about your music is sent to a server.</p>
@@ -1477,6 +1546,10 @@
       <details class="gd-topic" data-icon="globe"><summary>Who the page talks to</summary>
       <p>Spotify, for everything about your music. The page's code comes from GitHub, and the Python it runs comes from a public code host (jsDelivr). Ko-fi's page loads only if you <span data-act>press</span> Support me, and the report form opens only if you choose to report a problem<span id="privacyFeedbackWho" hidden>, and the feedback form only if you choose to send feedback</span>.</p>
       <p id="privacyWaitRelay" hidden>When Spotify limits how often this app may ask it for things, it says how long to wait, but in a way a web page cannot read. So the page asks once more through a small relay on Cloudflare, run by the developer of this app, which can read it. That request carries your temporary Spotify sign-in, which expires within an hour, and which kind of request was refused (for a playlist, its Spotify ID), and nothing else. The relay passes it to Spotify, sends back only the wait, and keeps nothing.</p>
+      </details>
+      <details class="gd-topic" data-icon="swap" id="privacyMusicSharing" hidden><summary>Music sharing</summary>
+      <p>Music sharing runs on a small service on Cloudflare, run by the developer of this app. Browsing it sends nothing about you. When you share a playlist, it keeps the playlist's name, its picture's address, the name you chose to be shown as (or none), your two descriptions, its songs as Spotify IDs and recording codes (no titles), how many songs and how long, and the few artists heard most. It does not keep your Spotify username: your temporary sign-in is checked with Spotify and only a scrambled code made from your Spotify ID is kept, so it knows which shares are yours. Stop sharing a playlist and it is deleted.</p>
+      <p>A report keeps its reason, your note and the same kind of scrambled code, and is emailed to the developer. Adding a shared playlist makes a private copy in your Spotify, and this browser remembers it is a copy so it is not shared again. Nothing records who added what.</p>
       </details>
       <details class="gd-topic" data-icon="chart"><summary>Anonymous visit counts</summary>
       <p>The page keeps simple counts, to see how many people use this app and how it is used. It counts visits with GoatCounter, a service that uses no cookies and does not use unique identifiers to follow people around the web. It records that the page was opened, with the browser, screen size, country, and the site you came from, but not who you are. It also counts a few actions: the first time a browser connects to Spotify, how many playlists get created, when Support me is opened, and the kind of connection problem that happened. It never receives playlist names, recipes, song titles, or your Client ID. A small marker in this browser remembers that your first connection was counted, so it is counted once.</p>
@@ -1511,9 +1584,17 @@
     <div id="infoSlot"></div>
   </div>
 </div>
-<script src="starters.js?v=2026-11-05s"></script>
-<script src="formats.js?v=2026-11-05s"></script>
-<script src="editor.js?v=2026-11-05s"></script>
-<script src="app.js?v=2026-11-05s"></script>
+<!-- Music sharing (sharing.js): opened from Developer options until it is ready for the app menu -->
+<div id="msOverlay" class="app-overlay" hidden>
+  <div id="msDialog" class="app-dialog" role="dialog" aria-modal="true" aria-label="Music sharing" tabindex="-1">
+    <div id="msBand"><h2 id="msHead"></h2><button id="msClose" type="button" aria-label="Close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div id="msBody"></div>
+    <div id="msFoot" hidden></div>
+  </div>
+</div>
+<script src="formats.js?v=2026-11-06a"></script>
+<script src="editor.js?v=2026-11-06a"></script>
+<script src="app.js?v=2026-11-06a"></script>
+<script src="sharing.js?v=2026-11-06a"></script>
 </body>
 </html>
