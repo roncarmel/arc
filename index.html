@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-06b">
-<script src="theme.js?v=2026-11-06b"></script>
+<meta name="app-version" content="2026-11-06c">
+<script src="theme.js?v=2026-11-06c"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ceremony Playlist Builder</title>
@@ -933,13 +933,19 @@
   #msBand { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; background: var(--accent-deep, #a8217c); background: linear-gradient(135deg, var(--accent-deep, #a8217c), color-mix(in srgb, var(--accent-deep, #a8217c) 76%, #fff 24%)); color: var(--on-deep, #fff); }
   #msHead { margin: 0; font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 10px; color: var(--on-deep, #fff); min-width: 0; }
   #msHead .fe-icon { display: flex; } #msHead .fe-icon svg { width: 22px; height: 22px; }
-  #msHead .ms-back { background: none; border: 0; box-shadow: none; padding: 0; margin: 0 0 0 -8px; width: 40px; height: 40px; min-height: 0; color: var(--on-deep, #fff); display: inline-flex; align-items: center; justify-content: center; }
+  /* a playlist's page: Back to the list, a pink pill that stays at the top while the page scrolls */
+  .ms-back { position: sticky; top: -14px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; margin: -4px 0 12px -4px; min-height: 0; height: 38px; padding: 0 16px 0 8px; border-radius: 999px; border: 1px solid var(--accent-tint-border); background: var(--bg); background-image: linear-gradient(var(--accent-tint), var(--accent-tint)); color: var(--accent); font-weight: 700; font-size: 0.95rem; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18); }
+  .ms-back .fe-icon { display: flex; } .ms-back .fe-icon svg { width: 20px; height: 20px; }
+  /* list and playlist page slide past each other (slideBody); the leaving one is a copy */
+  #msDialog { position: relative; }
+  .ms-slide-ghost { position: absolute; margin: 0; overflow: hidden; pointer-events: none; box-sizing: border-box; }
   #msClose { flex: none; margin: 0; width: 40px; height: 40px; min-height: 0; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.16); border: 1.5px solid rgba(255, 255, 255, 0.55); color: var(--on-deep, #fff); box-shadow: none; }
   #msBody { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 14px 18px 24px; }
   #msFoot { flex: none; border-top: 1px solid var(--line); padding: 12px 18px 16px; background: var(--bg); }
+  /* the chosen tab is pink like a chosen tag, so it reads in both light and dark */
   .ms-tabs { display: flex; gap: 6px; margin: 0 0 14px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; }
-  .ms-tabs button { flex: 1; justify-content: center; margin: 0; min-height: 0; padding: 8px; border-radius: 999px; border: 0; background: none; box-shadow: none; font-weight: 600; color: var(--muted); }
-  .ms-tabs button.ms-on { background: var(--bg); color: var(--fg); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); }
+  .ms-tabs button { flex: 1; justify-content: center; margin: 0; min-height: 0; padding: 8px; border-radius: 999px; border: 1px solid transparent; background: none; box-shadow: none; font-weight: 600; color: var(--fg); opacity: 0.75; }
+  .ms-tabs button.ms-on { opacity: 1; background: var(--button); color: var(--on-button, #fff); border-color: transparent; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18); }
   .ms-search { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--muted); box-sizing: border-box; }
   .ms-search .fe-icon { display: flex; }
   .ms-search-input { flex: 1; min-width: 0; border: 0; background: none; color: var(--fg); font: inherit; outline: none; padding: 0; height: 40px; }
@@ -966,7 +972,8 @@
   .ms-desc { color: var(--muted); font-size: 0.92rem; line-height: 1.4; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .ms-ov { font-size: 0.82rem; font-weight: 600; color: var(--accent); margin-top: 4px; }
   .ms-add { flex: none; margin: 0; min-height: 0; padding: 6px 12px; font-size: 0.88rem; font-weight: 600; background: transparent; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; box-shadow: none; white-space: nowrap; }
-  .ms-add.ms-done, .ms-add.ms-busy { border-color: var(--line); color: var(--muted); opacity: 1; }
+  .ms-add.ms-done, .ms-add.ms-busy, .ms-add.ms-yours { border-color: var(--line); color: var(--muted); opacity: 1; }
+  .ms-yours { display: inline-flex; align-items: center; gap: 6px; box-sizing: border-box; cursor: default; }
   .ms-add .fe-icon, .ms-addbig .fe-icon { display: flex; }
   .ms-error { color: var(--accent); font-size: 0.88rem; margin: 4px 0 0; }
   .ms-note { color: var(--muted); margin: 16px 0; }
@@ -976,12 +983,12 @@
   .ms-cover-big { width: 120px; height: 120px; border-radius: 12px; box-shadow: 0 10px 26px -8px rgba(0, 0, 0, 0.4); }
   .ms-actions { display: flex; gap: 10px; margin: 18px 0 10px; }
   .ms-addbig { flex: 1; justify-content: center; margin: 0; padding: 12px 16px; border-radius: 999px; border: 0; background: var(--button); color: var(--on-button, #fff); font-weight: 700; font-size: 1rem; }
-  .ms-addbig.ms-done, .ms-addbig.ms-busy { background: var(--bg); border: 1px solid var(--line); color: var(--muted); opacity: 1; }
+  .ms-addbig.ms-done, .ms-addbig.ms-busy, .ms-addbig.ms-yours { background: var(--bg); border: 1px solid var(--line); color: var(--muted); opacity: 1; }
   .ms-sec { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 18px 0 4px; }
   .ms-long { line-height: 1.5; margin: 0 0 6px; white-space: pre-line; }
   .ms-facts { margin-top: 14px; font-size: 0.88rem; line-height: 1.5; padding: 10px 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); }
   .ms-facts-h { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 4px; }
-  .ms-facts-h .fe-icon, .ms-overlap .fe-icon, .ms-mini .fe-icon { display: flex; color: var(--accent); }
+  .ms-facts-h .fe-icon, .ms-overlap .fe-icon { display: flex; color: var(--accent); }
   .ms-overlap { display: flex; gap: 8px; align-items: flex-start; font-size: 0.88rem; padding: 9px 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); margin: 10px 0 0; }
   .ms-songs { margin: 8px 0 0; padding-left: 1.2em; font-size: 0.9rem; color: var(--muted); }
   .ms-foot-links { margin-top: 22px; }
@@ -989,18 +996,18 @@
   .ms-check { flex: none; width: 20px; height: 20px; margin: 20px 0 0; accent-color: var(--button); }
   .ms-srow .ms-cover { width: 56px; height: 56px; }
   .ms-state { font-size: 0.85rem; margin-top: 3px; color: var(--muted); }
+  .ms-state:empty { display: none; }
   .ms-state.ms-need { color: var(--accent); font-weight: 600; }
   .ms-state.ms-ok { font-weight: 600; }
   .ms-state.ms-dis { font-weight: 400; }
   .ms-inline { margin-left: 8px; font-weight: 600; }
-  .ms-fields { margin: 10px 0 2px; display: flex; flex-direction: column; gap: 10px; }
-  .ms-field label { display: block; margin-bottom: 4px; font-size: 0.88rem; }
-  .ms-hint { color: var(--muted); }
-  .ms-ta { width: 100%; min-height: 0; height: auto; box-sizing: border-box; border-radius: 12px; border: 1px solid var(--line); padding: 9px 11px; font: inherit; font-size: 0.92rem; line-height: 1.4; background: var(--bg); color: var(--fg); resize: vertical; }
+  .ms-fields { margin: 8px 0 2px; display: flex; flex-direction: column; gap: 8px; }
+  .ms-fields[hidden] { display: none; }
+  .ms-flabel { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 3px; font-size: 0.86rem; }
+  .ms-ta { display: block; width: 100%; min-height: 0; height: auto; box-sizing: border-box; border-radius: 10px; border: 1px solid var(--line); padding: 6px 10px; font: inherit; font-size: 0.92rem; line-height: 1.35; background: var(--bg); color: var(--fg); resize: none; overflow: hidden; }
   .ms-ta:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
-  .ms-meter { font-size: 0.78rem; color: var(--muted); text-align: right; margin-top: 3px; }
+  .ms-meter { font-size: 0.78rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .ms-meter.ms-short { color: var(--accent); }
-  .ms-mini { font-size: 0.82rem; color: var(--muted); display: flex; gap: 6px; align-items: flex-start; }
   .ms-shown { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; font-size: 0.9rem; margin-bottom: 10px; }
   .ms-shown-select { flex: 1 1 0; min-width: 0; width: auto; margin: 0; height: 34px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--fg); font: inherit; font-weight: 600; padding: 0 10px; max-width: 100%; }
   .ms-shown-name { flex: 1 1 100%; height: 36px; border-radius: 10px; border: 1px solid var(--line); padding: 0 10px; font: inherit; background: var(--bg); color: var(--fg); box-sizing: border-box; }
@@ -1597,9 +1604,9 @@
     <div id="msFoot" hidden></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-06b"></script>
-<script src="editor.js?v=2026-11-06b"></script>
-<script src="app.js?v=2026-11-06b"></script>
-<script src="sharing.js?v=2026-11-06b"></script>
+<script src="formats.js?v=2026-11-06c"></script>
+<script src="editor.js?v=2026-11-06c"></script>
+<script src="app.js?v=2026-11-06c"></script>
+<script src="sharing.js?v=2026-11-06c"></script>
 </body>
 </html>

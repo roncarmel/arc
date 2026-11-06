@@ -843,9 +843,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-06b" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-06c" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-06b/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-06c/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3038,7 +3038,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-06b", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-06c", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4885,6 +4885,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ms_d.querySelector("#msResults .ms-row").click();
   var ms_body = () => ms_d.getElementById("msBody").textContent;
   check("a playlist's page has who shared it, The music, How I use it and a line about its songs", ms_d.querySelector("#msBody h3").textContent === "Deep water" && /Shared by Maya/.test(ms_body()) && /The music/.test(ms_body()) && /How I use it/.test(ms_body()) && /100 songs, 6 h.*Artists heard most: Brian Eno, Hammock\./.test(ms_d.querySelector(".ms-facts").textContent));
+  check("the title bar stays the same on a playlist's page, and Back to the list is in the page", ms_d.getElementById("msHead").textContent === "Music sharing" && !ms_d.querySelector("#msHead button") && /All playlists/.test(ms_d.getElementById("msBack").textContent));
   check("it says how many songs are already in the recipes", /20 of these songs \(20%\) are already in your recipes/.test(ms_body()));
   ms_d.querySelector(".ms-overlap .linklike").click();
   check("Show them lists those songs by the person's own song names", ms_d.querySelectorAll(".ms-songs li").length === 20 && !Array.from(ms_d.querySelectorAll(".ms-songs li")).some((l) => l.textContent === "A song"));
@@ -4898,8 +4899,12 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => /Added/.test((ms_d.querySelector(".ms-addbig") || {}).textContent || ""), 5000);
   var ms_made = log.filter((e) => e.url.endsWith("/v1/me/playlists") && (e.init.method || "") === "POST").map((e) => JSON.parse(e.init.body)).pop();
   check("Add to my Spotify makes a private copy with its name, and the device remembers it as a copy", ms_made && ms_made.name === "Deep water" && ms_made.public === false && "a" in ms_w.eval("sharingCopies()"));
-  ms_d.querySelector("#msHead .ms-back").click();
+  ms_d.getElementById("msBack").click();
   check("added playlists are hidden from the list", ms_names().length === 3 && !ms_names().includes("Deep water"));
+  ms_w.eval(`sharing.mine = [{ id: sharing.library.shares.find((x) => x.name === "Forest floor").id, playlist: "x" }]; renderSharing();`);
+  var ms_fr = Array.from(ms_d.querySelectorAll("#msResults .ms-row")).find((r) => /Forest floor/.test(r.textContent));
+  check("the person's own share says Yours in place of Add", !!ms_fr && !!ms_fr.querySelector(".ms-yours") && /Yours/.test(ms_fr.textContent) && !Array.from(ms_fr.querySelectorAll("button")).some((b) => /Add/.test(b.textContent)));
+  ms_w.eval("sharing.mine = null; renderSharing();");
   ms_d.querySelectorAll(".ms-tabs button")[1].click();
   await waitFor(() => ms_d.querySelectorAll(".ms-srow").length > 0, 5000);
   var ms_row = (id) => ms_d.getElementById("msRow-" + id);
@@ -4915,9 +4920,12 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var ms_fill = (id, n, text) => { const t = ms_row(id).querySelectorAll("textarea")[n]; t.value = text; t.dispatchEvent(new ms_w.Event("input")); };
   ms_fill("p3", 0, "Warm, evocative songs with voices and strings, rising slowly.");
   ms_fill("p3", 1, "For the peak");
-  check("each needs at least 40 characters on how it is used too", /Needs more on how you use it/.test(ms_row("p3").textContent) && ms_apply().textContent === "No changes");
+  var ms_labels = Array.from(ms_row("p3").querySelectorAll(".ms-flabel")).map((l) => l.textContent);
+  check("each needs at least 40 characters on how it is used too, said by the counter on its label line", ms_labels[1] === "How I useit12, at least 40".replace("useit", "use it") && ms_row("p3").querySelector(".ms-flabel .ms-meter.ms-short") === ms_row("p3").querySelectorAll(".ms-meter")[1] && ms_apply().textContent === "No changes", JSON.stringify(ms_labels));
+  check("the boxes are titled Description of music and How I use it, start at two lines, and the old note about the songs is gone", /^Description of music\d+ of 400$/.test(ms_labels[0]) && Array.from(ms_row("p3").querySelectorAll("textarea")).every((t) => t.rows === 2) && !ms_row("p3").querySelector(".ms-mini"), JSON.stringify(ms_labels));
+  check("under the name, the line about the songs replaces the song count once ticked", /^130 songs, [^.]*\.( Artists heard most: .*)?$/.test(ms_row("p3").querySelector(".ms-sub").textContent), ms_row("p3").querySelector(".ms-sub").textContent);
   ms_fill("p3", 1, "For the peak, when people are ready for something stronger.");
-  check("when both are filled the button says what it will do", ms_apply().textContent === "Share 1" && !ms_apply().disabled);
+  check("when both are filled the button says what it will do, and the row says nothing (no Ready)", ms_apply().textContent === "Share 1" && !ms_apply().disabled && ms_d.getElementById("msState-p3").textContent === "");
   ms_d.getElementById("msClose").click();
   await waitFor(() => !!ms_d.getElementById("feSyncChoice0"), 3000);
   check("closing with changes not applied asks whether to apply them", /Apply your changes\?/.test(ms_d.getElementById("feSyncChoice0").closest(".fe-dialog").textContent) && ms_d.getElementById("feSyncChoice0").textContent === "Apply");
@@ -4928,8 +4936,20 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ms_w.eval("openSharing('share')");
   await waitFor(() => !!ms_row("p3") && /Shared/.test(ms_row("p3").textContent), 5000);
   check("a shared playlist shows as shared and ticked", ms_row("p3").querySelector("input").checked);
+  check("a shared playlist is folded: its songs and length (no artists), Shared and Edit details, no boxes", !ms_row("p3").querySelector("textarea") && /^Shared .*Edit details$/.test(ms_d.getElementById("msState-p3").textContent) && /^130 songs, [^.]*\.$/.test(ms_row("p3").querySelector(".ms-sub").textContent), ms_d.getElementById("msState-p3").textContent + " / " + ms_row("p3").querySelector(".ms-sub").textContent);
+  ms_d.getElementById("msEdit-p3").click();
+  await waitFor(() => !!ms_row("p3").querySelector("textarea"), 2000);
+  check("Edit unfolds the same two boxes with its words, and Done takes its place", ms_row("p3").querySelectorAll("textarea").length === 2 && /^Warm, evocative/.test(ms_row("p3").querySelector("textarea").value) && !!ms_d.getElementById("msDone-p3"));
+  ms_fill("p3", 1, "For the peak, when people are ready for something stronger, and after.");
+  check("a change keeps Done and the bottom button says Update 1", !!ms_d.getElementById("msDone-p3") && ms_apply().textContent === "Update 1", ms_apply().textContent);
+  ms_d.getElementById("msDone-p3").click();
+  await waitFor(() => !ms_row("p3").querySelector("textarea"), 2000);
+  check("Done folds it again, saying Changes ready, with Edit", /^Changes ready.*Edit details$/.test(ms_d.getElementById("msState-p3").textContent) && ms_apply().textContent === "Update 1", ms_d.getElementById("msState-p3").textContent);
+  ms_apply().click();
+  await waitFor(() => ms_apply().textContent === "No changes", 5000);
+  check("after the update goes through the row stays folded", !ms_row("p3").querySelector("textarea") && /^Shared .*Edit details$/.test(ms_d.getElementById("msState-p3").textContent), ms_d.getElementById("msState-p3").textContent);
   ms_row("p3").querySelector("input").click();
-  await new Promise((r) => setTimeout(r, 50));
+  await waitFor(() => ms_apply().textContent === "Stop sharing 1", 2000);
   check("unticking it asks to stop sharing", ms_apply().textContent === "Stop sharing 1");
   ms_apply().click();
   await waitFor(() => ms_sh.deletes.length === 1 && ms_apply().textContent === "No changes", 5000);
@@ -5105,7 +5125,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-06b"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-06c"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

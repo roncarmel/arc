@@ -9,6 +9,7 @@ const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_TEXT_MIN = 40, SHARE_TEXT_MAX = 400, SHARE_MIN_MS = 60 * 60 * 1000;
 const SHARING_COPIES_KEY = "sharingCopies";   // { shared playlist id: the person's copy's Spotify id }
 const SHARING_SHOWN_KEY = "sharingShownAs";   // { mode: "spotify" | "custom" | "anon", name }
+const SHARING_MINE_KEY = "sharingMineIds";    // the ids of the person's own shares, so Find playlists says Shared by you at once (refreshed by loadMine)
 const OVERLAP_MIN_SONGS = 100, OVERLAP_MIN_PLAYLISTS = 2, OVERLAP_MIN_SHARES = 3;   // when "already in your recipes" is worth showing
 const OVERLAP_READ_GAP_MS = 2000;   // reading recipe playlists the browser does not have yet: one request every 2 seconds
 const TAGS_STEP = 10;
@@ -64,6 +65,7 @@ async function loadMine() {
   sharing.mineError = "";
   try {
     sharing.mine = (await sharingFetch("GET", "/mine")).shares;
+    try { localStorage.setItem(SHARING_MINE_KEY, JSON.stringify(sharing.mine.map((s) => s.id))); } catch (err) { /* private browsing */ }
     for (const s of sharing.mine) {
       const pick = sharing.picks[s.playlist];
       if (!pick || !pick.touched) sharing.picks[s.playlist] = { on: true, music: s.music, use: s.use, shared: s, touched: false, update: false };
@@ -102,8 +104,7 @@ function shownAsName() {
 // ---------------------------------------------------------------- words and numbers
 const songCountText = (n) => plural(n, "song");
 function shareFacts(s) {
-  const avg = Math.max(1, Math.round(s.avgMs / 60000));
-  let text = `${songCountText(s.count)}, ${lengthText(s.ms / 60000)}. Songs are ${avg} min on average.`;
+  let text = `${songCountText(s.count)}, ${lengthText(s.ms / 60000)}.`;
   if (s.artists && s.artists.length) text += ` Artists heard most: ${s.artists.join(", ")}.`;
   return text;
 }
@@ -286,7 +287,7 @@ function openSharing(tab = "find") {
   renderSharing();
   $("msDialog").focus({ preventScroll: true });
   loadLibrary();
-  if (tab === "share") loadMine();
+  loadMine();   // also on Find playlists, so the person's own shares say Shared by you
 }
 async function closeSharing() {
   if (!(await settlePending())) return;
@@ -320,8 +321,7 @@ function renderSharing() {
   if (!body || $("msOverlay").hidden) return;
   const head = $("msHead");
   head.textContent = "";
-  if (sharing.detail) head.appendChild(feEl("button", { type: "button", class: "ms-back", "aria-label": "Back", onClick: () => { sharing.detail = null; renderSharing(); } }, feIcon("back")));
-  else head.appendChild(feIcon("swap"));
+  head.appendChild(feIcon("swap"));   // the title bar is the same on every page of the popup
   head.appendChild(feEl("span", { text: "Music sharing" }));
   const keepScroll = body.scrollTop;
   body.textContent = "";
@@ -398,13 +398,15 @@ function shareCoverEl(s, cls = "ms-cover") {
   return s.cover ? feEl("img", { class: cls, src: s.cover, alt: "", loading: "lazy" }) : feEl("span", { class: cls + " ms-nocover" }, feIcon("notes"));
 }
 function addButton(s, big = false) {
+  // the person's own share: nothing to add (listed for now so they can see it as others do)
+  if (isMine(s)) return feEl("span", { class: big ? "ms-addbig ms-yours" : "ms-add ms-yours" }, feIcon("user"), big ? "Shared by you" : "Yours");
   if (sharing.adding.has(s.id)) return feEl("button", { type: "button", class: big ? "ms-addbig ms-busy" : "ms-add ms-busy", disabled: true }, "Adding...");
   if (isAdded(s)) return feEl("button", { type: "button", class: big ? "ms-addbig ms-done" : "ms-add ms-done", disabled: true }, feIcon("check"), "Added");
   return feEl("button", { type: "button", class: big ? "ms-addbig" : "ms-add", disabled: connection !== "ready", onClick: (e) => { e.stopPropagation(); addShared(s); } }, big ? feIcon("plus") : null, big ? "Add to my Spotify" : "Add");
 }
 function shareRow(s, ov) {
   const per = ov && ov.per[s.id];
-  const row = feEl("div", { class: "ms-row", role: "button", tabindex: "0", onClick: () => { sharing.detail = s.id; sharing.showOverlapSongs = false; renderSharing(); $("msBody").scrollTop = 0; } },
+  const row = feEl("div", { class: "ms-row", role: "button", tabindex: "0", onClick: () => openDetail(s.id) },
     shareCoverEl(s),
     feEl("div", { class: "ms-text" },
       feEl("div", { class: "ms-name", text: s.name }),
@@ -416,11 +418,43 @@ function shareRow(s, ov) {
   row.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === row) { e.preventDefault(); row.click(); } });
   return row;
 }
+// A playlist's page slides in from the right, pushing the list out to the left; Back reverses it. The list keeps where it was scrolled to.
+function openDetail(id) {
+  sharing.listScroll = $("msBody").scrollTop;
+  slideBody(1, () => { sharing.detail = id; sharing.showOverlapSongs = false; renderSharing(); $("msBody").scrollTop = 0; });
+}
+function closeDetail() {
+  slideBody(-1, () => { sharing.detail = null; renderSharing(); $("msBody").scrollTop = sharing.listScroll || 0; });
+}
+function slideBody(dir, change) {
+  const body = $("msBody");
+  if (typeof motionAllowed !== "function" || !motionAllowed(body)) { change(); return; }
+  // the old page stays drawn as an untouchable copy while it leaves
+  const ghost = body.cloneNode(true);
+  ghost.removeAttribute("id");
+  for (const el of ghost.querySelectorAll("[id]")) el.removeAttribute("id");
+  ghost.classList.add("ms-slide-ghost");
+  ghost.setAttribute("aria-hidden", "true");
+  ghost.inert = true;
+  Object.assign(ghost.style, { top: body.offsetTop + "px", left: body.offsetLeft + "px", width: body.offsetWidth + "px", height: body.offsetHeight + "px" });
+  const top = body.scrollTop;
+  body.after(ghost);
+  ghost.scrollTop = top;
+  change();
+  const opts = { duration: 320, easing: EASE_OUT };
+  ghost.animate([{ transform: "translateX(0)", opacity: 1 }, { transform: `translateX(${-dir * 40}%)`, opacity: 0 }], opts).onfinish = () => ghost.remove();
+  body.animate([{ transform: `translateX(${dir * 100}%)` }, { transform: "translateX(0)" }], opts);
+}
+function isMine(s) {
+  if (sharing.mine) return sharing.mine.some((m) => m.id === s.id);
+  try { return (JSON.parse(localStorage.getItem(SHARING_MINE_KEY)) || []).includes(s.id); } catch (err) { return false; }
+}
 function renderDetail(body) {
   const s = sharing.library && sharing.library.shares.find((x) => x.id === sharing.detail);
   if (!s) { sharing.detail = null; renderSharing(); return; }
+  body.appendChild(feEl("button", { type: "button", class: "ms-back", id: "msBack", onClick: () => closeDetail() }, feIcon("back"), "All playlists"));
   body.appendChild(feEl("div", { class: "ms-hero" }, shareCoverEl(s, "ms-cover ms-cover-big"),
-    feEl("div", {}, feEl("h3", { text: s.name }), feEl("div", { class: "ms-sub" }, s.by ? `Shared by ${s.by}` : "Shared anonymously"), feEl("div", { class: "ms-sub" }, `${songCountText(s.count)} · ${lengthText(s.ms / 60000)}`))));
+    feEl("div", {}, feEl("h3", { text: s.name }), feEl("div", { class: "ms-sub" }, isMine(s) ? "Shared by you" : s.by ? `Shared by ${s.by}` : "Shared anonymously"), feEl("div", { class: "ms-sub" }, `${songCountText(s.count)} · ${lengthText(s.ms / 60000)}`))));
   body.appendChild(feEl("div", { class: "ms-actions" }, addButton(s, true)));
   if (sharing.addErrors[s.id]) body.appendChild(feEl("p", { class: "ms-error" }, sharing.addErrors[s.id]));
   body.appendChild(feEl("div", { class: "ms-sec" }, "The music"));
@@ -490,16 +524,14 @@ function pickState(p, pick) {
   if (pick.error) return { text: pick.error, ready: false, cls: "ms-need" };
   const m = pick.music.trim().length, u = pick.use.trim().length;
   if (pick.on) {
-    if (m < SHARE_TEXT_MIN && u < SHARE_TEXT_MIN) return { text: "Needs a few words on the music and how you use it", ready: false, cls: "ms-need" };
-    if (m < SHARE_TEXT_MIN) return { text: "Needs more on the music", ready: false, cls: "ms-need" };
-    if (u < SHARE_TEXT_MIN) return { text: "Needs more on how you use it", ready: false, cls: "ms-need" };
+    // too short: the counter beside the box's label says so in pink, so the row says nothing more
+    if (m < SHARE_TEXT_MIN || u < SHARE_TEXT_MIN) return { text: "", ready: false };
   }
   if (shared && !pick.on) return { text: "Will stop being shared", ready: true, cls: "ms-need" };
   if (shared && (pick.update || pick.music.trim() !== shared.music || pick.use.trim() !== shared.use)) return { text: "Changes ready", ready: true, cls: "ms-ok" };
   if (shared && p.snapshot && shared.snapshot && p.snapshot !== shared.snapshot) return { text: `Shared ${shortDate(shared.sharedAt)}. Changed in Spotify since then.`, ready: true, offerUpdate: true };
   if (shared) return { text: `Shared ${shortDate(shared.sharedAt)}${shared.hidden ? ", hidden after reports" : ""}`, ready: true };
-  if (pick.on) return { text: "Ready", ready: true, cls: "ms-ok" };
-  return { text: "", ready: false };
+  return { text: "", ready: !!pick.on };   // ticked and filled in: nothing to say, the bottom button counts it
 }
 function shortDate(ms) { const d = new Date(ms); return `${d.getDate()} ${MONTHS[d.getMonth()]}`; }
 function pendingChanges() {
@@ -542,36 +574,74 @@ function shareYoursRow(p, copy) {
   box.addEventListener("change", () => toggleShare(p, box.checked));
   const cover = p.image ? feEl("img", { class: "ms-cover", src: p.image, alt: "" }) : feEl("span", { class: "ms-cover ms-nocover" }, feIcon("notes"));
   const text = feEl("div", { class: "ms-text" }, feEl("div", { class: "ms-name" + (copy ? " ms-dim" : ""), text: p.name }),
-    feEl("div", { class: "ms-sub" }, p.count != null ? songCountText(p.count) : ""));
+    feEl("div", { class: "ms-sub" }, !copy && pick.on && songsLine(p, pick, !fieldsShown(p, pick)) || (p.count != null ? songCountText(p.count) : "")));
   if (copy) text.appendChild(feEl("div", { class: "ms-state ms-dis" }, "Added from Music sharing, so it cannot be shared again."));
   else {
-    const state = pickState(p, pick);
-    const line = feEl("div", { class: "ms-state " + (state.cls || ""), id: "msState-" + p.id }, state.text);
-    if (state.offerUpdate) line.appendChild(feEl("button", { type: "button", class: "linklike ms-inline", onClick: () => { pick.update = true; pick.touched = true; refreshRow(p); } }, "Update"));
-    text.appendChild(line);
-    if (pick.on && !pick.short && !pick.checking) text.appendChild(shareFields(p, pick));
+    text.appendChild(stateLine(p, pick));
+    if (fieldsShown(p, pick)) text.appendChild(shareFields(p, pick));
   }
   row.append(box, cover, text);
   return row;
 }
+// A shared playlist folds to its name, its songs and "Shared 6 Nov · Edit details"; Edit details unfolds the same two boxes a new share has, and Done folds them again.
+// It stays open while its words are too short to share. After a share goes through, the row folds (applyShares).
+function fieldsShown(p, pick) {
+  if (!pick.on || pick.short || pick.checking) return false;
+  return !sharedFor(p) || pick.open || !pickState(p, pick).ready;
+}
+function stateLine(p, pick) {
+  const state = pickState(p, pick), shared = sharedFor(p);
+  const line = feEl("div", { class: "ms-state " + (state.cls || ""), id: "msState-" + p.id }, state.text);
+  if (state.offerUpdate) line.appendChild(feEl("button", { type: "button", class: "linklike ms-inline", onClick: () => { pick.update = true; pick.touched = true; refreshRow(p); } }, "Update"));
+  if (shared && pick.on && state.ready) {
+    line.appendChild(pick.open
+      ? feEl("button", { type: "button", class: "linklike ms-inline", id: "msDone-" + p.id, onClick: () => foldRow(p, false) }, "Done")
+      : feEl("button", { type: "button", class: "linklike ms-inline", id: "msEdit-" + p.id, onClick: () => foldRow(p, true) }, "Edit details"));
+  }
+  return line;
+}
+async function foldRow(p, open) {
+  const pick = pickFor(p);
+  const fields = !open && $("msRow-" + p.id) && $("msRow-" + p.id).querySelector(".ms-fields");
+  if (fields) { revealSmoothly(fields, false); if (fields._fxFold) await fields._fxFold.finished.catch(() => {}); }
+  pick.open = open;
+  refreshRow(p);
+  const shown = open && $("msRow-" + p.id) && $("msRow-" + p.id).querySelector(".ms-fields");
+  if (shown) { shown.hidden = true; revealSmoothly(shown, true); }
+}
+// the line the app adds about the songs (how many, how long, the artists heard most), from the songs read when ticked, or from the share itself
+// folded (a shared row with Edit details), it is only the songs and length, to keep the row short
+function songsLine(p, pick, folded = false) {
+  const facts = (f) => folded ? shareFacts({ ...f, artists: [] }) : shareFacts(f);
+  if (pick.songs) return facts(pick.songs);
+  // the person's list of shares has no song facts; the library's copy of the same share does
+  const shared = sharedFor(p), pub = shared && sharing.library && sharing.library.shares.find((x) => x.id === shared.id);
+  return pub && pub.ms && pub.count ? facts(pub) : "";
+}
 function shareFields(p, pick) {
   const field = (key, label, hint) => {
-    const ta = feEl("textarea", { class: "ms-ta", rows: "3", maxlength: String(SHARE_TEXT_MAX), "aria-label": label });
+    // two lines to start, growing with the text (no scrolling inside the box)
+    const ta = feEl("textarea", { class: "ms-ta", rows: "2", maxlength: String(SHARE_TEXT_MAX), "aria-label": label, placeholder: hint });
     ta.value = pick[key];
-    const meter = feEl("div", { class: "ms-meter" });
+    const meter = feEl("span", { class: "ms-meter" });
     const show = () => { const n = ta.value.trim().length; meter.textContent = n < SHARE_TEXT_MIN ? `${n}, at least ${SHARE_TEXT_MIN}` : `${n} of ${SHARE_TEXT_MAX}`; meter.classList.toggle("ms-short", n < SHARE_TEXT_MIN); };
-    ta.addEventListener("input", () => { pick[key] = ta.value; pick.touched = true; show(); refreshState(p); });
+    ta.addEventListener("input", () => { pick[key] = ta.value; pick.touched = true; show(); growBox(ta); refreshState(p); });
     show();
-    return feEl("div", { class: "ms-field" }, feEl("label", {}, feEl("b", {}, label), hint ? feEl("span", { class: "ms-hint" }, " · " + hint) : null), ta, meter);
+    requestAnimationFrame(() => growBox(ta));
+    return feEl("div", { class: "ms-field" }, feEl("label", { class: "ms-flabel" }, feEl("b", {}, label), meter), ta);
   };
   return feEl("div", { class: "ms-fields" },
-    field("music", "The music", pick.fromSpotify ? "from its Spotify description" : "What kind of music is it?"),
-    field("use", "How I use it", "How and where do you use it in a ceremony?"),
-    feEl("div", { class: "ms-mini" }, feIcon("notes"), "The app adds a line about the songs: how many, how long, and the artists heard most."));
+    field("music", "Description of music", "What kind of music is it?"),
+    field("use", "How I use it", "How and where do you use it in a ceremony?"));
+}
+function growBox(ta) {
+  if (!ta.isConnected) return;
+  ta.style.height = "auto";
+  ta.style.height = ta.scrollHeight + (ta.offsetHeight - ta.clientHeight) + "px";
 }
 function refreshState(p) {
-  const pick = pickFor(p), state = pickState(p, pick), line = $("msState-" + p.id);
-  if (line) { line.className = "ms-state " + (state.cls || ""); line.textContent = state.text; }
+  const pick = pickFor(p), line = $("msState-" + p.id);
+  if (line) line.replaceWith(stateLine(p, pick));
   renderShareFoot();
 }
 function refreshRow(p) {
@@ -581,6 +651,12 @@ function refreshRow(p) {
 }
 async function toggleShare(p, on) {
   const pick = pickFor(p);
+  const open = $("msRow-" + p.id) && $("msRow-" + p.id).querySelector(".ms-fields");
+  if (!on && open && typeof revealSmoothly === "function") {
+    // the fields fold away first; the row changes once they are gone
+    revealSmoothly(open, false);
+    if (open._fxFold) await open._fxFold.finished.catch(() => {});
+  }
   pick.on = on;
   pick.touched = true;
   pick.error = "";
@@ -591,11 +667,14 @@ async function toggleShare(p, on) {
     try {
       const tracks = await loadTracks(p.id);
       pick.ms = tracks.reduce((n, t) => n + (t.ms || 0), 0);
+      pick.songs = { count: tracks.length, ms: pick.ms, avgMs: pick.ms / Math.max(1, tracks.length), artists: topArtists(tracks) };
       if (pick.ms < SHARE_MIN_MS) { pick.short = true; pick.on = false; }
     } catch (err) { pick.error = `Its songs could not be read: ${String(err.message || err).replace(/\.$/, "")}.`; pick.on = false; }
     pick.checking = false;
   }
   refreshRow(p);
+  const fields = on && $("msRow-" + p.id) && $("msRow-" + p.id).querySelector(".ms-fields");
+  if (fields && typeof revealSmoothly === "function") { fields.hidden = true; revealSmoothly(fields, true); }
 }
 function renderShareFoot() {
   const foot = $("msFoot");
@@ -659,6 +738,7 @@ async function applyShares() {
       await sharingFetch("POST", "/share", { playlist: p.id, snapshot: p.snapshot || null, name: p.name, by, music: pick.music.trim(), use: pick.use.trim(), cover, songs, ms, artists: topArtists(tracks) });
       pick.touched = false;
       pick.update = false;
+      pick.open = false;   // shared: the row folds
     } catch (err) {
       pick.error = err.code === "copy" ? err.message + " Copies cannot be shared again." : err.message;
     }
@@ -737,6 +817,6 @@ async function loadDevReports() {
   if ($("msOverlay")) $("msOverlay").addEventListener("click", (e) => { if (e.target === $("msOverlay")) closeSharing(); });
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" || !$("msOverlay") || $("msOverlay").hidden || document.querySelector(".fe-overlay")) return;
-    if (sharing.detail) { sharing.detail = null; renderSharing(); } else closeSharing();
+    if (sharing.detail) closeDetail(); else closeSharing();
   });
 })();
