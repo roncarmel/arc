@@ -437,13 +437,16 @@ function foldIntro() {
   if (!card || sharingReducedMotion() || !card.animate) { renderSharing(); info.focus(); return; }
   info.hidden = false;
   info.style.visibility = "hidden";
+  card.getAnimations().forEach((a) => a.finish()); // Got it while the card is still unfolding measures it at its full size
+  card.style.transformOrigin = "";
   const d = dialog.getBoundingClientRect(), c = card.getBoundingClientRect(), t = info.getBoundingClientRect();
   const ghost = card.cloneNode(true);
   ghost.removeAttribute("id");
   ghost.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
   ghost.classList.add("ms-introghost");
   ghost.setAttribute("aria-hidden", "true");
-  Object.assign(ghost.style, { left: c.left - d.left + "px", top: c.top - d.top + "px", width: c.width + "px", height: c.height + "px" });
+  // scaled about its own center (a card unfolded from the button carries that button's point as its origin, which sent this off screen)
+  Object.assign(ghost.style, { transformOrigin: "50% 50%", left: c.left - d.left + "px", top: c.top - d.top + "px", width: c.width + "px", height: c.height + "px" });
   dialog.appendChild(ghost);
   const dx = t.left + t.width / 2 - (c.left + c.width / 2), dy = t.top + t.height / 2 - (c.top + c.height / 2);
   // it lands as the button's own circle (each axis scaled to the button, a 50% radius), still visible, and only fades as the button pops in
@@ -487,7 +490,7 @@ function unfoldIntro() {
   card.animate([
     { height: "0px", marginBottom: "0px", paddingTop: "0px", paddingBottom: "0px", opacity: 0, transform: "scale(0.15)" },
     { height: c.height + "px", marginBottom: cs.marginBottom, paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, opacity: 1, transform: "none" },
-  ], { duration: 420, easing: EASE_OUT });
+  ], { duration: 420, easing: EASE_OUT }).finished.then(() => { card.style.transformOrigin = ""; }).catch(() => {});
   if ($("msGotIt")) $("msGotIt").focus({ preventScroll: true });
 }
 
