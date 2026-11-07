@@ -881,14 +881,15 @@ function shareFields(p, pick) {
   return feEl("div", { class: "ms-fields" }, phases, tagField(p, pick, changed),
     feEl("div", { class: "ms-field" }, feEl("label", { class: "ms-flabel" }, feEl("b", {}, "Notes"), noteMeter), ta));
 }
-// Tags are typed as words with commas or spaces between them (one word each; a suggestion of two words stays whole); each becomes a chip with an x. Tags other people use are offered under the box.
+// Tags are typed as words with commas or spaces between them (one word each; a dash joins two, and a suggestion of two words stays whole); each becomes a chip with an x. Tags other people use are offered under the box.
 function tagField(p, pick, changed) {
   const input = feEl("input", { type: "text", class: "ms-taginput", maxlength: String(SHARE_TAG_CHARS + 20), "aria-label": "Add a tag", enterkeyhint: "done", autocapitalize: "none", spellcheck: "false" });
   const box = feEl("div", { class: "ms-tagbox", onClick: (e) => { if (e.target === box) input.focus(); } });
   const meter = feEl("span", { class: "ms-meter" });
   const suggest = feEl("div", { class: "ms-suggest" });
+  const hint = feEl("p", { class: "ms-taghint", hidden: true }, "For a tag of two words, join them with a dash: no-vocals.");   // only while typing in the box
   const addOne = (part) => {
-    const t = cleanTag(part);
+    const t = cleanTag(String(part).replace(/-+/g, " "));   // a dash joins two words into one tag: no-vocals is "no vocals"
     if (t.length >= 2 && !pick.tags.includes(t) && pick.tags.length < SHARE_TAGS_MAX) pick.tags.push(t);
   };
   const add = (text) => { for (const part of String(text).split(/[,\s]+/)) addOne(part); };
@@ -929,10 +930,11 @@ function tagField(p, pick, changed) {
     if (e.key === "Enter") { e.preventDefault(); if (input.value.trim()) { add(input.value); input.value = ""; draw(); changed(); input.focus(); } }
     else if (e.key === "Backspace" && !input.value && pick.tags.length) { pick.tags.pop(); draw(); changed(); input.focus(); }
   });
-  input.addEventListener("blur", () => { if (input.value.trim()) { add(input.value); input.value = ""; draw(); changed(); } });
+  input.addEventListener("focus", () => { hint.hidden = false; });
+  input.addEventListener("blur", () => { hint.hidden = true; if (input.value.trim()) { add(input.value); input.value = ""; draw(); changed(); } });
   draw();
   return feEl("div", { class: "ms-field" }, feEl("div", { class: "ms-flabel" }, feEl("b", {}, "Tags"), meter), box,
-    suggest);
+    hint, suggest);
 }
 function growBox(ta) {
   if (!ta.isConnected) return;
