@@ -152,7 +152,7 @@ async function share(env, whoId, d) {
   const existing = await env.DB.prepare("SELECT id, hidden FROM shares WHERE owner = ? AND playlist = ?").bind(whoId, playlist).first();
   const id = existing ? existing.id : newId();
   await env.DB.prepare(`INSERT INTO shares (id, owner, playlist, snapshot, name, shown_as, phases, tags, notes, cover, songs, song_count, total_ms, avg_ms, artists, shared_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (owner, playlist) DO UPDATE SET snapshot = excluded.snapshot, name = excluded.name, shown_as = excluded.shown_as, phases = excluded.phases, tags = excluded.tags, notes = excluded.notes,
         cover = excluded.cover, songs = excluded.songs, song_count = excluded.song_count, total_ms = excluded.total_ms, avg_ms = excluded.avg_ms, artists = excluded.artists, updated_at = excluded.updated_at`)
     .bind(id, whoId, playlist, text(d.snapshot, 100) || null, name, shown, phases, JSON.stringify(tags), notes || null, cover, JSON.stringify(songs), songs.length, ms, avg, JSON.stringify(artists), now, now).run();
