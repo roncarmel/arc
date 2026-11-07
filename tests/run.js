@@ -129,6 +129,14 @@ function makeFetch(options = {}) {
       const file = fs.readFileSync(ROOT + coverFile);
       return { ok: true, status: 200, headers: { get: () => null }, arrayBuffer: async () => file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength) };
     }
+    if (method === "GET" && /\/v1\/playlists\/\w+\/images$/.test(url)) {   // a sent cover shows, unless a check says Spotify's own took its place (coverDropped: ids)
+      const id = url.match(/playlists\/(\w+)\/images$/)[1];
+      writes.push({ type: "cover check", id });
+      if (options.coverCheckStatus) return json({}, options.coverCheckStatus);
+      const sent = writes.filter((w) => w.type === "cover" && w.id === id).length;
+      const dropped = (options.coverDropped || []).includes(id) && sent < 2;
+      return json(sent && !dropped ? [{ url: "https://image-cdn-ak.spotifycdn.com/image/ab67" + id, height: null, width: null }] : [{ url: "https://mosaic.scdn.co/640/ab67" + id, height: 640, width: 640 }]);
+    }
     if (method === "PUT" && /\/v1\/playlists\/\w+\/images$/.test(url)) {
       writes.push({ type: "cover", id: url.match(/playlists\/(\w+)\/images$/)[1], contentType: (init.headers || {})["Content-Type"], base64: init.body });
       if (options.coverRateLimit) { options.coverTries = (options.coverTries || 0) + 1; return { ok: false, status: 429, headers: { get: (h) => (/retry-after/i.test(h) ? String(options.coverRateLimit) : null) }, json: async () => ({}), text: async () => "" }; }
@@ -283,7 +291,7 @@ async function boot({ url, session = {}, local = {}, fetchOptions = {}, before =
   w.indexedDB = idb || new FDBFactory();   // a browser's own database for saved songs; pass the same one to a second boot to pretend the page was reloaded
   if (before) before(w);
   w.__scriptsRequested = [];
-  w.eval(appJs.replace("const sharing = {", "var sharing = {").replace("let spotifyAnswerMs = 30000;", "var spotifyAnswerMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const BACKED_UP_MESSAGE =", "var BACKED_UP_MESSAGE =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("const saveTip =", "var saveTip =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let busy =", "var busy =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let isOwnerHere =", "var isOwnerHere =").replace("const OWNER_CLIENT_HASHES =", "var OWNER_CLIENT_HASHES =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("const GAP_STEPS =", "var GAP_STEPS ="));  // test harness only: lets a test replace the reload
+  w.eval(appJs.replace("const sharing = {", "var sharing = {").replace("let spotifyAnswerMs = 30000;", "var spotifyAnswerMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const BACKED_UP_MESSAGE =", "var BACKED_UP_MESSAGE =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("const saveTip =", "var saveTip =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let busy =", "var busy =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let isOwnerHere =", "var isOwnerHere =").replace("const OWNER_CLIENT_HASHES =", "var OWNER_CLIENT_HASHES =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("let coverRecheckMs = 6000;", "var coverRecheckMs = " + (fetchOptions.coverRecheckMs || 6000) + ";").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("const GAP_STEPS =", "var GAP_STEPS ="));  // test harness only: lets a test replace the reload
   await Promise.race([w.__main, new Promise((r) => setTimeout(r, 1500))]);   // ready as soon as the page has finished starting up
   await new Promise((r) => setTimeout(r, 30));
   global.bootCount += 1; global.bootMs += Date.now() - bootStarted;
@@ -848,9 +856,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-07d" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-07e" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-07d/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-07e/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -1967,6 +1975,22 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var cv_o3 = { coverStatus: 400 };
   var cv_w3 = await cv_run(signedIn(), cv_o3);
   check("if Spotify will not take a cover, the playlists are still made, every one is tried, and the note says how many", cv_o3.writes.filter((w) => w.type === "create").length === 2 && cv_o3.writes.filter((w) => w.type === "cover").length === 2 && /^Spotify would not accept the cover art for 2 playlists\.$/.test(cv_w3.document.getElementById("createNotes").textContent), cv_w3.document.getElementById("createNotes").textContent);
+  // Spotify's own cover taking the place of the one sent: looked at again after the build, and sent again where needed
+  var cv_o5 = { coverDropped: ["new1"], coverRecheckMs: 50 };
+  var cv_w5 = await cv_run(signedIn(), cv_o5);
+  await waitFor(() => cv_o5.writes.filter((w) => w.type === "cover check").length === 2 && cv_o5.writes.filter((w) => w.type === "cover").length === 3, 5000).catch(() => {});
+  var cv_c5 = cv_o5.writes.filter((w) => w.type === "cover" || w.type === "cover check").map((w) => w.type + ":" + w.id);
+  check("a few seconds after a build each new playlist's cover is looked at once, and where Spotify's own shows, the app's is sent again", JSON.stringify(cv_c5) === JSON.stringify(["cover:new1", "cover:new2", "cover check:new1", "cover:new1", "cover check:new2"]), JSON.stringify(cv_c5));
+  check("the build still ends as usual, with no note about it", doneSentence(cv_w5) === "2 playlists are in your Spotify library." && cv_w5.document.getElementById("createNotes").hidden);
+  var cv_o6 = { coverDropped: ["new1", "new2"], coverCheckStatus: 429, coverRecheckMs: 50 };
+  var cv_w6 = await cv_run(signedIn(), cv_o6);
+  await waitFor(() => cv_o6.writes.some((w) => w.type === "cover check"), 5000).catch(() => {});
+  await new Promise((r) => setTimeout(r, 200));
+  check("a refused or rate-limited look stops the checking quietly, sends nothing more, and starts no wait", cv_o6.writes.filter((w) => w.type === "cover check").length === 1 && cv_o6.writes.filter((w) => w.type === "cover").length === 2 && !cv_w6.localStorage.getItem("spotifyPausedUntil") && cv_w6.document.getElementById("createNotes").hidden);
+  var cv_o7 = { coverStatus: 400, coverRecheckMs: 50 };
+  var cv_w7 = await cv_run(signedIn(), cv_o7);
+  await new Promise((r) => setTimeout(r, 300));
+  check("covers Spotify refused are not looked at again: the note already says so", !cv_o7.writes.some((w) => w.type === "cover check"));
   var cv_o4 = { coverStatus: 403 };
   var cv_w4 = await cv_run(signedIn(), cv_o4, 3);
   check("if Spotify says the permission is missing, it stops asking after the first, finishes the rest, and says how to allow it", cv_o4.writes.filter((w) => w.type === "create").length === 3 && cv_o4.writes.filter((w) => w.type === "cover").length === 1 && /Sign in again with Change Spotify login in More options to allow it\./.test(cv_w4.document.getElementById("createNotes").textContent), cv_w4.document.getElementById("createNotes").textContent);
@@ -3043,7 +3067,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-07d", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-07e", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -5249,7 +5273,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-07d"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-07e"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

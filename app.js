@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-07d";
+const APP_VERSION = "2026-11-07e";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1905,6 +1905,25 @@ async function offerLimitRecord() {
   showNotices([{ text, icon: "copy", hold: true, actions: [{ label: "Copy", run: () => copyLimitRecord() }] }]);
 }
 
+// Spotify sometimes keeps its own cover (four album covers) over the one the app sent: it makes that cover after songs are added, and it can land after
+// the upload, which Spotify had accepted. So a few seconds after a build, each new playlist's cover is looked at once, and the app's is sent again where
+// Spotify's own shows. Never waited for, and quiet: a refusal or a rate limit stops it, and the playlists are fine either way.
+let coverRecheckMs = 6000;
+async function recheckCovers(ids, cover) {
+  for (const id of ids) {
+    try {
+      const images = await spotifyRequest("GET", `/playlists/${id}/images`, { noWait: true });
+      const url = (Array.isArray(images) && images[0] && images[0].url) || "";
+      if (url && !/^https:\/\/mosaic\.scdn\.co\//.test(url)) continue;   // Spotify's own covers are at mosaic.scdn.co
+      await spotifyRequest("PUT", `/playlists/${id}/images`, { body: cover, contentType: "image/jpeg", noWait: true });
+      logStep("create: cover sent again");
+    } catch (err) {
+      logStep("create: cover check stopped");
+      return;
+    }
+  }
+}
+
 const coverImages = {};   // each cover file as a JPEG in base64, which is how Spotify takes cover art
 async function loadCover(file = "playlist-cover.jpg") {
   if (coverImages[file]) return coverImages[file];
@@ -2634,6 +2653,7 @@ async function createFromPlan(plan) {
   let coverBlocked = !hasScope("ugc-image-upload");   // this sign-in was not approved for uploading images
   let coverUnloaded = false;
   let coverFailed = 0;
+  const coverSent = [];   // the playlists whose cover Spotify accepted, looked at again once the build is done (recheckCovers)
   if (!coverBlocked) {
     try { cover = await loadCover(); } catch (err) { coverUnloaded = true; logStep("create: cover image not loaded"); }
   }
@@ -2678,7 +2698,7 @@ async function createFromPlan(plan) {
       }
       if (cover && !coverBlocked) {   // the app's icon as the cover; a problem here never stops the playlists
         setRowState(row, "now", "adding the cover");   // an image upload, often the slowest step for a playlist
-        try { await spotifyRequest("PUT", `/playlists/${made.id}/images`, { body: cover, contentType: "image/jpeg" }); }
+        try { await spotifyRequest("PUT", `/playlists/${made.id}/images`, { body: cover, contentType: "image/jpeg" }); coverSent.push(made.id); }
         catch (err) {
           coverFailed += 1;
           logStep("create: cover not accepted");
@@ -2690,6 +2710,7 @@ async function createFromPlan(plan) {
       setRowState(row, "done", "");
     }
     logStep(`create finished (${plural(created, "playlist")})`);
+    if (coverSent.length) setTimeout(() => recheckCovers(coverSent, cover), coverRecheckMs);   // not waited for: the playlists are done
     invalidatePlan(true);
     $("bdTally").hidden = true;
     setBuildSteps("done");
