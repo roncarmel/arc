@@ -15,8 +15,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-06x">
-<script src="theme.js?v=2026-11-06x"></script>
+<meta name="app-version" content="2026-11-06z">
+<script src="theme.js?v=2026-11-06z"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ceremony Playlist Builder</title>
@@ -516,6 +516,26 @@
   @media (prefers-reduced-motion: reduce) { #formatEditor .fe-welcome-arrow { animation: none; transform: translateY(4px); } }
   /* with no recipes the welcome is the only thing said: no status lines (Python, Spotify, notices) */
   body.no-recipes #pythonNote, body.no-recipes #spotifyNote, body.no-recipes #editorNote, body.no-recipes #formatEditor .fe-caption { display: none; }
+  /* Music sharing's card under Build (sharing.js, renderSharingCard): three covers fanned out, the name and a line, opens Find playlists */
+  #msCard { display: none; }
+  html.page-app #msCard { display: flex; align-items: center; gap: 14px; width: 100%; max-width: 560px; margin: 22px auto 8px; padding: 14px 14px 14px 16px; box-sizing: border-box; border-radius: 16px; background: var(--card); border: 1px solid var(--line); color: var(--fg); font: inherit; font-weight: 400; text-align: left; cursor: pointer; }
+  html.page-app body.no-recipes #msCard { display: none; }
+  #msCard .ms-card-fan { position: relative; flex: none; width: 74px; height: 52px; }
+  #msCard .ms-card-fan img { position: absolute; top: 2px; width: 48px; height: 48px; border-radius: 7px; object-fit: cover; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45); border: 1.5px solid var(--bg); box-sizing: border-box; }
+  #msCard .ms-card-fan img:nth-child(1) { left: 0; transform: rotate(-9deg); }
+  #msCard .ms-card-fan img:nth-child(2) { left: 13px; z-index: 1; }
+  #msCard .ms-card-fan img:nth-child(3) { left: 26px; z-index: 2; transform: rotate(9deg); }
+  #msCard .ms-card-fan img:only-child { left: 13px; transform: none; }
+  #msCard .ms-card-noart { display: grid; place-items: center; }
+  #msCard .ms-card-noart .fe-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--accent-tint); color: var(--accent); }
+  #msCard .ms-card-text { flex: 1; min-width: 0; line-height: 1.35; }
+  #msCard .ms-card-text b { display: block; font-size: 1rem; margin-bottom: 2px; }
+  #msCard .ms-card-text span { color: var(--muted); font-size: 0.86rem; line-height: 1.35; }
+  #msCard .ms-card-go { flex: none; color: var(--accent); display: flex; }
+  /* the playlist picker's last line, Find more in Music sharing (editor.js, listPanel) */
+  #formatEditor .fe-msfind { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 4px; padding: 10px 10px 6px 6px; border: none; border-top: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--fg); font: inherit; font-weight: 400; text-align: left; box-sizing: border-box; cursor: pointer; }
+  #formatEditor .fe-msfind > .fe-icon { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; background: var(--accent-tint); color: var(--accent); }
+  #formatEditor .fe-msfind .fe-title { font-weight: 600; }
   #formatEditor .fe-welcome-card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 26px 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
   #formatEditor .fe-welcome-card p { margin: 0; max-width: 380px; line-height: 1.45; text-wrap: pretty; }
   #formatEditor .fe-welcome-icon { width: 56px; height: 56px; border-radius: 22%; }
@@ -939,9 +959,6 @@
   #msOverlay:not([hidden]) ~ .fe-overlay { z-index: 1150; }   /* its questions and the report form sit over it */
   #msDialog { padding: 0; overflow: hidden; display: flex; flex-direction: column; max-width: 620px; height: calc(100vh - 32px); height: calc(100dvh - 32px); max-height: 900px; }
   @media (max-width: 500px) { #msOverlay { padding: 0; } #msDialog { border-radius: 0; border: 0; height: 100vh; height: 100dvh; max-height: none; } }
-  #msBand { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; background: var(--accent-deep, #a8217c); background: linear-gradient(135deg, var(--accent-deep, #a8217c), color-mix(in srgb, var(--accent-deep, #a8217c) 76%, #fff 24%)); color: var(--on-deep, #fff); }
-  #msHead { margin: 0; font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 10px; color: var(--on-deep, #fff); min-width: 0; }
-  #msHead .fe-icon { display: flex; } #msHead .fe-icon svg { width: 22px; height: 22px; }
   /* a playlist's page: Back to the list, a pink pill on a strip of the page's background that stays at the top while the page scrolls, so the page slides under it instead of showing around it */
   .ms-back-bar { position: sticky; top: -14px; z-index: 2; margin: -14px -18px 12px; padding: 10px 18px 10px 14px; background: var(--bg); }
   .ms-back { display: inline-flex; align-items: center; gap: 4px; margin: 0; min-height: 0; height: 38px; padding: 0 16px 0 8px; border-radius: 999px; border: 1px solid var(--accent-tint-border); background: var(--bg); background-image: linear-gradient(var(--accent-tint), var(--accent-tint)); color: var(--accent); font-weight: 700; font-size: 0.95rem; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18); }
@@ -949,14 +966,19 @@
   /* list and playlist page slide past each other (slideBody); the leaving one is a copy */
   #msDialog { position: relative; }
   .ms-slide-ghost { position: absolute; margin: 0; overflow: hidden; pointer-events: none; box-sizing: border-box; }
-  #msClose { flex: none; margin: 0; width: 40px; height: 40px; min-height: 0; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.16); border: 1.5px solid rgba(255, 255, 255, 0.55); color: var(--on-deep, #fff); box-shadow: none; }
   #msBody { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 14px 18px 24px; }
   #msFoot { flex: none; border-top: 1px solid var(--line); padding: 12px 18px 16px; background: var(--bg); }
-  /* the chosen tab is pink like a chosen tag, so it reads in both light and dark */
-  #msTabsBar { flex: none; padding: 12px 18px 10px; border-bottom: 1px solid var(--line); background: var(--bg); }
-  .ms-tabs { display: flex; gap: 6px; margin: 0; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; }
-  .ms-tabs button { flex: 1; justify-content: center; margin: 0; min-height: 0; padding: 8px; border-radius: 999px; border: 1px solid transparent; background: none; box-shadow: none; font-weight: 600; color: var(--fg); opacity: 0.75; }
-  .ms-tabs button.ms-on { opacity: 1; background: var(--button); color: var(--on-button, #fff); border-color: transparent; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18); }
+  /* the top row: the two tabs as words with a pink line under the chosen one, then the info button (while that tab's card is folded away) and Close; no title */
+  #msTabsBar { flex: none; display: flex; align-items: center; gap: 2px; padding: 6px 10px 0 18px; border-bottom: 1px solid var(--line); background: var(--bg); }
+  .ms-tabs { flex: 1; min-width: 0; display: flex; gap: 20px; margin: 0; padding: 0; }
+  .ms-tabs button { flex: none; margin: 0 0 -1px; min-height: 0; padding: 12px 2px 10px; border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: none; box-shadow: none; font-weight: 600; color: var(--fg); opacity: 0.6; white-space: nowrap; }
+  .ms-tabs button.ms-on { opacity: 1; color: var(--accent); border-bottom-color: var(--accent); }
+  #msClose, #msInfo { flex: none; margin: 0; width: 40px; height: 40px; min-height: 0; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: none; border: 0; color: var(--fg); opacity: 0.75; box-shadow: none; }
+  #msInfo { color: var(--accent); opacity: 1; }
+  #msInfo[hidden] { display: none; }
+  .ms-tabs button:focus:not(:focus-visible), #msInfo:focus:not(:focus-visible), #msClose:focus:not(:focus-visible) { outline: none; }
+  @media (hover: hover) { .ms-tabs button:not(:disabled):hover { outline: none; filter: none; opacity: 1; } #msInfo:hover, #msClose:hover { outline: none; filter: none; opacity: 1; background: color-mix(in srgb, var(--fg) 8%, transparent); } }
+  @media (max-width: 359px) { #msTabsBar { padding-left: 14px; } .ms-tabs { gap: 12px; } .ms-tabs button { font-size: 0.92rem; } #msClose, #msInfo { width: 36px; } }
   .ms-search { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--muted); box-sizing: border-box; }
   .ms-search .fe-icon { display: flex; }
   .ms-search-input { flex: 1; min-width: 0; border: 0; background: none; color: var(--fg); font: inherit; outline: none; padding: 0; height: 40px; }
@@ -1032,15 +1054,12 @@
   .ms-row > .ms-ov, .ms-row > .ms-error { grid-column: 1 / -1; }
   .ms-row .ms-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ms-cover { flex: none; width: 60px; height: 60px; border-radius: 8px; object-fit: cover; background: var(--card); }
-  .ms-intro { margin: 0 0 12px; font-size: 0.88rem; line-height: 1.45; color: var(--muted); }
-  details.ms-about { margin: 0 0 10px; }
-  details.ms-about > summary { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; list-style: none; color: var(--accent); font-weight: 600; font-size: 0.9rem; }
-  details.ms-about > summary::-webkit-details-marker { display: none; }
-  details.ms-about > summary .fe-icon { display: flex; transition: transform 0.2s var(--ease-out); }
-  details.ms-about > summary .fe-icon svg { width: 16px; height: 16px; }
-  details.ms-about[open]:not(.fx-collapsing) > summary .fe-icon { transform: rotate(180deg); }
-  details.ms-about > .ms-intro { margin: 8px 0 4px; }
-  .ms-intro b { color: var(--fg); }
+  /* what a tab is: a pink card at the top of the list until Got it, which sends it into the info button (sharing.js, introCard) */
+  .ms-introcard { box-sizing: border-box; overflow: hidden; margin: 0 0 14px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--accent-tint-border); background: var(--accent-tint); font-size: 0.88rem; line-height: 1.45; color: var(--fg); }
+  .ms-introcard p { margin: 0; }
+  .ms-introcard-row { display: flex; justify-content: flex-end; margin-top: 8px; }
+  .ms-introcard-row button { margin: 0; min-height: 0; height: 32px; padding: 0 16px; border-radius: 999px; font-size: 0.86rem; font-weight: 700; background: var(--button); color: var(--on-button, #fff); border: 0; box-shadow: none; }
+  .ms-introghost { position: absolute; z-index: 30; margin: 0; pointer-events: none; box-sizing: border-box; }
   .ms-nocover { display: flex; align-items: center; justify-content: center; color: var(--muted); border: 1px solid var(--line); box-sizing: border-box; }
   .ms-text { flex: 1; min-width: 0; }
   .ms-name { font-weight: 600; overflow-wrap: anywhere; }
@@ -1059,7 +1078,6 @@
   .ms-add .fe-icon, .ms-addbig .fe-icon { display: flex; }
   .ms-error { color: var(--accent); font-size: 0.88rem; margin: 4px 0 0; }
   .ms-note { color: var(--muted); margin: 16px 0; }
-  .ms-intro { color: var(--muted); font-size: 0.9rem; margin: 0 0 6px; line-height: 1.45; }
   .ms-hero { display: flex; gap: 14px; align-items: center; margin-bottom: 18px; }
   .ms-hero h3 { margin: 0 0 4px; font-size: 1.3rem; line-height: 1.2; }
   .ms-cover-big { border-radius: 10px; }
@@ -1451,6 +1469,7 @@
   </div>
   <p id="pythonNote" class="muted"></p>
   <p id="spotifyNote" class="muted" hidden>Building playlists needs a working connection to Spotify.</p>
+  <button id="msCard" class="ms-card" type="button"><span id="msCardFan" class="ms-card-fan" aria-hidden="true"></span><span class="ms-card-text"><b>Music sharing</b><span id="msCardText"></span></span><span class="ms-card-go" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></button>
 
   <div id="createOverlay" class="app-overlay" hidden>
     <div id="createDialog" class="app-dialog" role="dialog" aria-modal="true" aria-labelledby="bdTitle" tabindex="-1">
@@ -1721,15 +1740,14 @@
 <!-- Music sharing (sharing.js): opened from the app menu -->
 <div id="msOverlay" class="app-overlay" hidden>
   <div id="msDialog" class="app-dialog" role="dialog" aria-modal="true" aria-label="Music sharing" tabindex="-1">
-    <div id="msBand"><h2 id="msHead"></h2><button id="msClose" type="button" aria-label="Close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <div id="msTabsBar"></div>
+    <div id="msTabsBar"><div id="msTabs" class="ms-tabs" role="tablist"></div><button id="msInfo" type="button" aria-label="About this tab" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6M12 7.5v.01"/></svg></button><button id="msClose" type="button" aria-label="Close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div id="msBody"></div>
     <div id="msFoot" hidden></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-06x"></script>
-<script src="editor.js?v=2026-11-06x"></script>
-<script src="app.js?v=2026-11-06x"></script>
-<script src="sharing.js?v=2026-11-06x"></script>
+<script src="formats.js?v=2026-11-06z"></script>
+<script src="editor.js?v=2026-11-06z"></script>
+<script src="app.js?v=2026-11-06z"></script>
+<script src="sharing.js?v=2026-11-06z"></script>
 </body>
 </html>

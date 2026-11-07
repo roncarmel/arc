@@ -47,19 +47,57 @@ async function sharingFetch(method, path, json, retried = false) {
   return data;
 }
 
-async function loadLibrary(force = false) {
-  if (sharing.loading || (!force && sharing.library && Date.now() - sharing.libraryAt < 60000)) return;
+// One read at a time; a caller during a read waits for that one. Overlap (which may read Spotify) starts only while the popup is open,
+// since the editor's Music sharing card also reads the library.
+let libraryRead = null;
+function loadLibrary(force = false) {
+  if (libraryRead) return libraryRead.then(startOverlapIfOpen);
+  if (!force && sharing.library && Date.now() - sharing.libraryAt < 60000) { startOverlapIfOpen(); return Promise.resolve(); }
   sharing.loading = true;
   sharing.error = "";
   renderSharing();
-  try {
-    sharing.library = await sharingFetch("GET", "/library");
-    sharing.libraryAt = Date.now();
-    computeTagIndex();
-  } catch (err) { sharing.error = err.message; }
-  sharing.loading = false;
-  renderSharing();
-  if (sharing.library) startOverlap();
+  libraryRead = (async () => {
+    try {
+      sharing.library = await sharingFetch("GET", "/library");
+      sharing.libraryAt = Date.now();
+      computeTagIndex();
+    } catch (err) { sharing.error = err.message; }
+    sharing.loading = false;
+    libraryRead = null;
+    renderSharing();
+    renderSharingCard();
+  })();
+  return libraryRead.then(startOverlapIfOpen);
+}
+function startOverlapIfOpen() {
+  if (sharing.library && $("msOverlay") && !$("msOverlay").hidden) startOverlap();
+}
+
+// ---------------------------------------------------------------- the card under Build in the editor (#msCard)
+// Three covers fanned out and how many playlists others share; it opens Find playlists. Shown before the library arrives
+// (and if it never does) with the menu's line and no covers.
+function renderSharingCard() {
+  const card = $("msCard");
+  if (!card) return;
+  const lib = sharing.library;
+  const others = lib ? lib.shares.filter((s) => !isMine(s)) : [];
+  const notGotten = others.filter((s) => !isAdded(s));
+  const covers = (notGotten.length ? notGotten : others).filter((s) => s.cover).slice(0, 3);   // the library comes newest first
+  const fan = $("msCardFan");
+  fan.textContent = "";
+  fan.classList.toggle("ms-card-noart", !covers.length);
+  if (covers.length) covers.forEach((s) => fan.appendChild(feEl("img", { src: s.cover, alt: "", loading: "lazy" })));
+  else fan.appendChild(feIcon("swap"));
+  $("msCardText").textContent = others.length
+    ? `${others.length} ${others.length === 1 ? "playlist" : "playlists"} shared by other facilitators. Find music for your recipes, or share your own.`
+    : "Find playlists other facilitators share, and share your own.";
+}
+function startSharingCard() {
+  const card = $("msCard");
+  if (!card) return;
+  card.addEventListener("click", () => openSharing("find"));
+  renderSharingCard();
+  if (pageName() === "app") loadLibrary();
 }
 
 async function loadMine() {
@@ -343,6 +381,7 @@ async function closeSharing() {
   sharing.searchOpen = false;
   sharing.search = "";
   $("msOverlay").hidden = true;
+  renderSharingCard();   // a Get or a share may change its count and covers
   if (!document.querySelector(".app-overlay:not([hidden])")) document.body.style.overflow = "";
   if ($("feAppMenuButton")) $("feAppMenuButton").focus();
 }
@@ -367,22 +406,95 @@ async function settlePending() {
   return true;
 }
 
+// ---------------------------------------------------------------- what each tab is
+// A pink card at the top of each tab's list. Got it folds it away into the info button beside Close, which brings it back. Open or folded
+// is kept per tab (sharingIntro in localStorage); nothing kept means open, so a first visit shows it.
+function introText(tab) {
+  return tab === "find"
+    ? ["Playlists other facilitators share for their sessions. ", feEl("b", {}, "Get"), " puts your own private copy in your Spotify, ready to use in your recipes. The copy is yours to change, and it stays as it is if the sharer changes or removes theirs."]
+    : [`Share your own playlists with other facilitators. Tick one, then choose the phases it suits and at least ${SHARE_TAGS_MIN} tags. It needs at least two hours of songs. Others get their own private copy, and yours stays as it is.`];
+}
+function introStates() { try { return JSON.parse(localStorage.getItem("sharingIntro")) || {}; } catch (e) { return {}; } }
+function introOpen(tab) { return introStates()[tab] !== "closed"; }
+function setIntroOpen(tab, open) {
+  const all = introStates();
+  all[tab] = open ? "open" : "closed";
+  try { localStorage.setItem("sharingIntro", JSON.stringify(all)); } catch (e) {}
+}
+function introCard(tab) {
+  return feEl("div", { id: "msIntroCard", class: "ms-introcard" },
+    feEl("p", { id: "msIntro" }, ...introText(tab)),
+    feEl("div", { class: "ms-introcard-row" }, feEl("button", { type: "button", id: "msGotIt", onClick: foldIntro }, "Got it")));
+}
+const sharingReducedMotion = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+// Got it: a copy of the card shrinks into the info button's place while the card's room closes, then the button pops in
+function foldIntro() {
+  const card = $("msIntroCard"), info = $("msInfo"), dialog = $("msDialog");
+  setIntroOpen(sharing.tab, false);
+  if (!card || sharingReducedMotion() || !card.animate) { renderSharing(); info.focus(); return; }
+  info.hidden = false;
+  info.style.visibility = "hidden";
+  const d = dialog.getBoundingClientRect(), c = card.getBoundingClientRect(), t = info.getBoundingClientRect();
+  const ghost = card.cloneNode(true);
+  ghost.removeAttribute("id");
+  ghost.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+  ghost.classList.add("ms-introghost");
+  ghost.setAttribute("aria-hidden", "true");
+  Object.assign(ghost.style, { left: c.left - d.left + "px", top: c.top - d.top + "px", width: c.width + "px", height: c.height + "px" });
+  dialog.appendChild(ghost);
+  const dx = t.left + t.width / 2 - (c.left + c.width / 2), dy = t.top + t.height / 2 - (c.top + c.height / 2);
+  const scale = Math.max(t.width / c.width, 0.05);
+  const fly = ghost.animate([
+    { transform: "none", opacity: 1, borderRadius: "14px" },
+    { transform: `translate(${dx * 0.55}px, ${dy * 0.55}px) scale(${0.35 + scale})`, opacity: 0.9, borderRadius: "40px", offset: 0.6 },
+    { transform: `translate(${dx}px, ${dy}px) scale(${scale})`, opacity: 0, borderRadius: "999px" },
+  ], { duration: 520, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" });
+  const cs = getComputedStyle(card);
+  card.style.overflow = "hidden";
+  card.animate([
+    { height: c.height + "px", marginBottom: cs.marginBottom, paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, borderWidth: cs.borderTopWidth, opacity: 0 },
+    { height: "0px", marginBottom: "0px", paddingTop: "0px", paddingBottom: "0px", borderWidth: "0px", opacity: 0 },
+  ], { duration: 420, delay: 80, easing: EASE_OUT, fill: "forwards" });
+  fly.finished.then(() => {
+    ghost.remove();
+    if (card.isConnected) card.remove();
+    info.style.visibility = "";
+    info.animate([{ transform: "scale(0.3)", opacity: 0 }, { transform: "scale(1.25)", opacity: 1, offset: 0.6 }, { transform: "scale(1)", opacity: 1 }],
+      { duration: 380, easing: EASE_OUT });
+    info.animate([{ boxShadow: "0 0 0 0 var(--accent-tint-border)" }, { boxShadow: "0 0 0 10px transparent" }], { duration: 700, delay: 200, easing: EASE_OUT });
+    info.focus({ preventScroll: true });
+  }).catch(() => {});
+}
+// the info button: the card unfolds again at the top of the list, growing out of the button
+function unfoldIntro() {
+  setIntroOpen(sharing.tab, true);
+  const info = $("msInfo"), t = info.getBoundingClientRect();
+  $("msBody").scrollTop = 0;
+  renderSharing();
+  const card = $("msIntroCard");
+  if (!card || sharingReducedMotion() || !card.animate) { if ($("msGotIt")) $("msGotIt").focus({ preventScroll: true }); return; }
+  const c = card.getBoundingClientRect(), cs = getComputedStyle(card);
+  card.style.transformOrigin = `${t.left + t.width / 2 - c.left}px ${t.top + t.height / 2 - c.top}px`;
+  card.animate([
+    { height: "0px", marginBottom: "0px", paddingTop: "0px", paddingBottom: "0px", opacity: 0, transform: "scale(0.15)" },
+    { height: c.height + "px", marginBottom: cs.marginBottom, paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, opacity: 1, transform: "none" },
+  ], { duration: 420, easing: EASE_OUT });
+  if ($("msGotIt")) $("msGotIt").focus({ preventScroll: true });
+}
+
 function renderSharing() {
   const body = $("msBody");
   if (!body || $("msOverlay").hidden) return;
-  const head = $("msHead");
-  head.textContent = "";
-  head.appendChild(feIcon("swap"));   // the title bar is the same on every page of the popup
-  head.appendChild(feEl("span", { text: "Music sharing" }));
   const keepScroll = body.scrollTop;
   body.textContent = "";
   $("msFoot").hidden = true;
   // the tabs stay above the scrolling part on every page, a playlist's page included, so the person always sees where they are
-  const bar = $("msTabsBar");
+  const bar = $("msTabs");
   bar.textContent = "";
-  bar.appendChild(feEl("div", { class: "ms-tabs", role: "tablist" },
+  bar.append(
     feEl("button", { type: "button", role: "tab", "aria-selected": String(sharing.tab === "find"), class: sharing.tab === "find" ? "ms-on" : "", onClick: () => switchTab("find") }, "Find playlists"),
-    feEl("button", { type: "button", role: "tab", "aria-selected": String(sharing.tab === "share"), class: sharing.tab === "share" ? "ms-on" : "", onClick: () => switchTab("share") }, "Share playlists")));
+    feEl("button", { type: "button", role: "tab", "aria-selected": String(sharing.tab === "share"), class: sharing.tab === "share" ? "ms-on" : "", onClick: () => switchTab("share") }, "Share playlists"));
+  $("msInfo").hidden = !!sharing.detail || introOpen(sharing.tab);
   if (sharing.detail) { renderDetail(body); return; }
   if (sharing.tab === "find") renderFind(body); else renderShareYours(body);
   body.scrollTop = keepScroll;
@@ -399,11 +511,7 @@ function sortChoices() {
 function filterCount() { return sharing.phases.size + sharing.tags.size; }
 function renderFind(body) {
   if (!sortChoices().some(([v]) => v === sharing.sort)) sharing.sort = "newest";
-  // what the list is, folded behind a pink line (it took too much room); tapping the line again folds it
-  body.appendChild(feEl("details", { id: "msAbout", class: "ms-about" },
-    feEl("summary", {}, "What am I seeing here?", feIcon("chevron")),
-    feEl("p", { id: "msIntro", class: "ms-intro" }, "Playlists other facilitators share for their sessions. ", feEl("b", {}, "Get"),
-      " puts your own private copy in your Spotify, ready to use in your recipes. The copy is yours to change, and it stays as it is if the sharer changes or removes theirs.")));
+  if (introOpen("find")) body.appendChild(introCard("find"));
   body.appendChild(feEl("div", { id: "msTools", class: "ms-tools" }));
   body.appendChild(feEl("div", { id: "msActive", class: "ms-active" }));
   const added = addedCount();
@@ -858,8 +966,8 @@ function resetPicks() {
   sharing.shownChanged = false;
 }
 function renderShareYours(body) {
+  if (introOpen("share")) body.appendChild(introCard("share"));
   if (connection !== "ready" || !me) { body.appendChild(feEl("p", { class: "ms-note" }, "Connect to Spotify to share your playlists.")); return; }
-  body.appendChild(feEl("p", { class: "ms-intro" }, `Tick the playlists you'd like to share. Each needs the phases it suits, at least ${SHARE_TAGS_MIN} tags, and at least two hours of songs.`));
   if (sharing.mineError) body.appendChild(feEl("p", { class: "ms-error" }, sharing.mineError));
   if (!sharing.mine && !sharing.mineError) { body.appendChild(feEl("p", { class: "ms-note" }, "Loading...")); return; }
   const list = feEl("div", { class: "ms-share-list" });
@@ -1176,7 +1284,9 @@ async function loadDevReports() {
 
 // ---------------------------------------------------------------- wiring
 (function wireSharing() {
+  startSharingCard();
   if ($("msClose")) $("msClose").addEventListener("click", () => closeSharing());
+  if ($("msInfo")) $("msInfo").addEventListener("click", () => unfoldIntro());
   if ($("msOverlay")) $("msOverlay").addEventListener("click", (e) => { if (e.target === $("msOverlay")) closeSharing(); });
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" || !$("msOverlay") || $("msOverlay").hidden || document.querySelector(".fe-overlay")) return;

@@ -1951,7 +1951,18 @@ function listPanel(item, slot) {
   }
   search.addEventListener("input", () => { editor.search = search.value; draw(); });
   draw();
-  return feEl("div", { class: "fe-pop fe-listpanel" }, search, list);
+  // the last line: Music sharing, searching for what was typed here (sharing.js)
+  const lib = typeof sharing === "object" && sharing.library;
+  const others = lib ? lib.shares.filter((x) => !isMine(x)).length : 0;
+  const find = feEl("button", { type: "button", class: "fe-msfind", id: "feMsFind", onClick: () => {
+    const query = search.value.trim();
+    setPanel(item.id, null);
+    openSharing("find");
+    if (query) { sharing.search = query; sharing.searchOpen = true; renderSharing(); }
+  } }, feIcon("swap"),
+  feEl("span", { class: "fe-text" }, feEl("span", { class: "fe-title", text: "Find more in Music sharing" }),
+    feEl("span", { class: "fe-sub", text: others ? `${others} ${others === 1 ? "playlist" : "playlists"} shared by other facilitators` : "Playlists other facilitators share" })));
+  return feEl("div", { class: "fe-pop fe-listpanel" }, search, list, typeof openSharing === "function" ? find : null);
 }
 
 // ---------------------------------------------------------------- changing things
