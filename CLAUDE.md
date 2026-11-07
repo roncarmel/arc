@@ -14,7 +14,8 @@ A free, browser-only web app (playlists.roncarmel.com, GitHub Pages, no server) 
 | File | What it is |
 |---|---|
 | `index.html` | Markup, all CSS, and an inline startup watchdog (`pageStart`) that must work even when every other script fails. |
-| `app.js` | Page logic: sign-in, Spotify requests (`spotifyRequest`), planning and building, the cloud save and its merge, the manual backup, notices, version check, startup problems. |
+| `shared-spotify.js` | Talking to Spotify, shared with the planned tagger app (see "Two apps" below): sign-in (`openSpotifySignIn`, `finishSpotifySignIn`, the refresh token, `renewSignIn`), `spotifyRequest` with its limits, the record of them, the long wait (`spotifyPause`) and the wait relay. It shows nothing and names no element: the page fills `spotifyHooks` (permissions, messages, what to do when a wait starts or ends, when the sign-in expires). Loads before app.js. |
+| `app.js` | Page logic: the sign-in's messages and buttons, the Spotify hooks, planning and building, the cloud save and its merge, the manual backup, notices, version check, startup problems. |
 | `editor.js` | The recipe editor UI (tabs, rows, bar, markers), the app menu, the line under the bar (`refreshNoticeLine`), dialogs. CSS is scoped under `#formatEditor` with an `fe-` prefix. |
 | `formats.js` | Recipe text parse/serialize, the size limit, and `packFormat`/`unpackFormat` (a recipe packed into a Spotify description). |
 | `theme.js` | Color themes as CSS variables. |
@@ -104,6 +105,14 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 - Parts that open in place unfold and fold (height, margins and opacity): Details in the build popup's boxes and Why N? (`revealSmoothly`), and every `<details>` section (`toggleDetailsSmoothly`, a click listener on summaries). The Why? bubble on the welcome page fades like a menu.
 - Popups whose contents change grow or shrink to their new height over about 0.3 s instead of jumping (`smoothResize` in editor.js: the build popup, the menu's info popup, New recipe). Not on opening, closing, a width change, or under reduced motion.
 - Lesson: a short class name (`fe-main`) collided with an existing one and turned a title into a pill. Give new blocks their own prefix (`fe-bk-*`, `fe-sp-*`, `fe-notice-*`).
+
+## Two apps (decided by Ron, 2026-11-07)
+
+- A second app, the tagger (automatic song tagging), is planned for this repository. It is only for Ron and must never reach builder users.
+- The builder stays exactly where it is, at the root, on GitHub Pages; nothing of it moves or is renamed for the tagger's sake, so dropping the tagger leaves the builder as it was.
+- Shared code is root files named `shared-*.js` (so far `shared-spotify.js`). They name nothing of either page; each page sets their hooks.
+- The tagger will live in `tagger/`, kept off the builder's site (`_config.yml` `exclude: [tagger]`; a tagger page on the builder's address would share its saved data), as a Cloudflare Worker with static files at a roncarmel.workers.dev address behind Cloudflare Access. roncarmel.com's DNS stays at Squarespace.
+- Secrets never live in GitHub, public or private: Wrangler secrets, and `.dev.vars` out of git.
 
 ## Writing and working style (Ron's preferences)
 

@@ -32,9 +32,12 @@ const fs = require("fs");
 
 // where the app is: the folder above this one, or APP_DIR
 const ROOT = (process.env.APP_DIR || require("path").join(__dirname, "..")).replace(/\/?$/, "/");
-const html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/<script src="(theme|formats|editor|app|sharing)\.js(\?v=[^"]*)?"><\/script>/g, "");
+const html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/<script src="(theme|formats|editor|shared-spotify|app|sharing)\.js(\?v=[^"]*)?"><\/script>/g, "");
 // the three scripts share one scope in a browser, so they are run together here
-const appJs = fs.readFileSync(ROOT + "theme.js", "utf8") + "\n" + fs.readFileSync(ROOT + "formats.js", "utf8") + "\n" + fs.readFileSync(ROOT + "editor.js", "utf8") + "\n" + fs.readFileSync(ROOT + "app.js", "utf8") + "\n" + fs.readFileSync(ROOT + "sharing.js", "utf8");
+const appJs = fs.readFileSync(ROOT + "theme.js", "utf8") + "\n" + fs.readFileSync(ROOT + "formats.js", "utf8") + "\n" + fs.readFileSync(ROOT + "editor.js", "utf8") + "\n" + fs.readFileSync(ROOT + "shared-spotify.js", "utf8") + "\n" + fs.readFileSync(ROOT + "app.js", "utf8") + "\n" + fs.readFileSync(ROOT + "sharing.js", "utf8");
+
+// app.js and the Spotify code it uses from shared-spotify.js, for the checks that read the code itself
+const appSource = () => fs.readFileSync(ROOT + "shared-spotify.js", "utf8") + "\n" + fs.readFileSync(ROOT + "app.js", "utf8");
 
 // the sentence a finished build shows, from its parts (the music between them counts up)
 const doneSentence = (w) => { const q = (c) => (w.document.querySelector("#actionMessage ." + c) || { textContent: "" }).textContent; return `${q("bd-big")} ${q("bd-lib")}`; };
@@ -690,13 +693,13 @@ print(json.dumps(out))
   check("the Python status lives in Developer options, under a heading that says what it is, with plain wording", !!wB.document.querySelector("#devOptions #pythonStatus") && /^Ready\. Python v[\d.]+ is running in your browser\.$/.test(wB.document.getElementById("pythonStatus").textContent) && !wB.document.querySelector("#appSection #pythonStatus") && Array.from(wB.document.querySelectorAll("#devOptions details.gd-topic > summary")).some((h) => h.textContent === "Python status"), wB.document.getElementById("pythonStatus").textContent);
   check("Developer options never says planner, and explains Python in one sentence", !/planner/i.test(wB.document.getElementById("devOptions").textContent) && /The code that builds your playlists is written in Python and runs inside your browser, so nothing about your music is sent to a server\./.test(wB.document.getElementById("devOptions").textContent) && !/planner/i.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   check("More options does not show the app version", wB.document.getElementById("appVersionLabel") === null && !/App version/.test(wB.document.getElementById("moreOptions").textContent));
-  check("while Python loads, the note beside Create says Python, not planner", /Getting Python ready/.test(fs.readFileSync(ROOT + "app.js", "utf8")) && /Python could not start, so building is unavailable/.test(fs.readFileSync(ROOT + "app.js", "utf8")) && !/planner/i.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("while Python loads, the note beside Create says Python, not planner", /Getting Python ready/.test(appSource()) && /Python could not start, so building is unavailable/.test(appSource()) && !/planner/i.test(appSource()));
 
   // J. the thank-you prompt only follows a successful create
   var promptsAfterCreate = Array.from(wB.document.querySelectorAll("#createDialog .support-prompt")).filter((el) => !el.hidden);
   var promptLink = promptsAfterCreate[0] && promptsAfterCreate[0].querySelector("a");
   check("the thank-you line reads right, as plain text with no link, with the Support me button under it", promptsAfterCreate.length === 1 && promptsAfterCreate[0].querySelector("p").textContent === "If this app has been helpful to you, I’d be grateful for your support, in whatever amount feels right." && !/donat/i.test(promptsAfterCreate[0].textContent) && promptsAfterCreate[0].querySelector("#createDonate") !== null);
-  check("it has no link, since the Support me button is right there", promptsAfterCreate[0].querySelectorAll("a").length === 0 && !promptLink && !/KOFI_URL/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("it has no link, since the Support me button is right there", promptsAfterCreate[0].querySelectorAll("a").length === 0 && !promptLink && !/KOFI_URL/.test(appSource()));
   check("no prompt after cancelling", wE.document.getElementById("createSupport").hidden);
   check("no prompt after a failed create", wE.document.getElementById("createSupport").hidden);
 
@@ -762,7 +765,7 @@ print(json.dumps(out))
   var aboutFresh = fresh.document.getElementById("about");
   var aboutText = aboutFresh.textContent;
   check("an About this app section tells what it does, what it is good for, how it works, what is needed, and the privacy details", /^About this app$/.test(aboutFresh.querySelector("summary").textContent) && ["What it does", "What it's good for", "How it works", "What you need", "Privacy"].every((t) => aboutText.includes(t)) && aboutFresh.querySelectorAll("ol li").length === 3 && /Premium/.test(aboutText) && /never changed/.test(aboutText) && /Privacy/.test(aboutText));
-  check("the More about this app section always starts closed, for first-time and returning visitors alike", aboutFresh.open === false && !/<details id="about"[^>]*\bopen\b/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && !/\$\("about"\)\.open/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("the More about this app section always starts closed, for first-time and returning visitors alike", aboutFresh.open === false && !/<details id="about"[^>]*\bopen\b/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && !/\$\("about"\)\.open/.test(appSource()));
   check("it starts closed once a Client ID is saved, and once connected", returning.document.getElementById("about").open === false && t0.document.getElementById("about").open === false);
   var staticText = pageHtml.replace("Yes, I have", "").replace("I have done this before", "").replace("No, this is my first time", "").replace('"I have supported you!"', "").replace(/<style>[\s\S]*?<\/style>/, "").replace(/<details id="guideSection"[\s\S]*?<details id="moreOptions"/, "").replace(/<label class="choice-row"><input type="checkbox" id="donateHideBox">[\s\S]*?<\/label>/, "").replace(/<id="supportButton"[\s\S]*?<\/a>/, "").replace(/<a id="supportButton"[\s\S]*?<\/a>/, "").replace(/<p id="supportCaption">[\s\S]*?<\/p>/, "").replace(/<div id="createSupport"[\s\S]*?<\/p>/, "").replace(/<button id="createDonate"[\s\S]*?<\/button>/, "").replace(/<[^>]+>/g, " ");
   var firstPerson = staticText.match(/\b(my|mine|myself|I|I'm|I've|I'll)\b/gi) || [];
@@ -807,7 +810,7 @@ print(json.dumps(out))
   pgc.document.getElementById("feAppMenuButton").click();
   check("the menu has no Change Client ID", pgc.document.getElementById("feSetupAgain") === null);
   var pgHead = fs.readFileSync(ROOT + "index.html", "utf8");
-  check("the page is chosen in <head> before anything is drawn, the same way as in app.js", /\(function \(\) \{\n    var page = "welcome";/.test(pgHead) && /document\.documentElement\.classList\.add\("page-" \+ page\)/.test(pgHead) && /function pageName\(\)/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("the page is chosen in <head> before anything is drawn, the same way as in app.js", /\(function \(\) \{\n    var page = "welcome";/.test(pgHead) && /document\.documentElement\.classList\.add\("page-" \+ page\)/.test(pgHead) && /function pageName\(\)/.test(appSource()));
 
 
   // ---------------- the playlist count in Step 1 follows creates and removals
@@ -845,9 +848,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-07c" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-07d" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-07c/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-07d/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -1113,8 +1116,8 @@ print(json.dumps(out))
 
   // ---------------- after the embeds experiment was reverted
   var finalHtml = fs.readFileSync(ROOT + "index.html", "utf8");
-  check("the page has five scripts of its own, with the theme first, and nothing about embeds", finalHtml.match(/<script src="[^"]+"><\/script>/g).join("").replace(/\?v=[^"]+/g, "") === '<script src="theme.js"></script><script src="formats.js"></script><script src="editor.js"></script><script src="app.js"></script><script src="sharing.js"></script>' && finalHtml.indexOf('<script src="theme.js">') < finalHtml.indexOf("</head>") && !/embeds/i.test(finalHtml) && !/embeds/i.test(fs.readFileSync(ROOT + "app.js", "utf8")) && !fs.existsSync(ROOT + "embeds.js"));
-  check("the app never names an outside script, so no Ko-fi or Tally code can run in the page", !/tally\.so\/widgets|overlay-widget|storage\.ko-fi\.com\/cdn\/scripts/.test(fs.readFileSync(ROOT + "app.js", "utf8") + finalHtml));
+  check("the page has six scripts of its own, with the theme first, and nothing about embeds", finalHtml.match(/<script src="[^"]+"><\/script>/g).join("").replace(/\?v=[^"]+/g, "") === '<script src="theme.js"></script><script src="formats.js"></script><script src="editor.js"></script><script src="shared-spotify.js"></script><script src="app.js"></script><script src="sharing.js"></script>' && finalHtml.indexOf('<script src="theme.js">') < finalHtml.indexOf("</head>") && !/embeds/i.test(finalHtml) && !/embeds/i.test(appSource()) && !fs.existsSync(ROOT + "embeds.js"));
+  check("the app never names an outside script, so no Ko-fi or Tally code can run in the page", !/tally\.so\/widgets|overlay-widget|storage\.ko-fi\.com\/cdn\/scripts/.test(appSource() + finalHtml));
   check("Tip me and the report links are the new-tab links again", (() => { const a = t0.document.getElementById("supportButton"); const r = t0.document.getElementById("reportLink"); return a.target === "_blank" && a.href === "https://ko-fi.com/roncarmel" && r.target === "_blank" && r.href.startsWith("https://tally.so/r/VppLZN"); })());
   var stale = await boot({ url: "http://127.0.0.1:8000/?embeds=on", session: { ...signedIn(), embeds: "on" }, local: { formats: MINI } });
 
@@ -1524,7 +1527,7 @@ print(json.dumps(out))
   y_cq.document.getElementById("create").click();
   await waitFor(() => visible(y_cq, "confirmBox"), 30000);
   check("while the question is open, Create is off, nothing has been written, and the plan box is quiet", y_cq.document.getElementById("create").disabled === true && y_oq.writes.length === 0 && y_cq.document.getElementById("output").hidden === true);
-  check("it offers Build and Cancel, plus Why N?, and nothing about drawing again", y_cq.document.getElementById("confirmYes").textContent.trim().startsWith("Build ") && y_cq.document.getElementById("confirmNo").textContent.trim() === "Cancel" && /^Why \d+\?$/.test(y_cq.document.getElementById("planToggle").textContent) && !y_cq.document.getElementById("redraw") && !/Draw again|redraw/i.test(fs.readFileSync(ROOT + "app.js", "utf8") + fs.readFileSync(ROOT + "index.html", "utf8").replace(/redraws? the editor/g, "")));
+  check("it offers Build and Cancel, plus Why N?, and nothing about drawing again", y_cq.document.getElementById("confirmYes").textContent.trim().startsWith("Build ") && y_cq.document.getElementById("confirmNo").textContent.trim() === "Cancel" && /^Why \d+\?$/.test(y_cq.document.getElementById("planToggle").textContent) && !y_cq.document.getElementById("redraw") && !/Draw again|redraw/i.test(appSource() + fs.readFileSync(ROOT + "index.html", "utf8").replace(/redraws? the editor/g, "")));
   await new Promise((r) => setTimeout(r, 300));
   pressBuild(y_cq);
   await waitFor(() => /in your Spotify library\.$/.test(y_cq.document.getElementById("actionMessage").textContent), 30000);
@@ -1762,7 +1765,7 @@ print(json.dumps(out))
   var k_list = k_names();
   check("the segment list leaves out a playlist this app marked as its own, even when its name matches no format", !k_list.includes("Old warm set 4"), JSON.stringify(k_list));
   check("and leaves out playlists named like a format's, marked or not, while showing the rest", !k_list.includes("mini 1") && !k_list.includes("mini 2") && k_list.includes("💗 spacious + gentle") && k_list.includes("🛋 rest "), JSON.stringify(k_list));
-  check("the app knows which playlists are its own by the mark in the description, and by nothing else", k_w.eval("playlists").filter((p) => p.madeByApp).map((p) => p.id).join(",") === "m3" && !/madeIds|rememberMade/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("the app knows which playlists are its own by the mark in the description, and by nothing else", k_w.eval("playlists").filter((p) => p.madeByApp).map((p) => p.id).join(",") === "m3" && !/madeIds|rememberMade/.test(appSource()));
   k_w.document.getElementById("create").click();
   await waitFor(() => visible(k_w, "confirmBox"), 30000);
   chooseAll(k_w);
@@ -1892,7 +1895,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   v_w4.document.getElementById("create").click();
   await waitFor(() => visible(v_w4, "confirmBox"), 30000);
   check("with nothing unmarked, nothing is renamed", !/renamed to free/.test(v_w4.document.getElementById("bdInfo").textContent));
-  check("Create looks at Spotify afresh before planning: a page that has been open a while still sees changes made there", /await loadMyPlaylists\(\);   \/\/ what is in Spotify now/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("Create looks at Spotify afresh before planning: a page that has been open a while still sees changes made there", /await loadMyPlaylists\(\);   \/\/ what is in Spotify now/.test(appSource()));
 
 
   
@@ -1939,7 +1942,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var cv_file = fs.readFileSync(ROOT + "playlist-cover.jpg");
   var cv_dims = execFileSync("python3", ["-c", `from PIL import Image; im = Image.open("${ROOT}playlist-cover.jpg"); print(im.format, im.size[0], im.size[1])`], { encoding: "utf8" }).trim();
   check("the cover is a JPEG of the app's icon, 640 by 640, and small enough for Spotify's limit even after base64", cv_file.slice(0, 3).toString("hex") === "ffd8ff" && cv_dims === "JPEG 640 640" && Math.ceil(cv_file.length / 3) * 4 < 256 * 1024, cv_dims + " " + cv_file.length);
-  var cv_app = fs.readFileSync(ROOT + "app.js", "utf8");
+  var cv_app = appSource();
   check("the app asks for the image-upload permission when it signs in, but does not require it, so an older sign-in keeps working", /"ugc-image-upload",/.test(cv_app) && /const REQUIRED_SCOPES = \["playlist-modify-private", "playlist-modify-public"\];/.test(cv_app));
   var cv_run = async (token, fetchOptions, count = 2) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: token, local: { formats: MINI }, fetchOptions });
@@ -2037,7 +2040,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var am_items = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel .fe-item")).map((b) => b.textContent.trim());
   var am_ids = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel [id]")).map((n) => n.id).filter((id) => ["feMoreOptions", "feAbout", "feTips", "fePrivacy", "feReport", "feBackupMethod", "feBackup", "feRestore", "feDisconnect"].includes(id));
   check("it has no Disconnect, then the backup block (what it is, a Change how your recipes are saved link, how it is going, then Back up now and Restore), then More options, Report a problem and Privacy, in that order", JSON.stringify(am_ids) === JSON.stringify(["feBackupMethod", "feBackup", "feRestore", "feMoreOptions", "feReport", "fePrivacy"]) && /Manual backup to this device/.test(am_w.document.getElementById("feBackupMethod").closest(".fe-bk-block").textContent), JSON.stringify(am_ids));
-  check("there is no Compact view item: the app page is always compact", !am_w.document.getElementById("feMinimal") && am_w.document.body.classList.contains("minimal") && !/minimalMode/.test(fs.readFileSync(ROOT + "editor.js", "utf8") + fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("there is no Compact view item: the app page is always compact", !am_w.document.getElementById("feMinimal") && am_w.document.body.classList.contains("minimal") && !/minimalMode/.test(fs.readFileSync(ROOT + "editor.js", "utf8") + appSource()));
   var am_info = (id) => am_w.document.getElementById("infoSlot").firstElementChild && am_w.document.getElementById("infoSlot").firstElementChild.id === id && am_w.document.getElementById("infoOverlay").hidden === false;
   am_w.document.getElementById("feMoreOptions").click();
   check("More options opens in a popup, open, and the menu closes", am_info("moreOptions") && am_w.document.getElementById("moreOptions").open === true && !am_w.document.getElementById("feAppMenuPanel") && am_w.document.getElementById("infoDialog").getAttribute("aria-label") === "More options");
@@ -2199,7 +2202,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("and a click outside dismisses it", pp_w3.document.getElementById("createOverlay").hidden === true && pp_w3.document.body.style.overflow === "");
   var pp_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("the popup sits above everything, even the tip strip, and scrolls inside itself if the result is long", /\.app-overlay \{ position: fixed;[^}]*z-index: 1100;/.test(pp_css) && /\.app-dialog \{[^}]*max-height: calc\(100vh - 32px\); max-height: calc\(100dvh - 32px\); overflow: auto;/.test(pp_css) && /#supportBox \{ position: fixed; right: 16px; bottom: 16px; z-index: 1001;/.test(pp_css));
-  check("the page's bottom: 24 pixels while the tip is in the corner, and in the strip the strip's own measured height, kept up to date as the page is resized", /--tip-h/.test(fs.readFileSync(ROOT + "app.js", "utf8")) && /document\.documentElement\.style\.setProperty\("--tip-h", box\.offsetHeight \+ "px"\)/.test(fs.readFileSync(ROOT + "app.js", "utf8")) && /window\.addEventListener\("resize", set\)/.test(fs.readFileSync(ROOT + "app.js", "utf8")) && /new ResizeObserver\(set\)/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("the page's bottom: 24 pixels while the tip is in the corner, and in the strip the strip's own measured height, kept up to date as the page is resized", /--tip-h/.test(appSource()) && /document\.documentElement\.style\.setProperty\("--tip-h", box\.offsetHeight \+ "px"\)/.test(appSource()) && /window\.addEventListener\("resize", set\)/.test(appSource()) && /new ResizeObserver\(set\)/.test(appSource()));
   check("the tip's height has been measured and set for the page", pp_w.document.documentElement.style.getPropertyValue("--tip-h") !== "");
 
   // menus too close to the bottom open upward
@@ -2245,7 +2248,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   Object.defineProperty(dnp_w, "innerHeight", { value: 360, configurable: true });
   dnp_w.dispatchEvent(new dnp_w.Event("resize"));
   check("on a short window it is never shorter than 400, and it is resized when the window changes", dnp_panel.style.height === "400px");
-  check("the bar above the frame says Choose any amount that feels right to you., with the x at the right and no link to Ko-fi in it, and the page loads no Ko-fi script, only a frame", dnp_panel.querySelector(".kofi-bar").children.length === 2 && dnp_panel.querySelector(".kofi-bar").firstElementChild.id === "kofiPrompt" && dnp_panel.querySelector("#kofiPrompt").textContent === "Choose any amount that feels right to you." && dnp_panel.querySelector(".kofi-bar").lastElementChild.id === "kofiClose" && !dnp_panel.querySelector(".kofi-bar a") && !/ko-fi\.com/.test(Array.from(dnp_w.document.scripts).map((x) => x.src).join(" ")) && !/storage\.ko-fi|overlay-widget/.test(fs.readFileSync(ROOT + "app.js", "utf8") + fs.readFileSync(ROOT + "index.html", "utf8")));
+  check("the bar above the frame says Choose any amount that feels right to you., with the x at the right and no link to Ko-fi in it, and the page loads no Ko-fi script, only a frame", dnp_panel.querySelector(".kofi-bar").children.length === 2 && dnp_panel.querySelector(".kofi-bar").firstElementChild.id === "kofiPrompt" && dnp_panel.querySelector("#kofiPrompt").textContent === "Choose any amount that feels right to you." && dnp_panel.querySelector(".kofi-bar").lastElementChild.id === "kofiClose" && !dnp_panel.querySelector(".kofi-bar a") && !/ko-fi\.com/.test(Array.from(dnp_w.document.scripts).map((x) => x.src).join(" ")) && !/storage\.ko-fi|overlay-widget/.test(appSource() + fs.readFileSync(ROOT + "index.html", "utf8")));
   check("the text is bold and centered in that bar, and the x sits at the right", /#kofiPanel \.kofi-bar \{ display: grid; grid-template-columns: 1fr auto 1fr;/.test(fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ")) && /#kofiPrompt \{ grid-column: 2; text-align: center; font-weight: bold; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /#kofiClose \{ grid-column: 3; justify-self: end; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   dnp_w.document.getElementById("kofiClose").click();
   check("the x closes it", dnp_panel.hidden === true && dnp_btn.getAttribute("aria-expanded") === "false");
@@ -2262,7 +2265,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("clicking Donate again closes it, rather than closing and reopening", dnp_panel.hidden === true);
   var dnp_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("the panel and its dimming sit above the tip strip, so they cover the button and its note, and above the build popup, which stays open behind them", /#kofiPanel \{[^}]*z-index: 1111;/.test(dnp_css) && /#kofiDim \{ position: fixed;[^}]*z-index: 1110; background: rgba\(0, 0, 0, 0\.65\); \}/.test(dnp_css) && /#supportBox \{ position: fixed; right: 16px; bottom: 16px; z-index: 1001;/.test(dnp_css) && /\.app-overlay \{ position: fixed;[^}]*z-index: 1100;/.test(dnp_css));
-  check("nothing in the page still says tip or tipping, except the word donate", !/\btip me\b|\bTip me\b|Tipping/.test(fs.readFileSync(ROOT + "index.html", "utf8").replace(/<style>[\s\S]*?<\/style>/, "") + fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("nothing in the page still says tip or tipping, except the word donate", !/\btip me\b|\bTip me\b|Tipping/.test(fs.readFileSync(ROOT + "index.html", "utf8").replace(/<style>[\s\S]*?<\/style>/, "") + appSource()));
 
 
   
@@ -2387,7 +2390,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("rate limited at the start: the app does not call itself connected, and shows the problem with how long to wait", cx_w.eval("connection") === "problem" && cx_sec(cx_w, "connectedSection").hidden === true && cx_sec(cx_w, "connectionProblem").hidden === false && /^Spotify is rate limiting requests\. Try again in about 2 minutes\.$/.test(cx_sec(cx_w, "connectionMessage").textContent), cx_sec(cx_w, "connectionMessage").textContent);
   cx_w.localStorage.removeItem("spotifyPausedUntil");   // a wait of two minutes is kept and counted down ("a wait from Spotify"); here it is the Try again that follows
   cx_w.eval("updateButtonsNow()");
-  check("a long wait is reported straight away, not sat through: over a minute is not retried, and neither is a quota limit", /wait && wait > 60/.test(fs.readFileSync(ROOT + "app.js", "utf8")) && /reason === "QUOTA_EXCEEDED"/.test(fs.readFileSync(ROOT + "app.js", "utf8")) && /waitText\(wait\)/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("a long wait is reported straight away, not sat through: over a minute is not retried, and neither is a quota limit", /wait && wait > 60/.test(appSource()) && /reason === "QUOTA_EXCEEDED"/.test(appSource()) && /waitText\(wait\)/.test(appSource()));
   check("the app menu has no Disconnect Spotify", (() => { cx_w.document.getElementById("feAppMenuButton").click(); const gone = !cx_w.document.getElementById("feDisconnect"); cx_w.document.getElementById("feAppMenuButton").click(); return gone; })());
   check("Build becomes Try again, with what went wrong under it, and Remove earlier playlists is off, with its note", cx_sec(cx_w, "create").textContent.trim() === "Try again" && cx_sec(cx_w, "removeOld").disabled === true && cx_sec(cx_w, "spotifyNote").hidden === false && cx_sec(cx_w, "spotifyNote").textContent === cx_sec(cx_w, "connectionMessage").textContent && cx_sec(cx_w, "removeNote").hidden === false);
   check("the editor is still there for the formats, and the page offers Try again and Connect again, with no report link for a rate limit, which is a known problem", !cx_sec(cx_w, "appSection").hidden && !!cx_w.document.getElementById("formatEditor").querySelector(".fe-card") && cx_sec(cx_w, "connectionRetry").textContent.trim() === "Try again" && cx_sec(cx_w, "connectionReconnect").textContent.trim() === "Connect again" && cx_sec(cx_w, "connectionReportHint").hidden === true);
@@ -2601,7 +2604,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => ws_w2.eval("connection") === "ready", 15000);
   check("when the time is up the app connects again by itself, the popup closes, and Build is back", ws_w2.eval("connection") === "ready" && !ws_w2.document.getElementById("fePauseDialog") && ws_w2.document.getElementById("create").hidden === false && !ws_w2.localStorage.getItem("spotifyPausedUntil"));
   check("a good connection keeps the playlist list on the device, without descriptions", (() => { const k = JSON.parse(ws_w2.localStorage.getItem("spotifyPlaylists") || "null"); return k && k.user === "ron" && k.list.length > 0 && k.list.every((p) => p.id && p.name !== undefined && p.description === undefined); })());
-  check("a short wait does not start one", (() => { ws_w2.localStorage.removeItem("spotifyPausedUntil"); return ws_w2.eval("spotifyPause()") === null; })() && /if \(wait && wait > 60 && !noWait\) startSpotifyPause/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("a short wait does not start one", (() => { ws_w2.localStorage.removeItem("spotifyPausedUntil"); return ws_w2.eval("spotifyPause()") === null; })() && /if \(wait && wait > 60 && !noWait\) startSpotifyPause/.test(appSource()));
   check("Privacy names the kept playlist list", /the list of your playlists/.test(ws_doc.getElementById("privacySection").textContent));
   } catch (err) { areaCrashed("a wait from Spotify", err); }
 }
@@ -2726,7 +2729,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("for an expired sign-in only Connect again is shown", JSON.stringify(rl_shown(rl_a)) === "[true,false]" && rl_a.document.querySelector("#connectionReconnect img").getAttribute("src") === "icons/connect.svg");
   var rl_n = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { meNetworkFail: true } });
   check("for no network only Try again is shown", JSON.stringify(rl_shown(rl_n)) === "[false,true]");
-  check("the app never spends more than 30 seconds waiting out short rate limits in one request", /const RETRY_BUDGET_MS = 30000;/.test(fs.readFileSync(ROOT + "app.js", "utf8")) && /waitedMs \+ pause > RETRY_BUDGET_MS/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("the app never spends more than 30 seconds waiting out short rate limits in one request", /const RETRY_BUDGET_MS = 30000;/.test(appSource()) && /waitedMs \+ pause > RETRY_BUDGET_MS/.test(appSource()));
   
   } catch (err) { areaCrashed("who sees the editor, and what a rate limit says", err); }
 }
@@ -2937,7 +2940,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the big New recipe button, shown when there are no recipes at all, asks for a name too", !!nf_e.document.getElementById("feNewFormatDialog") && nf_e.document.querySelectorAll("#feTabs .fe-tab").length === 1);
   nf_e.document.getElementById("feNewFormatCancel").click();
   check("and Cancel there leaves no recipes at all", nf_e.document.querySelectorAll("#feTabs .fe-tab").length === 0 && nf_e.document.querySelector(".fe-toprow").classList.contains("fe-noformats"));
-  check("a recipe being named is never written or saved to Spotify", /if \(fmt\.draft\) continue;/.test(fs.readFileSync(ROOT + "formats.js", "utf8")) && /if \(fmt\.draft\) continue;/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("a recipe being named is never written or saved to Spotify", /if \(fmt\.draft\) continue;/.test(fs.readFileSync(ROOT + "formats.js", "utf8")) && /if \(fmt\.draft\) continue;/.test(appSource()));
   var nf_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("the confirming button is the accent color, like the other buttons that go ahead, and the dialog is the same one used for deleting", /\.fe-dialog \.row button\.primary \{ background: var\(--button\);/.test(nf_css) && /\.fe-overlay \{ position: fixed;/.test(nf_css));
   
@@ -2995,9 +2998,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("startup that survives problems")) { try {
   // ================================================================ a page that survives problems in starting up
   var su_html = fs.readFileSync(ROOT + "index.html", "utf8");
-  var su_js = fs.readFileSync(ROOT + "app.js", "utf8");
+  var su_js = appSource();
   var su_ver = su_js.match(/const APP_VERSION = "([^"]+)"/)[1];
-  check("the page names its own version, the same as the script's, and loads each script with that version on its address so a cached older one is never mixed in", new RegExp('<meta name="app-version" content="' + su_ver + '">').test(su_html) && ["theme", "formats", "editor", "app", "sharing"].every((n) => su_html.includes(`<script src="${n}.js?v=${su_ver}"></script>`)));
+  check("the page names its own version, the same as the script's, and loads each script with that version on its address so a cached older one is never mixed in", new RegExp('<meta name="app-version" content="' + su_ver + '">').test(su_html) && ["theme", "formats", "editor", "shared-spotify", "app", "sharing"].every((n) => su_html.includes(`<script src="${n}.js?v=${su_ver}"></script>`)));
   var su_ok = await boot({ url: "http://127.0.0.1:8000/" });
   check("a normal start shows no problem banner", su_ok.document.getElementById("startupProblem").hidden === true);
   var su_radio = (w, value) => w.document.querySelector(`[data-flow="${value}"]`);
@@ -3029,10 +3032,10 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("page start watchdog and version stamps")) { try {
   // ================================================================ the page start watchdog and the version stamps
   var ws_html = fs.readFileSync(ROOT + "index.html", "utf8");
-  var ws_app = fs.readFileSync(ROOT + "app.js", "utf8");
+  var ws_app = appSource();
   var ws_ver = ws_app.match(/const APP_VERSION = "([^"]+)";/)[1];
   var ws_stamps = [ws_html.match(/<meta name="app-version" content="([^"]+)">/)[1], ...Array.from(ws_html.matchAll(/\.js\?v=([^"]+)"/g)).map((m) => m[1])];
-  check("the page, its five scripts and the script itself all carry the same version, so a half-updated upload is caught here and not on someone's screen", ws_stamps.length === 6 && ws_stamps.every((v) => v === ws_ver), JSON.stringify(ws_stamps) + " vs " + ws_ver);
+  check("the page, its six scripts and the script itself all carry the same version, so a half-updated upload is caught here and not on someone's screen", ws_stamps.length === 7 && ws_stamps.every((v) => v === ws_ver), JSON.stringify(ws_stamps) + " vs " + ws_ver);
   check("the script marks itself started as the first thing it does, before it wires the setup choices", /async function main\(\) \{\n  if \(window\.pageStart\) window\.pageStart\.started = true;[^\n]*\n  startFlowChoice\(\);/.test(ws_app));
   var ws_src = ws_html.match(/<script>\n  \/\/ If the page's own script never starts[\s\S]*?<\/script>/)[0].replace(/^<script>|<\/script>$/g, "");
   check("the watchdog is in the head, ahead of every script that could fail, and listens for errors in the capture phase so a file that did not load is seen too", ws_html.indexOf("window.pageStart = {") > 0 && ws_html.indexOf("window.pageStart = {") < ws_html.indexOf('<script src="formats.js') && /\}, true\);/.test(ws_src));
@@ -3040,7 +3043,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-07c", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-07d", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3265,7 +3268,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("a visit that opens with a playlist already chosen does not show it (the first tip was not on screen)", !pt_tip(pt_back));
   var pt_two = await boot({ url: EDURL, session: signedIn(), local: { formats: 'RECIPES = {"a": {"name": "A {n}", "segments": [("Calm", 20)]}, "b": {"name": "B {n}", "segments": [("Calm", 20)]}}' }, fetchOptions: {} });
   check("not with more than one recipe", !pt_tip(pt_two));
-  var pt_src = fs.readFileSync(ROOT + "app.js", "utf8");
+  var pt_src = appSource();
   check("starting a build marks it done", /logStep\(`create started[^\n]*\n\s*if \(typeof markPlayTipDone === "function"\) markPlayTipDone\(\);/.test(pt_src));
   check("finding playlists the app made does not hide it", !/madeByApp\)[^\n]*markPlayTipDone/.test(pt_src));
   } catch (err) { areaCrashed("the play tip", err); } }
@@ -3333,7 +3336,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the widths are also worked out again when the window changes size", /window\.addEventListener\("resize", \(\) => \{ equalizeAmounts\(\); updateTagHang\(\); placeWelcomeArrow\(\); placeFirstTipArrow\(\); \}\)/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
   // the wording
   var bt_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/<!--[\s\S]*?-->/g, "").replace(/<style>[\s\S]*?<\/style>/, "");
-  var bt_app = fs.readFileSync(ROOT + "app.js", "utf8").split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
+  var bt_app = appSource().split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
   check("the page calls the action Build everywhere: the only create playlists left is the Spotify permission it describes in Privacy", (bt_html.match(/create playlists/gi) || []).length === 1 && /read your playlists, create playlists, remove playlists/.test(bt_html) && !/create playlists/i.test(bt_app), String((bt_html.match(/create playlists/gi) || []).length));
   check("the messages that follow a build say built and building", /Building your playlist/.test(bt_app) && /"are"\} in your Spotify library/.test(bt_app) && /"was" : "were"\} built/.test(bt_app) && /Nothing can be built from/.test(bt_app));
   } catch (err) { areaCrashed("duplicate question, format names, empty note and equal widths", err); } }
@@ -3399,7 +3402,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("pressing it closes the menu, opens no popup, and adds nothing to the address", !qf_w.document.getElementById("feAppMenuPanel") && qf_w.document.getElementById("infoOverlay").hidden === true && qf_link.getAttribute("href") === QF);
   var qf_priv = qf_w.document.getElementById("privacySection").textContent.replace(/\s+/g, " ");
   check("Privacy then says the form sends only what you type, that an email goes only if you enter one and is used only to respond, and that the feedback form opens only if you choose to send feedback", /The form sends only what you type, and nothing else is attached\. An email address is included only if you choose to enter one, and it is used only to respond to you\./.test(qf_priv) && /the feedback form only if you choose to send feedback/.test(qf_priv) && qf_w.document.getElementById("privacyFeedback").hidden === false);
-  check("the form that ships is the Tally one, at its real address", /const FEEDBACK_FORM_URL = "https:\/\/tally\.so\/r\/4aayDd";/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("the form that ships is the Tally one, at its real address", /const FEEDBACK_FORM_URL = "https:\/\/tally\.so\/r\/4aayDd";/.test(appSource()));
   qf_w0.document.getElementById("feAppMenuButton").click();
   check("without the form's address, the menu has no Feedback and questions", !qf_w0.document.getElementById("feFeedback") && !!qf_w0.document.getElementById("fePrivacy"));
   } catch (err) { areaCrashed("questions and feedback", err); } }
@@ -3472,7 +3475,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("it is a known problem, so there is no report link for it", pr_e.document.getElementById("connectionReportHint").hidden === true);
   check("and it is counted as its own kind of connection problem, premium", pr_e.eval('problemKind("' + PRM + '")') === "premium" && pr_e.eval('problemKind("Spotify did not allow this (x). Click Disconnect")') === "sign-in");
   var pr_o = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { denyCreate: true } });
-  check("a 403 that does not mention Premium keeps its advice about signing in again and approving every permission", fs.readFileSync(ROOT + "app.js", "utf8").includes('const PREMIUM_REQUIRED_MESSAGE = "' + PRM + '";') && /Spotify did not allow this \(\$\{what\}\)\. Sign in again with Change Spotify login in More options, and approve every permission it asks for\./.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("a 403 that does not mention Premium keeps its advice about signing in again and approving every permission", appSource().includes('const PREMIUM_REQUIRED_MESSAGE = "' + PRM + '";') && /Spotify did not allow this \(\$\{what\}\)\. Sign in again with Change Spotify login in More options, and approve every permission it asks for\./.test(appSource()));
   } catch (err) { areaCrashed("spotify premium", err); } }
 
   if (want("welcome recipe link")) { try {
@@ -3511,8 +3514,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var dh_early = dh_html.match(/try \{ if \(localStorage\.getItem\("donateHidden"\)\) document\.documentElement\.classList\.add\("donate-hidden"\); \} catch \(e\) \{[^}]*\}/);
   check("a tiny script in the page's head sets the class before the page is drawn, so a hidden Donate button never flashes up", !!dh_early && dh_html.indexOf(dh_early[0]) < dh_html.indexOf("</head>"));
   if (dh_early) { var dh_w3 = await boot({ url: "http://127.0.0.1:8000/", local: { donateHidden: "donated" } }); dh_w3.document.documentElement.classList.remove("donate-hidden"); dh_w3.eval(dh_early[0]); check("and that script does it when an answer is saved", dh_w3.document.documentElement.classList.contains("donate-hidden")); }
-  check("the thank-you line after a build shows unless the Donate button was hidden", /\$\("createSupport"\)\.hidden = donateHiddenChoice\(\);/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
-  var dh_app = fs.readFileSync(ROOT + "app.js", "utf8");
+  check("the thank-you line after a build shows unless the Donate button was hidden", /\$\("createSupport"\)\.hidden = donateHiddenChoice\(\);/.test(appSource()));
+  var dh_app = appSource();
   check("the answer stays in this browser: it is never counted or sent anywhere, and Privacy says so", !/countEvent\("donate-hid/.test(dh_app) && /const DONATE_KEY = "donateHidden";/.test(dh_app) && !/fetch\([^)]*donateHidden/.test(dh_app) && /If you check "I have supported you!" in [\s\S]*?More options[\s\S]*?, that choice is saved in this browser and goes nowhere else\./.test(dh_html));
   } catch (err) { areaCrashed("hiding the donate button", err); } }
 
@@ -3524,7 +3527,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the download a backup link in Step 2 downloads the backup, as the button in Step 4 and the menu item do", (bl_w.__saved || []).length === 1 && /^playlist-recipes-.*\.txt$/.test(bl_w.__saved[0].name) && /FORMATS|"mini"|mini/.test(bl_w.__saved[0].text));
   check("and says where to find it, right under the sentence, in words that work on a phone too", capText(bl_w) === "Backed up to this device. Find the file in Downloads, or in the Files app on a phone." && bl_w.document.getElementById("savedNote").nextElementSibling.id === "restoreFile" && bl_w.document.getElementById("restoreFile").hidden === true && bl_w.document.getElementById("restoreFile").nextElementSibling.id === "spotifySaveLine");
   check("Step 4's button says the same, in the same line", capText(bl_w) === "Backed up to this device. Find the file in Downloads, or in the Files app on a phone.");
-  var bl_src = fs.readFileSync(ROOT + "editor.js", "utf8") + fs.readFileSync(ROOT + "app.js", "utf8");
+  var bl_src = fs.readFileSync(ROOT + "editor.js", "utf8") + appSource();
   check("the old words about a Downloads folder are gone everywhere, and the one message after a backup comes from the one function that makes the backup, so the menu, both links, Step 4 and the offer after leaving Spotify all show it", !/Downloads folder/.test(bl_src) && (bl_src.match(/Find the file in Downloads, or in the Files app on a phone\./g) || []).length === 1 && (bl_src.match(/BACKED_UP_MESSAGE/g) || []).length === 2 && /function downloadBackup\(\) \{[\s\S]*?showBackupMessage\(BACKED_UP_MESSAGE\)/.test(bl_src));
   } catch (err) { areaCrashed("backup link in step 2", err); } }
 
@@ -4078,7 +4081,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
 
   if (want("save pacing")) { try {
   // ================================================================ how often the saves are made
-  var sp_src = fs.readFileSync(ROOT + "app.js", "utf8");
+  var sp_src = appSource();
   check("the pause before a save is 5 seconds, and a run of edits is saved at the latest 30 seconds after the first", /let spotifySaveDelayMs = 5000;/.test(sp_src) && /let spotifySaveMaxWaitMs = 30000;/.test(sp_src));
   var sp_one = 'FORMATS = {"f1": {"title": "Alpha", "name": "Alpha {n}", "silence between segments": "30 sec", "segments": [("💗 spacious + gentle", 30), ("🛋 rest", 20)]}}';
   var sp_ups = (o) => o.writes.filter((x) => x.type === "update" && x.description);
@@ -4573,7 +4576,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var bw_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("the method card asks how the recipes should be saved, and offers the two ways", /<h3 id="backupCardTitle">How should your recipes be saved\?<\/h3> <p>Pick where your recipes live\.<\/p>/.test(bw_html));
   check("its two options are Saved to Spotify automatically and Backed up to this device manually, the second with its note", /<span>Saved to Spotify automatically \(recommended\)<\/span><\/label>/.test(bw_html) && /<span>Backed up to this device manually<\/span><\/label> <p class="muted choice-note">Your recipes live on this device only\. You back them up to a file when you choose, and restore from it when you need it\.<\/p>/.test(bw_html));
-  check("nothing on the page calls the manual way a file any more, in the card, the notes, Step 4 or the menu", !/Manually, to your phone or computer|Automatically to Spotify|Download a backup|Restore from backup|Change how your recipes are saved\u2026/.test(bw_html + fs.readFileSync(ROOT + "editor.js", "utf8") + fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("nothing on the page calls the manual way a file any more, in the card, the notes, Step 4 or the menu", !/Manually, to your phone or computer|Automatically to Spotify|Download a backup|Restore from backup|Change how your recipes are saved\u2026/.test(bw_html + fs.readFileSync(ROOT + "editor.js", "utf8") + appSource()));
   var bw_m = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "manual", connectedBefore: "1" }, fetchOptions: {} });
   bw_m.document.getElementById("feAppMenuButton").click();
   var bw_head = bw_m.document.getElementById("feBackupMethod");
@@ -4807,7 +4810,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   sr_ready.eval("window.__go = []"); sr_ready.eval("startLogin = (o) => { window.__go.push(o); }");
   sr_ready.document.getElementById("changeSpotifyLogin").click();
   check("Change Spotify login in More options starts a sign-in that lets another account be chosen", sr_ready.eval("window.__go.length") === 1 && sr_ready.eval("window.__go[0].switchAccount") === true);
-  check("that sign-in asks Spotify to show its page (show_dialog), and only for this, not the usual sign-in", /if \(switchAccount\) params\.set\("show_dialog", "true"\)/.test(fs.readFileSync(ROOT + "app.js", "utf8")) && /options\.switchAccount === true/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("that sign-in asks Spotify to show its page (show_dialog), and only for this, not the usual sign-in", /if \(switchAccount\) params\.set\("show_dialog", "true"\)/.test(appSource()) && /options\.switchAccount === true/.test(appSource()));
   var sr_sw = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", spotifyAccount: "someone-else", spotifySynced: '{"x":{"rev":1,"playlistId":"p"}}', spotifyPendingDeletes: '["q"]' }, fetchOptions: {} });
   await waitFor(() => sr_sw.eval("connection") === "ready", 15000);
   check("signed in to a different account, this device forgets what it knew of the old account's saves", sr_sw.localStorage.getItem("spotifyAccount") === "ron" && sr_sw.localStorage.getItem("spotifyAccount") !== "someone-else" && !/"x"/.test(sr_sw.localStorage.getItem("spotifySynced") || "") && !sr_sw.localStorage.getItem("spotifyPendingDeletes"));
@@ -5106,7 +5109,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("held to the end, the menu closes and Developer options opens in the info popup", !dv_w.document.getElementById("feAppMenuPanel") && dv_w.document.getElementById("infoOverlay").hidden === false && dv_w.document.getElementById("infoSlot").firstElementChild.id === "devOptions" && dv_w.document.getElementById("infoTitle").textContent === "Developer options");
   var dv_topics = Array.from(dv_w.document.querySelectorAll("#devOptions details.gd-topic > summary")).map((h) => h.textContent);
   check("it has the two Music sharing topics (tags and reports), Start over, Copy Spotify record, Phone width and Python status, all open, and no way to turn it off", JSON.stringify(dv_topics) === JSON.stringify(["Music sharing tags", "Music sharing reports", "Start over", "Copy Spotify record", "Phone width", "Python status"]) && Array.from(dv_w.document.querySelectorAll("#devOptions details.gd-topic")).every((d) => d.open) && !/Turn off/.test(dv_w.document.getElementById("devOptions").textContent), JSON.stringify(dv_topics));
-  check("Phone width offers Off, 360 px and 320 px, Off chosen, and the page frames itself only when one is kept and it is not in a frame already", (() => { const r = Array.from(dv_w.document.querySelectorAll('#devOptions input[name="devPhoneWidth"]')); const html = fs.readFileSync(ROOT + "index.html", "utf8"); return r.map((x) => x.value).join(",") === ",360,320" && r[0].checked && !r[1].checked && /^<!doctype html>\n<html lang="en">\n<head>\n<script>\n  \/\/ Developer options > Phone width/.test(html) && /if \(!\(w === 360 \|\| w === 320\) \|\| window\.top !== window\) return;/.test(html) && /pageWindow\(\)\.location\.href = "https:\/\/accounts\.spotify\.com\/authorize\?"/.test(fs.readFileSync(ROOT + "app.js", "utf8")); })());
+  check("Phone width offers Off, 360 px and 320 px, Off chosen, and the page frames itself only when one is kept and it is not in a frame already", (() => { const r = Array.from(dv_w.document.querySelectorAll('#devOptions input[name="devPhoneWidth"]')); const html = fs.readFileSync(ROOT + "index.html", "utf8"); return r.map((x) => x.value).join(",") === ",360,320" && r[0].checked && !r[1].checked && /^<!doctype html>\n<html lang="en">\n<head>\n<script>\n  \/\/ Developer options > Phone width/.test(html) && /if \(!\(w === 360 \|\| w === 320\) \|\| window\.top !== window\) return;/.test(html) && /pageWindow\(\)\.location\.href = "https:\/\/accounts\.spotify\.com\/authorize\?"/.test(appSource()); })());
   dv_w.eval("openInfo('devOptions')");
   dv_w.document.getElementById("infoClose").click();
   check("closed, it goes back to its place, hidden", dv_w.document.getElementById("devOptions").hidden === true && !dv_w.document.getElementById("devOptions").closest("#infoSlot"));
@@ -5246,7 +5249,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-07c"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-07d"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5370,9 +5373,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("under the name, the recipe's bar: a piece for each segment and silence, as in the editor", !bp_a.document.getElementById("bdShape").hidden && bp_a.document.querySelectorAll("#bdShape .bd-shape-piece").length === bp_a.document.querySelectorAll("#feBar .fe-piece").length && bp_a.document.querySelectorAll("#bdShape .bd-shape-silence").length === bp_a.document.querySelectorAll("#feBar .fe-piece-silence").length, bp_a.document.getElementById("bdShape").innerHTML);
   check("and its length under the bar: music in bold, silence, and the segments", /^(\d+ h( \d+ min)?|\d+ min) of music( \+ (\d+ sec|\d+ min|\d+ h( \d+ min)?) of silence)? · \d+ segments?$/.test(bp_text(bp_a, "bdShapeInfo")) && !!bp_a.document.querySelector("#bdShapeInfo b"), bp_text(bp_a, "bdShapeInfo"));
   check("while it asks, reading and planning are ticked and building has not started", bp_steps(bp_a) === "done,done,-,-", bp_steps(bp_a));
-  check("the plan lists no playlists: the count says how many, and the list starts when building does", bp_rows(bp_a).length === 0 && !/showPlanRows|bdShowAll/.test(fs.readFileSync(ROOT + "app.js", "utf8")), bp_rows(bp_a).map((r) => r.textContent).join(" | "));
+  check("the plan lists no playlists: the count says how many, and the list starts when building does", bp_rows(bp_a).length === 0 && !/showPlanRows|bdShowAll/.test(appSource()), bp_rows(bp_a).map((r) => r.textContent).join(" | "));
   check("there is no separate progress bar any more", !bp_a.document.getElementById("bdProgress"));
-  check("while the cover is sent, the row says so, not adding songs", /setRowState\(row, "now", "adding the cover"\);[^\n]*\n\s*try \{ await spotifyRequest\("PUT", `\/playlists\/\$\{made\.id\}\/images`/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("while the cover is sent, the row says so, not adding songs", /setRowState\(row, "now", "adding the cover"\);[^\n]*\n\s*try \{ await spotifyRequest\("PUT", `\/playlists\/\$\{made\.id\}\/images`/.test(appSource()));
   check("Why 2? is offered, and the table starts hidden", bp_text(bp_a, "planToggle") === "Why 2?" && !visible(bp_a, "planText"));
   bp_a.document.getElementById("planToggle").click();
   var bp_trs = Array.from(bp_a.document.querySelectorAll("#planText tbody tr"));
@@ -5383,7 +5386,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("every source with the same count as the one that ran out is marked too", Array.from(bp_a.document.querySelectorAll("#planText tbody tr")).map((t) => t.className).join(",") === "bd-limit,,bd-limit");
   bp_a.fillWhyTable({ built: [{ key: "ran", playlists: [{}, {}], sources: [{ name: "a", per: 60, has: 130, enough: 3 }, { name: "b", per: 60, has: 300, enough: 5 }, { name: "c", per: 30, has: 100, enough: 3 }] }] });
   check("when the cap sets the number, no row is marked, and a note above the table says so and how many the songs allow", Array.from(bp_a.document.querySelectorAll("#planText tbody tr")).map((t) => t.className).join(",") === ",," && bp_a.document.querySelector("#planText").firstElementChild.className === "bd-note bd-capnote" && bp_text(bp_a, "planText").startsWith("Capped at 2 by “Most playlists per recipe” in More options. Without it, the songs are enough for 3 playlists."), bp_text(bp_a, "planText"));
-  var bp_html = fs.readFileSync(ROOT + "index.html", "utf8"), bp_js = fs.readFileSync(ROOT + "app.js", "utf8");
+  var bp_html = fs.readFileSync(ROOT + "index.html", "utf8"), bp_js = appSource();
   check("a long name ends in an ellipsis instead of wrapping, with the full name on hover, and Available is left-aligned", /#planText td:first-child[^{]*\{ max-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /#planText td:nth-child\(2\)[^{]*\{ text-align: left;/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && bp_trs[0].children[0].title === "💗 spacious + gentle");
   check("the marked row is pale pink with its number in pink, and the rows are striped", /tr\.bd-limit td \{ background: color-mix\(in srgb, var\(--accent\)/.test(bp_html) && /tr\.bd-limit td:last-child \{ color: var\(--accent\);/.test(bp_html) && /tbody tr:nth-child\(odd\) td \{ background: var\(--card\); \}/.test(bp_html));
   check("songs in more than one source get their own box, not a line under the table", /infoBox\("shared", `\$\{plural\(shared, "song"\)\}/.test(bp_js) && !/className: "bd-note", textContent: `\$\{plural\(shared/.test(bp_js));
@@ -5396,7 +5399,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => visible(bp_a, "createCloseRow"), 60000);
   check("done: every step ticked, and the count is gone", bp_steps(bp_a) === "done,done,done,done" && !visible(bp_a, "bdTally"), bp_steps(bp_a));
   check("done: how many, how much music, and a tile for each", doneSentence(bp_a) === "2 playlists are in your Spotify library." && /^\d+ h( \d+ min)? of music$|^\d+ min of music$/.test(bp_a.document.querySelector("#actionMessage .bd-hours").textContent) && bp_a.document.querySelectorAll("#actionMessage .bd-tiles .bd-tile").length === 2, bp_text(bp_a, "actionMessage"));
-  check("done: a fanned cover for each playlist, five at most", bp_a.document.querySelectorAll("#actionMessage .bd-fan .bd-card-img").length === 2 && /Math\.min\(made, 5\)/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("done: a fanned cover for each playlist, five at most", bp_a.document.querySelectorAll("#actionMessage .bd-fan .bd-card-img").length === 2 && /Math\.min\(made, 5\)/.test(appSource()));
   check("done: the playlists are not links, each one ticked with its songs and length", bp_rows(bp_a).length === 2 && bp_rows(bp_a).every((r) => !r.querySelector("a") && /songs ·/.test(r.querySelector(".bd-meta").textContent)));
   check("done: Open in Spotify opens the first new playlist, then the thank-you box, then the list", visible(bp_a, "createOpen") && /^https:\/\/open\.spotify\.com\/playlist\/new\w+$/.test(bp_a.document.getElementById("createOpenLink").href) && bp_a.document.getElementById("createOpenLink").textContent === "Open in Spotify" && bp_a.document.getElementById("createOpen").nextElementSibling.id === "createSupport", bp_a.document.getElementById("createOpenLink").href);
   check("done: the status line is hidden", bp_a.document.getElementById("output").hidden);
@@ -5471,7 +5474,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("engine: with nothing planned, the playlists too short for even one", bp_none.playlists.length === 0 && JSON.stringify(bp_none.short) === '[{"name":"B","need":60,"has":10}]', JSON.stringify(bp_none.short));
   var bp_fit = JSON.parse(bp_py("build_playlists", ['{"w": {"name": "W {n}", "segments": [("A", 10)]}}', "w", JSON.stringify({ A: [1, 2, 3, 4, 5, 6].map((i) => ({ uri: "a" + i, ms: 240000 })) })]));
   check("engine: enough minutes whose song lengths cannot come within 10% says so, with what the playlist really has", bp_fit.playlists.length === 0 && JSON.stringify(bp_fit.short) === '[{"name":"A","need":10,"has":24,"fit":true}]', JSON.stringify(bp_fit.short));
-  check("and the popup words it as the songs not adding up", /add up to \$\{lengthText\(s\.need\)\}\.`, `A segment has to come within 10% of its length/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("and the popup words it as the songs not adding up", /add up to \$\{lengthText\(s\.need\)\}\.`, `A segment has to come within 10% of its length/.test(appSource()));
   check("engine: and the limit on the number leaves nothing ran out", JSON.parse(bp_py("build_playlists", ['{"w": {"name": "W {n}", "segments": [("A", 5)]}}', "w", JSON.stringify({ A: [1, 2, 3].map((i) => ({ uri: "a" + i, ms: 300000 })) }), 1])).ranOut === null);
   } catch (err) { areaCrashed("build popup", err); } }
 
@@ -5567,7 +5570,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var rs_wr = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: rs_or });
   await runPreview(rs_wr);
   var rs_rep = Array.from(rs_wr.document.querySelectorAll("#bdInfo .bd-info")).find((b) => /more than once/.test(b.textContent));
-  check("a source playlist that lists songs more than once gets a box saying how many, and that each is used once, with nothing offered that changes the playlist", !!rs_rep && rs_rep.textContent.startsWith("💗 spacious + gentle lists 3 songs more than once. Each is used once. Details") && !/Fix/.test(rs_rep.textContent) && !/removeRepeats/.test(fs.readFileSync(ROOT + "app.js", "utf8")), rs_rep && rs_rep.textContent);
+  check("a source playlist that lists songs more than once gets a box saying how many, and that each is used once, with nothing offered that changes the playlist", !!rs_rep && rs_rep.textContent.startsWith("💗 spacious + gentle lists 3 songs more than once. Each is used once. Details") && !/Fix/.test(rs_rep.textContent) && !/removeRepeats/.test(appSource()), rs_rep && rs_rep.textContent);
   var rs_rl = rs_rep.querySelector("ul");
   check("the songs are behind Details, each with how many times it is listed", rs_rl.hidden === true && JSON.stringify(Array.from(rs_rl.querySelectorAll("li")).map((li) => li.textContent)) === JSON.stringify(["Artist - Song 0 of p2: 2 times", "Artist - Song 1 of p2: 2 times", "Artist - Song 2 of p2: 2 times"]), Array.from(rs_rl.querySelectorAll("li")).map((li) => li.textContent).join(" | "));
   pressBuild(rs_wr);
@@ -5578,14 +5581,14 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("each built playlist has every song once", Object.values(rs_byList).length > 0 && Object.values(rs_byList).every((u) => new Set(u).size === u.length));
   var rs_key = (a, b) => rs_ws.eval(`songKey(${JSON.stringify(a)}) === songKey(${JSON.stringify(b)})`);
   check("it points out the same song with a remaster note, or other case, accents, or punctuation, and not a live, acoustic or remix version, which is a different song", rs_key("Pink Floyd - Time", "Pink Floyd - Time - 2011 Remaster") && rs_key("Beyoncé - Halo", "Beyonce - Halo (Remastered 2020)") && rs_key("Simon & Garfunkel - The Sound of Silence", "simon and garfunkel - the sound of silence - remastered") && !rs_key("Pink Floyd - Time", "Pink Floyd - Time (Live)") && !rs_key("Radiohead - Creep", "Radiohead - Creep (Acoustic)") && !rs_key("Artist - Song", "Artist - Song (Remix)"));
-  check("the note is there every time, with nothing remembered about having been shown it", !/localStorage|sessionStorage/.test(fs.readFileSync(ROOT + "app.js", "utf8").match(/function findSuspects[\s\S]*?\n}\n/)[0]));
+  check("the note is there every time, with nothing remembered about having been shown it", !/localStorage|sessionStorage/.test(appSource().match(/function findSuspects[\s\S]*?\n}\n/)[0]));
   } catch (err) { areaCrashed("recipe session", err); } }
 
   if (want("newer version")) { try {
   // ================================================================ a newer version on the site
   var nv_src = fs.readFileSync(ROOT + "index.html", "utf8").match(/<script>\n  \/\/ If the page's own script never starts[\s\S]*?<\/script>/)[0].replace(/^<script>|<\/script>$/g, "");
-  var nv_version = fs.readFileSync(ROOT + "app.js", "utf8").match(/const APP_VERSION = "([^"]+)"/)[1];
-  check("version.txt holds just the version of the files, so a check costs a few bytes, and it is the same stamp as the page's", fs.readFileSync(ROOT + "version.txt", "utf8").trim() === nv_version && fs.readFileSync(ROOT + "version.txt", "utf8").length < 40 && fs.readFileSync(ROOT + "index.html", "utf8").split(nv_version).length - 1 === 6);
+  var nv_version = appSource().match(/const APP_VERSION = "([^"]+)"/)[1];
+  check("version.txt holds just the version of the files, so a check costs a few bytes, and it is the same stamp as the page's", fs.readFileSync(ROOT + "version.txt", "utf8").trim() === nv_version && fs.readFileSync(ROOT + "version.txt", "utf8").length < 40 && fs.readFileSync(ROOT + "index.html", "utf8").split(nv_version).length - 1 === 7);
   var nv_make = async (fetchOptions = {}, session = {}, local = {}) => {
     const w = await boot({ url: EDURL, session: Object.assign(signedIn(), session), local: Object.assign({ formats: MINI, connectedBefore: "1", backupMode: "manual" }, local), fetchOptions });
     w.eval(nv_src);
@@ -5643,7 +5646,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("so does the window coming forward from behind another one, which is not the tab becoming visible", nv_seen(nv_f).length === 2);
   var nv_g = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "manual" }, fetchOptions: {} });
   await new Promise((r) => setTimeout(r, 5600));
-  check("a few seconds after a clean start it is asked once, with no timer running after that", log.filter((e) => /version\.txt/.test(e.url)).length >= 1 && !/setInterval\(checkForNewVersion/.test(fs.readFileSync(ROOT + "app.js", "utf8")));
+  check("a few seconds after a clean start it is asked once, with no timer running after that", log.filter((e) => /version\.txt/.test(e.url)).length >= 1 && !/setInterval\(checkForNewVersion/.test(appSource()));
   // opening the app menu does not ask (the card arrived behind the menu)
   var nv_h = await nv_make({ serverVersion: "2099-01-01a" });
   nv_h.eval("versionCheck.last = Date.now() - 31 * 1000; toggleAppMenu()");
