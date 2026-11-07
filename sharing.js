@@ -139,7 +139,7 @@ function curveSvg(on, { area = true, dividers = false, cls = "ms-curve" } = {}) 
   return svg;
 }
 // the curve with the names under it; with choose, each part is a button that turns it on and off
-function phaseCurve(on, choose = null, label = "Phases") {
+function phaseCurve(on, choose = null, label = "Phases", single = false) {   // single: one part at a time (the filter); choosing it again clears it
   const box = feEl("div", { class: "ms-phases" + (choose ? " ms-phases-pick" : ""), role: choose ? "group" : null, "aria-label": choose ? label : null });
   const draw = () => {
     box.textContent = "";
@@ -149,7 +149,7 @@ function phaseCurve(on, choose = null, label = "Phases") {
     PHASES.forEach((name, i) => {
       const lit = list.includes(i);
       names.appendChild(choose
-        ? feEl("button", { type: "button", class: lit ? "ms-on" : "", "aria-pressed": String(lit), onClick: () => { if (on.has(i)) on.delete(i); else on.add(i); draw(); box.querySelectorAll("button")[i].focus(); choose(); } }, name)
+        ? feEl("button", { type: "button", class: lit ? "ms-on" : "", "aria-pressed": String(lit), onClick: () => { if (on.has(i)) on.delete(i); else { if (single) on.clear(); on.add(i); } draw(); box.querySelectorAll("button")[i].focus(); choose(); } }, name)
         : feEl("span", { class: lit ? "ms-on" : "" }, name));
     });
     box.appendChild(names);
@@ -505,8 +505,8 @@ function openFilters() {
       feEl("h3", {}, "Filters"),
       feEl("button", { type: "button", class: "ms-sheet-x", "aria-label": "Close", onClick: closeFilters }, feIcon("close"))),
     feEl("div", { class: "ms-sheet-body" },
-      feEl("p", { class: "ms-ftitle" }, "Phases of a ceremony it suits"),
-      feEl("p", { class: "ms-fsub" }, "Choose all that apply. Playlists shown suit every phase chosen."),
+      feEl("p", { class: "ms-ftitle" }, "Phase"),
+      feEl("p", { class: "ms-fsub" }, "Choose one to see playlists that suit it."),
       feEl("div", { id: "msPhasePick" }),
       feEl("p", { class: "ms-ftitle" }, "Tags"),
       feEl("p", { class: "ms-fsub" }, "Words sharers chose for their music."),
@@ -528,7 +528,7 @@ function openFilters() {
 }
 function refreshFilters() {
   const pick = $("msPhasePick");
-  if (pick) { pick.textContent = ""; pick.appendChild(phaseCurve(sharing.phases, () => renderResults(), "Phases of a ceremony it suits")); }
+  if (pick) { pick.textContent = ""; pick.appendChild(phaseCurve(sharing.phases, () => renderResults(), "Phase", true)); }
   if ($("msHideAdded")) $("msHideAdded").checked = sharing.hideAdded;
   renderResults();
 }
@@ -584,7 +584,7 @@ function renderResults() {
   if ($("msPhasePick") && $("msPhasePick").firstChild) {
     // the curve in the panel follows chips removed under the buttons
     const lit = Array.from($("msPhasePick").querySelectorAll("button")).map((b) => b.classList.contains("ms-on"));
-    if (lit.some((on, i) => on !== sharing.phases.has(i))) { $("msPhasePick").textContent = ""; $("msPhasePick").appendChild(phaseCurve(sharing.phases, () => renderResults(), "Phases of a ceremony it suits")); }
+    if (lit.some((on, i) => on !== sharing.phases.has(i))) { $("msPhasePick").textContent = ""; $("msPhasePick").appendChild(phaseCurve(sharing.phases, () => renderResults(), "Phase", true)); }
   }
   const box = $("msResults");
   if (!box) return;
@@ -707,7 +707,7 @@ function renderDetail(body) {
     feEl("div", { class: "ms-hero-text" }, feEl("h3", { text: s.name }), feEl("div", { class: "ms-sub" }, isMine(s) ? "Shared by you" : s.by ? `Shared by ${s.by}` : "Shared anonymously"), feEl("div", { class: "ms-sub" }, `${songCountText(s.count)} · ${lengthText(s.ms / 60000)}`))));
   if (!isMine(s)) body.appendChild(feEl("div", { class: "ms-actions" }, addButton(s, true)));   // the person's own: the line under the name already says Shared by you
   if (sharing.addErrors[s.id]) body.appendChild(feEl("p", { class: "ms-error" }, sharing.addErrors[s.id]));
-  body.appendChild(feEl("div", { class: "ms-sec" }, "Phases"));
+  body.appendChild(feEl("div", { class: "ms-sec" }, "Phases it suits"));
   body.appendChild(phaseCurve(new Set(s.phases || [])));
   body.appendChild(feEl("div", { class: "ms-sec" }, "Tags"));
   body.appendChild(feEl("div", { class: "ms-tags ms-tags-plain" }, ...(s.tags || []).map((t) => feEl("span", { class: "ms-tag" }, t))));

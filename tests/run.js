@@ -843,9 +843,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-06n" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-06o" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-06n/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-06o/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3038,7 +3038,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-06n", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-06o", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4883,21 +4883,20 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("tags are the ones used on two or more shared playlists, two-word tags included", ["arrival", "ambient", "drones", "no vocals"].every((t) => ms_tags().includes(t)) && !ms_tags().some((t) => ["drums", "piano", "nature"].includes(t)), JSON.stringify(ms_tags()));
   check("each row shows its first tags and a small curve of its phases, and no description", ms_d.querySelector("#msResults .ms-row .ms-rowtags").textContent === "ambientdronesno vocals" && ms_d.querySelector("#msResults .ms-row .ms-mini-curve").getAttribute("aria-label") === "Suits Plateau, Landing" && ms_d.querySelector("#msResults .ms-row").querySelectorAll(".ms-mini-curve .ms-curve-lit").length === 2 && !ms_d.querySelector(".ms-desc"), ms_d.querySelector("#msResults .ms-row .ms-rowtags").textContent + " / " + ms_d.querySelector("#msResults .ms-row .ms-mini-curve").outerHTML);
   var ms_phaseBtns = () => Array.from(ms_d.querySelectorAll("#msSheet .ms-phases-pick .ms-phase-names button"));
-  check("Find playlists has the curve of a session as a filter, its five parts named", ms_phaseBtns().map((b) => b.textContent).join("|") === "Opening|Coming up|Plateau|Landing|Rest" && ms_d.querySelector("#msSheet .ms-ftitle").textContent === "Phases of a ceremony it suits" && /Choose all that apply/.test(ms_d.getElementById("msSheet").textContent));
+  check("Find playlists has the curve of a session as a filter, its five parts named, one at a time", ms_phaseBtns().map((b) => b.textContent).join("|") === "Opening|Coming up|Plateau|Landing|Rest" && ms_d.querySelector("#msSheet .ms-ftitle").textContent === "Phase" && /Choose one to see playlists that suit it\./.test(ms_d.getElementById("msSheet").textContent));
   ms_phaseBtns()[2].click();
   check("tapping a part shows the playlists that suit it, and lights it", JSON.stringify(ms_names()) === JSON.stringify(["Deep water", "Peak, with care", "Night sky"]) && ms_phaseBtns()[2].getAttribute("aria-pressed") === "true" && ms_d.querySelectorAll("#msSheet .ms-phases-pick .ms-curve-lit").length === 1 && ms_d.getElementById("msShow").textContent === "Show 3 playlists");
   ms_phaseBtns()[3].click();
-  check("two parts show the playlists that suit both", JSON.stringify(ms_names()) === JSON.stringify(["Deep water", "Night sky"]));
-  check("chosen filters are counted on the button and shown as chips under it", ms_d.querySelector("#msFilters .ms-count").textContent === "2" && Array.from(ms_d.querySelectorAll("#msActive .ms-chip")).map((c) => c.textContent).join() === "Plateau,Landing");
-  ms_d.querySelectorAll("#msActive .ms-chip")[1].click();
-  check("a chip's x removes that filter, and the curve in the panel follows", ms_names().length === 3 && ms_phaseBtns()[3].getAttribute("aria-pressed") === "false");
-  ms_phaseBtns()[3].click();
-  ms_phaseBtns()[2].click(); ms_phaseBtns()[3].click();
-  check("and with none chosen, all of them again", ms_names().length === 4);
+  check("tapping another part chooses it in place of the first", ms_phaseBtns()[2].getAttribute("aria-pressed") === "false" && ms_phaseBtns()[3].getAttribute("aria-pressed") === "true" && JSON.stringify(ms_names()) === JSON.stringify(["Deep water", "Night sky"]));
+  check("the chosen phase is counted on the button and shown as a chip under it", ms_d.querySelector("#msFilters .ms-count").textContent === "1" && Array.from(ms_d.querySelectorAll("#msActive .ms-chip")).map((c) => c.textContent).join() === "Landing");
+  ms_d.querySelectorAll("#msActive .ms-chip")[0].click();
+  check("a chip's x removes that filter, and the curve in the panel follows", ms_names().length === 4 && ms_phaseBtns()[3].getAttribute("aria-pressed") === "false");
+  ms_phaseBtns()[3].click(); ms_phaseBtns()[3].click();
+  check("tapping the chosen part again clears it, all of them again", ms_names().length === 4);
   Array.from(ms_d.querySelectorAll("#msTags .ms-tag")).find((e) => e.textContent === "arrival").click();
   check("a chosen tag keeps its place", ms_tags().join() === ms_w.eval("visibleTags().slice(0, sharing.tagsShown).map((t) => t.word).join()"));
   check("a tag shows only the playlists that use it", JSON.stringify(ms_names()) === JSON.stringify(["Forest floor", "Peak, with care"]));
-  ms_phaseBtns()[0].click(); ms_phaseBtns()[1].click();
+  ms_phaseBtns()[3].click();
   check("filters that leave nothing say so, with Clear filters", /No playlists match/.test(ms_d.getElementById("msResults").textContent) && /4 playlists are shared\. Try fewer filters\./.test(ms_d.getElementById("msResults").textContent) && ms_d.getElementById("msShow").textContent === "No playlists match");
   ms_d.querySelector("#msResults .ms-empty-ghost").click();
   check("Clear filters clears them all, the panel's curve and tags too", ms_names().length === 4 && !ms_d.querySelector("#msSheet .ms-tag.ms-on") && !ms_d.querySelector("#msSheet .ms-phase-names .ms-on") && !ms_d.querySelector("#msFilters .ms-count"));
@@ -5188,7 +5187,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-06n"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-06o"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
