@@ -12,7 +12,7 @@ const SHARE_TAGS_MIN = 3, SHARE_TAGS_MAX = 10, SHARE_TAG_CHARS = 30, SHARE_NOTES
 const PHASES = ["Opening", "Coming up", "Plateau", "Landing", "Rest"];
 const SHARING_COPIES_KEY = "sharingCopies";   // { shared playlist id: the person's copy's Spotify id }
 const SHARING_SHOWN_KEY = "sharingShownAs";   // { mode: "spotify" | "custom" | "anon", name }
-const SHARING_SHORT_KEY = "sharingShort";    // { playlist id: its snapshot when it was found under two hours }, so it shows as too short on the next visit until it changes
+const SHARING_BLOCKED_KEY = "sharingBlocked";   // { playlist id: { snap, why: "short" | "copy", of } }: found under two hours, or refused as a copy of someone else's share; kept until the playlist changes in Spotify
 const SHARING_MINE_KEY = "sharingMineIds";    // the ids of the person's own shares, so Find playlists says Shared by you at once (refreshed by loadMine)
 const OVERLAP_MIN_SONGS = 100, OVERLAP_MIN_PLAYLISTS = 2, OVERLAP_MIN_SHARES = 3;   // when "already in your recipes" is worth showing
 const OVERLAP_READ_GAP_MS = 2000;   // reading recipe playlists the browser does not have yet: one request every 2 seconds
@@ -795,22 +795,24 @@ function pickFromShare(s) { return { on: true, phases: new Set(s.phases || []), 
 function pickFor(p) {
   if (!sharing.picks[p.id]) {
     sharing.picks[p.id] = emptyPick();
-    if (knownShort(p)) sharing.picks[p.id].short = true;
+    const known = knownBlock(p);
+    if (known && known.why === "short") sharing.picks[p.id].short = true;
+    if (known && known.why === "copy") sharing.picks[p.id].copyOf = known.of || "";
   }
   return sharing.picks[p.id];
 }
-function shortRecord() {
-  try { return JSON.parse(localStorage.getItem(SHARING_SHORT_KEY) || "{}") || {}; } catch (err) { return {}; }
+function blockRecord() {
+  try { return JSON.parse(localStorage.getItem(SHARING_BLOCKED_KEY) || "{}") || {}; } catch (err) { return {}; }
 }
-// found under two hours before, and not changed in Spotify since (a list kept from the last connection has no snapshot, so the record stands)
-function knownShort(p) {
-  const all = shortRecord();
-  return p.id in all && (!p.snapshot || !all[p.id] || all[p.id] === p.snapshot);
+// what was found before, if the playlist has not changed in Spotify since (a list kept from the last connection has no snapshot, so the record stands)
+function knownBlock(p) {
+  const b = blockRecord()[p.id];
+  return b && (!p.snapshot || !b.snap || b.snap === p.snapshot) ? b : null;
 }
-function rememberShort(p, short) {
-  const all = shortRecord();
-  if (short) all[p.id] = p.snapshot || null; else delete all[p.id];
-  try { localStorage.setItem(SHARING_SHORT_KEY, JSON.stringify(all)); } catch (err) { /* private browsing: known for this visit only */ }
+function rememberBlock(p, why, of) {
+  const all = blockRecord();
+  if (why) all[p.id] = { snap: p.snapshot || null, why, of: of || "" }; else delete all[p.id];
+  try { localStorage.setItem(SHARING_BLOCKED_KEY, JSON.stringify(all)); } catch (err) { /* private browsing: known for this visit only */ }
 }
 // whether what is ticked and typed differs from what is shared
 function pickDiffers(pick, shared) {
@@ -823,6 +825,7 @@ function pickState(p, pick) {
   const shared = sharedFor(p);
   if (pick.checking) return { text: "Checking its length...", ready: false };
   if (pick.short) return { text: "Under two hours, so it cannot be shared.", ready: false, cls: "ms-dis" };
+  if (pick.copyOf != null) return { text: "A copy of a playlist someone else shares, so it cannot be shared.", ready: false, cls: "ms-dis" };
   if (pick.error) return { text: pick.error, ready: false, cls: "ms-need" };
   // not complete: the counters beside the labels say what is missing in pink, so the row says nothing more
   if (pick.on && !pickComplete(pick)) return { text: "", ready: false };
@@ -870,12 +873,14 @@ function shareYoursRow(p, copy) {
   const pick = pickFor(p);
   const row = feEl("div", { class: "ms-srow", id: "msRow-" + p.id });
   // under two hours (known once its songs are read): no checkbox (its space kept, so the covers line up), a grey name, and one line saying so in place of the songs
-  const short = !copy && pick.short;
+  const short = !copy && (pick.short || pick.copyOf != null);   // either way the row looks the same, with its own line
+  const why = pick.short ? "Under two hours, so it can't be shared."
+    : pick.copyOf ? `A copy of ${named(pick.copyOf)}, which someone else shares, so it can't be shared.` : "A copy of a playlist someone else shares, so it can't be shared.";
   const box = feEl("input", { type: "checkbox", class: "ms-check" + (short ? " ms-nobox" : ""), checked: !copy && pick.on, disabled: copy || short, "aria-label": p.name, "aria-hidden": short ? "true" : null, tabindex: short ? "-1" : null });
   box.addEventListener("change", () => toggleShare(p, box.checked));
   const cover = p.image ? feEl("img", { class: "ms-cover", src: p.image, alt: "" }) : feEl("span", { class: "ms-cover ms-nocover" }, feIcon("notes"));
   const text = feEl("div", { class: "ms-text" }, feEl("div", { class: "ms-name" + (copy || short ? " ms-dim" : ""), text: p.name }),
-    short ? feEl("div", { class: "ms-sub" }, "Under two hours, so it can't be shared.")
+    short ? feEl("div", { class: "ms-sub", text: why })
       : feEl("div", { class: "ms-sub ms-subrow" }, feEl("span", { class: "ms-subtext" }, !copy && pick.on && songsLine(p, pick, !fieldsShown(p, pick)) || (p.count != null ? songCountText(p.count) : "")),
         copy ? null : rowAction(p, pick)));
   if (copy) text.appendChild(feEl("div", { class: "ms-state ms-dis" }, "Gotten from Music sharing, so it cannot be shared again."));
@@ -887,7 +892,7 @@ function shareYoursRow(p, copy) {
 // A shared playlist folds to its name and its songs, with Edit details at the right of the songs line; Edit details unfolds the same fields a new share has, and Done folds them again.
 // It stays open while something it needs is missing. After a share goes through, the row folds (applyShares).
 function fieldsShown(p, pick) {
-  if (!pick.on || pick.short || pick.checking) return false;
+  if (!pick.on || pick.short || pick.copyOf != null || pick.checking) return false;
   return !sharedFor(p) || pick.open || !pickState(p, pick).ready;
 }
 function stateLine(p, pick) {
@@ -1021,7 +1026,7 @@ async function toggleShare(p, on) {
       pick.ms = tracks.reduce((n, t) => n + (t.ms || 0), 0);
       pick.songs = { count: tracks.length, ms: pick.ms, avgMs: pick.ms / Math.max(1, tracks.length), artists: topArtists(tracks) };
       if (pick.ms < SHARE_MIN_MS) { pick.short = true; pick.on = false; }
-      rememberShort(p, pick.short);
+      rememberBlock(p, pick.short ? "short" : null);
     } catch (err) { pick.error = `Its songs could not be read: ${String(err.message || err).replace(/\.$/, "")}.`; pick.on = false; }
     pick.checking = false;
   }
@@ -1093,7 +1098,14 @@ async function applyShares() {
       pick.update = false;
       pick.open = false;   // shared: the row folds
     } catch (err) {
-      pick.error = err.code === "copy" ? err.message + " Copies cannot be shared again." : err.message;
+      if (err.code === "copy" && c.share.includes(p)) {
+        // refused as a copy: the row looks like a short one from now on, on later visits too, until the playlist changes
+        const of = (/copy of (.+), which someone else shares/.exec(err.message) || [])[1] || "";
+        pick.copyOf = of;
+        pick.on = false;
+        pick.touched = false;
+        rememberBlock(p, "copy", of);
+      } else pick.error = err.code === "copy" ? err.message + " Copies cannot be shared again." : err.message;
     }
   }
   sharing.applying = false;
