@@ -845,9 +845,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-06zg" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-07a" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-06zg/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-07a/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3040,7 +3040,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-06zg", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-07a", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4916,7 +4916,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var ms_shownTags = (r) => Array.from(r.querySelector(".ms-rowtags").children).filter((c) => !c.hidden).map((c) => c.textContent).join("|");
   check("each row shows as many tags as fit on one line, +N more for the rest, and a small curve of its phases, and no description", (() => { const box = ms_d.querySelector("#msResults .ms-row .ms-rowtags"), shown = ms_shownTags(ms_d.querySelector("#msResults .ms-row")).split("|"), more = /^\+(\d+) more$/.exec(shown[shown.length - 1]); return box.scrollWidth <= box.clientWidth && /^ambient\|drones/.test(shown.join("|")) && (more ? shown.length - 1 + Number(more[1]) === 4 : shown.length === 4); })() && ms_d.querySelector("#msResults .ms-row .ms-mini-curve").getAttribute("aria-label") === "Suits Plateau, Descent" && ms_d.querySelector("#msResults .ms-row").querySelectorAll(".ms-mini-curve .ms-curve-lit").length === 2 && !ms_d.querySelector(".ms-desc"), ms_d.querySelector("#msResults .ms-row .ms-rowtags").textContent + " / " + ms_d.querySelector("#msResults .ms-row .ms-mini-curve").outerHTML);
   var ms_phaseBtns = () => Array.from(ms_d.querySelectorAll("#msSheet .ms-phases-pick .ms-phase-names button"));
-  check("Find playlists has the curve of a session as a filter, its five parts named, one at a time", ms_phaseBtns().map((b) => b.textContent).join("|") === "Preparing|Ascent|Plateau|Descent|Rest" && ms_d.querySelector("#msSheet .ms-ftitle").textContent === "Phase" && /Choose one to see playlists that suit it\./.test(ms_d.getElementById("msSheet").textContent));
+  check("Find playlists has the curve of a session as a filter, its five parts named, one at a time", ms_phaseBtns().map((b) => b.textContent).join("|") === "Beginning|Ascent|Plateau|Descent|Rest" && ms_d.querySelector("#msSheet .ms-ftitle").textContent === "Phase" && /Choose one to see playlists that suit it\./.test(ms_d.getElementById("msSheet").textContent));
   ms_phaseBtns()[2].click();
   check("tapping a part shows the playlists that suit it, and lights it", JSON.stringify(ms_names()) === JSON.stringify(["Deep water", "Peak, with care", "Night sky"]) && ms_phaseBtns()[2].getAttribute("aria-pressed") === "true" && ms_d.querySelectorAll("#msSheet .ms-phases-pick .ms-curve-lit").length === 1 && ms_d.getElementById("msShow").textContent === "Show 3 playlists");
   ms_phaseBtns()[3].click();
@@ -5241,7 +5241,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-06zg"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-07a"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

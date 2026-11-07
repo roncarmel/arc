@@ -114,7 +114,7 @@ async function mine(env, whoId) {
   const rows = await env.DB.prepare("SELECT id, playlist, snapshot, name, shown_as, phases, tags, notes, shared_at, updated_at, hidden FROM shares WHERE owner = ?").bind(whoId).all();
   return { shares: rows.results.map((r) => ({ id: r.id, playlist: r.playlist, snapshot: r.snapshot, name: r.name, by: r.shown_as || null, phases: phaseList(r.phases), tags: JSON.parse(r.tags), notes: r.notes || "", sharedAt: r.shared_at, updatedAt: r.updated_at, hidden: !!r.hidden })) };
 }
-// phases are kept as one number, a bit per phase (Preparing 1, Ascent 2, Plateau 4, Descent 8, Rest 16), and sent as a list of positions
+// phases are kept as one number, a bit per phase (Beginning 1, Ascent 2, Plateau 4, Descent 8, Rest 16), and sent as a list of positions
 const phaseList = (mask) => Array.from({ length: LIMITS.phases }, (_, i) => i).filter((i) => mask & (1 << i));
 // a tag as the page makes it: lower case, single spaces, letters, numbers and a few marks
 function cleanTag(t) {
