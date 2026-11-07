@@ -9,7 +9,7 @@ const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_MIN_MS = 2 * 60 * 60 * 1000;
 const SHARE_TAGS_MIN = 3, SHARE_TAGS_MAX = 10, SHARE_TAG_CHARS = 30, SHARE_NOTES_MAX = 400;   // the worker checks the same
 // The phases of a session, drawn as one curve: low and flat, rising, high and flat, falling, low and flat (decided by Ron, 2026-11-06).
-const PHASES = ["Preparing", "Ascending", "Plateau", "Descending", "Resting"];
+const PHASES = ["Preparing", "Ascent", "Plateau", "Descent", "Rest"];
 const SHARING_COPIES_KEY = "sharingCopies";   // { shared playlist id: the person's copy's Spotify id }
 const SHARING_SHOWN_KEY = "sharingShownAs";   // { mode: "spotify" | "custom" | "anon", name }
 const SHARING_BLOCKED_KEY = "sharingBlocked";   // { playlist id: { snap, why: "short" | "copy", of } }: found under two hours, or refused as a copy of someone else's share; kept until the playlist changes in Spotify
@@ -165,7 +165,7 @@ function cleanTag(t) {
 }
 
 // ---------------------------------------------------------------- the curve of a session
-// Five parts of one line, each 100 wide: Preparing low, Ascending rising, Plateau high, Descending falling, Resting low. Chosen parts are pink.
+// Five parts of one line, each 100 wide: Preparing low, Ascent rising, Plateau high, Descent falling, Rest low. Chosen parts are pink.
 const CURVE_LOW = 82, CURVE_HIGH = 18;
 const CURVE_PARTS = [`M0,${CURVE_LOW} L100,${CURVE_LOW}`, `M100,${CURVE_LOW} C150,${CURVE_LOW} 150,${CURVE_HIGH} 200,${CURVE_HIGH}`, `M200,${CURVE_HIGH} L300,${CURVE_HIGH}`,
   `M300,${CURVE_HIGH} C350,${CURVE_HIGH} 350,${CURVE_LOW} 400,${CURVE_LOW}`, `M400,${CURVE_LOW} L500,${CURVE_LOW}`];
