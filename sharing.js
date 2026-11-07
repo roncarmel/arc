@@ -12,6 +12,7 @@ const SHARE_TAGS_MIN = 3, SHARE_TAGS_MAX = 10, SHARE_TAG_CHARS = 30, SHARE_NOTES
 const PHASES = ["Opening", "Coming up", "Plateau", "Landing", "Rest"];
 const SHARING_COPIES_KEY = "sharingCopies";   // { shared playlist id: the person's copy's Spotify id }
 const SHARING_SHOWN_KEY = "sharingShownAs";   // { mode: "spotify" | "custom" | "anon", name }
+const SHARING_SHORT_KEY = "sharingShort";    // { playlist id: its snapshot when it was found under two hours }, so it shows as too short on the next visit until it changes
 const SHARING_MINE_KEY = "sharingMineIds";    // the ids of the person's own shares, so Find playlists says Shared by you at once (refreshed by loadMine)
 const OVERLAP_MIN_SONGS = 100, OVERLAP_MIN_PLAYLISTS = 2, OVERLAP_MIN_SHARES = 3;   // when "already in your recipes" is worth showing
 const OVERLAP_READ_GAP_MS = 2000;   // reading recipe playlists the browser does not have yet: one request every 2 seconds
@@ -398,8 +399,11 @@ function sortChoices() {
 function filterCount() { return sharing.phases.size + sharing.tags.size; }
 function renderFind(body) {
   if (!sortChoices().some(([v]) => v === sharing.sort)) sharing.sort = "newest";
-  body.appendChild(feEl("p", { id: "msIntro", class: "ms-intro" }, "Playlists other facilitators share for their sessions. ", feEl("b", {}, "Get"),
-    " puts your own private copy in your Spotify, ready to use in your recipes. The copy is yours to change, and it stays as it is if the sharer changes or removes theirs."));
+  // what the list is, folded behind a pink line (it took too much room); tapping the line again folds it
+  body.appendChild(feEl("details", { id: "msAbout", class: "ms-about" },
+    feEl("summary", {}, "What am I seeing here?", feIcon("chevron")),
+    feEl("p", { id: "msIntro", class: "ms-intro" }, "Playlists other facilitators share for their sessions. ", feEl("b", {}, "Get"),
+      " puts your own private copy in your Spotify, ready to use in your recipes. The copy is yours to change, and it stays as it is if the sharer changes or removes theirs.")));
   body.appendChild(feEl("div", { id: "msTools", class: "ms-tools" }));
   body.appendChild(feEl("div", { id: "msActive", class: "ms-active" }));
   const added = addedCount();
@@ -430,7 +434,7 @@ function renderTools() {
   if (sharing.searchOpen) {
     const search = feEl("input", { type: "search", class: "ms-search-input", id: "msSearch", placeholder: "Search", "aria-label": "Search names, sharers, tags, descriptions and artists", value: sharing.search });
     search.addEventListener("input", () => { sharing.search = search.value; renderResults(); });
-    search.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeSearch(); } });
+    search.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeSearch(); } else if (e.key === "Enter") { e.preventDefault(); search.blur(); } });   // the list follows each letter; Enter (a phone's Search key) only puts the keyboard away
     box.appendChild(feEl("label", { class: "ms-search" }, feIcon("search"), search));
     box.appendChild(feEl("button", { type: "button", class: "linklike ms-cancel", onClick: closeSearch }, "Cancel"));
     box.appendChild(feEl("p", { class: "ms-search-hint" }, "Searches names, sharers, tags, descriptions and artists."));
@@ -642,12 +646,23 @@ function fitCovers() {
     const cover = row.querySelector(".ms-cover"), text = row.querySelector(".ms-text, .ms-hero-text");
     const h = text && text.offsetHeight;
     if (cover && h) cover.style.width = cover.style.height = (row.matches(".ms-row") ? h : Math.max(48, h)) + "px";   // a row's cover is as tall as its name and who
+    const tags = row.querySelector(".ms-rowtags");
+    if (tags) fitRowTags(tags);
   }
   if (!coverWatch && window.ResizeObserver) {
     let width = 0;
     coverWatch = new ResizeObserver(() => { const b = $("msResults") || document.querySelector("#msBody .ms-hero"); if (b && b.offsetWidth !== width) { width = b.offsetWidth; fitCovers(); } });
   }
   if (coverWatch) { coverWatch.disconnect(); coverWatch.observe(box); }
+}
+// a row's tags on one line: as many as fit, then "+N more" for the rest (measured again when the width changes)
+function fitRowTags(box) {
+  const tags = Array.from(box.querySelectorAll(".ms-rowtag")), more = box.querySelector(".ms-rowtag-more");
+  const fits = () => box.scrollWidth <= box.clientWidth;
+  let shown = tags.length;
+  const show = (n) => { tags.forEach((t, i) => { t.hidden = i >= n; }); more.hidden = n >= tags.length; more.textContent = `+${tags.length - n} more`; };
+  show(shown);
+  while (shown > 1 && !fits()) show(--shown);
 }
 function shareCoverEl(s, cls = "ms-cover") {
   return s.cover ? feEl("img", { class: cls, src: s.cover, alt: "", loading: "lazy" }) : feEl("span", { class: cls + " ms-nocover" }, feIcon("notes"));
@@ -669,7 +684,7 @@ function shareRow(s, ov) {
       feEl("div", { class: "ms-name", text: s.name, title: s.name }),
       feEl("div", { class: "ms-sub" }, `${s.by || "Anonymous"} · ${lengthText(s.ms / 60000)}`)),
     feEl("div", { class: "ms-rowside" }, addButton(s)),
-    (s.tags || []).length ? feEl("div", { class: "ms-rowtags" }, ...s.tags.slice(0, 3).map((t) => feEl("span", { class: "ms-rowtag" }, t)), s.tags.length > 3 ? feEl("span", { class: "ms-rowtag-more" }, `+${s.tags.length - 3} more`) : null) : null,
+    (s.tags || []).length ? feEl("div", { class: "ms-rowtags" }, ...s.tags.map((t) => feEl("span", { class: "ms-rowtag" }, t)), feEl("span", { class: "ms-rowtag-more" })) : null,   // as many as fit on one line (fitRowTags)
     (s.phases || []).length ? feEl("div", { class: "ms-rowcurve" }, miniCurve(s.phases)) : null,
     per ? feEl("div", { class: "ms-ov" }, `${per.pct}% already in your recipes`) : null,
     sharing.addErrors[s.id] ? feEl("div", { class: "ms-error" }, sharing.addErrors[s.id]) : null);
@@ -778,8 +793,24 @@ function shareCandidates() {
 function emptyPick() { return { on: false, phases: new Set(), tags: [], notes: "", shared: null, touched: false, update: false }; }
 function pickFromShare(s) { return { on: true, phases: new Set(s.phases || []), tags: (s.tags || []).slice(), notes: s.notes || "", shared: s, touched: false, update: false }; }
 function pickFor(p) {
-  if (!sharing.picks[p.id]) sharing.picks[p.id] = emptyPick();
+  if (!sharing.picks[p.id]) {
+    sharing.picks[p.id] = emptyPick();
+    if (knownShort(p)) sharing.picks[p.id].short = true;
+  }
   return sharing.picks[p.id];
+}
+function shortRecord() {
+  try { return JSON.parse(localStorage.getItem(SHARING_SHORT_KEY) || "{}") || {}; } catch (err) { return {}; }
+}
+// found under two hours before, and not changed in Spotify since (a list kept from the last connection has no snapshot, so the record stands)
+function knownShort(p) {
+  const all = shortRecord();
+  return p.id in all && (!p.snapshot || !all[p.id] || all[p.id] === p.snapshot);
+}
+function rememberShort(p, short) {
+  const all = shortRecord();
+  if (short) all[p.id] = p.snapshot || null; else delete all[p.id];
+  try { localStorage.setItem(SHARING_SHORT_KEY, JSON.stringify(all)); } catch (err) { /* private browsing: known for this visit only */ }
 }
 // whether what is ticked and typed differs from what is shared
 function pickDiffers(pick, shared) {
@@ -990,6 +1021,7 @@ async function toggleShare(p, on) {
       pick.ms = tracks.reduce((n, t) => n + (t.ms || 0), 0);
       pick.songs = { count: tracks.length, ms: pick.ms, avgMs: pick.ms / Math.max(1, tracks.length), artists: topArtists(tracks) };
       if (pick.ms < SHARE_MIN_MS) { pick.short = true; pick.on = false; }
+      rememberShort(p, pick.short);
     } catch (err) { pick.error = `Its songs could not be read: ${String(err.message || err).replace(/\.$/, "")}.`; pick.on = false; }
     pick.checking = false;
   }
