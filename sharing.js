@@ -702,7 +702,7 @@ function isMine(s) {
 function renderDetail(body) {
   const s = sharing.library && sharing.library.shares.find((x) => x.id === sharing.detail);
   if (!s) { sharing.detail = null; renderSharing(); return; }
-  body.appendChild(feEl("button", { type: "button", class: "ms-back", id: "msBack", onClick: () => closeDetail() }, feIcon("back"), "All playlists"));
+  body.appendChild(feEl("div", { class: "ms-back-bar" }, feEl("button", { type: "button", class: "ms-back", id: "msBack", onClick: () => closeDetail() }, feIcon("back"), "All playlists")));
   body.appendChild(feEl("div", { class: "ms-hero" }, shareCoverEl(s, "ms-cover ms-cover-big"),
     feEl("div", {}, feEl("h3", { text: s.name }), feEl("div", { class: "ms-sub" }, isMine(s) ? "Shared by you" : s.by ? `Shared by ${s.by}` : "Shared anonymously"), feEl("div", { class: "ms-sub" }, `${songCountText(s.count)} · ${lengthText(s.ms / 60000)}`))));
   body.appendChild(feEl("div", { class: "ms-actions" }, addButton(s, true)));
