@@ -22,7 +22,7 @@ const TAG_COMMON = new Set("music musical playlist playlists session sessions ce
 
 const sharing = {
   tab: "find", detail: null, library: null, libraryAt: 0, loading: false, error: "",
-  search: "", sort: "newest", hideAdded: true, tags: new Set(), tagsShown: TAGS_STEP, phases: new Set(),
+  search: "", searchOpen: false, sort: "newest", hideAdded: true, tags: new Set(), tagsShown: TAGS_STEP, phases: new Set(),
   mine: null, mineError: "", picks: {}, shownAs: null, applying: false, adding: new Set(), addErrors: {},
   overlap: null, overlapShown: null, reading: false, readStop: false, showOverlapSongs: false,
 };
@@ -332,6 +332,10 @@ function openSharing(tab = "find") {
 async function closeSharing() {
   if (!(await settlePending())) return;
   sharing.readStop = true;
+  closeSortMenu();
+  if ($("msSheet")) $("msSheet").remove();
+  sharing.searchOpen = false;
+  sharing.search = "";
   $("msOverlay").hidden = true;
   if (!document.querySelector(".app-overlay:not([hidden])")) document.body.style.overflow = "";
   if ($("feAppMenuButton")) $("feAppMenuButton").focus();
@@ -379,29 +383,156 @@ function renderSharing() {
 }
 
 // ---------------------------------------------------------------- Find playlists
-function renderFind(body) {
-  const search = feEl("input", { type: "search", class: "ms-search-input", id: "msSearch", placeholder: "Keyword search", "aria-label": "Keyword search", value: sharing.search });
-  search.addEventListener("input", () => { sharing.search = search.value; renderResults(); });
-  body.appendChild(feEl("label", { class: "ms-search" }, feIcon("search"), search));
-  body.appendChild(feEl("div", { class: "ms-flabel ms-phase-label" }, feEl("b", {}, "Phase"), feEl("span", { class: "ms-meter" }, sharing.phases.size ? "" : "Tap one or more")));
-  body.appendChild(phaseCurve(sharing.phases, () => { phaseFilterLabel(); renderResults(); }, "Phase"));
-  body.appendChild(feEl("div", { id: "msTags", class: "ms-tags" }));
-  const sort = feEl("select", { id: "msSort", class: "ms-sort", "aria-label": "Sort" });
+// The list with three buttons above it: Filters (a panel that slides up: phases, tags, Hide added), a search icon that turns the row into
+// a search field, and Sort (a short menu). Chosen phases and tags show as chips under the buttons, each with an x.
+const SORTS = [["newest", "Newest"], ["az", "A to Z"], ["longest", "Longest"], ["most", "Most overlap"], ["least", "Least overlap"]];
+function sortChoices() {
   const usable = sharing.overlapShown && sharing.overlapShown.usable;
-  const choices = [["newest", "Newest"], ...(usable ? [["most", "Most overlap"], ["least", "Least overlap"]] : []), ["longest", "Longest"]];
-  if (!choices.some(([v]) => v === sharing.sort)) sharing.sort = "newest";
-  for (const [value, label] of choices) sort.appendChild(feEl("option", { value, selected: value === sharing.sort }, label));
-  sort.addEventListener("change", () => { sharing.sort = sort.value; sharing.overlapShown = sharing.overlap; renderResults(); });
-  const hide = feEl("input", { type: "checkbox", class: "ms-switch", checked: sharing.hideAdded, "aria-label": "Hide added" });
-  hide.addEventListener("change", () => { sharing.hideAdded = hide.checked; renderResults(); });
-  body.appendChild(feEl("div", { class: "ms-bar" }, feEl("label", { class: "ms-sortwrap" }, sort), feEl("label", { class: "ms-toggle" }, "Hide added", hide)));
+  return SORTS.filter(([v]) => usable || (v !== "most" && v !== "least"));
+}
+function filterCount() { return sharing.phases.size + sharing.tags.size; }
+function renderFind(body) {
+  if (!sortChoices().some(([v]) => v === sharing.sort)) sharing.sort = "newest";
+  body.appendChild(feEl("div", { id: "msTools", class: "ms-tools" }));
+  body.appendChild(feEl("div", { id: "msActive", class: "ms-active" }));
   body.appendChild(feEl("div", { id: "msResults" }));
   renderResults();
 }
-function phaseFilterLabel() {
-  const m = document.querySelector("#msBody .ms-phase-label .ms-meter");
-  if (m) m.textContent = sharing.phases.size ? "" : "Tap one or more";
+function renderTools() {
+  const box = $("msTools");
+  if (!box) return;
+  const has = sharing.library && sharing.library.shares.length;
+  box.hidden = !has;   // nothing shared yet: nothing to filter
+  if (sharing.searchOpen && box.querySelector("#msSearch")) return;   // typing: the field stays as it is
+  box.textContent = "";
+  if (sharing.searchOpen) {
+    const search = feEl("input", { type: "search", class: "ms-search-input", id: "msSearch", placeholder: "Search", "aria-label": "Search names, sharers, tags, notes and artists", value: sharing.search });
+    search.addEventListener("input", () => { sharing.search = search.value; renderResults(); });
+    search.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeSearch(); } });
+    box.appendChild(feEl("label", { class: "ms-search" }, feIcon("search"), search));
+    box.appendChild(feEl("button", { type: "button", class: "linklike ms-cancel", onClick: closeSearch }, "Cancel"));
+    box.appendChild(feEl("p", { class: "ms-search-hint" }, "Searches names, sharers, tags, notes and artists."));
+    return;
+  }
+  const n = filterCount();
+  box.appendChild(feEl("button", { type: "button", id: "msFilters", class: "ms-tbtn" + (n ? " ms-on" : ""), "aria-haspopup": "dialog", onClick: openFilters },
+    feIcon("sliders"), "Filters", n ? feEl("span", { class: "ms-count" }, String(n)) : null));
+  box.appendChild(feEl("button", { type: "button", id: "msSearchOpen", class: "ms-tbtn ms-icon", "aria-label": "Search", onClick: openSearch }, feIcon("search")));
+  const label = (sortChoices().find(([v]) => v === sharing.sort) || SORTS[0])[1];
+  box.appendChild(feEl("button", { type: "button", id: "msSortButton", class: "ms-tbtn ms-sortbtn", "aria-haspopup": "menu", "aria-expanded": "false", onClick: openSortMenu },
+    feEl("span", { class: "ms-sortword" }, "Sort:"), feEl("b", {}, label), feIcon("chevron")));
 }
+function openSearch() {
+  sharing.searchOpen = true;
+  renderTools();
+  const f = $("msSearch");
+  if (f) f.focus();
+}
+function closeSearch() {
+  sharing.searchOpen = false;
+  sharing.search = "";
+  renderTools();
+  renderResults();
+  if ($("msSearchOpen")) $("msSearchOpen").focus();
+}
+function renderActive() {
+  const box = $("msActive");
+  if (!box) return;
+  box.textContent = "";
+  const chip = (text, remove) => feEl("button", { type: "button", class: "ms-tag ms-on ms-chip", "aria-label": `Remove ${text}`, onClick: () => { remove(); renderResults(); } }, text, feIcon("close"));
+  for (const i of [...sharing.phases].sort()) box.appendChild(chip(PHASES[i], () => sharing.phases.delete(i)));
+  for (const t of sharing.tags) box.appendChild(chip(t, () => sharing.tags.delete(t)));
+}
+
+// the sort menu drops from its button; choosing closes it, and so does a click elsewhere or Escape
+function openSortMenu() {
+  const button = $("msSortButton");
+  if (!button || $("msSortMenu")) return;
+  const menu = feEl("div", { id: "msSortMenu", class: "ms-menu", role: "menu", "aria-label": "Sort" });
+  const choices = sortChoices();
+  for (const [value, label] of choices) {
+    menu.appendChild(feEl("button", { type: "button", role: "menuitemradio", "aria-checked": String(value === sharing.sort), class: value === sharing.sort ? "ms-on" : "",
+      onClick: () => { closeSortMenu(); setSort(value); } }, label, value === sharing.sort ? feIcon("check") : null));
+  }
+  if (choices.some(([v]) => v === "most")) menu.appendChild(feEl("p", { class: "ms-menu-note" }, "Overlap: songs already in your recipes"));
+  $("msTools").appendChild(menu);
+  button.setAttribute("aria-expanded", "true");
+  const close = (e) => { if (e.type === "keydown" ? e.key === "Escape" : !menu.contains(e.target) && !button.contains(e.target)) { if (e.type === "keydown") { e.preventDefault(); e.stopPropagation(); } closeSortMenu(); } };
+  sharing.sortClose = close;
+  setTimeout(() => { document.addEventListener("pointerdown", close, true); document.addEventListener("keydown", close, true); });
+  (menu.querySelector(".ms-on") || menu.querySelector("button")).focus();
+}
+function closeSortMenu() {
+  const menu = $("msSortMenu");
+  if (sharing.sortClose) { document.removeEventListener("pointerdown", sharing.sortClose, true); document.removeEventListener("keydown", sharing.sortClose, true); sharing.sortClose = null; }
+  if (!menu) return;
+  menu.remove();
+  const b = $("msSortButton");
+  if (b) { b.setAttribute("aria-expanded", "false"); b.focus(); }
+}
+function setSort(value) {
+  sharing.sort = value;
+  sharing.overlapShown = sharing.overlap;
+  renderTools();
+  renderResults();
+  if ($("msSortButton")) $("msSortButton").focus();
+}
+
+// the filters panel slides up inside the popup; the list behind it follows each change, and its button says how many are left
+function openFilters() {
+  if ($("msSheet")) return;
+  const sheet = feEl("div", { id: "msSheet", class: "ms-sheet-wrap" });
+  const panel = feEl("div", { class: "ms-sheet", role: "dialog", "aria-modal": "true", "aria-label": "Filters", tabindex: "-1" },
+    feEl("div", { class: "ms-sheet-head" },
+      feEl("button", { type: "button", id: "msClearAll", class: "linklike", onClick: () => { clearFilters(); refreshFilters(); } }, "Clear all"),
+      feEl("h3", {}, "Filters"),
+      feEl("button", { type: "button", class: "ms-sheet-x", "aria-label": "Close", onClick: closeFilters }, feIcon("close"))),
+    feEl("div", { class: "ms-sheet-body" },
+      feEl("p", { class: "ms-ftitle" }, "Phases of a ceremony it suits"),
+      feEl("p", { class: "ms-fsub" }, "Choose all that apply. Playlists shown suit every phase chosen."),
+      feEl("div", { id: "msPhasePick" }),
+      feEl("p", { class: "ms-ftitle" }, "Tags"),
+      feEl("p", { class: "ms-fsub" }, "Words sharers chose for their music."),
+      feEl("div", { id: "msTags", class: "ms-tags" }),
+      feEl("label", { class: "ms-switchrow" },
+        feEl("span", {}, "Hide playlists you have", feEl("small", {}, "Ones you added, and your own shares")),
+        (() => { const hide = feEl("input", { type: "checkbox", id: "msHideAdded", class: "ms-switch", checked: sharing.hideAdded }); hide.addEventListener("change", () => { sharing.hideAdded = hide.checked; renderResults(); }); return hide; })())),
+    feEl("div", { class: "ms-sheet-foot" }, feEl("button", { type: "button", id: "msShow", class: "ms-showbtn", onClick: closeFilters }, "")));
+  sheet.appendChild(panel);
+  sheet.addEventListener("click", (e) => { if (e.target === sheet) closeFilters(); });
+  panel.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeFilters(); } });
+  $("msDialog").appendChild(sheet);
+  refreshFilters();
+  if (typeof motionAllowed === "function" && motionAllowed(panel)) {
+    sheet.animate([{ backgroundColor: "rgba(0,0,0,0)" }, { backgroundColor: "rgba(0,0,0,0.55)" }], { duration: 220, easing: EASE_OUT });
+    panel.animate([{ transform: "translateY(100%)" }, { transform: "translateY(0)" }], { duration: 300, easing: EASE_OUT });
+  }
+  panel.focus({ preventScroll: true });
+}
+function refreshFilters() {
+  const pick = $("msPhasePick");
+  if (pick) { pick.textContent = ""; pick.appendChild(phaseCurve(sharing.phases, () => renderResults(), "Phases of a ceremony it suits")); }
+  if ($("msHideAdded")) $("msHideAdded").checked = sharing.hideAdded;
+  renderResults();
+}
+function closeFilters() {
+  const sheet = $("msSheet");
+  if (!sheet) return;
+  sheet.removeAttribute("id");
+  for (const el of sheet.querySelectorAll("[id]")) el.removeAttribute("id");
+  sheet.inert = true;
+  const panel = sheet.querySelector(".ms-sheet");
+  if (typeof motionAllowed === "function" && motionAllowed(panel)) {
+    sheet.animate([{ backgroundColor: "rgba(0,0,0,0.55)" }, { backgroundColor: "rgba(0,0,0,0)" }], { duration: 180, easing: EASE_IN, fill: "forwards" });
+    panel.animate([{ transform: "translateY(0)" }, { transform: "translateY(100%)" }], { duration: 200, easing: EASE_IN, fill: "forwards" }).onfinish = () => sheet.remove();
+  } else sheet.remove();
+  if ($("msFilters")) $("msFilters").focus();
+}
+function clearFilters() {
+  sharing.phases.clear();
+  sharing.tags.clear();
+}
+
 function matchesSearch(s, q) {
   if (!q) return true;
   const hay = `${s.name} ${s.by || ""} ${(s.tags || []).join(" ")} ${s.notes || ""} ${phaseNames(s.phases || [])} ${(s.artists || []).join(" ")}`.toLowerCase();
@@ -412,7 +543,7 @@ function renderTags() {
   if (!box) return;
   box.textContent = "";
   const tags = visibleTags();
-  if (!tags.length) return;
+  if (!tags.length) { box.appendChild(feEl("p", { class: "ms-fsub" }, "None yet.")); return; }
   // tags keep their places when chosen; a chosen one past the shown ones stays shown
   const shown = tags.filter((t, i) => i < sharing.tagsShown || sharing.tags.has(t.word));
   for (const t of shown) {
@@ -421,8 +552,23 @@ function renderTags() {
   }
   if (shown.length < tags.length) box.appendChild(feEl("button", { type: "button", class: "ms-tag ms-more", onClick: () => { sharing.tagsShown += TAGS_STEP; renderTags(); } }, "More tags..."));
 }
+// the playlists the filters and search leave, before Hide added (so the empty list can say what hides them)
+function filteredShares(hide = sharing.hideAdded) {
+  const tagSets = (sharing.tagIndex || []).filter((t) => sharing.tags.has(t.word)).map((t) => t.ids);
+  return sharing.library.shares.filter((s) => matchesSearch(s, sharing.search) && tagSets.every((ids) => ids.has(s.id)) && [...sharing.phases].every((i) => (s.phases || []).includes(i)) && !(hide && (isAdded(s) || isMine(s))));
+}
+function emptyState(icon, title, text, button) {
+  return feEl("div", { class: "ms-empty" }, feEl("span", { class: "ms-empty-icon" }, feIcon(icon)), feEl("h3", {}, title), feEl("p", {}, text), button);
+}
 function renderResults() {
+  renderTools();
+  renderActive();
   renderTags();
+  if ($("msPhasePick") && $("msPhasePick").firstChild) {
+    // the curve in the panel follows chips removed under the buttons
+    const lit = Array.from($("msPhasePick").querySelectorAll("button")).map((b) => b.classList.contains("ms-on"));
+    if (lit.some((on, i) => on !== sharing.phases.has(i))) { $("msPhasePick").textContent = ""; $("msPhasePick").appendChild(phaseCurve(sharing.phases, () => renderResults(), "Phases of a ceremony it suits")); }
+  }
   const box = $("msResults");
   if (!box) return;
   box.textContent = "";
@@ -433,14 +579,33 @@ function renderResults() {
     return;
   }
   if (!sharing.library) return;
-  const tagSets = (sharing.tagIndex || []).filter((t) => sharing.tags.has(t.word)).map((t) => t.ids);
   const ov = sharing.overlapShown && sharing.overlapShown.usable && (sharing.sort === "most" || sharing.sort === "least") ? sharing.overlapShown : null;
-  let list = sharing.library.shares.filter((s) => matchesSearch(s, sharing.search) && tagSets.every((ids) => ids.has(s.id)) && [...sharing.phases].every((i) => (s.phases || []).includes(i)) && !(sharing.hideAdded && (isAdded(s) || isMine(s))));
+  let list = filteredShares();
   if (sharing.sort === "longest") list = list.slice().sort((a, b) => b.ms - a.ms);
+  else if (sharing.sort === "az") list = list.slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true }));
   else if (ov) list = list.slice().sort((a, b) => ((ov.per[b.id] || {}).pct || 0) - ((ov.per[a.id] || {}).pct || 0)) ;
   if (ov && sharing.sort === "least") list.reverse();
-  if (!sharing.library.shares.length) { box.appendChild(feEl("p", { class: "ms-note" }, "Nothing is shared yet. Be the first: share yours.")); return; }
-  if (!list.length) { box.appendChild(feEl("p", { class: "ms-note" }, "No playlists match.")); return; }
+  if ($("msShow")) $("msShow").textContent = list.length ? `Show ${list.length} playlist${list.length === 1 ? "" : "s"}` : "No playlists match";
+  const total = sharing.library.shares.length;
+  if (!total) {
+    box.appendChild(emptyState("notes", "No playlists are shared yet", "Facilitators share playlists here for others to add to their own Spotify. Yours could be the first.",
+      feEl("button", { type: "button", class: "ms-empty-main", onClick: () => switchTab("share") }, "Share yours")));
+    return;
+  }
+  if (!list.length) {
+    const narrowed = filterCount() || sharing.search.trim();
+    if (!narrowed || (sharing.hideAdded && filteredShares(false).length)) {
+      // only Hide added is hiding them
+      box.appendChild(emptyState("check", narrowed ? "You have all of these" : "You have them all", narrowed ? "Every playlist that matches is one you added or share." : "Every shared playlist is one you added or share.",
+        feEl("button", { type: "button", class: "ms-empty-ghost", onClick: () => { sharing.hideAdded = false; if ($("msHideAdded")) $("msHideAdded").checked = false; renderResults(); } }, "Show them")));
+      return;
+    }
+    const words = !!sharing.search.trim(), filters = filterCount() > 0;
+    const tryText = words && filters ? "Try other words or fewer filters." : words ? "Try other words." : "Try fewer filters.";
+    box.appendChild(emptyState(words && !filters ? "search" : "sliders", "No playlists match", `${total} playlist${total === 1 ? " is" : "s are"} shared. ${tryText}`,
+      feEl("button", { type: "button", class: "ms-empty-ghost", onClick: () => { clearFilters(); if (sharing.searchOpen) closeSearch(); else renderResults(); refreshFilters(); } }, filters ? "Clear filters" : "Clear search")));
+    return;
+  }
   const shownOverlap = (sharing.sort === "most" || sharing.sort === "least") && sharing.overlap && sharing.overlap.usable ? sharing.overlap : null;
   for (const s of list) box.appendChild(shareRow(s, shownOverlap));
 }
@@ -930,6 +1095,6 @@ async function loadDevReports() {
   if ($("msOverlay")) $("msOverlay").addEventListener("click", (e) => { if (e.target === $("msOverlay")) closeSharing(); });
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" || !$("msOverlay") || $("msOverlay").hidden || document.querySelector(".fe-overlay")) return;
-    if (sharing.detail) closeDetail(); else closeSharing();
+    if ($("msSheet")) closeFilters(); else if (sharing.detail) closeDetail(); else closeSharing();
   });
 })();

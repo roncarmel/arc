@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="app-version" content="2026-11-06g">
-<script src="theme.js?v=2026-11-06g"></script>
+<meta name="app-version" content="2026-11-06h">
+<script src="theme.js?v=2026-11-06h"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ceremony Playlist Builder</title>
@@ -950,9 +950,54 @@
   .ms-tag { margin: 0; min-height: 0; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); box-shadow: none; font-size: 0.85rem; font-weight: 600; color: var(--fg); }
   .ms-tag.ms-on { background: var(--accent-tint); border-color: var(--accent-tint-border); color: var(--accent); }
   .ms-tag.ms-more { background: none; color: var(--accent); border-style: dashed; }
-  .ms-bar { display: flex; align-items: center; gap: 8px; margin: 12px 0 2px; }
-  .ms-sort { margin: 0; height: 36px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--fg); font: inherit; font-weight: 600; font-size: 0.9rem; }
-  .ms-toggle { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; font-weight: 600; }
+  /* Find playlists: Filters, a search icon and Sort above the list; chosen filters as chips under them */
+  .ms-tools { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .ms-tools[hidden] { display: none; }
+  #msDialog .ms-tbtn { display: inline-flex; align-items: center; gap: 6px; margin: 0; min-height: 0; height: 38px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); box-shadow: none; color: var(--fg); font-weight: 600; font-size: 0.9rem; }
+  #msDialog .ms-tbtn .fe-icon { display: flex; }
+  #msDialog .ms-tbtn.ms-on { background: var(--accent-tint); border-color: var(--accent-tint-border); color: var(--accent); }
+  #msDialog .ms-tbtn.ms-icon { padding: 0 11px; color: var(--muted); }
+  #msDialog .ms-sortbtn { margin-left: auto; font-weight: 500; color: var(--muted); }
+  #msDialog .ms-sortbtn b { color: var(--fg); font-weight: 600; }
+  .ms-count { min-width: 18px; padding: 0 5px; border-radius: 999px; background: var(--button); color: var(--on-button, #fff); font-size: 0.74rem; line-height: 18px; text-align: center; box-sizing: border-box; }
+  .ms-tools .ms-search { flex: 1; min-width: 0; height: 40px; border-color: var(--accent); }
+  #msDialog .ms-cancel { margin: 0; min-height: 0; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+  .ms-search-hint { flex-basis: 100%; margin: 0; color: var(--muted); font-size: 0.8rem; }
+  .ms-active { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
+  .ms-active:empty { display: none; }
+  .ms-chip { display: inline-flex; align-items: center; gap: 5px; }
+  .ms-chip .fe-icon { display: flex; opacity: 0.8; } .ms-chip svg { width: 10px; height: 10px; }
+  #msResults { margin-top: 8px; }
+  .ms-menu { position: absolute; z-index: 5; right: 0; top: calc(100% + 6px); min-width: 210px; padding: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35); }
+  #msDialog .ms-menu button { display: flex; width: 100%; justify-content: space-between; align-items: center; margin: 0; min-height: 0; padding: 9px 12px; border: 0; border-radius: 9px; background: none; box-shadow: none; color: var(--fg); font-weight: 500; text-align: left; }
+  #msDialog .ms-menu button:hover { background: var(--accent-tint); }
+  #msDialog .ms-menu button.ms-on { color: var(--accent); font-weight: 700; }
+  .ms-menu .fe-icon { display: flex; }
+  .ms-menu-note { margin: 2px 12px 6px; color: var(--muted); font-size: 0.76rem; }
+  /* the filters panel: slides up over the list, inside the popup */
+  .ms-sheet-wrap { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; justify-content: flex-end; background: rgba(0, 0, 0, 0.55); border-radius: inherit; overflow: hidden; }
+  .ms-sheet { display: flex; flex-direction: column; max-height: calc(100% - 60px); background: var(--bg); border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; outline: none; }
+  .ms-sheet-head { flex: none; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 10px 14px 10px 18px; border-bottom: 1px solid var(--line); }
+  .ms-sheet-head h3 { margin: 0; font-size: 1.05rem; }
+  #msDialog .ms-sheet-head .linklike { justify-self: start; margin: 0; min-height: 0; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+  #msDialog .ms-sheet-x { justify-self: end; display: flex; align-items: center; justify-content: center; margin: 0; min-height: 0; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: none; box-shadow: none; color: var(--muted); }
+  .ms-sheet-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 6px 18px 18px; }
+  .ms-ftitle { margin: 14px 0 2px; font-weight: 700; }
+  .ms-fsub { margin: 0 0 8px; color: var(--muted); font-size: 0.82rem; }
+  .ms-sheet-body .ms-tags { margin-top: 0; }
+  .ms-switchrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); font-weight: 600; cursor: pointer; }
+  .ms-switchrow small { display: block; color: var(--muted); font-size: 0.8rem; font-weight: 400; }
+  .ms-switchrow .ms-switch { flex: none; }
+  .ms-sheet-foot { flex: none; padding: 12px 18px 16px; border-top: 1px solid var(--line); }
+  #msDialog .ms-showbtn, #msDialog .ms-empty-main { display: flex; justify-content: center; width: 100%; margin: 0; padding: 11px; border-radius: 999px; font-weight: 700; }
+  /* empty lists */
+  .ms-empty { text-align: center; padding: 44px 12px 12px; }
+  .ms-empty-icon { display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; margin: 0 auto 14px; border-radius: 50%; background: var(--accent-tint); color: var(--accent); }
+  .ms-empty-icon svg { width: 26px; height: 26px; }
+  .ms-empty h3 { margin: 0 0 6px; font-size: 1.1rem; }
+  .ms-empty p { margin: 0 auto 18px; max-width: 340px; color: var(--muted); font-size: 0.92rem; }
+  #msDialog .ms-empty-main { display: inline-flex; width: auto; padding: 10px 24px; }
+  #msDialog .ms-empty-ghost { margin: 0; min-height: 0; padding: 9px 20px; border-radius: 999px; border: 1px solid var(--accent-tint-border); background: none; box-shadow: none; color: var(--accent); font-weight: 700; }
   .ms-switch { appearance: none; -webkit-appearance: none; margin: 0; width: 36px; height: 22px; border-radius: 999px; background: var(--line); position: relative; cursor: pointer; transition: background 0.15s var(--ease-out); }
   .ms-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); transition: left 0.15s var(--ease-out); }
   .ms-switch:checked { background: var(--button); } .ms-switch:checked::after { left: 16px; }
@@ -1629,9 +1674,9 @@
     <div id="msFoot" hidden></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-06g"></script>
-<script src="editor.js?v=2026-11-06g"></script>
-<script src="app.js?v=2026-11-06g"></script>
-<script src="sharing.js?v=2026-11-06g"></script>
+<script src="formats.js?v=2026-11-06h"></script>
+<script src="editor.js?v=2026-11-06h"></script>
+<script src="app.js?v=2026-11-06h"></script>
+<script src="sharing.js?v=2026-11-06h"></script>
 </body>
 </html>
