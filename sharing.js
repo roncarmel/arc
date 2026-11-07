@@ -428,12 +428,12 @@ function renderTools() {
   if (sharing.searchOpen && box.querySelector("#msSearch")) return;   // typing: the field stays as it is
   box.textContent = "";
   if (sharing.searchOpen) {
-    const search = feEl("input", { type: "search", class: "ms-search-input", id: "msSearch", placeholder: "Search", "aria-label": "Search names, sharers, tags, notes and artists", value: sharing.search });
+    const search = feEl("input", { type: "search", class: "ms-search-input", id: "msSearch", placeholder: "Search", "aria-label": "Search names, sharers, tags, descriptions and artists", value: sharing.search });
     search.addEventListener("input", () => { sharing.search = search.value; renderResults(); });
     search.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeSearch(); } });
     box.appendChild(feEl("label", { class: "ms-search" }, feIcon("search"), search));
     box.appendChild(feEl("button", { type: "button", class: "linklike ms-cancel", onClick: closeSearch }, "Cancel"));
-    box.appendChild(feEl("p", { class: "ms-search-hint" }, "Searches names, sharers, tags, notes and artists."));
+    box.appendChild(feEl("p", { class: "ms-search-hint" }, "Searches names, sharers, tags, descriptions and artists."));
     return;
   }
   const n = filterCount();
@@ -717,7 +717,7 @@ function renderDetail(body) {
   body.appendChild(feEl("div", { class: "ms-sec" }, "Tags"));
   body.appendChild(feEl("div", { class: "ms-tags ms-tags-plain" }, ...(s.tags || []).map((t) => feEl("span", { class: "ms-tag" }, t))));
   if (s.notes) {
-    body.appendChild(feEl("div", { class: "ms-sec" }, "Notes"));
+    body.appendChild(feEl("div", { class: "ms-sec" }, "Description"));
     body.appendChild(feEl("p", { class: "ms-long" }, s.notes));
   }
   // the songs and length are under the name, so the box has only the artists with the most songs
