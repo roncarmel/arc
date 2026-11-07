@@ -641,7 +641,7 @@ function fitCovers() {
   for (const row of box.matches(".ms-hero") ? [box] : box.querySelectorAll(".ms-row")) {
     const cover = row.querySelector(".ms-cover"), text = row.querySelector(".ms-text, .ms-hero-text");
     const h = text && text.offsetHeight;
-    if (cover && h) cover.style.width = cover.style.height = Math.max(48, h) + "px";
+    if (cover && h) cover.style.width = cover.style.height = (row.matches(".ms-row") ? h : Math.max(48, h)) + "px";   // a row's cover is as tall as its name and who
   }
   if (!coverWatch && window.ResizeObserver) {
     let width = 0;
@@ -662,14 +662,17 @@ function addButton(s, big = false) {
 function shareRow(s, ov) {
   const per = ov && ov.per[s.id];
   const row = feEl("div", { class: "ms-row", role: "button", tabindex: "0", onClick: () => openDetail(s.id) },
+    // a grid: the cover (two lines tall), the name (one line, cut with an ellipsis) and who, and Get at the top right;
+    // under them the tags across the row with the phase curve in the bottom right corner, then the overlap and any error
     shareCoverEl(s),
     feEl("div", { class: "ms-text" },
-      feEl("div", { class: "ms-name", text: s.name }),
-      feEl("div", { class: "ms-sub" }, `${s.by || "Anonymous"} · ${lengthText(s.ms / 60000)}`),
-      (s.tags || []).length ? feEl("div", { class: "ms-rowtags" }, ...s.tags.slice(0, 3).map((t) => feEl("span", { class: "ms-rowtag" }, t)), s.tags.length > 3 ? feEl("span", { class: "ms-rowtag-more" }, `+${s.tags.length - 3} more`) : null) : null,
-      per ? feEl("div", { class: "ms-ov" }, `${per.pct}% already in your recipes`) : null,
-      sharing.addErrors[s.id] ? feEl("div", { class: "ms-error" }, sharing.addErrors[s.id]) : null),
-    feEl("div", { class: "ms-rowside" }, addButton(s), (s.phases || []).length ? miniCurve(s.phases) : null));
+      feEl("div", { class: "ms-name", text: s.name, title: s.name }),
+      feEl("div", { class: "ms-sub" }, `${s.by || "Anonymous"} · ${lengthText(s.ms / 60000)}`)),
+    feEl("div", { class: "ms-rowside" }, addButton(s)),
+    (s.tags || []).length ? feEl("div", { class: "ms-rowtags" }, ...s.tags.slice(0, 3).map((t) => feEl("span", { class: "ms-rowtag" }, t)), s.tags.length > 3 ? feEl("span", { class: "ms-rowtag-more" }, `+${s.tags.length - 3} more`) : null) : null,
+    (s.phases || []).length ? feEl("div", { class: "ms-rowcurve" }, miniCurve(s.phases)) : null,
+    per ? feEl("div", { class: "ms-ov" }, `${per.pct}% already in your recipes`) : null,
+    sharing.addErrors[s.id] ? feEl("div", { class: "ms-error" }, sharing.addErrors[s.id]) : null);
   row.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === row) { e.preventDefault(); row.click(); } });
   return row;
 }
