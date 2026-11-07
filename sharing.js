@@ -1,4 +1,4 @@
-// sharing.js: Music sharing. People share their own playlists (the phases of a session they suit, tags, optional notes) and copy each other's into
+// sharing.js: Music sharing. People share their own playlists (the phases of a session they suit, tags; its Spotify description goes along as notes) and copy each other's into
 // their own Spotify. Opened from the app menu (opened to everyone by Ron, 2026-11-06).
 // The library lives in a Cloudflare Worker with a D1 database (cloudflare/music-sharing). It keeps only what people write, the songs as Spotify IDs
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
@@ -38,7 +38,10 @@ async function sharingFetch(method, path, json, retried = false) {
   } catch (err) { throw new Error("Music sharing could not be reached. Check your connection and try again."); }
   let data = {};
   try { data = await response.json(); } catch (err) { /* no body */ }
-  if (response.status === 401 && data.code === "signin" && !retried && await renewSignIn()) return sharingFetch(method, path, json, true);
+  if (response.status === 401 && data.code === "signin" && !retried) {
+    const renewed = await renewSignIn();   // the sign-in ran out (a tab open over an hour): renew it, then send this once more with the new one
+    if (renewed) { token = renewed; return sharingFetch(method, path, json, true); }
+  }
   if (!response.ok) { const e = new Error(data.error || `Music sharing answered ${response.status}.`); e.code = data.code || ""; e.status = response.status; throw e; }
   return data;
 }
@@ -103,9 +106,11 @@ function shownAsName() {
 const songCountText = (n) => plural(n, "song");
 function shareFacts(s) {
   let text = `${songCountText(s.count)}, ${lengthText(s.ms / 60000)}.`;
-  if (s.artists && s.artists.length) text += ` Artists with the most songs: ${s.artists.join(", ")}.`;
+  if (s.artists && s.artists.length) text += ` ${includesText(s.artists)}`;
   return text;
 }
+// the artists with the most songs, as "Includes A, B, C, and more."
+const includesText = (artists) => `Includes ${artists.slice(0, 3).join(", ")}, and more.`;
 const phaseNames = (list) => list.map((i) => PHASES[i]).join(", ");
 function cleanSpotifyDescription(text) {
   // Spotify gives descriptions with HTML entities and links; the app's own markers and recipe saves are not offered as text
@@ -715,8 +720,8 @@ function renderDetail(body) {
     body.appendChild(feEl("div", { class: "ms-sec" }, "Notes"));
     body.appendChild(feEl("p", { class: "ms-long" }, s.notes));
   }
-  // the songs and length are under the name, so the box has only the artists
-  if (s.artists && s.artists.length) body.appendChild(feEl("div", { class: "ms-facts" }, feEl("div", { class: "ms-facts-h" }, feIcon("notes"), "Artists with the most songs"), s.artists.join(", ")));
+  // the songs and length are under the name, so the box has only the artists with the most songs
+  if (s.artists && s.artists.length) body.appendChild(feEl("div", { class: "ms-facts" }, includesText(s.artists)));
   const ov = sharing.overlap && sharing.overlap.playlists ? sharing.overlap.per[s.id] : null;
   if (ov && ov.same) {
     const box = feEl("div", { class: "ms-overlap" }, feIcon("overlap"), feEl("span", {}, `${ov.same === 1 ? "1 of these songs" : `${ov.same} of these songs`} (${ov.pct}%) ${ov.same === 1 ? "is" : "are"} already in your recipes. `,
@@ -775,7 +780,7 @@ function pickFor(p) {
 }
 // whether what is ticked and typed differs from what is shared
 function pickDiffers(pick, shared) {
-  return [...pick.phases].sort().join() !== (shared.phases || []).slice().sort().join() || pick.tags.join("|") !== (shared.tags || []).join("|") || pick.notes.trim() !== (shared.notes || "");
+  return [...pick.phases].sort().join() !== (shared.phases || []).slice().sort().join() || pick.tags.join("|") !== (shared.tags || []).join("|");
 }
 const pickComplete = (pick) => pick.phases.size > 0 && pick.tags.length >= SHARE_TAGS_MIN;
 function sharedFor(p) { return sharing.mine ? sharing.mine.find((s) => s.playlist === p.id) || null : null; }
@@ -788,7 +793,7 @@ function pickState(p, pick) {
   // not complete: the counters beside the labels say what is missing in pink, so the row says nothing more
   if (pick.on && !pickComplete(pick)) return { text: "", ready: false };
   if (shared && !pick.on) return { text: "Will stop being shared", ready: true, cls: "ms-need" };
-  if (shared && (pick.update || pickDiffers(pick, shared))) return { text: "Changes ready", ready: true, cls: "ms-ok" };
+  if (shared && (pick.update || pickDiffers(pick, shared))) return { text: "", ready: true };   // the bottom button counts it
   if (shared && p.snapshot && shared.snapshot && p.snapshot !== shared.snapshot) return { text: "Changed in Spotify since it was shared.", ready: true, offerUpdate: true };
   if (shared) return { text: shared.hidden ? "Hidden after reports" : "", ready: true };
   return { text: "", ready: !!pick.on };   // ticked and filled in: nothing to say, the bottom button counts it
@@ -892,16 +897,8 @@ function shareFields(p, pick) {
   showPhases();
   const phases = feEl("div", { class: "ms-field" }, feEl("div", { class: "ms-flabel" }, feEl("b", {}, "Phases it suits"), phaseMeter),
     phaseCurve(pick.phases, () => { showPhases(); changed(); }, "Phases it suits"));
-  // notes: optional, two lines to start, growing with the text (no scrolling inside the box)
-  const ta = feEl("textarea", { class: "ms-ta", rows: "2", maxlength: String(SHARE_NOTES_MAX), "aria-label": "Notes", placeholder: "Anything else about this playlist" });
-  ta.value = pick.notes;
-  const noteMeter = feEl("span", { class: "ms-meter" });
-  const showNotes = () => { const n = ta.value.trim().length; noteMeter.textContent = n ? `${n} of ${SHARE_NOTES_MAX}` : "Optional"; };
-  ta.addEventListener("input", () => { pick.notes = ta.value; showNotes(); growBox(ta); changed(); });
-  showNotes();
-  requestAnimationFrame(() => growBox(ta));
-  return feEl("div", { class: "ms-fields" }, phases, tagField(p, pick, changed),
-    feEl("div", { class: "ms-field" }, feEl("label", { class: "ms-flabel" }, feEl("b", {}, "Notes"), noteMeter), ta));
+  // no notes box: the playlist's Spotify description goes with the share as its notes (shown to people looking for playlists)
+  return feEl("div", { class: "ms-fields" }, phases, tagField(p, pick, changed));
 }
 // Tags are typed as words with commas or spaces between them (one word each; a dash joins two, and a suggestion of two words stays whole); each becomes a chip with an x. Tags other people use are offered under the box.
 function tagField(p, pick, changed) {
@@ -958,11 +955,6 @@ function tagField(p, pick, changed) {
   return feEl("div", { class: "ms-field" }, feEl("div", { class: "ms-flabel" }, feEl("b", {}, "Tags"), meter), box,
     hint, suggest);
 }
-function growBox(ta) {
-  if (!ta.isConnected) return;
-  ta.style.height = "auto";
-  ta.style.height = ta.scrollHeight + (ta.offsetHeight - ta.clientHeight) + "px";
-}
 function refreshState(p) {
   const pick = pickFor(p), line = $("msState-" + p.id);
   if (line) line.replaceWith(stateLine(p, pick));
@@ -987,7 +979,6 @@ async function toggleShare(p, on) {
   pick.touched = true;
   pick.error = "";
   if (on && !sharedFor(p)) {
-    if (!pick.notes) { const d = cleanSpotifyDescription(p.description); if (d) { pick.notes = d; pick.fromSpotify = true; } }
     pick.checking = true;
     refreshRow(p);
     try {
@@ -1061,7 +1052,7 @@ async function applyShares() {
       const ms = tracks.reduce((n, t) => n + (t.ms || 0), 0);
       const songs = tracks.map((t) => [String(t.uri).replace("spotify:track:", ""), t.key ? t.key.slice(5) : ""]);
       const cover = p.cover || null;   // a custom cover or Spotify's square of four album covers
-      await sharingFetch("POST", "/share", { playlist: p.id, snapshot: p.snapshot || null, name: p.name, by, phases: [...pick.phases].sort(), tags: pick.tags.slice(), notes: pick.notes.trim(), cover, songs, ms, artists: topArtists(tracks) });
+      await sharingFetch("POST", "/share", { playlist: p.id, snapshot: p.snapshot || null, name: p.name, by, phases: [...pick.phases].sort(), tags: pick.tags.slice(), notes: cleanSpotifyDescription(p.description), cover, songs, ms, artists: topArtists(tracks) });
       pick.touched = false;
       pick.update = false;
       pick.open = false;   // shared: the row folds
