@@ -888,7 +888,7 @@ function shareFields(p, pick) {
   const changed = () => { pick.touched = true; refreshState(p); };
   // phases: the curve, each part a button
   const phaseMeter = feEl("span", { class: "ms-meter" });
-  const showPhases = () => { phaseMeter.textContent = pick.phases.size ? phaseNames([...pick.phases].sort()) : "Choose one or more"; phaseMeter.classList.toggle("ms-short", !pick.phases.size); };
+  const showPhases = () => { phaseMeter.textContent = pick.phases.size ? phaseNames([...pick.phases].sort()) : "Choose all that apply"; phaseMeter.classList.toggle("ms-short", !pick.phases.size); };
   showPhases();
   const phases = feEl("div", { class: "ms-field" }, feEl("div", { class: "ms-flabel" }, feEl("b", {}, "Phases it suits"), phaseMeter),
     phaseCurve(pick.phases, () => { showPhases(); changed(); }, "Phases it suits"));
