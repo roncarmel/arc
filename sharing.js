@@ -965,7 +965,7 @@ function pendingChanges() {
     const shared = sharedFor(p), state = pickState(p, pick);
     if (shared && !pick.on) out.stop.push(p);
     else if (!shared && pick.on && state.ready) out.share.push(p);
-    else if (shared && pick.on && state.ready && (pick.update || pickDiffers(pick, shared) || sharing.shownChanged)) out.update.push(p);
+    else if (shared && pick.on && state.ready && (pick.update || pickDiffers(pick, shared) || (shared.by || null) !== shownAsName())) out.update.push(p);
   }
   out.total = out.share.length + out.update.length + out.stop.length;
   return out;
@@ -975,7 +975,6 @@ function resetPicks() {
     const shared = sharing.mine && sharing.mine.find((s) => s.playlist === id);
     sharing.picks[id] = shared ? pickFromShare(shared) : emptyPick();
   }
-  sharing.shownChanged = false;
 }
 function renderShareYours(body) {
   if (introOpen("share")) body.appendChild(introCard("share"));
@@ -1170,7 +1169,7 @@ function renderShareFoot() {
     feEl("option", { value: "custom", selected: set.mode === "custom" }, "A name you choose"),
     feEl("option", { value: "anon", selected: set.mode === "anon" }, "Anonymous"));
   const name = feEl("input", { type: "text", class: "ms-shown-name", maxlength: "40", placeholder: "Your name", value: set.name || "", "aria-label": "Name to show", hidden: set.mode !== "custom" });
-  const keep = () => { try { localStorage.setItem(SHARING_SHOWN_KEY, JSON.stringify(sharing.shownAs)); } catch (err) { /* private browsing */ } sharing.shownChanged = !!(sharing.mine && sharing.mine.length); };
+  const keep = () => { try { localStorage.setItem(SHARING_SHOWN_KEY, JSON.stringify(sharing.shownAs)); } catch (err) { /* private browsing */ } };
   select.addEventListener("change", () => { sharing.shownAs = { mode: select.value, name: name.value }; keep(); name.hidden = select.value !== "custom"; if (!name.hidden) name.focus(); updateApplyButton(); });
   name.addEventListener("input", () => { sharing.shownAs = { mode: "custom", name: name.value }; keep(); updateApplyButton(); });
   foot.appendChild(feEl("div", { class: "ms-shown" }, feEl("span", {}, "Shown as"), select, name));
@@ -1234,7 +1233,6 @@ async function applyShares() {
     }
   }
   sharing.applying = false;
-  sharing.shownChanged = false;
   await loadMine();
   for (const p of [...c.share, ...c.update, ...c.stop]) { const pick = pickFor(p); if (pick.error) pick.on = !!sharedFor(p) || c.share.includes(p); }
   loadLibrary(true);
