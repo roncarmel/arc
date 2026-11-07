@@ -835,16 +835,17 @@ function renderShareYours(body) {
 function shareYoursRow(p, copy) {
   const pick = pickFor(p);
   const row = feEl("div", { class: "ms-srow", id: "msRow-" + p.id });
-  const box = feEl("input", { type: "checkbox", class: "ms-check", checked: !copy && pick.on, disabled: copy || pick.short, "aria-label": p.name });
+  // under two hours (known once its songs are read): no checkbox (its space kept, so the covers line up), a grey name, and one line saying so in place of the songs
+  const short = !copy && pick.short;
+  const box = feEl("input", { type: "checkbox", class: "ms-check" + (short ? " ms-nobox" : ""), checked: !copy && pick.on, disabled: copy || short, "aria-label": p.name, "aria-hidden": short ? "true" : null, tabindex: short ? "-1" : null });
   box.addEventListener("change", () => toggleShare(p, box.checked));
   const cover = p.image ? feEl("img", { class: "ms-cover", src: p.image, alt: "" }) : feEl("span", { class: "ms-cover ms-nocover" }, feIcon("notes"));
-  const text = feEl("div", { class: "ms-text" }, feEl("div", { class: "ms-name" + (copy ? " ms-dim" : ""), text: p.name }),
-    feEl("div", { class: "ms-sub ms-subrow" }, feEl("span", { class: "ms-subtext" }, !copy && pick.on && songsLine(p, pick, !fieldsShown(p, pick)) || (p.count != null ? songCountText(p.count) : "")),
-      copy ? null : rowAction(p, pick)));
+  const text = feEl("div", { class: "ms-text" }, feEl("div", { class: "ms-name" + (copy || short ? " ms-dim" : ""), text: p.name }),
+    short ? feEl("div", { class: "ms-sub" }, "Under two hours, so it can't be shared.")
+      : feEl("div", { class: "ms-sub ms-subrow" }, feEl("span", { class: "ms-subtext" }, !copy && pick.on && songsLine(p, pick, !fieldsShown(p, pick)) || (p.count != null ? songCountText(p.count) : "")),
+        copy ? null : rowAction(p, pick)));
   if (copy) text.appendChild(feEl("div", { class: "ms-state ms-dis" }, "Gotten from Music sharing, so it cannot be shared again."));
-  else {
-    text.appendChild(stateLine(p, pick));
-  }
+  else if (!short) text.appendChild(stateLine(p, pick));
   row.append(box, cover, text);
   if (!copy && fieldsShown(p, pick)) row.appendChild(shareFields(p, pick));   // under the row, the full width
   return row;
