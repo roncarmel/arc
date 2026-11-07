@@ -716,7 +716,6 @@ function toggleAppMenu() {
   renderAppMenu();
   renderHead();
   renderRows();
-  if (editor.appMenu && typeof checkForNewVersion === "function" && Date.now() - versionCheck.last > versionCheck.menuEveryMs) checkForNewVersion();   // is there a newer version? the answer shows as a card at the bottom of the screen
 }
 
 function renderAppMenu() {

@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-07b";
+const APP_VERSION = "2026-11-07c";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -79,11 +79,11 @@ function guarded(name, work) {
 }
 
 // Is there a newer version of the page than the one that is running? version.txt, on the site, holds only the stamp of the version uploaded last, so asking costs a few bytes.
-// It is asked a few seconds after a clean start, when the person comes back to the tab if the last time was over 10 minutes ago, and when the app menu opens (at most every
-// 30 seconds). Newer means different, since stamps do not sort once there are more than 26 in a day. The page never loads again by itself: a card at the bottom of the screen,
+// It is asked a few seconds after a clean start, and whenever the person comes back to the tab or the window (at most every 30 seconds), so leaving and coming back is a manual
+// check. Not when the app menu opens: the card arrived behind the open menu, and the first click on it only closed the menu (changed by Ron, 2026-11-07). Newer means different, since stamps do not sort once there are more than 26 in a day. The page never loads again by itself: a card at the bottom of the screen,
 // in place of Support me, says Update available with both stamps and Get it (decided by Ron, 2026-11-05: updating should feel good, so the person does it). A running page is
 // never harmed by an upload: it keeps what it loaded, and the Python engine is read once, at the start.
-const versionCheck = { last: 0, everyMs: 10 * 60 * 1000, menuEveryMs: 30 * 1000, running: false, latest: "" };
+const versionCheck = { last: 0, everyMs: 30 * 1000, running: false, latest: "" };
 
 async function checkForNewVersion() {
   if (versionCheck.running || navigator.onLine === false) return;
