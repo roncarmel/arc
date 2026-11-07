@@ -434,10 +434,11 @@ function introCard(tab) {
 const sharingReducedMotion = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 // Got it: a copy of the card shrinks into the info button's place while the card's room closes, then the button pops in
 function foldIntro() {
-  const card = $("msIntroCard"), info = $("msInfo"), dialog = $("msDialog");
+  const card = $("msIntroCard"), dialog = $("msDialog");
   setIntroOpen(sharing.tab, false);
-  if (!card || sharingReducedMotion() || !card.animate) { renderSharing(); info.focus(); return; }
-  info.hidden = false;
+  if (!card || sharingReducedMotion() || !card.animate) { renderSharing(); if (introButton(sharing.tab)) introButton(sharing.tab).focus(); return; }
+  renderSharingTabs();   // only the tabs are drawn again (the card stays to fold away), so the open tab's ? is there to fly into
+  const info = introButton(sharing.tab);
   info.style.visibility = "hidden";
   card.getAnimations().forEach((a) => a.finish()); // Got it while the card is still unfolding measures it at its full size
   card.style.transformOrigin = "";
@@ -479,20 +480,24 @@ function foldIntro() {
     if (card.isConnected) card.remove();
   }).catch(() => {});
 }
-// the info button: the card unfolds again at the top of the list, growing out of the button
-function unfoldIntro() {
-  setIntroOpen(sharing.tab, true);
-  const info = $("msInfo"), t = info.getBoundingClientRect();
+function introButton(tab) { return $(tab === "find" ? "msInfoFind" : "msInfoShare"); }
+// a tab's ?: the card unfolds again at the top of that tab's list (switching to it first), growing out of the ?
+async function unfoldIntro(tab) {
+  tab = tab || sharing.tab;
+  const t = introButton(tab).getBoundingClientRect();
+  if (tab !== sharing.tab || sharing.detail) { await switchTab(tab); if (sharing.tab !== tab) return; }
+  setIntroOpen(tab, true);
   $("msBody").scrollTop = 0;
   renderSharing();
   const card = $("msIntroCard");
   if (!card || sharingReducedMotion() || !card.animate) { if ($("msGotIt")) $("msGotIt").focus({ preventScroll: true }); return; }
   const c = card.getBoundingClientRect(), cs = getComputedStyle(card);
   card.style.transformOrigin = `${t.left + t.width / 2 - c.left}px ${t.top + t.height / 2 - c.top}px`;
+  card.style.overflow = "hidden";   // while it grows (this hides its triangle until it has arrived)
   card.animate([
     { height: "0px", marginBottom: "0px", paddingTop: "0px", paddingBottom: "0px", opacity: 0, transform: "scale(0.15)" },
     { height: c.height + "px", marginBottom: cs.marginBottom, paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, opacity: 1, transform: "none" },
-  ], { duration: 420, easing: EASE_OUT }).finished.then(() => { card.style.transformOrigin = ""; }).catch(() => {});
+  ], { duration: 420, easing: EASE_OUT }).finished.then(() => { card.style.transformOrigin = ""; card.style.overflow = ""; }).catch(() => {});
   if ($("msGotIt")) $("msGotIt").focus({ preventScroll: true });
 }
 
@@ -503,16 +508,37 @@ function renderSharing() {
   const keepScroll = body.scrollTop;
   body.textContent = "";
   $("msFoot").hidden = true;
-  // the tabs stay above the scrolling part on every page, a playlist's page included, so the person always sees where they are
-  const bar = $("msTabs");
-  bar.textContent = "";
-  bar.append(
-    feEl("button", { type: "button", role: "tab", "aria-selected": String(sharing.tab === "find"), class: sharing.tab === "find" ? "ms-on" : "", onClick: () => switchTab("find") }, "Find playlists"),
-    feEl("button", { type: "button", role: "tab", "aria-selected": String(sharing.tab === "share"), class: sharing.tab === "share" ? "ms-on" : "", onClick: () => switchTab("share") }, "Share playlists"));
-  $("msInfo").hidden = !!sharing.detail || introOpen(sharing.tab);
+  renderSharingTabs();
   if (sharing.detail) { renderDetail(body); body.scrollTop = keepScroll; return; }
   if (sharing.tab === "find") renderFind(body); else renderShareYours(body);
   body.scrollTop = keepScroll;
+  aimIntro();
+}
+// the tabs stay above the scrolling part on every page, a playlist's page included, so the person always sees where they are
+function renderSharingTabs() {
+  const bar = $("msTabs");
+  bar.textContent = "";
+  // each tab has its own ? while its card is folded (pink on the open tab, white on the other); it brings that tab's card back
+  const tabItem = (tab, name) => {
+    const on = sharing.tab === tab;
+    const item = feEl("div", { class: "ms-tab" + (on ? " ms-on" : "") },
+      feEl("button", { type: "button", role: "tab", "aria-selected": String(on), class: "ms-tab-name", onClick: () => switchTab(tab) }, name));
+    if (!sharing.detail && !introOpen(tab)) {
+      const info = feEl("button", { type: "button", id: "msInfo" + (tab === "find" ? "Find" : "Share"), class: "ms-tab-info", "aria-label": "About " + name, onClick: () => unfoldIntro(tab) });
+      info.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.4 9.3a2.7 2.7 0 0 1 5.2 1c0 1.8-2.6 2.4-2.6 4"/><path d="M12 17.4v.01"/></svg>';
+      item.appendChild(info);
+    }
+    return item;
+  };
+  bar.append(tabItem("find", "Find playlists"), tabItem("share", "Share playlists"));
+}
+// the card's triangle points at the middle of its tab's name (measured unscaled, so a popup still growing in does not throw it off)
+function aimIntro() {
+  const card = $("msIntroCard"), name = document.querySelector("#msTabs .ms-on .ms-tab-name");
+  if (!card || !name) return;
+  const c = card.getBoundingClientRect(), t = name.getBoundingClientRect();
+  if (!c.width) return;
+  card.style.setProperty("--ms-aim", Math.round((t.left + t.width / 2 - c.left) * card.offsetWidth / c.width) + "px");
 }
 
 // ---------------------------------------------------------------- Find playlists
@@ -1472,7 +1498,7 @@ async function loadDevReports() {
 (function wireSharing() {
   startSharingCard();
   if ($("msClose")) $("msClose").addEventListener("click", () => closeSharing());
-  if ($("msInfo")) $("msInfo").addEventListener("click", () => unfoldIntro());
+  window.addEventListener("resize", aimIntro);
   if ($("msOverlay")) $("msOverlay").addEventListener("click", (e) => { if (e.target === $("msOverlay")) closeSharing(); });
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" || !$("msOverlay") || $("msOverlay").hidden || document.querySelector(".fe-overlay")) return;
