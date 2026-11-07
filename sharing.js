@@ -865,7 +865,7 @@ function renderDetail(body) {
   const names = songNamesFor(s);
   if (names.state === "none" && s.artists && s.artists.length) body.appendChild(feEl("div", { class: "ms-facts" }, includesText(s.artists)));
   const ov = sharing.overlap && sharing.overlap.playlists ? sharing.overlap.per[s.id] : null;
-  if (ov && ov.same) {
+  if (ov && ov.same && names.state === "none") {   // no song list to mark: the box with Show them, as before song names were kept
     const box = feEl("div", { class: "ms-overlap" }, feIcon("overlap"), feEl("span", {}, `${ov.same === 1 ? "1 of these songs" : `${ov.same} of these songs`} (${ov.pct}%) ${ov.same === 1 ? "is" : "are"} already in your recipes. `,
       feEl("button", { type: "button", class: "linklike", onClick: () => { sharing.showOverlapSongs = !sharing.showOverlapSongs; renderSharing(); } }, sharing.showOverlapSongs ? "Hide them" : "Show them")));
     body.appendChild(box);
@@ -874,7 +874,7 @@ function renderDetail(body) {
       body.appendChild(feEl("ul", { class: "ms-songs" }, ...ov.songs.map(([id, isrc]) => feEl("li", {}, labels.get("isrc:" + isrc) || labels.get("spotify:track:" + id) || "A song"))));
     }
   }
-  if (names.state !== "none") renderSongs(body, s, names);
+  if (names.state !== "none") renderSongs(body, s, names, ov && ov.same ? ov : null);
   body.appendChild(feEl("div", { class: "ms-foot-links" }, feEl("button", { type: "button", class: "linklike ms-report", onClick: () => reportShare(s) }, feIcon("flag"), "Report")));
   fitCovers();
 }
@@ -902,21 +902,24 @@ function songNamesFor(s) {
 }
 const songLength = (ms) => { const sec = Math.round((ms || 0) / 1000); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`; };
 
-function renderSongs(body, s, names) {
-  body.appendChild(feEl("div", { class: "ms-sec" }, "Songs"));
+// The list's title says what the play buttons give (decided by Ron, 2026-11-07, so nobody expects whole songs); under it, a check marks
+// the songs already in the person's recipes, explained once by the line above the list.
+function renderSongs(body, s, names, ov) {
+  body.appendChild(feEl("div", { class: "ms-sec" }, "30 second previews from Deezer"));
   if (names.state === "loading") { body.appendChild(feEl("p", { class: "ms-song-note" }, "Loading the songs...")); return; }
   if (names.state === "error") {
     body.appendChild(feEl("p", { class: "ms-song-note" }, `${names.error} `,
       feEl("button", { type: "button", class: "linklike", onClick: () => { names.state = "retry"; renderSharing(); } }, "Try again")));
     return;
   }
-  const list = feEl("div", { class: "ms-tracks" });
-  names.list.forEach((n, i) => list.appendChild(songRow(s, i, n)));
-  body.appendChild(list);
+  const have = new Set(ov ? ov.songs.map(([id]) => id) : []);
+  if (ov) body.appendChild(feEl("div", { class: "ms-have-key" }, feIcon("check"), ov.same === 1 ? "1 song already in your recipes" : `${ov.same} songs already in your recipes`));
   if (sharing.previewNote) body.appendChild(feEl("p", { class: "ms-song-note" }, sharing.previewNote));
-  body.appendChild(feEl("p", { class: "ms-credit" }, "30 second previews from Deezer"));
+  const list = feEl("div", { class: "ms-tracks" });
+  names.list.forEach((n, i) => list.appendChild(songRow(s, i, n, have.has(s.songs[i] && s.songs[i][0]))));
+  body.appendChild(list);
 }
-function songRow(s, i, [title, artist, ms]) {
+function songRow(s, i, [title, artist, ms], had) {
   const isrc = s.songs[i] && s.songs[i][1];
   const known = isrc && previewUrls.get(isrc);
   const none = !isrc || (known && known.url === null);   // no recording code, or Deezer has no preview of it
@@ -929,8 +932,24 @@ function songRow(s, i, [title, artist, ms]) {
   else btn.appendChild(feIcon(on && p.state === "playing" ? "pause" : "play"));
   if (on && p.state !== "loading") btn.appendChild(previewRing());
   return feEl("div", { class: "ms-track" + (on ? " ms-track-on" : "") + (none ? " ms-track-none" : "") }, btn,
-    feEl("div", { class: "ms-track-text" }, feEl("b", { text: label }), artist ? feEl("span", { text: artist }) : null),
-    feEl("span", { class: "ms-track-len" }, songLength(ms)));
+    feEl("div", { class: "ms-track-text" },
+      feEl("div", { class: "ms-track-name" }, feEl("span", { class: "ms-track-title", text: label }), had ? feEl("span", { class: "ms-track-have", title: "Already in your recipes", "aria-label": "Already in your recipes" }, feIcon("check")) : null),
+      artist ? feEl("div", { class: "ms-track-artist", text: artist }) : null),
+    // while its preview is on, the length counts the preview down instead
+    feEl("span", { class: "ms-track-len" + (on && p.state !== "loading" ? " ms-track-left" : "") }, on && p.state !== "loading" ? previewLeft() : songLength(ms)));
+}
+function previewLeft() {
+  if (!previewAudio) return "0:30";
+  const d = previewAudio.duration && isFinite(previewAudio.duration) ? previewAudio.duration : 30;
+  return songLength(Math.max(0, d - previewAudio.currentTime) * 1000);
+}
+const PREVIEW_FADE_S = 2;   // the last two seconds fade out, so the end sounds meant
+function previewTick() {
+  setRing(document.querySelector("#msBody .ms-play-on .ms-ring"));
+  const left = document.querySelector("#msBody .ms-track-left");
+  if (left) left.textContent = previewLeft();
+  const d = previewAudio.duration && isFinite(previewAudio.duration) ? previewAudio.duration : 30;
+  try { previewAudio.volume = Math.max(0, Math.min(1, (d - previewAudio.currentTime) / PREVIEW_FADE_S)); } catch (err) { /* iPhones set the volume themselves */ }
 }
 // the ring around the playing song's button fills over the preview
 function previewRing() {
@@ -964,7 +983,7 @@ function audioPlayer() {
   if (previewAudio) return previewAudio;
   previewAudio = new Audio();
   previewAudio.preload = "none";
-  previewAudio.addEventListener("timeupdate", () => setRing(document.querySelector("#msBody .ms-play-on .ms-ring")));
+  previewAudio.addEventListener("timeupdate", previewTick);
   previewAudio.addEventListener("ended", () => { if (sharing.player && sharing.player.state === "playing") { sharing.player = null; renderSharing(); } });
   return previewAudio;
 }
@@ -1001,6 +1020,7 @@ async function togglePreview(s, i) {
   if (!url) { sharing.player = null; renderSharing(); return; }   // Deezer has no preview: the button fades
   turn.state = "playing";
   audio.src = url;
+  try { audio.volume = 1; } catch (err) { /* set by the phone */ }
   audio.play().catch(() => { if (sharing.player === turn) { sharing.player = null; sharing.previewNote = "The preview could not play."; renderSharing(); } });
   renderSharing();
 }

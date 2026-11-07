@@ -849,9 +849,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-07i" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-07j" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-07i/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-07j/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3044,7 +3044,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-07i", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-07j", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -5110,13 +5110,17 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => sg_d.querySelectorAll("#msBody .ms-track").length === 4, 5000);
   var sg_rows = () => Array.from(sg_d.querySelectorAll("#msBody .ms-track"));
   check("opening a playlist's page reads that playlist's songs once, with no sign-in", sg_sh.songReads.length === 1 && sg_sh.songReads[0].id === "n1" && sg_sh.songReads[0].auth === null, JSON.stringify(sg_sh.songReads));
-  check("each song shows its title, artist and length, and Includes is gone", sg_rows()[0].querySelector(".ms-track-text b").textContent === "Weightless" && sg_rows()[0].querySelector(".ms-track-text span").textContent === "Marconi Union" && sg_rows()[0].querySelector(".ms-track-len").textContent === "8:08" && sg_rows()[3].querySelector(".ms-track-len").textContent === "1:01" && !sg_d.querySelector("#msBody .ms-facts"));
-  check("the list ends with the Deezer credit, and nothing has gone to Deezer yet", /30 second previews from Deezer/.test(sg_d.getElementById("msBody").textContent) && sg_w.eval("window._asked.length") === 0);
+  check("each song shows its title, artist and length, and Includes is gone", sg_rows()[0].querySelector(".ms-track-title").textContent === "Weightless" && sg_rows()[0].querySelector(".ms-track-artist").textContent === "Marconi Union" && sg_rows()[0].querySelector(".ms-track-len").textContent === "8:08" && sg_rows()[3].querySelector(".ms-track-len").textContent === "1:01" && !sg_d.querySelector("#msBody .ms-facts"));
+  check("the list's title says the play buttons give 30 second previews from Deezer (no Songs title), and nothing has gone to Deezer yet", sg_d.querySelector("#msBody .ms-tracks").previousElementSibling.textContent === "30 second previews from Deezer" && !Array.from(sg_d.querySelectorAll("#msBody .ms-sec")).some((e) => e.textContent === "Songs") && sg_w.eval("window._asked.length") === 0);
+  check("with nothing in the recipes there is no check line and no checks", !sg_d.querySelector("#msBody .ms-have-key") && !sg_d.querySelector("#msBody .ms-track-have"));
+  sg_w.eval("sharing.overlap = { playlists: 2, per: { n1: { same: 2, pct: 50, songs: [['sg1', 'GBAAA0000001'], ['sg3', 'GBAAA0000003']] } } }; renderSharing();");
+  check("songs already in the recipes get a check after the title, explained by one line under the list's title, with no box and no Show them", sg_d.querySelector("#msBody .ms-have-key").textContent === "2 songs already in your recipes" && sg_d.querySelector("#msBody .ms-tracks").previousElementSibling === sg_d.querySelector("#msBody .ms-have-key") && sg_rows().map((r) => !!r.querySelector(".ms-track-have")).join() === "true,false,true,false" && !sg_d.querySelector("#msBody .ms-overlap") && !/Show them/.test(sg_d.getElementById("msBody").textContent));
   check("a song with no recording code has no preview to play", sg_rows()[3].querySelector(".ms-play").disabled && sg_rows()[3].querySelector(".ms-play").getAttribute("aria-label") === "No preview of No code" && !sg_rows()[0].querySelector(".ms-play").disabled);
   sg_rows()[0].querySelector(".ms-play").click();
   await waitFor(() => sg_w.eval("sharing.player && sharing.player.state") === "playing", 3000);
   check("play asks Deezer for that one song and plays its preview", sg_w.eval("JSON.stringify(window._asked)") === '["GBAAA0000001"]' && sg_w.eval("window._plays[window._plays.length - 1]") === "https://cdnt-preview.dzcdn.net/GBAAA0000001.mp3");
   check("the playing song's button turns to pause with a ring, and its title is marked", sg_rows()[0].classList.contains("ms-track-on") && sg_rows()[0].querySelector(".ms-play").getAttribute("aria-label") === "Pause Weightless" && !!sg_rows()[0].querySelector(".ms-ring"));
+  check("while it plays, its length counts down the preview instead", sg_rows()[0].querySelector(".ms-track-len").classList.contains("ms-track-left") && sg_rows()[0].querySelector(".ms-track-len").textContent === "0:30" && sg_rows()[1].querySelector(".ms-track-len").textContent === "4:26");
   sg_rows()[0].querySelector(".ms-play").click();
   check("pressing it again pauses, and again goes on without asking Deezer again", sg_w.eval("sharing.player.state") === "paused" && (sg_rows()[0].querySelector(".ms-play").click(), sg_w.eval("sharing.player.state") === "playing") && sg_w.eval("window._asked.length") === 1);
   sg_rows()[1].querySelector(".ms-play").click();
@@ -5308,7 +5312,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-07i"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-07j"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
