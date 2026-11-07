@@ -105,6 +105,7 @@ async function loadMine() {
   sharing.mineError = "";
   try {
     sharing.mine = (await sharingFetch("GET", "/mine")).shares;
+    if (!sharing.topIds) sharing.topIds = new Set(sharing.mine.map((s) => s.playlist));
     try { localStorage.setItem(SHARING_MINE_KEY, JSON.stringify(sharing.mine.map((s) => s.id))); } catch (err) { /* private browsing */ }
     for (const s of sharing.mine) {
       const pick = sharing.picks[s.playlist];
@@ -367,6 +368,7 @@ function openSharing(tab = "find") {
   sharing.detail = null;
   sharing.overlapShown = sharing.overlap;
   sharing.sunk = new Set(Object.keys(blockRecord()));   // known on opening as not shareable: these go to the bottom; one found while open stays in its place until next time
+  sharing.topIds = null;   // the shares as first read in this opening go to the top; one shared or stopped while open keeps its place until next time
   $("msOverlay").hidden = false;
   document.body.style.overflow = "hidden";
   renderSharing();
@@ -972,10 +974,11 @@ function renderShareYours(body) {
   if (sharing.mineError) body.appendChild(feEl("p", { class: "ms-error" }, sharing.mineError));
   if (!sharing.mine && !sharing.mineError) { body.appendChild(feEl("p", { class: "ms-note" }, "Loading...")); return; }
   const list = feEl("div", { class: "ms-share-list" });
-  // shared first, then the rest; at the bottom the ones that can't be shared: known as such on opening, then copies
+  // shared (as of opening) first, then the rest; at the bottom the ones that can't be shared: known as such on opening, then copies
   const sunk = (p) => !!(sharing.sunk && sharing.sunk.has(p.id) && knownBlock(p));
   const rank = ({ p, copy }) => copy ? 2 : sunk(p) ? 1 : 0;
-  const rows = shareCandidates().sort((a, b) => (rank(a) - rank(b)) || (!!sharedFor(b.p) - !!sharedFor(a.p)));
+  const top = sharing.topIds || new Set(sharing.mine.map((s) => s.playlist));   // until this opening's read arrives, the shares kept from before
+  const rows = shareCandidates().sort((a, b) => (rank(a) - rank(b)) || (top.has(b.p.id) - top.has(a.p.id)));
   for (const { p, copy } of rows) list.appendChild(shareYoursRow(p, copy));
   if (!rows.length) list.appendChild(feEl("p", { class: "ms-note" }, "No playlists of your own found."));
   body.appendChild(list);
