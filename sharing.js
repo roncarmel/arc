@@ -446,26 +446,32 @@ function foldIntro() {
   Object.assign(ghost.style, { left: c.left - d.left + "px", top: c.top - d.top + "px", width: c.width + "px", height: c.height + "px" });
   dialog.appendChild(ghost);
   const dx = t.left + t.width / 2 - (c.left + c.width / 2), dy = t.top + t.height / 2 - (c.top + c.height / 2);
-  const scale = Math.max(t.width / c.width, 0.05);
+  // it lands as the button's own circle (each axis scaled to the button, a 50% radius), still visible, and only fades as the button pops in
+  const sx = Math.max(t.width / c.width, 0.02), sy = Math.max(t.height / c.height, 0.02);
+  const FLY_MS = 520;
+  Array.from(ghost.children).forEach((el) => el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: EASE_IN, fill: "forwards" }));
   const fly = ghost.animate([
     { transform: "none", opacity: 1, borderRadius: "14px" },
-    { transform: `translate(${dx * 0.55}px, ${dy * 0.55}px) scale(${0.35 + scale})`, opacity: 0.9, borderRadius: "40px", offset: 0.6 },
-    { transform: `translate(${dx}px, ${dy}px) scale(${scale})`, opacity: 0, borderRadius: "999px" },
-  ], { duration: 520, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" });
+    { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`, opacity: 1, borderRadius: "50%", offset: 0.85 },
+    { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`, opacity: 0, borderRadius: "50%" },
+  ], { duration: FLY_MS, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" });
   const cs = getComputedStyle(card);
   card.style.overflow = "hidden";
   card.animate([
     { height: c.height + "px", marginBottom: cs.marginBottom, paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, borderWidth: cs.borderTopWidth, opacity: 0 },
     { height: "0px", marginBottom: "0px", paddingTop: "0px", paddingBottom: "0px", borderWidth: "0px", opacity: 0 },
   ], { duration: 420, delay: 80, easing: EASE_OUT, fill: "forwards" });
-  fly.finished.then(() => {
-    ghost.remove();
-    if (card.isConnected) card.remove();
+  // the button pops in as the circle reaches it (about 55% of the way through the eased time), so one becomes the other
+  setTimeout(() => {
     info.style.visibility = "";
     info.animate([{ transform: "scale(0.3)", opacity: 0 }, { transform: "scale(1.25)", opacity: 1, offset: 0.6 }, { transform: "scale(1)", opacity: 1 }],
       { duration: 380, easing: EASE_OUT });
     info.animate([{ boxShadow: "0 0 0 0 var(--accent-tint-border)" }, { boxShadow: "0 0 0 10px transparent" }], { duration: 700, delay: 200, easing: EASE_OUT });
     info.focus({ preventScroll: true });
+  }, FLY_MS * 0.55);
+  fly.finished.then(() => {
+    ghost.remove();
+    if (card.isConnected) card.remove();
   }).catch(() => {});
 }
 // the info button: the card unfolds again at the top of the list, growing out of the button
