@@ -15,8 +15,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-07f">
-<script src="theme.js?v=2026-11-07f"></script>
+<meta name="app-version" content="2026-11-07g">
+<script src="theme.js?v=2026-11-07g"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ceremony Playlist Builder</title>
@@ -80,6 +80,29 @@
   #reconnectScreen p { margin: 0; line-height: 1.4; max-width: 300px; }
   #reconnectScreen .rc-text { opacity: 0.7; font-size: 0.93em; }
   #reconnectScreen button { margin-top: 4px; padding: 10px 18px; }
+  /* After Get it: a card over the blurred app from the click, through the reload, until the app is ready (signed in, playlists read, recipes settled, Python started), then
+     "All set!" with confetti and OK (updateScreen in app.js). A spinner and the step under way, not a progress bar: the steps differ in length and Python runs alongside. Decided by Ron, 2026-11-07 (mockup B). */
+  #updateScreen { display: none; position: fixed; inset: 0; z-index: 1500; align-items: center; justify-content: center; padding: 16px; background: color-mix(in srgb, var(--bg) 55%, transparent); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); transition: opacity 450ms var(--ease-out); }
+  html.updating #updateScreen { display: flex; }
+  #updateScreen.us-out { opacity: 0; pointer-events: none; }
+  #updateScreen .us-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; width: 300px; max-width: 100%; box-sizing: border-box; background: var(--bg); color: var(--fg); border: 1.5px solid var(--button); border-radius: 24px; padding: 30px 24px 24px; box-shadow: 0 20px 50px color-mix(in srgb, var(--button) 30%, rgba(0, 0, 0, 0.2)); }
+  html.us-arrive #updateScreen { animation: us-fade 300ms var(--ease-out) both; }
+  @keyframes us-fade { from { opacity: 0; } }
+  html.us-arrive #updateScreen .us-card { animation: cn-rise 450ms var(--ease-out) both; }   /* only on the click: after the reload it is simply there, so it does not seem to come twice */
+  #updateScreen .us-fan { position: absolute; left: 0; right: 0; top: 0; height: 0; z-index: 2; pointer-events: none; }
+  #updateScreen .bd-spark { position: absolute; left: 50%; top: 62px; opacity: 0; border-radius: 1px; pointer-events: none; will-change: transform, opacity; backface-visibility: visible; }
+  #updateScreen .bd-spark.bd-dot { border-radius: 50%; }
+  #updateScreen .us-gift { width: 64px; height: 64px; border-radius: 50%; background: var(--button); color: #fff; display: grid; place-items: center; box-shadow: 0 0 0 10px color-mix(in srgb, var(--button) 16%, transparent), 0 0 40px color-mix(in srgb, var(--button) 45%, transparent); }
+  #updateScreen h2 { margin: 6px 0 0; font-size: 1.35rem; }
+  #updateScreen p { margin: 0; line-height: 1.4; }
+  #updateScreen .us-text { color: var(--muted); font-size: 0.95rem; }
+  #updateScreen .us-text em { font-style: normal; font-weight: 700; color: var(--accent); }
+  #updateScreen .us-busy { display: flex; align-items: center; gap: 10px; margin-top: 4px; color: var(--muted); font-size: 0.88rem; }
+  #updateScreen .us-spin { width: 18px; height: 18px; flex: none; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--button); animation: cn-spin 0.9s linear infinite; }
+  #usOk { display: none; margin-top: 6px; padding: 12px 34px; font-size: 1.02rem; border-radius: 999px; }
+  #updateScreen.us-done .us-busy { display: none; }
+  #updateScreen.us-done #usOk { display: block; animation: cn-rise 450ms var(--ease-out) both; }
+  @media (prefers-reduced-motion: reduce) { #updateScreen, #updateScreen .us-card, #usOk { transition: none; animation: none !important; } #updateScreen .us-spin { animation: none; } #updateScreen .bd-spark { display: none; } }
   @media (prefers-reduced-motion: reduce) { #connectingScreen, .cn-step { transition: none; } .cn-active .cn-mark::before { animation: none; } #connectingScreen.cn-finished > * { animation: none; } }
   details.about summary { cursor: pointer; font-weight: 600; color: var(--accent); }
   details.about p { margin: 10px 0 0; }
@@ -1230,6 +1253,8 @@
       else if (localStorage.getItem("connectedBefore") === "1") page = "app";
       else if (setup === "1" || (setup === null && localStorage.getItem("clientId"))) page = "setup";
     } catch (err) { /* storage is blocked: the welcome page */ }
+    // just updated (Get it): the update card stays up over the app until it is ready (updateScreen in app.js); the mark is used once
+    try { if (sessionStorage.getItem("updating")) { sessionStorage.removeItem("updating"); if (page === "app" && !document.documentElement.classList.contains("connecting")) document.documentElement.classList.add("updating"); } } catch (err) { /* no storage: no card */ }
     document.documentElement.classList.add("page-" + page);
   })();
 </script>
@@ -1251,6 +1276,16 @@
     <li id="cnPython" class="cn-step cn-active"><span class="cn-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span>Starting the playlist builder</span></li>
   </ul>
   <button id="cnContinue" class="primary" type="button">Let&rsquo;s make a recipe!</button>
+</div>
+<div id="updateScreen" role="status" aria-live="polite">
+  <div class="us-card">
+    <div class="us-fan" aria-hidden="true"></div>
+    <span class="us-gift"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg></span>
+    <h2 id="usTitle">Unwrapping the update</h2>
+    <p id="usText" class="us-text">Your recipes and playlists are on their way back.</p>
+    <p class="us-busy"><span class="us-spin" aria-hidden="true"></span><span id="usStep">Getting the new version</span></p>
+    <button id="usOk" class="primary" type="button">OK</button>
+  </div>
 </div>
 <div id="reconnectScreen" role="dialog" aria-modal="true" aria-labelledby="reconnectText" hidden>
   <div class="rc-card">
@@ -1745,10 +1780,10 @@
     <div id="msFoot" hidden></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-07f"></script>
-<script src="editor.js?v=2026-11-07f"></script>
-<script src="shared-spotify.js?v=2026-11-07f"></script>
-<script src="app.js?v=2026-11-07f"></script>
-<script src="sharing.js?v=2026-11-07f"></script>
+<script src="formats.js?v=2026-11-07g"></script>
+<script src="editor.js?v=2026-11-07g"></script>
+<script src="shared-spotify.js?v=2026-11-07g"></script>
+<script src="app.js?v=2026-11-07g"></script>
+<script src="sharing.js?v=2026-11-07g"></script>
 </body>
 </html>

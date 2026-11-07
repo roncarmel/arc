@@ -848,9 +848,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-07f" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-07g" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-07f/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-07g/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -973,14 +973,14 @@ print(json.dumps(out))
   // ---------------- every numbered section title says what the person will do
   var verbs = ["Connect", "Edit", "Build", "Back up"];
   var allH2 = Array.from(t0.document.querySelectorAll("h2")).filter((h) => !h.closest("#msOverlay")).map((h) => h.textContent);
-  check("the welcome and setup pages have their own headings, and every numbered section title left is an action", JSON.stringify(allH2) === JSON.stringify(["Setup complete!", "What to expect", "One-time setup", "Find your Client ID", "1. Connect to Spotify", "1. Connect to Spotify", "2. Edit your recipes", "3. Build playlists", "4. Back up manually to this device (optional)"]) && allH2.slice(4).every((t) => verbs.some((v) => t.replace(/^\d\.\s/, "").startsWith(v))), JSON.stringify(allH2));
+  check("the welcome and setup pages have their own headings, and every numbered section title left is an action", JSON.stringify(allH2) === JSON.stringify(["Setup complete!", "Unwrapping the update", "What to expect", "One-time setup", "Find your Client ID", "1. Connect to Spotify", "1. Connect to Spotify", "2. Edit your recipes", "3. Build playlists", "4. Back up manually to this device (optional)"]) && allH2.slice(4).every((t) => verbs.some((v) => t.replace(/^\d\.\s/, "").startsWith(v))), JSON.stringify(allH2));
 
 
   // ---------------- What is this app? headings, and placeholder icons on the buttons
   var ab = t0.document.getElementById("about");
   var leads = Array.from(ab.querySelectorAll("strong")).map((x) => x.textContent);
   check("the headings in What is this app? stand on their own line, without trailing periods", JSON.stringify(leads) === JSON.stringify(["What it does", "What it's good for", "How it works", "What you need", "Reporting problems", "Privacy"]) && Array.from(ab.querySelectorAll("p")).filter((p) => p.querySelector("strong + br")).length === 5, JSON.stringify(leads));
-  var pill = Array.from(t0.document.querySelectorAll("button:not(.linklike):not(.theme-button):not(#kofiClose):not(#createDonate):not(#cnContinue), a.button-link")).filter((b) => !b.closest("#formatEditor") && !b.closest("#startupProblem") && b.id !== "infoClose" && b.id !== "msClose" && b.id !== "msInfo" && b.id !== "msCard" && b.id !== "updateGet");   // the Music sharing card (covers, not an icon) and the update card's Get it (its gift is on the card)   // the Setup complete button has words only; the startup popup and the info popup's close draw their icons inline
+  var pill = Array.from(t0.document.querySelectorAll("button:not(.linklike):not(.theme-button):not(#kofiClose):not(#createDonate):not(#cnContinue):not(#usOk), a.button-link")).filter((b) => !b.closest("#formatEditor") && !b.closest("#startupProblem") && b.id !== "infoClose" && b.id !== "msClose" && b.id !== "msInfo" && b.id !== "msCard" && b.id !== "updateGet");   // the Music sharing card (covers, not an icon) and the update card's Get it (its gift is on the card)   // the Setup complete button has words only; the startup popup and the info popup's close draw their icons inline
   var pillsIn = pill.filter((b) => b.querySelector("img.btn-icon"));
   check("every pink button has an icon in front of its label (the Donate button has the cup)", pill.length >= 15 && pillsIn.length === pill.length, `${pillsIn.length} of ${pill.length} ` + pill.filter((b) => !b.querySelector("img.btn-icon")).map((b) => b.id || b.outerHTML.slice(0, 60)).join(","));
   check("each icon is a small file, 20 by 20 (the Build sparkles 24 by 24), decorative, and the file exists", pill.every((b) => { const i = b.querySelector("img.btn-icon"); const size = i.getAttribute("src") === "icons/build.svg" ? "24" : "20"; return i.getAttribute("width") === size && i.getAttribute("height") === size && i.getAttribute("alt") === "" && /^icons\/[a-z]+\.svg$/.test(i.getAttribute("src")) && fs.existsSync(ROOT + i.getAttribute("src")); }));
@@ -3043,7 +3043,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-07f", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-07g", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -5249,7 +5249,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-07f"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-07g"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5621,6 +5621,27 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   nv_b.document.getElementById("updateGet").click();
   await new Promise((r) => setTimeout(r, 200));
   check("and again whenever it is pressed", nv_b.__reloaded === 2);
+  // the update card (mockup B): up at once on Get it, back after the reload until the app is ready, then All set! with OK
+  var nv_us = nv_b.document.getElementById("updateScreen");
+  check("Get it puts the update card over the app at once, with a spinner and the step under way (no progress bar), and marks the reload", nv_b.document.documentElement.classList.contains("updating") && nv_b.document.getElementById("usTitle").textContent === "Unwrapping the update" && nv_b.document.getElementById("usStep").textContent === "Getting the new version" && !!nv_us.querySelector(".us-spin") && !nv_us.querySelector("progress, [role=progressbar]") && nv_b.sessionStorage.getItem("updating") === "1");
+  var nv_x = await nv_make({ serverVersion: "2099-01-01a" });
+  nv_x.fetch = () => Promise.reject(new Error("offline"));
+  nv_x.eval("getUpdate()");
+  await new Promise((r) => setTimeout(r, 200));
+  check("when the new version cannot be fetched, the card says so with OK, and the mark is gone", nv_x.__reloaded === 0 && nv_x.document.getElementById("usTitle").textContent === "The update did not arrive" && nv_x.document.getElementById("updateScreen").classList.contains("us-done") && nv_x.sessionStorage.getItem("updating") === null);
+  nv_x.document.getElementById("usOk").click();
+  await new Promise((r) => setTimeout(r, 600));
+  check("OK takes the card down", !nv_x.document.documentElement.classList.contains("updating"));
+  check("after the reload the <head> script puts the card up from the first paint (on the app page only), and the mark is used once", /if \(sessionStorage\.getItem\("updating"\)\) \{ sessionStorage\.removeItem\("updating"\); if \(page === "app" && !document\.documentElement\.classList\.contains\("connecting"\)\) document\.documentElement\.classList\.add\("updating"\);/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  var nv_u = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "manual" }, fetchOptions: {}, before: (w) => w.document.documentElement.classList.add("updating") });
+  await waitFor(() => nv_u.document.getElementById("updateScreen").classList.contains("us-done"), 20000);
+  check("once signed in, the playlists read and Python started, it says All set! with the version and OK", nv_u.eval("connection") === "ready" && nv_u.document.getElementById("usTitle").textContent === "All set!" && nv_u.document.getElementById("usText").textContent === `You have the newest version of the app, ${nv_version}.` && nv_u.document.documentElement.classList.contains("updating"));
+  nv_u.document.dispatchEvent(new nv_u.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  await new Promise((r) => setTimeout(r, 600));
+  check("Escape (or OK) takes it down", !nv_u.document.documentElement.classList.contains("updating"));
+  var nv_v = await boot({ url: EDURL, session: {}, local: { formats: MINI, connectedBefore: "1", backupMode: "manual" }, fetchOptions: {}, before: (w) => w.document.documentElement.classList.add("updating") });
+  await new Promise((r) => setTimeout(r, 3000));
+  check("a start that does not end ready (no sign-in) takes the card down quietly, so the problem shows as usual", !nv_v.document.documentElement.classList.contains("updating") || nv_v.document.getElementById("updateScreen").classList.contains("us-out"));
   var nv_c = await nv_make({ serverVersion: "2099-01-01a" }, {}, { donateHidden: "1" });
   await nv_check(nv_c);
   check("with Support me hidden by choice, the card still shows", !nv_c.document.getElementById("updateCard").hidden && nv_c.document.documentElement.classList.contains("donate-hidden") && nv_c.document.documentElement.classList.contains("update-ready"));

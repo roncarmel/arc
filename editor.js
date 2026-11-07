@@ -518,6 +518,7 @@ function smoothResize(box, scroller) {
 
 function askSyncChoice(title, text, choices, options = {}) {
   if (typeof endConnectingScreen === "function") endConnectingScreen();   // a question needs the page in view
+  if (typeof closeUpdateScreen === "function") closeUpdateScreen();
   return new Promise((resolve) => {
     const required = !!options.required;
     const done = (value) => { overlay.remove(); document.removeEventListener("keydown", onKey); resolve(value); };
@@ -841,6 +842,7 @@ function saveTipQuiet() {
   if (typeof backupMode === "function" && backupMode() !== "spotify") return false;
   if (typeof busy !== "undefined" && busy) return false;
   if (typeof connectingScreen !== "undefined" && connectingScreen) return false;
+  if (typeof updateScreen !== "undefined" && updateScreen) return false;
   if (editor.appMenu) return false;
   const active = document.activeElement;
   if (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return false;
@@ -1453,6 +1455,7 @@ function showPauseDialog() {
   const pause = typeof spotifyPause === "function" ? spotifyPause() : null;
   if (!pause || $("fePauseDialog")) return;
   if (typeof endConnectingScreen === "function") endConnectingScreen();   // the popup needs the page in view
+  if (typeof closeUpdateScreen === "function") closeUpdateScreen();
   if (editor.panel || editor.cardMenu || editor.gapPanel !== null || editor.appMenu) closePanels();   // an open list would take the first tap outside the popup
   const quota = pause.reason === "QUOTA_EXCEEDED";
   const kept = playlists.length || (typeof KEPT_PLAYLISTS_KEY === "string" && localStorage.getItem(KEPT_PLAYLISTS_KEY));   // the kept list may be put in just after this opens

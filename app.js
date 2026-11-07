@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-07f";
+const APP_VERSION = "2026-11-07g";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -121,6 +121,7 @@ function showStartupProblems() {
     try { sessionStorage.removeItem("startupRefreshed"); } catch (err) { /* nothing was kept */ }   // a clean start: the next stale copy may be tried again by itself
     return;
   }
+  closeUpdateScreen();
   try { recordError("Startup: " + startupProblems.join("; ").slice(0, 300)); } catch (err) { /* the popup matters more */ }
   const link = $("startupReport");
   if (link) { try { link.href = reportUrl(); } catch (err) { /* the plain link still works */ } }
@@ -229,6 +230,56 @@ function setupComplete() {
   const hasRecipes = typeof editor !== "undefined" && !!editor.model && editor.model.formats.some((f) => !f.draft);
   button.textContent = hasRecipes ? "Show me my recipes!" : "Let’s make a recipe!";   // a plain listener: it only lets the startup go on, so nothing in it can fail
   return new Promise((resolve) => button.addEventListener("click", resolve, { once: true }));
+}
+
+// ---------------------------------------------------------------- the update card
+// Get it puts a card over the blurred app at once ("Unwrapping the update"), and the script in index.html's <head> puts it back up after the reload (the "updating" mark in
+// sessionStorage). It shows a spinner and the step under way (a bar would not be honest: the steps differ in length and Python loads alongside), and stays until the app is
+// ready, so the Build button greying and the page settling happen out of sight. Then "All set!" with confetti and OK. Anything that needs the page (a question, the pause
+// popup, a startup problem) or a start that did not end ready (no sign-in, no Python) takes it down quietly, and the app shows the problem as usual. Decided by Ron, 2026-11-07.
+let updateScreen = document.documentElement.classList.contains("updating");
+
+function updateStep(text) {
+  if (updateScreen) $("usStep").textContent = text;
+}
+
+function getUpdate() {
+  try { sessionStorage.setItem("updating", "1"); } catch (err) { /* no storage: the card shows until the reload only */ }
+  updateScreen = true;
+  $("updateScreen").classList.remove("us-done", "us-out");
+  document.documentElement.classList.add("updating", "us-arrive");
+  updateStep("Getting the new version");
+  reloadForNewVersion(() => {
+    try { sessionStorage.removeItem("updating"); } catch (err) { /* nothing was kept */ }
+    finishUpdateScreen("failed");
+  });
+}
+
+// how: "ready" (All set!), "failed" (the new version could not be fetched: said, with OK) or anything else (taken down quietly)
+function finishUpdateScreen(how) {
+  if (!updateScreen) return;
+  if (how !== "ready" && how !== "failed") { closeUpdateScreen(); return; }
+  const screen = $("updateScreen");
+  $("usTitle").textContent = how === "ready" ? "All set!" : "The update did not arrive";
+  const text = $("usText");
+  text.textContent = "";
+  if (how === "ready") text.append("You have the newest version of the app, ", Object.assign(document.createElement("em"), { textContent: APP_VERSION }), ".");
+  else text.textContent = "Check your internet connection and try again.";
+  screen.classList.add("us-done");
+  const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (how === "ready" && !still && typeof requestAnimationFrame === "function") throwConfetti(screen.querySelector(".us-fan"));
+}
+
+function closeUpdateScreen() {
+  if (!updateScreen) return;
+  updateScreen = false;
+  const screen = $("updateScreen");
+  screen.classList.add("us-out");
+  setTimeout(() => {
+    if (updateScreen) return;   // Get it again meanwhile
+    document.documentElement.classList.remove("updating", "us-arrive");
+    screen.classList.remove("us-out", "us-done");
+  }, 450);
 }
 
 // The first save settles the recipes with their saves in Spotify (it may add or change some), so it is done before the screen goes,
@@ -3105,7 +3156,9 @@ async function main() {
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !event.defaultPrevented && !$("createOverlay").hidden && $("kofiPanel").hidden) dismissCreateDialog(); });   // an Escape that closed the guide or the Support me panel above it is not for the build popup
   guarded("tip note", () => trackTipHeight());
   guarded("donation panel", () => initDonatePanel());
-  on("updateGet", "click", () => reloadForNewVersion(() => {}));
+  on("updateGet", "click", getUpdate);
+  on("usOk", "click", closeUpdateScreen);
+  document.addEventListener("keydown", (event) => { if (updateScreen && $("updateScreen").classList.contains("us-done") && (event.key === "Escape" || event.key === "Enter")) { event.preventDefault(); closeUpdateScreen(); } });
   guarded("hiding the Donate button", () => initDonateChoice());
   on("removeOld", "click", removeEarlier);
   on("removeKey", "change", updateButtons);
@@ -3130,7 +3183,8 @@ async function main() {
   guarded("a wait from Spotify", () => tickPause());
 
   if (signingIn) { setLoginMessage(signInNote, true); updateButtons(); }   // coming back from Spotify: say so before the sign-in is finished
-  const pythonReady = connectingScreen ? preparePython().then((ok) => { if (ok) connectingStep("Python", "done"); else connectingStepFailed("Python"); }) : null;   // behind the connecting screen Python loads alongside the sign-in, so the wait is the slower of the two
+  updateStep("Signing in to Spotify");
+  const pythonReady = connectingScreen || updateScreen ? preparePython().then((ok) => { if (ok) connectingStep("Python", "done"); else connectingStepFailed("Python"); return ok; }) : null;   // behind the connecting screen (or the update card) Python loads alongside the sign-in, so the wait is the slower of the two
   try {
     await finishLoginIfReturning();
   } catch (err) {
@@ -3159,12 +3213,23 @@ async function main() {
   if (token) {
     document.body.classList.add("connected");
     connectingStep("Playlists", "active");
+    updateStep("Reading your playlists");
     await connectToSpotify();   // and the app only calls itself connected, and offers Create, once Spotify has answered
     if (connection === "ready") connectingStep("Playlists", "done");
     else await connectingStepFailed("Playlists");   // the connection problem shows in the app
   }
   if (connectingScreen) await settleFirstSave();
-  await (pythonReady || preparePython());
+  else if (updateScreen && connection === "ready" && backupMode() === "spotify") {
+    updateStep("Loading your recipes");
+    await runSpotifySave();
+    while (saveState.running) await new Promise((r) => setTimeout(r, 100));   // a save already under way (the connection starts one) is waited for too
+  }
+  updateStep("Starting the playlist builder");
+  const pythonOk = await (pythonReady || preparePython());
+  if (updateScreen) {
+    await new Promise((r) => setTimeout(r, 300));   // the page settles behind the card first
+    finishUpdateScreen(pythonOk && connection === "ready" && !startupProblems.length && !saveState.error && $("reconnectScreen").hidden ? "ready" : "");
+  }
   if (connectingScreen) await new Promise((r) => setTimeout(r, 100));   // the last check is seen before the screen fades
   await setupComplete();
   endConnectingScreen();
