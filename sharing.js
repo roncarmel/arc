@@ -752,8 +752,8 @@ function pickState(p, pick) {
   if (pick.on && !pickComplete(pick)) return { text: "", ready: false };
   if (shared && !pick.on) return { text: "Will stop being shared", ready: true, cls: "ms-need" };
   if (shared && (pick.update || pickDiffers(pick, shared))) return { text: "Changes ready", ready: true, cls: "ms-ok" };
-  if (shared && p.snapshot && shared.snapshot && p.snapshot !== shared.snapshot) return { text: `Shared ${shortDate(shared.sharedAt)}. Changed in Spotify since then.`, ready: true, offerUpdate: true };
-  if (shared) return { text: `Shared ${shortDate(shared.sharedAt)}${shared.hidden ? ", hidden after reports" : ""}`, ready: true };
+  if (shared && p.snapshot && shared.snapshot && p.snapshot !== shared.snapshot) return { text: "Changed in Spotify since it was shared.", ready: true, offerUpdate: true };
+  if (shared) return { text: shared.hidden ? "Hidden after reports" : "", ready: true };
   return { text: "", ready: !!pick.on };   // ticked and filled in: nothing to say, the bottom button counts it
 }
 function shortDate(ms) { const d = new Date(ms); return `${d.getDate()} ${MONTHS[d.getMonth()]}`; }
@@ -797,7 +797,8 @@ function shareYoursRow(p, copy) {
   box.addEventListener("change", () => toggleShare(p, box.checked));
   const cover = p.image ? feEl("img", { class: "ms-cover", src: p.image, alt: "" }) : feEl("span", { class: "ms-cover ms-nocover" }, feIcon("notes"));
   const text = feEl("div", { class: "ms-text" }, feEl("div", { class: "ms-name" + (copy ? " ms-dim" : ""), text: p.name }),
-    feEl("div", { class: "ms-sub" }, !copy && pick.on && songsLine(p, pick, !fieldsShown(p, pick)) || (p.count != null ? songCountText(p.count) : "")));
+    feEl("div", { class: "ms-sub ms-subrow" }, feEl("span", { class: "ms-subtext" }, !copy && pick.on && songsLine(p, pick, !fieldsShown(p, pick)) || (p.count != null ? songCountText(p.count) : "")),
+      copy ? null : rowAction(p, pick)));
   if (copy) text.appendChild(feEl("div", { class: "ms-state ms-dis" }, "Added from Music sharing, so it cannot be shared again."));
   else {
     text.appendChild(stateLine(p, pick));
@@ -806,7 +807,7 @@ function shareYoursRow(p, copy) {
   if (!copy && fieldsShown(p, pick)) row.appendChild(shareFields(p, pick));   // under the row, the full width
   return row;
 }
-// A shared playlist folds to its name, its songs and "Shared 6 Nov · Edit details"; Edit details unfolds the same fields a new share has, and Done folds them again.
+// A shared playlist folds to its name and its songs, with Edit details at the right of the songs line; Edit details unfolds the same fields a new share has, and Done folds them again.
 // It stays open while something it needs is missing. After a share goes through, the row folds (applyShares).
 function fieldsShown(p, pick) {
   if (!pick.on || pick.short || pick.checking) return false;
@@ -816,12 +817,17 @@ function stateLine(p, pick) {
   const state = pickState(p, pick), shared = sharedFor(p);
   const line = feEl("div", { class: "ms-state " + (state.cls || ""), id: "msState-" + p.id }, state.text);
   if (state.offerUpdate) line.appendChild(feEl("button", { type: "button", class: "linklike ms-inline", onClick: () => { pick.update = true; pick.touched = true; refreshRow(p); } }, "Update"));
-  if (shared && pick.on && state.ready) {
-    line.appendChild(pick.open
+  return line;
+}
+// Edit details (or Done while unfolded), at the right end of the songs line
+function rowAction(p, pick) {
+  const slot = feEl("span", { class: "ms-rowact", id: "msAct-" + p.id });
+  if (sharedFor(p) && pick.on && pickState(p, pick).ready) {
+    slot.appendChild(pick.open
       ? feEl("button", { type: "button", class: "linklike ms-inline", id: "msDone-" + p.id, onClick: () => foldRow(p, false) }, "Done")
       : feEl("button", { type: "button", class: "linklike ms-inline", id: "msEdit-" + p.id, onClick: () => foldRow(p, true) }, "Edit details"));
   }
-  return line;
+  return slot;
 }
 async function foldRow(p, open) {
   const pick = pickFor(p);
@@ -860,18 +866,17 @@ function shareFields(p, pick) {
   return feEl("div", { class: "ms-fields" }, phases, tagField(p, pick, changed),
     feEl("div", { class: "ms-field" }, feEl("label", { class: "ms-flabel" }, feEl("b", {}, "Notes"), noteMeter), ta));
 }
-// Tags are typed as words with commas between them; each becomes a chip with an x. Tags other people use are offered under the box.
+// Tags are typed as words with commas or spaces between them (one word each; a suggestion of two words stays whole); each becomes a chip with an x. Tags other people use are offered under the box.
 function tagField(p, pick, changed) {
   const input = feEl("input", { type: "text", class: "ms-taginput", maxlength: String(SHARE_TAG_CHARS + 20), "aria-label": "Add a tag", enterkeyhint: "done", autocapitalize: "none", spellcheck: "false" });
   const box = feEl("div", { class: "ms-tagbox", onClick: (e) => { if (e.target === box) input.focus(); } });
   const meter = feEl("span", { class: "ms-meter" });
   const suggest = feEl("div", { class: "ms-suggest" });
-  const add = (text) => {
-    for (const part of String(text).split(",")) {
-      const t = cleanTag(part);
-      if (t.length >= 2 && !pick.tags.includes(t) && pick.tags.length < SHARE_TAGS_MAX) pick.tags.push(t);
-    }
+  const addOne = (part) => {
+    const t = cleanTag(part);
+    if (t.length >= 2 && !pick.tags.includes(t) && pick.tags.length < SHARE_TAGS_MAX) pick.tags.push(t);
   };
+  const add = (text) => { for (const part of String(text).split(/[,\s]+/)) addOne(part); };
   const showSuggestions = () => {
     suggest.textContent = "";
     if (pick.tags.length >= SHARE_TAGS_MAX) return;
@@ -882,7 +887,7 @@ function tagField(p, pick, changed) {
     found.forEach((t, i) => {
       if (i) suggest.appendChild(document.createTextNode(", "));
       // mousedown keeps the focus in the box, so the half-typed word is not added on the way
-      const b = feEl("button", { type: "button", class: "linklike ms-sugg", onClick: () => { add(t); input.value = ""; draw(); changed(); input.focus(); } }, t);
+      const b = feEl("button", { type: "button", class: "linklike ms-sugg", onClick: () => { addOne(t); input.value = ""; draw(); changed(); input.focus(); } }, t);
       b.addEventListener("mousedown", (e) => e.preventDefault());
       suggest.appendChild(b);
     });
@@ -893,7 +898,7 @@ function tagField(p, pick, changed) {
       box.appendChild(feEl("span", { class: "ms-tag ms-on ms-tagchip" }, t,
         feEl("button", { type: "button", class: "ms-tagx", "aria-label": "Remove " + t, onClick: () => { pick.tags = pick.tags.filter((x) => x !== t); draw(); changed(); input.focus(); } }, "×")));
     }
-    input.placeholder = pick.tags.length ? "" : "ambient, no vocals, piano";
+    input.placeholder = pick.tags.length ? "" : "Describe the music, e.g. gentle, piano";
     input.hidden = pick.tags.length >= SHARE_TAGS_MAX;
     box.appendChild(input);
     const n = pick.tags.length;
@@ -902,7 +907,7 @@ function tagField(p, pick, changed) {
     showSuggestions();
   };
   input.addEventListener("input", () => {
-    if (input.value.includes(",")) { const parts = input.value.split(","); const rest = parts.pop(); add(parts.join(",")); input.value = rest; draw(); changed(); input.focus(); }
+    if (/[,\s]/.test(input.value)) { const parts = input.value.split(/[,\s]+/); const rest = parts.pop(); add(parts.join(" ")); input.value = rest; draw(); changed(); input.focus(); }
     else showSuggestions();
   });
   input.addEventListener("keydown", (e) => {
@@ -912,7 +917,7 @@ function tagField(p, pick, changed) {
   input.addEventListener("blur", () => { if (input.value.trim()) { add(input.value); input.value = ""; draw(); changed(); } });
   draw();
   return feEl("div", { class: "ms-field" }, feEl("div", { class: "ms-flabel" }, feEl("b", {}, "Tags"), meter), box,
-    feEl("p", { class: "ms-taghint" }, "Words for the music. Type a comma after each."), suggest);
+    suggest);
 }
 function growBox(ta) {
   if (!ta.isConnected) return;
@@ -922,6 +927,8 @@ function growBox(ta) {
 function refreshState(p) {
   const pick = pickFor(p), line = $("msState-" + p.id);
   if (line) line.replaceWith(stateLine(p, pick));
+  const act = $("msAct-" + p.id);
+  if (act) act.replaceWith(rowAction(p, pick));
   renderShareFoot();
 }
 function refreshRow(p) {
