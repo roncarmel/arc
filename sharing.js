@@ -26,13 +26,14 @@ const sharing = {
   search: "", searchOpen: false, sort: "newest", hideAdded: true, tags: new Set(), tagsShown: TAGS_STEP, phases: new Set(),
   mine: null, mineError: "", picks: {}, shownAs: null, applying: false, adding: new Set(), addErrors: {},
   overlap: null, overlapShown: null, reading: false, readStop: false, showOverlapSongs: false,
+  songNames: new Map(), player: null, previewNote: "",
 };
 
 // ---------------------------------------------------------------- talking to the worker
 async function sharingFetch(method, path, json, retried = false) {
   const headers = {};
   if (json) headers["Content-Type"] = "application/json";
-  if (token && path !== "/library") headers.Authorization = "Bearer " + token;   // the library is public: reading it sends no sign-in
+  if (token && path !== "/library" && !path.startsWith("/songs/")) headers.Authorization = "Bearer " + token;   // the library and a playlist's songs are public: reading them sends no sign-in
   let response;
   try {
     response = await fetchWithAnswerLimit(SHARING_URL + path, { method, headers, body: json ? JSON.stringify(json) : undefined });
@@ -379,6 +380,7 @@ function openSharing(tab = "find") {
 async function closeSharing() {
   if (!(await settlePending())) return;
   sharing.readStop = true;
+  stopPreview();
   closeSortMenu();
   if ($("msSheet")) $("msSheet").remove();
   sharing.searchOpen = false;
@@ -497,6 +499,7 @@ function unfoldIntro() {
 function renderSharing() {
   const body = $("msBody");
   if (!body || $("msOverlay").hidden) return;
+  if (sharing.player && sharing.player.share !== sharing.detail) stopPreview();   // a preview plays only on its playlist's page
   const keepScroll = body.scrollTop;
   body.textContent = "";
   $("msFoot").hidden = true;
@@ -507,7 +510,7 @@ function renderSharing() {
     feEl("button", { type: "button", role: "tab", "aria-selected": String(sharing.tab === "find"), class: sharing.tab === "find" ? "ms-on" : "", onClick: () => switchTab("find") }, "Find playlists"),
     feEl("button", { type: "button", role: "tab", "aria-selected": String(sharing.tab === "share"), class: sharing.tab === "share" ? "ms-on" : "", onClick: () => switchTab("share") }, "Share playlists"));
   $("msInfo").hidden = !!sharing.detail || introOpen(sharing.tab);
-  if (sharing.detail) { renderDetail(body); return; }
+  if (sharing.detail) { renderDetail(body); body.scrollTop = keepScroll; return; }
   if (sharing.tab === "find") renderFind(body); else renderShareYours(body);
   body.scrollTop = keepScroll;
 }
@@ -858,8 +861,9 @@ function renderDetail(body) {
     body.appendChild(feEl("div", { class: "ms-sec" }, "Description"));
     body.appendChild(feEl("p", { class: "ms-long" }, s.notes));
   }
-  // the songs and length are under the name, so the box has only the artists with the most songs
-  if (s.artists && s.artists.length) body.appendChild(feEl("div", { class: "ms-facts" }, includesText(s.artists)));
+  // the songs, with a preview of each; a share made before song names were kept shows the artists with the most songs instead
+  const names = songNamesFor(s);
+  if (names.state === "none" && s.artists && s.artists.length) body.appendChild(feEl("div", { class: "ms-facts" }, includesText(s.artists)));
   const ov = sharing.overlap && sharing.overlap.playlists ? sharing.overlap.per[s.id] : null;
   if (ov && ov.same) {
     const box = feEl("div", { class: "ms-overlap" }, feIcon("overlap"), feEl("span", {}, `${ov.same === 1 ? "1 of these songs" : `${ov.same} of these songs`} (${ov.pct}%) ${ov.same === 1 ? "is" : "are"} already in your recipes. `,
@@ -870,8 +874,149 @@ function renderDetail(body) {
       body.appendChild(feEl("ul", { class: "ms-songs" }, ...ov.songs.map(([id, isrc]) => feEl("li", {}, labels.get("isrc:" + isrc) || labels.get("spotify:track:" + id) || "A song"))));
     }
   }
+  if (names.state !== "none") renderSongs(body, s, names);
   body.appendChild(feEl("div", { class: "ms-foot-links" }, feEl("button", { type: "button", class: "linklike ms-report", onClick: () => reportShare(s) }, feIcon("flag"), "Report")));
   fitCovers();
+}
+
+// ---------------------------------------------------------------- a playlist's songs and their previews
+// The names come from the worker one playlist at a time, when its page opens (never with the library). A preview is looked up at Deezer
+// by the song's ISRC only when its play button is pressed: one request, nothing before (decided by Ron, 2026-11-07).
+const PREVIEW_KEEP_MS = 10 * 60 * 1000;   // Deezer's preview addresses expire; one looked up is reused for 10 minutes
+const previewUrls = new Map();   // ISRC: { url (null: Deezer has no preview), at }
+let previewAudio = null, deezerCalls = 0;
+
+function songNamesFor(s) {
+  let got = sharing.songNames.get(s.id);
+  if (!got || got.at !== s.updatedAt || got.state === "retry") {
+    got = { at: s.updatedAt, state: "loading" };
+    sharing.songNames.set(s.id, got);
+    sharingFetch("GET", "/songs/" + s.id).then((d) => {
+      // the names follow the songs in the library one for one; anything else is a share made before names were kept
+      const ok = d && Array.isArray(d.names) && d.names.length === s.songs.length;
+      Object.assign(got, ok ? { state: "ok", list: d.names } : { state: "none" });
+    }, (err) => Object.assign(got, { state: "error", error: err.message }))
+      .then(() => { if (sharing.detail === s.id) renderSharing(); });
+  }
+  return got;
+}
+const songLength = (ms) => { const sec = Math.round((ms || 0) / 1000); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`; };
+
+function renderSongs(body, s, names) {
+  body.appendChild(feEl("div", { class: "ms-sec" }, "Songs"));
+  if (names.state === "loading") { body.appendChild(feEl("p", { class: "ms-song-note" }, "Loading the songs...")); return; }
+  if (names.state === "error") {
+    body.appendChild(feEl("p", { class: "ms-song-note" }, `${names.error} `,
+      feEl("button", { type: "button", class: "linklike", onClick: () => { names.state = "retry"; renderSharing(); } }, "Try again")));
+    return;
+  }
+  const list = feEl("div", { class: "ms-tracks" });
+  names.list.forEach((n, i) => list.appendChild(songRow(s, i, n)));
+  body.appendChild(list);
+  if (sharing.previewNote) body.appendChild(feEl("p", { class: "ms-song-note" }, sharing.previewNote));
+  body.appendChild(feEl("p", { class: "ms-credit" }, "30 second previews from Deezer"));
+}
+function songRow(s, i, [title, artist, ms]) {
+  const isrc = s.songs[i] && s.songs[i][1];
+  const known = isrc && previewUrls.get(isrc);
+  const none = !isrc || (known && known.url === null);   // no recording code, or Deezer has no preview of it
+  const p = sharing.player, on = !!(p && p.share === s.id && p.index === i);
+  const label = title || "A song";
+  const btn = feEl("button", { type: "button", class: "ms-play" + (on ? " ms-play-on" : ""), disabled: none,
+    "aria-label": none ? `No preview of ${label}` : on && p.state === "playing" ? `Pause ${label}` : `Play a preview of ${label}`,
+    onClick: () => togglePreview(s, i) });
+  if (on && p.state === "loading") btn.appendChild(feEl("span", { class: "ms-play-spin" }));
+  else btn.appendChild(feIcon(on && p.state === "playing" ? "pause" : "play"));
+  if (on && p.state !== "loading") btn.appendChild(previewRing());
+  return feEl("div", { class: "ms-track" + (on ? " ms-track-on" : "") + (none ? " ms-track-none" : "") }, btn,
+    feEl("div", { class: "ms-track-text" }, feEl("b", { text: label }), artist ? feEl("span", { text: artist }) : null),
+    feEl("span", { class: "ms-track-len" }, songLength(ms)));
+}
+// the ring around the playing song's button fills over the preview
+function previewRing() {
+  const ring = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  ring.setAttribute("viewBox", "0 0 24 24");
+  ring.setAttribute("class", "ms-ring");
+  ring.setAttribute("aria-hidden", "true");
+  ring.innerHTML = '<circle cx="12" cy="12" r="11" class="ms-ring-track"/><circle cx="12" cy="12" r="11" class="ms-ring-fill" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"/>';
+  setRing(ring);
+  return ring;
+}
+function setRing(ring) {
+  const fill = ring && ring.querySelector(".ms-ring-fill");
+  if (!fill || !previewAudio) return;
+  const d = previewAudio.duration && isFinite(previewAudio.duration) ? previewAudio.duration : 30;
+  fill.setAttribute("stroke-dashoffset", String(100 - Math.min(100, (previewAudio.currentTime / d) * 100)));
+}
+
+// a tiny silent sound, played on the tap itself: phones play sound only from a tap, and the lookup at Deezer comes after it
+function silentSound() {
+  const bytes = new Uint8Array(46), v = new DataView(bytes.buffer);
+  "RIFF".split("").forEach((c, i) => (bytes[i] = c.charCodeAt(0)));
+  v.setUint32(4, 38, true);
+  "WAVEfmt ".split("").forEach((c, i) => (bytes[8 + i] = c.charCodeAt(0)));
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, 8000, true); v.setUint32(28, 16000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  "data".split("").forEach((c, i) => (bytes[36 + i] = c.charCodeAt(0)));
+  v.setUint32(40, 2, true);
+  return "data:audio/wav;base64," + btoa(String.fromCharCode(...bytes));
+}
+function audioPlayer() {
+  if (previewAudio) return previewAudio;
+  previewAudio = new Audio();
+  previewAudio.preload = "none";
+  previewAudio.addEventListener("timeupdate", () => setRing(document.querySelector("#msBody .ms-play-on .ms-ring")));
+  previewAudio.addEventListener("ended", () => { if (sharing.player && sharing.player.state === "playing") { sharing.player = null; renderSharing(); } });
+  return previewAudio;
+}
+function stopPreview() {
+  if (previewAudio) { previewAudio.pause(); previewAudio.removeAttribute("src"); try { previewAudio.load(); } catch (err) { /* nothing loaded */ } }
+  if (!sharing.player) return;
+  sharing.player = null;
+  renderSharing();
+}
+async function togglePreview(s, i) {
+  const audio = audioPlayer();
+  const p = sharing.player;
+  sharing.previewNote = "";
+  if (p && p.share === s.id && p.index === i) {   // the same song: pause, or go on from where it was
+    if (p.state === "playing") { audio.pause(); p.state = "paused"; }
+    else if (p.state === "paused") { p.state = "playing"; audio.play().catch(() => {}); }
+    renderSharing();
+    return;
+  }
+  const isrc = s.songs[i] && s.songs[i][1];
+  if (!isrc) return;
+  const turn = sharing.player = { share: s.id, index: i, state: "loading" };
+  audio.pause();
+  const known = previewUrls.get(isrc);
+  const fresh = known && Date.now() - known.at < PREVIEW_KEEP_MS;
+  if (!fresh) { audio.src = silentSound(); audio.play().catch(() => {}); }   // still the tap: lets the preview start once it is found
+  renderSharing();
+  let url = fresh ? known.url : null;
+  if (!fresh) {
+    try { url = await deezerPreview(isrc); previewUrls.set(isrc, { url, at: Date.now() }); }
+    catch (err) { if (sharing.player === turn) { sharing.player = null; sharing.previewNote = err.message; renderSharing(); } return; }
+  }
+  if (sharing.player !== turn) return;   // another song was pressed, or the page closed, while this one was looked up
+  if (!url) { sharing.player = null; renderSharing(); return; }   // Deezer has no preview: the button fades
+  turn.state = "playing";
+  audio.src = url;
+  audio.play().catch(() => { if (sharing.player === turn) { sharing.player = null; sharing.previewNote = "The preview could not play."; renderSharing(); } });
+  renderSharing();
+}
+// Deezer's public API answers JSONP (it sends no CORS headers): a script tag that calls back with the track, or with an error when it has none.
+// It is sent only the ISRC.
+function deezerPreview(isrc) {
+  return new Promise((resolve, reject) => {
+    const name = "msDeezer" + ++deezerCalls;
+    const script = document.createElement("script");
+    const done = (url, err) => { clearTimeout(timer); delete window[name]; script.remove(); if (err) reject(err); else resolve(url); };
+    const timer = setTimeout(() => done(null, new Error("Deezer did not answer. Try again in a moment.")), 10000);
+    window[name] = (d) => done(d && !d.error && typeof d.preview === "string" && /^https:\/\//.test(d.preview) ? d.preview : null);
+    script.onerror = () => done(null, new Error("Deezer could not be reached. Check your connection and try again."));
+    script.src = `https://api.deezer.com/track/isrc:${encodeURIComponent(isrc)}?output=jsonp&callback=${name}`;
+    document.head.appendChild(script);
+  });
 }
 
 async function reportShare(s) {
@@ -1194,6 +1339,11 @@ function updateApplyButton() {
   b.disabled = !c.total || sharing.applying || customEmpty;
   b.classList.toggle("ms-has", !!c.total);
 }
+// a kept song's [title, artist, length in ms]; its label is "artist - title" (songsFromEntries in app.js)
+function songName(t) {
+  const label = String(t.label || ""), cut = label.indexOf(" - ");
+  return cut < 0 ? [label, "", t.ms || 0] : [label.slice(cut + 3), label.slice(0, cut), t.ms || 0];
+}
 function topArtists(tracks, n = 4) {
   const counts = new Map();
   for (const t of tracks) { const a = String(t.label || "").split(" - ")[0].trim(); if (a) counts.set(a, (counts.get(a) || 0) + 1); }
@@ -1216,8 +1366,9 @@ async function applyShares() {
       const tracks = await loadTracks(p.id);
       const ms = tracks.reduce((n, t) => n + (t.ms || 0), 0);
       const songs = tracks.map((t) => [String(t.uri).replace("spotify:track:", ""), t.key ? t.key.slice(5) : ""]);
+      const names = tracks.map(songName);   // for the playlist's page in Find playlists; the worker sends them one playlist at a time
       const cover = p.cover || null;   // a custom cover or Spotify's square of four album covers
-      await sharingFetch("POST", "/share", { playlist: p.id, snapshot: p.snapshot || null, name: p.name, by, phases: [...pick.phases].sort(), tags: pick.tags.slice(), notes: cleanSpotifyDescription(p.description), cover, songs, ms, artists: topArtists(tracks) });
+      await sharingFetch("POST", "/share", { playlist: p.id, snapshot: p.snapshot || null, name: p.name, by, phases: [...pick.phases].sort(), tags: pick.tags.slice(), notes: cleanSpotifyDescription(p.description), cover, songs, names, ms, artists: topArtists(tracks) });
       pick.touched = false;
       pick.update = false;
       pick.open = false;   // shared: the row folds

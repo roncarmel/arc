@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS shares (
   total_ms INTEGER NOT NULL,
   avg_ms INTEGER NOT NULL,
   artists TEXT NOT NULL,              -- JSON: the few artists heard most
+  names TEXT,                         -- JSON: [[title, artist, length in ms], ...] in the order of songs; sent one playlist at a time, never with the library; NULL for shares made before 2026-11-07
   shared_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   hidden INTEGER NOT NULL DEFAULT 0,  -- 0 shown, 1 hidden by reports (until the owner of the app looks), 2 hidden by the owner of the app

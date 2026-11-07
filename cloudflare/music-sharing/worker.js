@@ -1,5 +1,6 @@
 // Music sharing: a Cloudflare Worker with a D1 database (schema.sql), for Ceremony Playlist Builder.
 // People share their own playlists (the phases they suit, tags, optional notes, the songs as Spotify IDs and ISRCs, a short summary) and copy each other's.
+// Each song's title, artist and length are kept too, but sent only for one playlist at a time (GET /songs/:id, when its page opens), never with the library.
 // Who someone is comes from Spotify: every write carries the person's Spotify sign-in, the worker asks Spotify's /me with it,
 // and keeps only an HMAC of the user ID (SECRET), never the ID. There are no accounts or passwords here.
 // Reports are emailed to the owner of the app through Resend; three reports from different people hide a playlist until he looks.
@@ -13,7 +14,7 @@
 //   ORIGINS            the pages allowed to call this worker, comma separated
 
 const LIMITS = {
-  nameChars: 200, shownChars: 40, notesMax: 400, tagsMin: 3, tagsMax: 10, tagChars: 30, phases: 5, minMs: 2 * 60 * 60 * 1000, maxSongs: 5000, artists: 5,
+  nameChars: 200, shownChars: 40, notesMax: 400, tagsMin: 3, tagsMax: 10, tagChars: 30, phases: 5, minMs: 2 * 60 * 60 * 1000, maxSongs: 5000, artists: 5, songChars: 100,
   sharesPerDay: 60, reportsPerDay: 30, noteChars: 500, copyShare: 0.9, hideAfterReports: 3,
 };
 const REASONS = ["offensive", "spam", "not theirs", "other"];
@@ -32,6 +33,7 @@ export default {
       const id = url.pathname.split("/").pop();
       switch (route) {
         case "GET /library": return answer(await library(env), 200, cors);
+        case "GET /songs/:id": return answer(await songNames(env, id), 200, cors);
         case "GET /mine": return answer(await mine(env, await who(request, env)), 200, cors);
         case "POST /share": return answer(await share(env, await who(request, env), await body(request)), 200, cors);
         case "DELETE /share/:id": return answer(await unshare(env, await who(request, env), id), 200, cors);
@@ -106,9 +108,16 @@ function publicShare(r) {
   };
 }
 async function library(env) {
-  const shares = await env.DB.prepare("SELECT * FROM shares WHERE hidden = 0 ORDER BY shared_at DESC").all();
+  // the song names stay out: they are read one playlist at a time (songNames)
+  const shares = await env.DB.prepare("SELECT id, name, shown_as, phases, tags, notes, cover, songs, song_count, total_ms, avg_ms, artists, shared_at, updated_at FROM shares WHERE hidden = 0 ORDER BY shared_at DESC").all();
   const words = await env.DB.prepare("SELECT word, hidden FROM words").all();
   return { shares: shares.results.map(publicShare), words: Object.fromEntries(words.results.map((w) => [w.word, w.hidden])), at: Date.now() };
+}
+// One playlist's songs as [title, artist, length in ms], in the order of its songs in the library; null for a share made before names were kept.
+async function songNames(env, id) {
+  const r = await env.DB.prepare("SELECT names FROM shares WHERE id = ? AND hidden = 0").bind(id).first();
+  if (!r) throw new Refusal(404, "That shared playlist is gone.");
+  return { id, names: r.names ? JSON.parse(r.names) : null };
 }
 async function mine(env, whoId) {
   const rows = await env.DB.prepare("SELECT id, playlist, snapshot, name, shown_as, phases, tags, notes, shared_at, updated_at, hidden FROM shares WHERE owner = ?").bind(whoId).all();
@@ -132,7 +141,10 @@ async function share(env, whoId, d) {
   if (!name) throw new Refusal(400, "The playlist needs a name.");
   if (!phases) throw new Refusal(400, "Choose at least one phase.", "phases");
   if (tags.length < LIMITS.tagsMin) throw new Refusal(400, `Add at least ${LIMITS.tagsMin} tags.`, "tags");
-  const songs = Array.isArray(d.songs) ? d.songs.slice(0, LIMITS.maxSongs).filter((s) => Array.isArray(s) && /^[A-Za-z0-9]{10,40}$/.test(s[0])).map((s) => [s[0], /^[A-Z0-9]{12}$/.test(s[1] || "") ? s[1] : ""]) : [];
+  // each song's name goes with it, so a song left out takes its name along and the two lists stay in step
+  const sent = Array.isArray(d.songs) ? d.songs.slice(0, LIMITS.maxSongs).map((s, i) => [s, Array.isArray(d.names) ? d.names[i] : null]).filter(([s]) => Array.isArray(s) && /^[A-Za-z0-9]{10,40}$/.test(s[0])) : [];
+  const songs = sent.map(([s]) => [s[0], /^[A-Z0-9]{12}$/.test(s[1] || "") ? s[1] : ""]);
+  const names = Array.isArray(d.names) ? sent.map(([, n]) => Array.isArray(n) ? [text(n[0], LIMITS.songChars), text(n[1], LIMITS.songChars), Math.max(0, Math.round(Number(n[2]) || 0))] : ["", "", 0]) : null;
   const ms = Math.round(Number(d.ms) || 0);
   if (!songs.length) throw new Refusal(400, "That playlist has no songs.");
   if (ms < LIMITS.minMs) throw new Refusal(400, "Playlists need at least two hours of songs to be shared.", "length");
@@ -151,11 +163,11 @@ async function share(env, whoId, d) {
   const now = Date.now();
   const existing = await env.DB.prepare("SELECT id, hidden FROM shares WHERE owner = ? AND playlist = ?").bind(whoId, playlist).first();
   const id = existing ? existing.id : newId();
-  await env.DB.prepare(`INSERT INTO shares (id, owner, playlist, snapshot, name, shown_as, phases, tags, notes, cover, songs, song_count, total_ms, avg_ms, artists, shared_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  await env.DB.prepare(`INSERT INTO shares (id, owner, playlist, snapshot, name, shown_as, phases, tags, notes, cover, songs, song_count, total_ms, avg_ms, artists, names, shared_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (owner, playlist) DO UPDATE SET snapshot = excluded.snapshot, name = excluded.name, shown_as = excluded.shown_as, phases = excluded.phases, tags = excluded.tags, notes = excluded.notes,
-        cover = excluded.cover, songs = excluded.songs, song_count = excluded.song_count, total_ms = excluded.total_ms, avg_ms = excluded.avg_ms, artists = excluded.artists, updated_at = excluded.updated_at`)
-    .bind(id, whoId, playlist, text(d.snapshot, 100) || null, name, shown, phases, JSON.stringify(tags), notes || null, cover, JSON.stringify(songs), songs.length, ms, avg, JSON.stringify(artists), now, now).run();
+        cover = excluded.cover, songs = excluded.songs, song_count = excluded.song_count, total_ms = excluded.total_ms, avg_ms = excluded.avg_ms, artists = excluded.artists, names = excluded.names, updated_at = excluded.updated_at`)
+    .bind(id, whoId, playlist, text(d.snapshot, 100) || null, name, shown, phases, JSON.stringify(tags), notes || null, cover, JSON.stringify(songs), songs.length, ms, avg, JSON.stringify(artists), names ? JSON.stringify(names) : null, now, now).run();
   return { id, updated: !!existing, hidden: !!(existing && existing.hidden) };
 }
 function newId() {
