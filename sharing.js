@@ -302,7 +302,7 @@ async function addShared(s) {
   } catch (err) {
     if (made) { try { await removePlaylists([made.id]); } catch (e) { logStep("shared copy: half-made copy not removed"); } }   // all or nothing
     made = null;
-    sharing.addErrors[s.id] = `Not added: ${String(err && err.message || err).replace(/\.$/, "")}. Try again.`;
+    sharing.addErrors[s.id] = `Could not get it: ${String(err && err.message || err).replace(/\.$/, "")}. Try again.`;
   }
   sharing.adding.delete(s.id);
   if (made) {
@@ -393,12 +393,14 @@ function sortChoices() {
 function filterCount() { return sharing.phases.size + sharing.tags.size; }
 function renderFind(body) {
   if (!sortChoices().some(([v]) => v === sharing.sort)) sharing.sort = "newest";
+  body.appendChild(feEl("p", { id: "msIntro", class: "ms-intro" }, "Playlists other facilitators share for their sessions. ", feEl("b", {}, "Get"),
+    " puts your own private copy in your Spotify, ready to use in your recipes. The copy is yours to change, and it stays as it is if the sharer changes or removes theirs."));
   body.appendChild(feEl("div", { id: "msTools", class: "ms-tools" }));
   body.appendChild(feEl("div", { id: "msActive", class: "ms-active" }));
   const added = addedCount();
   if (added && !sharesAnything()) {   // a reminder to share back, never a condition: only after adding one, and gone once the person shares one
     body.appendChild(feEl("div", { id: "msShareNudge", class: "ms-nudge" },
-      feEl("span", { class: "ms-nudge-text" }, "You have added ", feEl("b", {}, `${added} playlist${added === 1 ? "" : "s"}`), " from other facilitators."),
+      feEl("span", { class: "ms-nudge-text" }, "You have gotten ", feEl("b", {}, `${added} playlist${added === 1 ? "" : "s"}`), " from other facilitators."),
       feEl("button", { type: "button", class: "ms-nudge-go", onClick: () => switchTab("share") }, "Share one", feIcon("chevron"))));
   }
   body.appendChild(feEl("div", { id: "msResults" }));
@@ -510,7 +512,7 @@ function openFilters() {
       feEl("p", { class: "ms-fsub" }, "Words sharers chose for their music."),
       feEl("div", { id: "msTags", class: "ms-tags" }),
       feEl("label", { class: "ms-switchrow" },
-        feEl("span", {}, "Hide playlists you have", feEl("small", {}, "Ones you added, and your own shares")),
+        feEl("span", {}, "Hide playlists you have", feEl("small", {}, "Ones you got, and your own shares")),
         (() => { const hide = feEl("input", { type: "checkbox", id: "msHideAdded", class: "ms-switch", checked: sharing.hideAdded }); hide.addEventListener("change", () => { sharing.hideAdded = hide.checked; renderResults(); }); return hide; })())),
     feEl("div", { class: "ms-sheet-foot" }, feEl("button", { type: "button", id: "msShow", class: "ms-showbtn", onClick: closeFilters }, "")));
   sheet.appendChild(panel);
@@ -611,7 +613,7 @@ function renderResults() {
     const narrowed = filterCount() || sharing.search.trim();
     if (!narrowed || (sharing.hideAdded && filteredShares(false).length)) {
       // only Hide added is hiding them
-      box.appendChild(emptyState("check", narrowed ? "You have all of these" : "You have them all", narrowed ? "Every playlist that matches is one you added or share." : "Every shared playlist is one you added or share.",
+      box.appendChild(emptyState("check", narrowed ? "You have all of these" : "You have them all", narrowed ? "Every playlist that matches is one you have or share." : "Every shared playlist is one you have or share.",
         feEl("button", { type: "button", class: "ms-empty-ghost", onClick: () => { sharing.hideAdded = false; if ($("msHideAdded")) $("msHideAdded").checked = false; renderResults(); } }, "Show them")));
       return;
     }
@@ -623,6 +625,24 @@ function renderResults() {
   }
   const shownOverlap = (sharing.sort === "most" || sharing.sort === "least") && sharing.overlap && sharing.overlap.usable ? sharing.overlap : null;
   for (const s of list) box.appendChild(shareRow(s, shownOverlap));
+  fitCovers();
+}
+// Each row's cover is a square as tall as its text, so its top and bottom line up with the name and the tags. CSS cannot make a box
+// square from a stretched height, so the text is measured, again whenever the list changes width.
+let coverWatch = null;
+function fitCovers() {
+  const box = $("msResults");
+  if (!box) return;
+  for (const row of box.querySelectorAll(".ms-row")) {
+    const cover = row.querySelector(".ms-cover"), text = row.querySelector(".ms-text");
+    const h = text && text.offsetHeight;
+    if (cover && h) cover.style.width = cover.style.height = Math.max(48, h) + "px";
+  }
+  if (!coverWatch && window.ResizeObserver) {
+    let width = 0;
+    coverWatch = new ResizeObserver(() => { const b = $("msResults"); if (b && b.offsetWidth !== width) { width = b.offsetWidth; fitCovers(); } });
+  }
+  if (coverWatch) { coverWatch.disconnect(); coverWatch.observe(box); }
 }
 function shareCoverEl(s, cls = "ms-cover") {
   return s.cover ? feEl("img", { class: cls, src: s.cover, alt: "", loading: "lazy" }) : feEl("span", { class: cls + " ms-nocover" }, feIcon("notes"));
@@ -631,8 +651,8 @@ function addButton(s, big = false) {
   // the person's own share: nothing to add (listed for now so they can see it as others do)
   if (isMine(s)) return feEl("span", { class: big ? "ms-addbig ms-yours" : "ms-add ms-yours" }, feIcon("user"), big ? "Shared by you" : "Yours");
   if (sharing.adding.has(s.id)) return feEl("button", { type: "button", class: big ? "ms-addbig ms-busy" : "ms-add ms-busy", disabled: true }, "Adding...");
-  if (isAdded(s)) return feEl("button", { type: "button", class: big ? "ms-addbig ms-done" : "ms-add ms-done", disabled: true }, feIcon("check"), "Added");
-  return feEl("button", { type: "button", class: big ? "ms-addbig" : "ms-add", disabled: connection !== "ready", onClick: (e) => { e.stopPropagation(); addShared(s); } }, big ? feIcon("plus") : null, big ? "Add to my Spotify" : "Add");
+  if (isAdded(s)) return feEl("button", { type: "button", class: big ? "ms-addbig ms-done" : "ms-add ms-done", disabled: true }, feIcon("check"), "Gotten");
+  return feEl("button", { type: "button", class: big ? "ms-addbig" : "ms-add", disabled: connection !== "ready", onClick: (e) => { e.stopPropagation(); addShared(s); } }, big ? feIcon("plus") : null, big ? "Get this playlist" : "Get");
 }
 function shareRow(s, ov) {
   const per = ov && ov.per[s.id];
@@ -814,7 +834,7 @@ function shareYoursRow(p, copy) {
   const text = feEl("div", { class: "ms-text" }, feEl("div", { class: "ms-name" + (copy ? " ms-dim" : ""), text: p.name }),
     feEl("div", { class: "ms-sub ms-subrow" }, feEl("span", { class: "ms-subtext" }, !copy && pick.on && songsLine(p, pick, !fieldsShown(p, pick)) || (p.count != null ? songCountText(p.count) : "")),
       copy ? null : rowAction(p, pick)));
-  if (copy) text.appendChild(feEl("div", { class: "ms-state ms-dis" }, "Added from Music sharing, so it cannot be shared again."));
+  if (copy) text.appendChild(feEl("div", { class: "ms-state ms-dis" }, "Gotten from Music sharing, so it cannot be shared again."));
   else {
     text.appendChild(stateLine(p, pick));
   }
