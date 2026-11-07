@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS shares (
   snapshot TEXT,                      -- Spotify's snapshot ID when shared, to say "Changed since you shared it"
   name TEXT NOT NULL,
   shown_as TEXT,                      -- the name shown as the sharer; NULL is Anonymous
-  phases INTEGER NOT NULL,            -- the phases of a session it suits, a bit each: Opening 1, Coming up 2, Plateau 4, Landing 8, Rest 16
+  phases INTEGER NOT NULL,            -- the phases of a session it suits, a bit each: Beginning 1, Ascent 2, Plateau 4, Descent 8, Ending 16
   tags TEXT NOT NULL,                 -- JSON: the sharer's tags, lower case, 3 to 10
   notes TEXT,                         -- the sharer's optional notes
   cover TEXT,                         -- the address of the playlist's picture at Spotify, or NULL
