@@ -103,7 +103,7 @@ function shownAsName() {
 const songCountText = (n) => plural(n, "song");
 function shareFacts(s) {
   let text = `${songCountText(s.count)}, ${lengthText(s.ms / 60000)}.`;
-  if (s.artists && s.artists.length) text += ` Artists heard most: ${s.artists.join(", ")}.`;
+  if (s.artists && s.artists.length) text += ` Artists with the most songs: ${s.artists.join(", ")}.`;
   return text;
 }
 const phaseNames = (list) => list.map((i) => PHASES[i]).join(", ");
@@ -631,16 +631,16 @@ function renderResults() {
 // square from a stretched height, so the text is measured, again whenever the list changes width.
 let coverWatch = null;
 function fitCovers() {
-  const box = $("msResults");
+  const box = $("msResults") || document.querySelector("#msBody .ms-hero");   // the list, or a playlist's page (its cover lines up with the name and the lines under it)
   if (!box) return;
-  for (const row of box.querySelectorAll(".ms-row")) {
-    const cover = row.querySelector(".ms-cover"), text = row.querySelector(".ms-text");
+  for (const row of box.matches(".ms-hero") ? [box] : box.querySelectorAll(".ms-row")) {
+    const cover = row.querySelector(".ms-cover"), text = row.querySelector(".ms-text, .ms-hero-text");
     const h = text && text.offsetHeight;
     if (cover && h) cover.style.width = cover.style.height = Math.max(48, h) + "px";
   }
   if (!coverWatch && window.ResizeObserver) {
     let width = 0;
-    coverWatch = new ResizeObserver(() => { const b = $("msResults"); if (b && b.offsetWidth !== width) { width = b.offsetWidth; fitCovers(); } });
+    coverWatch = new ResizeObserver(() => { const b = $("msResults") || document.querySelector("#msBody .ms-hero"); if (b && b.offsetWidth !== width) { width = b.offsetWidth; fitCovers(); } });
   }
   if (coverWatch) { coverWatch.disconnect(); coverWatch.observe(box); }
 }
@@ -704,8 +704,8 @@ function renderDetail(body) {
   if (!s) { sharing.detail = null; renderSharing(); return; }
   body.appendChild(feEl("div", { class: "ms-back-bar" }, feEl("button", { type: "button", class: "ms-back", id: "msBack", onClick: () => closeDetail() }, feIcon("back"), "All playlists")));
   body.appendChild(feEl("div", { class: "ms-hero" }, shareCoverEl(s, "ms-cover ms-cover-big"),
-    feEl("div", {}, feEl("h3", { text: s.name }), feEl("div", { class: "ms-sub" }, isMine(s) ? "Shared by you" : s.by ? `Shared by ${s.by}` : "Shared anonymously"), feEl("div", { class: "ms-sub" }, `${songCountText(s.count)} · ${lengthText(s.ms / 60000)}`))));
-  body.appendChild(feEl("div", { class: "ms-actions" }, addButton(s, true)));
+    feEl("div", { class: "ms-hero-text" }, feEl("h3", { text: s.name }), feEl("div", { class: "ms-sub" }, isMine(s) ? "Shared by you" : s.by ? `Shared by ${s.by}` : "Shared anonymously"), feEl("div", { class: "ms-sub" }, `${songCountText(s.count)} · ${lengthText(s.ms / 60000)}`))));
+  if (!isMine(s)) body.appendChild(feEl("div", { class: "ms-actions" }, addButton(s, true)));   // the person's own: the line under the name already says Shared by you
   if (sharing.addErrors[s.id]) body.appendChild(feEl("p", { class: "ms-error" }, sharing.addErrors[s.id]));
   body.appendChild(feEl("div", { class: "ms-sec" }, "Phases"));
   body.appendChild(phaseCurve(new Set(s.phases || [])));
@@ -715,7 +715,8 @@ function renderDetail(body) {
     body.appendChild(feEl("div", { class: "ms-sec" }, "Notes"));
     body.appendChild(feEl("p", { class: "ms-long" }, s.notes));
   }
-  body.appendChild(feEl("div", { class: "ms-facts" }, feEl("div", { class: "ms-facts-h" }, feIcon("notes"), "The songs"), shareFacts(s)));
+  // the songs and length are under the name, so the box has only the artists
+  if (s.artists && s.artists.length) body.appendChild(feEl("div", { class: "ms-facts" }, feEl("div", { class: "ms-facts-h" }, feIcon("notes"), "Artists with the most songs"), s.artists.join(", ")));
   const ov = sharing.overlap && sharing.overlap.playlists ? sharing.overlap.per[s.id] : null;
   if (ov && ov.same) {
     const box = feEl("div", { class: "ms-overlap" }, feIcon("overlap"), feEl("span", {}, `${ov.same === 1 ? "1 of these songs" : `${ov.same} of these songs`} (${ov.pct}%) ${ov.same === 1 ? "is" : "are"} already in your recipes. `,
@@ -727,6 +728,7 @@ function renderDetail(body) {
     }
   }
   body.appendChild(feEl("div", { class: "ms-foot-links" }, feEl("button", { type: "button", class: "linklike ms-report", onClick: () => reportShare(s) }, feIcon("flag"), "Report")));
+  fitCovers();
 }
 
 async function reportShare(s) {

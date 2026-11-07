@@ -843,9 +843,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-06m" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-06n" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-06m/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-06n/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3038,7 +3038,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-06m", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-06n", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4914,7 +4914,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("Cancel clears the search and brings the buttons back", ms_names().length === 4 && !ms_d.getElementById("msSearch") && !!ms_d.getElementById("msFilters"));
   ms_d.querySelector("#msResults .ms-row").click();
   var ms_body = () => ms_d.getElementById("msBody").textContent;
-  check("a playlist's page has who shared it, its phases on the curve, its tags, its notes and a line about its songs", ms_d.querySelector("#msBody h3").textContent === "Deep water" && /Shared by Maya/.test(ms_body()) && Array.from(ms_d.querySelectorAll("#msBody .ms-phases .ms-phase-names .ms-on")).map((e) => e.textContent).join() === "Plateau,Landing" && !ms_d.querySelector("#msBody .ms-phases button") && Array.from(ms_d.querySelectorAll("#msBody .ms-tags-plain .ms-tag")).map((e) => e.textContent).join() === "ambient,drones,no vocals,long pieces" && /NotesVery few voices/.test(ms_body()) && !/The music|How I use it/.test(ms_body()) && /100 songs, 6 h.*Artists heard most: Brian Eno, Hammock\./.test(ms_d.querySelector(".ms-facts").textContent));
+  check("a playlist's page has who shared it, its phases on the curve, its tags, its notes and its artists with the most songs (songs and length only under the name)", ms_d.querySelector("#msBody h3").textContent === "Deep water" && /Shared by Maya/.test(ms_body()) && Array.from(ms_d.querySelectorAll("#msBody .ms-phases .ms-phase-names .ms-on")).map((e) => e.textContent).join() === "Plateau,Landing" && !ms_d.querySelector("#msBody .ms-phases button") && Array.from(ms_d.querySelectorAll("#msBody .ms-tags-plain .ms-tag")).map((e) => e.textContent).join() === "ambient,drones,no vocals,long pieces" && /NotesVery few voices/.test(ms_body()) && !/The music|How I use it/.test(ms_body()) && ms_d.querySelector(".ms-facts").textContent === "Artists with the most songsBrian Eno, Hammock" && /100 songs · 6 h/.test(ms_d.querySelector(".ms-hero").textContent));
   check("the title bar stays the same on a playlist's page, and Back to the list is in the page", ms_d.getElementById("msHead").textContent === "Music sharing" && !ms_d.querySelector("#msHead button") && /All playlists/.test(ms_d.getElementById("msBack").textContent));
   check("it says how many songs are already in the recipes", /20 of these songs \(20%\) are already in your recipes/.test(ms_body()));
   ms_d.querySelector(".ms-overlap .linklike").click();
@@ -4945,6 +4945,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ms_w.eval(`sharing.mine = [{ id: sharing.library.shares.find((x) => x.name === "Forest floor").id, playlist: "x" }]; renderSharing();`);
   var ms_fr = Array.from(ms_d.querySelectorAll("#msResults .ms-row")).find((r) => /Forest floor/.test(r.textContent));
   check("the person's own share says Yours in place of Add", !!ms_fr && !!ms_fr.querySelector(".ms-yours") && /Yours/.test(ms_fr.textContent) && !Array.from(ms_fr.querySelectorAll("button")).some((b) => /Add/.test(b.textContent)));
+  check("the person's own share's page has no button: the line under the name says Shared by you", (() => { ms_fr.click(); const ok = /Shared by you/.test(ms_d.querySelector(".ms-hero").textContent) && !ms_d.querySelector("#msBody .ms-actions") && !ms_d.querySelector("#msBody .ms-yours"); ms_w.eval("closeDetail()"); return ok; })());
   ms_w.eval("sharing.hideAdded = true; renderSharing();");
   check("Hide added hides the person's own shares too", !ms_names().includes("Forest floor") && !ms_names().includes("Deep water"));
   ms_w.eval("sharing.mine = null; renderSharing();");
@@ -4984,7 +4985,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("and one is added with a click, the half-typed word gone", JSON.stringify(ms_chips("p3")) === '["warm","strings","ambient"]' && ms_row("p3").querySelector(".ms-taginput").value === "");
   ms_row("p3").querySelectorAll(".ms-tagx")[2].click();
   check("a chip's x takes it away, and with two tags nothing can be shared yet", JSON.stringify(ms_chips("p3")) === '["warm","strings"]' && ms_apply().textContent === "No changes");
-  check("under the name, the line about the songs replaces the song count once ticked", /^130 songs, [^.]*\.( Artists heard most: .*)?$/.test(ms_row("p3").querySelector(".ms-sub").textContent), ms_row("p3").querySelector(".ms-sub").textContent);
+  check("under the name, the line about the songs replaces the song count once ticked", /^130 songs, [^.]*\.( Artists with the most songs: .*)?$/.test(ms_row("p3").querySelector(".ms-sub").textContent), ms_row("p3").querySelector(".ms-sub").textContent);
   ms_type("p3", "voices,");
   check("with a phase and three tags the button says what it will do, and the row says nothing (no Ready)", ms_apply().textContent === "Share 1" && !ms_apply().disabled && ms_d.getElementById("msState-p3").textContent === "");
   ms_d.getElementById("msClose").click();
@@ -5187,7 +5188,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-06m"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-06n"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
