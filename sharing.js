@@ -357,7 +357,7 @@ async function switchTab(tab) {
   if (tab === "share") loadMine();
 }
 async function settlePending() {
-  // leaving Share yours with changes not yet applied asks first, so nothing is lost without a word
+  // leaving Share playlists with changes not yet applied asks first, so nothing is lost without a word
   if (sharing.tab !== "share" || !pendingChanges().total) return true;
   const answer = await askSyncChoice("Apply your changes?", "Some playlists are ticked or unticked but not shared or stopped yet.",
     [{ label: "Apply", value: "apply" }, { label: "Discard", value: "discard" }], { required: true });
@@ -381,7 +381,7 @@ function renderSharing() {
   bar.textContent = "";
   bar.appendChild(feEl("div", { class: "ms-tabs", role: "tablist" },
     feEl("button", { type: "button", role: "tab", "aria-selected": String(sharing.tab === "find"), class: sharing.tab === "find" ? "ms-on" : "", onClick: () => switchTab("find") }, "Find playlists"),
-    feEl("button", { type: "button", role: "tab", "aria-selected": String(sharing.tab === "share"), class: sharing.tab === "share" ? "ms-on" : "", onClick: () => switchTab("share") }, "Share yours")));
+    feEl("button", { type: "button", role: "tab", "aria-selected": String(sharing.tab === "share"), class: sharing.tab === "share" ? "ms-on" : "", onClick: () => switchTab("share") }, "Share playlists")));
   if (sharing.detail) { renderDetail(body); return; }
   if (sharing.tab === "find") renderFind(body); else renderShareYours(body);
   body.scrollTop = keepScroll;
@@ -611,7 +611,7 @@ function renderResults() {
   const total = sharing.library.shares.length;
   if (!total) {
     box.appendChild(emptyState("notes", "No playlists are shared yet", "Facilitators share playlists here for others to add to their own Spotify. Yours could be the first.",
-      feEl("button", { type: "button", class: "ms-empty-main", onClick: () => switchTab("share") }, "Share yours")));
+      feEl("button", { type: "button", class: "ms-empty-main", onClick: () => switchTab("share") }, "Share playlists")));
     return;
   }
   if (!list.length) {
@@ -666,7 +666,7 @@ function shareRow(s, ov) {
     feEl("div", { class: "ms-text" },
       feEl("div", { class: "ms-name", text: s.name }),
       feEl("div", { class: "ms-sub" }, `${s.by || "Anonymous"} · ${lengthText(s.ms / 60000)}`),
-      (s.tags || []).length ? feEl("div", { class: "ms-rowtags" }, ...s.tags.slice(0, 3).map((t) => feEl("span", { class: "ms-rowtag" }, t))) : null,
+      (s.tags || []).length ? feEl("div", { class: "ms-rowtags" }, ...s.tags.slice(0, 3).map((t) => feEl("span", { class: "ms-rowtag" }, t)), s.tags.length > 3 ? feEl("span", { class: "ms-rowtag-more" }, `+${s.tags.length - 3} more`) : null) : null,
       per ? feEl("div", { class: "ms-ov" }, `${per.pct}% already in your recipes`) : null,
       sharing.addErrors[s.id] ? feEl("div", { class: "ms-error" }, sharing.addErrors[s.id]) : null),
     feEl("div", { class: "ms-rowside" }, addButton(s), (s.phases || []).length ? miniCurve(s.phases) : null));
@@ -766,7 +766,7 @@ async function reportShare(s) {
   } catch (err) { await askSyncChoice("Not reported", err.message, [{ label: "Close", value: null }]); }
 }
 
-// ---------------------------------------------------------------- Share yours
+// ---------------------------------------------------------------- Share playlists
 function shareCandidates() {
   if (!me) return [];
   const copies = new Set(Object.values(sharingCopies()));

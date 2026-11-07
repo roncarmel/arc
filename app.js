@@ -17,7 +17,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-06s";
+const APP_VERSION = "2026-11-06t";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1817,7 +1817,13 @@ async function startLogin(options) {
     setLoginMessage(signInNote);
     updateButtons();
   }, 30000);
-  location.href = "https://accounts.spotify.com/authorize?" + params.toString();
+  pageWindow().location.href = "https://accounts.spotify.com/authorize?" + params.toString();
+}
+
+// the window that holds the page: itself, or, in Developer options' Phone width frame, the outer page (Spotify's sign-in will not open in a frame)
+function pageWindow() {
+  try { if (window.top !== window && window.top.location.origin === location.origin && window.top.document.getElementById("devPhoneFrame")) return window.top; } catch (e) {}
+  return window;
 }
 
 async function finishLoginIfReturning() {
@@ -3470,6 +3476,15 @@ async function main() {
     if (choice === "yes") await startOver();
   });
   on("devCopyRecord", "click", () => { closeInfo(); copyLimitRecord(); });
+  // Phone width: kept in this browser; the outer page reloads to put the page in its frame, or out of it
+  document.querySelectorAll('input[name="devPhoneWidth"]').forEach((input) => {
+    let now = ""; try { now = localStorage.getItem("devPhoneWidth") || ""; } catch (e) {}
+    input.checked = input.value === now;
+    input.addEventListener("change", () => {
+      try { if (input.value) localStorage.setItem("devPhoneWidth", input.value); else localStorage.removeItem("devPhoneWidth"); } catch (e) {}
+      pageWindow().location.reload();
+    });
+  });
   on("connect", "click", startLogin);
   on("startSetup", "click", () => goToSetup(false));
   on("premiumWhy", "click", (event) => { event.stopPropagation(); showPremiumWhy($("premiumWhyText").hidden); });
