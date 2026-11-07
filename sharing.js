@@ -395,8 +395,23 @@ function renderFind(body) {
   if (!sortChoices().some(([v]) => v === sharing.sort)) sharing.sort = "newest";
   body.appendChild(feEl("div", { id: "msTools", class: "ms-tools" }));
   body.appendChild(feEl("div", { id: "msActive", class: "ms-active" }));
+  const added = addedCount();
+  if (added && !sharesAnything()) {   // a reminder to share back, never a condition: only after adding one, and gone once the person shares one
+    body.appendChild(feEl("div", { id: "msShareNudge", class: "ms-nudge" },
+      feEl("span", { class: "ms-nudge-text" }, "You have added ", feEl("b", {}, `${added} playlist${added === 1 ? "" : "s"}`), " from other facilitators."),
+      feEl("button", { type: "button", class: "ms-nudge-go", onClick: () => switchTab("share") }, "Share one", feIcon("chevron"))));
+  }
   body.appendChild(feEl("div", { id: "msResults" }));
   renderResults();
+}
+// copies this device made that are still in the person's Spotify
+function addedCount() {
+  const ids = Object.values(sharingCopies());
+  return playlists.length ? ids.filter((id) => playlists.some((p) => p.id === id)).length : ids.length;
+}
+function sharesAnything() {
+  if (sharing.mine) return sharing.mine.length > 0;
+  try { return (JSON.parse(localStorage.getItem(SHARING_MINE_KEY)) || []).length > 0; } catch (err) { return false; }
 }
 function renderTools() {
   const box = $("msTools");
