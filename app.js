@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08i";
+const APP_VERSION = "2026-11-08j";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -232,6 +232,42 @@ function placeRecipeWhat() {
   note.style.left = Math.round(Math.max(0, Math.min(at.left - box.left, box.width - note.offsetWidth))) + "px";
 }
 
+// The welcome page has two steps: the tools, then what the one-time setup is. Get started adds a step to the browser's history, so back returns to the tools.
+function showWelcomeStep(step, push) {
+  const second = step === 2;
+  if ($("wpSetup").hidden === !second) return;
+  $("wpFirst").hidden = second;
+  $("wpSetup").hidden = !second;
+  showPremiumWhy(false);
+  showRecipeWhat(false);
+  if (push) { try { history.pushState({ page: "welcome", step: 2 }, ""); } catch (err) { /* the back button just leaves the page */ } }
+  window.scrollTo(0, 0);
+}
+function welcomeStepBack() {
+  if (history.state && history.state.page === "welcome" && history.state.step === 2) { history.back(); return; }   // the popstate that follows shows the tools
+  showWelcomeStep(1, false);
+}
+
+// The icon in the welcome page's band is exactly as tall as the name and tagline beside it, and square. The tagline is always two lines, so its width never changes the height.
+function sizeBandIcon() {
+  const text = document.querySelector("#welcomePage .wp-band-text"), icon = document.querySelector("#welcomePage .wp-band-icon");
+  if (!text || !icon || !text.offsetHeight) return;
+  icon.style.width = icon.style.height = text.offsetHeight + "px";
+}
+
+// Each tool's card on the welcome page opens in place to its picture and text; opening one closes the other, so the page stays short.
+function toggleWelcomeTool(head) {
+  const opening = head.getAttribute("aria-expanded") !== "true";
+  for (const h of document.querySelectorAll("#welcomePage .wp-tool-head")) {
+    const open = h === head ? opening : false;
+    if ((h.getAttribute("aria-expanded") === "true") === open) continue;
+    h.setAttribute("aria-expanded", String(open));
+    const more = $(h.getAttribute("aria-controls"));
+    if (typeof revealSmoothly === "function") revealSmoothly(more, open); else more.hidden = !open;
+  }
+  if (!opening) showRecipeWhat(false);
+}
+
 // ---------------------------------------------------------------- the connecting screen
 // Back from Spotify's sign-in, the script in index.html's <head> puts up a quiet screen in place of the setup page: the app's icon and a list of what is under way
 // (signing in, reading the playlists, settling the recipes with their saves, starting Python), each ticked as it is done. When all are, it fades to the editor.
@@ -398,6 +434,7 @@ function pageHistoryMoved() {
   } else if (pageName() === "setup") {
     setupLeft();
   }
+  if (pageName() === "welcome") showWelcomeStep(state && state.page === "welcome" && state.step === 2 ? 2 : 1, false);
 }
 
 // About, Privacy, More options and Report a problem sit at the bottom of the welcome and setup pages. In the app they open from the menu in a
@@ -3210,6 +3247,11 @@ async function main() {
   });
   on("connect", "click", startLogin);
   on("startSetup", "click", () => goToSetup(false));
+  on("getStarted", "click", () => showWelcomeStep(2, true));
+  on("wpSetupBack", "click", welcomeStepBack);
+  for (const head of document.querySelectorAll("#welcomePage .wp-tool-head")) head.addEventListener("click", () => toggleWelcomeTool(head));
+  sizeBandIcon();
+  window.addEventListener("resize", sizeBandIcon);
   on("premiumWhy", "click", (event) => { event.stopPropagation(); showPremiumWhy($("premiumWhyText").hidden); });
   document.addEventListener("click", (event) => { if (!$("premiumWhyText").hidden && !$("premiumWhyText").contains(event.target)) showPremiumWhy(false); });
   on("recipeWhat", "click", (event) => { event.stopPropagation(); showRecipeWhat($("recipeWhatText").hidden); });
@@ -3218,7 +3260,7 @@ async function main() {
   document.addEventListener("keydown", (event) => { if (event.key === "Escape") { showPremiumWhy(false); showRecipeWhat(false); } });
   on("setupBack", "click", setupBack);
   window.addEventListener("popstate", pageHistoryMoved);
-  try { if (history.state && history.state.view) history.replaceState(null, ""); } catch (err) { /* nothing to forget */ }   // a reload keeps the step, but the page opens on home
+  try { if (history.state && (history.state.view || history.state.step)) history.replaceState(null, ""); } catch (err) { /* nothing to forget */ }   // a reload keeps the step, but the page opens on home (and the welcome page on its first step)
   on("appHome", "click", goHome);
   on("homeBuilder", "click", () => showView("builder"));
   window.addEventListener("resize", placeSharingPage);
