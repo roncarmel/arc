@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08e";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08f";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -143,13 +143,25 @@ function rememberCopy(shareId, playlistId) {
   all[shareId] = playlistId;
   try { localStorage.setItem(SHARING_COPIES_KEY, JSON.stringify(all)); } catch (err) { /* private browsing: Added shows for this visit only */ }
 }
-// A copy carries the share's ID at the end of its Spotify description, so every device knows it is gotten (from the playlist list it reads anyway)
-// and a copy deleted in Spotify can be gotten again. sharingCopies is this device's own record, kept for copies whose description lost the mark.
-const COPY_MARK = (id) => `Gotten from Music sharing (${id}).`;
-const COPY_MARK_RE = /\s*Gotten from Music sharing \(([a-z0-9]{1,40})\)\.?\s*$/;
-function copyShareId(p) {
-  const m = p && typeof p.description === "string" && p.description.match(COPY_MARK_RE);
-  return m ? m[1] : null;
+// A copy's Spotify description is the share's, with the share's ID as its last word (the text cut short to make room), so every device knows
+// it is gotten from the playlist list it reads anyway, and a copy deleted in Spotify can be gotten again. A last word counts only when it is
+// a share's ID (in the library or this device's record), so a playlist of the person's own ending in an ordinary word is never taken for a copy.
+// sharingCopies is this device's own record, kept for copies whose last word was edited away.
+const COPY_ID_RE = /\s+([a-z0-9]{1,40})\s*$/;
+function knownShareId(id) {
+  return !!id && ((sharing.library && sharing.library.shares.some((s) => s.id === id)) || id in sharingCopies());
+}
+function lastWordShareId(text) {
+  const m = typeof text === "string" && (" " + text).match(COPY_ID_RE);
+  return m && knownShareId(m[1]) ? m[1] : null;
+}
+function copyShareId(p) { return p ? lastWordShareId(p.description) : null; }
+function withShareId(text, id) {
+  const room = 300 - id.length - 1;
+  let t = String(text || "").trim();
+  if (t.length > room) { t = t.slice(0, room); t = t.slice(0, Math.max(t.lastIndexOf(" "), 0)) || t; }   // the end goes, cut at a space
+  t = t.trim();
+  return t ? `${t} ${id}` : id;
 }
 // share id -> the person's copy still in their Spotify, from the marks and this device's record
 function copiesInSpotify() {
@@ -173,7 +185,10 @@ function cleanSpotifyDescription(text) {
   if (!text || text.startsWith(APP_MARKER)) return "";
   const box = document.createElement("textarea");
   box.innerHTML = String(text).replace(/<[^>]*>/g, "");
-  return box.value.replace(COPY_MARK_RE, "").trim().slice(0, SHARE_DESC_MAX);
+  let clean = box.value.trim();
+  const id = lastWordShareId(clean);
+  if (id) clean = clean.slice(0, clean.length - id.length).trim();   // a copy's last word is the share's ID, not part of its description
+  return clean.slice(0, SHARE_DESC_MAX);
 }
 // a mood word or an Other name as it is kept: single spaces, letters, numbers and a few marks (the worker does the same); moods are lower case
 function cleanWord(t, max) {
@@ -438,14 +453,9 @@ async function addShared(s) {
   if (made) offerToShare(s);
 }
 
-// the copy's description in Spotify: the sharer's description, else what it is
-// the copy's description in Spotify: the sharer's description, else what it is, then the mark that says which share it is (COPY_MARK)
-function copyDescription(s) {
-  const mark = COPY_MARK(s.id);
-  const text = (s.description || kindLabel(s)).replace(COPY_MARK_RE, "").trim().slice(0, 300 - mark.length - 1).trim();
-  return text ? `${text} ${mark}` : mark;
-}
-// copies made before the mark: this device's record says which share each is, so their descriptions get the mark once, one at a time
+// the copy's description in Spotify: the sharer's description, else what it is, with the share's ID as the last word
+function copyDescription(s) { return withShareId(s.description || kindLabel(s), s.id); }
+// copies made before the ID was added: this device's record says which share each is, so their descriptions get it once, one at a time
 async function markOldCopies() {
   if (sharing.marking || !me) return;
   sharing.marking = true;
@@ -453,10 +463,8 @@ async function markOldCopies() {
     for (const [shareId, copy] of Object.entries(sharingCopies())) {
       if (connection !== "ready" || spotifyPause() || busy) break;
       const p = playlists.find((x) => x.id === copy && x.owner === me.id);
-      if (!p || typeof p.description !== "string" || copyShareId(p)) continue;   // gone, not read with its description, or marked already
-      const mark = COPY_MARK(shareId);
-      const text = cleanSpotifyDescription(p.description).slice(0, 300 - mark.length - 1).trim();
-      const description = text ? `${text} ${mark}` : mark;
+      if (!p || typeof p.description !== "string" || copyShareId(p) === shareId) continue;   // gone, not read with its description, or has it already
+      const description = withShareId(cleanSpotifyDescription(p.description), shareId);
       await spotifyRequest("PUT", `/playlists/${p.id}`, { json: { description }, noWait: true });
       p.description = description;
     }
