@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-08p">
-<script src="theme.js?v=2026-11-08p"></script>
+<meta name="app-version" content="2026-11-08q">
+<script src="theme.js?v=2026-11-08q"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -79,34 +79,46 @@
   .report-hint { margin: 6px 0; }
   #startupProblem { z-index: 2000; }   /* above everything, including the Support me panel */
   #startupProblem[hidden] { display: none; }
-  /* Back from Spotify's sign-in: a quiet screen until the editor is ready (see the connecting screen in app.js). Above the page, below the startup popup. */
-  /* Each step is a ring while it waits, a turning arc while it runs, and a pink check when done. */
-  #connectingScreen { display: none; position: fixed; inset: 0; z-index: 1500; background: var(--bg); flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 0 16px; transition: opacity 450ms var(--ease-out); }
-  html.connecting #connectingScreen { display: flex; }
+  /* Back from Spotify's sign-in: a screen until the editor is ready (see the connecting screen in app.js). Above the page, below the startup popup. In the setup page's look
+     (decided by Ron, 2026-11-08, mockups/connecting-new.html): the welcome band where the setup page has it, the line to Spotify's mark with a spinner where the 1 was, a title, and the steps in a card.
+     Each step is a ring while it waits, a turning arc while it runs, and a pink check when done. */
+  #connectingScreen { display: none; position: fixed; inset: 0; z-index: 1500; background: var(--bg); overflow-y: auto; transition: opacity 450ms var(--ease-out); }
+  html.connecting #connectingScreen { display: block; }
   #connectingScreen.cn-out { opacity: 0; pointer-events: none; }
-  #connectingScreen > img { width: 72px; height: 72px; border-radius: 16px; }
-  .cn-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+  .cn-page { max-width: 720px; margin: 0 auto; padding: 32px 16px 24px; }   /* main's width and padding, plus #loginSection's 8 px, so the band sits where the setup page had it */
+  .cn-joint .cn-mid { background: var(--bg); }
+  .cn-mid::before { content: ""; width: 22px; height: 22px; box-sizing: border-box; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--accent) 25%, transparent); border-top-color: var(--accent); animation: cn-spin 0.9s linear infinite; }
+  .cn-mid svg { display: none; }
+  .cn-title { margin: 0 0 6px; text-align: center; font-size: 1.35rem; }
+  .cn-lead { margin: 0 auto; max-width: 30em; text-align: center; text-wrap: balance; color: var(--muted); }
+  .cn-list { list-style: none; margin: 18px 0 0; padding: 6px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; }
   html.cn-manual #cnRecipes { display: none; }   /* recipes kept by manual backup have no saves in Spotify to settle */
-  .cn-step { display: flex; align-items: center; gap: 12px; font-size: 1.02rem; color: var(--muted); transition: color 300ms var(--ease-out); }
+  .cn-step { display: flex; align-items: center; gap: 12px; margin: 0; padding: 11px 0; font-size: 1rem; color: var(--muted); transition: color 300ms var(--ease-out); }
+  .cn-step + .cn-step { border-top: 1px solid var(--line); }
   .cn-step.cn-done { color: var(--fg); }
   .cn-mark { width: 22px; height: 22px; flex: none; position: relative; }
-  .cn-mark::before { content: ""; position: absolute; inset: 2px; border-radius: 50%; border: 2px solid var(--line); }
-  .cn-active .cn-mark::before { border-top-color: var(--button); animation: cn-spin 0.9s linear infinite; }
-  .cn-done .cn-mark::before { border: none; background: var(--button); }
+  .cn-mark::before { content: ""; position: absolute; inset: 0; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--line); }
+  .cn-active .cn-mark::before { border-color: color-mix(in srgb, var(--accent) 25%, transparent); border-top-color: var(--accent); animation: cn-spin 0.9s linear infinite; }
+  .cn-done .cn-mark::before { border: none; background: var(--accent); }
   .cn-failed .cn-mark::before { border: none; background: var(--accent); }
   .cn-failed .cn-mark::after { content: "!"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #fff; }
-  .cn-mark svg { display: none; position: absolute; inset: 0; margin: auto; width: 14px; height: 14px; }
+  .cn-mark svg { display: none; position: absolute; inset: 0; margin: auto; width: 13px; height: 13px; }
   .cn-done .cn-mark svg { display: block; }
   @keyframes cn-spin { to { transform: rotate(360deg); } }
-  /* The first time ever (the end of setup), the screen stays when every step is ticked: the icon gives way to a pink check, "Setup complete!" and a button to go on. */
-  .cn-finish, .cn-badge, #cnContinue { display: none; }
-  #connectingScreen.cn-finished > img { display: none; }
-  #connectingScreen.cn-finished .cn-finish, #connectingScreen.cn-finished #cnContinue { display: block; animation: cn-rise 450ms var(--ease-out) both; }
-  #connectingScreen.cn-finished .cn-badge { display: flex; animation: cn-rise 450ms var(--ease-out) both; }
-  .cn-badge { width: 60px; height: 60px; border-radius: 50%; background: var(--button); align-items: center; justify-content: center; box-shadow: 0 0 0 8px color-mix(in srgb, var(--button) 18%, transparent); }
-  .cn-badge svg { width: 32px; height: 32px; }
-  .cn-finish { margin: 0; font-size: 1.5rem; text-align: center; }
-  #cnContinue { margin-top: 6px; padding: 12px 22px; font-size: 1.02rem; }
+  /* The first time ever (the end of setup), the screen stays when every step is ticked: the line goes solid, a pink check joins Arc and Spotify, "Setup complete!" and Continue,
+     on the right like Next, to Arc's home (Ron, 2026-11-08). */
+  .cn-finish, #connectingScreen .cn-go { display: none; }
+  #connectingScreen.cn-finished .cn-working { display: none; }
+  #connectingScreen.cn-finished .cn-finish { display: block; animation: cn-rise 450ms var(--ease-out) both; }
+  #connectingScreen.cn-finished .cn-go { display: grid; animation: cn-rise 450ms var(--ease-out) both; }
+  #connectingScreen.cn-finished .wp-wire path { stroke-dasharray: none; animation: none; }
+  #connectingScreen.cn-finished .cn-mid { width: 34px; height: 34px; margin: -17px 0 0 -17px; background: var(--accent); box-shadow: 0 0 0 5px var(--bg), 0 0 0 11px color-mix(in srgb, var(--accent) 18%, transparent); }
+  #connectingScreen.cn-finished .cn-mid::before { display: none; }
+  #connectingScreen.cn-finished .cn-mid svg { display: block; }
+  #connectingScreen.cn-finished .wp-spotify { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 18%, transparent); }
+  #connectingScreen.cn-finished .wp-spotify-name { color: var(--fg); }
+  #connectingScreen .cn-go { grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 22px; }
+  #cnContinue { grid-column: 2; width: 100%; margin: 0; justify-content: center; font-size: 1.05rem; padding: 12px 20px; }
   @keyframes cn-rise { from { opacity: 0; transform: translateY(8px); } }
   /* No working sign-in on the app page (it ran out and could not be renewed): the app dims behind a card whose one button signs in again */
   #reconnectScreen { position: fixed; inset: 0; z-index: 1050; display: flex; align-items: center; justify-content: center; padding: 16px; background: color-mix(in srgb, var(--bg) 55%, transparent); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
@@ -157,7 +169,7 @@
   #launchScreen.ls-ready .ls-foot { color: var(--fg); font-weight: 600; font-size: 0.9rem; }
   @keyframes ls-pop { from { transform: scale(0.3); opacity: 0; } 60% { transform: scale(1.2); opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { #launchScreen { transition: none; } #launchScreen .ls-spin, #launchScreen.ls-ready .ls-ok { animation: none; } }
-  @media (prefers-reduced-motion: reduce) { #connectingScreen, .cn-step { transition: none; } .cn-active .cn-mark::before { animation: none; } #connectingScreen.cn-finished > * { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { #connectingScreen, .cn-step { transition: none; } .cn-active .cn-mark::before, .cn-mid::before { animation: none; } #connectingScreen.cn-finished .cn-finish, #connectingScreen.cn-finished .cn-go { animation: none; } }
   details.about summary { cursor: pointer; font-weight: 600; color: var(--accent); }
   details.about p { margin: 10px 0 0; }
   details.about ol { margin: 6px 0 0; padding-left: 22px; }
@@ -709,7 +721,9 @@
   html.vt-slide::view-transition-new(root), html.vt-slide::view-transition-new(wp-band):only-child, html.vt-slide::view-transition-new(wp-joint):only-child { animation-name: vt-from-right; }
   html.vt-slide.vt-back::view-transition-old(root), html.vt-slide.vt-back::view-transition-old(wp-band):only-child, html.vt-slide.vt-back::view-transition-old(wp-joint):only-child { animation-name: vt-to-right; }
   html.vt-slide.vt-back::view-transition-new(root), html.vt-slide.vt-back::view-transition-new(wp-band):only-child, html.vt-slide.vt-back::view-transition-new(wp-joint):only-child { animation-name: vt-from-left; }
-  html.vt-slide::view-transition-group(wp-band), html.vt-slide::view-transition-group(wp-joint) { animation-duration: 0.42s; }
+  html.vt-slide::view-transition-group(wp-band), html.vt-slide::view-transition-group(wp-joint), html.vt-slide::view-transition-group(wp-icon) { animation-duration: 0.42s; }
+  html.vt-slide #welcomePage .wp-band-icon, html.vt-slide.page-setup #loginSection .wp-band-icon { view-transition-name: wp-icon; }   /* the icon on its own, kept over the line (which starts behind it) while the screens slide */
+  html.vt-slide::view-transition-group(wp-icon) { z-index: 1; }
   @keyframes vt-to-left { to { transform: translateX(-100%); } }
   @keyframes vt-from-right { from { transform: translateX(100%); } }
   @keyframes vt-to-right { to { transform: translateX(100%); } }
@@ -1534,16 +1548,28 @@
 <body>
 <div id="launchScreen" role="status" aria-live="polite"><img src="apple-touch-icon.png" alt=""><p class="ls-name">Arc</p><p class="ls-tag">Ceremony playlist tools for your Spotify library</p><div class="ls-foot"><span class="ls-spin" aria-hidden="true"></span><span class="ls-ok" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span id="lsStep">Starting</span></div></div>
 <div id="connectingScreen" role="status">
-  <img src="apple-touch-icon.png" alt="" width="72" height="72">
-  <div class="cn-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
-  <h2 class="cn-finish">Setup complete!</h2>
-  <ul class="cn-list">
+  <div class="cn-page">
+    <div class="wp-band"><span class="wp-band-icon" aria-hidden="true"></span><div class="wp-band-text"><p class="wp-band-name">Arc</p><p class="wp-band-tag">Ceremony playlist tools<br> for your Spotify library</p></div></div>
+    <div class="cn-body">
+      <div class="wp-joint cn-joint" aria-hidden="true">
+        <svg class="wp-wire"><defs><clipPath id="cnBandClip"><rect class="wp-band-rect"/></clipPath></defs><path class="wp-wire-main"/><path class="wp-wire-band" clip-path="url(#cnBandClip)"/></svg>
+        <span class="wp-ok cn-mid"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+        <svg class="wp-spotify" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12"/><path fill="#fff" d="M17.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+        <span class="wp-spotify-name">Your Spotify</span>
+      </div>
+      <h2 class="cn-title cn-working">Connecting to Spotify</h2>
+      <h2 class="cn-title cn-finish">Setup complete!</h2>
+      <p class="cn-lead cn-working">Almost there.</p>
+      <p class="cn-lead cn-finish">Arc is connected to your Spotify.</p>
+      <ul class="cn-list">
     <li id="cnSignin" class="cn-step cn-active"><span class="cn-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span>Signing in to Spotify</span></li>
     <li id="cnPlaylists" class="cn-step"><span class="cn-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span>Reading your playlists</span></li>
     <li id="cnRecipes" class="cn-step"><span class="cn-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span>Loading your recipes</span></li>
     <li id="cnPython" class="cn-step cn-active"><span class="cn-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span>Starting the playlist builder</span></li>
   </ul>
-  <button id="cnContinue" class="primary" type="button">Let&rsquo;s make a recipe!</button>
+      <div class="cn-go"><button id="cnContinue" class="primary" type="button"><span class="btn-label">Continue</span><img class="btn-icon" src="icons/start.svg" alt="" width="20" height="20"></button></div>
+    </div>
+  </div>
 </div>
 <div id="updateScreen" role="status" aria-live="polite">
   <div class="us-card">
@@ -2087,10 +2113,10 @@
     <div id="msFoot" hidden></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-08p"></script>
-<script src="editor.js?v=2026-11-08p"></script>
-<script src="shared-spotify.js?v=2026-11-08p"></script>
-<script src="app.js?v=2026-11-08p"></script>
-<script src="sharing.js?v=2026-11-08p"></script>
+<script src="formats.js?v=2026-11-08q"></script>
+<script src="editor.js?v=2026-11-08q"></script>
+<script src="shared-spotify.js?v=2026-11-08q"></script>
+<script src="app.js?v=2026-11-08q"></script>
+<script src="sharing.js?v=2026-11-08q"></script>
 </body>
 </html>

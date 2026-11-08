@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08p";
+const APP_VERSION = "2026-11-08q";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -345,8 +345,8 @@ function toggleWelcomeTool(head) {
 }
 
 // ---------------------------------------------------------------- the connecting screen
-// Back from Spotify's sign-in, the script in index.html's <head> puts up a quiet screen in place of the setup page: the app's icon and a list of what is under way
-// (signing in, reading the playlists, settling the recipes with their saves, starting Python), each ticked as it is done. When all are, it fades to the editor.
+// Back from Spotify's sign-in, the script in index.html's <head> puts up a screen in place of the setup page, in its look: the band, the line to Spotify with a spinner, and a list
+// of what is under way (signing in, reading the playlists, settling the recipes with their saves, starting Python), each ticked as it is done. When all are, it fades to the app.
 // There is no time limit of its own: each step ends by finishing or by failing (a Spotify request that gets no answer fails after spotifyAnswerMs).
 // A step that fails is marked for a moment, then the screen goes and the problem shows as usual. A question takes it down at once.
 let connectingScreen = document.documentElement.classList.contains("connecting");
@@ -375,16 +375,12 @@ function endConnectingScreen() {
   showPage();   // the app, or, if the sign-in did not work, the setup page with what went wrong
 }
 
-// The first time ever, with every step ticked, the screen says "Setup complete!" over the ticked steps and stays until its button is used (a user test found the editor
-// arriving by itself left it unclear that setup was over). Any other visit, or a step that failed, goes straight on.
+// The first time ever, with every step ticked, the screen says "Setup complete!" over the ticked steps and stays until Continue is used (a user test found the app
+// arriving by itself left it unclear that setup was over). Continue goes to Arc's home, where the person picks a tool (Ron, 2026-11-08). Any other visit, or a step that failed, goes straight on.
 function setupComplete() {
   if (!connectingScreen || !firstConnect) return Promise.resolve();
   $("connectingScreen").classList.add("cn-finished");
-  const button = $("cnContinue");
-  // someone setting up again (a new device, or an iPhone's Home Screen app, which keeps its own storage) already has recipes saved to Spotify by now (decided by Ron, 2026-11-04)
-  const hasRecipes = typeof editor !== "undefined" && !!editor.model && editor.model.formats.some((f) => !f.draft);
-  button.textContent = hasRecipes ? "Show me my recipes!" : "Let’s make a recipe!";   // a plain listener: it only lets the startup go on, so nothing in it can fail
-  return new Promise((resolve) => button.addEventListener("click", () => resolve(true), { once: true }));
+  return new Promise((resolve) => $("cnContinue").addEventListener("click", () => resolve(true), { once: true }));   // a plain listener: it only lets the startup go on, so nothing in it can fail
 }
 
 // ---------------------------------------------------------------- the update card
@@ -3332,6 +3328,7 @@ async function main() {
   for (const head of document.querySelectorAll("#welcomePage .wp-tool-head")) head.addEventListener("click", () => toggleWelcomeTool(head));
   alignWelcomeIcons();
   window.addEventListener("resize", () => { alignWelcomeIcons(); drawSetupJoint(); });
+  if (connectingScreen) { alignWelcomeIcons(); drawSetupJoint(); }   // the connecting screen has the band and the line too
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(alignWelcomeIcons);
   on("premiumWhy", "click", (event) => { event.stopPropagation(); showPremiumWhy($("premiumWhyText").hidden); });
   document.addEventListener("click", (event) => { if (!$("premiumWhyText").hidden && !$("premiumWhyText").contains(event.target)) showPremiumWhy(false); });
@@ -3452,7 +3449,7 @@ async function main() {
     await new Promise((r) => setTimeout(r, 300));   // the page settles behind the launch screen first
     await finishLaunchScreen(pythonOk && connection === "ready" && !startupProblems.length && !saveState.error && $("reconnectScreen").hidden);
   }
-  if (await setupComplete()) showView("builder");   // its button is about recipes, so it opens the builder
+  await setupComplete();   // Continue leaves Arc's home, where the page always opens, in view
   endConnectingScreen();
   // A visit that starts during a wait (the tab was closed, the wait forgotten) opens the popup once, so the missing Build button is explained. A reload does not.
   const pause = spotifyPause();
