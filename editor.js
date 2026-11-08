@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-07m";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-07n";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -522,6 +522,7 @@ function smoothResize(box, scroller) {
 function askSyncChoice(title, text, choices, options = {}) {
   if (typeof endConnectingScreen === "function") endConnectingScreen();   // a question needs the page in view
   if (typeof closeUpdateScreen === "function") closeUpdateScreen();
+  if (typeof endLaunchScreen === "function") endLaunchScreen();
   return new Promise((resolve) => {
     const required = !!options.required;
     const done = (value) => { overlay.remove(); document.removeEventListener("keydown", onKey); resolve(value); };
@@ -846,6 +847,7 @@ function saveTipQuiet() {
   if (typeof busy !== "undefined" && busy) return false;
   if (typeof connectingScreen !== "undefined" && connectingScreen) return false;
   if (typeof updateScreen !== "undefined" && updateScreen) return false;
+  if (typeof launchScreen !== "undefined" && launchScreen) return false;
   if (editor.appMenu) return false;
   const active = document.activeElement;
   if (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return false;
@@ -1459,6 +1461,7 @@ function showPauseDialog() {
   if (!pause || $("fePauseDialog")) return;
   if (typeof endConnectingScreen === "function") endConnectingScreen();   // the popup needs the page in view
   if (typeof closeUpdateScreen === "function") closeUpdateScreen();
+  if (typeof endLaunchScreen === "function") endLaunchScreen();
   if (editor.panel || editor.cardMenu || editor.gapPanel !== null || editor.appMenu) closePanels();   // an open list would take the first tap outside the popup
   const quota = pause.reason === "QUOTA_EXCEEDED";
   const kept = playlists.length || (typeof KEPT_PLAYLISTS_KEY === "string" && localStorage.getItem(KEPT_PLAYLISTS_KEY));   // the kept list may be put in just after this opens

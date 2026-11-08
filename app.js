@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-07m";
+const APP_VERSION = "2026-11-07n";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -122,6 +122,7 @@ function showStartupProblems() {
     return;
   }
   closeUpdateScreen();
+  endLaunchScreen();
   try { recordError("Startup: " + startupProblems.join("; ").slice(0, 300)); } catch (err) { /* the popup matters more */ }
   const link = $("startupReport");
   if (link) { try { link.href = reportUrl(); } catch (err) { /* the plain link still works */ } }
@@ -241,6 +242,22 @@ let updateScreen = document.documentElement.classList.contains("updating");
 
 function updateStep(text) {
   if (updateScreen) $("usStep").textContent = text;
+  if (launchScreen) $("lsStep").textContent = text;
+}
+
+// ---------------------------------------------------------------- the launch screen
+// Opened from an iPhone's Home Screen, the script in index.html's <head> puts up a launch screen like an app's: the icon, the name and the tagline, and at the foot a
+// spinner with the step under way (the update card's steps). It stays until signed in, playlists read, recipes settled and Python ready, so the page settles out of
+// sight, then fades to the app. A start with no sign-in ends it as soon as that is known; anything that needs the page (a question, the pause popup, a startup problem)
+// ends it at once. Not in a browser tab. Decided by Ron, 2026-11-07 (mockup C).
+let launchScreen = document.documentElement.classList.contains("launching");
+
+function endLaunchScreen() {
+  if (!launchScreen) return;
+  launchScreen = false;
+  const screen = $("launchScreen");
+  screen.classList.add("ls-out");
+  setTimeout(() => { document.documentElement.classList.remove("launching"); screen.classList.remove("ls-out"); }, 450);   // after the fade
 }
 
 function getUpdate() {
@@ -3200,8 +3217,8 @@ async function main() {
   guarded("a wait from Spotify", () => tickPause());
 
   if (signingIn) { setLoginMessage(signInNote, true); updateButtons(); }   // coming back from Spotify: say so before the sign-in is finished
-  updateStep("Signing in to Spotify");
-  const pythonReady = connectingScreen || updateScreen ? preparePython().then((ok) => { if (ok) connectingStep("Python", "done"); else connectingStepFailed("Python"); return ok; }) : null;   // behind the connecting screen (or the update card) Python loads alongside the sign-in, so the wait is the slower of the two
+  updateStep(launchScreen ? "Connecting to Spotify" : "Signing in to Spotify");
+  const pythonReady = connectingScreen || updateScreen || launchScreen ? preparePython().then((ok) => { if (ok) connectingStep("Python", "done"); else connectingStepFailed("Python"); return ok; }) : null;   // behind the connecting screen (or the update card) Python loads alongside the sign-in, so the wait is the slower of the two
   try {
     await finishLoginIfReturning();
   } catch (err) {
@@ -3215,7 +3232,7 @@ async function main() {
     token = await renewSignIn();   // a sign-in from an earlier visit, renewed without leaving the page
     if (!token) setConnection("none");
   }
-  if (!token) await connectingStepFailed("Signin");   // the sign-in did not work: the setup page shows what went wrong
+  if (!token) { endLaunchScreen(); await connectingStepFailed("Signin"); }   // nothing more to wait for: the app says what to do   // the sign-in did not work: the setup page shows what went wrong
   connectingStep("Signin", "done");
   if (!token && needsReconnect) {
     revealLoginProblem();
@@ -3236,7 +3253,7 @@ async function main() {
     else await connectingStepFailed("Playlists");   // the connection problem shows in the app
   }
   if (connectingScreen) await settleFirstSave();
-  else if (updateScreen && connection === "ready" && backupMode() === "spotify") {
+  else if ((updateScreen || launchScreen) && connection === "ready" && backupMode() === "spotify") {
     updateStep("Loading your recipes");
     await runSpotifySave();
     while (saveState.running) await new Promise((r) => setTimeout(r, 100));   // a save already under way (the connection starts one) is waited for too
@@ -3248,6 +3265,8 @@ async function main() {
     finishUpdateScreen(pythonOk && connection === "ready" && !startupProblems.length && !saveState.error && $("reconnectScreen").hidden ? "ready" : "");
   }
   if (connectingScreen) await new Promise((r) => setTimeout(r, 100));   // the last check is seen before the screen fades
+  if (launchScreen) await new Promise((r) => setTimeout(r, 300));   // the page settles behind the launch screen first
+  endLaunchScreen();
   await setupComplete();
   endConnectingScreen();
   // A visit that starts during a wait (the tab was closed, the wait forgotten) opens the popup once, so the missing Build button is explained. A reload does not.
