@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08d";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08e";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -114,6 +114,7 @@ function sharingConnected() {
   let known = !!sharing.mine;
   try { known = known || localStorage.getItem(SHARING_MINE_KEY) !== null; } catch (err) { known = true; }   // no storage: it would be read on every visit
   if (!known) loadMine().then(renderSharingCard);
+  markOldCopies();
 }
 function startSharingCard() {
   const card = $("msCard");
@@ -142,10 +143,25 @@ function rememberCopy(shareId, playlistId) {
   all[shareId] = playlistId;
   try { localStorage.setItem(SHARING_COPIES_KEY, JSON.stringify(all)); } catch (err) { /* private browsing: Added shows for this visit only */ }
 }
+// A copy carries the share's ID at the end of its Spotify description, so every device knows it is gotten (from the playlist list it reads anyway)
+// and a copy deleted in Spotify can be gotten again. sharingCopies is this device's own record, kept for copies whose description lost the mark.
+const COPY_MARK = (id) => `Gotten from Music sharing (${id}).`;
+const COPY_MARK_RE = /\s*Gotten from Music sharing \(([a-z0-9]{1,40})\)\.?\s*$/;
+function copyShareId(p) {
+  const m = p && typeof p.description === "string" && p.description.match(COPY_MARK_RE);
+  return m ? m[1] : null;
+}
+// share id -> the person's copy still in their Spotify, from the marks and this device's record
+function copiesInSpotify() {
+  const found = new Map();
+  if (!me) return found;
+  for (const p of playlists) { const id = p.owner === me.id && copyShareId(p); if (id && !found.has(id)) found.set(id, p.id); }
+  for (const [shareId, copy] of Object.entries(sharingCopies())) if (!found.has(shareId) && playlists.some((p) => p.id === copy)) found.set(shareId, copy);
+  return found;
+}
 function isAdded(share) {
-  const copy = sharingCopies()[share.id];
-  if (!copy) return false;
-  return !playlists.length || playlists.some((p) => p.id === copy);   // a copy removed in Spotify can be added again
+  if (!playlists.length) return share.id in sharingCopies();   // no list yet: this device's record
+  return copiesInSpotify().has(share.id);   // a copy removed in Spotify can be gotten again
 }
 // ---------------------------------------------------------------- words and numbers
 const songCountText = (n) => plural(n, "song");
@@ -157,7 +173,7 @@ function cleanSpotifyDescription(text) {
   if (!text || text.startsWith(APP_MARKER)) return "";
   const box = document.createElement("textarea");
   box.innerHTML = String(text).replace(/<[^>]*>/g, "");
-  return box.value.trim().slice(0, SHARE_DESC_MAX);
+  return box.value.replace(COPY_MARK_RE, "").trim().slice(0, SHARE_DESC_MAX);
 }
 // a mood word or an Other name as it is kept: single spaces, letters, numbers and a few marks (the worker does the same); moods are lower case
 function cleanWord(t, max) {
@@ -423,7 +439,30 @@ async function addShared(s) {
 }
 
 // the copy's description in Spotify: the sharer's description, else what it is
-function copyDescription(s) { return (s.description || kindLabel(s)).slice(0, 300); }
+// the copy's description in Spotify: the sharer's description, else what it is, then the mark that says which share it is (COPY_MARK)
+function copyDescription(s) {
+  const mark = COPY_MARK(s.id);
+  const text = (s.description || kindLabel(s)).replace(COPY_MARK_RE, "").trim().slice(0, 300 - mark.length - 1).trim();
+  return text ? `${text} ${mark}` : mark;
+}
+// copies made before the mark: this device's record says which share each is, so their descriptions get the mark once, one at a time
+async function markOldCopies() {
+  if (sharing.marking || !me) return;
+  sharing.marking = true;
+  try {
+    for (const [shareId, copy] of Object.entries(sharingCopies())) {
+      if (connection !== "ready" || spotifyPause() || busy) break;
+      const p = playlists.find((x) => x.id === copy && x.owner === me.id);
+      if (!p || typeof p.description !== "string" || copyShareId(p)) continue;   // gone, not read with its description, or marked already
+      const mark = COPY_MARK(shareId);
+      const text = cleanSpotifyDescription(p.description).slice(0, 300 - mark.length - 1).trim();
+      const description = text ? `${text} ${mark}` : mark;
+      await spotifyRequest("PUT", `/playlists/${p.id}`, { json: { description }, noWait: true });
+      p.description = description;
+    }
+  } catch (err) { logStep("music sharing: marking an older copy stopped (" + (err && err.message) + ")"); }   // tried again next time
+  sharing.marking = false;
+}
 
 // ---------------------------------------------------------------- the popup
 // tab "find" is Shared by others, "share" Shared by you. sharing.detail is a playlist's page; sharing.flow is Share a playlist (the wizard),
@@ -572,8 +611,7 @@ function searchField(placeholder) {
 }
 // copies this device made that are still in the person's Spotify
 function addedCount() {
-  const ids = Object.values(sharingCopies());
-  return playlists.length ? ids.filter((id) => playlists.some((p) => p.id === id)).length : ids.length;
+  return playlists.length ? copiesInSpotify().size : Object.keys(sharingCopies()).length;
 }
 function mineCount() {
   if (sharing.mine) return sharing.mine.length;
@@ -1110,7 +1148,7 @@ const draftDescription = (d, p) => (d.descSource === "spotify" ? spotifyDescript
 function shareCandidates() {
   if (!me) return [];
   const copies = new Set(Object.values(sharingCopies()));
-  return playlists.filter((p) => p.owner === me.id && !p.isSave && !p.madeByApp && !copies.has(p.id) && !sharedFor(p) && !knownBlock(p));
+  return playlists.filter((p) => p.owner === me.id && !p.isSave && !p.madeByApp && !copies.has(p.id) && !copyShareId(p) && !sharedFor(p) && !knownBlock(p));
 }
 function startShare() {
   sharing.tab = "share";
