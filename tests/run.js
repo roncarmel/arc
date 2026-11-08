@@ -849,9 +849,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-07o" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-07p" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-07o/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-07p/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3051,7 +3051,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-07o", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-07p", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4528,11 +4528,14 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var ls_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "manual" }, before: (w) => w.document.documentElement.classList.add("launching") });
   var ls_d = ls_w.document;
   check("it shows the icon, the name, the tagline and the step under way", ls_d.documentElement.classList.contains("launching") && ls_d.querySelector("#launchScreen img").getAttribute("src") === "apple-touch-icon.png" && ls_d.querySelector("#launchScreen .ls-name").textContent === "Ceremony Playlist Builder" && ls_d.querySelector("#launchScreen .ls-tag").textContent === "Ceremony playlists, ready in minutes." && /Spotify|playlists|playlist builder/.test(ls_d.getElementById("lsStep").textContent), ls_d.getElementById("lsStep").textContent);
-  await waitFor(() => !ls_d.documentElement.classList.contains("launching"), 20000);
-  check("it stays until signed in, the playlists read and Python started, then fades to the app", !ls_d.documentElement.classList.contains("launching") && ls_w.eval("connection") === "ready" && ls_w.eval("launchScreen") === false && ls_d.documentElement.classList.contains("page-app"));
+  await waitFor(() => ls_d.getElementById("launchScreen").classList.contains("ls-ready"), 20000);
+  check("once signed in, the playlists read and Python started, the spinner gives way to a check and Ready, still on the launch screen", ls_w.eval("connection") === "ready" && ls_d.getElementById("lsStep").textContent === "Ready" && ls_d.documentElement.classList.contains("launching") && ls_w.getComputedStyle(ls_d.querySelector("#launchScreen .ls-spin")).display === "none");
+  check("it is up at least 2 seconds in all, and Ready at least a moment", /const LAUNCH_MIN_MS = 2000, LAUNCH_READY_MS = 800;/.test(appSource()) && /Math\.max\(LAUNCH_READY_MS, LAUNCH_MIN_MS - shown\)/.test(appSource()));
+  await waitFor(() => !ls_d.documentElement.classList.contains("launching"), 5000);
+  check("then it fades to the app", !ls_d.documentElement.classList.contains("launching") && ls_w.eval("connection") === "ready" && ls_w.eval("launchScreen") === false && ls_d.documentElement.classList.contains("page-app"));
   var ls_n = await boot({ url: EDURL, session: {}, local: { formats: MINI, connectedBefore: "1", backupMode: "manual" }, before: (w) => w.document.documentElement.classList.add("launching") });
   await new Promise((r) => setTimeout(r, 900));
-  check("with no sign-in it goes as soon as that is known, so the app can say what to do", ls_n.eval("launchScreen") === false && !ls_n.document.documentElement.classList.contains("launching"));
+  check("with no sign-in it goes as soon as that is known, without Ready, so the app can say what to do", ls_n.eval("launchScreen") === false && !ls_n.document.documentElement.classList.contains("launching") && ls_n.document.getElementById("lsStep").textContent !== "Ready");
   var ls_q = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "manual" }, before: (w) => w.document.documentElement.classList.add("launching") });
   ls_q.eval('askSyncChoice("A question", "Text", [{ label: "OK", value: "ok" }])');
   check("a question takes it down at once", ls_q.eval("launchScreen") === false);
@@ -5348,7 +5351,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-07o"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-07p"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

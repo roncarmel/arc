@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-07o";
+const APP_VERSION = "2026-11-07p";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -257,7 +257,21 @@ function endLaunchScreen() {
   launchScreen = false;
   const screen = $("launchScreen");
   screen.classList.add("ls-out");
-  setTimeout(() => { document.documentElement.classList.remove("launching"); screen.classList.remove("ls-out"); }, 450);   // after the fade
+  setTimeout(() => { document.documentElement.classList.remove("launching"); screen.classList.remove("ls-out", "ls-ready"); }, 450);   // after the fade
+}
+
+// A start that ended ready says so: a pink check and Ready for a moment, and the screen is up at least LAUNCH_MIN_MS in all, so a fast start does not
+// flash it by (Ron, 2026-11-07, option A over an Open button to tap every launch). A start that did not end ready goes at once, so the problem shows.
+const LAUNCH_MIN_MS = 2000, LAUNCH_READY_MS = 800;
+async function finishLaunchScreen(ready) {
+  if (!launchScreen) return;
+  if (ready) {
+    $("launchScreen").classList.add("ls-ready");
+    $("lsStep").textContent = "Ready";
+    const shown = typeof performance !== "undefined" && performance.now ? performance.now() : 0;   // since the page began, when the screen went up
+    await new Promise((r) => setTimeout(r, Math.max(LAUNCH_READY_MS, LAUNCH_MIN_MS - shown)));
+  }
+  endLaunchScreen();
 }
 
 function getUpdate() {
@@ -3265,8 +3279,10 @@ async function main() {
     finishUpdateScreen(pythonOk && connection === "ready" && !startupProblems.length && !saveState.error && $("reconnectScreen").hidden ? "ready" : "");
   }
   if (connectingScreen) await new Promise((r) => setTimeout(r, 100));   // the last check is seen before the screen fades
-  if (launchScreen) await new Promise((r) => setTimeout(r, 300));   // the page settles behind the launch screen first
-  endLaunchScreen();
+  if (launchScreen) {
+    await new Promise((r) => setTimeout(r, 300));   // the page settles behind the launch screen first
+    await finishLaunchScreen(pythonOk && connection === "ready" && !startupProblems.length && !saveState.error && $("reconnectScreen").hidden);
+  }
   await setupComplete();
   endConnectingScreen();
   // A visit that starts during a wait (the tab was closed, the wait forgotten) opens the popup once, so the missing Build button is explained. A reload does not.
