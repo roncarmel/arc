@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08m";
+const APP_VERSION = "2026-11-08n";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -244,14 +244,17 @@ function showWelcomeStep(step, push) {
   window.scrollTo(0, 0);
   if (second) drawSetupJoint();
 }
-// The setup step's line: down from under the band's icon, a turn, then right to Spotify's mark, which sits where it would inside the band (16 px from its right edge).
+// The setup step's line: down from behind the band's icon (white while over the band), a turn, then right to Spotify's mark, which sits where it would inside the band (16 px from its right edge).
 function drawSetupJoint() {
   const joint = $("wpJoint"), band = document.querySelector("#welcomePage .wp-band");
   if (!joint || !band || $("wpSetup").hidden) return;
   const jb = joint.getBoundingClientRect(), bb = band.getBoundingClientRect(), ib = band.querySelector(".wp-band-icon").getBoundingClientRect();
-  const x0 = ib.left + ib.width / 2 - jb.left, top = bb.bottom - jb.top - 2, y = 62, size = 74, r = 14;
+  const x0 = ib.left + ib.width / 2 - jb.left, top = ib.top + ib.height / 2 - jb.top, y = 62, size = 74, r = 14;
   const cx = bb.right - 16 - size / 2 - jb.left, x1 = cx - size / 2;
   $("wpWire").setAttribute("d", `M${x0} ${top} V${y - r} Q${x0} ${y} ${x0 + r} ${y} H${x1}`);   // drawn from Arc; the dash offset grows, so the dashes flow back from Spotify
+  $("wpWireBand").setAttribute("d", $("wpWire").getAttribute("d"));
+  const rect = $("wpBandRect");
+  rect.setAttribute("x", bb.left - jb.left); rect.setAttribute("y", bb.top - jb.top); rect.setAttribute("width", bb.width); rect.setAttribute("height", bb.height);
   Object.assign($("wpOk").style, { left: (x0 + r + x1) / 2 + "px", top: y + "px" });
   Object.assign($("wpSpotify").style, { left: cx - size / 2 + "px", top: y - size / 2 + "px" });
   Object.assign($("wpSpotifyName").style, { left: cx + "px", top: y + size / 2 + 6 + "px" });

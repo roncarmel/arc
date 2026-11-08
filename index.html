@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-08m">
-<script src="theme.js?v=2026-11-08m"></script>
+<meta name="app-version" content="2026-11-08n">
+<script src="theme.js?v=2026-11-08n"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -703,7 +703,7 @@
      the same gap on its left, top and bottom; the intro; Requires Spotify Premium; then a card per tool that opens in place (one at a time) and Get started. */
   .wp-band { display: flex; align-items: flex-start; gap: 16px; padding: 16px; margin: 4px 0 16px; border-radius: 22px; color: #fff;
     background: linear-gradient(135deg, var(--accent-deep, #c2177f), var(--accent) 55%, color-mix(in srgb, var(--accent) 60%, #fff 40%)); box-shadow: 0 12px 34px color-mix(in srgb, var(--accent) 30%, transparent); }
-  .wp-band-icon { flex: none; width: 67px; height: 67px; border-radius: 22%; background: url(apple-touch-icon.png) center / cover; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55), 0 6px 18px rgba(120, 0, 70, 0.35); }
+  .wp-band-icon { position: relative; z-index: 1; flex: none; width: 67px; height: 67px; border-radius: 22%; background: url(apple-touch-icon.png) center / cover; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55), 0 6px 18px rgba(120, 0, 70, 0.35); }
   .wp-band-text { min-width: 0; }
   .wp-band-name { margin: 0; font-size: 2.1rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
   .wp-band-tag { margin: 6px 0 0; font-size: 0.92rem; line-height: 1.25; white-space: nowrap; }   /* always the same two lines, so the band keeps its shape at any width */
@@ -770,11 +770,12 @@
   .tool-badge svg { width: 64%; height: 64%; fill: #e8159a; stroke: #e8159a; }
   .tool-badge svg[fill="none"] { fill: none; }
   .tool-badge svg rect { stroke: none; }
-  /* the second step (decided by Ron, 2026-11-08, mockups/welcome-setup-s3c.html, flat): the band stays; a dashed line leaves it under Arc's icon, turns right, passes a check
+  /* the second step (decided by Ron, 2026-11-08, mockups/welcome-setup-s3c.html, flat): the band stays; a dashed line leaves Arc's icon (from behind it, white over the band), turns right, passes a check
      at the middle of its level part and meets Spotify's mark, placed where it would sit inside the band; the dashes flow from Spotify to Arc (drawn by drawSetupJoint in app.js) */
   .wp-joint { position: relative; height: 128px; margin: 0 0 16px; }
   .wp-wire { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
   .wp-wire path { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 5; stroke-linecap: round; animation: wp-flow 0.9s linear infinite; }
+  .wp-wire .wp-wire-band { stroke: #fff; }   /* the part over the band is white, from under Arc's icon */
   @keyframes wp-flow { to { stroke-dashoffset: 11; } }
   .wp-ok { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; color: #fff; box-shadow: 0 0 0 5px var(--bg); }
   .wp-spotify { position: absolute; width: 74px; height: 74px; border-radius: 50%; }
@@ -1595,7 +1596,7 @@
     </div>
     <div id="wpSetup" hidden>
       <div class="wp-joint" id="wpJoint" aria-hidden="true">
-        <svg class="wp-wire"><path id="wpWire"/></svg>
+        <svg class="wp-wire"><defs><clipPath id="wpBandClip"><rect id="wpBandRect"/></clipPath></defs><path id="wpWire"/><path id="wpWireBand" class="wp-wire-band" clip-path="url(#wpBandClip)"/></svg>
         <span class="wp-ok" id="wpOk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
         <svg class="wp-spotify" id="wpSpotify" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12"/><path fill="#fff" d="M17.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
         <span class="wp-spotify-name" id="wpSpotifyName">Your Spotify</span>
@@ -1603,7 +1604,7 @@
       <h2 class="wp-setup-title">Connect your Spotify account</h2>
       <p class="muted wp-setup-lead">A one-time setup connects Arc to your Spotify account. It takes a couple of minutes, with clear step-by-step instructions.</p>
       <p class="wp-note"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>Spotify Premium is needed for the connection.</span></p>
-      <div class="wp-pair"><button id="wpSetupBack" type="button"><img class="btn-icon" src="icons/back.svg" alt="" width="20" height="20"><span class="btn-label">Back</span></button><button id="startSetup" class="primary" type="button"><img class="btn-icon" src="icons/start.svg" alt="" width="20" height="20"><span class="btn-label">Start setup</span></button></div>
+      <div class="wp-pair"><button id="wpSetupBack" type="button"><img class="btn-icon" src="icons/back.svg" alt="" width="20" height="20"><span class="btn-label">Back</span></button><button id="startSetup" class="primary" type="button"><span class="btn-label">Start setup</span><img class="btn-icon" src="icons/start.svg" alt="" width="20" height="20"></button></div>
     </div>
   </section>
 
@@ -2054,10 +2055,10 @@
     <div id="msFoot" hidden></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-08m"></script>
-<script src="editor.js?v=2026-11-08m"></script>
-<script src="shared-spotify.js?v=2026-11-08m"></script>
-<script src="app.js?v=2026-11-08m"></script>
-<script src="sharing.js?v=2026-11-08m"></script>
+<script src="formats.js?v=2026-11-08n"></script>
+<script src="editor.js?v=2026-11-08n"></script>
+<script src="shared-spotify.js?v=2026-11-08n"></script>
+<script src="app.js?v=2026-11-08n"></script>
+<script src="sharing.js?v=2026-11-08n"></script>
 </body>
 </html>
