@@ -103,13 +103,14 @@ function makeFetch(options = {}) {
       // staleToken: the worker turns down any sign-in but a renewed one, as Spotify does once an hour has passed
       if (sh.staleToken && !String(url).endsWith("/library") && !/^Bearer renewed/.test((init.headers || {}).Authorization || "")) return json({ error: "Spotify did not accept the sign-in.", code: "signin" }, 401);
       const path = new URL(url).pathname, body = init.body ? JSON.parse(init.body) : null;
-      const out = (s) => ({ id: s.id, name: s.name, by: s.by || null, phases: s.phases, tags: s.tags, notes: s.notes || "", cover: s.cover || null, songs: s.songs, count: s.songs.length, ms: s.ms, avgMs: s.ms / Math.max(1, s.songs.length), artists: s.artists || [], sharedAt: s.sharedAt, updatedAt: s.sharedAt });
+      const kindOf = (s) => ({ kind: s.kind || "phase", books: s.books || [], phases: s.phases || [], moods: s.moods || [], other: s.other || "", description: s.description || "" });
+      const out = (s) => ({ id: s.id, name: s.name, by: s.by || null, ...kindOf(s), cover: s.cover || null, songs: s.songs, count: s.songs.length, ms: s.ms, avgMs: s.ms / Math.max(1, s.songs.length), artists: s.artists || [], sharedAt: s.sharedAt, updatedAt: s.sharedAt });
       if (method === "GET" && path === "/library") return json({ shares: sh.shares.filter((s) => !s.hidden).sort((a, b) => b.sharedAt - a.sharedAt).map(out), words: sh.words, at: Date.now() });
       if (method === "GET" && path.startsWith("/songs/")) { const s = sh.shares.find((x) => x.id === path.slice(7) && !x.hidden); sh.songReads = (sh.songReads || []).concat([{ id: path.slice(7), auth: (init.headers || {}).Authorization || null }]); return s ? json({ id: s.id, names: s.names || null }) : json({ error: "That shared playlist is gone." }, 404); }
-      if (method === "GET" && path === "/mine") return json({ shares: sh.shares.filter((s) => s.owner === "ron").map((s) => ({ id: s.id, playlist: s.playlist, snapshot: s.snapshot || null, name: s.name, by: s.by || null, phases: s.phases, tags: s.tags, notes: s.notes || "", sharedAt: s.sharedAt, updatedAt: s.sharedAt, hidden: !!s.hidden })) });
+      if (method === "GET" && path === "/mine") return json({ shares: sh.shares.filter((s) => s.owner === "ron").map((s) => ({ id: s.id, playlist: s.playlist, snapshot: s.snapshot || null, name: s.name, by: s.by || null, ...kindOf(s), descSource: s.descSource || "mine", cover: s.cover || null, count: s.songs.length, ms: s.ms, sharedAt: s.sharedAt, updatedAt: s.sharedAt, hidden: !!s.hidden })) });
       if (method === "POST" && path === "/share") {
         sh.posts.push(body);
-        if (sh.refuse) return json({ error: sh.refuse, code: "copy" }, 409);
+        if (sh.refuse) return json(typeof sh.refuse === "string" ? { error: sh.refuse, code: "copy" } : sh.refuse, sh.refuse.status || 409);
         let s = sh.shares.find((x) => x.owner === "ron" && x.playlist === body.playlist);
         if (!s) { s = { id: "s" + (sh.shares.length + 1), owner: "ron", sharedAt: Date.now() }; sh.shares.push(s); }
         Object.assign(s, body);
@@ -119,6 +120,7 @@ function makeFetch(options = {}) {
       if (method === "POST" && path === "/report") { sh.reports.push(body); return json({ ok: true }); }
       return json({ error: "Not found" }, 404);
     }
+    if (url.includes("blocked-words/blocked-words.json")) return json(JSON.parse(fs.readFileSync(ROOT + "blocked-words/blocked-words.json", "utf8")));
     if (url.includes("version.txt")) {   // the stamp of the version on the site: the one in the files, unless a check says otherwise
       if (options.versionFail) throw new TypeError("Failed to fetch");
       const body = options.serverVersion !== undefined ? options.serverVersion : fs.readFileSync(ROOT + "version.txt", "utf8");
@@ -849,9 +851,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-07w" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08a" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-07w/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-08a/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -972,7 +974,7 @@ print(json.dumps(out))
 
 
   // ---------------- every numbered section title says what the person will do
-  var verbs = ["Connect", "Edit", "Build", "Back up"];
+  var verbs = ["Find", "Connect", "Edit", "Build", "Back up"];
   var allH2 = Array.from(t0.document.querySelectorAll("h2")).filter((h) => !h.closest("#msOverlay")).map((h) => h.textContent);
   check("the welcome and setup pages have their own headings, and every numbered section title left is an action", JSON.stringify(allH2) === JSON.stringify(["Setup complete!", "Unwrapping the update", "What to expect", "One-time setup", "Find your Client ID", "1. Connect to Spotify", "1. Connect to Spotify", "2. Edit your recipes", "3. Build playlists", "4. Back up manually to this device (optional)"]) && allH2.slice(4).every((t) => verbs.some((v) => t.replace(/^\d\.\s/, "").startsWith(v))), JSON.stringify(allH2));
 
@@ -3051,7 +3053,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-07w", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08a", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4919,226 +4921,182 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   }
 
   if (want("music sharing")) { try {
-  // ================================================================ Music sharing: find playlists other facilitators share, and share your own (opened from Developer options for now)
-  var ms_share = (id, name, by, phases, tags, notes, songs, hours, t) => ({ id, owner: "other-" + id, name, by, phases, tags, notes, songs, ms: hours * 3600000, artists: ["Brian Eno", "Hammock"], sharedAt: t });
+  // ================================================================ Music sharing: Shared by others (by type, a playlist's page, Get) and Shared by you (the wizard, edit, update, stop)
+  var ms_share = (id, name, by, kind, extra, songs, hours, t) => Object.assign({ id, owner: "other-" + id, name, by, kind, songs, ms: hours * 3600000, artists: ["Brian Eno", "Hammock"], sharedAt: t }, extra);
   var ms_mine = (pre, from, n) => Array.from({ length: n }, (_, i) => [pre + "-" + (from + i), ""]);
   var ms_other = (pre, n) => Array.from({ length: n }, (_, i) => [pre + "x" + i, "USX" + pre.toUpperCase() + i]);
   var ms_sh = { words: {}, posts: [], deletes: [], reports: [], shares: [
-    ms_share("a", "Deep water", "Maya", [2, 3], ["ambient", "drones", "no vocals", "long pieces"], "Very few voices. In the long middle of a session.", ms_mine("p2", 0, 20).concat(ms_other("a", 80)), 6, 4000),
-    ms_share("b", "Forest floor", null, [0, 4], ["nature", "guitar", "no vocals", "arrival"], "", ms_mine("p4", 0, 5).concat(ms_other("b", 60)), 4, 3000),
-    ms_share("c", "Peak, with care", "Ann", [1, 2], ["drums", "choirs", "strings", "arrival"], "Only with experienced people.", ms_mine("p2", 50, 2).concat(ms_other("c", 40)), 2.5, 2000),
-    ms_share("d", "Night sky", "Tom", [2, 3], ["ambient", "drones", "piano", "electronic"], "", ms_other("d", 50), 5, 1000),
+    ms_share("a", "Deep water", "Maya", "ceremony", { books: [1], description: "Slow and spacious, almost no vocals." }, ms_mine("p2", 0, 20).concat(ms_other("a", 80)), 6, 5000),
+    ms_share("b", "Forest floor", null, "phase", { phases: [0, 4] }, ms_mine("p4", 0, 5).concat(ms_other("b", 60)), 1.5, 4000),
+    ms_share("c", "Night sky", "Ann", "mood", { moods: ["grief", "tender"], description: "Mostly cello and voice." }, ms_mine("p2", 50, 2).concat(ms_other("c", 40)), 0.8, 3000),
+    ms_share("d", "Bowls and gongs", "Tom", "other", { other: "Sound bath", description: "Crystal bowls." }, ms_other("d", 50), 1.1, 2000),
+    ms_share("e", "Soft rain", "Kai", "mood", { moods: ["tender", "awe"] }, ms_other("e", 30), 1, 1000),
   ] };
-  TRACKS.short1 = Array.from({ length: 12 }, (_, i) => ({ track: { uri: `spotify:track:short1-${i}`, type: "track", duration_ms: 150000, name: `Song ${i}`, artists: [{ name: "Artist" }] } }));
-  var ms_opts = { sharing: ms_sh, extraPlaylists: [{ id: "short1", name: "car rides", owner: { id: "ron" } }] };
+  var ms_opts = { sharing: ms_sh };
   var ms_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: ms_opts });
   await waitFor(() => ms_w.eval("connection") === "ready", 15000);
   var ms_d = ms_w.document;
   await ms_w.eval("Promise.all([loadTracks('p2'), loadTracks('p4')])");   // the recipe's playlists are kept in the browser, so overlap can be measured
   ms_w.eval("openInfo('devOptions')");
-  check("Developer options no longer opens Music sharing, the app menu does, and Privacy has its topic", !ms_d.getElementById("devOpenSharing") && ms_d.getElementById("privacyMusicSharing").hidden === false && (ms_w.eval("closeInfo(true)"), ms_d.getElementById("feAppMenuButton").click(), ms_d.getElementById("feMusicSharing").click(), ms_d.getElementById("msOverlay").hidden === false));
+  check("Developer options does not open Music sharing, the app menu does, and Privacy has its topic, which names what a share keeps", !ms_d.getElementById("devOpenSharing") && ms_d.getElementById("privacyMusicSharing").hidden === false && /the type you chose with its books, phases, mood words or name/.test(ms_d.getElementById("privacyMusicSharing").textContent) && (ms_w.eval("closeInfo(true)"), ms_d.getElementById("feAppMenuButton").click(), !!ms_d.getElementById("feMusicSharing")));
+  ms_d.getElementById("feMusicSharing").click();
   var ms_names = () => Array.from(ms_d.querySelectorAll("#msResults .ms-row .ms-name")).map((e) => e.textContent);
-  var ms_sortLabels = () => { ms_d.getElementById("msSortButton").click(); const l = Array.from(ms_d.querySelectorAll("#msSortMenu button")).map((b) => b.textContent); ms_w.eval("closeSortMenu()"); return l; };
-  var ms_sort = (v) => { ms_d.getElementById("msSortButton").click(); ms_d.querySelectorAll("#msSortMenu button")[ms_w.eval("sortChoices().map((c) => c[0])").indexOf(v)].click(); };
-  await waitFor(() => ms_names().length === 4 && ms_w.eval("sortChoices().length") === 5, 5000);
-  check("Find playlists lists the shares, newest first, under Filters, a search icon and Sort, with no search field until the icon is used", JSON.stringify(ms_names()) === JSON.stringify(["Deep water", "Forest floor", "Peak, with care", "Night sky"]) && !ms_d.getElementById("msSearch") && Array.from(ms_d.querySelectorAll("#msTools > button")).map((b) => b.id).join() === "msFilters,msSearchOpen,msSortButton" && /Sort:\s*Newest/.test(ms_d.getElementById("msSortButton").textContent));
-  check("with enough songs kept (100 from 2 playlists) and 3 shares at 1% or more, Sort's menu has Newest, A to Z, Longest, Most overlap and Least overlap", JSON.stringify(ms_sortLabels()) === JSON.stringify(["Newest", "A to Z", "Longest", "Most overlap", "Least overlap"]) && !ms_d.getElementById("msSortMenu"));
-  ms_sort("az");
-  check("A to Z sorts by name, and the menu closes", JSON.stringify(ms_names()) === JSON.stringify(["Deep water", "Forest floor", "Night sky", "Peak, with care"]) && !ms_d.getElementById("msSortMenu") && /A to Z/.test(ms_d.getElementById("msSortButton").textContent));
-  check("with fewer than 3 shares at 1% or more, overlap is not worth showing", await ms_w.eval("(async () => { const keep = sharing.library.shares; sharing.library.shares = keep.filter((s) => s.id !== 'c'); const r = await measureOverlap(); sharing.library.shares = keep; return r.usable === false; })()"));
-  check("Newest shows no overlap", !/already in your recipes/.test(ms_d.getElementById("msResults").textContent));
-  ms_sort("longest");
-  check("Longest sorts by total length", JSON.stringify(ms_names()) === JSON.stringify(["Deep water", "Night sky", "Forest floor", "Peak, with care"]));
-  ms_sort("most");
-  var ms_ov = Array.from(ms_d.querySelectorAll("#msResults .ms-ov")).map((e) => e.textContent);
-  check("Most overlap sorts by the share of songs already in the recipes, and each row says it", JSON.stringify(ms_names()) === JSON.stringify(["Deep water", "Forest floor", "Peak, with care", "Night sky"]) && ms_ov[0] === "20% already in your recipes" && ms_ov[1] === "8% already in your recipes");
-  ms_sort("least");
-  check("Least overlap is the other way round", ms_names()[0] === "Night sky");
-  ms_sort("newest");
-  ms_d.getElementById("msFilters").click();
-  check("Filters opens a panel over the list with the phases, the tags and Hide playlists you have", !!ms_d.querySelector("#msSheet .ms-sheet") && !!ms_d.getElementById("msTags") && ms_d.getElementById("msHideAdded").checked && ms_d.getElementById("msShow").textContent === "Show 4 playlists");
-  var ms_tags = () => Array.from(ms_d.querySelectorAll("#msTags .ms-tag:not(.ms-more)")).map((e) => e.textContent);
-  check("tags are the ones used on two or more shared playlists, two-word tags included", ["arrival", "ambient", "drones", "no vocals"].every((t) => ms_tags().includes(t)) && !ms_tags().some((t) => ["drums", "piano", "nature"].includes(t)), JSON.stringify(ms_tags()));
-  check("a row: the name and who beside the cover, Get at the top right, the tags across the row under them with the phase curve at the end", (() => { const r = ms_d.querySelector("#msResults .ms-row"), kids = Array.from(r.children).map((c) => c.className); return kids[1] === "ms-text" && kids[2] === "ms-rowside" && kids[3] === "ms-rowtags" && kids[4] === "ms-rowcurve" && r.querySelector(".ms-text").children.length === 2 && !r.querySelector(".ms-rowside .ms-mini-curve") && r.querySelector(".ms-name").title === r.querySelector(".ms-name").textContent; })(), Array.from(ms_d.querySelector("#msResults .ms-row").children).map((c) => c.className).join(","));
-  var ms_shownTags = (r) => Array.from(r.querySelector(".ms-rowtags").children).filter((c) => !c.hidden).map((c) => c.textContent).join("|");
-  check("each row shows as many tags as fit on one line, +N more for the rest, and a small curve of its phases, and no description", (() => { const box = ms_d.querySelector("#msResults .ms-row .ms-rowtags"), shown = ms_shownTags(ms_d.querySelector("#msResults .ms-row")).split("|"), more = /^\+(\d+) more$/.exec(shown[shown.length - 1]); return box.scrollWidth <= box.clientWidth && /^ambient\|drones/.test(shown.join("|")) && (more ? shown.length - 1 + Number(more[1]) === 4 : shown.length === 4); })() && ms_d.querySelector("#msResults .ms-row .ms-mini-curve").getAttribute("aria-label") === "Played in Plateau, Descent" && ms_d.querySelector("#msResults .ms-row").querySelectorAll(".ms-mini-curve .ms-curve-lit").length === 2 && !ms_d.querySelector(".ms-desc"), ms_d.querySelector("#msResults .ms-row .ms-rowtags").textContent + " / " + ms_d.querySelector("#msResults .ms-row .ms-mini-curve").outerHTML);
-  var ms_phaseBtns = () => Array.from(ms_d.querySelectorAll("#msSheet .ms-phases-pick .ms-phase-names button"));
-  check("Find playlists has the curve of a session as a filter, its five parts named, one at a time", ms_phaseBtns().map((b) => b.textContent).join("|") === "Beginning|Ascent|Plateau|Descent|Ending" && ms_d.querySelector("#msSheet .ms-ftitle").textContent === "Phase" && /Choose one to see playlists that suit it\./.test(ms_d.getElementById("msSheet").textContent));
-  ms_phaseBtns()[2].click();
-  check("tapping a part shows the playlists that suit it, and lights it", JSON.stringify(ms_names()) === JSON.stringify(["Deep water", "Peak, with care", "Night sky"]) && ms_phaseBtns()[2].getAttribute("aria-pressed") === "true" && ms_d.querySelectorAll("#msSheet .ms-phases-pick .ms-curve-lit").length === 1 && ms_d.getElementById("msShow").textContent === "Show 3 playlists");
-  ms_phaseBtns()[3].click();
-  check("tapping another part chooses it in place of the first", ms_phaseBtns()[2].getAttribute("aria-pressed") === "false" && ms_phaseBtns()[3].getAttribute("aria-pressed") === "true" && JSON.stringify(ms_names()) === JSON.stringify(["Deep water", "Night sky"]));
-  check("the chosen phase is counted on the button and shown as a chip under it", ms_d.querySelector("#msFilters .ms-count").textContent === "1" && Array.from(ms_d.querySelectorAll("#msActive .ms-chip")).map((c) => c.textContent).join() === "Descent");
-  ms_d.querySelectorAll("#msActive .ms-chip")[0].click();
-  check("a chip's x removes that filter, and the curve in the panel follows", ms_names().length === 4 && ms_phaseBtns()[3].getAttribute("aria-pressed") === "false");
-  ms_phaseBtns()[3].click(); ms_phaseBtns()[3].click();
-  check("tapping the chosen part again clears it, all of them again", ms_names().length === 4);
-  Array.from(ms_d.querySelectorAll("#msTags .ms-tag")).find((e) => e.textContent === "arrival").click();
-  check("a chosen tag keeps its place", ms_tags().join() === ms_w.eval("visibleTags().slice(0, sharing.tagsShown).map((t) => t.word).join()"));
-  check("a tag shows only the playlists that use it", JSON.stringify(ms_names()) === JSON.stringify(["Forest floor", "Peak, with care"]));
-  ms_phaseBtns()[3].click();
-  check("filters that leave nothing say so, with Clear filters", /No playlists match/.test(ms_d.getElementById("msResults").textContent) && /4 playlists are shared\. Try fewer filters\./.test(ms_d.getElementById("msResults").textContent) && ms_d.getElementById("msShow").textContent === "No playlists match");
+  var ms_labels = () => Array.from(ms_d.querySelectorAll("#msResults .ms-row .ms-klabel")).map((e) => e.textContent);
+  var ms_tile = (k) => ms_d.querySelector(`#msBody .ms-ktile[data-kind="${k}"]`);
+  await waitFor(() => ms_names().length === 5 && ms_w.eval("sortChoices().length") === 5, 5000);
+  check("the tabs are Shared by others and Shared by you, with no ? and no pink card", Array.from(ms_d.querySelectorAll("#msTabs .ms-tab-name")).map((b) => b.textContent).join("|") === "Shared by others|Shared by you" && !ms_d.querySelector(".ms-tab-info") && !ms_d.getElementById("msIntroCard"));
+  check("Shared by others starts with tiles for All and the four types, and one line about Get", Array.from(ms_d.querySelectorAll("#msBody .ms-ktile")).map((b) => b.textContent).join("|") === "All|Ceremony|Phase|Mood|Other" && ms_tile("all").classList.contains("ms-on") && ms_d.querySelector(".ms-getline").textContent === "Get puts your own private copy in your Spotify. It stays as it is if the sharer changes theirs.");
+  check("All lists every share, newest first, each with its type's line above its name", JSON.stringify(ms_names()) === JSON.stringify(["Deep water", "Forest floor", "Night sky", "Bowls and gongs", "Soft rain"]) && ms_labels().join("|") === "Ceremony · Book 2|Phase · Beginning, Ending|Mood · grief, tender|Sound bath|Mood · tender, awe", ms_labels().join("|"));
+  check("an anonymous share says Anonymous, and each row has Get", /^Anonymous · 1 h 30 min$/.test(ms_d.querySelectorAll("#msResults .ms-row .ms-sub")[1].textContent) && ms_d.querySelectorAll("#msResults .ms-add").length === 5);
+  ms_d.getElementById("msSortButton").click();
+  check("All has a search, Hide playlists you have (on) and Sort, whose menu has Newest, A to Z, Longest, Most in your recipes and Least in your recipes", !!ms_d.getElementById("msSearch") && ms_d.getElementById("msHideAdded").checked && Array.from(ms_d.querySelectorAll("#msSortMenu button")).map((b) => b.textContent).join("|") === "Newest|A to Z|Longest|Most in your recipes|Least in your recipes");
+  Array.from(ms_d.querySelectorAll("#msSortMenu button")).find((b) => b.textContent === "Most in your recipes").click();
+  check("Most in your recipes sorts by the songs already in the recipes, and each row says it", ms_names()[0] === "Deep water" && ms_d.querySelector("#msResults .ms-ov").textContent === "20% already in your recipes");
+  ms_w.eval("setSort('newest')");
+  var ms_search = (q) => { const s = ms_d.getElementById("msSearch"); s.value = q; s.dispatchEvent(new ms_w.Event("input")); };
+  ms_search("cello");
+  check("search finds descriptions", JSON.stringify(ms_names()) === '["Night sky"]');
+  ms_search("zzzz");
+  check("a search that finds nothing says Nothing matches, with Clear search and filters", /Nothing matches/.test(ms_d.getElementById("msResults").textContent) && ms_d.querySelector("#msResults .ms-empty-ghost").textContent === "Clear search and filters");
   ms_d.querySelector("#msResults .ms-empty-ghost").click();
-  check("Clear filters clears them all, the panel's curve and tags too", ms_names().length === 4 && !ms_d.querySelector("#msSheet .ms-tag.ms-on") && !ms_d.querySelector("#msSheet .ms-phase-names .ms-on") && !ms_d.querySelector("#msFilters .ms-count"));
-  ms_d.getElementById("msShow").click();
-  check("Show N playlists closes the panel", !ms_d.getElementById("msSheet"));
-  ms_d.getElementById("msSearchOpen").click();
-  var ms_search = ms_d.getElementById("msSearch");
-  check("the search icon turns the row into a search field with Cancel", !!ms_search && ms_d.activeElement === ms_search && !ms_d.getElementById("msFilters") && /Cancel/.test(ms_d.getElementById("msTools").textContent));
-  ms_search.value = "choirs"; ms_search.dispatchEvent(new ms_w.Event("input"));
-  check("search finds tags", JSON.stringify(ms_names()) === JSON.stringify(["Peak, with care"]));
-  ms_search.value = "zzzz"; ms_search.dispatchEvent(new ms_w.Event("input"));
-  check("a search that finds nothing offers Clear search", /Try other words\./.test(ms_d.getElementById("msResults").textContent) && ms_d.querySelector("#msResults .ms-empty-ghost").textContent === "Clear search");
-  ms_d.querySelector("#msTools .ms-cancel").click();
-  check("Cancel clears the search and brings the buttons back", ms_names().length === 4 && !ms_d.getElementById("msSearch") && !!ms_d.getElementById("msFilters"));
+  check("which clears it", ms_names().length === 5 && ms_d.getElementById("msSearch").value === "");
+  ms_tile("ceremony").click();
+  check("Ceremony shows only ceremonies, with the five books to choose one at a time and a search of descriptions, and no Sort", JSON.stringify(ms_names()) === '["Deep water"]' && ms_d.querySelectorAll("#msTools .ms-btile").length === 5 && ms_d.getElementById("msSearch").placeholder === "Search descriptions" && !ms_d.getElementById("msSortButton"));
+  ms_d.querySelectorAll("#msTools .ms-btile")[0].click();
+  check("a book shows the ceremonies for it", ms_names().length === 0 && /Nothing matches/.test(ms_d.getElementById("msResults").textContent));
+  ms_d.querySelectorAll("#msTools .ms-btile")[1].click();
+  check("one book at a time: choosing another takes its place", ms_d.querySelectorAll("#msTools .ms-btile.ms-on").length === 1 && JSON.stringify(ms_names()) === '["Deep water"]');
+  ms_tile("phase").click();
+  check("Phase shows the curve to choose phases, and changing type clears the book", JSON.stringify(ms_names()) === '["Forest floor"]' && !!ms_d.querySelector("#msTools .ms-phases-pick") && ms_w.eval("sharing.book") === null);
+  ms_d.querySelectorAll("#msTools .ms-phase-names button")[2].click();
+  check("a phase no share has leaves nothing", ms_names().length === 0);
+  ms_d.querySelectorAll("#msTools .ms-phase-names button")[4].click();
+  check("more than one phase shows the shares with any of them", JSON.stringify(ms_names()) === '["Forest floor"]');
+  ms_tile("mood").click();
+  var ms_chipWords = () => Array.from(ms_d.querySelectorAll("#msMoods .ms-chip")).map((c) => c.textContent);
+  check("Mood shows the mood words two or more shares use", JSON.stringify(ms_names()) === '["Night sky","Soft rain"]' && ms_chipWords().join() === "tender", ms_chipWords().join());
+  ms_tile("other").click();
+  check("Other shows the rest, with a search", JSON.stringify(ms_names()) === '["Bowls and gongs"]' && !!ms_d.getElementById("msSearch"));
+  ms_w.eval("sharing.library.shares = sharing.library.shares.filter((s) => s.kind !== 'other'); renderSharing();");
+  check("a type no one has shared yet says so, with Share one of yours", /No one has shared one of these yet/.test(ms_d.getElementById("msResults").textContent) && ms_d.querySelector("#msResults .ms-empty-ghost").textContent === "Share one of yours");
+  ms_w.eval("sharing.libraryAt = 0"); await ms_w.eval("loadLibrary(true)");
+  ms_tile("all").click();
   ms_d.querySelector("#msResults .ms-row").click();
-  var ms_body = () => ms_d.getElementById("msBody").textContent;
-  await waitFor(() => !!ms_d.querySelector("#msBody .ms-facts"), 5000);   // a share with no song names: Includes, once the worker says so
-  check("a playlist's page has who shared it, its phases on the curve, its tags, its notes and Includes with the artists with the most songs (songs and length only under the name)", ms_d.querySelector("#msBody h3").textContent === "Deep water" && /Shared by Maya/.test(ms_body()) && Array.from(ms_d.querySelectorAll("#msBody .ms-phases .ms-phase-names .ms-on")).map((e) => e.textContent).join() === "Plateau,Descent" && !ms_d.querySelector("#msBody .ms-phases button") && Array.from(ms_d.querySelectorAll("#msBody .ms-tags-plain .ms-tag")).map((e) => e.textContent).join() === "ambient,drones,no vocals,long pieces" && /DescriptionVery few voices/.test(ms_body()) && !/The music|How I use it/.test(ms_body()) && ms_d.querySelector(".ms-facts").textContent === "Includes Brian Eno, Hammock, and more." && /100 songs · 6 h/.test(ms_d.querySelector(".ms-hero").textContent));
-  check("there is no title bar: the tabs and Close share the top row, the tabs stay on a playlist's page, and Back to the list is in the page", !ms_d.getElementById("msHead") && !ms_d.getElementById("msBand") && ms_d.getElementById("msClose").parentElement.id === "msTabsBar" && !!ms_d.querySelector("#msTabsBar .ms-tabs") && !ms_d.querySelector(".ms-tab-info") && /All playlists/.test(ms_d.getElementById("msBack").textContent));
-  check("a playlist's page says when its sharer plays it, phases in bold, never with the", (() => { const l = ms_d.querySelector("#msBody .ms-phase-line"); return !!l && l.textContent === "Maya plays it in Plateau and Descent" && Array.from(l.querySelectorAll("b")).map((b) => b.textContent).join() === "Plateau,Descent" && !/Phases it suits/.test(ms_body()); })());
-  check("more than two phases is a count, the person's own share says You, and an anonymous one They", ms_w.eval(`[phaseLine({ by: "Kai", phases: [0, 1, 4] }).textContent, phaseLine({ phases: [0] }).textContent]`).join("|") === "Kai plays it in 3 phases|They play it in Beginning" && (() => { const mine = ms_w.eval("sharing.mine"); ms_w.eval(`sharing.mine = [{ id: "zz" }]`); const t = ms_w.eval(`phaseLine({ id: "zz", by: "Ron", phases: [4] }).textContent`); ms_w.eval("sharing.mine = " + JSON.stringify(mine)); return t === "You play it in Ending"; })());
-  check("it says how many songs are already in the recipes", /20 of these songs \(20%\) are already in your recipes/.test(ms_body()));
-  ms_d.querySelector(".ms-overlap .linklike").click();
-  check("Show them lists those songs by the person's own song names", ms_d.querySelectorAll(".ms-songs li").length === 20 && !Array.from(ms_d.querySelectorAll(".ms-songs li")).some((l) => l.textContent === "A song"));
-  ms_d.querySelector(".ms-report").click();
+  await waitFor(() => !!ms_d.querySelector("#msBody .ms-hero"), 5000);
+  check("a playlist's page: its type, name, who on one line and the songs and length on the next", ms_d.querySelector("#msBody .ms-hero .ms-klabel").textContent === "Ceremony" && ms_d.querySelector("#msBody h3").textContent === "Deep water" && Array.from(ms_d.querySelectorAll("#msBody .ms-hero .ms-sub")).map((e) => e.textContent).join("|") === "Shared by Maya|100 songs · 6 h");
+  check("a ceremony's page shows its book lit under For use with, then the description with Report under it", /For use with/.test(ms_d.querySelector("#msBody .ms-facts").textContent) && ms_d.querySelector("#msBody .ms-btile.ms-on").textContent === "Book2" && ms_d.querySelector("#msBody .ms-long").textContent === "Slow and spacious, almost no vocals." && ms_d.querySelector("#msBody .ms-long").nextElementSibling.classList.contains("ms-reportrow"));
+  check("its bottom row has Back and Get this playlist", ms_d.getElementById("msBack").textContent === "Back" && ms_d.getElementById("msMain").textContent === "Get this playlist");
+  ms_w.eval("sharing.detail = 'b'; renderSharing();");
+  check("a phase share says when its sharer plays it over the curve, and with nothing typed there is no Report", ms_d.querySelector("#msBody .ms-phase-line").textContent === "They play it in Beginning and Ending" && !ms_d.querySelector("#msBody .ms-report"));
+  check("more than two phases is a count, and the person's own share says You", ms_w.eval(`phaseLine({ by: "Kai", phases: [0, 1, 4] }).textContent`) === "Kai plays it in 3 phases");
+  ms_w.eval("sharing.detail = 'e'; renderSharing();");
+  check("a mood share shows its words, and Report covers them even with no description", Array.from(ms_d.querySelectorAll("#msBody .ms-chip")).map((c) => c.textContent).join() === "tender,awe" && !!ms_d.querySelector("#msBody .ms-report"));
+  ms_w.eval("sharing.detail = 'a'; renderSharing();");
+  ms_d.querySelector("#msBody .ms-report").click();
   check("Report asks for a reason, with a note that is optional", ms_d.querySelectorAll(".fe-dialog input[type=radio]").length === 4 && !!ms_d.querySelector(".fe-dialog textarea"));
   ms_d.dispatchEvent(new ms_w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   await new Promise((r) => setTimeout(r, 300));
-  Array.from(ms_d.querySelectorAll(".fe-dialog button")).filter((b) => /Cancel/.test(b.textContent)).forEach((b) => b.click());
-  await new Promise((r) => setTimeout(r, 300));
-  ms_d.querySelector(".ms-addbig").click();
-  await waitFor(() => /Gotten/.test((ms_d.querySelector(".ms-addbig") || {}).textContent || ""), 5000);
+  ms_d.getElementById("msMain").click();
+  await waitFor(() => !!ms_d.getElementById("msSheet"), 5000);
   var ms_made = log.filter((e) => e.url.endsWith("/v1/me/playlists") && (e.init.method || "") === "POST").map((e) => JSON.parse(e.init.body)).pop();
-  check("Get this playlist makes a private copy with its name, and the device remembers it as a copy", ms_made && ms_made.name === "Deep water" && ms_made.public === false && "a" in ms_w.eval("sharingCopies()"));
-  ms_d.getElementById("msBack").click();
-  check("the list starts with an open card that says what it is and what Get does, including that the copy is the person's to change, with Got it and no ? on either tab", /^Playlists other facilitators share for their sessions\. Get puts your own private copy in your Spotify.*yours to change/.test(ms_d.getElementById("msIntro").textContent) && ms_d.getElementById("msIntroCard").nextElementSibling.id === "msTools" && ms_d.getElementById("msGotIt").textContent === "Got it" && !ms_d.querySelector(".ms-tab-info") && !ms_w.localStorage.getItem("sharingIntro"));
-  ms_d.getElementById("msGotIt").click();
-  check("Got it folds the card away, shows a ? after the Find playlists tab's name (and none on Share playlists), and keeps it folded for Find playlists only", !ms_d.getElementById("msIntroCard") && !!ms_d.getElementById("msInfoFind") && ms_d.getElementById("msInfoFind").previousElementSibling.textContent === "Find playlists" && ms_d.getElementById("msInfoFind").closest(".ms-tab").classList.contains("ms-on") && !ms_d.getElementById("msInfoShare") && !ms_d.getElementById("msInfo") && JSON.parse(ms_w.localStorage.getItem("sharingIntro")).find === "closed" && ms_w.eval("introOpen('share')"));
-  check("it stays folded the next time the list is drawn", (ms_w.eval("renderSharing()"), !ms_d.getElementById("msIntroCard") && !!ms_d.getElementById("msInfoFind")));
-  ms_d.getElementById("msInfoFind").click();
-  await waitFor(() => !!ms_d.getElementById("msIntroCard"), 3000);
-  check("the ? brings the card back, goes away, and that is kept too", !!ms_d.getElementById("msIntroCard") && !ms_d.querySelector(".ms-tab-info") && JSON.parse(ms_w.localStorage.getItem("sharingIntro")).find === "open");
-  check("a row's button says Get, and Gotten once the person has it", Array.from(ms_d.querySelectorAll("#msResults .ms-add")).every((b) => b.textContent === "Get") && (() => { ms_w.eval("sharing.hideAdded = false; renderSharing();"); const ok = Array.from(ms_d.querySelectorAll("#msResults .ms-row")).find((r) => /Deep water/.test(r.textContent)).querySelector(".ms-add").textContent === "Gotten"; ms_w.eval("sharing.hideAdded = true; renderSharing();"); return ok; })());
-  check("after adding one, with nothing shared, a line above the list counts what was added and Share one goes to Share playlists", (() => { const n = ms_d.getElementById("msShareNudge"); return !!n && n.textContent.startsWith("You have gotten 1 playlist from other facilitators.") && /Share one/.test(n.querySelector("button").textContent); })());
-  check("it is gone while the person shares a playlist", (() => { ms_w.eval("window._mine = sharing.mine; sharing.mine = [{ id: 'zz', playlist: 'x' }]; renderSharing();"); const ok = !ms_d.getElementById("msShareNudge"); ms_w.eval("sharing.mine = window._mine; renderSharing();"); return ok; })());
-  check("and not shown before anything is added", (() => { ms_w.eval("window._copies = localStorage.getItem('sharingCopies'); localStorage.removeItem('sharingCopies'); renderSharing();"); const ok = !ms_d.getElementById("msShareNudge"); ms_w.eval("localStorage.setItem('sharingCopies', window._copies); renderSharing();"); return ok; })());
-  check("added playlists are hidden from the list", ms_names().length === 3 && !ms_names().includes("Deep water"));
-  check("a playlist's page keeps the tabs in view above it, Find playlists chosen", (() => { ms_d.querySelector("#msResults .ms-row").click(); return !!ms_d.querySelector("#msTabsBar .ms-tabs") && ms_d.querySelector("#msTabsBar .ms-on").textContent === "Find playlists" && !!ms_d.getElementById("msBack") && !ms_d.querySelector("#msBody .ms-tabs"); })());
-  ms_d.querySelector("#msTabsBar .ms-on .ms-tab-name").click();
-  await new Promise((r) => setTimeout(r, 400));
-  check("and Find playlists there goes back to the list", !ms_d.getElementById("msBack") && ms_names().length === 3);
-  check("All playlists sticks where it sits, so it does not move as the page scrolls", /\.ms-back-bar \{ position: sticky; top: -14px;[^}]*background: var\(--bg\)/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
-  ms_w.eval("sharing.hideAdded = false;");
-  ms_w.eval(`sharing.mine = [{ id: sharing.library.shares.find((x) => x.name === "Forest floor").id, playlist: "x" }]; renderSharing();`);
-  var ms_fr = Array.from(ms_d.querySelectorAll("#msResults .ms-row")).find((r) => /Forest floor/.test(r.textContent));
-  check("the person's own share says Yours in place of Add", !!ms_fr && !!ms_fr.querySelector(".ms-yours") && /Yours/.test(ms_fr.textContent) && !Array.from(ms_fr.querySelectorAll("button")).some((b) => /Add/.test(b.textContent)));
-  check("the person's own share's page has no button: the line under the name says Shared by you", (() => { ms_fr.click(); const ok = /Shared by you/.test(ms_d.querySelector(".ms-hero").textContent) && !ms_d.querySelector("#msBody .ms-actions") && !ms_d.querySelector("#msBody .ms-yours"); ms_w.eval("closeDetail()"); return ok; })());
-  ms_w.eval("sharing.hideAdded = true; renderSharing();");
-  check("Hide added hides the person's own shares too", !ms_names().includes("Forest floor") && !ms_names().includes("Deep water"));
-  ms_w.eval("sharing.mine = null; renderSharing();");
-  check("with every playlist added or shared by the person, the list says so and offers Show them", (() => { ms_w.eval("sharing.mine = sharing.library.shares.map((s) => ({ id: s.id })); renderSharing();"); const ok = /You have them all/.test(ms_d.getElementById("msResults").textContent) && ms_d.querySelector("#msResults .ms-empty-ghost").textContent === "Show them"; ms_w.eval("sharing.mine = null; renderSharing();"); return ok; })());
-  check("with nothing shared yet, the list says so and Share playlists goes to that tab, with no buttons above it", (() => { ms_w.eval("window._keep = sharing.library.shares; sharing.library.shares = []; renderSharing();"); const ok = /No playlists are shared yet/.test(ms_d.getElementById("msResults").textContent) && ms_d.getElementById("msTools").hidden && /Share playlists/.test(ms_d.querySelector("#msResults .ms-empty-main").textContent); ms_w.eval("sharing.library.shares = window._keep; renderSharing();"); return ok; })());
-  ms_d.getElementById("msGotIt").click();
+  check("Get this playlist makes a private copy with its name and description, and the device remembers it as a copy", ms_made && ms_made.name === "Deep water" && ms_made.public === false && ms_made.description === "Slow and spacious, almost no vocals." && "a" in ms_w.eval("sharingCopies()"));
+  check("after a Get, with nothing shared, a sheet says it is in Spotify and invites a share, with the 1 for every 4 rule", /Deep water is in your Spotify/.test(ms_d.getElementById("msSheet").textContent) && /Maya shared this\. Share one of yours\?/.test(ms_d.getElementById("msSheet").textContent) && /once you share 1 playlist for every 4 you get/.test(ms_d.getElementById("msSheet").textContent) && !!ms_d.getElementById("msNotNow"));
+  check("and the button says Gotten, grey", /Gotten/.test(ms_d.getElementById("msMain").textContent) && ms_d.getElementById("msMain").disabled);
+  ms_d.getElementById("msNotNow").click();
+  check("Not now closes it", !ms_d.getElementById("msSheet"));
+  check("the invitation is not shown once the person shares 1 for every 4 they get", ms_w.eval("sharing.mine = [{ id: 'zz', playlist: 'x' }]; offerToShare(sharing.library.shares[0]); const shown = !!document.getElementById('msSheet'); sharing.mine = []; shown") === false);
+  ms_w.eval("closeDetail()");
+  await waitFor(() => ms_w.eval("sharing.detail") === null, 3000);
+  check("playlists the person has are hidden", !ms_names().includes("Deep water"));
+  ms_tile("ceremony").click();
+  check("with every one of a type already the person's, the list says so with Show them", /You have it already/.test(ms_d.getElementById("msResults").textContent) && ms_d.querySelector("#msResults .ms-empty-ghost").textContent === "Show them");
+  ms_d.querySelector("#msResults .ms-empty-ghost").click();
+  check("Show them shows it, Gotten", ms_names().join() === "Deep water" && /Gotten/.test(ms_d.querySelector("#msResults .ms-add").textContent));
+  ms_tile("all").click();
+
+  // ---------------- Shared by you
   ms_d.querySelectorAll(".ms-tab-name")[1].click();
-  await waitFor(() => ms_d.querySelectorAll(".ms-srow").length > 0, 5000);
-  check("Share playlists has its own card, open until its own Got it, and Find playlists keeps its ?, on a tab that is not chosen", /^Share your own playlists with other facilitators\. Tick one, then mark when you play it and add at least 3 tags\. It needs at least two hours of songs\./.test(ms_d.getElementById("msIntro").textContent) && !ms_d.getElementById("msInfoShare") && !!ms_d.getElementById("msInfoFind") && !ms_d.getElementById("msInfoFind").closest(".ms-tab").classList.contains("ms-on"));
-  ms_d.getElementById("msInfoFind").click();
-  await waitFor(() => ms_w.eval("sharing.tab") === "find" && !!ms_d.getElementById("msIntroCard"), 3000);
-  check("the other tab's ? switches to that tab with its card open", ms_w.eval("sharing.tab") === "find" && /^Playlists other facilitators share/.test(ms_d.getElementById("msIntro").textContent) && !ms_d.getElementById("msInfoFind"));
-  ms_d.querySelectorAll(".ms-tab-name")[1].click();
-  await waitFor(() => ms_d.querySelectorAll(".ms-srow").length > 0 && !!ms_d.getElementById("msIntroCard"), 5000);
-  var ms_row = (id) => ms_d.getElementById("msRow-" + id);
-  var ms_copyRow = Array.from(ms_d.querySelectorAll(".ms-srow")).find((r) => /Deep water/.test(r.textContent));
-  check("Share playlists lists the person's own playlists with a checkbox each, and a copy cannot be shared again", !!ms_row("p1") && !ms_row("p5") && !!ms_copyRow && ms_copyRow.querySelector("input").disabled && /cannot be shared again/.test(ms_copyRow.textContent));
-  var ms_apply = () => ms_d.getElementById("msApply");
-  check("the button at the bottom says No changes and does nothing yet", ms_apply().textContent === "No changes" && ms_apply().disabled);
-  ms_row("short1").querySelector("input").click();
-  await waitFor(() => /Under two hours/.test(ms_row("short1").textContent), 5000);
-  check("a playlist under two hours cannot be shared: no checkbox, a grey name, and one line saying so in place of the songs", (() => { const r = ms_row("short1"), b = r.querySelector("input"); return b.disabled && !b.checked && ms_w.getComputedStyle(b).visibility === "hidden" && r.querySelector(".ms-name").classList.contains("ms-dim") && r.querySelector(".ms-sub").textContent === "Under two hours, so it can't be shared." && !r.querySelector(".ms-state") && !/songs/.test(r.textContent); })(), ms_row("short1").textContent);
-  check("a playlist found under two hours is remembered: on the next visit it shows as too short at once, without reading its songs", (() => { ms_w.eval("delete sharing.picks.short1; renderSharing();"); return /Under two hours/.test(ms_row("short1").textContent) && ms_row("short1").querySelector("input").disabled && JSON.parse(ms_w.localStorage.getItem("sharingBlocked")).short1.why === "short"; })());
-  check("a playlist found unshareable keeps its place while the popup is open, and goes to the bottom (above copies) the next time it opens", (() => { const order = () => Array.from(ms_d.querySelectorAll(".ms-srow")).map((r) => r.id.slice(6)); ms_w.eval("window._pl = playlists.slice(); const i = playlists.findIndex((x) => x.id === 'short1'); playlists.unshift(playlists.splice(i, 1)[0]); sharing.sunk = new Set(); renderSharing();"); const before = order(); ms_w.eval("sharing.sunk = new Set(Object.keys(blockRecord())); renderSharing();"); const after = order(), copy = ms_copyRow.id.slice(6); ms_w.eval("playlists.splice(0, playlists.length, ...window._pl); sharing.sunk = new Set(); renderSharing();"); return before.indexOf("short1") < before.indexOf("p2") && after.indexOf("short1") === after.length - 2 && after[after.length - 1] === copy; })());
-  check("shared playlists go to the top as first read on opening: one shared or stopped while open keeps its place until next time", (() => { const order = () => Array.from(ms_d.querySelectorAll(".ms-srow")).map((r) => r.id.slice(6)); ms_w.eval("window._mine = sharing.mine; window._top = sharing.topIds; window._pl = playlists.slice(); playlists.push(playlists.splice(playlists.findIndex((x) => x.id === 'p3'), 1)[0]); sharing.mine = [{ playlist: 'p3', phases: [1], tags: ['a', 'b', 'c'] }]; sharing.topIds = new Set(); renderSharing();"); const held = order(); ms_w.eval("sharing.topIds = new Set(['p3']); renderSharing();"); const next = order(); ms_w.eval("sharing.mine = window._mine; sharing.topIds = window._top; playlists.splice(0, playlists.length, ...window._pl); delete sharing.picks.p3; renderSharing();"); return held[0] !== "p3" && next[0] === "p3"; })());
-  check("once it changes in Spotify (a new snapshot) it gets its checkbox back, to be checked again", (() => { ms_w.eval("const p = playlists.find((x) => x.id === 'short1'), was = p.snapshot; window._short = JSON.parse(localStorage.getItem('sharingBlocked')); localStorage.setItem('sharingBlocked', JSON.stringify({ short1: { snap: 'old-snapshot', why: 'short' } })); p.snapshot = 'new-snapshot'; delete sharing.picks.short1; renderSharing(); window._wasSnap = was;"); const ok = !ms_row("short1").querySelector("input").disabled; ms_w.eval("playlists.find((x) => x.id === 'short1').snapshot = window._wasSnap; localStorage.setItem('sharingBlocked', JSON.stringify(window._short)); delete sharing.picks.short1; renderSharing();"); return ok && ms_row("short1").querySelector("input").disabled; })());
-  ms_row("p3").querySelector("input").click();
-  await waitFor(() => !!ms_row("p3") && !!ms_row("p3").querySelector(".ms-tagbox"), 5000);
-  var ms_phase = (id, i) => ms_row(id).querySelectorAll(".ms-phase-names button")[i].click();
-  var ms_type = (id, text) => { const t = ms_row(id).querySelector(".ms-taginput"); t.value = text; t.dispatchEvent(new ms_w.Event("input")); };
-  var ms_chips = (id) => Array.from(ms_row(id).querySelectorAll(".ms-tagchip")).map((c) => c.firstChild.textContent);
-  var ms_meters = (id) => Array.from(ms_row(id).querySelectorAll(".ms-flabel .ms-meter")).map((m) => m.textContent);
-  check("a ticked playlist asks for its phases and tags (no notes box), the counters on the label lines saying what is missing", Array.from(ms_row("p3").querySelectorAll(".ms-flabel b")).map((b) => b.textContent).join("|") === "When do you play it?|Tags" && ms_meters("p3").join("|") === "Choose all that apply|0, at least 3" && ms_row("p3").querySelectorAll(".ms-flabel .ms-short").length === 2 && !ms_row("p3").querySelector("textarea"), JSON.stringify(ms_meters("p3")));
-  ms_phase("p3", 2);
-  check("the empty tag box says what to type, with no other instructions", ms_row("p3").querySelector(".ms-taginput").placeholder === "Describe the music, e.g. gentle, piano" && !/comma/i.test(ms_row("p3").textContent), ms_row("p3").querySelector(".ms-taginput").placeholder);
-  ms_type("p3", "Warm, #Strings ");
-  check("tags are typed with commas or spaces and become chips, cleaned up", JSON.stringify(ms_chips("p3")) === '["warm","strings"]' && ms_row("p3").querySelector(".ms-taginput").value === "" && ms_meters("p3").join("|") === "Plateau|2, at least 3", JSON.stringify(ms_chips("p3")) + JSON.stringify(ms_meters("p3")));
-  ms_phase("p3", 1); ms_phase("p3", 3);
-  check("with more than two phases chosen, the label line counts them instead of naming them, so it stays on one line", ms_meters("p3")[0] === "3 phases", JSON.stringify(ms_meters("p3")));
-  ms_phase("p3", 1); ms_phase("p3", 3);
-  ms_type("p3", "no-vocals ");
-  check("a dash joins two words into one tag", JSON.stringify(ms_chips("p3")) === '["warm","strings","no vocals"]', JSON.stringify(ms_chips("p3")));
-  ms_row("p3").querySelectorAll(".ms-tagx")[2].click();
-  ms_row("p3").querySelector(".ms-taginput").blur();
-  check("the dash hint shows only while typing in the box", ms_row("p3").querySelector(".ms-taghint").hidden && (ms_row("p3").querySelector(".ms-taginput").dispatchEvent(new ms_w.Event("focus")), !ms_row("p3").querySelector(".ms-taghint").hidden) && /dash: no-vocals\.$/.test(ms_row("p3").querySelector(".ms-taghint").textContent));
-  ms_row("p3").querySelector(".ms-taginput").dispatchEvent(new ms_w.Event("blur"));
-  ms_type("p3", "amb");
-  var ms_sugg = Array.from(ms_row("p3").querySelectorAll(".ms-sugg"));
-  check("tags others use are offered as the person types", ms_sugg.map((b) => b.textContent).join() === "ambient", ms_row("p3").querySelector(".ms-suggest").textContent);
-  ms_sugg[0].click();
-  check("and one is added with a click, the half-typed word gone", JSON.stringify(ms_chips("p3")) === '["warm","strings","ambient"]' && ms_row("p3").querySelector(".ms-taginput").value === "");
-  ms_row("p3").querySelectorAll(".ms-tagx")[2].click();
-  check("a chip's x takes it away, and with two tags nothing can be shared yet", JSON.stringify(ms_chips("p3")) === '["warm","strings"]' && ms_apply().textContent === "No changes");
-  check("under the name, the line about the songs replaces the song count once ticked", /^130 songs, [^.]*\.( Includes .*, and more\.)?$/.test(ms_row("p3").querySelector(".ms-sub").textContent), ms_row("p3").querySelector(".ms-sub").textContent);
-  ms_type("p3", "voices,");
-  check("with a phase and three tags the button says what it will do, and the row says nothing (no Ready)", ms_apply().textContent === "Share 1" && !ms_apply().disabled && ms_d.getElementById("msState-p3").textContent === "");
-  ms_d.getElementById("msClose").click();
-  await waitFor(() => !!ms_d.getElementById("feSyncChoice0"), 3000);
-  check("closing with changes not applied asks whether to apply them", /Apply your changes\?/.test(ms_d.getElementById("feSyncChoice0").closest(".fe-dialog").textContent) && ms_d.getElementById("feSyncChoice0").textContent === "Apply");
-  ms_d.getElementById("feSyncChoice0").click();
-  await waitFor(() => ms_sh.posts.length === 1 && ms_d.getElementById("msOverlay").hidden, 5000);
-  var ms_post = ms_sh.posts[0];
-  check("Apply shares it: song IDs and recording IDs, each song's title, artist and length, the length, the top artists, and the person's Spotify name", ms_post && ms_post.playlist === "p3" && ms_post.by === "Ron" && ms_post.songs.length === 130 && ms_post.songs.every((x) => Array.isArray(x) && x.length === 2 && !/spotify:/.test(x[0])) && ms_post.ms > 3600000 && JSON.stringify(ms_post.artists) === '["Artist"]' && ms_post.names.length === 130 && JSON.stringify(ms_post.names[0].slice(0, 2)) === '["Song 0","Artist"]' && ms_post.names[0][2] >= 150000 && JSON.stringify(Object.keys(ms_post).sort()) === JSON.stringify(["artists", "by", "cover", "ms", "name", "names", "notes", "phases", "playlist", "snapshot", "songs", "tags"]) && JSON.stringify(ms_post.phases) === "[2]" && JSON.stringify(ms_post.tags) === '["warm","strings","voices"]', JSON.stringify(ms_post && { phases: ms_post.phases, tags: ms_post.tags, notes: ms_post.notes }));
-  ms_w.eval("openSharing('share')");
-  await waitFor(() => !!ms_row("p3") && /Shared/.test(ms_row("p3").textContent), 5000);
-  check("a shared playlist shows as shared and ticked", ms_row("p3").querySelector("input").checked);
-  check("a shared playlist is folded: its songs and length (no artists) with Edit details on that line, no date, no fields", !ms_row("p3").querySelector(".ms-fields") && ms_d.getElementById("msState-p3").textContent === "" && /^130 songs, [^.]*\.$/.test(ms_row("p3").querySelector(".ms-subtext").textContent) && ms_row("p3").querySelector(".ms-sub #msEdit-p3"), ms_d.getElementById("msState-p3").textContent + " / " + ms_row("p3").querySelector(".ms-sub").textContent);
-  ms_d.getElementById("msEdit-p3").click();
-  await waitFor(() => !!ms_row("p3").querySelector(".ms-fields"), 2000);
-  check("Edit unfolds the same fields with what was shared, and Done takes its place", JSON.stringify(ms_chips("p3")) === '["warm","strings","voices"]' && ms_row("p3").querySelector(".ms-phase-names .ms-on").textContent === "Plateau" && !!ms_d.getElementById("msDone-p3"));
-  ms_phase("p3", 3);
-  check("a change keeps Done and the bottom button says Update 1", !!ms_d.getElementById("msDone-p3") && ms_apply().textContent === "Update 1", ms_apply().textContent);
-  ms_d.getElementById("msDone-p3").click();
-  await waitFor(() => !ms_row("p3").querySelector(".ms-fields"), 2000);
-  check("Done folds it again, saying nothing more, with Edit", ms_d.getElementById("msState-p3").textContent === "" && !!ms_d.getElementById("msEdit-p3") && ms_apply().textContent === "Update 1", ms_d.getElementById("msState-p3").textContent);
-  ms_apply().click();
-  await waitFor(() => ms_apply().textContent === "No changes", 5000);
-  check("after the update goes through the row stays folded, and the change went", JSON.stringify(ms_sh.posts[ms_sh.posts.length - 1].phases) === "[2,3]" && !ms_row("p3").querySelector(".ms-fields") && ms_d.getElementById("msState-p3").textContent === "" && !!ms_d.getElementById("msEdit-p3"), ms_d.getElementById("msState-p3").textContent);
-  { const sel = ms_d.querySelector(".ms-shown-select"), pick = (v) => { sel.value = v; sel.dispatchEvent(new ms_w.Event("change")); };
-    pick("anon");
-    const toAnon = ms_apply().textContent;
-    pick("spotify");
-    check("Shown as changed to Anonymous asks to update, and changed back says No changes again", toAnon === "Update 1" && ms_apply().textContent === "No changes" && ms_apply().disabled, toAnon + " / " + ms_apply().textContent); }
+  await waitFor(() => !!ms_d.querySelector("#msBody .ms-welcome"), 5000);
+  check("with nothing shared, Shared by you says so with three steps and Share a playlist", /You haven't shared any playlists yet/.test(ms_d.getElementById("msBody").textContent) && ms_d.querySelectorAll("#msBody .ms-how li").length === 3 && ms_d.getElementById("msMain").textContent === "Share a playlist");
+  ms_d.getElementById("msMain").click();
+  var ms_pick = () => Array.from(ms_d.querySelectorAll("#msBody .ms-pickrow")).map((r) => r.id.slice(7));
+  check("Share a playlist: a title and three steps in place of the tabs, Playlist first, and Back alone at the bottom", ms_d.querySelector(".ms-flowtitle").textContent === "Share a playlist" && Array.from(ms_d.querySelectorAll(".ms-steps li")).map((l) => l.textContent + (l.classList.contains("ms-now") ? "*" : "")).join("|") === "Playlist*|Type|Details" && ms_d.querySelectorAll("#msFoot button").length === 1 && ms_d.getElementById("msBack").textContent === "Back");
+  check("it lists the person's own playlists: not others', not the copy just gotten", ms_pick().join() === "p1,p2,p3,p4" && /Which playlist would you like to share\?/.test(ms_d.getElementById("msBody").textContent), ms_pick().join());
+  ms_d.getElementById("msPick-p3").click();
+  await waitFor(() => ms_w.eval("sharing.flow.step") === 1, 5000);
+  var ms_card = () => ms_d.querySelector("#msCardPreview .ms-row");
+  check("tapping one reads its songs and goes to Type, with Others will see at the top (its type still blank)", /What type of playlist is this\?/.test(ms_d.getElementById("msBody").textContent) && ms_card().querySelector(".ms-name").textContent === "💗💗 evocative" && ms_card().querySelector(".ms-klabel").classList.contains("ms-blank") && /^Ron · /.test(ms_card().querySelector(".ms-sub").textContent));
+  check("the four types are big tiles, each with a line", Array.from(ms_d.querySelectorAll("#msBody .ms-ktile-line")).length === 4 && ms_d.getElementById("msMain").textContent === "Next");
+  ms_d.getElementById("msMain").click();
+  check("Next with no type says so under the tiles", /Choose a type\./.test(ms_d.querySelector('#msBody [data-field="kind"] .ms-ferr').textContent));
+  ms_tile("ceremony").click();
+  ms_d.getElementById("msAnon").click();
+  check("choosing a type and Share anonymously changes the card at once, and the error goes", ms_card().querySelector(".ms-klabel").textContent === "Ceremony" && /^Anonymous · /.test(ms_card().querySelector(".ms-sub").textContent) && !ms_d.querySelector("#msBody .ms-ferr"));
+  ms_d.getElementById("msMain").click();
+  check("Next goes to Details, with the books and a description and Share now", ms_w.eval("sharing.flow.step") === 2 && ms_d.querySelector('#msBody [data-field="books"] .ms-flabel b').textContent === "For use with which books?" && !!ms_d.getElementById("msDesc") && ms_d.getElementById("msMain").textContent === "Share now");
+  check("a playlist with no Spotify description has no Mine | Spotify's switch", !ms_d.getElementById("msDescSpotify"));
+  ms_d.getElementById("msMain").click();
+  await waitFor(() => ms_d.querySelectorAll("#msBody .ms-bad").length === 2, 3000);
+  check("Share now with fields missing marks each red with a message under it, and sends nothing", ms_d.querySelector('[data-field="books"] .ms-ferr').textContent === "Choose at least one book." && ms_d.querySelector('[data-field="description"] .ms-ferr').textContent === "Add a sentence or two." && ms_sh.posts.length === 0);
+  ms_d.querySelectorAll('#msBody [data-field="books"] .ms-btile')[2].click();
+  check("a field put right loses its red at once, and the card follows", !ms_d.querySelector('[data-field="books"]').classList.contains("ms-bad") && ms_card().querySelector(".ms-klabel").textContent === "Ceremony · Book 3");
+  ms_d.querySelectorAll('#msBody [data-field="books"] .ms-btile')[0].click();
+  check("ceremonies take more than one book", ms_card().querySelector(".ms-klabel").textContent === "Ceremony · Books 1, 3");
+  { const t = ms_d.getElementById("msDesc"); t.value = "Long and quiet."; t.dispatchEvent(new ms_w.Event("input")); }
+  ms_d.getElementById("msMain").click();
+  await waitFor(() => !!ms_d.querySelector("#msBody .ms-shared"), 5000);
+  var ms_post = ms_sh.posts[ms_sh.posts.length - 1];
+  check("Share now sends the type, its books, the description, anonymous, and the songs with their names", ms_post.playlist === "p3" && ms_post.kind === "ceremony" && JSON.stringify(ms_post.books) === "[0,2]" && ms_post.description === "Long and quiet." && ms_post.descSource === "mine" && ms_post.by === null && ms_post.songs.length === 130 && ms_post.names.length === 130 && !("tags" in ms_post));
+  check("then a page says it is shared, with Share another playlist and Done", /💗💗 evocative is shared/.test(ms_d.getElementById("msBody").textContent) && /Other facilitators can find it in Shared by others now\./.test(ms_d.getElementById("msBody").textContent) && ms_d.getElementById("msMain").textContent === "Share another playlist" && !!ms_d.getElementById("msDone"));
+  ms_d.getElementById("msDone").click();
+  await waitFor(() => !!ms_d.querySelector("#msBody .ms-yrow"), 5000);
+  var ms_yrow = () => ms_d.querySelector("#msBody .ms-yrow");
+  check("Done shows the list of shares: its type, name, Anonymous, and Share another playlist at the bottom", ms_yrow().querySelector(".ms-klabel").textContent === "Ceremony · Books 1, 3" && /^Anonymous/.test(ms_yrow().querySelector(".ms-sub").textContent) && ms_d.getElementById("msMain").textContent === "Share another playlist");
+  check("a playlist already shared is not offered again", (ms_d.getElementById("msMain").click(), !ms_pick().includes("p3")) && (ms_d.getElementById("msBack").click(), true));
+  ms_yrow().click();
+  check("a share opens its edit page: the card, the types as small tiles, its fields filled in, Share anonymously, Stop sharing, Back and Update", ms_d.querySelector(".ms-flowtitle").textContent === "Edit share" && !ms_d.querySelector(".ms-steps") && ms_d.querySelector('#msBody .ms-ktile.ms-on').dataset.kind === "ceremony" && ms_d.getElementById("msDesc").value === "Long and quiet." && ms_d.getElementById("msAnon").checked && !!ms_d.getElementById("msStop") && ms_d.getElementById("msMain").textContent === "Update");
+  ms_tile("mood").click();
+  var ms_moodType = (text) => { const i = ms_d.getElementById("msMoodInput"); i.value = text; i.dispatchEvent(new ms_w.Event("input")); };
+  ms_moodType("shit,");
+  check("a mood word on the blocked list is not taken, and says so", ms_w.eval("sharing.flow.draft.moods.length") === 0 && !ms_d.querySelector("#msBody .ms-moodbox + .ms-ferr").hidden && /can't be used/.test(ms_d.querySelector("#msBody .ms-moodbox + .ms-ferr").textContent));
+  ms_moodType("Deep calm,");
+  check("other words become chips, lower case, and moods others use are offered", ms_w.eval("sharing.flow.draft.moods.join()") === "deep calm" && Array.from(ms_d.querySelectorAll("#msBody .ms-suggest .ms-chip")).map((c) => c.textContent).includes("tender"));
+  check("damn, hell and crap are allowed", ["damn", "hell", "crap", "grief"].every((w) => !ms_w.eval(`blockedWord(${JSON.stringify(w)})`)) && ms_w.eval("blockedWord('bugger off')"));
+  ms_d.getElementById("msMain").click();
+  await waitFor(() => !ms_w.eval("sharing.flow"), 5000);
+  ms_post = ms_sh.posts[ms_sh.posts.length - 1];
+  check("Update sends the new type and its words, and goes back to the list", ms_post.kind === "mood" && JSON.stringify(ms_post.moods) === '["deep calm"]' && JSON.stringify(ms_post.books) === "[]" && !!ms_yrow());
+  ms_w.eval("playlists.find((p) => p.id === 'p3').snapshot = 'changed'; sharing.mine[0].snapshot = 'before'; renderSharing();");
+  check("a share changed in Spotify since it was shared gets a strip with Update", /Changed in Spotify since you shared it/.test(ms_d.querySelector("#msBody .ms-strip").textContent));
+  ms_d.querySelector("#msBody .ms-stripbtn").click();
+  await waitFor(() => ms_sh.posts.length === 3, 5000);
+  check("Update there shares it again with the same details", ms_sh.posts[2].kind === "mood" && JSON.stringify(ms_sh.posts[2].moods) === '["deep calm"]' && ms_sh.posts[2].snapshot === "changed");
   ms_sh.staleToken = true;
   ms_w.eval('keepRefresh("ref-old", "' + SCOPE_ALL + '")');
   ms_w.eval("sharing.mine = null; loadMine()");
   await waitFor(() => ms_w.eval("!!sharing.mine || !!sharing.mineError"), 4000);
-  check("when the sign-in has run out, Music sharing renews it and sends again with the new one (no error above the list)", ms_w.eval("!!sharing.mine && !sharing.mineError") && ms_opts.renewals >= 1, ms_w.eval("sharing.mineError"));
+  check("when the sign-in has run out, Music sharing renews it and sends again with the new one", ms_w.eval("!!sharing.mine && !sharing.mineError") && ms_opts.renewals >= 1, ms_w.eval("sharing.mineError"));
   ms_sh.staleToken = false;
-  ms_row("p3").querySelector("input").click();
-  await waitFor(() => ms_apply().textContent === "Stop sharing 1", 2000);
-  check("unticking it asks to stop sharing", ms_apply().textContent === "Stop sharing 1");
-  ms_apply().click();
-  await waitFor(() => ms_sh.deletes.length === 1 && ms_apply().textContent === "No changes", 5000);
-  check("Apply stops sharing it", ms_sh.shares.every((s) => s.playlist !== "p3"));
-  ms_sh.refuse = "This looks like a copy of Forest floor, which someone else shares.";
-  ms_row("p1").querySelector("input").click();
-  await waitFor(() => !!ms_row("p1") && !!ms_row("p1").querySelector(".ms-tagbox"), 5000);
-  ms_phase("p1", 0);
-  ms_type("p1", "soothing, familiar, songs,");
-  ms_apply().click();
-  await waitFor(() => /someone else shares/.test(ms_row("p1").textContent), 5000);
-  check("a share the backend finds to be a copy is refused, and the row looks like a short one: no checkbox, a grey name, one line naming the share", (() => { const r = ms_row("p1"), b = r.querySelector("input"); return ms_sh.shares.every((s) => s.playlist !== "p1") && b.disabled && !b.checked && r.querySelector(".ms-name").classList.contains("ms-dim") && r.querySelector(".ms-sub").textContent.replace(/[\u2066-\u2069]/g, "") === "A copy of Forest floor, which someone else shares, so it can't be shared." && !r.querySelector(".ms-fields") && ms_apply().textContent === "No changes"; })(), ms_row("p1").textContent);
-  check("the refusal is remembered: on the next visit the row shows it at once, until the playlist changes in Spotify", (() => { ms_w.eval("delete sharing.picks.p1; renderSharing();"); const b = JSON.parse(ms_w.localStorage.getItem("sharingBlocked")).p1; return b.why === "copy" && b.of === "Forest floor" && ms_row("p1").querySelector("input").disabled && /A copy of/.test(ms_row("p1").textContent); })());
-  ms_w.eval("resetPicks()");
+  ms_yrow().click();
+  ms_d.getElementById("msStop").click();
+  await waitFor(() => !!ms_d.getElementById("feSyncChoice1"), 3000);
+  check("Stop sharing asks first, saying copies others got stay theirs", /Copies others already got stay theirs\./.test(ms_d.getElementById("feSyncChoice1").closest(".fe-dialog").textContent) && ms_d.getElementById("feSyncChoice1").textContent === "Stop sharing" && ms_d.getElementById("feSyncChoice1").classList.contains("fe-danger-button"));
+  ms_d.getElementById("feSyncChoice1").click();
+  await waitFor(() => ms_sh.deletes.length === 1 && !!ms_d.querySelector("#msBody .ms-welcome"), 5000);
+  check("and stops sharing it", ms_sh.shares.every((s) => s.playlist !== "p3"));
+  ms_sh.refuse = { error: "x", code: "copy", percent: 93, of: "Forest floor" };
+  ms_d.getElementById("msMain").click();
+  ms_d.getElementById("msPick-p1").click();
+  await waitFor(() => ms_w.eval("sharing.flow.step") === 1, 5000);
+  ms_tile("phase").click();
+  ms_d.getElementById("msMain").click();
+  ms_d.querySelectorAll("#msBody .ms-phase-names button")[1].click();
+  check("a phase share needs no description", ms_d.querySelector('[data-field="description"] .ms-fnote').textContent === "optional");
+  ms_d.getElementById("msMain").click();
+  await waitFor(() => !!ms_d.getElementById("msRefused"), 5000);
+  check("a share the worker finds to be a copy says so at the top with the exact share, and Share now turns grey", ms_d.getElementById("msRefused").textContent === "93% of its songs are in Forest floor, which someone else shares, so it can't be shared." && ms_d.getElementById("msMain").disabled && ms_d.getElementById("msMain").classList.contains("ms-grey"));
+  check("the refusal is remembered, so it is not offered again until it changes in Spotify", JSON.parse(ms_w.localStorage.getItem("sharingBlocked")).p1.why === "copy" && (ms_w.eval("startShare()"), !ms_pick().includes("p1")));
+  ms_sh.refuse = null;
   ms_w.close();
   } catch (err) { areaCrashed("music sharing", err); }
   }
@@ -5223,8 +5181,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   dv_w.eval("window.__t[window.__t.length - 1]()");
   check("held to the end, the menu closes and Developer options opens in the info popup", !dv_w.document.getElementById("feAppMenuPanel") && dv_w.document.getElementById("infoOverlay").hidden === false && dv_w.document.getElementById("infoSlot").firstElementChild.id === "devOptions" && dv_w.document.getElementById("infoTitle").textContent === "Developer options");
   var dv_topics = Array.from(dv_w.document.querySelectorAll("#devOptions details.gd-topic > summary")).map((h) => h.textContent);
-  check("it has the two Music sharing topics (tags and reports), Start over, Copy Spotify record, Phone width and Python status, all open, and no way to turn it off", JSON.stringify(dv_topics) === JSON.stringify(["Music sharing tags", "Music sharing reports", "Start over", "Copy Spotify record", "Phone width", "Python status"]) && Array.from(dv_w.document.querySelectorAll("#devOptions details.gd-topic")).every((d) => d.open) && !/Turn off/.test(dv_w.document.getElementById("devOptions").textContent), JSON.stringify(dv_topics));
-  check("Phone width offers Off, 360 px and 320 px, Off chosen, and the page frames itself only when one is kept and it is not in a frame already", (() => { const r = Array.from(dv_w.document.querySelectorAll('#devOptions input[name="devPhoneWidth"]')); const html = fs.readFileSync(ROOT + "index.html", "utf8"); return r.map((x) => x.value).join(",") === ",360,320" && r[0].checked && !r[1].checked && /^<!doctype html>\n<html lang="en">\n<head>\n<script>\n  \/\/ Developer options > Phone width/.test(html) && /if \(!\(w === 360 \|\| w === 320\) \|\| window\.top !== window\) return;/.test(html) && /pageWindow\(\)\.location\.href = "https:\/\/accounts\.spotify\.com\/authorize\?"/.test(appSource()); })());
+  check("it has the two Music sharing topics (moods and reports), Start over, Copy Spotify record, Phone width and Python status, all open, and no way to turn it off", JSON.stringify(dv_topics) === JSON.stringify(["Music sharing moods", "Music sharing reports", "Start over", "Copy Spotify record", "Phone width", "Python status"]) && Array.from(dv_w.document.querySelectorAll("#devOptions details.gd-topic")).every((d) => d.open) && !/Turn off/.test(dv_w.document.getElementById("devOptions").textContent), JSON.stringify(dv_topics));
+  check("Phone width offers Off, 360 px and 320 px, Off chosen, and the page frames itself only when one is kept and it is not in a frame already", (() => { const r = Array.from(dv_w.document.querySelectorAll('#devOptions input[name="devPhoneWidth"]')); const html = fs.readFileSync(ROOT + "index.html", "utf8"); return r.map((x) => x.value).join(",") === ",360,320" && r[0].checked && !r[1].checked && /^<!doctype html>\n<html lang="en">\n<head>\n(?:<(?:meta|style)[^\n]*\n)*<script>\n  \/\/ Developer options > Phone width/.test(html) && /if \(!\(w === 360 \|\| w === 320\) \|\| window\.top !== window\) return;/.test(html) && /pageWindow\(\)\.location\.href = "https:\/\/accounts\.spotify\.com\/authorize\?"/.test(appSource()); })());
   dv_w.eval("openInfo('devOptions')");
   dv_w.document.getElementById("infoClose").click();
   check("closed, it goes back to its place, hidden", dv_w.document.getElementById("devOptions").hidden === true && !dv_w.document.getElementById("devOptions").closest("#infoSlot"));
@@ -5260,7 +5218,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("connected: the app's name, then Music sharing, A guide for facilitators, More options, Feedback and questions, Report a problem, Privacy, and the version", JSON.stringify(sl_r) === JSON.stringify(["feMenuHead"].concat(sl_rest.slice(1))), JSON.stringify(sl_r));
   var sl_ms = sl_ready.document; sl_ready.document.getElementById("feAppMenuButton").click();
   var sl_msi = sl_ms.getElementById("feMusicSharing");
-  check("Music sharing is in the menu with its line, and opens Music sharing on Find playlists", !!sl_msi && sl_msi.tagName === "BUTTON" && sl_msi.textContent === "Music sharingFind playlists other facilitators share, and share your own" && !sl_ms.querySelector(".fe-soon-tag") && (sl_msi.click(), sl_ms.getElementById("msOverlay").hidden === false) && sl_ms.querySelector("#msTabsBar .ms-on").textContent === "Find playlists", sl_msi ? sl_msi.textContent : "");
+  check("Music sharing is in the menu with its line, and opens Music sharing on Shared by others", !!sl_msi && sl_msi.tagName === "BUTTON" && sl_msi.textContent === "Music sharingFind playlists other facilitators share, and share your own" && !sl_ms.querySelector(".fe-soon-tag") && (sl_msi.click(), sl_ms.getElementById("msOverlay").hidden === false) && /^Shared by others/.test(sl_ms.querySelector("#msTabsBar .ms-on").textContent), sl_msi ? sl_msi.textContent : "");
   sl_ready.eval("closeSharing()");
   sl_ready.document.body.click();
   var sl_slow = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: { listDelayMs: 4000 }, feedbackUrl: "https://tally.so/r/X" });
@@ -5364,7 +5322,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-07w"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08a"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

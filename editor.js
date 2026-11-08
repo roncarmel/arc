@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-07w";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-08a";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -1966,7 +1966,7 @@ function listPanel(item, slot) {
     const query = search.value.trim();
     setPanel(item.id, null);
     openSharing("find");
-    if (query) { sharing.search = query; sharing.searchOpen = true; renderSharing(); }
+    if (query) { sharing.type = "all"; sharing.search = query; renderSharing(); }
   } }, feIcon("swap"),
   feEl("span", { class: "fe-text" }, feEl("span", { class: "fe-title", text: "Find more in Music sharing" }),
     feEl("span", { class: "fe-sub", text: others ? `${others} ${others === 1 ? "playlist" : "playlists"} shared by other facilitators` : "Playlists other facilitators share" })));

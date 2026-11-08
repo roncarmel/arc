@@ -1,5 +1,6 @@
 // Music sharing: a Cloudflare Worker with a D1 database (schema.sql), for Ceremony Playlist Builder.
-// People share their own playlists (the phases they suit, tags, optional notes, the songs as Spotify IDs and ISRCs, a short summary) and copy each other's.
+// People share their own playlists (a type: ceremony, phase, mood or other, with its books, phases, mood words or name, a description,
+// the songs as Spotify IDs and ISRCs, a short summary) and copy each other's.
 // Each song's title, artist and length are kept too, but sent only for one playlist at a time (GET /songs/:id, when its page opens), never with the library.
 // Who someone is comes from Spotify: every write carries the person's Spotify sign-in, the worker asks Spotify's /me with it,
 // and keeps only an HMAC of the user ID (SECRET), never the ID. There are no accounts or passwords here.
@@ -13,10 +14,13 @@
 //   REPORT_TO          secret: where reports are emailed
 //   ORIGINS            the pages allowed to call this worker, comma separated
 
+import BLOCKED from "../../blocked-words/blocked-words.json";
+
 const LIMITS = {
-  nameChars: 200, shownChars: 40, notesMax: 400, tagsMin: 3, tagsMax: 10, tagChars: 30, phases: 5, minMs: 2 * 60 * 60 * 1000, maxSongs: 5000, artists: 5, songChars: 100,
+  nameChars: 200, shownChars: 40, descChars: 300, moodsMax: 8, moodChars: 30, otherChars: 24, phases: 5, books: 5, maxSongs: 5000, artists: 5, songChars: 100,
   sharesPerDay: 60, reportsPerDay: 30, noteChars: 500, copyShare: 0.9, hideAfterReports: 3,
 };
+const KINDS = ["ceremony", "phase", "mood", "other"];
 const REASONS = ["offensive", "spam", "not theirs", "other"];
 
 export default {
@@ -44,14 +48,14 @@ export default {
         default: return answer({ error: "Not found" }, 404, cors);
       }
     } catch (err) {
-      if (err instanceof Refusal) return answer({ error: err.message, code: err.code }, err.status, cors);
+      if (err instanceof Refusal) return answer({ error: err.message, code: err.code, ...err.extra }, err.status, cors);
       return answer({ error: "Something went wrong here." }, 500, cors);
     }
   },
 };
 
 class Refusal extends Error {
-  constructor(status, message, code = "") { super(message); this.status = status; this.code = code; }
+  constructor(status, message, code = "", extra = {}) { super(message); this.status = status; this.code = code; this.extra = extra; }
 }
 function answer(data, status = 200, headers = {}) {
   return Response.json(data, { status, headers: { ...headers, "Cache-Control": "no-store" } });
@@ -100,16 +104,20 @@ async function countToday(env, whoId, kind, limit) {
 }
 
 // ---------------------------------------------------------------- reading
+// what a share is, the same in the library and in /mine
+function kindOf(r) {
+  return { kind: r.kind, books: bitList(r.books, LIMITS.books), phases: bitList(r.phases, LIMITS.phases), moods: r.moods ? JSON.parse(r.moods) : [], other: r.other || "", description: r.description || "" };
+}
 function publicShare(r) {
   return {
-    id: r.id, name: r.name, by: r.shown_as || null, phases: phaseList(r.phases), tags: JSON.parse(r.tags), notes: r.notes || "", cover: r.cover || null,
+    id: r.id, name: r.name, by: r.shown_as || null, ...kindOf(r), cover: r.cover || null,
     songs: JSON.parse(r.songs), count: r.song_count, ms: r.total_ms, avgMs: r.avg_ms, artists: JSON.parse(r.artists),
     sharedAt: r.shared_at, updatedAt: r.updated_at,
   };
 }
 async function library(env) {
   // the song names stay out: they are read one playlist at a time (songNames)
-  const shares = await env.DB.prepare("SELECT id, name, shown_as, phases, tags, notes, cover, songs, song_count, total_ms, avg_ms, artists, shared_at, updated_at FROM shares WHERE hidden = 0 ORDER BY shared_at DESC").all();
+  const shares = await env.DB.prepare("SELECT id, name, shown_as, kind, books, phases, moods, other, description, cover, songs, song_count, total_ms, avg_ms, artists, shared_at, updated_at FROM shares WHERE hidden = 0 ORDER BY shared_at DESC").all();
   const words = await env.DB.prepare("SELECT word, hidden FROM words").all();
   return { shares: shares.results.map(publicShare), words: Object.fromEntries(words.results.map((w) => [w.word, w.hidden])), at: Date.now() };
 }
@@ -120,14 +128,26 @@ async function songNames(env, id) {
   return { id, names: r.names ? JSON.parse(r.names) : null };
 }
 async function mine(env, whoId) {
-  const rows = await env.DB.prepare("SELECT id, playlist, snapshot, name, shown_as, phases, tags, notes, shared_at, updated_at, hidden FROM shares WHERE owner = ?").bind(whoId).all();
-  return { shares: rows.results.map((r) => ({ id: r.id, playlist: r.playlist, snapshot: r.snapshot, name: r.name, by: r.shown_as || null, phases: phaseList(r.phases), tags: JSON.parse(r.tags), notes: r.notes || "", sharedAt: r.shared_at, updatedAt: r.updated_at, hidden: !!r.hidden })) };
+  const rows = await env.DB.prepare("SELECT id, playlist, snapshot, name, shown_as, kind, books, phases, moods, other, description, desc_source, cover, song_count, total_ms, shared_at, updated_at, hidden FROM shares WHERE owner = ?").bind(whoId).all();
+  return { shares: rows.results.map((r) => ({ id: r.id, playlist: r.playlist, snapshot: r.snapshot, name: r.name, by: r.shown_as || null, ...kindOf(r), descSource: r.desc_source || "mine",
+    cover: r.cover || null, count: r.song_count, ms: r.total_ms, sharedAt: r.shared_at, updatedAt: r.updated_at, hidden: !!r.hidden })) };
 }
-// phases are kept as one number, a bit per phase (Beginning 1, Ascent 2, Plateau 4, Descent 8, Ending 16), and sent as a list of positions
-const phaseList = (mask) => Array.from({ length: LIMITS.phases }, (_, i) => i).filter((i) => mask & (1 << i));
-// a tag as the page makes it: lower case, single spaces, letters, numbers and a few marks
-function cleanTag(t) {
-  return typeof t === "string" ? t.toLowerCase().replace(/^#+/, "").replace(/[^\p{L}\p{N}' &-]+/gu, " ").replace(/\s+/g, " ").trim().slice(0, LIMITS.tagChars).trim() : "";
+// books and phases are kept as one number, a bit each (the first is 1, the second 2, then 4, 8, 16), and sent as a list of positions
+const bitList = (mask, n) => Array.from({ length: n }, (_, i) => i).filter((i) => mask & (1 << i));
+const bitMask = (list, n) => (Array.isArray(list) ? list : []).reduce((m, i) => Number.isInteger(i) && i >= 0 && i < n ? m | (1 << i) : m, 0);
+// a mood word or an Other name as the page makes it: lower case for moods, single spaces, letters, numbers and a few marks
+function cleanWord(t, max) {
+  return typeof t === "string" ? t.replace(/^#+/, "").replace(/[^\p{L}\p{N}' &-]+/gu, " ").replace(/\s+/g, " ").trim().slice(0, max).trim() : "";
+}
+// Whole words only, as in the page (sharing.js blockedWord): lower case, no accents, anything but letters and numbers a space.
+const BLOCKED_SET = new Set(BLOCKED.words);
+const BLOCKED_RE = BLOCKED.patterns.length ? new RegExp(`(^| )(${BLOCKED.patterns.join("|")})( |$)`) : null;
+function blockedWord(t) {
+  const n = String(t).toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  if (!n) return false;
+  const w = n.split(" ");
+  for (let i = 0; i < w.length; i++) for (let j = i + 1; j <= Math.min(w.length, i + 4); j++) if (BLOCKED_SET.has(w.slice(i, j).join(" "))) return true;
+  return !!(BLOCKED_RE && BLOCKED_RE.test(n));
 }
 
 // ---------------------------------------------------------------- sharing
@@ -135,19 +155,37 @@ async function share(env, whoId, d) {
   const playlist = text(d.playlist, 40);
   if (!/^[A-Za-z0-9]{10,40}$/.test(playlist)) throw new Refusal(400, "That playlist could not be read.");
   const name = text(d.name, LIMITS.nameChars);
-  const notes = text(d.notes, LIMITS.notesMax);
-  const phases = (Array.isArray(d.phases) ? d.phases : []).reduce((m, i) => Number.isInteger(i) && i >= 0 && i < LIMITS.phases ? m | (1 << i) : m, 0);
-  const tags = [...new Set((Array.isArray(d.tags) ? d.tags : []).map(cleanTag).filter((t) => t.length >= 2))].slice(0, LIMITS.tagsMax);
   if (!name) throw new Refusal(400, "The playlist needs a name.");
-  if (!phases) throw new Refusal(400, "Choose at least one phase.", "phases");
-  if (tags.length < LIMITS.tagsMin) throw new Refusal(400, `Add at least ${LIMITS.tagsMin} tags.`, "tags");
+  const kind = KINDS.includes(d.kind) ? d.kind : null;
+  if (!kind) throw new Refusal(400, "Choose what type of playlist it is.", "kind");
+  const description = text(d.description, LIMITS.descChars);
+  const descSource = d.descSource === "spotify" ? "spotify" : "mine";
+  let books = 0, phases = 0, moods = null, other = null;
+  if (kind === "ceremony") {
+    books = bitMask(d.books, LIMITS.books);
+    if (!books) throw new Refusal(400, "Choose at least one book.", "books");
+  }
+  if (kind === "phase") {
+    phases = bitMask(d.phases, LIMITS.phases);
+    if (!phases) throw new Refusal(400, "Choose at least one phase.", "phases");
+  }
+  if (kind === "mood") {
+    moods = [...new Set((Array.isArray(d.moods) ? d.moods : []).map((m) => cleanWord(m, LIMITS.moodChars).toLowerCase()).filter((m) => m.length >= 2))].slice(0, LIMITS.moodsMax);
+    if (!moods.length) throw new Refusal(400, "Add at least one mood.", "moods");
+    if (moods.some(blockedWord)) throw new Refusal(400, "One of the moods is a word that cannot be used here.", "moods");
+  }
+  if (kind === "other") {
+    other = cleanWord(d.other, LIMITS.otherChars);
+    if (!other) throw new Refusal(400, "Say what it is.", "other");
+    if (blockedWord(other)) throw new Refusal(400, "That has a word that cannot be used here.", "other");
+  }
+  if ((kind === "ceremony" || kind === "other") && !description) throw new Refusal(400, "Add a description.", "description");
   // each song's name goes with it, so a song left out takes its name along and the two lists stay in step
   const sent = Array.isArray(d.songs) ? d.songs.slice(0, LIMITS.maxSongs).map((s, i) => [s, Array.isArray(d.names) ? d.names[i] : null]).filter(([s]) => Array.isArray(s) && /^[A-Za-z0-9]{10,40}$/.test(s[0])) : [];
   const songs = sent.map(([s]) => [s[0], /^[A-Z0-9]{12}$/.test(s[1] || "") ? s[1] : ""]);
   const names = Array.isArray(d.names) ? sent.map(([, n]) => Array.isArray(n) ? [text(n[0], LIMITS.songChars), text(n[1], LIMITS.songChars), Math.max(0, Math.round(Number(n[2]) || 0))] : ["", "", 0]) : null;
   const ms = Math.round(Number(d.ms) || 0);
-  if (!songs.length) throw new Refusal(400, "That playlist has no songs.");
-  if (ms < LIMITS.minMs) throw new Refusal(400, "Playlists need at least two hours of songs to be shared.", "length");
+  if (!songs.length) throw new Refusal(400, "That playlist has no songs.", "empty");
   const shown = d.by === null ? null : text(d.by, LIMITS.shownChars) || null;
   const cover = typeof d.cover === "string" && /^https:\/\/([a-z0-9-]+\.)*(scdn\.co|spotifycdn\.com)\/[\w/.-]+$/.test(d.cover) ? d.cover : null;
   const artists = Array.isArray(d.artists) ? d.artists.slice(0, LIMITS.artists).map((a) => text(a, 100)).filter(Boolean) : [];
@@ -157,17 +195,23 @@ async function share(env, whoId, d) {
   const others = await env.DB.prepare("SELECT name, songs FROM shares WHERE owner != ?").bind(whoId).all();
   for (const o of others.results) {
     const theirs = JSON.parse(o.songs);
-    const same = songs.filter(([id, isrc]) => theirs.some(([tid, tisrc]) => tid === id || (isrc && tisrc === isrc))).length;
-    if (theirs.length && same / songs.length >= LIMITS.copyShare && same / theirs.length >= 0.5) throw new Refusal(409, `This looks like a copy of ${o.name}, which someone else shares.`, "copy");
+    const ids = new Set(theirs.map((t) => t[0])), isrcs = new Set(theirs.map((t) => t[1]).filter(Boolean));
+    const same = songs.filter(([id, isrc]) => ids.has(id) || (isrc && isrcs.has(isrc))).length;
+    if (theirs.length && same / songs.length >= LIMITS.copyShare && same / theirs.length >= 0.5) {
+      const percent = Math.floor((same / songs.length) * 100);
+      throw new Refusal(409, `${percent}% of its songs are in ${o.name}, which someone else shares, so it can't be shared.`, "copy", { percent, of: o.name });
+    }
   }
   const now = Date.now();
   const existing = await env.DB.prepare("SELECT id, hidden FROM shares WHERE owner = ? AND playlist = ?").bind(whoId, playlist).first();
   const id = existing ? existing.id : newId();
-  await env.DB.prepare(`INSERT INTO shares (id, owner, playlist, snapshot, name, shown_as, phases, tags, notes, cover, songs, song_count, total_ms, avg_ms, artists, names, shared_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT (owner, playlist) DO UPDATE SET snapshot = excluded.snapshot, name = excluded.name, shown_as = excluded.shown_as, phases = excluded.phases, tags = excluded.tags, notes = excluded.notes,
+  await env.DB.prepare(`INSERT INTO shares (id, owner, playlist, snapshot, name, shown_as, kind, books, phases, moods, other, description, desc_source, cover, songs, song_count, total_ms, avg_ms, artists, names, shared_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT (owner, playlist) DO UPDATE SET snapshot = excluded.snapshot, name = excluded.name, shown_as = excluded.shown_as, kind = excluded.kind, books = excluded.books, phases = excluded.phases,
+        moods = excluded.moods, other = excluded.other, description = excluded.description, desc_source = excluded.desc_source,
         cover = excluded.cover, songs = excluded.songs, song_count = excluded.song_count, total_ms = excluded.total_ms, avg_ms = excluded.avg_ms, artists = excluded.artists, names = excluded.names, updated_at = excluded.updated_at`)
-    .bind(id, whoId, playlist, text(d.snapshot, 100) || null, name, shown, phases, JSON.stringify(tags), notes || null, cover, JSON.stringify(songs), songs.length, ms, avg, JSON.stringify(artists), names ? JSON.stringify(names) : null, now, now).run();
+    .bind(id, whoId, playlist, text(d.snapshot, 100) || null, name, shown, kind, books, phases, moods ? JSON.stringify(moods) : null, other, description || null, descSource,
+      cover, JSON.stringify(songs), songs.length, ms, avg, JSON.stringify(artists), names ? JSON.stringify(names) : null, now, now).run();
   return { id, updated: !!existing, hidden: !!(existing && existing.hidden) };
 }
 function newId() {

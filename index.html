@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-07w">
-<script src="theme.js?v=2026-11-07w"></script>
+<meta name="app-version" content="2026-11-08a">
+<script src="theme.js?v=2026-11-08a"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ceremony Playlist Builder</title>
@@ -1035,85 +1035,42 @@
     #formatEditor .fe-pop, .theme-list { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 6px 14px rgba(0, 0, 0, 0.5), 0 18px 40px rgba(0, 0, 0, 0.6); background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)); }
   }
 
-  /* Music sharing (sharing.js): its own popup, ms- classes; Developer options' tags and reports, msd- classes */
+  /* Music sharing (sharing.js): its own popup, ms- classes; Developer options' mood words and reports, msd- classes */
   #msOverlay:not([hidden]) ~ .fe-overlay { z-index: 1150; }   /* its questions and the report form sit over it */
   #msDialog { padding: 0; overflow: hidden; display: flex; flex-direction: column; max-width: 620px; height: calc(100vh - 32px); height: calc(100dvh - 32px); max-height: 900px; }
   @media (max-width: 500px) { #msOverlay { padding: 0; } #msDialog { border-radius: 0; border: 0; height: 100vh; height: 100dvh; max-height: none; } }
-  /* a playlist's page: Back to the list, a pink pill on a strip of the page's background that stays at the top while the page scrolls, so the page slides under it instead of showing around it */
-  .ms-back-bar { position: sticky; top: -14px; z-index: 2; margin: -14px -18px 12px; padding: 10px 18px 10px 14px; background: var(--bg); }
-  .ms-back { display: inline-flex; align-items: center; gap: 4px; margin: 0; min-height: 0; height: 38px; padding: 0 16px 0 8px; border-radius: 999px; border: 1px solid var(--accent-tint-border); background: var(--bg); background-image: linear-gradient(var(--accent-tint), var(--accent-tint)); color: var(--accent); font-weight: 700; font-size: 0.95rem; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18); }
-  .ms-back .fe-icon { display: flex; } .ms-back .fe-icon svg { width: 20px; height: 20px; }
   /* list and playlist page slide past each other (slideBody); the leaving one is a copy */
   #msDialog { position: relative; }
   .ms-slide-ghost { position: absolute; margin: 0; overflow: hidden; pointer-events: none; box-sizing: border-box; }
   #msBody { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 14px 18px 24px; }
   #msFoot { flex: none; border-top: 1px solid var(--line); padding: 12px 18px 16px; background: var(--bg); }
-  /* the top row: the two tabs as words with a pink line under the chosen one, then the info button (while that tab's card is folded away) and Close; no title */
+  /* the top row: the two tabs as words with a pink line under the chosen one, then Close; in Share a playlist and Edit share, a title (and steps) */
   #msTabsBar { flex: none; display: flex; align-items: center; gap: 2px; padding: 6px 6px 0 16px; border-bottom: 1px solid var(--line); background: var(--bg); }
   .ms-tabs { flex: 1; min-width: 0; display: flex; gap: 14px; margin: 0; padding: 0; }
   .ms-tab { flex: none; display: flex; align-items: center; gap: 0; margin: 0 0 -1px; border-bottom: 3px solid transparent; }
   .ms-tab.ms-on { border-bottom-color: var(--accent); }
   .ms-tabs .ms-tab-name { flex: none; margin: 0; min-height: 0; padding: 12px 2px 10px; border: 0; border-radius: 0; background: none; box-shadow: none; font-weight: 600; color: var(--fg); opacity: 0.6; white-space: nowrap; }
   .ms-tabs .ms-on .ms-tab-name { opacity: 1; color: var(--accent); }
-  .ms-tabs .ms-tab-info { flex: none; margin: 0; width: 26px; height: 28px; min-height: 0; padding: 0; border: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: none; box-shadow: none; color: var(--fg); opacity: 0.6; }
-  .ms-tabs .ms-on .ms-tab-info { color: var(--accent); opacity: 1; }
   #msClose { flex: none; margin: 0; width: 40px; height: 40px; min-height: 0; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: none; border: 0; color: var(--fg); opacity: 0.75; box-shadow: none; }
   .ms-tabs button:focus:not(:focus-visible), #msClose:focus:not(:focus-visible) { outline: none; }
-  @media (hover: hover) { .ms-tabs button:not(:disabled):hover { outline: none; filter: none; opacity: 1; } .ms-tabs .ms-tab-info:hover, #msClose:hover { outline: none; filter: none; opacity: 1; background: color-mix(in srgb, var(--fg) 8%, transparent); } }
-  @media (max-width: 359px) { #msTabsBar { padding-left: 12px; } .ms-tabs { gap: 8px; } .ms-tabs .ms-tab-name { font-size: 0.9rem; } .ms-tabs .ms-tab-info { width: 22px; } .ms-tab-info svg { width: 18px; height: 18px; } #msClose { width: 34px; } }
+  @media (hover: hover) { .ms-tabs button:not(:disabled):hover { outline: none; filter: none; opacity: 1; } #msClose:hover { outline: none; filter: none; opacity: 1; background: color-mix(in srgb, var(--fg) 8%, transparent); } }
+  @media (max-width: 359px) { #msTabsBar { padding-left: 12px; } .ms-tabs { gap: 8px; } .ms-tabs .ms-tab-name { font-size: 0.9rem; } #msClose { width: 34px; } }
   .ms-search { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--muted); box-sizing: border-box; }
   .ms-search .fe-icon { display: flex; }
   .ms-search-input { flex: 1; min-width: 0; border: 0; background: none; color: var(--fg); font: inherit; outline: none; padding: 0; height: 40px; }
-  .ms-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 2px; }
-  .ms-tags:empty { display: none; }
-  .ms-tag { margin: 0; min-height: 0; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); box-shadow: none; font-size: 0.85rem; font-weight: 600; color: var(--fg); }
-  .ms-tag.ms-on { background: var(--accent-tint); border-color: var(--accent-tint-border); color: var(--accent); }
-  .ms-tag.ms-more { background: none; color: var(--accent); border-style: dashed; }
-  /* Find playlists: Filters, a search icon and Sort above the list; chosen filters as chips under them */
   .ms-tools { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .ms-tools[hidden] { display: none; }
   #msDialog .ms-tbtn { display: inline-flex; align-items: center; gap: 6px; margin: 0; min-height: 0; height: 38px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); box-shadow: none; color: var(--fg); font-weight: 600; font-size: 0.9rem; }
   #msDialog .ms-tbtn .fe-icon { display: flex; }
-  #msDialog .ms-tbtn.ms-on { background: var(--accent-tint); border-color: var(--accent-tint-border); color: var(--accent); }
-  #msDialog .ms-tbtn.ms-icon { padding: 0 11px; color: var(--muted); }
-  #msDialog .ms-sortbtn { margin-left: auto; font-weight: 500; color: var(--muted); }
-  #msDialog .ms-sortbtn b { color: var(--fg); font-weight: 600; }
-  .ms-count { min-width: 18px; padding: 0 5px; border-radius: 999px; background: var(--button); color: var(--on-button, #fff); font-size: 0.74rem; line-height: 18px; text-align: center; box-sizing: border-box; }
-  .ms-tools .ms-search { flex: 1; min-width: 0; height: 40px; border-color: var(--accent); }
-  #msDialog .ms-cancel { margin: 0; min-height: 0; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
-  .ms-search-hint { flex-basis: 100%; margin: 0; color: var(--muted); font-size: 0.8rem; }
-  .ms-active { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
-  .ms-active:empty { display: none; }
-  .ms-nudge { display: flex; align-items: center; gap: 10px; margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; border: 1px dashed var(--accent-tint-border); }
-  .ms-nudge-text { flex: 1; min-width: 0; font-size: 0.86rem; color: var(--muted); }
-  .ms-nudge-text b { color: var(--fg); font-weight: 600; }
-  #msDialog .ms-nudge-go { flex: none; display: inline-flex; align-items: center; gap: 2px; margin: 0; min-height: 0; padding: 4px 0; border: 0; background: none; box-shadow: none; color: var(--accent); font-weight: 700; font-size: 0.86rem; white-space: nowrap; }
-  #msDialog .ms-nudge-go .fe-icon { display: flex; transform: rotate(-90deg); }
-  .ms-chip { display: inline-flex; align-items: center; gap: 5px; }
-  .ms-chip .fe-icon { display: flex; opacity: 0.8; } .ms-chip svg { width: 10px; height: 10px; }
   #msResults { margin-top: 8px; }
   .ms-menu { position: absolute; z-index: 5; right: 0; top: calc(100% + 6px); min-width: 210px; padding: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35); }
   #msDialog .ms-menu button { display: flex; width: 100%; justify-content: space-between; align-items: center; margin: 0; min-height: 0; padding: 9px 12px; border: 0; border-radius: 9px; background: none; box-shadow: none; color: var(--fg); font-weight: 500; text-align: left; }
   #msDialog .ms-menu button:hover { background: var(--accent-tint); }
   #msDialog .ms-menu button.ms-on { color: var(--accent); font-weight: 700; }
   .ms-menu .fe-icon { display: flex; }
-  .ms-menu-note { margin: 2px 12px 6px; color: var(--muted); font-size: 0.76rem; }
-  /* the filters panel: slides up over the list, inside the popup */
   .ms-sheet-wrap { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; justify-content: flex-end; background: rgba(0, 0, 0, 0.55); border-radius: inherit; overflow: hidden; }
   .ms-sheet { display: flex; flex-direction: column; max-height: calc(100% - 60px); background: var(--bg); border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; outline: none; }
-  .ms-sheet-head { flex: none; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 10px 14px 10px 18px; border-bottom: 1px solid var(--line); }
-  .ms-sheet-head h3 { margin: 0; font-size: 1.05rem; }
-  #msDialog .ms-sheet-head .linklike { justify-self: start; margin: 0; min-height: 0; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
-  #msDialog .ms-sheet-x { justify-self: end; display: flex; align-items: center; justify-content: center; margin: 0; min-height: 0; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: none; box-shadow: none; color: var(--muted); }
-  .ms-sheet-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 6px 18px 18px; }
-  .ms-ftitle { margin: 14px 0 2px; font-weight: 700; }
   .ms-fsub { margin: 0 0 8px; color: var(--muted); font-size: 0.82rem; }
-  .ms-sheet-body .ms-tags { margin-top: 0; }
-  .ms-switchrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); font-weight: 600; cursor: pointer; }
-  .ms-switchrow small { display: block; color: var(--muted); font-size: 0.8rem; font-weight: 400; }
-  .ms-switchrow .ms-switch { flex: none; }
-  .ms-sheet-foot { flex: none; padding: 12px 18px 16px; border-top: 1px solid var(--line); }
-  #msDialog .ms-showbtn, #msDialog .ms-empty-main { display: flex; justify-content: center; width: 100%; margin: 0; padding: 11px; border-radius: 999px; font-weight: 700; }
   /* empty lists */
   .ms-empty { text-align: center; padding: 44px 12px 12px; }
   .ms-empty-icon { display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; margin: 0 auto 14px; border-radius: 50%; background: var(--accent-tint); color: var(--accent); }
@@ -1122,39 +1079,13 @@
   .ms-empty p { margin: 0 auto 18px; max-width: 340px; color: var(--muted); font-size: 0.92rem; }
   #msDialog .ms-empty-main { display: inline-flex; width: auto; padding: 10px 24px; }
   #msDialog .ms-empty-ghost { margin: 0; min-height: 0; padding: 9px 20px; border-radius: 999px; border: 1px solid var(--accent-tint-border); background: none; box-shadow: none; color: var(--accent); font-weight: 700; }
-  .ms-switch { appearance: none; -webkit-appearance: none; margin: 0; width: 36px; height: 22px; border-radius: 999px; background: var(--line); position: relative; cursor: pointer; transition: background 0.15s var(--ease-out); }
-  .ms-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); transition: left 0.15s var(--ease-out); }
-  .ms-switch:checked { background: var(--button); } .ms-switch:checked::after { left: 16px; }
-  .ms-row, .ms-srow { display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); align-items: flex-start; }
-  #msResults > .ms-row:first-child, .ms-share-list > .ms-srow:first-child { border-top: 0; }
-  .ms-row { cursor: pointer; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "cover text side" "tags tags curve"; column-gap: 10px; row-gap: 0; align-items: start; }
-  .ms-row > .ms-cover { grid-area: cover; width: 45px; height: 45px; border-radius: 6px; }
-  .ms-row > .ms-text { grid-area: text; }
-  .ms-row > .ms-rowside { grid-area: side; }
-  .ms-row > .ms-rowtags { grid-area: tags; margin-top: 8px; }
-  .ms-row > .ms-rowcurve { grid-area: curve; align-self: center; margin-top: 8px; display: flex; justify-content: flex-end; }
-  .ms-row > .ms-ov, .ms-row > .ms-error { grid-column: 1 / -1; }
   .ms-row .ms-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ms-cover { flex: none; width: 60px; height: 60px; border-radius: 8px; object-fit: cover; background: var(--card); }
-  /* what a tab is: a pink card at the top of the list until Got it, which sends it into the info button (sharing.js, introCard) */
-  .ms-introcard { position: relative; box-sizing: border-box; margin: 0 0 14px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--accent-tint-border); background: linear-gradient(var(--accent-tint), var(--accent-tint)), var(--bg); font-size: 0.88rem; line-height: 1.45; color: var(--fg); }
-  /* a triangle on its top edge points at the middle of its tab's name (--ms-aim, set by aimIntro) */
-  .ms-introcard::before { content: ""; position: absolute; top: -9px; left: calc(var(--ms-aim, 50%) - 8px); width: 16px; height: 16px; box-sizing: border-box; background: inherit; border-left: 1px solid var(--accent-tint-border); border-top: 1px solid var(--accent-tint-border); border-top-left-radius: 3px; transform: rotate(45deg); }
-  .ms-introcard p { margin: 0; }
-  .ms-introcard-row { display: flex; justify-content: flex-end; margin-top: 8px; }
-  .ms-introcard-row button { margin: 0; min-height: 0; height: 32px; padding: 0 16px; border-radius: 999px; font-size: 0.86rem; font-weight: 700; background: var(--button); color: var(--on-button, #fff); border: 0; box-shadow: none; }
-  .ms-introghost { position: absolute; z-index: 30; margin: 0; pointer-events: none; box-sizing: border-box; }
   .ms-nocover { display: flex; align-items: center; justify-content: center; color: var(--muted); border: 1px solid var(--line); box-sizing: border-box; }
   .ms-text { flex: 1; min-width: 0; }
   .ms-name { font-weight: 600; overflow-wrap: anywhere; }
   .ms-dim { color: var(--muted); }
   .ms-sub { color: var(--muted); font-size: 0.85rem; margin-top: 1px; }
-  .ms-rowtags { display: flex; flex-wrap: nowrap; gap: 4px; margin-top: 6px; overflow: hidden; min-width: 0; }
-  .ms-rowtags > [hidden] { display: none; }
-  .ms-rowtag { flex: none; white-space: nowrap; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); font-size: 0.76rem; color: var(--muted); }
-  .ms-rowtag-more { flex: none; white-space: nowrap; padding: 1px 2px; font-size: 0.76rem; color: var(--muted); align-self: center; }
-  .ms-rowside { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
-  .ms-mini-curve { display: block; width: 60px; height: 16px; }
   .ms-ov { font-size: 0.82rem; font-weight: 600; color: var(--accent); margin-top: 4px; }
   .ms-add { flex: none; margin: 0; min-height: 0; padding: 6px 12px; font-size: 0.88rem; font-weight: 600; background: transparent; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; box-shadow: none; white-space: nowrap; }
   .ms-add.ms-done, .ms-add.ms-busy, .ms-add.ms-yours { border-color: var(--line); color: var(--muted); opacity: 1; }
@@ -1162,22 +1093,13 @@
   .ms-add .fe-icon, .ms-addbig .fe-icon { display: flex; }
   .ms-error { color: var(--accent); font-size: 0.88rem; margin: 4px 0 0; }
   .ms-note { color: var(--muted); margin: 16px 0; }
-  .ms-hero { display: flex; gap: 14px; align-items: center; margin-bottom: 18px; }
-  .ms-hero h3 { margin: 0 0 4px; font-size: 1.3rem; line-height: 1.2; }
   .ms-cover-big { border-radius: 10px; }
-  .ms-actions { display: flex; gap: 10px; margin: 0 0 10px; }
-  .ms-addbig { flex: 1; justify-content: center; margin: 0; padding: 12px 16px; border-radius: 999px; border: 0; background: var(--button); color: var(--on-button, #fff); font-weight: 700; font-size: 1rem; }
-  .ms-addbig.ms-done, .ms-addbig.ms-busy, .ms-addbig.ms-yours { background: var(--bg); border: 1px solid var(--line); color: var(--muted); opacity: 1; }
   .ms-phase-line { font-size: 0.92rem; color: var(--muted); margin: 18px 0 4px; }
   .ms-phase-line b { color: var(--fg); font-weight: 700; }
   .ms-sec { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 18px 0 4px; }
   .ms-long { line-height: 1.5; margin: 0 0 6px; white-space: pre-line; }
-  .ms-facts { margin-top: 14px; font-size: 0.88rem; line-height: 1.5; padding: 10px 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); }
-  .ms-facts-h { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 4px; }
-  .ms-facts-h .fe-icon, .ms-overlap .fe-icon { display: flex; color: var(--accent); }
   .ms-overlap { display: flex; gap: 8px; align-items: flex-start; font-size: 0.88rem; padding: 9px 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); margin: 10px 0 0; }
   .ms-songs { margin: 8px 0 0; padding-left: 1.2em; font-size: 0.9rem; color: var(--muted); }
-  .ms-foot-links { margin-top: 22px; }
   /* a playlist's songs, each with a preview button (renderSongs in sharing.js) */
   .ms-tracks { margin-top: 2px; }
   .ms-track { display: flex; align-items: center; gap: 12px; padding: 7px 0; }
@@ -1206,28 +1128,8 @@
   .ms-track-left { color: var(--accent); font-weight: 700; }
   .ms-song-note { color: var(--muted); font-size: 0.88rem; margin: 6px 0 0; }
   .ms-report { color: var(--muted); text-decoration: none; display: inline-flex; gap: 6px; align-items: center; font-size: 0.88rem; }
-  .ms-check { flex: none; width: 20px; height: 20px; margin: 10px 0 0; accent-color: var(--button); }
-  .ms-check.ms-nobox { visibility: hidden; }
-  .ms-srow { padding: 10px 0; gap: 10px; }
-  .ms-srow .ms-cover { width: 40px; height: 40px; border-radius: 6px; }
-  .ms-subrow { display: flex; gap: 8px; align-items: baseline; }
-  .ms-subtext { flex: 1; min-width: 0; }
-  .ms-rowact { flex: none; }
-  .ms-rowact .ms-inline { margin-left: 0; }
-  .ms-state { font-size: 0.85rem; margin-top: 3px; color: var(--muted); }
-  .ms-state:empty { display: none; }
-  .ms-state.ms-need { color: var(--accent); font-weight: 600; }
-  .ms-state.ms-ok { font-weight: 600; }
-  .ms-state.ms-dis { font-weight: 400; }
-  .ms-inline { margin-left: 8px; font-weight: 600; }
-  .ms-srow { flex-wrap: wrap; }
-  .ms-fields { flex: 1 1 calc(100% - 30px); min-width: 0; margin: 2px 0 2px 30px; display: flex; flex-direction: column; gap: 10px; }   /* under the row, lined up with the cover (past the checkbox and the gap) */
-  .ms-fields[hidden] { display: none; }
-  .ms-flabel { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 3px; font-size: 0.86rem; }
   .ms-ta { display: block; width: 100%; min-height: 0; height: auto; box-sizing: border-box; border-radius: 10px; border: 1px solid var(--line); padding: 6px 10px; font: inherit; font-size: 0.92rem; line-height: 1.35; background: var(--bg); color: var(--fg); resize: none; overflow: hidden; }
   .ms-ta:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
-  .ms-meter { font-size: 0.78rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .ms-meter.ms-short { color: var(--accent); }
   /* the curve of a session (sharing.js curveSvg): five parts, chosen ones pink */
   .ms-curve { display: block; width: 100%; height: 100%; overflow: visible; }
   .ms-curve-base { fill: none; stroke: var(--muted); stroke-opacity: 0.5; stroke-width: 2.5; stroke-linecap: round; vector-effect: non-scaling-stroke; }
@@ -1243,28 +1145,162 @@
   #msDialog .ms-phase-names button:hover { background: none; color: var(--fg); }
   #msDialog .ms-phase-names .ms-on, #msDialog .ms-phase-names button.ms-on:hover { color: var(--accent); }
   .ms-phase-names button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-  .ms-phase-label { margin: 12px 0 6px; }
-  /* the narrowest phones: less padding around Share playlists' curve */
-  @media (max-width: 359px) { .ms-fields .ms-phases-pick { padding-left: 4px; padding-right: 4px; } .ms-fields .ms-phases-pick .ms-phase-names { inset: 10px 2px 6px; } }
-  .ms-tagbox { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 38px; box-sizing: border-box; padding: 5px 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); cursor: text; }
-  .ms-tagbox:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
-  .ms-tagchip { display: inline-flex; align-items: center; gap: 2px; padding: 3px 4px 3px 10px; cursor: default; }
-  .ms-tagx { margin: 0; padding: 0 5px; min-height: 0; border: 0; background: none; box-shadow: none; color: inherit; font-size: 1rem; line-height: 1; opacity: 0.7; cursor: pointer; }
-  .ms-tagx:hover { background: none; opacity: 1; }
-  #msDialog .ms-taginput { flex: 1 1 80px; width: auto; min-width: 80px; height: auto; margin: 0; border: 0; border-radius: 0; box-shadow: none; outline: none; background: none; color: var(--fg); font: inherit; font-size: 0.92rem; padding: 3px 4px; }
-  #msDialog .ms-taginput[hidden] { display: none; }
-  .ms-taghint { margin: 4px 0 0; font-size: 0.8rem; color: var(--muted); }
-  .ms-taghint[hidden] { display: none; }
-  .ms-suggest { margin-top: 4px; font-size: 0.8rem; color: var(--muted); }
-  .ms-suggest:empty { display: none; }
-  .ms-sugg { font-size: 0.8rem; font-weight: 600; }
-  .ms-tags-plain .ms-tag { cursor: default; }
-  .ms-shown { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; font-size: 0.9rem; margin-bottom: 10px; }
-  .ms-shown-select { flex: 1 1 0; min-width: 0; width: auto; margin: 0; height: 34px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--fg); font: inherit; font-weight: 600; padding: 0 10px; max-width: 100%; }
-  .ms-shown-name { flex: 1 1 100%; height: 36px; border-radius: 10px; border: 1px solid var(--line); padding: 0 10px; font: inherit; background: var(--bg); color: var(--fg); box-sizing: border-box; }
-  .ms-apply { width: 100%; justify-content: center; margin: 0; padding: 13px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--muted); font-weight: 700; font-size: 1rem; }
-  .ms-apply.ms-has { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
-  .ms-apply .fe-icon { display: flex; }
+  /* Music sharing's red (P5, decided by Ron, 2026-11-08): errors and Stop sharing */
+  :root { --ms-red: #b80000; }
+  @media (prefers-color-scheme: dark) { :root { --ms-red: #f52222; } }
+  .ms-overlap .fe-icon { display: flex; color: var(--accent); }
+  /* a list row: cover, the type's line in pink small capitals, name, who and how long, Get at the right */
+  .ms-row { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); cursor: pointer; }
+  #msResults > .ms-row:first-child, .ms-yours-list > :first-child, .ms-yours-list > :first-child > .ms-row, .ms-pick-list > .ms-row:first-child { border-top: 0; }
+  .ms-row > .ms-cover { width: 48px; height: 48px; border-radius: 6px; }
+  .ms-klabel { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ms-klabel.ms-blank { visibility: hidden; }
+  .ms-text > .ms-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ms-chev { flex: none; display: flex; color: var(--muted); transform: rotate(-90deg); }
+  /* the type tiles: All and the four types in a row, or the four as big tiles with a line each (the wizard) */
+  .ms-ktiles { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
+  #msDialog .ms-ktile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; margin: 0; min-height: 52px; padding: 7px 2px 6px; border: 1.5px solid var(--line); border-radius: 12px; background: none; box-shadow: none; color: var(--muted); font: inherit; }
+  #msDialog .ms-ktile.ms-on { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); }
+  .ms-ktile-name { font-size: 0.78rem; font-weight: 700; }
+  .ms-ktile[data-kind="all"] .ms-ktile-name { font-size: 0.9rem; }
+  .ms-kicon { width: 40px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; overflow: visible; }
+  .ms-kicon .ms-kicon-dim { stroke-opacity: 0.4; }
+  .ms-kicon .ms-kicon-dot { fill: currentColor; stroke: none; }
+  .ms-ktiles-big { grid-auto-flow: row; grid-template-columns: 1fr 1fr; gap: 10px; }
+  #msDialog .ms-ktiles-big .ms-ktile { padding: 16px 10px 14px; gap: 6px; }
+  .ms-ktiles-big .ms-kicon { width: 60px; height: 28px; }
+  .ms-ktiles-big .ms-ktile-name { font-size: 1rem; color: var(--fg); }
+  .ms-ktiles-big .ms-on .ms-ktile-name { color: var(--accent); }
+  .ms-ktile-line { font-size: 0.78rem; color: var(--muted); line-height: 1.3; text-align: center; }
+  .ms-getline { margin: 10px 0 0; color: var(--muted); font-size: 0.84rem; line-height: 1.4; }
+  .ms-tools { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 8px; margin-top: 12px; text-align: left; }
+  #msDialog .ms-tools > * { width: 100%; max-width: none; box-sizing: border-box; margin-left: 0; margin-right: 0; }
+  #msDialog .ms-report { color: var(--muted); text-decoration: none; }
+  .ms-flabel2 { margin: 2px 0 -2px; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+  .ms-toolrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  #msDialog .ms-sortbtn { font-weight: 500; color: var(--fg); }
+  .ms-cbrow { display: flex; gap: 10px; align-items: center; font-size: 0.92rem; cursor: pointer; }
+  .ms-cb { flex: none; width: 20px; height: 20px; margin: 0; accent-color: var(--button); }
+  /* books: the word Book over a closed book with its number (A2) */
+  .ms-btiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+  #msDialog .ms-btile { display: flex; flex-direction: column; align-items: center; gap: 1px; margin: 0; min-height: 0; padding: 7px 2px 5px; border: 1.5px solid var(--line); border-radius: 12px; background: none; box-shadow: none; color: var(--muted); font: inherit; }
+  #msDialog .ms-btile.ms-on { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); }
+  .ms-btile-word { font-size: 0.72rem; font-weight: 700; }
+  .ms-bookicon { display: flex; } .ms-bookicon svg { width: 30px; height: 30px; }
+  .ms-btiles-ro .ms-btile:not(.ms-on) { opacity: 0.35; }
+  /* chips: mood words */
+  .ms-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ms-chips:empty { display: none; }
+  #msDialog .ms-chip { display: inline-flex; align-items: center; gap: 2px; margin: 0; min-height: 0; padding: 6px 12px; border-radius: 999px; border: 1.5px solid var(--line); background: none; box-shadow: none; color: var(--fg); font: inherit; font-size: 0.88rem; font-weight: 600; }
+  #msDialog .ms-chip.ms-on { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
+  #msDialog .ms-chip-ro { cursor: default; }
+  #msDialog .ms-chip-add::before { content: "+"; color: var(--accent); margin-right: 4px; }
+  /* a playlist's page */
+  .ms-hero { display: flex; gap: 14px; align-items: center; margin-bottom: 6px; }
+  .ms-hero .ms-cover-big { width: 76px; height: 76px; }
+  .ms-hero h3 { margin: 1px 0 2px; font-size: 1.25rem; line-height: 1.2; overflow-wrap: anywhere; }
+  .ms-facts { margin-top: 16px; }
+  .ms-facts .ms-sec { margin-top: 0; margin-bottom: 6px; }
+  .ms-facts-box { font-size: 0.88rem; line-height: 1.5; padding: 10px 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); }
+  #msBody > .ms-long { margin-top: 14px; }
+  .ms-reportrow { margin: 2px 0 0; text-align: right; }
+  .ms-reportrow .ms-report { margin: 0; min-height: 0; padding: 4px 0; }
+  /* the bottom row: Back (grey) and the main button; Back alone fills it */
+  .ms-footrow { display: flex; gap: 10px; }
+  #msDialog .ms-backbtn { flex: 0 0 34%; display: inline-flex; align-items: center; justify-content: center; gap: 2px; margin: 0; min-height: 0; padding: 12px; border-radius: 999px; border: 0; background: color-mix(in srgb, var(--fg) 10%, var(--bg)); box-shadow: none; color: var(--fg); font-weight: 700; font-size: 1rem; }
+  #msDialog .ms-backbtn:only-child, #msDialog .ms-backbtn.ms-wide { flex: 1 1 auto; }
+  .ms-backbtn .fe-icon { display: flex; } .ms-backbtn svg { width: 18px; height: 18px; }
+  #msDialog .ms-mainbtn { flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; gap: 6px; margin: 0; min-height: 0; padding: 12px 16px; border-radius: 999px; border: 0; background: var(--button); color: var(--on-button, #fff); font-weight: 700; font-size: 1rem; box-shadow: none; }
+  #msDialog .ms-mainbtn.ms-grey, #msDialog .ms-mainbtn:disabled { background: color-mix(in srgb, var(--fg) 10%, var(--bg)); color: var(--muted); opacity: 1; }
+  .ms-mainbtn .fe-icon { display: flex; } .ms-mainbtn svg { width: 18px; height: 18px; }
+  .ms-footcol { display: flex; flex-direction: column; gap: 10px; }
+  /* the sheet after a Get */
+  .ms-sheet-wrap { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; justify-content: flex-end; background: rgba(0, 0, 0, 0.55); border-radius: inherit; overflow: hidden; }
+  .ms-sheet { padding: 10px 18px 20px; }
+  .ms-grab { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 14px; }
+  .ms-gothead { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
+  .ms-gothead .ms-cover { width: 56px; height: 56px; }
+  .ms-gottitle { font-weight: 700; font-size: 1.1rem; line-height: 1.25; }
+  .ms-invite { font-weight: 700; font-size: 1.05rem; margin: 0 0 4px; }
+  .ms-sheet .ms-footrow { margin-top: 14px; }
+  /* Shared by you */
+  .ms-welcome { text-align: center; padding: 10px 6px 0; }
+  .ms-welcome h3 { margin: 0 0 12px; font-size: 1.15rem; }
+  .ms-welcome > .ms-sub { margin-top: 10px; text-align: left; }
+  .ms-fan { position: relative; width: 200px; height: 112px; margin: 8px auto 14px; }
+  .ms-fan > * { position: absolute; left: 54px; top: 10px; width: 92px; height: 92px; border-radius: 10px; object-fit: cover; box-shadow: 0 8px 30px rgba(255, 56, 184, 0.25); background: var(--accent-wash); border: 1px solid var(--accent-tint-border); box-sizing: border-box; }
+  .ms-fan > :nth-child(1) { transform: translateX(-46px) rotate(-12deg); }
+  .ms-fan > :nth-child(3) { transform: translateX(46px) rotate(12deg); }
+  .ms-fan > :nth-child(2) { z-index: 1; }
+  .ms-how { list-style: none; margin: 0; padding: 0; text-align: left; }
+  .ms-how li { display: flex; gap: 12px; align-items: flex-start; padding: 7px 0; font-size: 0.95rem; line-height: 1.4; }
+  .ms-how b { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--accent-tint); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; }
+  .ms-joined { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin: 6px 0; }
+  .ms-joined .ms-row { border-top: 0; padding: 10px 12px; }
+  .ms-yours-list > .ms-joined + .ms-row { border-top: 0; }
+  .ms-strip { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 12px; background: var(--accent-tint); font-size: 0.85rem; }
+  #msDialog .ms-stripbtn { flex: none; margin: 0; min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; color: var(--accent); font-weight: 700; font-size: 0.88rem; }
+  /* Share a playlist: the title and its three steps in place of the tabs */
+  #msTabsBar.ms-flowbar { padding-left: 46px; align-items: flex-start; }
+  .ms-flowbar #msClose { margin-top: 2px; }
+  .ms-flowbar .ms-tabs { flex-direction: column; gap: 0; }
+  .ms-flowtitle { text-align: center; font-weight: 700; font-size: 1.05rem; padding: 10px 0 8px; }
+  .ms-steps { display: flex; gap: 6px; margin: 0 0 10px; padding: 0; list-style: none; }
+  .ms-steps li { flex: 1; text-align: center; font-size: 0.74rem; font-weight: 600; color: var(--muted); }
+  .ms-steps li::before { content: ""; display: block; height: 4px; border-radius: 2px; background: var(--line); margin-bottom: 5px; }
+  .ms-steps .ms-done::before { background: var(--accent); opacity: 0.55; }
+  .ms-steps .ms-now { color: var(--accent); } .ms-steps .ms-now::before { background: var(--accent); }
+  .ms-q { margin: 16px 0 10px; font-size: 1.2rem; line-height: 1.3; }
+  #msDialog .ms-pickrow { width: 100%; margin: 0; min-height: 0; border-radius: 0; border: 0; border-top: 1px solid var(--line); background: none; box-shadow: none; color: var(--fg); font: inherit; text-align: left; }
+  .ms-pickrow .ms-text { display: flex; flex-direction: column; }
+  /* Others will see: the row as others will see it, following each choice */
+  .ms-pcard { border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px 2px; background: var(--card); }
+  .ms-pcard-cap { font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  .ms-pcard .ms-row { border: 0; padding: 6px 0 8px; cursor: default; }
+  .ms-pcard-line { display: none; font-size: 0.85rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ms-pcard-line b { color: var(--fg); }
+  /* the fields of a share */
+  .ms-field { margin-top: 18px; }
+  .ms-flabel { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .ms-fnote { flex: none; color: var(--muted); font-size: 0.8rem; font-weight: 400; white-space: nowrap; }
+  .ms-sheet { outline: none; }
+  #msDialog .ms-input, .ms-moodbox { display: block; width: 100%; box-sizing: border-box; margin: 0; min-height: 46px; padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--bg); color: var(--fg); font: inherit; }
+  .ms-moodbox { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 7px 8px; cursor: text; }
+  #msDialog .ms-input:focus, .ms-moodbox:focus-within, .ms-ta:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+  #msDialog .ms-moodchip { padding: 4px 4px 4px 11px; }
+  #msDialog .ms-chipx { margin: 0; padding: 0 6px; min-height: 0; border: 0; background: none; box-shadow: none; color: inherit; font-size: 1rem; line-height: 1; cursor: pointer; }
+  #msDialog .ms-moodinput { flex: 1 1 80px; min-width: 80px; width: auto; height: auto; margin: 0; padding: 4px; border: 0; box-shadow: none; outline: none; background: none; color: var(--fg); font: inherit; }
+  #msDialog .ms-moodinput[hidden] { display: none; }
+  .ms-suggest { margin-top: 8px; }
+  #msDialog .ms-suggest .ms-chip { padding: 4px 10px; font-size: 0.82rem; }
+  .ms-ta { border-width: 1.5px; border-radius: 12px; padding: 10px 12px; font-size: 0.95rem; min-height: 76px; resize: vertical; }
+  .ms-ta.ms-locked { color: var(--muted); background: var(--card); }
+  .ms-keptnote { margin: 6px 0 0; }
+  .ms-mseg { display: inline-flex; padding: 2px; border-radius: 999px; background: color-mix(in srgb, var(--fg) 8%, var(--bg)); }
+  #msDialog .ms-mseg button { margin: 0; min-height: 0; padding: 4px 11px; border: 0; border-radius: 999px; background: none; box-shadow: none; color: var(--muted); font: inherit; font-size: 0.8rem; font-weight: 600; }
+  #msDialog .ms-mseg button.ms-on { background: var(--button); color: var(--on-button, #fff); }
+  .ms-anon { align-items: flex-start; margin-top: 18px; }
+  .ms-anon .ms-cb { margin-top: 1px; }
+  .ms-anon .ms-sub { display: block; }
+  #msDialog .ms-stopbtn { display: flex; width: 100%; align-items: center; justify-content: center; gap: 8px; margin: 20px 0 0; min-height: 0; padding: 11px; border-radius: 999px; border: 1.5px solid var(--ms-red); background: none; box-shadow: none; color: var(--ms-red); font-weight: 700; }
+  .ms-stopbtn .fe-icon { display: flex; } .ms-stopbtn svg { width: 18px; height: 18px; }
+  /* errors: red, next to their fields */
+  .ms-bad .ms-input, .ms-bad .ms-moodbox, .ms-bad .ms-ta, .ms-moodbox.ms-bad-box, .ms-bad .ms-btile, .ms-bad .ms-phases-pick, .ms-bad .ms-ktile { border-color: var(--ms-red) !important; }
+  .ms-ferr { display: flex; align-items: center; gap: 6px; margin-top: 6px; color: var(--ms-red); font-size: 0.85rem; font-weight: 600; }
+  .ms-ferr[hidden] { display: none; }
+  .ms-ferr .fe-icon { display: flex; } .ms-ferr svg { width: 15px; height: 15px; }
+  .ms-errbox { margin: 14px 0 4px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--ms-red); color: var(--ms-red); background: color-mix(in srgb, var(--ms-red) 7%, transparent); font-size: 0.9rem; line-height: 1.4; }
+  /* shared: a big check */
+  .ms-shared { text-align: center; padding-top: 30px; }
+  .ms-bigcheck { width: 84px; height: 84px; border-radius: 50%; background: var(--button); color: var(--on-button, #fff); margin: 10px auto 18px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 50px var(--accent-wash); }
+  .ms-bigcheck .fe-icon { display: flex; } .ms-bigcheck svg { width: 40px; height: 40px; }
+  .ms-shared h3 { margin: 0 0 6px; font-size: 1.25rem; }
+  /* typing on a phone: the popup fits above the keyboard (sharing.js watchKeyboard), the card is one line, the bottom row hides */
+  #msDialog.ms-typing { max-height: none; }
+  .ms-typing #msFoot { display: none; }
+  .ms-typing .ms-pcard { padding: 6px 12px; }
+  .ms-typing .ms-pcard-cap, .ms-typing .ms-pcard .ms-row { display: none; }
+  .ms-typing .ms-pcard-line { display: block; }
   .ms-radios { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 12px; }
   .ms-radio { display: flex; gap: 10px; align-items: center; }
   .msd-cloud { line-height: 2; margin: 4px 0 10px; }
@@ -1787,8 +1823,8 @@
     <!-- Developer options: opened only by holding the app menu's header for 3 seconds (editor.js, watchDevHold), with nothing on screen that shows it -->
     <details id="devOptions" class="card" hidden>
       <summary>Developer options</summary>
-      <details class="gd-topic" data-icon="tag"><summary>Music sharing tags</summary>
-      <p class="muted">Every tag on more than one shared playlist, by how many use it. <span data-act>Click</span> a tag to hide it or show it again. <b>Bold</b> is shown, <s>struck</s> is hidden. Tags such as music, session and people start hidden.</p>
+      <details class="gd-topic" data-icon="tag"><summary>Music sharing moods</summary>
+      <p class="muted">Every mood word on more than one shared playlist, by how many use it. <span data-act>Click</span> a word to hide it from Shared by others' mood filter or show it again. <b>Bold</b> is shown, <s>struck</s> is hidden. Words such as music, session and people start hidden.</p>
       <div id="devTagWords"></div>
       </details>
       <details class="gd-topic" data-icon="flag"><summary>Music sharing reports</summary>
@@ -1830,7 +1866,7 @@
       <p id="privacyWaitRelay" hidden>When Spotify limits how often this app may ask it for things, it says how long to wait, but in a way a web page cannot read. So the page asks once more through a small relay on Cloudflare, run by the developer of this app, which can read it. That request carries your temporary Spotify sign-in, which expires within an hour, and which kind of request was refused (for a playlist, its Spotify ID), and nothing else. The relay passes it to Spotify, sends back only the wait, and keeps nothing.</p>
       </details>
       <details class="gd-topic" data-icon="swap" id="privacyMusicSharing"><summary>Music sharing</summary>
-      <p>Music sharing runs on a small service on Cloudflare, run by the developer of this app. Browsing it sends nothing about you. When you share a playlist, it keeps the playlist's name, its picture's address, the name you chose to be shown as (or none), the phases and tags you chose, the playlist's description, its songs as Spotify IDs and recording codes with each song's title, artist and length, how many songs and how long, and the few artists heard most. It does not keep your Spotify username: your temporary sign-in is checked with Spotify and only a scrambled code made from your Spotify ID is kept, so it knows which shares are yours. Stop sharing a playlist and it is deleted.</p>
+      <p>Music sharing runs on a small service on Cloudflare, run by the developer of this app. Browsing it sends nothing about you. When you share a playlist, it keeps the playlist's name, its picture's address, your Spotify name (or none, when you share anonymously), the type you chose with its books, phases, mood words or name, the description, its songs as Spotify IDs and recording codes with each song's title, artist and length, how many songs and how long, and the few artists heard most. It does not keep your Spotify username: your temporary sign-in is checked with Spotify and only a scrambled code made from your Spotify ID is kept, so it knows which shares are yours. Stop sharing a playlist and it is deleted.</p>
       <p>A report keeps its reason, your note and the same kind of scrambled code, and is emailed to the developer. Adding a shared playlist makes a private copy in your Spotify, and this browser remembers it is a copy so it is not shared again. Nothing records who added what.</p>
       <p>A shared playlist's page lists its songs. When you <span data-act>click</span> a song's play button, the app asks Deezer for a 30 second preview of that one song, sending only its recording code. Deezer also sees your internet address, as any site you load does. Nothing goes to Deezer before that.</p>
       </details>
@@ -1875,10 +1911,10 @@
     <div id="msFoot" hidden></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-07w"></script>
-<script src="editor.js?v=2026-11-07w"></script>
-<script src="shared-spotify.js?v=2026-11-07w"></script>
-<script src="app.js?v=2026-11-07w"></script>
-<script src="sharing.js?v=2026-11-07w"></script>
+<script src="formats.js?v=2026-11-08a"></script>
+<script src="editor.js?v=2026-11-08a"></script>
+<script src="shared-spotify.js?v=2026-11-08a"></script>
+<script src="app.js?v=2026-11-08a"></script>
+<script src="sharing.js?v=2026-11-08a"></script>
 </body>
 </html>
