@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-08r";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-08s";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -804,7 +804,7 @@ function renderAppMenu() {
   // Spotify is the first thing in the menu under its name, in whatever state it is in (connected, connecting, not connected, a problem), so it is always found in the same place.
   const spotifyItems = connection === "ready" ? [] : connectItems;   // connected needs nothing here (Change Spotify login is in More options); a problem keeps its Connect
   slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" },
-    feEl("div", { class: "fe-menuhead", id: "feMenuHead" }, feEl("img", { class: "fe-menuicon", src: "apple-touch-icon.png", alt: "", width: "40", height: "40" }), feEl("span", { class: "fe-menuname", text: "Arc" }), feEl("span", { class: "fe-menuver", id: "feMenuVersion", "aria-hidden": "true" })),
+    feEl("div", { class: "fe-menuhead", id: "feMenuHead" }, feEl("img", { class: "fe-menuicon", src: "apple-touch-icon.png", alt: "", width: "40", height: "40" }), feEl("span", { class: "fe-menuname", text: "Arc" })),
     ...spotifyItems,
     ...(backupBlock ? [...(spotifyItems.length ? [feEl("div", { class: "fe-rule" })] : []), backupBlock] : []),
     ...(spotifyItems.length || backupBlock ? [feEl("div", { class: "fe-rule" })] : []),
@@ -819,20 +819,6 @@ function renderAppMenu() {
     feEl("div", { class: "fe-rule" }),
     versionLine()));
   watchDevHold($("feMenuHead"));
-  flashVersionOnIcon($("feMenuHead"));
-}
-
-// A tap on the icon in the menu's header shows the version at the header's right for a second, then fades it out over another second.
-function flashVersionOnIcon(head) {
-  const icon = head && head.querySelector(".fe-menuicon"), ver = $("feMenuVersion");
-  if (!icon || !ver) return;
-  icon.addEventListener("click", () => {
-    ver.textContent = typeof APP_VERSION === "undefined" ? "" : APP_VERSION;
-    if (!ver.animate) return;
-    ver.getAnimations().forEach((a) => a.cancel());
-    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    ver.animate(still ? [{ opacity: 1 }, { opacity: 1, offset: 0.999 }, { opacity: 0 }] : [{ opacity: 1 }, { opacity: 1, offset: 0.5 }, { opacity: 0 }], { duration: still ? 1000 : 2000, easing: "linear" });
-  });
 }
 
 // Developer options open by holding the menu's header for 3 seconds. Nothing shows while holding, on purpose: it is not for people to find.

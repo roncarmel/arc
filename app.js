@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08r";
+const APP_VERSION = "2026-11-08s";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -326,6 +326,22 @@ function alignIconToText(icon, text, first, last) {
     text.style.marginBottom = -below + "px";
   }
 }
+// A tap on the icon in a pink band (welcome, setup, connecting) shows the version at the band's top right for a second, then fades it out over another second.
+document.addEventListener("click", (event) => {
+  const icon = event.target.closest && event.target.closest(".wp-band-icon");
+  const band = icon && icon.closest(".wp-band");
+  if (band) flashBandVersion(band);
+});
+function flashBandVersion(band) {
+  let ver = band.querySelector(".wp-band-ver");
+  if (!ver) { ver = document.createElement("span"); ver.className = "wp-band-ver"; ver.setAttribute("aria-hidden", "true"); band.appendChild(ver); }
+  ver.textContent = APP_VERSION;
+  if (!ver.animate) return;
+  ver.getAnimations().forEach((a) => a.cancel());
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  ver.animate(still ? [{ opacity: 1 }, { opacity: 1, offset: 0.999 }, { opacity: 0 }] : [{ opacity: 1 }, { opacity: 1, offset: 0.5 }, { opacity: 0 }], { duration: still ? 1000 : 2000, easing: "linear" });
+}
+
 function alignWelcomeIcons() {
   for (const band of document.querySelectorAll(".wp-band")) alignIconToText(band.querySelector(".wp-band-icon"), band.querySelector(".wp-band-text"), band.querySelector(".wp-band-name"), band.querySelector(".wp-band-tag"));
   for (const head of document.querySelectorAll("#welcomePage .wp-tool-head")) alignIconToText(head.querySelector(".tool-icon"), head.querySelector(".wp-tool-text"), head.querySelector(".wp-tool-text b"), head.querySelector(".wp-tool-tag"));
