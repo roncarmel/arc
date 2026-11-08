@@ -4,7 +4,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, the phase filter, tags (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-07u";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-07v";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_MIN_MS = 2 * 60 * 60 * 1000;
@@ -82,14 +82,20 @@ function renderSharingCard() {
   const card = $("msCard");
   if (!card) return;
   const lib = sharing.library;
-  const others = lib ? lib.shares.filter((s) => !isMine(s)) : [];
-  const notGotten = others.filter((s) => !isAdded(s));
-  const covers = (notGotten.length ? notGotten : others).filter((s) => s.cover).slice(0, 3);   // the library comes newest first
+  const shares = lib ? lib.shares : [];
+  const others = shares.filter((s) => !isMine(s));
+  // covers: others' not gotten yet, then the person's own, then gotten ones (the library comes newest first)
+  const order = [...others.filter((s) => !isAdded(s)), ...shares.filter(isMine), ...others.filter(isAdded)];
+  const covers = order.filter((s) => s.cover).slice(0, 3);
   const fan = $("msCardFan");
   fan.textContent = "";
   fan.classList.toggle("ms-card-noart", !covers.length);
   if (covers.length) covers.forEach((s) => fan.appendChild(feEl("img", { src: s.cover, alt: "", loading: "lazy" })));
-  else fan.appendChild(feIcon("swap"));
+  else {   // no covers anywhere: the app icon in front of two pink cards
+    fan.appendChild(feEl("span", { class: "ms-card-blank" }));
+    fan.appendChild(feEl("span", { class: "ms-card-blank" }));
+    fan.appendChild(feEl("img", { src: "apple-touch-icon.png", alt: "" }));
+  }
   $("msCardText").textContent = others.length
     ? `${others.length} ${others.length === 1 ? "playlist" : "playlists"} shared by other facilitators. Find music for your recipes, or share your own.`
     : "Find playlists other facilitators share, and share your own.";
