@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08n";
+const APP_VERSION = "2026-11-08o";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -261,8 +261,38 @@ function drawSetupJoint() {
 }
 function welcomeStepBack() {
   if (history.state && history.state.page === "welcome" && history.state.step === 2) { history.back(); return; }   // the popstate that follows shows the tools
-  showWelcomeStep(1, false);
+  slideScreens(() => showWelcomeStep(1, false));
 }
+
+// Moving between the screens before the app (the tools, what setup is, the setup question, its steps) slides: forward, the screen leaves to the left as the next
+// comes in from the right; back, the other way. The welcome band stays still between the two welcome steps. Drawn by the browser (View Transitions, CSS in
+// index.html, vt-*); a browser without them, reduced motion, or a back gesture the browser animates itself just changes the screen.
+function screenRank() {
+  const page = pageName();
+  if (page === "welcome") return $("wpSetup").hidden ? 0 : 1;
+  if (page === "setup") return currentFlow() ? 3 : 2;
+  return -1;
+}
+function slideScreens(change, event) {
+  const root = document.documentElement, from = screenRank();
+  const still = typeof document.startViewTransition !== "function" || from < 0 || (event && event.hasUAVisualTransition)
+    || (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  if (still) { change(); return; }
+  let to = -1;
+  const mine = ++slideCount;
+  root.classList.add("vt-slide");
+  let move;
+  try {
+    move = document.startViewTransition(() => {
+      change();
+      to = screenRank();
+      root.classList.toggle("vt-back", to < from);
+    });
+  } catch (err) { root.classList.remove("vt-slide", "vt-back"); return; }   // change() ran, or will
+  move.ready.then(() => { if (to < 0 || to === from) move.skipTransition(); }).catch(() => {});
+  move.finished.finally(() => { if (slideCount === mine) root.classList.remove("vt-slide", "vt-back"); });   // not when a later slide has started
+}
+let slideCount = 0;
 
 // On the welcome page an icon spans exactly from the top of the letters of the name beside it to the bottom of the letters of the tagline under it (the band's
 // icon and each tool card's). The text is pulled up and down by the empty room above and below its letters, measured from the font, and the icon takes its height.
@@ -454,9 +484,9 @@ function goToSetup(again) {
 
 // Back goes up one step: from the instructions to the question, and from the question to the page before.
 function setupBack() {
-  if (currentFlow()) { showFlow(null); window.scrollTo(0, 0); return; }
+  if (currentFlow()) { slideScreens(() => { showFlow(null); window.scrollTo(0, 0); }); return; }
   if (history.state && history.state.page === "setup") { history.back(); return; }   // the popstate that follows does the rest
-  setupLeft();
+  slideScreens(setupLeft);
 }
 
 function setupLeft() {
@@ -467,7 +497,10 @@ function setupLeft() {
   showPage();
 }
 
-function pageHistoryMoved() {
+function pageHistoryMoved(event) {
+  slideScreens(() => historyMoved(), event);
+}
+function historyMoved() {
   const state = history.state;
   if (pageName() === "app" && !(state && state.page === "setup")) { showView((state && state.view) || "home", false); return; }
   if (state && state.page === "setup") {
@@ -557,7 +590,7 @@ function startFlowChoice() {
   // The capture phase catches the click even from a script that stops it bubbling.
   document.addEventListener("click", (event) => {
     const button = event.target.closest && event.target.closest("[data-flow]");
-    if (button) showFlow(button.getAttribute("data-flow"));
+    if (button) slideScreens(() => { showFlow(button.getAttribute("data-flow")); window.scrollTo(0, 0); });
   }, true);
 }
 let py = null;          // the Python functions, once loaded
@@ -3288,8 +3321,8 @@ async function main() {
     });
   });
   on("connect", "click", startLogin);
-  on("startSetup", "click", () => goToSetup(false));
-  on("getStarted", "click", () => showWelcomeStep(2, true));
+  on("startSetup", "click", () => slideScreens(() => goToSetup(false)));
+  on("getStarted", "click", () => slideScreens(() => showWelcomeStep(2, true)));
   on("wpSetupBack", "click", welcomeStepBack);
   for (const head of document.querySelectorAll("#welcomePage .wp-tool-head")) head.addEventListener("click", () => toggleWelcomeTool(head));
   alignWelcomeIcons();
