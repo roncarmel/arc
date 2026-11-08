@@ -4,7 +4,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, the phase filter, tags (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-07s";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-07t";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_MIN_MS = 2 * 60 * 60 * 1000;
@@ -93,6 +93,13 @@ function renderSharingCard() {
   $("msCardText").textContent = others.length
     ? `${others.length} ${others.length === 1 ? "playlist" : "playlists"} shared by other facilitators. Find music for your recipes, or share your own.`
     : "Find playlists other facilitators share, and share your own.";
+}
+// Once connected on a device that has never read which shares are the person's own (a new browser, a Home Screen app added again), they are read once, so the
+// card's count of playlists shared by other facilitators leaves them out. After that the list is refreshed whenever Music sharing opens (loadMine).
+function sharingConnected() {
+  let known = !!sharing.mine;
+  try { known = known || localStorage.getItem(SHARING_MINE_KEY) !== null; } catch (err) { known = true; }   // no storage: it would be read on every visit
+  if (!known) loadMine().then(renderSharingCard);
 }
 function startSharingCard() {
   const card = $("msCard");
