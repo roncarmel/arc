@@ -9,7 +9,7 @@
     var w; try { w = Number(localStorage.getItem("devPhoneWidth")); } catch (e) { return; }
     if (!(w === 360 || w === 320) || window.top !== window) return;
     window.stop();
-    document.documentElement.innerHTML = '<head><meta charset="utf-8"><title>Ceremony Playlist Builder</title><style>html,body{margin:0;height:100%;background:#2a2a2e;font:13px -apple-system,"Segoe UI",Roboto,sans-serif}iframe{display:block;margin:0 auto;height:100%;border:0;background:#fff;box-shadow:0 0 0 1px #555}#devPhoneBar{position:fixed;right:12px;bottom:12px;display:flex;gap:8px;align-items:center;color:#ddd}#devPhoneBar button{font:inherit;padding:4px 10px;border-radius:6px;border:1px solid #777;background:#3a3a40;color:#fff;cursor:pointer}</style></head><body><iframe id="devPhoneFrame" title="Phone width"></iframe><div id="devPhoneBar"><span></span><button type="button">Full width</button></div></body>';
+    document.documentElement.innerHTML = '<head><meta charset="utf-8"><title>Arc</title><style>html,body{margin:0;height:100%;background:#2a2a2e;font:13px -apple-system,"Segoe UI",Roboto,sans-serif}iframe{display:block;margin:0 auto;height:100%;border:0;background:#fff;box-shadow:0 0 0 1px #555}#devPhoneBar{position:fixed;right:12px;bottom:12px;display:flex;gap:8px;align-items:center;color:#ddd}#devPhoneBar button{font:inherit;padding:4px 10px;border-radius:6px;border:1px solid #777;background:#3a3a40;color:#fff;cursor:pointer}</style></head><body><iframe id="devPhoneFrame" title="Phone width"></iframe><div id="devPhoneBar"><span></span><button type="button">Full width</button></div></body>';
     var frame = document.getElementById("devPhoneFrame");
     frame.style.width = w + "px";
     frame.src = location.href;
@@ -17,17 +17,17 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-08h">
-<script src="theme.js?v=2026-11-08h"></script>
+<meta name="app-version" content="2026-11-08i">
+<script src="theme.js?v=2026-11-08i"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Ceremony Playlist Builder</title>
+<title>Arc</title>
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
 <link rel="icon" href="favicon-16.png" type="image/png" sizes="16x16">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Playlists">
+<meta name="apple-mobile-web-app-title" content="Arc">
 <!-- Launch pictures: what an iPhone shows while a Home Screen app starts, in place of a white screen. Each is the plain background, dark or light, one per screen size (made by splash/make_splash.py); the launch screen comes in over it. A Home Screen app takes them when it is added. -->
 <meta name="theme-color" content="#151517" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
@@ -611,11 +611,40 @@
   @media (prefers-reduced-motion: reduce) { #formatEditor .fe-welcome-arrow { animation: none; transform: translateY(4px); } }
   /* with no recipes the welcome is the only thing said: no status lines (Python, Spotify, notices) */
   body.no-recipes #pythonNote, body.no-recipes #spotifyNote, body.no-recipes #editorNote, body.no-recipes #formatEditor .fe-caption { display: none; }
-  /* Music sharing's card under Build (sharing.js, renderSharingCard): three covers fanned out, the name and a line, opens Find playlists */
-  #msCard { display: none; }
-  html.page-app #msCard { display: flex; align-items: center; gap: 14px; width: 100%; max-width: 560px; margin: 22px auto 8px; padding: 14px 14px 14px 16px; box-sizing: border-box; border-radius: 16px; background: var(--card); border: 1px solid var(--line); color: var(--fg); font: inherit; font-weight: 400; text-align: left; cursor: pointer; }
-  html.page-app body.no-recipes #msCard { display: none; }
-  #msCard .ms-card-fan { position: relative; flex: none; width: 74px; height: 52px; }
+  /* Arc's bar and home (app.js showView): html.view-home, view-builder or view-sharing on the app page. The bar is over every view; the builder's parts show only in its view. */
+  #appBar, #homePage { display: none; }
+  html.page-app #appBar { display: flex; align-items: center; gap: 8px; min-height: 44px; margin: 0 0 12px; position: relative; z-index: 60; }
+  #appBar .ab-left { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+  html.view-home #appBar .ab-left { visibility: hidden; }
+  #appBar .ab-home { flex: none; display: flex; align-items: center; gap: 9px; margin: 0; padding: 0; min-height: 0; background: none; border: 0; box-shadow: none; color: var(--fg); font: inherit; cursor: pointer; }
+  #appBar .ab-home img { width: 32px; height: 32px; border-radius: 22%; }
+  #appBar .ab-name { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
+  #appBar .ab-sep { flex: none; color: var(--muted); }
+  #appBar .ab-tool { min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (hover: hover) { #appBar .ab-home:hover { outline: none; filter: none; opacity: 0.8; } }
+  html.page-app:not(.view-builder) #appSection > :is(#formatEditor, #editorNote, #buildRow, #pythonNote, #spotifyNote, #spotifySaveLine, #savedNote) { display: none !important; }
+  html.page-app.view-home #homePage { display: block; }
+  #homePage { max-width: 560px; margin: 0 auto; }
+  #homePage .hp-brand { text-align: center; margin: 4px 0 30px; }
+  #homePage .hp-brand img { width: 84px; height: 84px; border-radius: 22%; box-shadow: 0 0 0 9px color-mix(in srgb, var(--accent) 10%, transparent), 0 0 0 20px color-mix(in srgb, var(--accent) 5%, transparent); }
+  #homePage .hp-name { margin: 22px 0 0; font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; color: var(--fg); }
+  #homePage .hp-tag { margin: 4px 0 0; color: var(--muted); font-size: 0.92rem; }
+  #homePage .hp-tools { display: grid; gap: 14px; }
+  #homePage .hp-tool { display: flex; align-items: center; gap: 14px; width: 100%; margin: 0; padding: 14px; min-height: 0; box-sizing: border-box; border-radius: 18px; background: var(--card); border: 1px solid var(--line); box-shadow: none; color: var(--fg); font: inherit; font-weight: 400; text-align: left; cursor: pointer; }
+  @media (hover: hover) { #homePage .hp-tool:hover { outline: none; filter: none; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); } }
+  #homePage .hp-art { position: relative; flex: none; width: 76px; height: 62px; }
+  #homePage .hp-one img { position: absolute; left: 12px; top: 5px; width: 52px; height: 52px; border-radius: 9px; object-fit: cover; box-shadow: 0 0 20px color-mix(in srgb, var(--accent) 45%, transparent); }
+  #homePage .hp-text { flex: 1; min-width: 0; line-height: 1.35; }
+  #homePage .hp-text b { display: block; font-size: 1.05rem; margin-bottom: 3px; }
+  #homePage .hp-text span { color: var(--muted); font-size: 0.86rem; }
+  #homePage .hp-go { flex: none; color: var(--accent); display: flex; }
+  /* Music sharing is a page of its own under the bar (its top is set by placeSharingPage in app.js) */
+  html.page-app #msOverlay { background: var(--bg); padding: 0; z-index: 50; align-items: stretch; }
+  html.page-app #msDialog { width: 100%; height: 100%; max-height: none; border-radius: 0; border: 0; box-shadow: none; }
+  html.page-app #msClose { display: none; }
+  html.view-sharing #supportBox { display: none; }   /* it would sit over the page's list, as the popup used to cover it */
+  /* Music sharing's card on Arc's home (sharing.js, renderSharingCard): three covers fanned out, the name and a line, opens Music sharing */
+  #msCard .ms-card-fan { position: relative; flex: none; width: 76px; height: 62px; }
   #msCard .ms-card-fan img { position: absolute; top: 2px; width: 48px; height: 48px; border-radius: 7px; object-fit: cover; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45); border: 1.5px solid var(--bg); box-sizing: border-box; }
   #msCard .ms-card-fan img:nth-child(1) { left: 0; transform: rotate(-9deg); }
   #msCard .ms-card-fan img:nth-child(2) { left: 13px; z-index: 1; }
@@ -627,14 +656,6 @@
   /* no covers anywhere (renderSharingCard): the app icon in front of two pink cards */
   #msCard .ms-card-blank { position: absolute; top: 2px; width: 48px; height: 48px; border-radius: 7px; background: var(--accent); border: 1.5px solid var(--bg); box-sizing: border-box; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45); opacity: 0.35; }
   #msCard .ms-card-blank + .ms-card-blank { opacity: 0.6; }
-  #msCard .ms-card-text { flex: 1; min-width: 0; line-height: 1.35; }
-  #msCard .ms-card-text b { display: block; font-size: 1rem; margin-bottom: 2px; }
-  #msCard .ms-card-text span { color: var(--muted); font-size: 0.86rem; line-height: 1.35; }
-  #msCard .ms-card-go { flex: none; color: var(--accent); display: flex; }
-  /* the playlist picker's last line, Find more in Music sharing (editor.js, listPanel) */
-  #formatEditor .fe-msfind { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 4px; padding: 10px 10px 6px 6px; border: none; border-top: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--fg); font: inherit; font-weight: 400; text-align: left; box-sizing: border-box; cursor: pointer; }
-  #formatEditor .fe-msfind > .fe-icon { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; background: var(--accent-tint); color: var(--accent); }
-  #formatEditor .fe-msfind .fe-title { font-weight: 600; }
   #formatEditor .fe-welcome-card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 26px 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
   #formatEditor .fe-welcome-card p { margin: 0; max-width: 380px; line-height: 1.45; text-wrap: pretty; }
   #formatEditor .fe-welcome-icon { width: 56px; height: 56px; border-radius: 22%; }
@@ -660,9 +681,7 @@
   #formatEditor .fe-playtip-close::before { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: var(--accent-tint); transition: background 0.15s var(--ease-out); }   /* a soft pink circle, smaller than the 44 px it answers to */
   #formatEditor .fe-playtip-close:hover::before { background: var(--accent-wash); }
   #formatEditor .fe-playtip-close > * { position: relative; }
-  #formatEditor .fe-appicon { display: none; }
   @media (min-width: 760px) {
-    body.minimal #formatEditor .fe-appicon { display: block; width: 44px; height: 44px; flex: none; border-radius: 22%; }   /* narrow screens need the room for the tabs */
     body.minimal #formatEditor .fe-welcome-icon { display: none; }
   }
   #moreOptions { margin-bottom: 14px; }   /* a little room between More options and Privacy */
@@ -955,7 +974,6 @@
   #create .build-verb { flex: none; white-space: nowrap; }
   #create .build-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; opacity: 0.9; }
   #formatEditor .fe-toprow.fe-noformats .fe-newformat { order: -1; }
-  #formatEditor .fe-toprow.fe-noformats .fe-appicon { order: -2; }
   /* the bottom strip and the corner note catch clicks only on the button and the words, never on the empty space around them */
   #supportBox { pointer-events: none; }
   #supportBox > * { pointer-events: auto; }
@@ -1421,7 +1439,7 @@
     try { if (sessionStorage.getItem("updating")) { sessionStorage.removeItem("updating"); if (page === "app" && !document.documentElement.classList.contains("connecting")) document.documentElement.classList.add("updating"); } } catch (err) { /* no storage: no card */ }
     // opened from an iPhone's Home Screen: the launch screen until the app is ready (launchScreen in app.js), unless another screen already covers it
     try { var cls = document.documentElement.classList; if (page === "app" && (navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)) && !cls.contains("connecting") && !cls.contains("updating")) cls.add("launching"); } catch (err) { /* no launch screen */ }
-    document.documentElement.classList.add("page-" + page);
+    document.documentElement.classList.add("page-" + page, "view-home");   // the app page always opens on Arc's home (showView in app.js)
   })();
 </script>
 <script>
@@ -1431,7 +1449,7 @@
 <script data-goatcounter="https://roncarmel.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </head>
 <body>
-<div id="launchScreen" role="status" aria-live="polite"><img src="apple-touch-icon.png" alt=""><p class="ls-name">Ceremony Playlist Builder</p><p class="ls-tag">Ceremony playlists, ready in minutes.</p><div class="ls-foot"><span class="ls-spin" aria-hidden="true"></span><span class="ls-ok" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span id="lsStep">Starting</span></div></div>
+<div id="launchScreen" role="status" aria-live="polite"><img src="apple-touch-icon.png" alt=""><p class="ls-name">Arc</p><p class="ls-tag">Ceremony playlist tools for your Spotify library</p><div class="ls-foot"><span class="ls-spin" aria-hidden="true"></span><span class="ls-ok" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span id="lsStep">Starting</span></div></div>
 <div id="connectingScreen" role="status">
   <img src="apple-touch-icon.png" alt="" width="72" height="72">
   <div class="cn-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
@@ -1463,7 +1481,7 @@
   </div>
 </div>
 <main>
-  <h1 class="brand"><img class="app-icon" src="apple-touch-icon.png" alt="" width="44" height="44"><span class="brand-text"><span>Ceremony</span> <span>Playlist</span> <span>Builder</span></span></h1>
+  <h1 class="brand"><img class="app-icon" src="apple-touch-icon.png" alt="" width="44" height="44"><span class="brand-text"><span>Arc</span></span></h1>
   <div id="startupProblem" class="fe-overlay" role="alertdialog" aria-modal="true" aria-labelledby="startupTitle" hidden>
     <div class="fe-dialog pb-dialog">
       <div class="pb-badge"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17.5v.1"/></svg></div>
@@ -1482,7 +1500,7 @@
   </div>
 
   <section id="welcomePage">
-    <p class="tagline wp-lead">Ceremony playlists, ready in minutes.</p>
+    <p class="tagline wp-lead">Ceremony playlist tools for your Spotify library</p>
     <div class="wp-req">
       <span class="wp-cap">Requires Spotify Premium</span>
       <button id="premiumWhy" class="linklike" type="button" aria-expanded="false" aria-controls="premiumWhyText">Why?</button>
@@ -1515,7 +1533,7 @@
 
   <details id="about" class="about card">
     <summary>About this app</summary>
-    <p><strong>What it does</strong><br>Ceremony Playlist Builder makes long playlists from your existing Spotify playlists. Describe the structure of the playlists you want to create, and this app builds as many complete playlists as your music allows, with songs picked at random and no song repeated across the playlists made from one recipe. Each playlist is created in your Spotify account, ready to play.</p>
+    <p><strong>What it does</strong><br>Arc makes long playlists from your existing Spotify playlists. Describe the structure of the playlists you want to create, and this app builds as many complete playlists as your music allows, with songs picked at random and no song repeated across the playlists made from one recipe. Each playlist is created in your Spotify account, ready to play.</p>
     <p><strong>What it's good for</strong><br>Ceremonies, retreats, workshops, and any long event where the music should follow an arc, such as arriving, deepening, and landing. Instead of steering a shuffle during the event or manually building a playlist ahead of time for each event, set the structure once and get multiple fresh, non-overlapping playlists. You can then use these playlists for subsequent events without ever repeating the same music.</p>
     <p><strong>How it works</strong></p>
     <ol>
@@ -1553,8 +1571,8 @@
         <li class="sp-item">
           Fill in the form:
           <ul class="fields">
-            <li><div class="sp-field"><span class="ui">App name:</span><code>Ceremony Playlist Builder</code><button class="copy-field" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div></li>
-            <li><div class="sp-field"><span class="ui">App description:</span><code>Ceremony Playlist Builder</code><button class="copy-field" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div></li>
+            <li><div class="sp-field"><span class="ui">App name:</span><code>Arc</code><button class="copy-field" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div></li>
+            <li><div class="sp-field"><span class="ui">App description:</span><code>Arc</code><button class="copy-field" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div></li>
             <li><div class="sp-field"><span class="ui">Website:</span><span>leave it blank</span></div></li>
             <li><div class="sp-field"><span class="ui">Redirect URI:</span><code id="redirect" class="redirect-address"></code><button id="copyRedirect" class="copy-field" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div></li>
             <li class="sp-add"><span class="ui" data-act>Press</span> the <span class="sp-spotify-btn">Add</span> button next to it.</li>
@@ -1570,9 +1588,9 @@
       <ol id="flowExisting" class="sp-list" hidden>
         <li class="sp-item">
           Open the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify developer dashboard</a>
-          (it will open in <span data-home="Safari">a new tab</span>), log in, and <span data-act>press</span> the app you made for Ceremony Playlist Builder.
+          (it will open in <span data-home="Safari">a new tab</span>), log in, and <span data-act>press</span> the app you made for Arc.
           Switch back to this <span data-home="app">tab</span> any time you need to reference these instructions.
-          <figure class="sp-shot"><div class="sp-frame"><picture><source media="(pointer: coarse)" srcset="step-open-app-phone.jpg"><img src="step-open-app-computer.jpg" alt="The Spotify developer dashboard. A pink label points to the white box that says Ceremony Playlist Builder, which is what to choose. The Create app button is greyed out." width="1398" height="564"></picture></div></figure>
+          <figure class="sp-shot"><div class="sp-frame"><picture><source media="(pointer: coarse)" srcset="step-open-app-phone.jpg"><img src="step-open-app-computer.jpg" alt="The Spotify developer dashboard. A pink label points to the white box with your app's name, which is what to choose. The Create app button is greyed out." width="1398" height="564"></picture></div></figure>
         </li>
         <li class="sp-item">Copy the <span class="ui">Client ID</span> shown on its page.
           <figure class="sp-shot"><div class="sp-frame"><img src="step-client-id.jpg" alt="The app's page on Spotify's site. Pink labels point to the Client ID line, which is the text to copy, and to the copy button at the right end of that line." width="1348" height="588"></div></figure>
@@ -1593,14 +1611,14 @@
         <summary>What does all this actually do?</summary>
         <p>Spotify keeps your music private, so this page can only reach your playlists if you give it permission. Making a Spotify developer app inside your Spotify account is how you give this page that permission.</p>
         <p>The Client ID works like a name tag. It tells Spotify who is asking for access, and Spotify then asks you to approve it. After that, this page can look at your playlists and make new ones in your account. Only you can use the app you made inside your Spotify account.</p>
-        <p>Your Client ID is not a secret. It stays in this browser and goes only to Spotify. You do this once. If you want to use Ceremony Playlist Builder on another device, you won't need to create another app, just use the same Client ID.</p>
+        <p>Your Client ID is not a secret. It stays in this browser and goes only to Spotify. You do this once. If you want to use Arc on another device, you won't need to create another app, just use the same Client ID.</p>
       </details>
 
       <details id="spWhatExisting" class="wp-helps" hidden>
         <summary>What does all this actually do?</summary>
         <p>Spotify keeps your music private, so this page can only reach your playlists if you give it permission. The Spotify developer app you made previously is how you give this page that permission.</p>
         <p>The Client ID works like a name tag. It tells Spotify who is asking for access, and Spotify then asks you to approve it. After that, this page can look at your playlists and make new ones in your account. Only you can use the app you made inside your Spotify account.</p>
-        <p>Your Client ID is not a secret. It stays in this browser and goes only to Spotify. To use Ceremony Playlist Builder on another device, enter the same Client ID there. You won't need to create another app.</p>
+        <p>Your Client ID is not a secret. It stays in this browser and goes only to Spotify. To use Arc on another device, enter the same Client ID there. You won't need to create another app.</p>
       </details>
     </div>
 
@@ -1624,6 +1642,19 @@
   </section>
 
   <div id="appSection" hidden>
+  <!-- Arc's bar over every view of the app page: the icon and Arc go home, then the tool's name, then the app menu (editor.js fills #feAppMenu) -->
+  <div id="appBar">
+    <span class="ab-left"><button id="appHome" class="ab-home" type="button" aria-label="Home"><img src="apple-touch-icon.png" alt="" width="32" height="32"><span class="ab-name">Arc</span></button><span class="ab-sep" aria-hidden="true">/</span><span id="appTool" class="ab-tool"></span></span>
+    <div class="fe-appmenuwrap" id="feAppMenu"></div>
+  </div>
+  <!-- Arc's home: the two tools (decided by Ron, 2026-11-08, mockup A) -->
+  <section id="homePage">
+    <div class="hp-brand"><img src="apple-touch-icon.png" alt="" width="84" height="84"><h1 class="hp-name">Arc</h1><p class="hp-tag">Ceremony playlist tools for your Spotify library</p></div>
+    <div class="hp-tools">
+      <button id="homeBuilder" class="hp-tool" type="button"><span class="hp-art hp-one" aria-hidden="true"><img src="playlist-cover.jpg" alt=""></span><span class="hp-text"><b>Playlist builder</b><span>Build long timed playlists from your own, with a recipe.</span></span><span class="hp-go"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+      <button id="msCard" class="hp-tool" type="button"><span id="msCardFan" class="ms-card-fan hp-art" aria-hidden="true"></span><span class="hp-text"><b>Music sharing</b><span id="msCardText"></span></span><span class="hp-go"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+    </div>
+  </section>
   <h2 id="editHeading">2. Edit your recipes</h2>
   <p id="savedNote" class="muted" hidden>You back your recipes up to this device yourself: <button id="backupDownloadLink" class="linklike" type="button">back up now</button>, and <button id="backupRestore" class="linklike" type="button">restore from a backup</button> at any time.</p>
   <input id="restoreFile" type="file" accept=".txt,text/plain" hidden>
@@ -1671,7 +1702,6 @@
   </div>
   <p id="pythonNote" class="muted"></p>
   <p id="spotifyNote" class="muted" hidden>Building playlists needs a working connection to Spotify.</p>
-  <button id="msCard" class="ms-card" type="button"><span id="msCardFan" class="ms-card-fan" aria-hidden="true"></span><span class="ms-card-text"><b>Music sharing</b><span id="msCardText"></span></span><span class="ms-card-go" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></button>
 
   <div id="createOverlay" class="app-overlay" hidden>
     <div id="createDialog" class="app-dialog" role="dialog" aria-modal="true" aria-labelledby="bdTitle" tabindex="-1">
@@ -1948,10 +1978,10 @@
     <div id="msFoot" hidden></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-08h"></script>
-<script src="editor.js?v=2026-11-08h"></script>
-<script src="shared-spotify.js?v=2026-11-08h"></script>
-<script src="app.js?v=2026-11-08h"></script>
-<script src="sharing.js?v=2026-11-08h"></script>
+<script src="formats.js?v=2026-11-08i"></script>
+<script src="editor.js?v=2026-11-08i"></script>
+<script src="shared-spotify.js?v=2026-11-08i"></script>
+<script src="app.js?v=2026-11-08i"></script>
+<script src="sharing.js?v=2026-11-08i"></script>
 </body>
 </html>

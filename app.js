@@ -15,11 +15,13 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08h";
+const APP_VERSION = "2026-11-08i";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
-const APP_MARKER = "Made by Ceremony Playlist Builder";                    // change this whenever the page is updated
+const APP_MARKER = "Made by Arc";                    // change this whenever the page is updated
+const OLD_APP_MARKERS = ["Made by Ceremony Playlist Builder"];   // the app's name before Arc (2026-11-08): playlists built then are still its own
+function madeByAppText(text) { return typeof text === "string" && [APP_MARKER, ...OLD_APP_MARKERS].some((m) => text.startsWith(m)); }
 // The word for pressing a button: "tap" on a touch screen, "click" with a mouse. Page text in the markup marks it with <span data-act>, filled in at startup.
 function actWord(capital) {
   let touch = false;
@@ -169,6 +171,46 @@ function showPage() {
   if (was && was !== page) { window.scrollTo(0, 0); requestAnimationFrame(() => window.scrollTo(0, 0)); }   // again after the new page is laid out, so the title sits where it does on the other page
 }
 
+// ---------------------------------------------------------------- Arc's views
+// The app page has three views: home (the two tools), the playlist builder and Music sharing, chosen by a class on <html> (view-home, view-builder, view-sharing).
+// It always opens on home (the <head> script adds view-home; decided by Ron, 2026-11-08). Opening a tool adds a step to the browser's history, so the back button
+// (or a phone's back gesture) returns home; so do the icon and Arc in the bar at the top.
+const VIEWS = ["home", "builder", "sharing"];
+// the view the <head> script chose (home), or home when it did not run
+let appView = VIEWS.find((v) => document.documentElement.classList.contains("view-" + v)) || "home";
+document.documentElement.classList.add("view-" + appView);
+const TOOL_NAMES = { builder: "Playlist builder", sharing: "Music sharing" };
+
+function showView(view, push = true) {
+  if (!VIEWS.includes(view)) view = "home";
+  if (view === appView) return;
+  const was = appView;
+  appView = view;
+  if (was === "sharing" && typeof closeSharing === "function") closeSharing();
+  if (typeof editor === "object" && editor.appMenu && typeof closePanels === "function") closePanels();
+  const root = document.documentElement;
+  for (const v of VIEWS) root.classList.toggle("view-" + v, v === view);
+  $("appTool").textContent = TOOL_NAMES[view] || "";
+  if (push && view !== "home") { try { history.pushState({ view }, ""); } catch (err) { /* the back button just leaves the page */ } }
+  window.scrollTo(0, 0);
+  if (view === "builder" && typeof renderEditor === "function") renderEditor();   // drawn while hidden, the tabs and the welcome arrow measured nothing
+  if (view === "sharing") { placeSharingPage(); openSharing("find"); }
+}
+
+// Back home: undoes the tool's step in the history when there is one, so the back button does not return to the tool
+function goHome() {
+  if (appView === "home") return;
+  if (history.state && history.state.view) { history.back(); return; }   // the popstate that follows shows home
+  showView("home", false);
+}
+
+// Music sharing is a page under the bar: it starts where the bar ends
+function placeSharingPage() {
+  if (appView !== "sharing") return;
+  const bar = $("appBar");
+  $("msOverlay").style.top = Math.max(0, Math.round(bar.getBoundingClientRect().bottom + 4)) + "px";
+}
+
 // The welcome page's Why? next to "Requires Spotify Premium" opens a small note under it.
 function showPremiumWhy(open) {
   $("premiumWhyText").hidden = !open;
@@ -230,7 +272,7 @@ function setupComplete() {
   // someone setting up again (a new device, or an iPhone's Home Screen app, which keeps its own storage) already has recipes saved to Spotify by now (decided by Ron, 2026-11-04)
   const hasRecipes = typeof editor !== "undefined" && !!editor.model && editor.model.formats.some((f) => !f.draft);
   button.textContent = hasRecipes ? "Show me my recipes!" : "Let’s make a recipe!";   // a plain listener: it only lets the startup go on, so nothing in it can fail
-  return new Promise((resolve) => button.addEventListener("click", resolve, { once: true }));
+  return new Promise((resolve) => button.addEventListener("click", () => resolve(true), { once: true }));
 }
 
 // ---------------------------------------------------------------- the update card
@@ -349,6 +391,7 @@ function setupLeft() {
 
 function pageHistoryMoved() {
   const state = history.state;
+  if (pageName() === "app" && !(state && state.page === "setup")) { showView((state && state.view) || "home", false); return; }
   if (state && state.page === "setup") {
     try { if (state.again) sessionStorage.setItem("setupAgain", "1"); else localStorage.setItem("setupStarted", "1"); } catch (err) { /* private browsing */ }
     showPage();
@@ -2023,7 +2066,7 @@ async function loadMyPlaylists() {
     description: typeof p.description === "string" ? p.description : null,
     snapshot: typeof p.snapshot_id === "string" && p.snapshot_id ? p.snapshot_id : null,   // changes whenever the playlist does
   }));
-  for (const p of playlists) p.madeByApp = typeof p.description === "string" && p.description.startsWith(APP_MARKER);
+  for (const p of playlists) p.madeByApp = madeByAppText(p.description);
   // A format's backup in Spotify is known by what its description decodes to, whatever the playlist is called.
   for (const p of playlists) { const u = unpackFormat(p.description); p.save = u.kind === "none" ? null : u; p.isSave = !!p.save; }
   keepPlaylists();
@@ -3175,6 +3218,10 @@ async function main() {
   document.addEventListener("keydown", (event) => { if (event.key === "Escape") { showPremiumWhy(false); showRecipeWhat(false); } });
   on("setupBack", "click", setupBack);
   window.addEventListener("popstate", pageHistoryMoved);
+  try { if (history.state && history.state.view) history.replaceState(null, ""); } catch (err) { /* nothing to forget */ }   // a reload keeps the step, but the page opens on home
+  on("appHome", "click", goHome);
+  on("homeBuilder", "click", () => showView("builder"));
+  window.addEventListener("resize", placeSharingPage);
   on("infoClose", "click", () => closeInfo());
   on("infoOverlay", "click", (event) => { if (event.target === $("infoOverlay")) closeInfo(); });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && info.node && !event.defaultPrevented && !(event.target.closest && event.target.closest("#themeList"))) { event.preventDefault(); closeInfo(); } });   // an Escape that closed something inside it (the color list) is not for the popup
@@ -3282,7 +3329,7 @@ async function main() {
     await new Promise((r) => setTimeout(r, 300));   // the page settles behind the launch screen first
     await finishLaunchScreen(pythonOk && connection === "ready" && !startupProblems.length && !saveState.error && $("reconnectScreen").hidden);
   }
-  await setupComplete();
+  if (await setupComplete()) showView("builder");   // its button is about recipes, so it opens the builder
   endConnectingScreen();
   // A visit that starts during a wait (the tab was closed, the wait forgotten) opens the popup once, so the missing Build button is explained. A reload does not.
   const pause = spotifyPause();

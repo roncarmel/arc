@@ -2,7 +2,7 @@
 //
 // The text is the same Python-style text the engine reads (engine.py). The editor never asks people to
 // type it; it only keeps it up to date. Nothing in this file touches the page.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["formats.js"] = "2026-11-08h";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["formats.js"] = "2026-11-08i";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // Silence lengths the editor steps through, in seconds: 30 sec, 1 to 10 min by the minute, then every 5 min up to 60 min
 const SILENCE_STEPS = [30, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 900, 1200, 1500, 1800, 2100, 2400, 2700, 3000, 3300, 3600];

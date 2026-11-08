@@ -250,7 +250,8 @@ function fakePyodideFactory() {
   };
 }
 
-async function boot({ url, session = {}, local = {}, fetchOptions = {}, before = null, idb = null, instantRetries = false, htmlChange = null, feedbackUrl = "" }) {
+// view: which of Arc's views the app page starts in. Most checks were written before Arc's home, for the builder; pass view: "home" for the page as it opens.
+async function boot({ url, session = {}, local = {}, fetchOptions = {}, before = null, idb = null, instantRetries = false, htmlChange = null, feedbackUrl = "", view = "builder" }) {
   const bootStarted = Date.now();
   const dom = new JSDOM(htmlChange ? htmlChange(html) : html, { url, runScripts: "outside-only", pretendToBeVisual: true });
   const w = dom.window;
@@ -285,6 +286,7 @@ async function boot({ url, session = {}, local = {}, fetchOptions = {}, before =
   w.navigator.clipboard = { writeText: async () => {} };
   w.indexedDB = idb || new FDBFactory();   // a browser's own database for saved songs; pass the same one to a second boot to pretend the page was reloaded
   if (before) before(w);
+  w.document.documentElement.classList.add("view-" + view);   // as the <head> script would (it does not run here)
   w.__scriptsRequested = [];
   w.eval(appJs.replace("const sharing = {", "var sharing = {").replace("const previewUrls =", "var previewUrls =").replace("let spotifyAnswerMs = 30000;", "var spotifyAnswerMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const BACKED_UP_MESSAGE =", "var BACKED_UP_MESSAGE =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("const saveTip =", "var saveTip =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let busy =", "var busy =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let isOwnerHere =", "var isOwnerHere =").replace("const OWNER_CLIENT_HASHES =", "var OWNER_CLIENT_HASHES =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("let launchScreen =", "var launchScreen =").replace("const GAP_STEPS =", "var GAP_STEPS ="));  // test harness only: lets a test replace the reload
   await Promise.race([w.__main, new Promise((r) => setTimeout(r, 1500))]);   // ready as soon as the page has finished starting up
@@ -453,7 +455,7 @@ print(json.dumps(out))
   fresh.document.querySelector('[data-flow="new"]').click();
   check("choosing create shows the create flow and the connect block", !hid(fresh, "flowNew") && hid(fresh, "flowExisting") && !hid(fresh, "connectBlock"));
   var createText = fresh.document.getElementById("flowNew").textContent;
-  check("create flow gives exact form instructions", /App name:Ceremony Playlist BuilderCopy/.test(createText) && /App description:Ceremony Playlist BuilderCopy/.test(createText) && /Redirect URI:http:\/\/127\.0\.0\.1:8000\/Copy/.test(createText) && /Check Web API only/.test(createText) && /Website:leave it blank/.test(createText), createText);
+  check("create flow gives exact form instructions", /App name:ArcCopy/.test(createText) && /App description:ArcCopy/.test(createText) && /Redirect URI:http:\/\/127\.0\.0\.1:8000\/Copy/.test(createText) && /Check Web API only/.test(createText) && /Website:leave it blank/.test(createText), createText);
   fresh.document.querySelector('[data-flow="existing"]').click();
   check("choosing existing switches flows", hid(fresh, "flowNew") && !hid(fresh, "flowExisting") && !hid(fresh, "connectBlock"));
   check("the steps come in their own card, with the question gone and a title for the answer", hid(fresh, "spAsk") && !hid(fresh, "spSteps") && /Find your Client ID/.test(fresh.document.getElementById("spStepsTitle").textContent));
@@ -484,7 +486,7 @@ print(json.dumps(out))
   var cfButtons = w1.document.querySelectorAll("#flowNew .sp-field .copy-field");
   for (const b of cfButtons) b.click();
   await new Promise((r) => setTimeout(r, 100));
-  check("App name, App description and Redirect URI each have a Copy button that copies the text in its box", cfButtons.length === 3 && cfCopied.join("|") === "Ceremony Playlist Builder|Ceremony Playlist Builder|http://127.0.0.1:8000/", cfCopied.join("|"));
+  check("App name, App description and Redirect URI each have a Copy button that copies the text in its box", cfButtons.length === 3 && cfCopied.join("|") === "Arc|Arc|http://127.0.0.1:8000/", cfCopied.join("|"));
 
   // 6h. clearing saved data forgets the Client ID, formats and sign-in, after asking
   var wClear = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { clientId: "keep-me", formats: MINI } });
@@ -762,8 +764,8 @@ print(json.dumps(out))
 
   // ---------------- the top of the page, the starting template, and the wording
   var pageHtml = fs.readFileSync(ROOT + "index.html", "utf8");
-  check("the page is titled Ceremony Playlist Builder, in pink", /<title>Ceremony Playlist Builder<\/title>/.test(pageHtml) && t0.document.querySelector("h1").textContent === "Ceremony Playlist Builder" && /\n  h1 \{[^}]*color: var\(--accent\)/.test(pageHtml), t0.document.querySelector("h1").textContent);
-  check("a one-line tagline opens the welcome page", /^Ceremony playlists, ready in minutes\.$/.test(t0.document.querySelector(".tagline").textContent) && t0.document.getElementById("welcomePage").contains(t0.document.querySelector(".tagline")));
+  check("the page is titled Arc, in pink", /<title>Arc<\/title>/.test(pageHtml) && t0.document.querySelector("h1").textContent === "Arc" && /\n  h1 \{[^}]*color: var\(--accent\)/.test(pageHtml), t0.document.querySelector("h1").textContent);
+  check("a one-line tagline opens the welcome page", /^Ceremony playlist tools for your Spotify library$/.test(t0.document.querySelector(".tagline").textContent) && t0.document.getElementById("welcomePage").contains(t0.document.querySelector(".tagline")));
   check("the page no longer lists sessions as something the app is for, and the about section lists retreats", !/sessions/i.test(t0.document.body.textContent) && /Ceremonies, retreats, workshops, and any long event/.test(t0.document.getElementById("about").textContent));
   var aboutFresh = fresh.document.getElementById("about");
   var aboutText = aboutFresh.textContent;
@@ -813,7 +815,7 @@ print(json.dumps(out))
   pgc.document.getElementById("feAppMenuButton").click();
   check("the menu has no Change Client ID", pgc.document.getElementById("feSetupAgain") === null);
   var pgHead = fs.readFileSync(ROOT + "index.html", "utf8");
-  check("the page is chosen in <head> before anything is drawn, the same way as in app.js", /\(function \(\) \{\n    var page = "welcome";/.test(pgHead) && /document\.documentElement\.classList\.add\("page-" \+ page\)/.test(pgHead) && /function pageName\(\)/.test(appSource()));
+  check("the page is chosen in <head> before anything is drawn, the same way as in app.js", /\(function \(\) \{\n    var page = "welcome";/.test(pgHead) && /document\.documentElement\.classList\.add\("page-" \+ page, "view-home"\)/.test(pgHead) && /function pageName\(\)/.test(appSource()));
 
 
   // ---------------- the playlist count in Step 1 follows creates and removals
@@ -851,9 +853,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08h" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08i" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-08h/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-08i/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -983,7 +985,7 @@ print(json.dumps(out))
   var ab = t0.document.getElementById("about");
   var leads = Array.from(ab.querySelectorAll("strong")).map((x) => x.textContent);
   check("the headings in What is this app? stand on their own line, without trailing periods", JSON.stringify(leads) === JSON.stringify(["What it does", "What it's good for", "How it works", "What you need", "Reporting problems", "Privacy"]) && Array.from(ab.querySelectorAll("p")).filter((p) => p.querySelector("strong + br")).length === 5, JSON.stringify(leads));
-  var pill = Array.from(t0.document.querySelectorAll("button:not(.linklike):not(.theme-button):not(#kofiClose):not(#createDonate):not(#cnContinue):not(#usOk), a.button-link")).filter((b) => !b.closest("#formatEditor") && !b.closest("#startupProblem") && b.id !== "infoClose" && b.id !== "msClose" && b.id !== "msCard" && b.id !== "updateGet");   // the Music sharing card (covers, not an icon) and the update card's Get it (its gift is on the card)   // the Setup complete button has words only; the startup popup and the info popup's close draw their icons inline
+  var pill = Array.from(t0.document.querySelectorAll("button:not(.linklike):not(.theme-button):not(#kofiClose):not(#createDonate):not(#cnContinue):not(#usOk), a.button-link")).filter((b) => !b.closest("#formatEditor") && !b.closest("#startupProblem") && b.id !== "infoClose" && b.id !== "msClose" && b.id !== "msCard" && b.id !== "homeBuilder" && b.id !== "appHome" && !b.closest("#appBar") && b.id !== "updateGet");   // the Music sharing card (covers, not an icon) and the update card's Get it (its gift is on the card)   // the Setup complete button has words only; the startup popup and the info popup's close draw their icons inline
   var pillsIn = pill.filter((b) => b.querySelector("img.btn-icon"));
   check("every pink button has an icon in front of its label (the Donate button has the cup)", pill.length >= 15 && pillsIn.length === pill.length, `${pillsIn.length} of ${pill.length} ` + pill.filter((b) => !b.querySelector("img.btn-icon")).map((b) => b.id || b.outerHTML.slice(0, 60)).join(","));
   check("each icon is a small file, 20 by 20 (the Build sparkles 24 by 24), decorative, and the file exists", pill.every((b) => { const i = b.querySelector("img.btn-icon"); const size = i.getAttribute("src") === "icons/build.svg" ? "24" : "20"; return i.getAttribute("width") === size && i.getAttribute("height") === size && i.getAttribute("alt") === "" && /^icons\/[a-z]+\.svg$/.test(i.getAttribute("src")) && fs.existsSync(ROOT + i.getAttribute("src")); }));
@@ -1440,7 +1442,7 @@ print(json.dumps(out))
   // ---------------- wording and look: What is this app?, How recipes work, and names of controls
   var aboutBox = fresh.document.getElementById("about");
   var aboutParas = Array.from(aboutBox.querySelectorAll("p")).map((p) => p.textContent);
-  check("What it does is the new wording", aboutParas[0] === "What it doesCeremony Playlist Builder makes long playlists from your existing Spotify playlists. Describe the structure of the playlists you want to create, and this app builds as many complete playlists as your music allows, with songs picked at random and no song repeated across the playlists made from one recipe. Each playlist is created in your Spotify account, ready to play.", aboutParas[0]);
+  check("What it does is the new wording", aboutParas[0] === "What it doesArc makes long playlists from your existing Spotify playlists. Describe the structure of the playlists you want to create, and this app builds as many complete playlists as your music allows, with songs picked at random and no song repeated across the playlists made from one recipe. Each playlist is created in your Spotify account, ready to play.", aboutParas[0]);
   var steps = Array.from(aboutBox.querySelectorAll("ol li")).map((li) => li.textContent);
   check("How it works has your two reworded steps", steps[0] === "Connect to Spotify through a free developer app. This takes a few minutes to set up, but you\u2019ll only need to do it once." && steps[1] === "Define your recipe(s): which of your playlists to draw from, in what order, and for how long." && steps.length === 3, JSON.stringify(steps));
   check("the About section has a Reporting problems paragraph, then Privacy as its last, which points to the full section and says nothing about reporting", aboutParas[aboutParas.length - 1] === "PrivacyYour existing Spotify playlists are only read, never changed. Everything runs in this browser, and nothing about your music, such as playlist names or songs, goes anywhere except to you and Spotify. For the full details, see Privacy." && aboutParas[aboutParas.length - 2] === "Reporting problemsIf you run into a problem, choose Report a problem in the app menu." && !!aboutBox.querySelector("span.ui") && aboutBox.querySelector("span.ui").textContent === "Report a problem", aboutParas[aboutParas.length - 1]);
@@ -1459,8 +1461,8 @@ print(json.dumps(out))
   check("headings, the two setup choices, code, results and confirmation boxes are white", /h2, h3, label\.choice, code, #confirmBox, #removeConfirmBox, #clearConfirm \{ color: var\(--fg\); \}/.test(gCss));
   var gh = fs.readFileSync(ROOT + "index.html", "utf8");
   var aboutRange = gh.slice(gh.indexOf('<details id="about"'), gh.indexOf("</details>", gh.indexOf('<details id="about"')));
-  var outside = gh.replace(aboutRange, "").replace(/<details id="guideSection"[\s\S]*?<details id="moreOptions"/, "").slice(gh.indexOf("<body")).replace('<span class="ms-card-text"><b>Music sharing</b>', "").replace("<b>Bold</b> is shown", "");   // the Music sharing card's title, and Developer options showing what bold means there
-  check("bold is kept for the six headings in About this app (and the guide for facilitators, the Music sharing card's title, and Developer options' tag list), and nowhere else", (aboutRange.match(/<strong>/g) || []).length === 6 && (outside.match(/<strong[ >]/g) || []).length === 0 && !/<b>/.test(outside));
+  var outside = gh.replace(aboutRange, "").replace(/<details id="guideSection"[\s\S]*?<details id="moreOptions"/, "").slice(gh.indexOf("<body")).replace('<span class="hp-text"><b>Playlist builder</b>', "").replace('<span class="hp-text"><b>Music sharing</b>', "").replace("<b>Bold</b> is shown", "");   // the Music sharing card's title, and Developer options showing what bold means there
+  check("bold is kept for the six headings in About this app (and the guide for facilitators, the titles of the tools on Arc's home, and Developer options' tag list), and nowhere else", (aboutRange.match(/<strong>/g) || []).length === 6 && (outside.match(/<strong[ >]/g) || []).length === 0 && !/<b>/.test(outside));
   var setupText = fresh.document.getElementById("spSteps");
   check("the setup steps' field names and buttons are highlighted in white, and nothing there is bold", setupText.querySelectorAll("strong, b").length === 0 && Array.from(setupText.querySelectorAll("span.ui")).map((x) => x.textContent).some((t) => /^Create app$/.test(t)) && Array.from(setupText.querySelectorAll("span.ui")).some((x) => /App name/.test(x.textContent)));
   check("the connected message and Step 4's text are plain gray text, not wrapped in any highlight", !fresh.document.getElementById("connectedMessage").querySelector(".ui") && !t0.document.getElementById("backupSection").nextElementSibling.querySelector(".ui") && t0.document.getElementById("backupSection").nextElementSibling.tagName === "P" && !t0.document.getElementById("backupSection").nextElementSibling.classList.contains("ui"));
@@ -1555,7 +1557,7 @@ print(json.dumps(out))
 }
   if (want('small changes')) { try {
   // ================================================================ small changes
-  check("the title has the app icon on its left", (() => { const h1 = fresh.document.querySelector("h1"); const img = h1.querySelector("img.app-icon"); return h1.classList.contains("brand") && !!img && img.getAttribute("src") === "apple-touch-icon.png" && img.getAttribute("alt") === "" && h1.firstElementChild === img && /Ceremony Playlist Builder/.test(h1.textContent); })());
+  check("the title has the app icon on its left", (() => { const h1 = fresh.document.querySelector("h1"); const img = h1.querySelector("img.app-icon"); return h1.classList.contains("brand") && !!img && img.getAttribute("src") === "apple-touch-icon.png" && img.getAttribute("alt") === "" && h1.firstElementChild === img && h1.textContent === "Arc"; })());
   var pngSize = (name) => { const b = fs.readFileSync(ROOT + name); return b.slice(0, 8).toString("hex") === "89504e470d0a1a0a" ? [b.readUInt32BE(16), b.readUInt32BE(20)].join("x") : "not a png"; };
   var headHtml = fs.readFileSync(ROOT + "index.html", "utf8").slice(0, fs.readFileSync(ROOT + "index.html", "utf8").indexOf("\n</head>"));   // the real end of the head: the Phone width script holds one as text
   check("every icon the page asks for exists, at the size its name or link says", pngSize("favicon-16.png") === "16x16" && pngSize("favicon-32.png") === "32x32" && pngSize("apple-touch-icon.png") === "180x180" && pngSize("icon-192.png") === "192x192" && pngSize("icon-512.png") === "512x512" && fs.readFileSync(ROOT + "favicon.ico").readUInt16LE(2) === 1 && fs.readFileSync(ROOT + "favicon.ico").readUInt16LE(4) === 3, [pngSize("favicon-16.png"), pngSize("apple-touch-icon.png")].join(" "));
@@ -1744,7 +1746,7 @@ print(json.dumps(out))
   // ================================================================ the title and the tip button on a phone
   var q_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   var q_h1 = fresh.document.querySelector("h1");
-  check("the title is three words, each in its own span, with spaces between so it still reads as one line on a wide screen", Array.from(q_h1.querySelectorAll(".brand-text > span")).map((x) => x.textContent).join("|") === "Ceremony|Playlist|Builder" && q_h1.textContent === "Ceremony Playlist Builder");
+  check("the title is the one word Arc", Array.from(q_h1.querySelectorAll(".brand-text > span")).map((x) => x.textContent).join("|") === "Arc" && q_h1.textContent === "Arc");
   check("when the corner would reach the app (under 1184 pixels wide) the button and its note sit in a strip along the bottom, across the whole width of the screen, the button always at the right with the note right-aligned beside it, on a background that fades out upward, and the button never squeezes its own label onto two lines", /@media \(max-width: 1183px\) \{ main \{[^}]*\}[^#]*#supportBox \{ left: 0; right: 0; bottom: 0; width: auto; box-sizing: border-box; max-width: none; flex-direction: row-reverse; align-items: center; justify-content: flex-start; gap: 12px;/.test(q_css) && /background: linear-gradient\(to top, var\(--bg\) 0%, var\(--bg\) 55%, transparent 100%\)/.test(q_css) && /#supportButton \{ flex: none; white-space: nowrap; \}/.test(q_css) && /#supportCaption \{ flex: 0 1 auto; width: auto; min-width: 0; max-width: 52ch; padding: 0; background: none; box-shadow: none; text-align: right; text-wrap: balance;/.test(q_css));
   check("on a wide screen the note sits above the button in the corner, its right edge level with the button's, up to 160 pixels wide (four lines), in slightly smaller type, and right-aligned", /#supportBox \{ position: fixed; right: 16px; bottom: 16px;[^}]*flex-direction: column-reverse; align-items: flex-end;[^}]*width: max-content;/.test(q_css) && /#supportCaption \{ margin: 0 0 0 auto; width: max-content; max-width: 160px; box-sizing: border-box; padding: 0; color: var\(--muted\); font-size: 0\.72rem;[^}]*text-align: right;/.test(q_css) && !/#supportCaption \{ margin: 0 0 0 auto[^}]*background/.test(q_css));
   check("the fading strip does not block taps on the app behind its see-through top, only the note and the button take taps", /#supportBox \{[^}]*pointer-events: none;/.test(q_css) && /#supportBox > \* \{ pointer-events: auto; \}/.test(q_css));
@@ -1782,9 +1784,9 @@ print(json.dumps(out))
   var k_creates = k_o.writes.filter((w) => w.type === "create");
   check("creating renames them first, removes nothing, and gives every new playlist a name of its own", k_o.writes.every((w) => w.type !== "remove") && JSON.stringify(k_o.writes.slice(0, 2).map((w) => [w.type, w.id, w.name])) === JSON.stringify([["update", "m1", "mini 1 (version a)"], ["update", "m2", "mini 2 (version a)"]]) && new Set(k_creates.map((w) => w.name)).size === k_creates.length && k_creates[0].name === "mini 1", JSON.stringify(k_o.writes.slice(0, 3)));
   var k_desc = k_o.writes.filter((w) => w.type === "create").map((w) => w.description);
-  check("each playlist it creates has the mark and the request to leave it, then which one of the set and when, and nothing more", k_desc.length > 1 && k_desc.every((d, i) => d.startsWith("Made by Ceremony Playlist Builder. Please do not edit this description. The app uses it to recognize the playlists it made. Playlist " + (i + 1) + " of " + k_desc.length + ", built ") && /, built \d{1,2} [A-Z][a-z]{2} \d{4}\.$/.test(d)), JSON.stringify(k_desc.slice(0, 2)));
+  check("each playlist it creates has the mark and the request to leave it, then which one of the set and when, and nothing more", k_desc.length > 1 && k_desc.every((d, i) => d.startsWith("Made by Arc. Please do not edit this description. The app uses it to recognize the playlists it made. Playlist " + (i + 1) + " of " + k_desc.length + ", built ") && /, built \d{1,2} [A-Z][a-z]{2} \d{4}\.$/.test(d)), JSON.stringify(k_desc.slice(0, 2)));
   var k_bd = (segs, n, c) => k_w.eval("builtDescription")({ segments: segs }, n, c, new Date(2026, 10, 4));
-  check("a description reads: one of the set and the date, no segments", k_bd([["Arrival", 20], ["Drums + Voices", 90]], 3, 5) === "Made by Ceremony Playlist Builder. Please do not edit this description. The app uses it to recognize the playlists it made. Playlist 3 of 5, built 4 Nov 2026.", k_bd([["Arrival", 20], ["Drums + Voices", 90]], 3, 5));
+  check("a description reads: one of the set and the date, no segments", k_bd([["Arrival", 20], ["Drums + Voices", 90]], 3, 5) === "Made by Arc. Please do not edit this description. The app uses it to recognize the playlists it made. Playlist 3 of 5, built 4 Nov 2026.", k_bd([["Arrival", 20], ["Drums + Voices", 90]], 3, 5));
   check("a single playlist says only when it was built", /made\. Built 4 Nov 2026\.$/.test(k_bd([["Arrival", 20]], 1, 1)));
   check("nothing about it is stored in this browser: the mark in the description is the only record", k_w.localStorage.getItem("madeIds") === null);
   await waitFor(() => k_w.eval("playlists").some((p) => /^mini 3$/.test(p.name)), 10000);
@@ -2035,7 +2037,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var am_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI + "\n" }, fetchOptions: am_o });
   am_w.eval("saveFile = (name, text) => { window.__saved = { name, text }; }");
   var am_row = am_w.document.querySelector(".fe-toprow");
-  check("the app's menu button sits on the same row as the tabs, which end with the New recipe button, at the right", !!am_row && am_row.children[1].id === "feTabs" && am_row.lastElementChild.id === "feAppMenu" && !!am_row.querySelector("#feTabs #feNewFormat") && !!am_row.querySelector("#feAppMenuButton") && am_row.querySelector("#feAppMenuButton").getAttribute("aria-label") === "App menu");
+  var am_bar = am_w.document.getElementById("appBar");
+  check("the app's menu button is at the right of Arc's bar, over the tabs, which end with the New recipe button", !!am_row && am_row.children[0].id === "feTabs" && am_bar.lastElementChild.id === "feAppMenu" && !!am_row.querySelector("#feTabs #feNewFormat") && !!am_bar.querySelector("#feAppMenuButton") && am_bar.querySelector("#feAppMenuButton").getAttribute("aria-label") === "App menu");
   var am_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("the tabs take only the room left of the buttons, and stay on one row that scrolls sideways", /\.fe-toprow \{ display: flex; align-items: flex-start; gap: 8px;/.test(am_css) && /\.fe-toprow \.fe-tabs \{ flex: 1 1 0; min-width: 0; margin-bottom: 0; \}/.test(am_css) && /\.fe-appmenuwrap \{ position: relative; flex: none; \}/.test(am_css) && /\.fe-tabs \{ position: relative; display: flex; gap: 8px; flex-wrap: nowrap;[^}]*overflow-x: auto;[^}]*scrollbar-width: none;/.test(am_css) && /\.fe-tab \{ flex: none; white-space: nowrap;/.test(am_css));
   check("the menu starts closed", !am_w.document.getElementById("feAppMenuPanel") && am_w.document.getElementById("feAppMenuButton").getAttribute("aria-expanded") === "false");
@@ -2128,9 +2131,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("and the app menu's button turns the accent color, with text that suits it", /body\.minimal #feAppMenuButton \{ background: var\(--button\); border-color: var\(--button\); color: var\(--on-button, #fff\); \}/.test(m2_css));
   var m2_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var m2_row = m2_w.document.querySelector(".fe-toprow");
-  var m2_icon = m2_row.firstElementChild;
-  check("the tabs row starts with the app's icon, from the same file as the home screen icon, with no text of its own", m2_icon.tagName === "IMG" && m2_icon.classList.contains("fe-appicon") && m2_icon.getAttribute("src") === "apple-touch-icon.png" && m2_icon.getAttribute("alt") === "" && m2_icon.getAttribute("height") === "44" && m2_row.children[1].id === "feTabs");
-  check("it is only shown in minimalist mode, 44 pixels square, the same height as a tab button", /#formatEditor \.fe-appicon \{ display: none; \}/.test(m2_css) && /body\.minimal #formatEditor \.fe-appicon \{ display: block; width: 44px; height: 44px; flex: none;/.test(m2_css) && /#formatEditor \.fe-tab \{ flex: none; white-space: nowrap; min-height: 44px;/.test(m2_css));
+  var m2_home = m2_w.document.getElementById("appHome");
+  check("the tabs row is only the tabs; the app's icon is in Arc's bar above, from the same file as the home screen icon, with Arc beside it", m2_row.children.length === 1 && m2_row.children[0].id === "feTabs" && m2_home.querySelector("img").getAttribute("src") === "apple-touch-icon.png" && m2_home.querySelector("img").getAttribute("alt") === "" && m2_home.textContent === "Arc" && m2_home.getAttribute("aria-label") === "Home");
+  check("a tab button is 44 pixels high", /#formatEditor \.fe-tab \{ flex: none; white-space: nowrap; min-height: 44px;/.test(m2_css));
   check("the page's title goes in minimalist mode, once the editor is there to take its place, and not before", /body\.minimal\.has-editor h1\.brand \{ display: none; \}/.test(m2_css) && m2_w.document.body.classList.contains("has-editor") && !(await boot({ url: "http://127.0.0.1:8000/" })).document.body.classList.contains("has-editor"));
 
 
@@ -2156,7 +2159,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var pp_ov = () => pp_w.document.getElementById("createOverlay");
   var pp_close = () => pp_w.document.getElementById("createCloseRow");
   check("everything that follows a click on Create lives in one popup: the output, the question, the progress message, the problem link and the results", !!pp_ov() && ["output", "confirmBox", "actionMessage", "mainReportHint", "results", "createCloseRow"].every((id) => pp_ov().contains(pp_w.document.getElementById(id))) && pp_ov().querySelector("#createDialog").getAttribute("role") === "dialog" && pp_ov().querySelector("#createDialog").getAttribute("aria-modal") === "true");
-  check("the popup is closed to begin with, and nothing of it is left on the page below the button", pp_ov().hidden === true && !pp_w.document.getElementById("spotifyNote").nextElementSibling.matches("pre, #confirmBox, #actionMessage, #results") && pp_w.document.getElementById("spotifyNote").nextElementSibling.id === "msCard" && pp_w.document.getElementById("msCard").nextElementSibling.id === "createOverlay");   // the Music sharing card sits under Build
+  check("the popup is closed to begin with, and nothing of it is left on the page below the button", pp_ov().hidden === true && !pp_w.document.getElementById("spotifyNote").nextElementSibling.matches("pre, #confirmBox, #actionMessage, #results") && pp_w.document.getElementById("spotifyNote").nextElementSibling.id === "createOverlay");
   pp_w.document.getElementById("create").click();
   check("clicking Create opens it at once, with no Close button while the app is reading and planning", pp_ov().hidden === false && pp_close().hidden === true && pp_w.document.body.style.overflow === "hidden");
   await waitFor(() => visible(pp_w, "confirmBox"), 30000);
@@ -2328,7 +2331,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sc_cur = () => sc_w.document.getElementById("feTabs");
   var sc_strip = sc_cur();
   var sc_row = sc_w.document.querySelector(".fe-toprow");
-  check("the row is the icon, the tabs, and the menu, and New recipe is the last thing in the scrolling tabs, after every tab", Array.from(sc_row.children).map((c) => c.id || c.className).join("|") === "fe-appicon|feTabs|feAppMenu" && sc_strip.lastElementChild === sc_w.document.getElementById("feNewFormat") && sc_strip.querySelectorAll(".fe-tab").length === 3);
+  check("the row is the tabs alone, and New recipe is the last thing in the scrolling tabs, after every tab", Array.from(sc_row.children).map((c) => c.id || c.className).join("|") === "feTabs" && sc_strip.lastElementChild === sc_w.document.getElementById("feNewFormat") && sc_strip.querySelectorAll(".fe-tab").length === 3);
   var sc_plus = sc_w.document.getElementById("feNewFormat");
   check("New recipe is a button with a plus and its name, on every screen, with no small plus-only form", sc_plus.textContent.trim() === "New recipe" && !!sc_plus.querySelector(".fe-newformat-label") && !!sc_plus.querySelector("svg") && !/fe-newformat-label \{ display: none/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   addNamed(sc_w, "Fourth");
@@ -2342,7 +2345,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   Array.from(sc_cur().querySelectorAll(".fe-tab"))[2].click();
   var sc_after = sc_cur();
   check("choosing a tab selects it, and the row is told to keep the selected tab in view", sc_after.querySelector('.fe-tab[aria-pressed="true"]').getAttribute("data-id") === "c" && /function scrollSelectedTab\(\)/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && /scrollSelectedTab\(\);\n\}/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
-  check("the minimalist icon and the app's menu keep their place beside the tabs, and the menu is last in the row", sc_w.document.querySelector(".fe-toprow").lastElementChild.id === "feAppMenu" && sc_w.document.querySelector(".fe-toprow").children[1].id === "feTabs");
+  check("the app's menu keeps its place at the end of Arc's bar, and the tabs row is still the tabs", sc_w.document.getElementById("appBar").lastElementChild.id === "feAppMenu" && sc_w.document.querySelector(".fe-toprow").children[0].id === "feTabs");
   var fr_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI } });
   fr_w.document.getElementById("supportButton").dispatchEvent(new fr_w.MouseEvent("click", { bubbles: true, cancelable: true }));
   check("the donation frame is allowed to offer Apple Pay and Google Pay, which a frame cannot otherwise do", fr_w.document.querySelector("#kofiPanel iframe").getAttribute("allow") === "payment *");
@@ -3053,7 +3056,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08h", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08i", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3197,8 +3200,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   hd_w.document.getElementById("feDeleteCancel").click();
   // the notch
   check("the tab being renamed has the notch too, in a pill of the same color", /\.fe-tab-editing \{ display: inline-flex;[^}]*background: var\(--button\);/.test(hd_css));
-  // the app icon in minimalist mode
-  check("the app icon beside the tabs in minimalist mode is for screens 760 pixels wide and up; on a phone it is gone, to leave room for the tabs", /@media \(min-width: 760px\) \{ body\.minimal #formatEditor \.fe-appicon \{ display: block; width: 44px; height: 44px;/.test(hd_css) && /#formatEditor \.fe-appicon \{ display: none; \}/.test(hd_css));
+  // the app icon is in Arc's bar now, not beside the tabs
+  check("no app icon beside the tabs: it is in Arc's bar", !/\.fe-appicon/.test(hd_css) && !hd_w.document.querySelector("#formatEditor .fe-appicon"));
   
   } catch (err) { areaCrashed("card header, pencil and notch", err); }
 }
@@ -3374,7 +3377,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("the tagline")) { try {
   // ================================================================ the tagline under the title
   var tg_w = await boot({ url: "http://127.0.0.1:8000/" });
-  check("the tagline says ceremony playlists are ready in minutes", tg_w.document.querySelector(".tagline").textContent === "Ceremony playlists, ready in minutes.");
+  check("the tagline says Arc is ceremony playlist tools for a Spotify library", tg_w.document.querySelector(".tagline").textContent === "Ceremony playlist tools for your Spotify library");
   check("it is the first line of the welcome page, which only the welcome page shows", tg_w.document.getElementById("welcomePage").firstElementChild === tg_w.document.querySelector(".tagline") && /#welcomePage \{ display: none; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   var tg_helps = tg_w.document.querySelector("#welcomePage details.wp-helps");
   check("under the intro, a closed Where it helps lists three uses, and the steps point at the recipe shown", !!tg_helps && tg_helps.open === false && tg_helps.querySelector("summary").textContent === "Where it helps" && tg_helps.querySelectorAll("li").length === 3 && /like the one shown\./.test(tg_w.document.querySelector("#welcomePage .wp-steps").textContent));
@@ -4528,12 +4531,12 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the <head> script puts the launch screen up from the first paint, only on the app page of a Home Screen app and not over the connecting screen or the update card", /if \(page === "app" && \(navigator\.standalone === true \|\| \(window\.matchMedia && matchMedia\("\(display-mode: standalone\)"\)\.matches\)\) && !cls\.contains\("connecting"\) && !cls\.contains\("updating"\)\) cls\.add\("launching"\);/.test(ls_html));
   var ls_links = Array.from(ls_html.matchAll(/<link rel="apple-touch-startup-image" media="\(device-width: (\d+)px\) and \(device-height: (\d+)px\) and \(-webkit-device-pixel-ratio: (\d)\) and \(orientation: portrait\) and \(prefers-color-scheme: (dark|light)\)" href="(splash\/[^"]+)">/g));
   var ls_sizes = JSON.parse(fs.readFileSync(ROOT + "splash/sizes.json", "utf8"));
-  check("an iPhone shows a launch picture (the plain background, dark or light, so nothing has to line up with the launch screen) while a Home Screen app starts, for every size listed, each file there and as large as the screen, and the status bar matches", ls_links.length === ls_sizes.length * 2 && /<meta name="apple-mobile-web-app-capable" content="yes">/.test(ls_html) && /<meta name="theme-color" content="#151517" media="\(prefers-color-scheme: dark\)">/.test(ls_html) && /<meta name="apple-mobile-web-app-title" content="Playlists">/.test(ls_html) && ls_sizes.every(([w, h, r]) => ["dark", "light"].every((sc) => ls_links.some((m) => +m[1] === w && +m[2] === h && +m[3] === r && m[4] === sc && m[5] === `splash/launch-${w * r}x${h * r}-${sc}.png`))) && ls_links.every((m) => { const b = fs.readFileSync(ROOT + m[5]); return b.readUInt32BE(16) === m[1] * m[3] && b.readUInt32BE(20) === m[2] * m[3]; }), ls_links.length + " links");
+  check("an iPhone shows a launch picture (the plain background, dark or light, so nothing has to line up with the launch screen) while a Home Screen app starts, for every size listed, each file there and as large as the screen, and the status bar matches", ls_links.length === ls_sizes.length * 2 && /<meta name="apple-mobile-web-app-capable" content="yes">/.test(ls_html) && /<meta name="theme-color" content="#151517" media="\(prefers-color-scheme: dark\)">/.test(ls_html) && /<meta name="apple-mobile-web-app-title" content="Arc">/.test(ls_html) && ls_sizes.every(([w, h, r]) => ["dark", "light"].every((sc) => ls_links.some((m) => +m[1] === w && +m[2] === h && +m[3] === r && m[4] === sc && m[5] === `splash/launch-${w * r}x${h * r}-${sc}.png`))) && ls_links.every((m) => { const b = fs.readFileSync(ROOT + m[5]); return b.readUInt32BE(16) === m[1] * m[3] && b.readUInt32BE(20) === m[2] * m[3]; }), ls_links.length + " links");
   check("the page's plain background comes first in <head>, before any script, so dark mode does not flash white", /^<!doctype html>\n<html lang="en">\n<head>\n<meta name="color-scheme" content="light dark">\n<style>html \{ background: #ffffff; \} @media \(prefers-color-scheme: dark\) \{ html \{ background: #151517; \} \}<\/style>/.test(ls_html));
   check("a page that did not start is never hidden behind it", /pageStart\.show = function \(detail\) \{\n    document\.documentElement\.classList\.remove\("launching"\);/.test(ls_html));
   var ls_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "manual" }, before: (w) => w.document.documentElement.classList.add("launching") });
   var ls_d = ls_w.document;
-  check("it shows the icon, the name, the tagline and the step under way", ls_d.documentElement.classList.contains("launching") && ls_d.querySelector("#launchScreen img").getAttribute("src") === "apple-touch-icon.png" && ls_d.querySelector("#launchScreen .ls-name").textContent === "Ceremony Playlist Builder" && ls_d.querySelector("#launchScreen .ls-tag").textContent === "Ceremony playlists, ready in minutes." && /Spotify|playlists|playlist builder/.test(ls_d.getElementById("lsStep").textContent), ls_d.getElementById("lsStep").textContent);
+  check("it shows the icon, the name, the tagline and the step under way", ls_d.documentElement.classList.contains("launching") && ls_d.querySelector("#launchScreen img").getAttribute("src") === "apple-touch-icon.png" && ls_d.querySelector("#launchScreen .ls-name").textContent === "Arc" && ls_d.querySelector("#launchScreen .ls-tag").textContent === "Ceremony playlist tools for your Spotify library" && /Spotify|playlists|playlist builder/.test(ls_d.getElementById("lsStep").textContent), ls_d.getElementById("lsStep").textContent);
   await waitFor(() => ls_d.getElementById("launchScreen").classList.contains("ls-ready"), 20000);
   check("once signed in, the playlists read and Python started, the spinner gives way to a check and Ready, still on the launch screen", ls_w.eval("connection") === "ready" && ls_d.getElementById("lsStep").textContent === "Ready" && ls_d.documentElement.classList.contains("launching") && ls_w.getComputedStyle(ls_d.querySelector("#launchScreen .ls-spin")).display === "none");
   check("it is up at least 2 seconds in all, and Ready at least a moment", /const LAUNCH_MIN_MS = 2000, LAUNCH_READY_MS = 1050;/.test(appSource()) && /Math\.max\(LAUNCH_READY_MS, LAUNCH_MIN_MS - shown\)/.test(appSource()));
@@ -4881,7 +4884,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var vl_minimal = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", minimalMode: "1" }, fetchOptions: {} });
   vl_minimal.document.getElementById("feAppMenuButton").click();
   check("and in minimalist mode, where More options is hidden, so this is how to see it", vl_minimal.document.body.classList.contains("minimal") && vl_minimal.document.getElementById("feAppMenuPanel").lastElementChild.id === "feVersion");
-  check("the app icon is only a picture again: pressing it does nothing", !/showVersionNotice|APP_VERSION[^;]*fe-appicon/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && (() => { const icon = vl_minimal.document.querySelector("#formatEditor .fe-appicon"); const before = capText(vl_minimal); icon.click(); return capText(vl_minimal) === before; })());
+  check("the app icon goes home from Arc's bar, and shows no version", !/showVersionNotice|APP_VERSION[^;]*fe-appicon/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && (() => { vl_minimal.document.body.click(); const before = capText(vl_minimal); vl_minimal.document.getElementById("appHome").click(); return vl_minimal.document.documentElement.classList.contains("view-home") && capText(vl_minimal) === before; })());
   } catch (err) { areaCrashed("version line", err); } }
 
   if (want("sharing card in the editor")) { try {
@@ -4890,9 +4893,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sc_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: { sharing: sc_sh } });
   var sc_d = sc_w.document;
   await waitFor(() => /4 playlists/.test(sc_d.getElementById("msCardText").textContent), 8000);
-  check("the card under Build says how many playlists others share and fans the newest covers", sc_d.getElementById("msCardText").textContent === "4 playlists shared by other facilitators. Find music for your recipes, or share your own." && Array.from(sc_d.querySelectorAll("#msCardFan img")).map((i) => i.getAttribute("src")).join() === "https://i.scdn.co/image/a,https://i.scdn.co/image/b" && sc_d.getElementById("msCard").previousElementSibling.id === "spotifyNote");
+  check("Music sharing's card on Arc's home says how many playlists others share and fans the newest covers", sc_d.getElementById("msCardText").textContent === "4 playlists shared by other facilitators. Find music for your recipes, or share your own." && Array.from(sc_d.querySelectorAll("#msCardFan img")).map((i) => i.getAttribute("src")).join() === "https://i.scdn.co/image/a,https://i.scdn.co/image/b" && !!sc_d.getElementById("msCard").closest("#homePage"));
   check("reading the library for the card starts no overlap reading while the popup is closed", sc_w.eval("sharing.overlap === null && !sharing.reading"));
-  check("the card is hidden with no recipes and off the app page", /html\.page-app body\.no-recipes #msCard \{ display: none; \}/.test(sc_d.querySelector("style").textContent + Array.from(sc_d.querySelectorAll("style")).map((x) => x.textContent).join("")) && /#msCard \{ display: none; \}/.test(Array.from(sc_d.querySelectorAll("style")).map((x) => x.textContent).join("")));
+  check("Arc's home, with the card, shows only on the app page's home view, and the builder's parts only in the builder", /html\.page-app\.view-home #homePage \{ display: block; \}/.test(Array.from(sc_d.querySelectorAll("style")).map((x) => x.textContent).join("")) && /html\.page-app:not\(\.view-builder\) #appSection > :is\(#formatEditor, #editorNote, #buildRow/.test(Array.from(sc_d.querySelectorAll("style")).map((x) => x.textContent).join("")));
   check("on connecting, a device that never read the person's shares reads them once and keeps the list (none here), so later visits do not ask again", sc_w.localStorage.getItem("sharingMineIds") === "[]" && /let known = !!sharing\.mine;[\s\S]{0,200}if \(!known\) loadMine\(\)/.test(fs.readFileSync(ROOT + "sharing.js", "utf8")));
   var sc_own = { words: {}, posts: [], deletes: [], reports: [], shares: sc_sh.shares.map((x, i) => Object.assign({}, x, i < 2 ? { owner: "ron", playlist: "p" + i } : {})) };
   var sc_o = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: { sharing: sc_own } });
@@ -4906,16 +4909,16 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("before the library arrives (or when it cannot be read) the card says the menu's line", sc_d.getElementById("msCardText").textContent === "Find playlists other facilitators share, and share your own.");
   sc_w.eval("sharing.libraryAt = 0"); await sc_w.eval("loadLibrary()");
   sc_d.getElementById("msCard").click();
-  check("the card opens Find playlists", sc_d.getElementById("msOverlay").hidden === false && sc_w.eval("sharing.tab") === "find");
-  await sc_w.eval("closeSharing()");
+  check("the card opens Music sharing as a page of its own on Shared by others, Arc's bar naming it", sc_d.getElementById("msOverlay").hidden === false && sc_w.eval("sharing.tab") === "find" && sc_d.documentElement.classList.contains("view-sharing") && sc_d.getElementById("appTool").textContent === "Music sharing");
+  sc_d.getElementById("appHome").click();
+  await new Promise((r) => setTimeout(r, 50));
+  check("playlists built before the rename (Made by Ceremony Playlist Builder) are still the app's own, as are new ones (Made by Arc)", sc_w.eval("madeByAppText('Made by Ceremony Playlist Builder. Please do not edit') && madeByAppText('Made by Arc. Please do not edit') && !madeByAppText('Made by me') && !madeByAppText(null)"));
+  check("Arc's icon goes home, and Music sharing closes", sc_d.documentElement.classList.contains("view-home") && sc_d.getElementById("msOverlay").hidden === true);
+  sc_d.getElementById("homeBuilder").click();
+  check("Playlist builder opens the builder, Arc's bar naming it", sc_d.documentElement.classList.contains("view-builder") && sc_d.getElementById("appTool").textContent === "Playlist builder");
   sc_d.querySelector("#feRows .fe-row .fe-main").click();
   var sc_find = sc_d.getElementById("feMsFind");
-  check("the playlist picker ends with Find more in Music sharing and how many others share", !!sc_find && sc_find.parentElement.lastElementChild === sc_find && /Find more in Music sharing/.test(sc_find.textContent) && /4 playlists shared by other facilitators/.test(sc_find.textContent));
-  var sc_search = sc_d.getElementById("feSearch");
-  sc_search.value = "piano"; sc_search.dispatchEvent(new sc_w.Event("input"));
-  sc_d.getElementById("feMsFind").click();
-  check("Find more closes the picker and opens Find playlists searching for what was typed", !sc_d.getElementById("feOptions") && sc_d.getElementById("msOverlay").hidden === false && sc_w.eval("sharing.search") === "piano" && sc_d.getElementById("msSearch") && sc_d.getElementById("msSearch").value === "piano");
-  await sc_w.eval("closeSharing()");
+  check("the playlist picker has no way into Music sharing: the tools meet at Arc's home", !sc_find && !/Music sharing/.test(sc_d.querySelector("#formatEditor").textContent));
   sc_w.close();
   } catch (err) { areaCrashed("sharing card in the editor", err); }
   }
@@ -4938,8 +4941,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var ms_d = ms_w.document;
   await ms_w.eval("Promise.all([loadTracks('p2'), loadTracks('p4')])");   // the recipe's playlists are kept in the browser, so overlap can be measured
   ms_w.eval("openInfo('devOptions')");
-  check("Developer options does not open Music sharing, the app menu does, and Privacy has its topic, which names what a share keeps", !ms_d.getElementById("devOpenSharing") && ms_d.getElementById("privacyMusicSharing").hidden === false && /the type you chose with its books, phases, mood words or name/.test(ms_d.getElementById("privacyMusicSharing").textContent) && (ms_w.eval("closeInfo(true)"), ms_d.getElementById("feAppMenuButton").click(), !!ms_d.getElementById("feMusicSharing")));
-  ms_d.getElementById("feMusicSharing").click();
+  check("Developer options does not open Music sharing, Arc's home does, and Privacy has its topic, which names what a share keeps", !ms_d.getElementById("devOpenSharing") && ms_d.getElementById("privacyMusicSharing").hidden === false && /the type you chose with its books, phases, mood words or name/.test(ms_d.getElementById("privacyMusicSharing").textContent) && (ms_w.eval("closeInfo(true)"), !!ms_d.getElementById("msCard")));
+  ms_d.getElementById("msCard").click();
   var ms_names = () => Array.from(ms_d.querySelectorAll("#msResults .ms-row .ms-name")).map((e) => e.textContent);
   var ms_labels = () => Array.from(ms_d.querySelectorAll("#msResults .ms-row .ms-klabel")).map((e) => e.textContent);
   var ms_tile = (k) => ms_d.querySelector(`#msBody .ms-ktile[data-kind="${k}"]`);
@@ -5244,14 +5247,13 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("spotify last")) { try {
   // ================================================================ the Spotify item is always first in the menu, under the app's name; then the rest in a fixed order, and the version
   var sl_ids = (w) => { w.document.getElementById("feAppMenuButton").click(); const ids = Array.from(w.document.querySelectorAll("#feAppMenuPanel > *")).map((k) => k.id || k.className); w.document.body.click(); return ids; };
-  var sl_rest = ["fe-rule", "feMusicSharing", "feGuide", "feMoreOptions", "feFeedback", "feReport", "fePrivacy", "fe-rule", "feVersion"];
+  var sl_rest = ["fe-rule", "feGuide", "feMoreOptions", "feFeedback", "feReport", "fePrivacy", "fe-rule", "feVersion"];
   var sl_ready = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: {}, feedbackUrl: "https://tally.so/r/X" });
   var sl_r = sl_ids(sl_ready);
-  check("connected: the app's name, then Music sharing, A guide for facilitators, More options, Feedback and questions, Report a problem, Privacy, and the version", JSON.stringify(sl_r) === JSON.stringify(["feMenuHead"].concat(sl_rest.slice(1))), JSON.stringify(sl_r));
+  check("connected: the app's name, then A guide for facilitators, More options, Feedback and questions, Report a problem, Privacy, and the version", JSON.stringify(sl_r) === JSON.stringify(["feMenuHead"].concat(sl_rest.slice(1))), JSON.stringify(sl_r));
   var sl_ms = sl_ready.document; sl_ready.document.getElementById("feAppMenuButton").click();
   var sl_msi = sl_ms.getElementById("feMusicSharing");
-  check("Music sharing is in the menu with its line, and opens Music sharing on Shared by others", !!sl_msi && sl_msi.tagName === "BUTTON" && sl_msi.textContent === "Music sharingFind playlists other facilitators share, and share your own" && !sl_ms.querySelector(".fe-soon-tag") && (sl_msi.click(), sl_ms.getElementById("msOverlay").hidden === false) && /^Shared by others/.test(sl_ms.querySelector("#msTabsBar .ms-on").textContent), sl_msi ? sl_msi.textContent : "");
-  sl_ready.eval("closeSharing()");
+  check("Music sharing is not in the menu: it is a tool on Arc's home", !sl_msi && /Music sharing/.test(sl_ms.getElementById("homePage").textContent));
   sl_ready.document.body.click();
   var sl_slow = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: { listDelayMs: 4000 }, feedbackUrl: "https://tally.so/r/X" });
   var sl_s = sl_ids(sl_slow);
@@ -5273,7 +5275,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   b7_menu.document.getElementById("feAppMenuButton").click();
   var b7_kids = b7_menu.document.querySelectorAll("#feAppMenuPanel > *");
   var b7_more = Array.from(b7_kids).findIndex((k) => k.id === "feMoreOptions");
-  check("the menu begins with the app's icon and name, as a band, then Music sharing as the first item, and More options later", b7_kids[0].id === "feMenuHead" && b7_kids[0].querySelector("img").getAttribute("src") === "apple-touch-icon.png" && b7_kids[0].querySelector(".fe-menuname").textContent === "Ceremony Playlist Builder" && (Array.from(b7_kids).slice(1).find((k) => k.id && k.offsetParent !== undefined && !k.hidden && k.id.startsWith("fe") && !/fe-rule/.test(k.className)) || {}).id === "feMusicSharing" && b7_more > 1 && /^More options$/.test(b7_kids[b7_more].textContent.trim()), Array.from(b7_kids).map((k) => k.id || k.className).join(","));
+  check("the menu begins with the app's icon and name, as a band, then A guide for facilitators as the first item, and More options later", b7_kids[0].id === "feMenuHead" && b7_kids[0].querySelector("img").getAttribute("src") === "apple-touch-icon.png" && b7_kids[0].querySelector(".fe-menuname").textContent === "Arc" && (Array.from(b7_kids).slice(1).find((k) => k.id && k.offsetParent !== undefined && !k.hidden && k.id.startsWith("fe") && !/fe-rule/.test(k.className)) || {}).id === "feGuide" && b7_more > 1 && /^More options$/.test(b7_kids[b7_more].textContent.trim()), Array.from(b7_kids).map((k) => k.id || k.className).join(","));
   check("the header is only a picture and a name: not a button, not a link, and nothing about it reacts to the mouse", b7_kids[0].tagName === "DIV" && !b7_kids[0].querySelector("button, a") && !/fe-menuhead[^{]*:hover/.test(b7_html) && b7_kids[0].querySelector("img").getAttribute("alt") === "");
   b7_menu.document.body.click();
 
@@ -5354,7 +5356,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08h"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08i"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08h";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08i";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -83,7 +83,7 @@ function startOverlapIfOpen() {
   if (sharing.library && $("msOverlay") && !$("msOverlay").hidden) startOverlap();
 }
 
-// ---------------------------------------------------------------- the card under Build in the editor (#msCard)
+// ---------------------------------------------------------------- Music sharing's card on Arc's home (#msCard)
 // Three covers fanned out and how many playlists others share; it opens Find playlists. Shown before the library arrives
 // (and if it never does) with the menu's line and no covers.
 function renderSharingCard() {
@@ -119,7 +119,7 @@ function sharingConnected() {
 function startSharingCard() {
   const card = $("msCard");
   if (!card) return;
-  card.addEventListener("click", () => openSharing("find"));
+  card.addEventListener("click", () => showView("sharing"));
   renderSharingCard();
   if (pageName() === "app") loadLibrary();
 }
@@ -179,7 +179,7 @@ const includesText = (artists) => `Includes ${artists.slice(0, 3).join(", ")}, a
 const phaseNames = (list) => list.map((i) => PHASES[i]).join(", ");
 function cleanSpotifyDescription(text) {
   // Spotify gives descriptions with HTML entities and links; the app's own markers and recipe saves are not offered as text
-  if (!text || text.startsWith(APP_MARKER)) return "";
+  if (!text || madeByAppText(text)) return "";
   const box = document.createElement("textarea");
   box.innerHTML = String(text).replace(/<[^>]*>/g, "");
   return box.value.replace(ORIGIN_RE, "").trim().slice(0, SHARE_DESC_MAX);   // a copy's [origin: ...] is not part of its description
@@ -495,7 +495,6 @@ function closeSharing() {
   $("msOverlay").hidden = true;
   renderSharingCard();   // a Get or a share may change its count and covers
   if (!document.querySelector(".app-overlay:not([hidden])")) document.body.style.overflow = "";
-  if ($("feAppMenuButton")) $("feAppMenuButton").focus();
 }
 function switchTab(tab) {
   if (tab === sharing.tab && !sharing.detail && !sharing.flow) return;
@@ -1650,10 +1649,9 @@ async function loadDevReports() {
 (function wireSharing() {
   startSharingCard();
   if ($("msClose")) $("msClose").addEventListener("click", () => closeSharing());
-  if ($("msOverlay")) $("msOverlay").addEventListener("click", (e) => { if (e.target === $("msOverlay")) closeSharing(); });
   watchKeyboard();
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" || !$("msOverlay") || $("msOverlay").hidden || document.querySelector(".fe-overlay")) return;
-    if ($("msSheet")) closeSheet(); else if (sharing.flow) flowBack(); else if (sharing.detail) closeDetail(); else closeSharing();
+    if ($("msSheet")) closeSheet(); else if (sharing.flow) flowBack(); else if (sharing.detail) closeDetail();   // a page of its own now (Arc's home): Escape does not leave it
   });
 })();

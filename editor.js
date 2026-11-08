@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-08h";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-08i";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -586,7 +586,30 @@ function syncEditorFromText() {
   renderEditor();
 }
 
+// The app menu lives in Arc's bar (#appBar), outside #formatEditor, so the editor's rules are copied once for the bar (the stylesheet keeps one copy to read).
+function copyEditorStylesToBar() {
+  const extra = document.createElement("style");
+  extra.id = "appBarStyles";
+  const copy = (rules) => {
+    let text = "";
+    for (const rule of Array.from(rules)) {
+      if (rule.selectorText && rule.selectorText.includes("#formatEditor")) {
+        text += rule.cssText.replace(/#formatEditor(?=[ .:\[>])/g, "#appBar") + "\n";
+      } else if (rule.cssRules && rule.media) {
+        const inner = copy(rule.cssRules);
+        if (inner) text += `@media ${rule.media.mediaText} {\n${inner}}\n`;
+      }
+    }
+    return text;
+  };
+  let text = "";
+  for (const sheet of Array.from(document.styleSheets)) { try { text += copy(sheet.cssRules); } catch (err) { /* a sheet from elsewhere */ } }
+  extra.textContent = text;
+  document.head.appendChild(extra);
+}
+
 function initEditor() {
+  copyEditorStylesToBar();
   $("formats").addEventListener("input", () => { if (!editor.internal) syncEditorFromText(); });
   // Tapping anywhere else, or pressing Escape, closes an open menu or list, and does nothing else: the press and the tap that follows are both stopped
   // before they reach what was tapped. The only things let through are the popup itself and the control that opened it, which closes it as usual.
@@ -641,12 +664,10 @@ function renderEditor() {
   editor.gapPanel = null;
   editor.renaming = null;
   if (editor.broken) { root.appendChild(brokenView()); return; }
-  // In minimalist mode the page's title goes and the app's icon takes the first place in this row, as tall as the tabs.
+  // the tabs; the app's icon and menu are in Arc's bar above (#appBar in index.html), which is over every view
   const format = activeFormat();
   root.appendChild(feEl("div", { class: "fe-toprow" + (format ? "" : " fe-noformats") },
-    feEl("img", { class: "fe-appicon", src: "apple-touch-icon.png", alt: "", width: "44", height: "44" }),
-    feEl("div", { class: "fe-tabs", id: "feTabs" }),
-    feEl("div", { class: "fe-appmenuwrap", id: "feAppMenu" })));
+    feEl("div", { class: "fe-tabs", id: "feTabs" })));
   const strip = $("feTabs");
   strip.addEventListener("pointerdown", startTabPress);
   strip.addEventListener("touchmove", (event) => { if (tabDrag.press && tabDrag.press.dragging) event.preventDefault(); }, { passive: false });   // a held tab moves, the row does not scroll under it
@@ -783,14 +804,10 @@ function renderAppMenu() {
   // Spotify is the first thing in the menu under its name, in whatever state it is in (connected, connecting, not connected, a problem), so it is always found in the same place.
   const spotifyItems = connection === "ready" ? [] : connectItems;   // connected needs nothing here (Change Spotify login is in More options); a problem keeps its Connect
   slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" },
-    feEl("div", { class: "fe-menuhead", id: "feMenuHead" }, feEl("img", { class: "fe-menuicon", src: "apple-touch-icon.png", alt: "", width: "40", height: "40" }), feEl("span", { class: "fe-menuname", text: "Ceremony Playlist Builder" })),
+    feEl("div", { class: "fe-menuhead", id: "feMenuHead" }, feEl("img", { class: "fe-menuicon", src: "apple-touch-icon.png", alt: "", width: "40", height: "40" }), feEl("span", { class: "fe-menuname", text: "Arc" })),
     ...spotifyItems,
     ...(backupBlock ? [...(spotifyItems.length ? [feEl("div", { class: "fe-rule" })] : []), backupBlock] : []),
     ...(spotifyItems.length || backupBlock ? [feEl("div", { class: "fe-rule" })] : []),
-    // Music sharing, with a line under its name like the guide's (sharing.js); first of the menu's items
-    feEl("button", { type: "button", class: "fe-item fe-gditem", id: "feMusicSharing", role: "menuitem", onClick: choose(() => openSharing("find")) }, feIcon("swap"),
-      feEl("span", { class: "fe-gditem-text" }, feEl("span", { text: "Music sharing" }),
-        feEl("span", { class: "fe-gditem-note", text: "Find playlists other facilitators share, and share your own" }))),
     // A guide for facilitators, with a line under its name that says what it is (the whole row opens it)
     feEl("button", { type: "button", class: "fe-item fe-gditem", id: "feGuide", role: "menuitem", onClick: choose(() => openGuide()) }, feIcon("help"),
       feEl("span", { class: "fe-gditem-text" }, feEl("span", { text: "A guide for facilitators" }), feEl("span", { class: "fe-gditem-note", text: "The thinking behind this app and how to use it well" }))),
@@ -1972,18 +1989,7 @@ function listPanel(item, slot) {
   }
   search.addEventListener("input", () => { editor.search = search.value; draw(); });
   draw();
-  // the last line: Music sharing, searching for what was typed here (sharing.js)
-  const lib = typeof sharing === "object" && sharing.library;
-  const others = lib ? lib.shares.filter((x) => !isMine(x)).length : 0;
-  const find = feEl("button", { type: "button", class: "fe-msfind", id: "feMsFind", onClick: () => {
-    const query = search.value.trim();
-    setPanel(item.id, null);
-    openSharing("find");
-    if (query) { sharing.type = "all"; sharing.search = query; renderSharing(); }
-  } }, feIcon("swap"),
-  feEl("span", { class: "fe-text" }, feEl("span", { class: "fe-title", text: "Find more in Music sharing" }),
-    feEl("span", { class: "fe-sub", text: others ? `${others} ${others === 1 ? "playlist" : "playlists"} shared by other facilitators` : "Playlists other facilitators share" })));
-  return feEl("div", { class: "fe-pop fe-listpanel" }, search, list, typeof openSharing === "function" ? find : null);
+  return feEl("div", { class: "fe-pop fe-listpanel" }, search, list);
 }
 
 // ---------------------------------------------------------------- changing things
