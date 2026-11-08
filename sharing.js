@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08a";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08d";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -492,7 +492,7 @@ function renderSharingTabs() {
   $("msTabsBar").classList.toggle("ms-flowbar", !!flow);
   if (flow) {
     bar.removeAttribute("role");
-    bar.appendChild(feEl("div", { class: "ms-flowtitle" }, flow.mode === "edit" ? "Edit share" : "Share a playlist"));
+    bar.appendChild(feEl("div", { class: "ms-flowtitle" }, flow.mode === "edit" ? "Edit details" : "Share a playlist"));
     if (flow.mode === "new") {
       bar.appendChild(feEl("ol", { class: "ms-steps", "aria-label": "Steps" }, ...["Playlist", "Type", "Details"].map((name, i) =>
         feEl("li", { class: i < flow.step ? "ms-done" : i === flow.step ? "ms-now" : "", "aria-current": i === flow.step ? "step" : null }, name))));
@@ -504,16 +504,17 @@ function renderSharingTabs() {
     feEl("button", { type: "button", role: "tab", "aria-selected": String(sharing.tab === value), class: "ms-tab-name", onClick: () => switchTab(value) }, name));
   bar.append(tab("find", "Shared by others"), tab("share", "Shared by you"));
 }
-// the bottom row: Back (grey) and the main button; Back alone fills the row
+// the bottom row: Back (grey) and the main button; Back alone fills the row. In the wizard and the edit page (wizard: true) Back is pink
+// and as wide as the main button, with a gap between, and alone it keeps that size and place.
 function footButtons(foot, back, main) {
   foot.hidden = false;
-  const row = feEl("div", { class: "ms-footrow" });
+  const row = feEl("div", { class: "ms-footrow" + (back && back.wizard ? " ms-wizrow" : "") });
   if (back) row.appendChild(feEl("button", { type: "button", class: "ms-backbtn", id: "msBack", onClick: back.onClick }, feIcon("back"), back.label || "Back"));
   if (main) row.appendChild(main);
   foot.appendChild(row);
 }
-const mainButton = (label, onClick, { id = "msMain", grey = false, icon = null, disabled = false } = {}) =>
-  feEl("button", { type: "button", id, class: "ms-mainbtn" + (grey ? " ms-grey" : ""), disabled, onClick }, icon ? feIcon(icon) : null, label);
+const mainButton = (label, onClick, { id = "msMain", grey = false, icon = null, iconAfter = null, disabled = false } = {}) =>
+  feEl("button", { type: "button", id, class: "ms-mainbtn" + (grey ? " ms-grey" : ""), disabled, onClick }, icon ? feIcon(icon) : null, label, iconAfter ? feIcon(iconAfter) : null);
 
 // ---------------------------------------------------------------- Shared by others
 // Type tiles (All and the four types), one line about Get, then what each type is found by: All a search, Hide playlists you have and Sort;
@@ -535,7 +536,6 @@ function renderFind(body) {
   if (!sortChoices().some(([v]) => v === sharing.sort)) sharing.sort = "newest";
   const has = sharing.library && sharing.library.shares.length;
   body.appendChild(kindTiles(sharing.type, setType, { all: true }));
-  body.appendChild(feEl("p", { class: "ms-getline" }, "Get puts your own private copy in your Spotify. It stays as it is if the sharer changes theirs."));
   const tools = feEl("div", { id: "msTools", class: "ms-tools" });
   if (has) {
     const t = sharing.type;
@@ -750,22 +750,30 @@ function phaseLine(s) {
   return feEl("div", { class: "ms-phase-line" }, who, ...names);
 }
 // A playlist's page: its cover, type, name, who and how long; what its type says; the description, with Report right under what the sharer typed
-// (none when nothing was typed); the songs with previews; and at the bottom Back and Get this playlist.
+// (none when nothing was typed); the songs with previews. Back at the top; Get this playlist wide under the header (B), or on the person's own,
+// a Details card with Edit details (A). No bottom row, so it does not look like a step of the wizard (decided by Ron, 2026-11-08).
 function renderDetail(body, foot) {
   const s = sharing.library && sharing.library.shares.find((x) => x.id === sharing.detail);
   if (!s) { sharing.detail = null; renderSharing(); return; }
+  const mine = isMine(s) && sharing.mine && sharing.mine.find((m) => m.id === s.id);
+  body.appendChild(feEl("button", { type: "button", class: "ms-backlink", id: "msBack", onClick: () => closeDetail() }, feIcon("back"), "Back"));
   body.appendChild(feEl("div", { class: "ms-hero" }, shareCoverEl(s, "ms-cover ms-cover-big"),
     feEl("div", { class: "ms-hero-text" },
       feEl("div", { class: "ms-klabel" }, kindName(s.kind) === "Other" ? s.other : kindName(s.kind)),
       feEl("h3", { text: s.name }),
       feEl("div", { class: "ms-sub" }, isMine(s) ? "Shared by you" : s.by ? `Shared by ${s.by}` : "Shared anonymously"),
       feEl("div", { class: "ms-sub" }, `${songCountText(s.count)} · ${lengthText(s.ms / 60000)}`))));
+  if (!isMine(s)) { const get = addButton(s, true); get.classList.add("ms-getwide"); body.appendChild(get); }
   if (sharing.addErrors[s.id]) body.appendChild(feEl("p", { class: "ms-error" }, sharing.addErrors[s.id]));
+  // on the person's own share, what Edit details changes sits in one card with Edit details at its top right
+  const into = mine ? feEl("div", { class: "ms-dcard" }, feEl("div", { class: "ms-dhead" }, feEl("b", {}, "Details"),
+    feEl("button", { type: "button", class: "ms-editlink", id: "msEdit", onClick: () => { const tab = sharing.tab; editShare(mine); sharing.backTo = { id: s.id, tab }; } }, feIcon("pencil"), "Edit details"))) : body;
   const report = () => feEl("div", { class: "ms-reportrow" }, feEl("button", { type: "button", class: "linklike ms-report", onClick: () => reportShare(s) }, feIcon("flag"), "Report"));
-  if (s.kind === "ceremony") body.appendChild(feEl("div", { class: "ms-facts" }, feEl("div", { class: "ms-sec" }, "For use with"), bookTiles(new Set(s.books || []))));
-  if (s.kind === "phase") { body.appendChild(phaseLine(s)); body.appendChild(phaseCurve(new Set(s.phases || []))); }
-  if (s.kind === "mood") body.appendChild(feEl("div", { class: "ms-facts" }, feEl("div", { class: "ms-sec" }, "Moods"), feEl("div", { class: "ms-chips" }, ...(s.moods || []).map((m) => feEl("span", { class: "ms-chip ms-chip-ro" }, m)))));
-  if (s.description) body.appendChild(feEl("p", { class: "ms-long" }, s.description));
+  if (s.kind === "ceremony") into.appendChild(feEl("div", { class: "ms-facts" }, feEl("div", { class: "ms-sec" }, "For use with"), bookTiles(new Set(s.books || []))));
+  if (s.kind === "phase") { into.appendChild(phaseLine(s)); into.appendChild(phaseCurve(new Set(s.phases || []))); }
+  if (s.kind === "mood") into.appendChild(feEl("div", { class: "ms-facts" }, feEl("div", { class: "ms-sec" }, "Moods"), feEl("div", { class: "ms-chips" }, ...(s.moods || []).map((m) => feEl("span", { class: "ms-chip ms-chip-ro" }, m)))));
+  if (s.description) into.appendChild(feEl("p", { class: "ms-long" }, s.description));
+  if (into !== body) body.appendChild(into);
   if (!isMine(s) && (s.description || s.kind === "mood" || s.kind === "other")) body.appendChild(report());
   // the songs, with a preview of each; a share whose song names are not there shows the artists with the most songs instead
   const names = songNamesFor(s);
@@ -780,24 +788,29 @@ function renderDetail(body, foot) {
     }
   }
   if (names.state !== "none") renderSongs(body, s, names, ov && ov.same ? ov : null);
-  const mine = isMine(s) && sharing.mine && sharing.mine.find((m) => m.id === s.id);
-  footButtons(foot, { onClick: () => closeDetail() },
-    mine ? mainButton("Edit share", () => { editShare(mine); sharing.backTo = s.id; }, { icon: "pencil" }) : addButton(s, true));
 }
 
-// ---------------------------------------------------------------- after a Get: an invitation to share, while the person shares fewer than 1 for every 4 they get
+// ---------------------------------------------------------------- after every Get: a sheet says what the copy is (D1); while the person shares
+// fewer than 1 playlist for every 4 they get, it also invites a share (D2). Decided by Ron, 2026-11-08.
 function offerToShare(s) {
-  if (mineCount() * SHARE_GET_RATIO >= addedCount() || $("msSheet")) return;
+  if ($("msSheet")) return;
+  const invite = mineCount() * SHARE_GET_RATIO < addedCount();
   const sheet = feEl("div", { id: "msSheet", class: "ms-sheet-wrap" });
-  const panel = feEl("div", { class: "ms-sheet", role: "dialog", "aria-modal": "true", "aria-label": "Share one of yours?", tabindex: "-1" },
+  const who = s.by || "the sharer";
+  const panel = feEl("div", { class: "ms-sheet", role: "dialog", "aria-modal": "true", "aria-label": `${s.name} is in your Spotify`, tabindex: "-1" },
     feEl("div", { class: "ms-grab" }),
     feEl("div", { class: "ms-gothead" }, shareCoverEl(s, "ms-cover"),
-      feEl("div", {}, feEl("div", { class: "ms-gottitle", text: `${named(s.name)} is in your Spotify` }), feEl("div", { class: "ms-sub" }, "Your own private copy, yours to change."))),
-    feEl("p", { class: "ms-invite" }, s.by ? `${s.by} shared this. Share one of yours?` : "Someone shared this. Share one of yours?"),
-    feEl("p", { class: "ms-sub" }, `It takes about a minute. This note goes away once you share 1 playlist for every ${SHARE_GET_RATIO} you get.`),
-    feEl("div", { class: "ms-footrow" },
-      feEl("button", { type: "button", class: "ms-backbtn", id: "msNotNow", onClick: () => closeSheet() }, "Not now"),
-      mainButton("Share a playlist", () => { closeSheet(true); switchTab("share"); startShare(); }, { id: "msShareOne" })));
+      feEl("div", {}, feEl("div", { class: "ms-gottitle", text: `${named(s.name)} is in your Spotify` }), feEl("div", { class: "ms-sub" }, "Your own private copy"))),
+    feEl("ul", { class: "ms-gotwhy" },
+      feEl("li", {}, feEl("b", {}, "Yours to change."), " Add, remove or reorder songs."),
+      feEl("li", {}, feEl("b", {}, "It stays as it is"), ` if ${who} changes theirs.`)),
+    invite ? feEl("div", { class: "ms-invitebox" },
+      feEl("p", { class: "ms-invite" }, s.by ? `${s.by} shared this. Share one of yours?` : "Someone shared this. Share one of yours?"),
+      feEl("p", { class: "ms-sub" }, "It takes about a minute.")) : null,
+    feEl("div", { class: "ms-footrow" + (invite ? " ms-wizrow" : "") },
+      invite ? feEl("button", { type: "button", class: "ms-backbtn ms-greybtn", id: "msNotNow", onClick: () => closeSheet() }, "Not now") : null,
+      invite ? mainButton("Share a playlist", () => { closeSheet(true); switchTab("share"); startShare(); }, { id: "msShareOne" })
+        : mainButton("OK", () => closeSheet(), { id: "msGotOk" })));
   sheet.appendChild(panel);
   sheet.addEventListener("click", (e) => { if (e.target === sheet) closeSheet(); });
   $("msDialog").appendChild(sheet);
@@ -1045,7 +1058,7 @@ function yourRow(m) {
   const p = playlistFor(m), pub = sharing.library && sharing.library.shares.find((x) => x.id === m.id);
   const cover = (pub && pub.cover) || m.cover || (p && p.image);
   const changed = changedInSpotify(m, p);
-  const row = feEl("div", { class: "ms-row ms-yrow", role: "button", tabindex: "0", id: "msYours-" + m.id, onClick: () => editShare(m) },
+  const row = feEl("div", { class: "ms-row ms-yrow", role: "button", tabindex: "0", id: "msYours-" + m.id, onClick: () => (pub ? openDetail(m.id) : editShare(m)) },
     cover ? feEl("img", { class: "ms-cover", src: cover, alt: "" }) : feEl("span", { class: "ms-cover ms-nocover" }, feIcon("notes")),
     feEl("div", { class: "ms-text" },
       feEl("div", { class: "ms-klabel" }, kindLabel(m)),
@@ -1120,10 +1133,22 @@ function flowBack() {
   if (!f) return;
   endTyping();
   if (f.mode === "new" && f.step > 0 && f.step < 3) { f.step--; f.draft.errors = null; renderSharing(); $("msBody").scrollTop = 0; return; }
-  if (f.mode === "edit" && sharing.backTo) { const id = sharing.backTo; sharing.backTo = null; sharing.flow = null; sharing.tab = "find"; sharing.detail = id; renderSharing(); return; }
+  if (f.mode === "edit" && backToDetail()) return;
   sharing.flow = null;
   renderSharing();
   $("msBody").scrollTop = 0;
+}
+// from the edit page back to the playlist's page it was opened from (and its tab), when there is one
+function backToDetail() {
+  const back = sharing.backTo;
+  sharing.backTo = null;
+  if (!back || !sharing.library || !sharing.library.shares.some((x) => x.id === back.id)) return false;
+  sharing.flow = null;
+  sharing.tab = back.tab;
+  sharing.detail = back.id;
+  renderSharing();
+  $("msBody").scrollTop = 0;
+  return true;
 }
 function renderFlow(body, foot) {
   const f = sharing.flow;
@@ -1138,13 +1163,13 @@ function renderFlow(body, foot) {
     body.appendChild(feEl("h3", { class: "ms-q" }, "What type of playlist is this?"));
     body.appendChild(field("kind", null, kindTiles(f.draft.kind, (k) => { f.draft.kind = k; draftChanged(); renderSharing(); }, { big: true })));
     body.appendChild(anonBox(f.draft));
-    footButtons(foot, { onClick: flowBack }, mainButton("Next", () => {
+    footButtons(foot, { onClick: flowBack, wizard: true }, mainButton("Next", () => {
       if (!f.draft.kind) { f.draft.errors = { kind: "Choose a type." }; renderSharing(); return; }
       f.draft.errors = null;
       f.step = 2;
       renderSharing();
       $("msBody").scrollTop = 0;
-    }));
+    }, { iconAfter: "next" }));
     return;
   }
   if (f.mode === "edit") {
@@ -1156,12 +1181,12 @@ function renderFlow(body, foot) {
     body.appendChild(feEl("button", { type: "button", class: "ms-stopbtn", id: "msStop", onClick: () => stopSharing(f.share) }, feIcon("ban"), "Stop sharing"));
   }
   const label = f.draft.sending ? (f.mode === "edit" ? "Updating..." : "Sharing...") : f.mode === "edit" ? "Update" : "Share now";
-  footButtons(foot, { onClick: flowBack }, mainButton(label, () => submitDraft(p), { grey: !!f.draft.refused, disabled: !!f.draft.refused || f.draft.sending }));
+  footButtons(foot, { onClick: flowBack, wizard: true }, mainButton(label, () => submitDraft(p), { grey: !!f.draft.refused, disabled: !!f.draft.refused || f.draft.sending, icon: f.mode === "edit" ? "check" : "upload" }));
 }
 // Step 1: tapping a playlist reads its songs, then goes on to Type
 function renderPickPlaylist(body, foot) {
   const f = sharing.flow;
-  footButtons(foot, { onClick: flowBack });
+  footButtons(foot, { onClick: flowBack, wizard: true });
   const list = shareCandidates();
   if (!list.length) {
     body.appendChild(emptyState("notes", "No playlists of your own to share", "Make a playlist in Spotify, then come back. Playlists you got from Music sharing and ones this app built can't be shared."));
@@ -1248,15 +1273,18 @@ function field(key, label, content, note = null) {
 const fieldNote = (text) => feEl("span", { class: "ms-fnote" }, text);
 function anonBox(d) {
   const box = feEl("input", { type: "checkbox", class: "ms-cb", id: "msAnon", checked: d.anon });
-  box.addEventListener("change", () => { d.anon = box.checked; draftChanged(); });
-  return feEl("label", { class: "ms-cbrow ms-anon" }, box, feEl("span", {}, feEl("b", {}, "Share anonymously"), feEl("span", { class: "ms-sub" }, "Others see Anonymous instead of your Spotify name.")));
+  const name = (me && (me.display_name || me.id)) || "";
+  const say = () => (d.anon ? "Others see Anonymous instead of your Spotify name." : name ? `Others see your Spotify name, ${name}.` : "Others see your Spotify name.");
+  const sub = feEl("span", { class: "ms-sub", id: "msAnonSay" }, say());
+  box.addEventListener("change", () => { d.anon = box.checked; sub.textContent = say(); draftChanged(); });
+  return feEl("label", { class: "ms-cbrow ms-anon" }, box, feEl("span", {}, feEl("b", {}, "Share anonymously"), sub));
 }
 function detailFields(p, d) {
   const out = [];
   if (d.kind === "ceremony") out.push(field("books", "For use with which books?", bookTiles(d.books, () => { draftChanged(); refreshBooks(d); }), fieldNote("all that apply")));
   if (d.kind === "phase") out.push(field("phases", "Which phases?", phaseCurve(d.phases, draftChanged, "Which phases?"), fieldNote("all that apply")));
   if (d.kind === "mood") out.push(field("moods", "Which moods?", moodField(d), fieldNote("at least 1")));
-  if (d.kind === "other") out.push(field("other", "What is it?", otherField(d), fieldNote("a word or two")));
+  if (d.kind === "other") out.push(field("other", "What kind of playlist is this?", otherField(d), fieldNote("a word or two")));
   if (d.kind) out.push(descriptionField(p, d));
   return out;
 }
@@ -1265,7 +1293,7 @@ function refreshBooks(d) {
   if (old) old.replaceWith(bookTiles(d.books, () => { draftChanged(); refreshBooks(d); }));
 }
 function otherField(d) {
-  const input = feEl("input", { type: "text", class: "ms-input", id: "msOther", maxlength: String(SHARE_OTHER_MAX), value: d.other, placeholder: "e.g. Sound bath", enterkeyhint: "next", "aria-label": "What is it?" });
+  const input = feEl("input", { type: "text", class: "ms-input", id: "msOther", maxlength: String(SHARE_OTHER_MAX), value: d.other, placeholder: "e.g. Sound bath", enterkeyhint: "next", "aria-label": "What kind of playlist is this?" });
   input.addEventListener("input", () => { d.other = input.value; draftChanged(); });
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); const next = $("msDesc"); if (next && !next.readOnly) next.focus(); else input.blur(); } });
   return input;
@@ -1332,7 +1360,7 @@ function moodField(d) {
 function descriptionField(p, d) {
   const theirs = spotifyDescription(p);
   if (!theirs && d.descSource === "spotify") d.descSource = "mine";
-  const required = d.kind === "ceremony" || d.kind === "other";
+  const required = d.kind === "ceremony" || d.kind === "phase" || d.kind === "other";
   const spotify = d.descSource === "spotify";
   const area = feEl("textarea", { class: "ms-ta" + (spotify ? " ms-locked" : ""), id: "msDesc", rows: "3", maxlength: String(SHARE_DESC_MAX), placeholder: "A sentence or two",
     "aria-label": "Description", readonly: spotify || null }, spotify ? theirs : d.desc);
@@ -1355,7 +1383,7 @@ function draftErrors(d, p) {
     if (!o) e.other = "Say what it is in a word or two.";
     else if (blockedWord(o)) e.other = "That has a word that can't be used.";
   }
-  if ((d.kind === "ceremony" || d.kind === "other") && !draftDescription(d, p)) e.description = "Add a sentence or two.";
+  if ((d.kind === "ceremony" || d.kind === "phase" || d.kind === "other") && !draftDescription(d, p)) e.description = "Add a sentence or two.";
   return e;
 }
 async function submitDraft(p) {
@@ -1383,7 +1411,7 @@ async function submitDraft(p) {
     rememberBlock(p, null);
     await loadMine();
     loadLibrary(true);
-    if (f.mode === "edit") { sharing.flow = null; sharing.backTo = null; renderSharing(); $("msBody").scrollTop = 0; return; }
+    if (f.mode === "edit") { if (backToDetail()) return; sharing.flow = null; renderSharing(); $("msBody").scrollTop = 0; return; }
     sharing.flow = { mode: "done", name: p.name };
     renderSharing();
     $("msBody").scrollTop = 0;

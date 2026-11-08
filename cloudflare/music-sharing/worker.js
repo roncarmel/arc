@@ -179,7 +179,7 @@ async function share(env, whoId, d) {
     if (!other) throw new Refusal(400, "Say what it is.", "other");
     if (blockedWord(other)) throw new Refusal(400, "That has a word that cannot be used here.", "other");
   }
-  if ((kind === "ceremony" || kind === "other") && !description) throw new Refusal(400, "Add a description.", "description");
+  if ((kind === "ceremony" || kind === "phase" || kind === "other") && !description) throw new Refusal(400, "Add a description.", "description");
   // each song's name goes with it, so a song left out takes its name along and the two lists stay in step
   const sent = Array.isArray(d.songs) ? d.songs.slice(0, LIMITS.maxSongs).map((s, i) => [s, Array.isArray(d.names) ? d.names[i] : null]).filter(([s]) => Array.isArray(s) && /^[A-Za-z0-9]{10,40}$/.test(s[0])) : [];
   const songs = sent.map(([s]) => [s[0], /^[A-Z0-9]{12}$/.test(s[1] || "") ? s[1] : ""]);
