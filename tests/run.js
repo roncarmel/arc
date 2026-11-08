@@ -851,9 +851,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08g" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08h" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-08g/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-08h/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3053,7 +3053,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08g", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08h", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4593,7 +4593,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => !cn_on(cn_s), 5000);
   check("then the screen goes and the app shows the connection problem, saying Spotify did not answer", !cn_on(cn_s) && cn_s.eval("connection") === "problem" && /Spotify did not answer\. Check your internet connection and try again\./.test(cn_s.document.getElementById("connectionMessage").textContent));
   check("a request with no answer is a known kind of problem (the network), so there is no report link for it", cn_s.eval("problemKind('Spotify did not answer. Check your internet connection and try again.')") === "network");
-  check("the failed mark is a muted cross in a muted ring", /\.cn-failed \.cn-mark::before \{ border-color: var\(--muted\); \}/.test(cn_html) && /\.cn-failed \.cn-mark::after \{ content: "\\2715";[^}]*color: var\(--muted\)/.test(cn_html));
+  check("the failed mark is the usual error mark, a white ! in a pink circle", /\.cn-failed \.cn-mark::before \{ border: none; background: var\(--accent\); \}/.test(cn_html) && /\.cn-failed \.cn-mark::after \{ content: "!";[^}]*color: #fff/.test(cn_html));
   // a question takes it down too, so it is never hidden
   var cn_q = await boot({ ...cn_back, local: { clientId: "client-1", setupStarted: "1", formats: MINI }, fetchOptions: { tokenDelayMs: 3000 } });
   check("(the screen is up while the sign-in is slow)", cn_on(cn_q));
@@ -4739,7 +4739,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("and lets it go afterwards", /minutes? of music/.test(capText(nl_w)));
   // trouble
   nl_w.eval('saveState.error = "boom"; renderSaveStatus()');
-  check("a save that failed shows in amber, with its link, and the menu button does not get a dot for it", /Couldn.t save to Spotify\./.test(capText(nl_w)) && nl_cap().classList.contains("fe-notice-warn") && capLinks(nl_w).some((b) => b.textContent === "Try again") && !nl_w.document.getElementById("feAppMenuButton").classList.contains("fe-alert") && nl_w.document.getElementById("feAppMenuButton").getAttribute("aria-label") === "App menu");
+  check("a save that failed shows as an error (pink, with the !), with its link, and the menu button does not get a dot for it", /Couldn.t save to Spotify\./.test(capText(nl_w)) && nl_cap().classList.contains("fe-notice-warn") && capLinks(nl_w).some((b) => b.textContent === "Try again") && !nl_w.document.getElementById("feAppMenuButton").classList.contains("fe-alert") && nl_w.document.getElementById("feAppMenuButton").getAttribute("aria-label") === "App menu");
   await nl_sleep(700);
   check("trouble does not go away by itself", /Couldn.t save to Spotify\./.test(capText(nl_w)));
   nl_w.eval('saveState.error = ""; renderSaveStatus()');
@@ -4796,7 +4796,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   capLinks(nl_w).find((b) => b.textContent === "Back up now").click();
   check("pressing its link does it, and puts the message away", nl_w.eval("window.__linkRan") === true && !/Held through a heal/.test(capText(nl_w)));
   nl_w.eval('showBackupMessage("It went wrong: because.", false, null, true)');
-  check("one that says something went wrong is amber, and held, with an OK", nl_cap().classList.contains("fe-notice-warn") && /It went wrong/.test(capText(nl_w)) && capLinks(nl_w).some((b) => b.textContent === "OK"));
+  check("one that says something went wrong is an error, and held, with an OK", nl_cap().classList.contains("fe-notice-warn") && /It went wrong/.test(capText(nl_w)) && capLinks(nl_w).some((b) => b.textContent === "OK"));
   await nl_sleep(500);
   check("it stays until it is put away", /It went wrong/.test(capText(nl_w)));
   nl_w.eval('showNotices(["News behind it."])');
@@ -5354,7 +5354,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08g"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08h"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

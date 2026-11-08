@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08g";
+const APP_VERSION = "2026-11-08h";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -277,7 +277,7 @@ async function finishLaunchScreen(ready) {
 function getUpdate() {
   try { sessionStorage.setItem("updating", "1"); } catch (err) { /* no storage: the card shows until the reload only */ }
   updateScreen = true;
-  $("updateScreen").classList.remove("us-done", "us-out");
+  $("updateScreen").classList.remove("us-done", "us-out", "us-failed");
   document.documentElement.classList.add("updating", "us-arrive");
   updateStep("Getting the new version");
   reloadForNewVersion(() => {
@@ -297,6 +297,7 @@ function finishUpdateScreen(how) {
   if (how === "ready") text.append("You have the newest version of the app, ", Object.assign(document.createElement("em"), { textContent: APP_VERSION }), ".");
   else text.textContent = "Check your internet connection and try again.";
   screen.classList.add("us-done");
+  screen.classList.toggle("us-failed", how === "failed");
   const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (how === "ready" && !still && typeof requestAnimationFrame === "function") throwConfetti(screen.querySelector(".us-fan"));
 }
@@ -309,7 +310,7 @@ function closeUpdateScreen() {
   setTimeout(() => {
     if (updateScreen) return;   // Get it again meanwhile
     document.documentElement.classList.remove("updating", "us-arrive");
-    screen.classList.remove("us-out", "us-done");
+    screen.classList.remove("us-out", "us-done", "us-failed");
   }, 450);
 }
 
@@ -1228,7 +1229,7 @@ function showBackupMessage(text, undo = false, link = null, warn = false) {
   const actions = [];
   if (link) actions.push({ label: link.label, run: link.onClick });
   if (undo) actions.push({ label: "Undo", run: undoLastChange });
-  if (typeof showNotices === "function") showNotices([{ text, icon: warn ? "warn" : "device", warn, hold: warn || actions.length > 0, actions, transient: true }]);
+  if (typeof showNotices === "function") showNotices([{ text, icon: warn ? "alert" : "device", warn, hold: warn || actions.length > 0, actions, transient: true }]);
 }
 
 let openQuestion = null;   // finishes the "create these?" question while it is showing
@@ -1552,17 +1553,15 @@ function resetBuildPopup() {
 // Small drawings, all made here so they follow the theme's colors.
 const BD_ICON = {
   done: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="var(--accent)"/><path d="M4.5 8.2l2.3 2.3 4.7-4.9" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  fail: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="var(--danger)"/><path d="M5.3 5.3l5.4 5.4M10.7 5.3l-5.4 5.4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  fail: '<svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="var(--accent)"/><path d="M10 5.3v5.7" stroke="#fff" stroke-width="2.3" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1.3" fill="#fff"/></svg>',   // errors look the same everywhere: a pink ! (FE_ICONS.alert)
   now: '<svg class="bd-spin" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="var(--line)" stroke-width="2.2" fill="none"/><path d="M8 1.5a6.5 6.5 0 0 1 6.5 6.5" stroke="var(--accent)" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>',
   wait: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="var(--muted)" stroke-width="1.5" fill="none" stroke-dasharray="2 2.4"/></svg>',
   num: (n) => `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7.2" stroke="var(--muted)" stroke-width="1.2" fill="none"/><text x="8" y="11.4" text-anchor="middle" font-size="${n > 9 ? 7.5 : 9.5}" font-family="system-ui, sans-serif" fill="var(--muted)">${n}</text></svg>`,
-  warn: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M9 1.8l7.6 13.4H1.4z" fill="#f59e0b"/><path d="M9 7v3.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><circle cx="9" cy="13" r="1" fill="#fff"/></svg>',
   replace: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/></svg>',
   rename: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
   copy: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
   shared: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/></svg>',
   music: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
-  err: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="8.2" fill="var(--danger)"/><path d="M9 4.8v5" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="9" cy="12.9" r="1.1" fill="#fff"/></svg>',
 };
 
 const BD_STEPS = [["read", "Read songs"], ["plan", "Plan"], ["build", "Build"], ["done", "Done"]];
@@ -1764,13 +1763,13 @@ function groupRow(title, text) {
   return li;
 }
 
-function problemCard(title, items, className = "bd-err") {
-  // A card with a title and, below it, sentences in a list. items are [bold part, rest].
-  const card = Object.assign(document.createElement("div"), { className: "bd-card " + className });
-  const head = Object.assign(document.createElement("div"), { className: "bd-ct" });
-  head.innerHTML = className === "bd-err" ? BD_ICON.err : BD_ICON.warn;
-  head.appendChild(document.createTextNode(title));
-  card.appendChild(head);
+function problemCard(title, items, text = "") {
+  // The usual error box (problemBox in editor.js) with a title and, below it, sentences in a list (items are [bold part, rest]) or one sentence (text, names marked).
+  const card = problemBox(title);
+  card.classList.add("bd-card");
+  const body = card.lastChild;
+  body.firstChild.classList.add("bd-ct");
+  if (text) putNamed(body.appendChild(Object.assign(document.createElement("p"), { className: "bd-small" })), text);
   if (items.length) {
     const ul = Object.assign(document.createElement("ul"), { className: "bd-problems" });
     for (const [bold, rest] of items) {
@@ -1779,7 +1778,7 @@ function problemCard(title, items, className = "bd-err") {
       if (rest) putNamed(li, (bold ? " " : "") + rest);
       ul.appendChild(li);
     }
-    card.appendChild(ul);
+    body.appendChild(ul);
   }
   return card;
 }
@@ -1812,8 +1811,7 @@ function showBuildStop(err, done) {
   else if (done && (done.built || done.incomplete)) what = `${done.built} of ${plural(done.total, "playlist")} ${done.built === 1 ? "was" : "were"} built` + (done.incomplete ? `, and ${named(done.incomplete)} is incomplete.` : ".");
   const again = done && (done.built || done.incomplete) ? " Building again replaces the ones made so far." : "";
   setActionMessage("");
-  const card = problemCard(problem.title, []);
-  putNamed(card.appendChild(Object.assign(document.createElement("p"), { className: "bd-small" })), `${what} ${problem.advice}${again}`);
+  const card = problemCard(problem.title, [], `${what} ${problem.advice}${again}`);
   $("actionMessage").appendChild(card);
   setBuildSteps(buildStep === "done" ? "build" : buildStep, true);
   if (problem.unexpected) offerReport("mainReportHint", message);
@@ -3301,6 +3299,7 @@ async function preparePython() {
   } catch (err) {
     $("pythonStatus").textContent = String(err.message || err);
     $("pythonNote").textContent = "Python could not start, so building is unavailable. Check your internet connection and reload the page.";
+    $("pythonNote").className = "error";   // the usual small error box
     offerReport("mainReportHint", String(err.message || err));
     return false;
   }

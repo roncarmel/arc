@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-08g";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-08h";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -56,6 +56,7 @@ const FE_ICONS = {
   check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
   reset: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg>',
   clock: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  alert: '<svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="currentColor"/><path d="M10 5.3v5.7" stroke="#fff" stroke-width="2.3" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1.3" fill="#fff"/></svg>',   // every error (pink, by CSS)
   warn: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17.5v.1"/></svg>',
   // for the headings of the collapsible topics (guide, More options, Privacy, developer options), named by data-icon in the markup
   ban: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>',
@@ -99,6 +100,17 @@ function feEl(tag, props, ...children) {
     node.appendChild(typeof child === "string" ? document.createTextNode(child) : child);
   }
   return node;
+}
+
+// An error, looking the same everywhere (er-* in index.html): the pink !, a bold title, what happened, and links that put it right ([{ label, run }]).
+// small: one sentence in a smaller box, as under a field. Names in title or text are marked with named().
+function problemBox(title, text = "", actions = [], small = false) {
+  if (small) return feEl("div", { class: "er-box er-small", role: "alert" }, feIcon("alert"), feEl("span", { text: title }));
+  return feEl("div", { class: "er-box", role: "alert" }, feIcon("alert"),
+    feEl("div", {},
+      feEl("b", { class: "er-title", text: title }),
+      text ? feEl("p", { text }) : null,
+      actions.length ? feEl("div", { class: "er-acts" }, ...actions.map((a) => feEl("button", { type: "button", class: "linklike", onClick: a.run }, a.label))) : null));
 }
 
 function feIcon(name) {
@@ -662,7 +674,7 @@ function renderEditor() {
     return;
   }
   const card = feEl("div", { class: "fe-card", id: "feCard" },
-    feEl("p", { class: "fe-warn", id: "feClash", hidden: true }),   // about the name, so it stays at the top, near the tab
+    Object.assign(problemBox("", "", [], true), { id: "feClash", hidden: true }),   // about the name, so it stays at the top, near the tab
     feEl("div", { class: "fe-barwrap" },
       feEl("div", { class: "fe-bar", id: "feBar", role: "img", "aria-label": "Shape of one playlist" }),
       feEl("div", { class: "fe-caption", id: "feCaption", onPointerDown: pauseNotices, onMouseEnter: pauseNotices }),
@@ -1279,7 +1291,7 @@ function renderClash() {
   if (!f || !note) return;
   const clash = editor.model.formats.some((x) => x.id !== f.id && normName(x.title) === normName(f.title));
   note.hidden = !clash;
-  note.textContent = clash ? "Another recipe has this name. Playlists from both would be treated as one set when replacing." : "";
+  note.lastChild.textContent = clash ? "Another recipe has this name. Playlists from both would be treated as one set when replacing." : "";
 }
 
 // ---------------------------------------------------------------- the line under the bar: the music total, or a notice
@@ -1349,7 +1361,7 @@ function paintNoticeNow(caption, view) {
     return;
   }
   caption.classList.add("fe-notice", view.pause ? "fe-notice-pause" : view.warn ? "fe-notice-warn" : "fe-notice-news");
-  caption.appendChild(feIcon(view.icon || (view.warn ? "warn" : "cloud")));
+  caption.appendChild(feIcon(view.icon || (view.warn ? "alert" : "cloud")));
   caption.appendChild(feEl("span", { class: "fe-notice-text", text: view.text }));
   for (const a of view.actions || []) caption.appendChild(a.more
     ? feEl("button", { type: "button", class: "fe-notice-link fe-notice-more", onClick: a.run }, feEl("span", { class: "fe-more-word", text: a.label }), feEl("span", { class: "fe-more-arrow", "aria-hidden": "true", text: "\u203A" }))   // the word alone is underlined on hover
@@ -1671,7 +1683,7 @@ function rowEl(f, item, index) {
     "aria-expanded": String(open === "list-a" || open === "mix"), "aria-label": `Playlist: ${title}`,
     onClick: () => setPanel(item.id, open ? null : (mixed ? "mix" : "list-a")),
   }, cover,
-  feEl("span", { class: "fe-text" }, feEl("span", { class: "fe-title", text: title }), feEl("span", { class: "fe-sub" + (warn ? " fe-sub-warn" : ""), text: sub })),
+  feEl("span", { class: "fe-text" }, feEl("span", { class: "fe-title", text: title }), feEl("span", { class: "fe-sub" + (warn ? " fe-sub-warn" : "") }, warn ? feIcon("alert") : null, sub)),
   feIcon("chevron"));
   card.appendChild(main);
 

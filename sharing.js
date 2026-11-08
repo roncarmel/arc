@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08g";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08h";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -435,7 +435,7 @@ async function addShared(s) {
   } catch (err) {
     if (made) { try { await removePlaylists([made.id]); } catch (e) { logStep("shared copy: half-made copy not removed"); } }   // all or nothing
     made = null;
-    sharing.addErrors[s.id] = `Could not get it: ${String(err && err.message || err).replace(/\.$/, "")}. Try again.`;
+    sharing.addErrors[s.id] = String(err && err.message || err).replace(/\.?$/, ".");   // what went wrong, shown in the usual error box (getError)
   }
   sharing.adding.delete(s.id);
   if (made) {
@@ -696,8 +696,7 @@ function renderResults() {
   box.textContent = "";
   if (sharing.loading && !sharing.library) { box.appendChild(feEl("p", { class: "ms-note" }, "Loading shared playlists...")); return; }
   if (sharing.error && !sharing.library) {
-    box.appendChild(feEl("p", { class: "ms-note" }, sharing.error));
-    box.appendChild(feEl("button", { type: "button", onClick: () => loadLibrary(true) }, "Try again"));
+    box.appendChild(problemBox("Shared playlists didn\u2019t load", sharing.error, [{ label: "Try again", run: () => loadLibrary(true) }]));
     return;
   }
   if (!sharing.library) return;
@@ -746,10 +745,14 @@ function shareRow(s, ov) {
       feEl("div", { class: "ms-name", text: s.name, title: s.name }),
       feEl("div", { class: "ms-sub" }, `${isMine(s) ? "You" : s.by || "Anonymous"} · ${lengthText(s.ms / 60000)}`),
       per ? feEl("div", { class: "ms-ov" }, `${per.pct}% already in your recipes`) : null,
-      sharing.addErrors[s.id] ? feEl("div", { class: "ms-error" }, sharing.addErrors[s.id]) : null),
+      null),
     addButton(s));
   row.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === row) { e.preventDefault(); row.click(); } });
-  return row;
+  return sharing.addErrors[s.id] ? feEl("div", { class: "ms-roww" }, row, getError(s)) : row;
+}
+// a Get that failed: the usual error box, with Try again
+function getError(s) {
+  return problemBox("Couldn\u2019t get it", sharing.addErrors[s.id], [{ label: "Try again", run: (e) => { e.stopPropagation(); addShared(s); } }]);
 }
 // A page slides in from the right, pushing the one before out to the left; going back reverses it. The list keeps where it was scrolled to.
 function openDetail(id) {
@@ -804,7 +807,7 @@ function renderDetail(body, foot) {
       feEl("div", { class: "ms-sub" }, isMine(s) ? "Shared by you" : s.by ? `Shared by ${s.by}` : "Shared anonymously"),
       feEl("div", { class: "ms-sub" }, `${songCountText(s.count)} · ${lengthText(s.ms / 60000)}`))));
   if (!isMine(s)) { const get = addButton(s, true); get.classList.add("ms-getwide"); body.appendChild(get); }
-  if (sharing.addErrors[s.id]) body.appendChild(feEl("p", { class: "ms-error" }, sharing.addErrors[s.id]));
+  if (sharing.addErrors[s.id]) body.appendChild(getError(s));
   // on the person's own share, what Edit details changes sits in one card with Edit details at its top right
   const into = mine ? feEl("div", { class: "ms-dcard" }, feEl("div", { class: "ms-dhead" }, feEl("b", {}, "Details"),
     feEl("button", { type: "button", class: "ms-editlink", id: "msEdit", onClick: () => { const tab = sharing.tab; editShare(mine); sharing.backTo = { id: s.id, tab }; } }, feIcon("pencil"), "Edit details"))) : body;
@@ -902,13 +905,12 @@ function renderSongs(body, s, names, ov) {
   body.appendChild(feEl("div", { class: "ms-sec" }, "30 second previews from Deezer"));
   if (names.state === "loading") { body.appendChild(feEl("p", { class: "ms-song-note" }, "Loading the songs...")); return; }
   if (names.state === "error") {
-    body.appendChild(feEl("p", { class: "ms-song-note" }, `${names.error} `,
-      feEl("button", { type: "button", class: "linklike", onClick: () => { names.state = "retry"; renderSharing(); } }, "Try again")));
+    body.appendChild(problemBox("The songs didn\u2019t load", names.error, [{ label: "Try again", run: () => { names.state = "retry"; renderSharing(); } }]));
     return;
   }
   const have = new Set(ov ? ov.songs.map(([id]) => id) : []);
   if (ov) body.appendChild(feEl("div", { class: "ms-have-key" }, feIcon("check"), ov.same === 1 ? "1 song already in your recipes" : `${ov.same} songs already in your recipes`));
-  if (sharing.previewNote) body.appendChild(feEl("p", { class: "ms-song-note" }, sharing.previewNote));
+  if (sharing.previewNote) body.appendChild(problemBox(sharing.previewNote, "", [], true));
   const list = feEl("div", { class: "ms-tracks" });
   names.list.forEach((n, i) => list.appendChild(songRow(s, i, n, have.has(s.songs[i] && s.songs[i][0]))));
   body.appendChild(list);
@@ -1057,10 +1059,17 @@ async function reportShare(s) {
     radios[0].querySelector("input").focus();
   });
   if (!result) return;
-  try {
-    await sharingFetch("POST", "/report", { share: s.id, reason: result.reason, note: result.note });
-    showNotices([{ text: `Thanks. ${named(s.name)} was reported.`, transient: true }]);
-  } catch (err) { await askSyncChoice("Not reported", err.message, [{ label: "Close", value: null }]); }
+  for (;;) {   // a report that did not go through is sent again as it was, on Try again
+    try {
+      await sharingFetch("POST", "/report", { share: s.id, reason: result.reason, note: result.note });
+      showNotices([{ text: `Thanks. ${named(s.name)} was reported.`, transient: true }]);
+      return;
+    } catch (err) {
+      const again = await askSyncChoice("Your report didn\u2019t go through", "Nothing was sent. Try again in a moment.",
+        [{ label: "Try again", value: "again", main: true, icon: "retry" }, { label: "Close", value: null }], { problem: "flag", what: err.message });
+      if (!again) return;
+    }
+  }
 }
 
 // ---------------------------------------------------------------- Shared by you
@@ -1071,7 +1080,7 @@ const playlistFor = (m) => playlists.find((p) => p.id === m.playlist) || null;
 const changedInSpotify = (m, p) => !!(p && p.snapshot && m.snapshot && p.snapshot !== m.snapshot);
 function renderShareYours(body, foot) {
   if (connection !== "ready" || !me) { body.appendChild(feEl("p", { class: "ms-note" }, "Connect to Spotify to share your playlists.")); return; }
-  if (sharing.mineError) body.appendChild(feEl("p", { class: "ms-error" }, sharing.mineError));
+  if (sharing.mineError) body.appendChild(problemBox("Your shares didn\u2019t load", sharing.mineError, [{ label: "Try again", run: () => loadMine() }]));
   if (!sharing.mine && !sharing.mineError) { body.appendChild(feEl("p", { class: "ms-note" }, "Loading...")); return; }
   const mine = sharing.mine || [];
   if (!mine.length) {
@@ -1104,15 +1113,16 @@ function yourRow(m) {
       feEl("div", { class: "ms-klabel" }, kindLabel(m)),
       feEl("div", { class: "ms-name", text: m.name }),
       feEl("div", { class: "ms-sub" }, [m.by || "Anonymous", m.ms ? lengthText(m.ms / 60000) : ""].filter(Boolean).join(" · ")),
-      m.hidden ? feEl("div", { class: "ms-error" }, "Hidden after reports") : null,
-      sharing.updateErrors && sharing.updateErrors[m.id] ? feEl("div", { class: "ms-error" }, sharing.updateErrors[m.id]) : null),
+      m.hidden ? feEl("div", {}, feEl("span", { class: "ms-hiddentag" }, feIcon("eyeoff"), "Hidden after reports")) : null),
     feEl("span", { class: "ms-chev" }, feIcon("chevron")));
   row.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === row) { e.preventDefault(); row.click(); } });
   if (!changed) return row;
   const busy = sharing.updating === m.id;
+  const failed = sharing.updateErrors && sharing.updateErrors[m.id];
   return feEl("div", { class: "ms-joined" }, row,
     feEl("div", { class: "ms-strip", id: "msStrip-" + m.id }, feEl("span", {}, "Changed in Spotify since you shared it"),
-      feEl("button", { type: "button", class: "ms-stripbtn", disabled: busy || !!sharing.updating, onClick: () => updateShare(m) }, busy ? "Updating..." : "Update")));
+      feEl("button", { type: "button", class: "ms-stripbtn", disabled: busy || !!sharing.updating, onClick: () => updateShare(m) }, busy ? "Updating..." : "Update")),
+    failed ? problemBox("Not updated", failed, [{ label: "Try again", run: () => updateShare(m) }]) : null);
 }
 // Update from the strip: the share again with the same details and the playlist's songs (and its Spotify description, when the share uses it) as they are now
 async function updateShare(m) {
@@ -1197,8 +1207,8 @@ function renderFlow(body, foot) {
   const p = playlists.find((x) => x.id === f.draft.playlist);
   if (!p) { sharing.flow = null; renderSharing(); return; }
   body.appendChild(othersWillSee(p, f.draft));
-  if (f.draft.refused) body.appendChild(feEl("div", { class: "ms-errbox", id: "msRefused", text: f.draft.refused }));
-  else if (f.draft.problem) body.appendChild(feEl("div", { class: "ms-errbox", id: "msProblem" }, f.draft.problem));
+  if (f.draft.refused) body.appendChild(flowProblem(f.draft.refused, "msRefused"));
+  else if (f.draft.problem) body.appendChild(flowProblem(f.draft.problem, "msProblem"));
   if (f.mode === "new" && f.step === 1) {
     body.appendChild(feEl("h3", { class: "ms-q" }, "What type of playlist is this?"));
     body.appendChild(field("kind", null, kindTiles(f.draft.kind, (k) => { f.draft.kind = k; draftChanged(); renderSharing(); }, { big: true })));
@@ -1233,7 +1243,7 @@ function renderPickPlaylist(body, foot) {
     return;
   }
   body.appendChild(feEl("h3", { class: "ms-q" }, "Which playlist would you like to share?"));
-  if (f.readError) body.appendChild(feEl("p", { class: "ms-error" }, f.readError));
+  if (f.readError) body.appendChild(problemBox(f.readError.title, f.readError.text, [{ label: "Try again", run: () => pickPlaylist(f.readError.p) }]));
   const box = feEl("div", { class: "ms-pick-list" });
   for (const p of list) {
     const reading = f.reading === p.id;
@@ -1256,7 +1266,7 @@ async function pickPlaylist(p) {
     if (!tracks.length) throw new Error("It has no songs");
     f.draft = newDraft(p);
     f.step = 1;
-  } catch (err) { f.readError = `The songs of ${named(p.name)} could not be read: ${String(err.message || err).replace(/\.$/, "")}.`; }
+  } catch (err) { f.readError = { p, title: `The songs of ${named(p.name)} couldn\u2019t be read`, text: String(err.message || err).replace(/\.?$/, ".") }; }
   f.reading = null;
   renderSharing();
   $("msBody").scrollTop = 0;
@@ -1308,7 +1318,20 @@ function field(key, label, content, note = null) {
   return feEl("div", { class: "ms-field" + (err ? " ms-bad" : ""), "data-field": key },
     label ? feEl("div", { class: "ms-flabel" }, feEl("b", {}, label), note) : null,
     content,
-    err ? feEl("div", { class: "ms-ferr", role: "alert" }, feIcon("warn"), err) : null);
+    err ? fieldError(err) : null);
+}
+// what is missing or wrong in a field: one sentence in the usual small error box (Pink C: the field itself keeps its border, since pink outlines mean chosen or focused)
+function fieldError(text) {
+  const box = problemBox(text, "", [], true);
+  box.classList.add("ms-ferr");
+  return box;
+}
+// at the top of a share's details, why it can't be shared
+function flowProblem(text, id) {
+  const box = problemBox(text, "", [], true);
+  box.classList.add("ms-errbox");
+  box.id = id;
+  return box;
 }
 const fieldNote = (text) => feEl("span", { class: "ms-fnote" }, text);
 function anonBox(d) {
@@ -1339,12 +1362,12 @@ function otherField(d) {
   return input;
 }
 // Moods are typed as words (a comma or Return ends one; a word may be two, like "deep calm"); each becomes a chip with an x.
-// Moods others use are offered under the box. A word on the blocked list stays in the box with a red line under it.
+// Moods others use are offered under the box. A word on the blocked list stays in the box with the small error box under it.
 function moodField(d) {
   const input = feEl("input", { type: "text", class: "ms-moodinput", id: "msMoodInput", maxlength: String(SHARE_MOOD_CHARS + 10), "aria-label": "Add a mood", enterkeyhint: "done", autocapitalize: "none", spellcheck: "false" });
   const box = feEl("div", { class: "ms-moodbox", onClick: (e) => { if (e.target === box) input.focus(); } });
   const suggest = feEl("div", { class: "ms-chips ms-suggest" });
-  const blockedMsg = feEl("div", { class: "ms-ferr", hidden: true }, feIcon("warn"), "That word can't be used.");
+  const blockedMsg = Object.assign(fieldError("That word can't be used."), { hidden: true });
   const add = (text) => {
     const w = cleanMood(text);
     if (w.length < 2 || d.moods.includes(w) || d.moods.length >= SHARE_MOODS_MAX) return true;
@@ -1580,7 +1603,7 @@ function renderDevTags() {
   const filters = feEl("div", { class: "ms-tags" }, ...[["shown", "Shown"], ["hidden", "Hidden"], ["all", "All"]].map(([k, label]) =>
     feEl("button", { type: "button", class: "ms-tag" + (devTagFilter === k ? " ms-on" : ""), onClick: () => { devTagFilter = k; renderDevTags(); } }, `${label} ${counts[k]}`)));
   box.appendChild(filters);
-  if (!sharing.library) { box.appendChild(feEl("p", { class: "muted" }, sharing.error || "Loading...")); return; }
+  if (!sharing.library) { box.appendChild(sharing.error ? problemBox(sharing.error, "", [], true) : feEl("p", { class: "muted" }, "Loading...")); return; }
   const words = all.filter((t) => devTagFilter === "all" || (devTagFilter === "hidden") === t.hidden);
   if (!words.length) { box.appendChild(feEl("p", { class: "muted" }, all.length ? "None." : "No mood is in more than one shared playlist yet.")); return; }
   const cloud = feEl("div", { class: "msd-cloud" });
@@ -1600,7 +1623,7 @@ async function toggleWord(t) {
     if (hide === common) delete words[t.word]; else words[t.word] = hide ? 1 : 0;
     computeMoodIndex();
     renderDevTags();
-  } catch (err) { showNotices([{ text: `Not changed: ${err.message}`, transient: true }]); }
+  } catch (err) { showNotices([{ text: `Not changed: ${err.message}`, icon: "alert", warn: true, hold: true, transient: true }]); }
 }
 async function loadDevReports() {
   const box = $("devReportList");
@@ -1617,7 +1640,7 @@ async function loadDevReports() {
         ...s.reports.map((r) => feEl("div", { class: "muted" }, `${shortDate(r.at)}: ${r.reason}${r.note ? `. ${r.note}` : ""}`)),
         feEl("div", { class: "row" }, feEl("button", { type: "button", onClick: async () => {
           try { await sharingFetch("POST", "/admin/share/" + s.id, { hidden: !s.hidden }); loadDevReports(); loadLibrary(true); }
-          catch (err) { showNotices([{ text: `Not changed: ${err.message}`, transient: true }]); }
+          catch (err) { showNotices([{ text: `Not changed: ${err.message}`, icon: "alert", warn: true, hold: true, transient: true }]); }
         } }, s.hidden ? "Show again" : "Hide"))));
     }
   } catch (err) { box.textContent = err.status === 403 ? "Only the owner of the app can see reports." : err.message; }
