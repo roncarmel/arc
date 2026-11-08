@@ -4,7 +4,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, the phase filter, tags (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-07v";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-07w";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_MIN_MS = 2 * 60 * 60 * 1000;
@@ -438,7 +438,7 @@ async function settlePending() {
 function introText(tab) {
   return tab === "find"
     ? ["Playlists other facilitators share for their sessions. ", feEl("b", {}, "Get"), " puts your own private copy in your Spotify, ready to use in your recipes. The copy is yours to change, and it stays as it is if the sharer changes or removes theirs."]
-    : [`Share your own playlists with other facilitators. Tick one, then choose when you play it and at least ${SHARE_TAGS_MIN} tags. It needs at least two hours of songs. Others get their own private copy, and yours stays as it is.`];
+    : [`Share your own playlists with other facilitators. Tick one, then mark when you play it and add at least ${SHARE_TAGS_MIN} tags. It needs at least two hours of songs. Others get their own private copy, and yours stays as it is.`];
 }
 function introStates() { try { return JSON.parse(localStorage.getItem("sharingIntro")) || {}; } catch (e) { return {}; } }
 function introOpen(tab) { return introStates()[tab] !== "closed"; }
