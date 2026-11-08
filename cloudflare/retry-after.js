@@ -4,7 +4,7 @@
 // Spotify limits each kind of request on its own (/me can answer while /me/playlists is refused), so the page says which kind, as ?path=, and
 // the worker reads that kind, one item at most. Only the paths below are allowed; anything else, or none (older pages), asks /me.
 // Nothing is kept or logged here (leave Workers Logs off), and Spotify's answer itself is not passed on.
-const ALLOWED_ORIGIN = "https://playlists.roncarmel.com";
+const ALLOWED_ORIGINS = ["https://arc.roncarmel.com", "https://playlists.roncarmel.com"];
 const ALLOWED_PATH = /^\/(me|me\/playlists|playlists\/[A-Za-z0-9]{22}(\/items|\/images)?)$/;
 
 function spotifyAddress(path) {
@@ -15,9 +15,10 @@ function spotifyAddress(path) {
 
 export default {
   async fetch(request) {
-    const cors = { "Access-Control-Allow-Origin": ALLOWED_ORIGIN, "Access-Control-Allow-Methods": "GET", "Access-Control-Allow-Headers": "Authorization", "Access-Control-Max-Age": "86400", "Vary": "Origin" };
+    const origin = request.headers.get("Origin") || "";
+    const cors = { "Access-Control-Allow-Origin": ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0], "Access-Control-Allow-Methods": "GET", "Access-Control-Allow-Headers": "Authorization", "Access-Control-Max-Age": "86400", "Vary": "Origin" };
     if (request.method === "OPTIONS") return new Response(null, { headers: cors });
-    if (request.method !== "GET" || request.headers.get("Origin") !== ALLOWED_ORIGIN) return new Response("Not allowed", { status: 403 });
+    if (request.method !== "GET" || !ALLOWED_ORIGINS.includes(origin)) return new Response("Not allowed", { status: 403 });
     const auth = request.headers.get("Authorization") || "";
     if (!auth.startsWith("Bearer ")) return new Response("Not allowed", { status: 403, headers: cors });
     const answer = await fetch(spotifyAddress(new URL(request.url).searchParams.get("path")), { headers: { Authorization: auth } });

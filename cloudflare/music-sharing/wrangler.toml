@@ -6,7 +6,7 @@ compatibility_date = "2025-05-01"
 workers_dev = true
 
 [vars]
-ORIGINS = "https://playlists.roncarmel.com,http://127.0.0.1:8000,http://localhost:8000"
+ORIGINS = "https://arc.roncarmel.com,https://playlists.roncarmel.com,http://127.0.0.1:8000,http://localhost:8000"
 
 [observability]
 enabled = false
