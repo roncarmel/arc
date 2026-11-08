@@ -4,6 +4,7 @@ bump_version.py: sets the app's version stamp everywhere it appears, in one go.
 The site has no build step, so the stamp is written out in each place that needs it:
   index.html   the app-version meta tag, and ?v= on every script, so browsers fetch the new copies
   app.js       APP_VERSION, so a page that loaded an old script notices the two differ
+  theme.js, formats.js, editor.js, shared-spotify.js, sharing.js   each its own stamp (scriptVersions), compared with APP_VERSION at startup
   version.txt  what a running page asks for, to find out a newer version is on the site
   tests/run.js the checks that hold the stamp as text
 
@@ -22,6 +23,9 @@ PLACES = [  # file, pattern with the stamp as group 2
     ("index.html", rf'(<meta name="app-version" content=")({STAMP})(")'),
     ("index.html", rf'(\.js\?v=)({STAMP})(")'),
     ("app.js", rf'(const APP_VERSION = ")({STAMP})(";)'),
+] + [  # each other script names its own version, so an old copy of one is noticed at startup
+    (name, rf'(\.scriptVersions \|\| \{{\}}\)\["[a-z-]+\.js"\] = ")({STAMP})(";)') for name in ("theme.js", "formats.js", "editor.js", "shared-spotify.js", "sharing.js")
+] + [
     ("version.txt", rf"(\A)({STAMP})(\s*\Z)"),
 ]
 TESTS = ROOT / "tests" / "run.js"   # holds the stamp as plain text, so every copy of the old stamp is replaced

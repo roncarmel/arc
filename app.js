@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-07l";
+const APP_VERSION = "2026-11-07m";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -3048,6 +3048,22 @@ function initThemeChooser() {
   show();
 }
 
+// Every other script names its own version in scriptVersions. An old copy of one, kept by a browser or a phone's Home Screen app while the rest is new,
+// is a startup problem like any other: fresh copies are fetched and the page loads again by itself, then the popup if it is still there.
+const SCRIPT_FILES = ["theme.js", "formats.js", "editor.js", "shared-spotify.js", "sharing.js"];
+function checkScriptVersions() {
+  const versions = globalThis.scriptVersions || {};
+  const old = SCRIPT_FILES.filter((file) => versions[file] !== APP_VERSION);
+  if (!old.length) return;
+  startupProblems.push(old.map((file) => `${file} is version ${versions[file] || "unknown"}, the app ${APP_VERSION}`).join("; "));
+  showStartupProblems();
+}
+// sharing.js loads after this file, so the check waits until every script has run
+function whenScriptsLoaded(work) {
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => guarded("script versions", work));
+  else guarded("script versions", work);
+}
+
 async function main() {
   if (window.pageStart) window.pageStart.started = true;   // tells the page's watchdog that this script is running
   startFlowChoice();
@@ -3055,6 +3071,7 @@ async function main() {
   logStep("page opened");
   const pageVersion = (document.querySelector('meta[name="app-version"]') || {}).content;
   if (pageVersion !== APP_VERSION) startupProblems.push(`page version ${pageVersion || "unknown"} and script version ${APP_VERSION} differ`);
+  whenScriptsLoaded(checkScriptVersions);
   guarded("report details", () => refreshReportBox());
   for (const el of document.querySelectorAll(".redirect-address")) el.textContent = redirectUri();
   $("clientId").value = localStorage.getItem("clientId") || "";
