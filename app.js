@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08o";
+const APP_VERSION = "2026-11-08p";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -168,6 +168,7 @@ function showPage() {
     document.body.classList.add("has-editor");
   }
   if (typeof applyMinimalMode === "function") applyMinimalMode();
+  if (page !== "app") { alignWelcomeIcons(); drawSetupJoint(); }   // the band and the line, now that their page shows
   if (was && was !== page) { window.scrollTo(0, 0); requestAnimationFrame(() => window.scrollTo(0, 0)); }   // again after the new page is laid out, so the title sits where it does on the other page
 }
 
@@ -244,20 +245,24 @@ function showWelcomeStep(step, push) {
   window.scrollTo(0, 0);
   if (second) drawSetupJoint();
 }
-// The setup step's line: down from behind the band's icon (white while over the band), a turn, then right to Spotify's mark, which sits where it would inside the band (16 px from its right edge).
+// The setup step's line, on the welcome page and again over the setup question: down from behind the band's icon (white while over the band), a turn, then right to
+// Spotify's mark, which sits where it would inside the band (16 px from its right edge). The mark at the middle is a check on the welcome page and a 1 on the question.
 function drawSetupJoint() {
-  const joint = $("wpJoint"), band = document.querySelector("#welcomePage .wp-band");
-  if (!joint || !band || $("wpSetup").hidden) return;
-  const jb = joint.getBoundingClientRect(), bb = band.getBoundingClientRect(), ib = band.querySelector(".wp-band-icon").getBoundingClientRect();
-  const x0 = ib.left + ib.width / 2 - jb.left, top = ib.top + ib.height / 2 - jb.top, y = 62, size = 74, r = 14;
-  const cx = bb.right - 16 - size / 2 - jb.left, x1 = cx - size / 2;
-  $("wpWire").setAttribute("d", `M${x0} ${top} V${y - r} Q${x0} ${y} ${x0 + r} ${y} H${x1}`);   // drawn from Arc; the dash offset grows, so the dashes flow back from Spotify
-  $("wpWireBand").setAttribute("d", $("wpWire").getAttribute("d"));
-  const rect = $("wpBandRect");
-  rect.setAttribute("x", bb.left - jb.left); rect.setAttribute("y", bb.top - jb.top); rect.setAttribute("width", bb.width); rect.setAttribute("height", bb.height);
-  Object.assign($("wpOk").style, { left: (x0 + r + x1) / 2 + "px", top: y + "px" });
-  Object.assign($("wpSpotify").style, { left: cx - size / 2 + "px", top: y - size / 2 + "px" });
-  Object.assign($("wpSpotifyName").style, { left: cx + "px", top: y + size / 2 + 6 + "px" });
+  for (const joint of document.querySelectorAll(".wp-joint")) {
+    const band = joint.parentElement && joint.parentElement.parentElement && joint.parentElement.parentElement.querySelector(".wp-band");
+    if (!band || joint.closest("[hidden]")) continue;   // not shown
+    const jb = joint.getBoundingClientRect(), bb = band.getBoundingClientRect(), ib = band.querySelector(".wp-band-icon").getBoundingClientRect();
+    const x0 = ib.left + ib.width / 2 - jb.left, top = ib.top + ib.height / 2 - jb.top, y = 62, size = 74, r = 14;
+    const cx = bb.right - 16 - size / 2 - jb.left, x1 = cx - size / 2;
+    const d = `M${x0} ${top} V${y - r} Q${x0} ${y} ${x0 + r} ${y} H${x1}`;   // drawn from Arc; the dash offset grows, so the dashes flow back from Spotify
+    joint.querySelector(".wp-wire-main").setAttribute("d", d);
+    joint.querySelector(".wp-wire-band").setAttribute("d", d);
+    const rect = joint.querySelector(".wp-band-rect");
+    rect.setAttribute("x", bb.left - jb.left); rect.setAttribute("y", bb.top - jb.top); rect.setAttribute("width", bb.width); rect.setAttribute("height", bb.height);
+    Object.assign(joint.querySelector(".wp-ok").style, { left: (x0 + r + x1) / 2 + "px", top: y + "px" });
+    Object.assign(joint.querySelector(".wp-spotify").style, { left: cx - size / 2 + "px", top: y - size / 2 + "px" });
+    Object.assign(joint.querySelector(".wp-spotify-name").style, { left: cx + "px", top: y + size / 2 + 6 + "px" });
+  }
 }
 function welcomeStepBack() {
   if (history.state && history.state.page === "welcome" && history.state.step === 2) { history.back(); return; }   // the popstate that follows shows the tools
@@ -322,8 +327,7 @@ function alignIconToText(icon, text, first, last) {
   }
 }
 function alignWelcomeIcons() {
-  const band = document.querySelector("#welcomePage .wp-band");
-  if (band) alignIconToText(band.querySelector(".wp-band-icon"), band.querySelector(".wp-band-text"), band.querySelector(".wp-band-name"), band.querySelector(".wp-band-tag"));
+  for (const band of document.querySelectorAll(".wp-band")) alignIconToText(band.querySelector(".wp-band-icon"), band.querySelector(".wp-band-text"), band.querySelector(".wp-band-name"), band.querySelector(".wp-band-tag"));
   for (const head of document.querySelectorAll("#welcomePage .wp-tool-head")) alignIconToText(head.querySelector(".tool-icon"), head.querySelector(".wp-tool-text"), head.querySelector(".wp-tool-text b"), head.querySelector(".wp-tool-tag"));
 }
 
@@ -801,6 +805,7 @@ function showFlow(flow) {
   $("spSteps").hidden = !flow;
   $("spStepsTitle").textContent = flow === "new" ? "Create an app inside your Spotify account" : "Find your Client ID";
   currentFlowName = flow;
+  if (!flow) { alignWelcomeIcons(); drawSetupJoint(); }
 }
 
 let currentFlowName = null;
