@@ -4,7 +4,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, the phase filter, tags (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-07t";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-07u";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_MIN_MS = 2 * 60 * 60 * 1000;
@@ -211,8 +211,15 @@ function phaseCurve(on, choose = null, label = "Phases", single = false) {   // 
   draw();
   return box;
 }
+// the line over a share's curve: who plays it in which phases, one or two by name, more as a count
+function phaseLine(s) {
+  const list = (s.phases || []).slice().sort();
+  const who = isMine(s) ? "You play it in " : s.by ? s.by + " plays it in " : "They play it in ";
+  const names = list.length > 2 ? [feEl("b", {}, list.length + " phases")] : list.flatMap((i, n) => n ? [" and ", feEl("b", {}, PHASES[i])] : [feEl("b", {}, PHASES[i])]);
+  return feEl("div", { class: "ms-phase-line" }, who, ...names);
+}
 function miniCurve(list) {
-  const box = feEl("span", { class: "ms-mini-curve", role: "img", "aria-label": "Suits " + phaseNames(list) });
+  const box = feEl("span", { class: "ms-mini-curve", role: "img", "aria-label": "Played in " + phaseNames(list) });
   box.appendChild(curveSvg(list, { area: false, cls: "ms-curve ms-curve-mini" }));
   return box;
 }
@@ -425,7 +432,7 @@ async function settlePending() {
 function introText(tab) {
   return tab === "find"
     ? ["Playlists other facilitators share for their sessions. ", feEl("b", {}, "Get"), " puts your own private copy in your Spotify, ready to use in your recipes. The copy is yours to change, and it stays as it is if the sharer changes or removes theirs."]
-    : [`Share your own playlists with other facilitators. Tick one, then choose the phases it suits and at least ${SHARE_TAGS_MIN} tags. It needs at least two hours of songs. Others get their own private copy, and yours stays as it is.`];
+    : [`Share your own playlists with other facilitators. Tick one, then choose when you play it and at least ${SHARE_TAGS_MIN} tags. It needs at least two hours of songs. Others get their own private copy, and yours stays as it is.`];
 }
 function introStates() { try { return JSON.parse(localStorage.getItem("sharingIntro")) || {}; } catch (e) { return {}; } }
 function introOpen(tab) { return introStates()[tab] !== "closed"; }
@@ -887,7 +894,8 @@ function renderDetail(body) {
     feEl("div", { class: "ms-hero-text" }, feEl("h3", { text: s.name }), feEl("div", { class: "ms-sub" }, isMine(s) ? "Shared by you" : s.by ? `Shared by ${s.by}` : "Shared anonymously"), feEl("div", { class: "ms-sub" }, `${songCountText(s.count)} · ${lengthText(s.ms / 60000)}`))));
   if (!isMine(s)) body.appendChild(feEl("div", { class: "ms-actions" }, addButton(s, true)));   // the person's own: the line under the name already says Shared by you
   if (sharing.addErrors[s.id]) body.appendChild(feEl("p", { class: "ms-error" }, sharing.addErrors[s.id]));
-  body.appendChild(feEl("div", { class: "ms-sec" }, "Phases it suits"));
+  // when the sharer plays it, as a sentence: "Maya plays it in Ascent and Plateau" (never "the": "in the Beginning" reads wrong)
+  body.appendChild(phaseLine(s));
   body.appendChild(phaseCurve(new Set(s.phases || [])));
   body.appendChild(feEl("div", { class: "ms-sec" }, "Tags"));
   body.appendChild(feEl("div", { class: "ms-tags ms-tags-plain" }, ...(s.tags || []).map((t) => feEl("span", { class: "ms-tag" }, t))));
@@ -1258,8 +1266,8 @@ function shareFields(p, pick) {
   // the chosen names, or how many once more than two would not fit on a phone's line
   const showPhases = () => { phaseMeter.textContent = !pick.phases.size ? "Choose all that apply" : pick.phases.size > 2 ? pick.phases.size + " phases" : phaseNames([...pick.phases].sort()); phaseMeter.classList.toggle("ms-short", !pick.phases.size); };
   showPhases();
-  const phases = feEl("div", { class: "ms-field" }, feEl("div", { class: "ms-flabel" }, feEl("b", {}, "Phases it suits"), phaseMeter),
-    phaseCurve(pick.phases, () => { showPhases(); changed(); }, "Phases it suits"));
+  const phases = feEl("div", { class: "ms-field" }, feEl("div", { class: "ms-flabel" }, feEl("b", {}, "When do you play it?"), phaseMeter),
+    phaseCurve(pick.phases, () => { showPhases(); changed(); }, "When do you play it?"));
   // no notes box: the playlist's Spotify description goes with the share as its notes (shown to people looking for playlists)
   return feEl("div", { class: "ms-fields" }, phases, tagField(p, pick, changed));
 }
