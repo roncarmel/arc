@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08j";
+const APP_VERSION = "2026-11-08k";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -242,17 +242,56 @@ function showWelcomeStep(step, push) {
   showRecipeWhat(false);
   if (push) { try { history.pushState({ page: "welcome", step: 2 }, ""); } catch (err) { /* the back button just leaves the page */ } }
   window.scrollTo(0, 0);
+  if (second) drawSetupJoint();
+}
+// The setup step's line: down from under the band's icon, a turn, then right to Spotify's mark, which sits where it would inside the band (16 px from its right edge).
+function drawSetupJoint() {
+  const joint = $("wpJoint"), band = document.querySelector("#welcomePage .wp-band");
+  if (!joint || !band || $("wpSetup").hidden) return;
+  const jb = joint.getBoundingClientRect(), bb = band.getBoundingClientRect(), ib = band.querySelector(".wp-band-icon").getBoundingClientRect();
+  const x0 = ib.left + ib.width / 2 - jb.left, top = bb.bottom - jb.top - 2, y = 62, size = 74, r = 14;
+  const cx = bb.right - 16 - size / 2 - jb.left, x1 = cx - size / 2;
+  $("wpWire").setAttribute("d", `M${x0} ${top} V${y - r} Q${x0} ${y} ${x0 + r} ${y} H${x1}`);   // drawn from Arc; the dash offset grows, so the dashes flow back from Spotify
+  Object.assign($("wpOk").style, { left: (x0 + r + x1) / 2 + "px", top: y + "px" });
+  Object.assign($("wpSpotify").style, { left: cx - size / 2 + "px", top: y - size / 2 + "px" });
+  Object.assign($("wpSpotifyName").style, { left: cx + "px", top: y + size / 2 + 6 + "px" });
 }
 function welcomeStepBack() {
   if (history.state && history.state.page === "welcome" && history.state.step === 2) { history.back(); return; }   // the popstate that follows shows the tools
   showWelcomeStep(1, false);
 }
 
-// The icon in the welcome page's band is exactly as tall as the name and tagline beside it, and square. The tagline is always two lines, so its width never changes the height.
-function sizeBandIcon() {
-  const text = document.querySelector("#welcomePage .wp-band-text"), icon = document.querySelector("#welcomePage .wp-band-icon");
-  if (!text || !icon || !text.offsetHeight) return;
-  icon.style.width = icon.style.height = text.offsetHeight + "px";
+// On the welcome page an icon spans exactly from the top of the letters of the name beside it to the bottom of the letters of the tagline under it (the band's
+// icon and each tool card's). The text is pulled up and down by the empty room above and below its letters, measured from the font, and the icon takes its height.
+function letterBounds(el) {
+  const cs = getComputedStyle(el), text = el.textContent;
+  let ctx = letterBounds.ctx;
+  if (!ctx) { try { ctx = letterBounds.ctx = document.createElement("canvas").getContext("2d"); } catch (err) { return null; } }
+  if (!ctx || !text) return null;
+  ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const m = ctx.measureText(text);
+  if (!(m.fontBoundingBoxAscent > 0) || !(m.actualBoundingBoxAscent > 0)) return null;   // an older browser: the plain layout stays
+  const lineHeight = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2;
+  const baseline = (lineHeight - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;   // from the top of a line to its baseline
+  const box = el.getBoundingClientRect();
+  return { top: box.top + baseline - m.actualBoundingBoxAscent, bottom: box.bottom - lineHeight + baseline + m.actualBoundingBoxDescent };
+}
+function alignIconToText(icon, text, first, last) {
+  if (!icon || !text || !text.offsetHeight) return;
+  text.style.marginTop = text.style.marginBottom = "";
+  for (let pass = 0; pass < 2; pass++) {   // the icon's width can rewrap the tagline, so once more with the new width
+    const box = text.getBoundingClientRect(), a = letterBounds(first), b = letterBounds(last);
+    if (!a || !b) return;
+    const above = a.top - box.top, below = box.bottom - b.bottom;
+    icon.style.width = icon.style.height = Math.round(b.bottom - a.top) + "px";
+    text.style.marginTop = -above + "px";
+    text.style.marginBottom = -below + "px";
+  }
+}
+function alignWelcomeIcons() {
+  const band = document.querySelector("#welcomePage .wp-band");
+  if (band) alignIconToText(band.querySelector(".wp-band-icon"), band.querySelector(".wp-band-text"), band.querySelector(".wp-band-name"), band.querySelector(".wp-band-tag"));
+  for (const head of document.querySelectorAll("#welcomePage .wp-tool-head")) alignIconToText(head.querySelector(".tool-icon"), head.querySelector(".wp-tool-text"), head.querySelector(".wp-tool-text b"), head.querySelector(".wp-tool-tag"));
 }
 
 // Each tool's card on the welcome page opens in place to its picture and text; opening one closes the other, so the page stays short.
@@ -3250,8 +3289,9 @@ async function main() {
   on("getStarted", "click", () => showWelcomeStep(2, true));
   on("wpSetupBack", "click", welcomeStepBack);
   for (const head of document.querySelectorAll("#welcomePage .wp-tool-head")) head.addEventListener("click", () => toggleWelcomeTool(head));
-  sizeBandIcon();
-  window.addEventListener("resize", sizeBandIcon);
+  alignWelcomeIcons();
+  window.addEventListener("resize", () => { alignWelcomeIcons(); drawSetupJoint(); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(alignWelcomeIcons);
   on("premiumWhy", "click", (event) => { event.stopPropagation(); showPremiumWhy($("premiumWhyText").hidden); });
   document.addEventListener("click", (event) => { if (!$("premiumWhyText").hidden && !$("premiumWhyText").contains(event.target)) showPremiumWhy(false); });
   on("recipeWhat", "click", (event) => { event.stopPropagation(); showRecipeWhat($("recipeWhatText").hidden); });

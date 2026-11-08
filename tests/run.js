@@ -853,9 +853,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08j" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08k" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-08j/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-08k/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -978,7 +978,7 @@ print(json.dumps(out))
   // ---------------- every numbered section title says what the person will do
   var verbs = ["Find", "Connect", "Edit", "Build", "Back up"];
   var allH2 = Array.from(t0.document.querySelectorAll("h2")).filter((h) => !h.closest("#msOverlay")).map((h) => h.textContent);
-  check("the welcome and setup pages have their own headings, and every numbered section title left is an action", JSON.stringify(allH2) === JSON.stringify(["Setup complete!", "Unwrapping the update", "Tools available now", "A one-time setup first", "One-time setup", "Find your Client ID", "1. Connect to Spotify", "1. Connect to Spotify", "2. Edit your recipes", "3. Build playlists", "4. Back up manually to this device (optional)"]) && allH2.slice(5).every((t) => verbs.some((v) => t.replace(/^\d\.\s/, "").startsWith(v))), JSON.stringify(allH2));
+  check("the welcome and setup pages have their own headings, and every numbered section title left is an action", JSON.stringify(allH2) === JSON.stringify(["Setup complete!", "Unwrapping the update", "Tools available now", "Connect your Spotify account", "One-time setup", "Find your Client ID", "1. Connect to Spotify", "1. Connect to Spotify", "2. Edit your recipes", "3. Build playlists", "4. Back up manually to this device (optional)"]) && allH2.slice(5).every((t) => verbs.some((v) => t.replace(/^\d\.\s/, "").startsWith(v))), JSON.stringify(allH2));
 
 
   // ---------------- What is this app? headings, and placeholder icons on the buttons
@@ -3056,7 +3056,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08j", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08k", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3379,20 +3379,20 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var tg_w = await boot({ url: "http://127.0.0.1:8000/" });
   check("the tagline says Arc is ceremony playlist tools for a Spotify library", tg_w.document.querySelector(".tagline").textContent === "Ceremony playlist tools for your Spotify library");
   check("it sits in the welcome page's pink band, under Arc and beside the icon, which only the welcome page shows", !!tg_w.document.querySelector("#welcomePage .wp-band .wp-band-text .tagline") && tg_w.document.querySelector("#welcomePage .wp-band-name").textContent === "Arc" && !!tg_w.document.querySelector("#welcomePage .wp-band .wp-band-icon") && /#welcomePage \{ display: none; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
-  check("the band's icon is sized to the text beside it", /function sizeBandIcon\(\)/.test(appSource()) && /icon\.style\.width = icon\.style\.height = text\.offsetHeight \+ "px"/.test(appSource()));
+  check("the band's and the cards' icons are sized to the letters beside them", /function alignWelcomeIcons\(\)/.test(appSource()) && /function letterBounds\(el\)/.test(appSource()) && /icon\.style\.width = icon\.style\.height = Math\.round\(b\.bottom - a\.top\) \+ "px"/.test(appSource()));
   var tg_d = tg_w.document, tg_heads = Array.from(tg_d.querySelectorAll("#welcomePage .wp-tool-head"));
   check("under Tools available now, a card per tool: name, tagline, and Arc's icon with a badge", tg_d.querySelector("#welcomePage .wp-sec").textContent === "Tools available now" && JSON.stringify(tg_heads.map((h) => [h.querySelector("b").textContent, h.querySelector(".wp-tool-tag").textContent])) === JSON.stringify([["Playlist builder", "Ceremony playlists, ready in minutes."], ["Music sharing", "A shared library of ceremony music. Bring some, get some!"]]) && tg_heads.every((h) => !!h.querySelector(".tool-icon .tool-badge svg")));
   check("both cards start closed", tg_heads.every((h) => h.getAttribute("aria-expanded") === "false" && tg_d.getElementById(h.getAttribute("aria-controls")).hidden));
   tg_heads[0].click();
   var tg_more0 = tg_d.getElementById("wpBuilderMore"), tg_more1 = tg_d.getElementById("wpSharingMore");
-  check("the builder's card opens to the recipe screenshot, the intro, and Where it helps as plain text with three uses", tg_heads[0].getAttribute("aria-expanded") === "true" && !tg_more0.hidden && !!tg_more0.querySelector("img[src='welcome-recipe.jpg']") && tg_more0.querySelector("h3").textContent === "Where it helps" && tg_more0.querySelectorAll(".wp-uses li").length === 3 && !tg_more0.querySelector("details") && /Weave in new music\./.test(tg_more0.textContent) && fs.existsSync(ROOT + "welcome-recipe.jpg"));
+  check("the builder's card opens to the recipe screenshot, the intro, and Where it helps as plain text with three uses", tg_heads[0].getAttribute("aria-expanded") === "true" && !tg_more0.hidden && !!tg_more0.querySelector("img[src='welcome-recipe-short-light.jpg']") && Array.from(tg_more0.querySelectorAll("source")).map((x) => x.getAttribute("srcset")).join() === "welcome-recipe.jpg,welcome-recipe-light.jpg,welcome-recipe-short.jpg" && ["welcome-recipe.jpg", "welcome-recipe-light.jpg", "welcome-recipe-short.jpg", "welcome-recipe-short-light.jpg"].every((f) => fs.existsSync(ROOT + f)) && tg_more0.querySelector("h3").textContent === "Where it helps" && tg_more0.querySelectorAll(".wp-uses li").length === 3 && !tg_more0.querySelector("details") && /Weave in new music\./.test(tg_more0.textContent));
   tg_heads[1].click();
-  check("opening Music sharing closes the builder: one card open at a time", tg_more0.hidden && tg_heads[0].getAttribute("aria-expanded") === "false" && !tg_more1.hidden && !!tg_more1.querySelector("img[src='welcome-sharing.jpg']") && fs.existsSync(ROOT + "welcome-sharing.jpg"));
+  check("opening Music sharing closes the builder: one card open at a time", tg_more0.hidden && tg_heads[0].getAttribute("aria-expanded") === "false" && !tg_more1.hidden && !!tg_more1.querySelector("img[src='welcome-sharing-light.jpg']") && tg_more1.querySelector("source").getAttribute("srcset") === "welcome-sharing.jpg" && fs.existsSync(ROOT + "welcome-sharing.jpg") && fs.existsSync(ROOT + "welcome-sharing-light.jpg"));
   tg_heads[1].click();
   check("and a card closes again on its own head", tg_more1.hidden && tg_heads[1].getAttribute("aria-expanded") === "false");
   check("Get started is the first step's only button below the cards, and the setup step starts hidden", tg_d.getElementById("getStarted").textContent === "Get started" && tg_d.getElementById("wpSetup").hidden && !tg_d.getElementById("wpFirst").hidden && tg_d.getElementById("wpSetup").contains(tg_d.getElementById("startSetup")));
   tg_d.getElementById("getStarted").click();
-  check("Get started shows what the one-time setup is, with its three steps, Back and Start setup", !tg_d.getElementById("wpSetup").hidden && tg_d.getElementById("wpFirst").hidden && tg_d.querySelector("#wpSetup h2").textContent === "A one-time setup first" && tg_d.querySelectorAll("#wpSetup .wp-steps li").length === 3 && /Works in any browser, easiest on a bigger screen\./.test(tg_d.getElementById("wpSetup").textContent) && tg_d.getElementById("wpSetupBack").textContent === "Back" && tg_d.documentElement.classList.contains("page-welcome"));
+  check("Get started shows the band joined to Spotify's mark, Connect your Spotify account, the Premium note, Back and Start setup", !tg_d.getElementById("wpSetup").hidden && tg_d.getElementById("wpFirst").hidden && !!tg_d.querySelector("#welcomePage > .wp-band") && !!tg_d.querySelector("#wpJoint .wp-spotify") && tg_d.getElementById("wpSpotifyName").textContent === "Your Spotify" && /^M[\d.]+ /.test(tg_d.getElementById("wpWire").getAttribute("d") || "") && tg_d.querySelector("#wpSetup h2").textContent === "Connect your Spotify account" && !tg_d.querySelector("#wpSetup .wp-steps") && /^Spotify Premium is needed for the connection\.$/.test(tg_d.querySelector("#wpSetup .wp-note").textContent) && tg_d.getElementById("wpSetupBack").textContent === "Back" && tg_d.documentElement.classList.contains("page-welcome"));
   tg_w.eval("showWelcomeStep(1, false)");
   check("Back returns to the tools", tg_d.getElementById("wpSetup").hidden && !tg_d.getElementById("wpFirst").hidden);
   } catch (err) { areaCrashed("the tagline", err); } }
@@ -3490,7 +3490,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("there is no second Premium line under the title any more", !pr_w.document.getElementById("taglinePremium"));
   var pr_w3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, clientId: "abc123" } });
   check("when connected, the welcome page and its notice are not shown", pr_w3.document.documentElement.classList.contains("page-app"));
-  check("the welcome page says it works in any browser, easiest on a bigger screen", /Works in any browser, easiest on a bigger screen\./.test(pr_w.document.getElementById("welcomePage").textContent));
   check("the first instruction for making the developer app says to log in with the Premium account", /\(it will open in <span data-home="Safari">a new tab<\/span>\), log in with your Spotify Premium account, and <span data-act>press<\/span> the <span class="ui">Create app<\/span> button\./.test(pr_html));
   // the error
   var pr_e = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { premiumRequired: true } });
@@ -5369,7 +5368,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08j"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08k"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
