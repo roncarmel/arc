@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08f";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08g";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -143,25 +143,22 @@ function rememberCopy(shareId, playlistId) {
   all[shareId] = playlistId;
   try { localStorage.setItem(SHARING_COPIES_KEY, JSON.stringify(all)); } catch (err) { /* private browsing: Added shows for this visit only */ }
 }
-// A copy's Spotify description is the share's, with the share's ID as its last word (the text cut short to make room), so every device knows
-// it is gotten from the playlist list it reads anyway, and a copy deleted in Spotify can be gotten again. A last word counts only when it is
-// a share's ID (in the library or this device's record), so a playlist of the person's own ending in an ordinary word is never taken for a copy.
-// sharingCopies is this device's own record, kept for copies whose last word was edited away.
-const COPY_ID_RE = /\s+([a-z0-9]{1,40})\s*$/;
-function knownShareId(id) {
-  return !!id && ((sharing.library && sharing.library.shares.some((s) => s.id === id)) || id in sharingCopies());
+// A copy's Spotify description is the share's, ending in [origin: <share ID>] (the text cut short to make room), so every device knows it is
+// gotten from the playlist list it reads anyway, and a copy deleted in Spotify can be gotten again.
+// sharingCopies is this device's own record, kept for copies whose origin was edited away.
+const ORIGIN_RE = /\s*\[origin:\s*([a-z0-9]{1,40})\]\s*$/;
+function originShareId(text) {
+  const m = typeof text === "string" && text.match(ORIGIN_RE);
+  return m ? m[1] : null;
 }
-function lastWordShareId(text) {
-  const m = typeof text === "string" && (" " + text).match(COPY_ID_RE);
-  return m && knownShareId(m[1]) ? m[1] : null;
-}
-function copyShareId(p) { return p ? lastWordShareId(p.description) : null; }
+function copyShareId(p) { return p ? originShareId(p.description) : null; }
 function withShareId(text, id) {
-  const room = 300 - id.length - 1;
+  const origin = `[origin: ${id}]`;
+  const room = 300 - origin.length - 1;
   let t = String(text || "").trim();
   if (t.length > room) { t = t.slice(0, room); t = t.slice(0, Math.max(t.lastIndexOf(" "), 0)) || t; }   // the end goes, cut at a space
   t = t.trim();
-  return t ? `${t} ${id}` : id;
+  return t ? `${t} ${origin}` : origin;
 }
 // share id -> the person's copy still in their Spotify, from the marks and this device's record
 function copiesInSpotify() {
@@ -185,10 +182,7 @@ function cleanSpotifyDescription(text) {
   if (!text || text.startsWith(APP_MARKER)) return "";
   const box = document.createElement("textarea");
   box.innerHTML = String(text).replace(/<[^>]*>/g, "");
-  let clean = box.value.trim();
-  const id = lastWordShareId(clean);
-  if (id) clean = clean.slice(0, clean.length - id.length).trim();   // a copy's last word is the share's ID, not part of its description
-  return clean.slice(0, SHARE_DESC_MAX);
+  return box.value.replace(ORIGIN_RE, "").trim().slice(0, SHARE_DESC_MAX);   // a copy's [origin: ...] is not part of its description
 }
 // a mood word or an Other name as it is kept: single spaces, letters, numbers and a few marks (the worker does the same); moods are lower case
 function cleanWord(t, max) {
@@ -453,9 +447,9 @@ async function addShared(s) {
   if (made) offerToShare(s);
 }
 
-// the copy's description in Spotify: the sharer's description, else what it is, with the share's ID as the last word
+// the copy's description in Spotify: the sharer's description, else what it is, ending in [origin: <share ID>]
 function copyDescription(s) { return withShareId(s.description || kindLabel(s), s.id); }
-// copies made before the ID was added: this device's record says which share each is, so their descriptions get it once, one at a time
+// copies made before the origin was added: this device's record says which share each is, so their descriptions get it once, one at a time
 async function markOldCopies() {
   if (sharing.marking || !me) return;
   sharing.marking = true;

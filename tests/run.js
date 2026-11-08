@@ -851,9 +851,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08f" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08g" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-08f/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-08g/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3053,7 +3053,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08f", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08g", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4999,7 +4999,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ms_d.getElementById("msMain").click();
   await waitFor(() => !!ms_d.getElementById("msSheet"), 5000);
   var ms_made = log.filter((e) => e.url.endsWith("/v1/me/playlists") && (e.init.method || "") === "POST").map((e) => JSON.parse(e.init.body)).pop();
-  check("Get this playlist makes a private copy with its name and description, and the device remembers it as a copy", ms_made && ms_made.name === "Deep water" && ms_made.public === false && ms_made.description === "Slow and spacious, almost no vocals. a" && "a" in ms_w.eval("sharingCopies()"));
+  check("Get this playlist makes a private copy with its name and description, and the device remembers it as a copy", ms_made && ms_made.name === "Deep water" && ms_made.public === false && ms_made.description === "Slow and spacious, almost no vocals. [origin: a]" && "a" in ms_w.eval("sharingCopies()"));
   check("after a Get, with nothing shared, a sheet says it is in Spotify, what a private copy is, and invites a share", /Deep water is in your Spotify/.test(ms_d.getElementById("msSheet").textContent) && /It stays as it is if Maya changes theirs\./.test(ms_d.getElementById("msSheet").textContent) && /Maya shared this\. Share one of yours\?/.test(ms_d.getElementById("msSheet").textContent) && !!ms_d.getElementById("msNotNow"));
   check("and the button says Gotten, grey", /Gotten/.test(ms_d.getElementById("msMain").textContent) && ms_d.getElementById("msMain").disabled);
   ms_d.getElementById("msNotNow").click();
@@ -5013,7 +5013,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ms_d.querySelector("#msResults .ms-empty-ghost").click();
   check("Show them shows it, Gotten", ms_names().join() === "Deep water" && /Gotten/.test(ms_d.querySelector("#msResults .ms-add").textContent));
   ms_tile("all").click();
-  check("another device knows a copy by the share's ID as the last word of its description, with no record of its own, and a copy deleted in Spotify can be gotten again", ms_w.eval(`(() => {
+  check("another device knows a copy by the [origin: ID] at the end of its description, with no record of its own, and a copy deleted in Spotify can be gotten again", ms_w.eval(`(() => {
     const keep = localStorage.getItem("sharingCopies"); localStorage.removeItem("sharingCopies");
     const s = sharing.library.shares[0], p = playlists.find((x) => x.name === "Deep water");
     const marked = isAdded(s) && copyShareId(p) === "a" && addedCount() === 1 && !shareCandidates().includes(p);
@@ -5022,14 +5022,14 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
     playlists.splice(at, 0, p); localStorage.setItem("sharingCopies", keep);
     return marked && gone;
   })()`) === true);
-  check("the ID is not offered as part of the playlist's own description, an ordinary last word is not taken for one, and a long description loses its end at a space to make room", ms_w.eval(`cleanSpotifyDescription("Slow. a") === "Slow." && cleanSpotifyDescription("Slow and gentle") === "Slow and gentle" && !copyShareId({ description: "Slow and gentle" }) && (() => { const d = copyDescription({ id: "abc", description: "word ".repeat(70) }); return d.length <= 300 && d.endsWith("word abc"); })()`) === true);
+  check("the origin is not offered as part of the playlist's own description, an ordinary last word is not taken for one, and a long description loses its end at a space to make room", ms_w.eval(`cleanSpotifyDescription("Slow. [origin: a]") === "Slow." && cleanSpotifyDescription("Slow and gentle") === "Slow and gentle" && !copyShareId({ description: "Slow and gentle" }) && (() => { const d = copyDescription({ id: "abc", description: "word ".repeat(70) }); return d.length <= 300 && d.endsWith("word [origin: abc]"); })()`) === true);
   var ms_before = log.length;
   await ms_w.eval(`(async () => {
     const p = playlists.find((x) => x.name === "Deep water"); p.description = "Slow and spacious.";
     await markOldCopies();
   })()`);
   var ms_put = log.slice(ms_before).filter((e) => /\/v1\/playlists\/[^/]+$/.test(e.url) && e.init.method === "PUT").map((e) => JSON.parse(e.init.body));
-  check("a copy made before the ID was added gets it once from this device's record", ms_put.length === 1 && ms_put[0].description === "Slow and spacious. a" && ms_w.eval(`copyShareId(playlists.find((x) => x.name === "Deep water"))`) === "a", JSON.stringify(ms_put));
+  check("a copy made before the origin was added gets it once from this device's record", ms_put.length === 1 && ms_put[0].description === "Slow and spacious. [origin: a]" && ms_w.eval(`copyShareId(playlists.find((x) => x.name === "Deep water"))`) === "a", JSON.stringify(ms_put));
 
   // ---------------- Shared by you
   ms_d.querySelectorAll(".ms-tab-name")[1].click();
@@ -5354,7 +5354,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08f"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08g"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
