@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08s";
+const APP_VERSION = "2026-11-08t";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -246,7 +246,7 @@ function showWelcomeStep(step, push) {
   if (second) drawSetupJoint();
 }
 // The setup step's line, on the welcome page and again over the setup question: down from behind the band's icon (white while over the band), a turn, then right to
-// Spotify's mark, which sits where it would inside the band (16 px from its right edge). The mark at the middle is a check on the welcome page and a 1 on the question.
+// Spotify's mark, which sits where it would inside the band (16 px from its right edge). The mark at the middle is a link on the welcome page and a 1 on the question (the check waits for the connection).
 function drawSetupJoint() {
   for (const joint of document.querySelectorAll(".wp-joint")) {
     const band = joint.parentElement && joint.parentElement.parentElement && joint.parentElement.parentElement.querySelector(".wp-band");
@@ -287,16 +287,23 @@ function slideScreens(change, event) {
   const mine = ++slideCount;
   root.classList.add("vt-slide");
   let move;
+  const arriving = [];   // a line that comes in with the new screen waits until the screen is in place, then fades in (it looked odd sliding)
   try {
     move = document.startViewTransition(() => {
+      const before = shownJoints();
       change();
+      for (const joint of shownJoints()) if (!before.includes(joint)) { joint.classList.remove("wp-joint-in"); joint.classList.add("wp-joint-wait"); arriving.push(joint); }
       to = screenRank();
       root.classList.toggle("vt-back", to < from);
     });
   } catch (err) { root.classList.remove("vt-slide", "vt-back"); return; }   // change() ran, or will
   move.ready.then(() => { if (to < 0 || to === from) move.skipTransition(); }).catch(() => {});
-  move.finished.finally(() => { if (slideCount === mine) root.classList.remove("vt-slide", "vt-back"); });   // not when a later slide has started
+  move.finished.finally(() => {
+    for (const joint of arriving) { joint.classList.remove("wp-joint-wait"); void joint.offsetWidth; joint.classList.add("wp-joint-in"); }
+    if (slideCount === mine) root.classList.remove("vt-slide", "vt-back");   // not when a later slide has started
+  });
 }
+function shownJoints() { return [...document.querySelectorAll(".wp-joint")].filter(joint => joint.getClientRects().length > 0); }
 let slideCount = 0;
 
 // On the welcome page an icon spans exactly from the top of the letters of the name beside it to the bottom of the letters of the tagline under it (the band's
