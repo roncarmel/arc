@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08zf";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08zi";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -15,10 +15,10 @@ const PHASES = ["Beginning", "Ascent", "Plateau", "Descent", "Ending"];
 const BOOKS = 5;   // the facilitators' books, Book 1 to Book 5 (they know what they are)
 // The types of a share, in this order everywhere, each with its icon (kindIcon) and a line for the big tiles
 const KINDS = [
-  ["ceremony", "Ceremonies", "A whole session, start to finish."],
-  ["phase", "Phases", "One or more phases of a session."],
-  ["mood", "Moods", "A feeling that could fit anywhere."],
-  ["other", "Other", "Anything else. You name it."],
+  ["ceremony", "Ceremony", "A whole session, start to finish.", "Ceremonies"],
+  ["phase", "Phase", "One or more phases of a session.", "Phases"],
+  ["mood", "Mood", "A feeling that could fit anywhere.", "Moods"],
+  ["other", "Other", "Anything else. You name it.", "Others"],
 ];
 const SHARING_COPIES_KEY = "sharingCopies";   // { shared playlist id: the person's copy's Spotify id }
 const SHARING_BLOCKED_KEY = "sharingBlocked";   // { playlist id: { snap, why: "copy", of } }: refused as a copy of someone else's share; kept until the playlist changes in Spotify
@@ -238,13 +238,13 @@ function kindLabel(s) {
   else if (s.kind === "mood" && list.length) part = list.slice(0, 3).join(", ") + (list.length > 3 ? ", ..." : "");
   return kindName(s.kind) + (part ? " · " + part : "");
 }
-// type tiles: All and the four types in a row (Shared by others, the edit page), or the four as big tiles with a line each (the wizard)
-function kindTiles(on, choose, { all = false, big = false } = {}) {
-  const box = feEl("div", { class: "ms-ktiles" + (big ? " ms-ktiles-big" : ""), role: "radiogroup", "aria-label": all ? "Type" : "What type of playlist is this?" });
-  const tile = (value, name, line, icon) => feEl("button", { type: "button", role: "radio", class: "ms-ktile" + (on === value ? " ms-on" : ""), "aria-checked": String(on === value),
-    "data-kind": value, onClick: () => choose(value) }, icon, feEl("span", { class: "ms-ktile-name" }, name), big ? feEl("span", { class: "ms-ktile-line" }, line) : null);
-  if (all) box.appendChild(tile("all", "All", "", null));
-  for (const [value, name, line] of KINDS) box.appendChild(tile(value, name, line, kindIcon(value)));
+// type tiles: the four types in a row (the edit page), the same as a filter (Shared by others: none lit shows every type, a tap lights one, a tap on the lit one shows every type again), or the four as big tiles with a line each (the wizard)
+function kindTiles(on, choose, { filter = false, big = false } = {}) {
+  const box = feEl("div", { class: "ms-ktiles" + (big ? " ms-ktiles-big" : ""), role: filter ? "group" : "radiogroup", "aria-label": filter ? "Type" : "What type of playlist is this?" });
+  const tile = (value, name, line, icon) => feEl("button", { type: "button", role: filter ? null : "radio", class: "ms-ktile" + (on === value ? " ms-on" : ""),
+    [filter ? "aria-pressed" : "aria-checked"]: String(on === value),
+    "data-kind": value, onClick: () => choose(filter && on === value ? "all" : value) }, icon, feEl("span", { class: "ms-ktile-name" }, name), big ? feEl("span", { class: "ms-ktile-line" }, line) : null);
+  for (const [value, name, line, plural] of KINDS) box.appendChild(tile(value, all ? plural : name, line, kindIcon(value)));
   return box;
 }
 // a closed book with its number on it, under the word Book (A2, decided by Ron, 2026-11-08)
@@ -553,7 +553,7 @@ const mainButton = (label, onClick, { id = "msMain", grey = false, icon = null, 
   feEl("button", { type: "button", id, class: "ms-mainbtn" + (grey ? " ms-grey" : ""), disabled, onClick }, icon ? feIcon(icon) : null, label, iconAfter ? feIcon(iconAfter) : null);
 
 // ---------------------------------------------------------------- Shared by others
-// Type tiles (All and the four types), one line about Get, then what each type is found by: All a search, Hide playlists you have and Sort;
+// Type tiles (the four types; none lit means all), then what each type is found by: none lit, a search, Hide playlists you have and Sort;
 // Ceremony the books (one at a time) and a search of descriptions; Phase the curve (any of the chosen phases); Mood its words; Other a search.
 const SORTS = [["newest", "Newest"], ["az", "A to Z"], ["longest", "Longest"], ["most", "Most in your recipes"], ["least", "Least in your recipes"]];
 function sortChoices() {
@@ -571,7 +571,7 @@ function setType(type) {
 function renderFind(body) {
   if (!sortChoices().some(([v]) => v === sharing.sort)) sharing.sort = "newest";
   const has = sharing.library && sharing.library.shares.length;
-  body.appendChild(kindTiles(sharing.type, setType, { all: true }));
+  body.appendChild(kindTiles(sharing.type, setType, { filter: true }));
   const tools = feEl("div", { id: "msTools", class: "ms-tools" });
   if (has) {
     const t = sharing.type;

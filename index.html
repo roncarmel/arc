@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-08zf">
-<script src="theme.js?v=2026-11-08zf"></script>
+<meta name="app-version" content="2026-11-08zi">
+<script src="theme.js?v=2026-11-08zi"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -1400,12 +1400,11 @@
   .ms-klabel.ms-blank { visibility: hidden; }
   .ms-text > .ms-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ms-chev { flex: none; display: flex; color: var(--muted); transform: rotate(-90deg); }
-  /* the type tiles: All and the four types in a row, or the four as big tiles with a line each (the wizard) */
+  /* the type tiles: the four types in a row (a filter in Shared by others, none lit shows all), or the four as big tiles with a line each (the wizard) */
   .ms-ktiles { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
   #msDialog .ms-ktile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; margin: 0; min-height: 52px; padding: 7px 2px 6px; border: 1.5px solid var(--line); border-radius: 12px; background: none; box-shadow: none; color: var(--muted); font: inherit; }
   #msDialog .ms-ktile.ms-on { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); }
   .ms-ktile-name { font-size: 0.78rem; font-weight: 700; }
-  .ms-ktile[data-kind="all"] .ms-ktile-name { font-size: 0.9rem; }
   .ms-kicon { width: 40px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; overflow: visible; }
   .ms-kicon .ms-kicon-dim { stroke-opacity: 0.4; }
   .ms-kicon .ms-kicon-dot { fill: currentColor; stroke: none; }
@@ -2237,10 +2236,10 @@
     <div id="msFoot" hidden></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-08zf"></script>
-<script src="editor.js?v=2026-11-08zf"></script>
-<script src="shared-spotify.js?v=2026-11-08zf"></script>
-<script src="app.js?v=2026-11-08zf"></script>
-<script src="sharing.js?v=2026-11-08zf"></script>
+<script src="formats.js?v=2026-11-08zi"></script>
+<script src="editor.js?v=2026-11-08zi"></script>
+<script src="shared-spotify.js?v=2026-11-08zi"></script>
+<script src="app.js?v=2026-11-08zi"></script>
+<script src="sharing.js?v=2026-11-08zi"></script>
 </body>
 </html>
