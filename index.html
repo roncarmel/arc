@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-08w">
-<script src="theme.js?v=2026-11-08w"></script>
+<meta name="app-version" content="2026-11-08x">
+<script src="theme.js?v=2026-11-08x"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -731,7 +731,7 @@
   @keyframes vt-mark-to-right { to { transform: translateX(100vw); } }
   @keyframes vt-mark-from-left { from { transform: translateX(-100vw); } }
   html.vt-slide::view-transition-group(wp-band), html.vt-slide::view-transition-group(wp-wire), html.vt-slide::view-transition-group(wp-ok), html.vt-slide::view-transition-group(wp-spot), html.vt-slide::view-transition-group(wp-icon) { animation-duration: 0.42s; }
-  html.vt-slide #welcomePage .wp-band-icon, html.vt-slide.page-setup #loginSection .wp-band-icon { view-transition-name: wp-icon; }   /* the icon on its own, kept over the line (which starts behind it) while the screens slide */
+  html.vt-slide #welcomePage .wp-band-icon, html.vt-slide.page-setup #loginSection .wp-band-icon { view-transition-name: wp-icon; }   /* the icon on its own, kept over the line while the screens slide */
   /* The setup line (#wpJoint, #spJoint): between two screens that both have it, it stays as it is (the new copy shows, the old one is hidden at once). Coming in, the
      dashes fade in over 0.25 s, ending with the slide, while the link and Spotify's mark slide in with the screen; going out, the dashes fade out quickly and the marks slide out. */
   html.vt-slide :is(#wpJoint, #spJoint) .wp-wire { view-transition-name: wp-wire; }
@@ -826,7 +826,7 @@
   .tool-badge svg { width: 64%; height: 64%; fill: #e8159a; stroke: #e8159a; }
   .tool-badge svg[fill="none"] { fill: none; }
   .tool-badge svg rect { stroke: none; }
-  /* the second step (decided by Ron, 2026-11-08, mockups/welcome-setup-s3c.html, flat): the band stays; a dashed line leaves Arc's icon (from behind it, white over the band), turns right, passes a link
+  /* the second step (decided by Ron, 2026-11-08, mockups/welcome-setup-s3c.html, flat): the band stays; a dashed line leaves Arc's icon (from just under it, white over the band), turns right, passes a link
      at the middle (the check waits for the connection itself) of its level part and meets Spotify's mark, placed where it would sit inside the band; the dashes flow from Spotify to Arc (drawn by drawSetupJoint in app.js) */
   .wp-joint { position: relative; height: 128px; margin: 0 0 16px; }
   .wp-wire { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
@@ -2143,10 +2143,10 @@
     <div id="msFoot" hidden></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-08w"></script>
-<script src="editor.js?v=2026-11-08w"></script>
-<script src="shared-spotify.js?v=2026-11-08w"></script>
-<script src="app.js?v=2026-11-08w"></script>
-<script src="sharing.js?v=2026-11-08w"></script>
+<script src="formats.js?v=2026-11-08x"></script>
+<script src="editor.js?v=2026-11-08x"></script>
+<script src="shared-spotify.js?v=2026-11-08x"></script>
+<script src="app.js?v=2026-11-08x"></script>
+<script src="sharing.js?v=2026-11-08x"></script>
 </body>
 </html>

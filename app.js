@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08w";
+const APP_VERSION = "2026-11-08x";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -245,14 +245,15 @@ function showWelcomeStep(step, push) {
   window.scrollTo(0, 0);
   if (second) drawSetupJoint();
 }
-// The setup step's line, on the welcome page and again over the setup question: down from behind the band's icon (white while over the band), a turn, then right to
+// The setup step's line, on the welcome page and again over the setup question: down from just under the band's icon (white while over the band; it starts
+// past the icon's ring rather than behind it, since a slide's first and last frames can draw it over the icon), a turn, then right to
 // Spotify's mark, which sits where it would inside the band (16 px from its right edge). The mark at the middle is a link on both (the check waits for the connection).
 function drawSetupJoint() {
   for (const joint of document.querySelectorAll(".wp-joint")) {
     const band = joint.parentElement && joint.parentElement.parentElement && joint.parentElement.parentElement.querySelector(".wp-band");
     if (!band || joint.closest("[hidden]")) continue;   // not shown
     const jb = joint.getBoundingClientRect(), bb = band.getBoundingClientRect(), ib = band.querySelector(".wp-band-icon").getBoundingClientRect();
-    const x0 = ib.left + ib.width / 2 - jb.left, top = ib.top + ib.height / 2 - jb.top, y = 62, size = 74, r = 14;
+    const x0 = ib.left + ib.width / 2 - jb.left, top = ib.bottom + 3 - jb.top, y = 62, size = 74, r = 14;
     const cx = bb.right - 16 - size / 2 - jb.left, x1 = cx - size / 2;
     const d = `M${x0} ${top} V${y - r} Q${x0} ${y} ${x0 + r} ${y} H${x1}`;   // drawn from Arc; the dash offset grows, so the dashes flow back from Spotify
     // The drawing reaches up over the band, so its box does too: a slide's snapshot of it (view transitions) leaves out what lies outside its box.
