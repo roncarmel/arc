@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08zzg";
+const APP_VERSION = "2026-11-09a";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -32,10 +32,8 @@ function actWord(capital) {
 function fillActWords() {
   for (const el of document.querySelectorAll("[data-act]")) el.textContent = actWord(/^[A-Z]/.test(el.textContent));
 }
-const REPORT_FORM_URL = "https://tally.so/r/VppLZN"; // where problem reports go
-// The feedback and questions form (Tally). It collects only what someone types, so nothing is attached to its address. While this is empty,
-// the section and the matching lines in Privacy stay hidden.
-const FEEDBACK_FORM_URL = "https://tally.so/r/4aayDd";
+// Tally, only for the startup problem popup: when the scripts failed, the page's own report form (sendMessageForm) cannot run
+const REPORT_FORM_URL = "https://tally.so/r/VppLZN";
 
 const DEFAULT_FORMATS = modelToText({ formats: [] });   // a new visitor starts with no formats at all, and a big New format button
 
@@ -126,7 +124,7 @@ function showStartupProblems() {
   closeUpdateScreen();
   endLaunchScreen();
   try { recordError("Startup: " + startupProblems.join("; ").slice(0, 300)); } catch (err) { /* the popup matters more */ }
-  const link = $("startupReport");
+  const link = $("startupReport");   // the startup popup keeps the Tally form: the page's own report form needs the scripts that just failed
   if (link) { try { link.href = reportUrl(); } catch (err) { /* the plain link still works */ } }
   if (window.pageStart && window.pageStart.problem) window.pageStart.problem(startupProblems[0]);
   else { const box = $("startupProblem"); if (box) box.hidden = false; }
@@ -180,7 +178,7 @@ const VIEWS = ["home", "builder", "sharing"];
 // the view the <head> script chose (home), or home when it did not run
 let appView = VIEWS.find((v) => document.documentElement.classList.contains("view-" + v)) || "home";
 document.documentElement.classList.add("view-" + appView);
-const TOOL_NAMES = { builder: "Playlist builder", sharing: "Music sharing" };
+const TOOL_NAMES = { builder: "Playlist builder", sharing: "Shared music library" };
 
 function showView(view, push = true) {
   if (!VIEWS.includes(view)) view = "home";
@@ -234,16 +232,90 @@ placeDevPill();
 
 // The Playlist builder's card on home: a strip saying how many recipes are ready ("4 recipes ready to build"; option C, Ron, 2026-11-08)
 function renderHomeRecipes() {
-  const strip = $("homeRecipes");
-  if (!strip) return;
-  strip.textContent = "";
+  const line = $("homeRecipes");
+  if (!line) return;
   const model = typeof editor === "object" ? editor.model : null;
   const count = model ? model.formats.filter((f) => !f.draft).length : 0;
-  if (!count) { strip.textContent = "No recipes yet. Make your first one."; return; }
-  const b = document.createElement("b");
-  b.className = "hp-count";
-  b.textContent = `${count} ${count === 1 ? "recipe" : "recipes"}`;
-  strip.append(b, document.createTextNode(" ready to build"));
+  if (!count) line.textContent = "";   // no recipes yet: the card shows only its first two lines
+  else putCounts(line, [count, ` ${count === 1 ? "recipe" : "recipes"} ready to build`]);
+  fitHomeLines();
+}
+
+// A line of text with its numbers set apart (hp-num: pink, bold, larger): parts are numbers and strings, in order
+function putCounts(el, parts) {
+  el.textContent = "";
+  for (const part of parts) {
+    if (typeof part === "number") el.appendChild(Object.assign(document.createElement("b"), { className: "hp-num", textContent: String(part) }));
+    else el.appendChild(document.createTextNode(part));
+  }
+}
+
+// The tool cards on home keep each line on one line (decided by Ron, 2026-11-09): the taglines and the third lines' words share one size, the CSS one unless a line
+// would not fit, then all of them shrink together, a tenth of a pixel at a time, as far as needed (a phone at 360 px: about 13 px instead of 13.8).
+function fitHomeLines() {
+  const page = $("homePage");
+  if (!page || !document.documentElement.classList.contains("view-home")) return;
+  const lines = [...page.querySelectorAll(".hp-tool .hp-tag, .hp-tool .hp-data")].filter((el) => el.offsetParent !== null);
+  for (const el of lines) el.style.fontSize = "";
+  if (!lines.length) return;
+  const wide = (el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    return range.getBoundingClientRect().width > el.clientWidth - 1;
+  };
+  let size = parseFloat(getComputedStyle(lines[0]).fontSize);
+  if (!size || !lines.some(wide)) return;
+  for (let step = 0; step < 60 && lines.some(wide); step++) {
+    size -= 0.1;
+    for (const el of lines) el.style.fontSize = size.toFixed(1) + "px";
+  }
+}
+
+// Everything else on home: a bar of icons that are tabs (decided by Ron, 2026-11-09, mockups/home-a1-iter-2.html E4). A tap lights one and opens its panel under
+// the bar; a tap on the lit one, the X at the bar's end, or Escape inside it closes it. The arrow keys move between the icons.
+function homeTabs() { return [...document.querySelectorAll("#homeMore .hp-ee-tab")].filter((tab) => !tab.hidden); }
+function openHomeTab(panelId, scroll = true) {
+  let opened = null;
+  for (const tab of document.querySelectorAll("#homeMore .hp-ee-tab")) {
+    const on = tab.getAttribute("aria-controls") === panelId;
+    tab.setAttribute("aria-selected", String(on));
+    tab.tabIndex = on || (!panelId && tab === homeTabs()[0]) ? 0 : -1;
+    $(tab.getAttribute("aria-controls")).hidden = !on;
+    if (on) opened = $(panelId);
+  }
+  $("eeClose").hidden = !opened;
+  if (panelId === "eeReport") refreshReportBox();
+  if (opened && scroll && typeof bringOpenedIntoView === "function") requestAnimationFrame(() => bringOpenedIntoView(opened));
+}
+function closeHomeTab() {
+  const lit = document.querySelector('#homeMore .hp-ee-tab[aria-selected="true"]');
+  openHomeTab(null);
+  if (lit) lit.focus({ preventScroll: true });
+}
+function initHomeMore() {
+  const tabs = document.querySelectorAll("#homeMore .hp-ee-tab");
+  for (const tab of tabs) {
+    if (typeof feIcon === "function" && FE_ICONS[tab.dataset.icon]) tab.appendChild(feIcon(tab.dataset.icon)).className = "hp-ee-icon";
+    tab.addEventListener("click", () => {
+      if (tab.getAttribute("aria-selected") === "true") closeHomeTab();
+      else openHomeTab(tab.getAttribute("aria-controls"));
+    });
+    tab.addEventListener("keydown", (event) => {
+      const list = homeTabs(), at = list.indexOf(tab);
+      const to = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: list.length - 1 }[event.key];
+      if (to === undefined) return;
+      event.preventDefault();
+      list[(to + list.length) % list.length].focus();
+    });
+  }
+  on("eeClose", "click", closeHomeTab);
+  $("homeMore").addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || event.defaultPrevented || $("eeClose").hidden) return;
+    if (event.target.closest && event.target.closest("#clearConfirm")) return;   // an Escape inside the question is for it
+    event.preventDefault();
+    closeHomeTab();
+  });
+  openHomeTab(null, false);
 }
 
 // Back home: undoes the tool's step in the history when there is one, so the back button does not return to the tool
@@ -914,7 +986,73 @@ function refreshReportBox() {
     `Last error: ${d.lastError}`,
     `Recent steps: ${d.recentSteps}`,
   ].join("\n");
-  $("reportLink").href = reportUrl();
+}
+
+// Report a problem and Feedback: written here, sent by the Music sharing worker as an email to Ron (POST /message). Nothing is kept there.
+function openReport() {
+  openInfo("reportBlock");
+  const text = $("reportText");
+  if (text) text.focus({ preventScroll: true });
+}
+
+function resetMessageForm(form) {
+  form.reset();
+  form.hidden = false;
+  form.nextElementSibling.hidden = true;
+  form.querySelector(".mf-error").textContent = "";
+  form.querySelector(".mf-send").disabled = true;
+}
+
+async function sendMessageForm(form) {
+  const text = form.querySelector(".mf-text"), email = form.querySelector(".mf-email"), send = form.querySelector(".mf-send"), error = form.querySelector(".mf-error");
+  const message = text.value.trim();
+  if (!message) return;
+  const address = email.value.trim();
+  error.textContent = "";
+  if (address && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address)) { error.append(problemBox("That email address doesn\u2019t look right.", "", [], true)); email.focus(); return; }
+  const kind = form.dataset.kind;
+  const body = { kind, message, email: address };
+  if (kind === "problem") body.details = reportDetails();
+  send.disabled = true;
+  form.classList.add("mf-sending");
+  try {
+    let response;
+    try {
+      response = await fetchWithAnswerLimit(SHARING_URL + "/message", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    } catch (err) { throw new Error("It didn\u2019t go through. Check the connection and try again."); }   // no answer at all
+    const answer = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(answer.error || "It didn\u2019t go through. Try again in a moment.");
+    form.hidden = true;
+    form.nextElementSibling.hidden = false;
+    logStep(kind === "problem" ? "report sent" : "feedback sent");
+  } catch (err) {
+    error.append(problemBox(err.message, "", [], true));
+    send.disabled = false;
+  } finally {
+    form.classList.remove("mf-sending");
+  }
+}
+
+function initMessageForms() {
+  for (const form of document.querySelectorAll(".mf-form")) {
+    const text = form.querySelector(".mf-text"), send = form.querySelector(".mf-send");
+    text.addEventListener("input", () => { send.disabled = !text.value.trim(); });
+    form.addEventListener("submit", (event) => { event.preventDefault(); sendMessageForm(form); });
+    form.nextElementSibling.querySelector(".mf-again").addEventListener("click", () => { resetMessageForm(form); text.focus(); });
+  }
+  const toggle = $("reportSentToggle");
+  toggle.addEventListener("click", () => {
+    const open = toggle.getAttribute("aria-expanded") !== "true";
+    toggle.setAttribute("aria-expanded", String(open));
+    if (open) refreshReportBox();
+    $("reportSent").hidden = !open;
+  });
+  document.addEventListener("click", (event) => {
+    const link = event.target.closest && event.target.closest(".report-open");
+    if (!link) return;
+    event.preventDefault();
+    openReport();
+  });
 }
 
 const REPORT_HINTS = ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"];
@@ -923,8 +1061,6 @@ function offerReport(hintId, rawError) {
   // An unexpected problem: remember it and show a "Report this problem" link next to the message.
   recordError(rawError);
   logStep("problem: " + lastErrorText.slice(0, 60));
-  const link = $(hintId).querySelector("a");
-  link.href = reportUrl();
   $(hintId).hidden = false;
 }
 
@@ -1351,7 +1487,7 @@ async function askSaveFailure(message) {
     "Your latest changes haven\u2019t been saved to Spotify yet. A backup on this device keeps them safe.", choices, { problem: "cloud", what: saveFailureDetail(message) });
   if (choice === "backup") downloadBackup();
   else if (choice === "retry") { saveState.error = ""; runSpotifySave(); }
-  else if (choice === "report") window.open(reportUrl(), "_blank", "noopener");
+  else if (choice === "report") openReport();
 }
 
 function dismissAttention(key) {
@@ -1475,7 +1611,7 @@ function applyBackupMode() {
   if ($("backupBlock")) $("backupBlock").hidden = spotify;
   document.body.classList.toggle("spotify-backup", spotify);
   // Sign out and clear data: with Spotify as the way, the formats come back from Spotify, not from a file
-  for (const [id, text] of [["clearRestoreHelp", "Recipes saved to Spotify stay there, and connecting to Spotify again brings them back."], ["clearConfirmHelp", "Recipes saved to Spotify stay there, and connecting to Spotify again brings them back."]]) {
+  for (const [id, text] of [["clearRestoreHelp", "Your recipes stay in Spotify and come back when you connect again."], ["clearConfirmHelp", "Your recipes stay in Spotify and come back when you connect again."]]) {
     const el = $(id);
     if (!el) continue;
     if (el.dataset.manual === undefined) el.dataset.manual = el.innerHTML;
@@ -1511,7 +1647,8 @@ function refreshBackupStatus() {
     current: state.when ? "Last backup: " + state.when + "." : "Your recipes are backed up.",
   }[state.kind];
   // Sign out and clear data: what would be lost, so a backup can be made first.
-  if (backupMode() === "spotify") { $("clearBackupNote").textContent = "Your recipes are saved to Spotify, and clearing data here does not remove them."; return; }
+  $("clearBackupNote").hidden = backupMode() === "spotify";   // with Spotify, the line above already says the recipes stay
+  if (backupMode() === "spotify") { $("clearBackupNote").textContent = ""; return; }
   $("clearBackupNote").textContent = {
     example: "You haven't made any recipes yet, so there is nothing to lose.",
     never: "You haven't backed up to this device yet. Back up first, or they will be gone for good.",
@@ -3226,25 +3363,25 @@ function trackTipHeight() {
   if (window.ResizeObserver) new ResizeObserver(set).observe(box);
 }
 
+// Color, under Everything else on home: every theme as a swatch, the chosen one ringed, no name shown (decided by Ron, 2026-11-09; names are their labels for screen readers).
+// A tap chooses at once. The swatches are a radio group: the arrow keys move and choose, as radio buttons do.
 function initThemeChooser() {
-  const button = $("themeButton");
-  const list = $("themeList");
+  const grid = $("themeSwatches");
   const current = chosenColors();
   const entries = THEMES.map((t) => ({ id: t.id, name: t.name, accent: t.accent }));
   if (current.custom) {
     entries.push({ id: "custom", name: "Custom colors", accent: current.accent });
-    $("themeNote").textContent = "These colors came from the address (?accent and ?neutral). Choose a theme above, or add ?theme=reset to the address, to go back.";
+    $("themeNote").textContent = "These colors came from the address (?accent and ?neutral). Choose a color above, or add ?theme=reset to the address, to go back.";
     $("themeNote").hidden = false;
   }
   let selected = current.custom ? "custom" : current.id;
-
-  const options = () => Array.from(list.querySelectorAll(".theme-option"));
-  const close = (refocus) => { list.hidden = true; button.setAttribute("aria-expanded", "false"); if (refocus) button.focus(); };
+  const swatches = () => Array.from(grid.querySelectorAll(".theme-swatch"));
   const show = () => {
-    const entry = entries.find((e) => e.id === selected) || entries[0];
-    $("themeSwatch").style.background = entry.accent;
-    $("themeName").textContent = entry.name;
-    for (const option of options()) option.setAttribute("aria-selected", String(option.dataset.id === selected));
+    for (const swatch of swatches()) {
+      const on = swatch.dataset.id === selected;
+      swatch.setAttribute("aria-checked", String(on));
+      swatch.tabIndex = on ? 0 : -1;
+    }
   };
   const choose = (id) => {
     if (id !== "custom") {
@@ -3252,52 +3389,32 @@ function initThemeChooser() {
       selected = id;
       $("themeNote").hidden = true;
       const at = entries.findIndex((e) => e.id === "custom");
-      if (at >= 0) { entries.splice(at, 1); list.querySelector('[data-id="custom"]').remove(); }
+      if (at >= 0) { entries.splice(at, 1); grid.querySelector('[data-id="custom"]').remove(); }
       editorThemeChanged();
     }
     show();
-    close(true);
   };
   for (const entry of entries) {
-    const option = document.createElement("li");
-    option.className = "theme-option";
-    option.setAttribute("role", "option");
-    option.tabIndex = -1;
-    option.dataset.id = entry.id;
-    const swatch = document.createElement("span");
-    swatch.className = "swatch";
+    const swatch = document.createElement("button");
+    swatch.type = "button";
+    swatch.className = "theme-swatch";
+    swatch.setAttribute("role", "radio");
+    swatch.setAttribute("aria-label", entry.name);
+    swatch.title = entry.name;
+    swatch.dataset.id = entry.id;
     swatch.style.background = entry.accent;
-    const name = document.createElement("span");
-    name.textContent = entry.name;
-    option.append(swatch, name);
-    option.addEventListener("click", () => choose(entry.id));
-    list.appendChild(option);
+    swatch.addEventListener("click", () => choose(entry.id));
+    grid.appendChild(swatch);
   }
-  const open = () => {
-    list.hidden = false;
-    list.classList.remove("theme-up");
-    const room = list.getBoundingClientRect();
-    if (room.height && room.bottom > window.innerHeight - 8 && button.getBoundingClientRect().top > room.height + 8) list.classList.add("theme-up");   // too near the bottom: open upward
-    button.setAttribute("aria-expanded", "true");
-    const chosen = options().find((o) => o.dataset.id === selected) || options()[0];
-    if (chosen) { chosen.focus({ preventScroll: true }); if (chosen.scrollIntoView) chosen.scrollIntoView({ block: "nearest" }); }
-  };
-  button.addEventListener("click", () => (list.hidden ? open() : close(false)));
-  button.addEventListener("keydown", (event) => { if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); if (list.hidden) open(); } });
-  list.addEventListener("keydown", (event) => {
-    const all = options();
-    const at = all.indexOf(document.activeElement);
-    if (event.key === "Escape") { event.preventDefault(); close(true); }
-    else if (event.key === "ArrowDown") { event.preventDefault(); all[Math.min(all.length - 1, at + 1)].focus(); }
-    else if (event.key === "ArrowUp") { event.preventDefault(); all[Math.max(0, at - 1)].focus(); }
-    else if (event.key === "Home") { event.preventDefault(); all[0].focus(); }
-    else if (event.key === "End") { event.preventDefault(); all[all.length - 1].focus(); }
-    else if ((event.key === "Enter" || event.key === " ") && at >= 0) { event.preventDefault(); choose(all[at].dataset.id); }
+  grid.addEventListener("keydown", (event) => {
+    const all = swatches(), at = all.indexOf(document.activeElement);
+    const to = { ArrowRight: at + 1, ArrowDown: at + 1, ArrowLeft: at - 1, ArrowUp: at - 1, Home: 0, End: all.length - 1 }[event.key];
+    if (to === undefined || at < 0) return;
+    event.preventDefault();
+    const next = all[(to + all.length) % all.length];
+    next.focus();
+    choose(next.dataset.id);
   });
-  // tapping anywhere else closes the list and does nothing else
-  const outsideList = (event) => !list.hidden && !(event.target.closest && event.target.closest(".theme-picker"));
-  document.addEventListener("pointerdown", (event) => { if (outsideList(event)) event.stopPropagation(); }, true);
-  document.addEventListener("click", (event) => { if (!outsideList(event)) return; event.stopPropagation(); event.preventDefault(); close(false); }, true);
   show();
 }
 
@@ -3352,13 +3469,8 @@ async function main() {
       setTimeout(() => { setLabel(button, "Copy"); setIcon(button, "copy"); }, 2000);
     });
   }
-  // problem reports: the link is rebuilt at the moment it is used, so it carries the latest details
-  on("reportLink", "click", refreshReportBox);
   on("moreOptions", "toggle", () => { if ($("moreOptions").open) refreshReportBox(); });
-  for (const id of REPORT_HINTS) {
-    const link = $(id).querySelector("a");
-    link.addEventListener("click", () => { link.href = reportUrl(); });
-  }
+  initMessageForms();
   on("clearData", "click", () => {
     $("clearConfirm").hidden = false;
     $("clearData").disabled = true;    // the question is already open, so the button that opened it waits
@@ -3407,28 +3519,24 @@ async function main() {
   on("appHome", "click", goHome);
   initToolMenu();
   on("homeBuilder", "click", () => showView("builder"));
-  // Everything else on home: Privacy opens in place, Report a problem in the info popup, Feedback opens its form
-  on("homeReport", "click", () => openInfo("reportBlock"));
-  if (FEEDBACK_FORM_URL) { $("homeFeedback").href = FEEDBACK_FORM_URL; $("homeFeedback").hidden = false; }
+  // Everything else on home: each icon opens its panel in place
+  initHomeMore();
+  window.addEventListener("resize", fitHomeLines);
   window.addEventListener("resize", placeSharingPage);
   on("infoClose", "click", () => closeInfo());
   on("infoOverlay", "click", (event) => { if (event.target === $("infoOverlay")) closeInfo(); });
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && info.node && !event.defaultPrevented && !(event.target.closest && event.target.closest("#themeList"))) { event.preventDefault(); closeInfo(); } });   // an Escape that closed something inside it (the color list) is not for the popup
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && info.node && !event.defaultPrevented) { event.preventDefault(); closeInfo(); } });   // an Escape that closed something inside it (the color list) is not for the popup
   on("connectionRetry", "click", connectToSpotify);
   on("connectionReconnect", "click", startLogin);
   on("reconnectButton", "click", startLogin);
   on("create", "click", () => startCreate());
-  if (FEEDBACK_FORM_URL) {
-    $("privacyFeedback").hidden = false;   // Privacy names the feedback form only when there is one
-  }
   $("privacyWaitRelay").hidden = !WAIT_RELAY_URL;   // Privacy says what the relay sees only once there is one
   for (const link of document.querySelectorAll(".privacy-link")) {
     link.addEventListener("click", (event) => {
       event.preventDefault();
       if (pageName() === "app" && typeof showView === "function") showView("home");   // Privacy is under Everything else on home
-      $("homeMore").open = true;
-      $("privacySection").open = true;
-      $("privacySection").scrollIntoView({ behavior: "smooth", block: "start" });
+      openHomeTab("privacySection", false);
+      $("homeMore").scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
   on("createClose", "click", closeCreateDialog);

@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-08zzg";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-09a";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -135,17 +135,6 @@ function addTopicIcons(root) {
     head.className = "gd-thead";
     head.append(icon, text);
     summary.appendChild(head);
-  }
-  // the rows under Everything else on home that open a popup or a form: the same icon ahead of the label
-  for (const row of (root || document).querySelectorAll(".hp-more-item[data-icon]")) {
-    const label = row.querySelector(".hp-more-label");
-    if (!label || row.querySelector(".gd-thead") || !FE_ICONS[row.dataset.icon]) continue;
-    const icon = feIcon(row.dataset.icon);
-    icon.className = "gd-ticon";
-    const head = document.createElement("span");
-    head.className = "gd-thead";
-    label.replaceWith(head);
-    head.append(icon, label);
   }
 }
 addTopicIcons();
@@ -458,7 +447,6 @@ function initMotion() {
   fadeWithHidden($("createOverlay"), "dim", $("createDialog"), "box");
   fadeWithHidden($("infoOverlay"), "dim", $("infoDialog"), "box");
   fadeWithHidden($("reconnectScreen"), "dim", document.querySelector("#reconnectScreen .rc-card"), "box");
-  fadeWithHidden($("themeList"), "menu");
   fadeWithHidden($("premiumWhyText"), "menu");
   fadeWithHidden($("recipeWhatText"), "menu");
   fadeWithHidden($("appToolMenu"), "menu");

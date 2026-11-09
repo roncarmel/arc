@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08zzg";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-09a";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -53,7 +53,7 @@ async function sharingFetch(method, path, json, retried = false) {
   let response;
   try {
     response = await fetchWithAnswerLimit(SHARING_URL + path, { method, headers, body: json ? JSON.stringify(json) : undefined });
-  } catch (err) { throw new Error("Music sharing could not be reached. Check your connection and try again."); }
+  } catch (err) { throw new Error("The shared music library could not be reached. Check your connection and try again."); }
   let data = {};
   try { data = await response.json(); } catch (err) { /* no body */ }
   if (response.status === 401 && data.code === "signin" && !retried) {
@@ -97,19 +97,14 @@ function renderSharingCard() {
   const card = $("msCard");
   if (!card) return;
   const lib = sharing.library;
-  const shares = lib ? lib.shares : [];
-  const others = shares.filter((s) => !isMine(s));
-  // covers: others' not gotten yet, then the person's own, then gotten ones (the library comes newest first)
-  const order = [...others.filter((s) => !isAdded(s)), ...shares.filter(isMine), ...others.filter(isAdded)];
-  const covers = order.filter((s) => s.cover).slice(0, 4);
-  const fan = $("msCardFan");
-  fan.textContent = "";
-  covers.forEach((s) => fan.appendChild(feEl("img", { src: s.cover, alt: "", loading: "lazy" })));
   card.setAttribute("aria-disabled", String(!devMode()));
-  if (!lib) { $("msCardText").textContent = ""; return; }
-  $("msCardText").textContent = others.length
-    ? `${others.length} ${others.length === 1 ? "playlist" : "playlists"} shared by others`
-    : "Nothing shared by others yet. Share the first one.";
+  const line = $("msCardText");
+  if (!lib) line.textContent = "";   // before the library arrives (or when it cannot be read) the line stays empty, keeping its height
+  else {
+    const mine = lib.shares.filter(isMine).length, others = lib.shares.length - mine;
+    putCounts(line, [mine, mine === 1 ? " share by you, " : " shares by you, ", others, " by others"]);   // always both, zeros too; "shares", not playlists, on purpose (decided by Ron, 2026-11-09)
+  }
+  if (typeof fitHomeLines === "function") fitHomeLines();
 }
 // Once connected on a device that has never read which shares are the person's own (a new browser, a Home Screen app added again), they are read once, so the
 // card's count of playlists shared by other facilitators leaves them out. After that the list is refreshed whenever Music sharing opens (loadMine).

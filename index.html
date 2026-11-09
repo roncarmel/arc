@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-08zzg">
-<script src="theme.js?v=2026-11-08zzg"></script>
+<meta name="app-version" content="2026-11-09a">
+<script src="theme.js?v=2026-11-09a"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -243,7 +243,6 @@
   footer.debug h3 { font-size: 1rem; margin: 20px 0 6px; color: var(--fg); }
   /* More options: body text is gray, so the headings, buttons, links and widgets are what stand out. */
   #moreOptions, #devMoods, #devReports, #privacySection, #guideSection { color: var(--muted); }
-  #homeMore .hp-more-list { color: var(--muted); }
   #moreOptions input, #moreOptions select { color: var(--fg); }
   #homeMore input, #homeMore select { color: var(--fg); }
   #homeMore #clearConfirm { color: var(--fg); }
@@ -587,13 +586,11 @@
   .headrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 40px 0 10px; }
   .headrow h2 { margin: 0; }
   /* the color theme list */
-  .theme-picker { position: relative; display: inline-block; }
-  .theme-button { min-width: 200px; min-height: 44px; padding: 0 12px; justify-content: flex-start; gap: 10px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); font-weight: 400; }
-  .theme-button .theme-chevron { margin-left: auto; opacity: 0.7; }
-  .theme-list { position: absolute; left: 0; top: calc(100% + 4px); z-index: 40; list-style: none; margin: 0; padding: 4px; min-width: 100%; max-height: 320px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 16px 36px rgba(0, 0, 0, 0.3); }
-  .theme-option { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px 0 10px; border-radius: 8px; color: var(--fg); cursor: pointer; white-space: nowrap; }
-  .theme-option:hover, .theme-option:focus { background: rgba(127, 127, 127, 0.18); outline: none; }
-  .theme-option[aria-selected="true"] { background: var(--accent-wash, rgba(255, 56, 184, 0.22)); }
+  .theme-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; max-width: 330px; margin: 4px 0 10px; }
+  .theme-swatch { aspect-ratio: 1; width: 100%; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.45); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .theme-swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--fg); }
+  @media (hover: hover) { .theme-swatch:hover { outline: none; filter: brightness(1.12); } }
+  .theme-swatch:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
   .swatch { width: 18px; height: 18px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.55); }
   /* minimalist mode: the page with only what is needed. The headings and explanations of the steps, the "more about" box, the Spotify
      connection once it is made, and the backup step all go; the app menu has the backup and sign-out. */
@@ -683,43 +680,59 @@
   #homePage .hp-tools { display: grid; gap: 12px; }
   #homePage .hp-tool { display: block; width: 100%; margin: 0; padding: 0; min-height: 0; box-sizing: border-box; border-radius: 18px; background: var(--card); border: 1px solid var(--line); box-shadow: none; color: var(--fg); font: inherit; font-weight: 400; text-align: left; cursor: pointer; overflow: hidden; }
   @media (hover: hover) { #homePage .hp-tool:hover { outline: none; filter: none; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); } }
-  #homePage .hp-head { display: flex; align-items: center; gap: 13px; padding: 12px; }
-  #homePage .hp-tool .tool-icon { width: 54px; height: 54px; }
-  #homePage .hp-text { flex: 1; min-width: 0; line-height: 1.3; }
-  #homePage .hp-text b { display: block; font-size: 1.08rem; margin-bottom: 3px; }
-  #homePage .hp-tag { display: block; color: var(--accent); font-weight: 600; font-size: 0.9rem; text-wrap: balance; }
-  #homePage .hp-go { float: right; margin: -3px 0 0 8px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }   /* beside the name, so the tagline runs the full width under it (Ron, 2026-11-08, mockups/home-tagline-fit-2.png option 2) */
-  /* the strip under each card: what is waiting in the tool */
-  #homePage .hp-glimpse { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.86rem; line-height: 1.35; }
-  #homePage .hp-glimpse:empty { display: none; }
-  #homePage .hp-count { color: var(--fg); font-weight: 700; }
-  #homePage .hp-covers { flex: none; display: flex; }
-  #homePage .hp-covers:empty { display: none; }
-  #homePage .hp-covers img { width: 30px; height: 30px; border-radius: 6px; object-fit: cover; margin-left: -9px; border: 2px solid var(--card); box-sizing: content-box; }
-  #homePage .hp-covers img:first-child { margin-left: 0; }
-  /* Everything else on home (decided by Ron, 2026-11-08): one card under the tools, closed at first; its title, a grey line naming what is inside, a chevron.
-     Open, the app-wide topics (opening in place, as in More options) and the rows that open a popup or the feedback form. */
-  #homeMore { margin: 26px 0 0; border-radius: 18px; background: var(--card); border: 1px solid var(--line); }
-  #homeMore > summary { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; list-style: none; color: var(--fg); }
-  #homeMore > summary::-webkit-details-marker { display: none; }
-  #homeMore > summary::after { content: ""; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: translateY(-3px) rotate(45deg); margin-right: 6px; transition: transform 0.2s var(--ease-out); }
-  #homeMore[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
-  @media (prefers-reduced-motion: reduce) { #homeMore > summary::after { transition: none; } }
-  #homeMore .hp-more-text { flex: 1; min-width: 0; line-height: 1.35; }
-  #homeMore .hp-more-text b { display: block; font-size: 1.05rem; }
-  #homeMore .hp-more-text span { color: var(--muted); font-size: 0.86rem; }
-  #homeMore .hp-more-list { padding: 0 16px 6px; }
-  #homePage #homeMore details.gd-topic:first-of-type { border-top: 1px solid var(--line); }
-  #homePage #homeMore details.gd-topic:last-of-type { border-bottom: none; }
-  #homeMore .hp-more-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 52px; margin: 0; padding: 0; box-sizing: border-box; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; box-shadow: none; color: var(--fg); font: inherit; font-weight: 600; text-align: left; text-decoration: none; cursor: pointer; }
-  #homeMore .hp-more-item[hidden] { display: none; }
+  /* each tool's card: an icon as tall as the first two lines and lined up with them, then three lines that never wrap (name, tagline, what is waiting in it) and a
+     chevron; the taglines and the words of the third line share one size, shrunk together only when one would not fit (fitHomeLines in app.js) */
+  #homePage .hp-head { display: flex; align-items: flex-start; gap: 12px; padding: 13px 12px 13px 13px; }
+  #homePage .hp-tool .tool-icon { width: 42px; height: 42px; }
+  #homePage .hp-text { flex: 1; min-width: 0; }
+  #homePage .hp-line { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #homePage .hp-text b { font-size: 1.06rem; line-height: 1.25; }
+  #homePage .hp-tag, #homePage .hp-data { margin-top: 2px; color: var(--muted); font-size: 0.86rem; line-height: 1.35; }
+  #homePage .hp-data { min-height: 1.35em; }
+  #homePage .hp-hide-empty:empty { display: none; }   /* no recipes yet: the builder's card is its first two lines */
+  #homePage .hp-num { color: var(--accent); font-weight: 800; font-size: 1.15em; line-height: 0; }   /* a little larger than its words, without making its line taller */
+  #homePage .hp-go { flex: none; align-self: center; color: var(--muted); }
+  /* Everything else on home (decided by Ron, 2026-11-09, mockups/home-a1-iter-2.html E4): one card under the tools, a bar of grey icons that are tabs. A tap lights one
+     and opens its panel under the bar; the X at the bar's end (kept in place, invisible, while nothing is open) closes it. */
+  #homeMore { margin: 22px 0 0; border-radius: 18px; background: var(--card); border: 1px solid var(--line); overflow: hidden; }
+  #homeMore .hp-ee-bar { display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 8px 0 10px; }
+  #homeMore .hp-ee-tabs { flex: 1; min-width: 0; display: flex; gap: 4px; }
+  #homeMore .hp-ee-tab { flex: 0 1 42px; min-width: 32px; height: 38px; margin: 0; padding: 0; display: grid; place-items: center; border: 0; border-radius: 10px; background: none; box-shadow: none; color: var(--muted); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  #homeMore .hp-ee-tab[hidden] { display: none; }
+  #homeMore .hp-ee-tab svg { width: 20px; height: 20px; }
+  #homeMore .hp-ee-tab[aria-selected="true"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  @media (hover: hover) { #homeMore .hp-ee-tab:hover { outline: none; filter: none; color: var(--accent); } }
+  #homeMore .hp-ee-close { flex: none; width: 32px; height: 32px; min-height: 0; margin: 0; padding: 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: color-mix(in srgb, var(--fg) 8%, transparent); box-shadow: none; color: var(--muted); cursor: pointer; }
+  #homeMore .hp-ee-close[hidden] { display: grid; visibility: hidden; }
+  @media (hover: hover) { #homeMore .hp-ee-close:hover { outline: none; filter: none; color: var(--fg); } }
+  #homeMore .hp-ee-panel { padding: 14px 16px 6px; border-top: 1px solid var(--line); color: var(--muted); line-height: 1.5; }
+  #homeMore .hp-ee-panel > h3 { margin: 0 0 8px; font-size: 1rem; color: var(--fg); }
+  #homeMore #reportBlock > h3 { display: none; }
+  /* Report a problem and Feedback, written here and sent by the worker (sendMessageForm in app.js); mockups/report-no-tally.html */
+  .mf-form .mf-label { display: block; margin: 0 0 6px; color: var(--fg); font-weight: 600; font-size: 0.9rem; }
+  .mf-form .mf-label small { color: var(--muted); font-weight: 400; font-size: inherit; }
+  .mf-form .mf-text, .mf-form .mf-email { display: block; width: 100%; box-sizing: border-box; margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--fg); font: inherit; font-size: 16px; }
+  .mf-form .mf-text { min-height: 96px; resize: vertical; }
+  .mf-form .mf-text:focus, .mf-form .mf-email:focus { outline: none; border-color: var(--accent); }
+  .mf-form .mf-sent-toggle { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; margin: 0; padding: 10px 12px; min-height: 0; border: 1px solid var(--line); border-radius: 12px; background: none; color: var(--fg); font: inherit; font-weight: 600; font-size: 0.88rem; box-shadow: none; }
+  .mf-form .mf-sent-toggle svg { color: var(--muted); transition: transform 0.2s var(--ease-out); }
+  .mf-form .mf-sent-toggle[aria-expanded="true"] { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  .mf-form .mf-sent-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+  .mf-form .mf-sent { margin: 0; padding: 10px 12px 2px; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 12px 12px; }
+  .mf-form .mf-sent pre.report-preview { margin: 0 0 8px; padding: 0; border: 0; background: none; color: var(--muted); white-space: pre-wrap; }
+  .mf-form .mf-sent p { font-size: 0.8rem; }
+  .mf-form .mf-error:not(:empty) { margin-top: 12px; }
+  .mf-form .mf-send { display: flex; width: 100%; justify-content: center; margin: 14px 0 10px; min-height: 46px; border-radius: 14px; font-weight: 700; }
+  .mf-form .mf-send:disabled { opacity: 0.4; cursor: default; }
+  .mf-form.mf-sending .mf-send { opacity: 0.6; }
+  .mf-done { text-align: center; padding: 10px 6px 12px; }
+  .mf-done .mf-ok { width: 56px; height: 56px; margin: 0 auto 12px; border-radius: 50%; background: var(--accent); color: var(--on-button, #fff); display: grid; place-items: center; }
+  .mf-done b { display: block; color: var(--fg); font-size: 1.05rem; margin-bottom: 4px; }
+  #reportBlock > .mf-form, #reportBlock > .mf-done { margin-left: 0; }   /* the panel's own title says it; in the info popup the pink band does */
   html:not(.dev-mode) #privacyMusicSharing { display: none; }   /* Music sharing is Coming soon outside developer mode */
+  #homeMore .pv-list { padding-left: 1.3em; }
+  #homeMore .pv-list li { margin-bottom: 6px; }
   #homeMore .pv-list b { color: var(--fg); font-weight: 600; }
-  @media (hover: hover) { #homeMore .hp-more-item:hover { outline: none; filter: none; color: var(--accent); } }
-  #homeMore .hp-more-item .gd-thead { display: flex; align-items: center; gap: 10px; min-width: 0; }
-  #homeMore .hp-more-item .gd-ticon { flex: none; display: flex; color: var(--muted); }
-  #homeMore .hp-more-item .gd-ticon svg { width: 18px; height: 18px; stroke-width: 2; }
-  #homeMore .hp-more-go { flex: none; color: var(--muted); margin-right: 2px; }
   /* Music sharing is a page of its own under the bar (its top is set by placeSharingPage in app.js) */
   html.page-app #msOverlay { background: var(--bg); padding: 0; z-index: 50; align-items: stretch; }
   html.page-app #msDialog { width: 100%; height: 100%; max-height: none; border-radius: 0; border: 0; box-shadow: none; }
@@ -735,7 +748,7 @@
   html:not(.dev-mode) #msCard .tool-icon, html:not(.dev-mode) #wpSharingHead .tool-icon { filter: grayscale(1); opacity: 0.45; }
   html:not(.dev-mode) #msCard .hp-text b, html:not(.dev-mode) #wpSharingHead .wp-tool-text b { color: var(--muted); }
   html:not(.dev-mode) #msCard .hp-tag, html:not(.dev-mode) #wpSharingHead .wp-tool-tag { color: var(--muted); opacity: 0.75; }
-  html:not(.dev-mode) #msCard .hp-glimpse { display: none; }   /* nothing waiting in it yet */
+  html:not(.dev-mode) #msCard .hp-data { display: none; }   /* nothing waiting in it yet */
   html:not(.dev-mode) #msCard .hp-go, html:not(.dev-mode) #wpSharingHead .wp-chev { display: none; }
   html:not(.dev-mode) #wpSharingHead { cursor: default; }
   #devWrap { display: none; position: relative; flex: none; }
@@ -1041,7 +1054,7 @@
   :is(#guideSection, #privacySection, #moreOptions, #homeMore) details.gd-topic[open] { padding-bottom: 6px; }
   :is(#guideSection, #privacySection, #moreOptions, #homeMore) details.gd-topic ul, :is(#guideSection, #privacySection, #moreOptions, #homeMore) details.gd-topic ol { padding-left: 1.3em; }
   :is(#guideSection, #privacySection, #moreOptions, #homeMore) details.gd-topic li { margin-bottom: 6px; }
-  #moreOptions p, #moreOptions .row, #moreOptions select, #homeMore .gd-topic p, #homeMore .gd-topic .row, #homeMore .choice-row, #devMoods p, #devReports p, #devReports .row, #moreOptions pre.report-preview, #moreOptions .choice-row, #moreOptions .button-link, #reportBlock p, #reportBlock pre.report-preview, #reportBlock .button-link { margin-top: 0; margin-bottom: 10px; }
+  #moreOptions p, #moreOptions .row, #moreOptions select, #homeMore .hp-ee-panel p, #homeMore .hp-ee-panel .row, #homeMore .choice-row, #homeMore .hp-ee-panel .button-link, #devMoods p, #devReports p, #devReports .row, #moreOptions pre.report-preview, #moreOptions .choice-row, #moreOptions .button-link, #reportBlock p, #reportBlock pre.report-preview, #reportBlock .button-link { margin-top: 0; margin-bottom: 10px; }
   #moreOptions .row select, #moreOptions .row .button-link { margin-bottom: 0; }   /* inside a row, the row supplies the space below, so the items centre on each other */
   body.minimal #feAppMenuButton { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
   /* the popup that holds everything after a click on Create: the plan, the question, the progress, and the result */
@@ -1200,7 +1213,6 @@
     #createDialog .bd-sep { width: 8px; }
     #createDialog .bd-tally { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
   }
-  .theme-list.theme-up { top: auto; bottom: calc(100% + 4px); }
   /* a menu or list too close to the bottom of the screen opens upward instead */
   #formatEditor .fe-pop.fe-up { top: auto; bottom: calc(100% + 4px); }
   /* popups come and go with motion (initMotion in editor.js): one that is hidden stays drawn while it fades out, and cannot be touched */
@@ -1275,9 +1287,9 @@
     }
     #formatEditor .fe-tab[aria-pressed="true"]:hover::before { content: ""; position: absolute; left: 50%; top: 100%; width: 16px; height: 10px; margin-left: -8px; background: var(--ring); clip-path: polygon(0 0, 100% 0, 50% 100%); }
     #formatEditor .fe-tab[aria-pressed="true"]:hover::after { top: calc(100% - 1px); height: 11px; clip-path: polygon(1.28px 0, 14.72px 0, 14.72px 1px, 8px 9.4px, 1.28px 1px); }   /* starts one pixel up inside the pill, so no seam can show where the arrow joins it */
-    #formatEditor .fe-iconbtn:not(:disabled):hover, #formatEditor .fe-tab[aria-pressed="false"]:hover, .theme-button:hover, .fe-dialog .row button:not(.primary):not(.fe-danger-button):hover { filter: none; outline: none; border-color: var(--muted); }
+    #formatEditor .fe-iconbtn:not(:disabled):hover, #formatEditor .fe-tab[aria-pressed="false"]:hover, .fe-dialog .row button:not(.primary):not(.fe-danger-button):hover { filter: none; outline: none; border-color: var(--muted); }
     @supports (color: color-mix(in srgb, red 50%, white)) {
-      #formatEditor .fe-iconbtn:not(:disabled):hover, .theme-button:hover, .fe-dialog .row button:not(.primary):not(.fe-danger-button):hover { border-color: color-mix(in srgb, var(--line) 45%, var(--fg)); background-color: color-mix(in srgb, var(--bg) 88%, var(--fg)); }
+      #formatEditor .fe-iconbtn:not(:disabled):hover, .fe-dialog .row button:not(.primary):not(.fe-danger-button):hover { border-color: color-mix(in srgb, var(--line) 45%, var(--fg)); background-color: color-mix(in srgb, var(--bg) 88%, var(--fg)); }
       #formatEditor .fe-tab[aria-pressed="false"]:hover { border-color: color-mix(in srgb, var(--line) 45%, var(--fg)); background-color: color-mix(in srgb, var(--card) 88%, var(--fg)); }
     }
     /* in minimalist mode the app menu button is a pink one, so it reacts like the other pink buttons and not like the plain ones */
@@ -1307,7 +1319,7 @@
   .notice strong { display: block; margin-bottom: 2px; font-size: 1.1rem; }
   /* popups that are not dialogs: in dark mode a black shadow on a near-black page cannot be seen, so they also get a faint light edge and a surface a touch lighter than the page */
   @media (prefers-color-scheme: dark) {
-    #formatEditor .fe-pop, .theme-list { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 6px 14px rgba(0, 0, 0, 0.5), 0 18px 40px rgba(0, 0, 0, 0.6); background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)); }
+    #formatEditor .fe-pop { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 6px 14px rgba(0, 0, 0, 0.5), 0 18px 40px rgba(0, 0, 0, 0.6); background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)); }
   }
 
   /* Music sharing (sharing.js): its own popup, ms- classes; Developer options' mood words and reports, msd- classes */
@@ -1813,9 +1825,9 @@
       </div>
       <h2 id="wpSoon" class="wp-sec">Coming soon</h2>
       <div class="wp-tool">
-        <button id="wpSharingHead" class="wp-tool-head" type="button" aria-expanded="false" aria-controls="wpSharingMore"><span class="tool-icon" aria-hidden="true"><span class="tool-badge"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5L4 7l3.5 3.5M4 7h15M16.5 13.5L20 17l-3.5 3.5M20 17H5"/></svg></span></span><span class="wp-tool-text"><b>Music sharing</b><span class="wp-tool-tag">A shared library of ceremony music.<br class="wp-wide-br"> Bring some, get some!</span></span><span class="wp-chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></button>
+        <button id="wpSharingHead" class="wp-tool-head" type="button" aria-expanded="false" aria-controls="wpSharingMore"><span class="tool-icon" aria-hidden="true"><span class="tool-badge"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5L4 7l3.5 3.5M4 7h15M16.5 13.5L20 17l-3.5 3.5M20 17H5"/></svg></span></span><span class="wp-tool-text"><b>Shared music library</b><span class="wp-tool-tag">Bring some,<br> get some!</span></span><span class="wp-chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></button>
         <div id="wpSharingMore" class="wp-tool-more" hidden>
-          <figure class="wp-shot"><picture><source media="(prefers-color-scheme: dark)" srcset="welcome-sharing.jpg"><img src="welcome-sharing-light.jpg" alt="Music sharing: playlists other facilitators share, each with its type and a Get button." width="460" height="525"></picture></figure>
+          <figure class="wp-shot"><picture><source media="(prefers-color-scheme: dark)" srcset="welcome-sharing.jpg"><img src="welcome-sharing-light.jpg" alt="Shared music library: playlists other facilitators share, each with its type and a Get button." width="460" height="525"></picture></figure>
           <p>Find playlists other facilitators share, by ceremony, phase of a session or mood. Hear previews, then get your own private copy in Spotify. Share yours the same way, with your name or anonymously.</p>
           <h3>Where it helps</h3>
           <ul class="wp-uses">
@@ -1875,7 +1887,7 @@
 
     <div id="spSteps" class="card sp-card" hidden>
       <h2 id="spStepsTitle"></h2>
-      <p id="loginReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Report this problem</a></p>
+      <p id="loginReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="#" class="report-open">Report this problem</a></p>
 
       <ol id="flowNew" class="sp-list" hidden>
         <li class="sp-item">
@@ -1954,79 +1966,114 @@
       <button id="connectionRetry" type="button"><img class="btn-icon" src="icons/retry.svg" alt="" width="20" height="20"><span class="btn-label">Try again</span></button>
       <button id="connectionReconnect" type="button"><img class="btn-icon" src="icons/connect.svg" alt="" width="20" height="20"><span class="btn-label">Connect again</span></button>
     </div>
-    <p id="connectionReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Report this problem</a></p>
+    <p id="connectionReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="#" class="report-open">Report this problem</a></p>
   </section>
 
   <div id="appSection" hidden>
   <!-- Arc's bar over every view of the app page: the icon and Arc go home, then the tool's name, then the app menu (editor.js fills #feAppMenu) -->
   <div id="appBar">
     <span class="ab-left"><button id="appHome" class="ab-home" type="button" aria-label="Home"><img src="apple-touch-icon.png" alt="" width="44" height="44"><span class="ab-name">Arc</span></button><span class="ab-sep" aria-hidden="true">/</span><button id="appTool" class="ab-tool" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="appToolMenu"><span id="appToolName" class="ab-tool-name"></span><svg class="ab-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></span>
-    <div id="appToolMenu" class="ab-menu" role="menu" aria-label="Tools" hidden><button type="button" class="ab-mi" role="menuitemradio" aria-checked="false" data-view="builder"><span class="ab-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="4" rx="2"/><rect x="3" y="10" width="12" height="4" rx="2"/><rect x="3" y="15.5" width="15" height="4" rx="2"/></svg></span><span class="ab-mi-text"><b>Playlist builder</b><small>Ceremony playlists, ready in minutes.</small></span><svg class="ab-tick" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><button type="button" class="ab-mi" role="menuitemradio" aria-checked="false" data-view="sharing"><span class="ab-glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5L4 7l3.5 3.5M4 7h15M16.5 13.5L20 17l-3.5 3.5M20 17H5"/></svg></span><span class="ab-mi-text"><span class="ab-soon">Coming soon</span><b>Music sharing</b><small>A shared library of ceremony music.</small></span><svg class="ab-tick" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><div class="ab-rule" aria-hidden="true"></div><button type="button" class="ab-mi ab-mi-home" role="menuitem" data-view="home"><span class="ab-homeic" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/></svg></span><span class="ab-mi-text"><b>Arc home</b></span></button></div>
+    <div id="appToolMenu" class="ab-menu" role="menu" aria-label="Tools" hidden><button type="button" class="ab-mi" role="menuitemradio" aria-checked="false" data-view="builder"><span class="ab-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="4" rx="2"/><rect x="3" y="10" width="12" height="4" rx="2"/><rect x="3" y="15.5" width="15" height="4" rx="2"/></svg></span><span class="ab-mi-text"><b>Playlist builder</b><small>Ceremony playlists, ready in minutes.</small></span><svg class="ab-tick" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><button type="button" class="ab-mi" role="menuitemradio" aria-checked="false" data-view="sharing"><span class="ab-glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5L4 7l3.5 3.5M4 7h15M16.5 13.5L20 17l-3.5 3.5M20 17H5"/></svg></span><span class="ab-mi-text"><span class="ab-soon">Coming soon</span><b>Shared music library</b><small>Bring some, get some!</small></span><svg class="ab-tick" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><div class="ab-rule" aria-hidden="true"></div><button type="button" class="ab-mi ab-mi-home" role="menuitem" data-view="home"><span class="ab-homeic" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/></svg></span><span class="ab-mi-text"><b>Arc home</b></span></button></div>
 <span id="devWrap" class="dm-wrap"><button id="devPill" class="dm-pill" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="devMenu">DEV</button><div id="devMenu" class="dm-menu" role="menu" hidden><button id="devMenuOff" class="dm-head" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.3 7.5a8 8 0 1 0 11.4 0"/></svg><span>Turn off developer mode</span></button><button id="devMenuMoods" class="dm-item" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/></svg><span>Manage mood words</span><span id="devMoodsCount" class="dm-end"></span></button><button id="devMenuReports" class="dm-item" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Review reports</span><span id="devReportsCount" class="dm-end"></span></button><div class="dm-item dm-width" role="group" aria-label="Phone width"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/></svg><span>Phone width</span><span class="dm-seg"><button type="button" data-width="" aria-pressed="false">Off</button><button type="button" data-width="360" aria-pressed="false">360</button><button type="button" data-width="320" aria-pressed="false">320</button></span></div><button id="devCopyRecord" class="dm-item" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span>Copy Spotify request log</span></button><button id="devStartOver" class="dm-item dm-red" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span>Clear data and start over</span></button><div id="pythonStatus" class="dm-foot">Starting Python...</div></div></span>
     <div class="fe-appmenuwrap" id="feAppMenu"></div>
   </div>
   <div id="devToast" class="dm-toast" role="status" aria-live="polite" hidden><span class="dm-toast-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg></span><span id="devToastText"></span></div>
   <!-- Arc's home: the two tools (decided by Ron, 2026-11-08, mockup A) -->
   <section id="homePage">
-    <!-- Arc's home, layout C (decided by Ron, 2026-11-08): the welcome page's band, Your tools, and a card per tool with a strip of what is waiting in it
-         (the recipes, renderHomeRecipes in app.js; the newest shared covers and the count, renderSharingCard in sharing.js) -->
+    <!-- Arc's home (layout C, decided by Ron, 2026-11-08; cards as A1 in mockups/home-a1-iter-2.html, 2026-11-09): the welcome page's band, Your tools, and a card per
+         tool of three lines that never wrap: name, tagline, what is waiting in it (renderHomeRecipes in app.js, renderSharingCard in sharing.js; fitHomeLines) -->
     <div class="wp-band hp-band"><span class="wp-band-icon" aria-hidden="true"></span><div class="wp-band-text"><h1 class="wp-band-name">Arc</h1><p class="tagline wp-band-tag">Ceremony playlist tools<br> for your Spotify library</p></div></div>
     <div class="hp-sec">Your tools</div>
     <div class="hp-tools">
-      <button id="homeBuilder" class="hp-tool" type="button"><span class="hp-head"><span class="tool-icon" aria-hidden="true"><span class="tool-badge"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="4" rx="2"/><rect x="3" y="10" width="12" height="4" rx="2"/><rect x="3" y="15.5" width="15" height="4" rx="2"/></svg></span></span><span class="hp-text"><span class="hp-go"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span><b>Playlist builder</b><span class="hp-tag">Ceremony playlists,<br> ready in minutes.</span></span></span><span id="homeRecipes" class="hp-glimpse"></span></button>
-      <button id="msCard" class="hp-tool" type="button"><span class="hp-head"><span class="tool-icon" aria-hidden="true"><span class="tool-badge"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5L4 7l3.5 3.5M4 7h15M16.5 13.5L20 17l-3.5 3.5M20 17H5"/></svg></span></span><span class="hp-text"><span class="hp-go"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span><span class="hp-soon">Coming soon</span><b>Music sharing</b><span class="hp-tag">A shared library of ceremony<br> music. Bring some, get some!</span></span></span><span class="hp-glimpse ms-glimpse"><span id="msCardFan" class="hp-covers" aria-hidden="true"></span><span id="msCardText"></span></span></button>
+      <button id="homeBuilder" class="hp-tool" type="button"><span class="hp-head"><span class="tool-icon" aria-hidden="true"><span class="tool-badge"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="4" rx="2"/><rect x="3" y="10" width="12" height="4" rx="2"/><rect x="3" y="15.5" width="15" height="4" rx="2"/></svg></span></span><span class="hp-text"><b class="hp-line">Playlist builder</b><span class="hp-tag hp-line">Ceremony playlists, ready in minutes</span><span id="homeRecipes" class="hp-data hp-line hp-hide-empty"></span></span><svg class="hp-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+      <button id="msCard" class="hp-tool" type="button"><span class="hp-head"><span class="tool-icon" aria-hidden="true"><span class="tool-badge"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5L4 7l3.5 3.5M4 7h15M16.5 13.5L20 17l-3.5 3.5M20 17H5"/></svg></span></span><span class="hp-text"><span class="hp-soon">Coming soon</span><b class="hp-line">Shared music library</b><span class="hp-tag hp-line">Bring some, get some!</span><span id="msCardText" class="hp-data hp-line"></span></span><svg class="hp-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
     </div>
-    <!-- Everything else: what belongs to the whole app rather than one tool, closed at first (decided by Ron, 2026-11-08, mockups/home-menu.html B). Color, the Spotify login,
-         Sign out and clear data and Privacy open in place; Report a problem opens in the info popup; Feedback opens its form. -->
-    <details id="homeMore" class="hp-more">
-      <summary><span class="hp-more-text"><b>Everything else</b><span>Color, Spotify account, Privacy, Report a problem</span></span></summary>
-      <div class="hp-more-list">
-        <details class="gd-topic" data-icon="palette"><summary>Color</summary>
-        <p class="muted">Choose the main color of this page. It's used for buttons, links, and highlights.</p>
-        <div class="row" style="margin-top:0">
-          <div class="theme-picker">
-            <button id="themeButton" type="button" class="theme-button" aria-haspopup="listbox" aria-expanded="false" aria-label="Color"><span class="swatch" id="themeSwatch"></span><span id="themeName"></span><svg class="theme-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
-            <ul id="themeList" class="theme-list" role="listbox" aria-label="Color" hidden></ul>
-          </div>
-        </div>
+    <!-- Everything else (decided by Ron, 2026-11-09, mockups/home-a1-iter-2.html E4): its items as grey icons in one bar, each a tab. A tap lights one and opens its
+         panel under the bar; the X at the bar's end, or a tap on the lit icon, closes it (initHomeMore in app.js). -->
+    <div id="homeMore" class="hp-more">
+      <div class="hp-ee-bar">
+        <div class="hp-ee-tabs" role="tablist" aria-label="Everything else"><button id="eeTabColor" class="hp-ee-tab" type="button" role="tab" aria-selected="false" aria-controls="eeColor" aria-label="Color" title="Color" data-icon="palette"></button><button id="eeTabLogin" class="hp-ee-tab" type="button" role="tab" aria-selected="false" aria-controls="eeLogin" aria-label="Change Spotify login" title="Change Spotify login" data-icon="user"></button><button id="eeTabClear" class="hp-ee-tab" type="button" role="tab" aria-selected="false" aria-controls="eeClear" aria-label="Sign out and clear data" title="Sign out and clear data" data-icon="logout"></button><button id="eeTabPrivacy" class="hp-ee-tab" type="button" role="tab" aria-selected="false" aria-controls="privacySection" aria-label="Privacy" title="Privacy" data-icon="lock"></button><button id="eeTabReport" class="hp-ee-tab" type="button" role="tab" aria-selected="false" aria-controls="eeReport" aria-label="Report a problem" title="Report a problem" data-icon="flag"></button><button id="eeTabFeedback" class="hp-ee-tab" type="button" role="tab" aria-selected="false" aria-controls="eeFeedback" aria-label="Feedback" title="Feedback" data-icon="chat"></button></div>
+        <button id="eeClose" class="hp-ee-close" type="button" aria-label="Close" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div id="eeColor" class="hp-ee-panel" role="tabpanel" aria-labelledby="eeTabColor" hidden>
+      <h3>Color</h3>
+        <p class="muted">The color of buttons, links and highlights.</p>
+        <!-- the colors as a grid of swatches, the chosen one ringed, no name shown (decided by Ron, 2026-11-09); initThemeChooser in app.js -->
+        <div id="themeSwatches" class="theme-grid" role="radiogroup" aria-label="Color"></div>
         <p id="themeNote" class="muted" hidden></p>
-        </details>
-        <details class="gd-topic" data-icon="user"><summary>Change Spotify login</summary>
-        <p class="muted">Sign in with a different Spotify account. Spotify’s sign-in page opens, where <span class="ui">Not you?</span> lets you choose another account. Your recipes stay as they are and are saved to the account you sign in with.</p>
+      </div>
+      <div id="eeLogin" class="hp-ee-panel" role="tabpanel" aria-labelledby="eeTabLogin" hidden>
+      <h3>Change Spotify login</h3>
+        <p class="muted">Switch to another Spotify account. On Spotify’s page, <span data-act>tap</span> <span class="ui">Not you?</span> to choose it. Your recipes stay and save to the new account.</p>
         <p><button id="changeSpotifyLogin" class="linklike" type="button">Change Spotify login</button></p>
-        </details>
-        <details class="gd-topic" data-icon="logout"><summary>Sign out and clear data</summary>
-        <p class="muted">For when you’re done on a computer that isn’t yours, or when something here isn’t working. This signs you out of Spotify and erases everything this app keeps in this browser: your Client ID, your recipes, and your settings. Nothing in your Spotify account changes.</p>
+      </div>
+      <div id="eeClear" class="hp-ee-panel" role="tabpanel" aria-labelledby="eeTabClear" hidden>
+      <h3>Sign out and clear data</h3>
+        <p class="muted">Signs you out and erases what Arc keeps in this browser.</p>
         <p id="clearRestoreHelp" class="muted">Your recipes are erased too. To get them back afterward, choose <span class="ui">Restore</span> in the Playlist builder's menu and pick the backup you made on this device. If you haven't backed up to this device, choose <span class="ui">Back up now</span> there first.</p>
         <p id="clearBackupNote"></p>
         <div class="row">
           <button id="clearData" type="button"><img class="btn-icon" src="icons/clear.svg" alt="" width="20" height="20"><span class="btn-label">Sign out and clear data</span></button>
         </div>
         <div id="clearConfirm" hidden>
-          <p>Sign out of Spotify, erase this app’s data in this browser, and reload this page?</p>
+          <p>Sign out and erase Arc’s data in this browser?</p>
           <p id="clearConfirmHelp" class="muted">Your recipes will be erased from this device. To get them back, choose <span class="ui">Restore</span> in the Playlist builder's menu and pick the backup you made on this device.</p>
           <div class="row">
             <button id="clearYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Sign out and clear</span></button>
             <button id="clearNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
           </div>
         </div>
-        </details>
-        <!-- Privacy, short and in place (decided by Ron, 2026-11-08): what Arc stands for first, then one line per thing that leaves or stays -->
-        <details class="gd-topic" data-icon="lock" id="privacySection"><summary>Privacy</summary>
+      </div>
+      <!-- Privacy, short (decided by Ron, 2026-11-08): what Arc stands for first, then one line per thing that leaves or stays -->
+      <div id="privacySection" class="hp-ee-panel" role="tabpanel" aria-labelledby="eeTabPrivacy" hidden>
+      <h3>Privacy</h3>
         <p class="muted pv-lead">Arc runs in your browser. What you make here stays between this browser and your own Spotify account, unless you choose to share it. No accounts, no ads.</p>
         <ul class="muted pv-list">
-          <li><b>In this browser:</b> your Client ID, Spotify sign-in, recipes, settings, the list of your playlists and a copy of their songs. <span class="ui">Sign out and clear data</span> erases it all.</li>
-          <li><b>In your Spotify:</b> each recipe, in a private playlist's description (unless you back up by hand). Your own playlists are only read, never changed. Arc never sees your Spotify password.</li>
-          <li id="privacyMusicSharing"><b>Music sharing:</b> a playlist you share (its name, cover, songs, the details you add, and your Spotify name unless anonymous) is kept on a small service run by Arc's developer. It knows your shares by a scrambled code, not your username. Pressing play on a song asks Deezer for a preview, sending only that song's code.</li>
-          <li><b>Anonymous counts:</b> GoatCounter counts visits without cookies, plus a few actions such as playlists built. Never names, recipes or songs.</li>
-          <li id="privacyWaitRelay" hidden><b>Spotify waits:</b> when Spotify limits requests, one check goes through Arc's relay on Cloudflare with your temporary sign-in, and it keeps nothing.</li>
-          <li><b>Reports<span id="privacyFeedback" hidden> and feedback</span>:</b> sent only if you submit the form. Never your sign-in, Client ID, playlist names or songs.</li>
+          <li><b>In this browser:</b> your Client ID, sign-in, recipes, settings, and a copy of your playlists and their songs. <span class="ui">Sign out and clear data</span> erases it all.</li>
+          <li><b>In your Spotify:</b> each recipe, in a private playlist's description (unless you back up by hand). Your playlists are only read, never changed. Arc never sees your password.</li>
+          <li id="privacyMusicSharing"><b>Shared music library:</b> what you share (name, cover, songs, your details, and your Spotify name unless anonymous) is kept on Arc's server, which knows you only by a scrambled code. A song preview asks Deezer, sending only the song's code.</li>
+          <li><b>Anonymous counts:</b> GoatCounter counts visits and a few actions, without cookies. Never names, recipes or songs.</li>
+          <li id="privacyWaitRelay" hidden><b>Spotify waits:</b> when Spotify limits requests, one check goes through Arc's relay, which keeps nothing.</li>
+          <li><b>Reports and feedback:</b> emailed to Arc's developer only when you <span data-act>tap</span> Send. Never your sign-in, Client ID, playlist names or songs.</li>
         </ul>
-        </details>
-        <button id="homeReport" class="hp-more-item" type="button" data-icon="flag"><span class="hp-more-label">Report a problem</span><svg class="hp-more-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
-        <a id="homeFeedback" class="hp-more-item" target="_blank" rel="noopener noreferrer" data-icon="chat" hidden><span class="hp-more-label">Feedback and questions</span><svg class="hp-more-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
       </div>
-    </details>
+      <div id="eeReport" class="hp-ee-panel" role="tabpanel" aria-labelledby="eeTabReport" hidden>
+      <h3>Report a problem</h3>
+      <!-- the builder's menu opens this block in the info popup, and it comes back here -->
+      <div id="reportBlock">
+      <h3>Report a problem</h3>
+      <!-- reports and feedback are written here and sent through the Music sharing worker, which emails them to Ron (sendMessageForm in app.js); decided by Ron, 2026-11-09, over Tally -->
+      <form id="reportForm" class="mf-form" data-kind="problem" novalidate>
+        <p class="muted">Something not working? Say what happened. I (Ron) read every report and respond when I can.</p>
+        <label class="mf-label" for="reportText">What happened?</label>
+        <textarea id="reportText" class="mf-text" rows="4" maxlength="3000" placeholder="For example: Build stopped at playlist 2 of 5."></textarea>
+        <label class="mf-label" for="reportEmail">Your email <small>(optional, for a reply)</small></label>
+        <input id="reportEmail" class="mf-email" type="email" maxlength="120" autocomplete="email" placeholder="you@example.com">
+        <button id="reportSentToggle" class="mf-sent-toggle" type="button" aria-expanded="false" aria-controls="reportSent"><span>Sent with your message</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div id="reportSent" class="mf-sent" hidden>
+          <pre id="reportPreview" class="report-preview"></pre>
+          <p class="muted">Never your sign-in, Client ID, playlist names or songs.</p>
+        </div>
+        <div class="mf-error"></div>
+        <button class="mf-send" type="submit" disabled><img class="btn-icon" src="icons/send.svg" alt="" width="20" height="20"><span class="btn-label">Send report</span></button>
+      </form>
+      <div class="mf-done" hidden><span class="mf-ok" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><b>Report sent</b><p class="muted">Thank you. If you left your email, a reply comes there.</p><button class="linklike mf-again" type="button">Send another</button></div>
+      </div>
+      </div>
+      <div id="eeFeedback" class="hp-ee-panel" role="tabpanel" aria-labelledby="eeTabFeedback" hidden>
+      <h3>Feedback</h3>
+      <form id="feedbackForm" class="mf-form" data-kind="feedback" novalidate>
+        <p class="muted">Ideas, questions, anything else.</p>
+        <label class="mf-label" for="feedbackText">Your message</label>
+        <textarea id="feedbackText" class="mf-text" rows="4" maxlength="3000" placeholder="What’s on your mind?"></textarea>
+        <label class="mf-label" for="feedbackEmail">Your email <small>(optional, for a reply)</small></label>
+        <input id="feedbackEmail" class="mf-email" type="email" maxlength="120" autocomplete="email" placeholder="you@example.com">
+        <div class="mf-error"></div>
+        <button class="mf-send" type="submit" disabled><img class="btn-icon" src="icons/send.svg" alt="" width="20" height="20"><span class="btn-label">Send</span></button>
+      </form>
+      <div class="mf-done" hidden><span class="mf-ok" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><b>Sent</b><p class="muted">Thank you. If you left your email, a reply comes there.</p><button class="linklike mf-again" type="button">Send another</button></div>
+      </div>
+    </div>
   </section>
   <h2 id="editHeading">2. Edit your recipes</h2>
   <p id="savedNote" class="muted" hidden>You back your recipes up to this device yourself: <button id="backupDownloadLink" class="linklike" type="button">back up now</button>, and <button id="backupRestore" class="linklike" type="button">restore from a backup</button> at any time.</p>
@@ -2093,7 +2140,7 @@
         <div id="output" class="bd-status" hidden></div>
         <div id="actionMessage" aria-live="polite"></div>
         <p id="createOpen" class="bd-open" hidden><a id="createOpenLink" href="https://open.spotify.com/" target="_blank" rel="noopener noreferrer">Open in Spotify</a></p>
-        <p id="mainReportHint" class="report-hint muted" hidden>If it keeps happening, <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">report this problem</a>.</p>
+        <p id="mainReportHint" class="report-hint muted" hidden>If it keeps happening, <a href="#" class="report-open">report this problem</a>.</p>
         <div id="confirmBox" hidden>
           <p id="confirmText" class="bd-summary"></p>
           <div id="planText" hidden></div>
@@ -2203,7 +2250,7 @@
         </div>
       </div>
       <p id="removeMessage" aria-live="polite"></p>
-      <p id="removeReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Report this problem</a></p>
+      <p id="removeReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="#" class="report-open">Report this problem</a></p>
       </details>
       <details class="gd-topic" data-icon="cloud"><summary>Autosave or backup</summary>
       <p class="muted">Your recipes are saved to Spotify automatically, and a change you make on one device shows up on your others. The other choice is a manual backup: you download a file yourself and restore from it later. Changing this is not recommended. With a manual backup, nothing is saved unless you remember to make a backup, so clearing your browser's data can lose your recipes, and your devices will not stay in step.</p>
@@ -2226,15 +2273,6 @@
 
   </footer>
 </main>
-    <!-- Report a problem: opened from the app menu in the info popup, so it is not part of More options -->
-  <div id="reportBlock" hidden>
-  <h3>Report a problem</h3>
-  <p class="muted">Something not working? Send a report. A person reads these, but may not respond to all of them. The form opens in a new tab, and nothing is sent until you submit it there.</p>
-  <p id="reportLabel" style="margin-bottom:0">Details attached to the report:</p>
-  <pre id="reportPreview" class="report-preview"></pre>
-  <p class="muted">Your sign-in, Client ID, playlist names, and song titles are never included.</p>
-  <a id="reportLink" class="button-link" href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer"><img class="btn-icon" src="icons/report.svg" alt="" width="20" height="20"><span class="btn-label">Open the report form</span></a>
-  </div>
 <div id="infoOverlay" class="app-overlay" hidden>
   <div id="infoDialog" class="app-dialog" role="dialog" aria-modal="true" tabindex="-1">
     <div id="infoHeader"><div id="infoTitle"></div><button id="infoClose" type="button" aria-label="Close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
@@ -2243,16 +2281,16 @@
 </div>
 <!-- Music sharing (sharing.js): opened from the app menu -->
 <div id="msOverlay" class="app-overlay" hidden>
-  <div id="msDialog" class="app-dialog" role="dialog" aria-modal="true" aria-label="Music sharing" tabindex="-1">
+  <div id="msDialog" class="app-dialog" role="dialog" aria-modal="true" aria-label="Shared music library" tabindex="-1">
     <div id="msTabsBar"><div id="msTabs" class="ms-tabs" role="tablist"></div><button id="msClose" type="button" aria-label="Close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div id="msBody"></div>
     <div id="msFoot" hidden></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-08zzg"></script>
-<script src="editor.js?v=2026-11-08zzg"></script>
-<script src="shared-spotify.js?v=2026-11-08zzg"></script>
-<script src="app.js?v=2026-11-08zzg"></script>
-<script src="sharing.js?v=2026-11-08zzg"></script>
+<script src="formats.js?v=2026-11-09a"></script>
+<script src="editor.js?v=2026-11-09a"></script>
+<script src="shared-spotify.js?v=2026-11-09a"></script>
+<script src="app.js?v=2026-11-09a"></script>
+<script src="sharing.js?v=2026-11-09a"></script>
 </body>
 </html>

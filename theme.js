@@ -10,12 +10,11 @@
 // To add a theme, add a line to THEMES (the id is only for remembering the choice, so keep it the same once people may have chosen it; the name is what the list shows). To try two colors without changing any file, open the page with
 // ?accent=0a84ff&neutral=8a8a92 on the end of the address (hex colors; ?theme=reset goes back).
 // This file runs first, in the <head>, so the colors are in place before anything is drawn.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["theme.js"] = "2026-11-08zzg";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["theme.js"] = "2026-11-09a";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
-const THEMES = [
+const THEMES = [   // in the order the swatches show: around the color wheel from Pink, row by row, Silver last (Ron, 2026-11-09)
   { id: "pinks-and-grays", name: "Pink", accent: "#ff38b8", neutral: "#8a8a92" },
   { id: "roses-and-mauves", name: "Rose", accent: "#f472b6", neutral: "#8a8088" },
-  { id: "magentas-and-plums", name: "Magenta", accent: "#d946ef", neutral: "#8a7f90" },
   { id: "crimsons-and-wines", name: "Crimson", accent: "#dc2660", neutral: "#8a7f84" },
   { id: "reds-and-charcoals", name: "Red", accent: "#ef4444", neutral: "#86868a" },
   { id: "corals-and-sands", name: "Coral", accent: "#ff7b72", neutral: "#8f8780" },
@@ -29,6 +28,7 @@ const THEMES = [
   { id: "skies-and-steels", name: "Sky", accent: "#38bdf8", neutral: "#7e8a96" },
   { id: "indigos-and-steels", name: "Indigo", accent: "#6366f1", neutral: "#7f8096" },
   { id: "violets-and-navies", name: "Violet", accent: "#8b5cf6", neutral: "#78809c" },
+  { id: "magentas-and-plums", name: "Magenta", accent: "#d946ef", neutral: "#8a7f90" },
   { id: "silvers-and-grays", name: "Silver", accent: "#c4c4d0", neutral: "#8a8a92" },
 ];
 

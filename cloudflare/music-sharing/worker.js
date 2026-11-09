@@ -5,6 +5,7 @@
 // Who someone is comes from Spotify: every write carries the person's Spotify sign-in, the worker asks Spotify's /me with it,
 // and keeps only an HMAC of the user ID (SECRET), never the ID. There are no accounts or passwords here.
 // Reports are emailed to the owner of the app through Resend; three reports from different people hide a playlist until he looks.
+// Arc's Report a problem and Feedback forms (POST /message) are emailed the same way, with no sign-in; nothing of them is kept.
 //
 // Settings (wrangler.toml and secrets):
 //   DB                 the D1 database
@@ -19,6 +20,7 @@ import BLOCKED from "../../blocked-words/blocked-words.json";
 const LIMITS = {
   nameChars: 200, shownChars: 40, descChars: 300, moodsMax: 8, moodChars: 30, otherChars: 24, phases: 5, books: 6, maxSongs: 5000, artists: 5, songChars: 100,
   sharesPerDay: 60, reportsPerDay: 30, noteChars: 500, copyShare: 0.9, hideAfterReports: 3,
+  messagesPerDay: 10, messageChars: 3000, emailChars: 120, detailChars: 800,
 };
 const KINDS = ["ceremony", "phase", "mood", "other"];
 const REASONS = ["offensive", "spam", "not theirs", "other"];
@@ -42,6 +44,7 @@ export default {
         case "POST /share": return answer(await share(env, await who(request, env), await body(request)), 200, cors);
         case "DELETE /share/:id": return answer(await unshare(env, await who(request, env), id), 200, cors);
         case "POST /report": return answer(await report(env, await who(request, env), await body(request), url), 200, cors);
+        case "POST /message": return answer(await message(env, request, await body(request)), 200, cors);
         case "GET /admin/reports": return answer(await adminReports(env, await owner(request, env)), 200, cors);
         case "POST /admin/share/:id": return answer(await adminHide(env, await owner(request, env), id, await body(request)), 200, cors);
         case "POST /admin/word": return answer(await adminWord(env, await owner(request, env), await body(request)), 200, cors);
@@ -269,6 +272,38 @@ async function emailReport(env, url, s, r) {
     });
   } catch (err) { /* the report is kept either way, and shows in Developer options */ }
 }
+// ---------------------------------------------------------------- Arc's Report a problem and Feedback
+// What the person typed, an optional email for a reply, and for a problem the page's six details, emailed to the owner. Nothing is stored;
+// only a count per day under an HMAC of the address it came from, so the form cannot be used to flood the inbox.
+const DETAIL_NAMES = { appVersion: "Version", browser: "Browser", windowSize: "Window size", python: "Python", lastError: "Last error", recentSteps: "Recent steps" };
+async function message(env, request, b) {
+  const kind = b.kind === "problem" ? "problem" : b.kind === "feedback" ? "feedback" : "";
+  if (!kind) throw new Refusal(400, "That request could not be read.");
+  const msg = text(b.message, LIMITS.messageChars);
+  if (!msg) throw new Refusal(400, "Write something first.");
+  const email = text(b.email, LIMITS.emailChars);
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Refusal(400, "That email address doesn\u2019t look right.");
+  const details = [];
+  if (kind === "problem" && b.details && typeof b.details === "object") {
+    for (const [key, label] of Object.entries(DETAIL_NAMES)) { const v = text(b.details[key], LIMITS.detailChars); if (v) details.push([label, v]); }
+  }
+  if (!env.RESEND_KEY || !env.REPORT_TO) throw new Refusal(503, "Sending isn\u2019t set up yet.");
+  await countToday(env, await hmac(env, "message:" + (request.headers.get("CF-Connecting-IP") || "unknown")), "message", LIMITS.messagesPerDay);
+  const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const html = `<p style="white-space:pre-wrap">${esc(msg)}</p>` + (email ? `<p>From: ${esc(email)}</p>` : "<p>No email given.</p>") +
+    (details.length ? `<p style="font-family:monospace;font-size:13px">${details.map(([k, v]) => `${esc(k)}: ${esc(v)}`).join("<br>")}</p>` : "");
+  const first = msg.split("\n")[0].slice(0, 60);
+  const mail = { from: "Arc <onboarding@resend.dev>", to: [env.REPORT_TO], subject: `Arc ${kind === "problem" ? "problem" : "feedback"}: ${first}`, html };
+  if (email) mail.reply_to = email;
+  let sent = false;
+  try {
+    const reply = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${env.RESEND_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify(mail) });
+    sent = reply.ok;
+  } catch (err) { sent = false; }
+  if (!sent) throw new Refusal(502, "It didn\u2019t go through. Try again in a moment.");
+  return { sent: true };
+}
+
 // A link in a report email shows a page with one button, so a mail scanner opening the link changes nothing.
 async function signedLink(request, env, url) {
   const id = url.searchParams.get("s") || "", a = url.searchParams.get("a") || "", t = url.searchParams.get("t") || "";
