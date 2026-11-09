@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08zq";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08zr";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -970,7 +970,7 @@ function openSongMenu(s, i, names) {
   renderSharing();
   focusSongMenu();
 }
-// The menu opens down from its ⋯, or up when the list cannot scroll far enough to show it clear of the Support me corner
+// The menu opens down from its ⋯, or up when the list cannot scroll far enough to show it whole
 function placeSongMenu() {
   const menu = $("msSongMenu"), body = $("msBody"), m = sharing.songMenu;
   if (!menu || !body || !m || !menu.getBoundingClientRect) return;
@@ -980,7 +980,7 @@ function placeSongMenu() {
   m.up = below > canScroll && r.height > 0;
   menu.classList.toggle("ms-up", m.up);
 }
-const SONG_MENU_FOOT = 104;   // the room the Support me corner takes at the bottom of the screen
+const SONG_MENU_FOOT = 12;   // the room kept below it, at the bottom of the screen
 function focusSongMenu() {
   const menu = $("msSongMenu");
   if (!menu) return;

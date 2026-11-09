@@ -1,6 +1,6 @@
 const { JSDOM } = require("jsdom");
 const { execFileSync } = require("child_process");
-// Run only some areas: node run.js --only=donate|tabs   (matches part of an area's name; --list shows the names)
+// Run only some areas: node run.js --only=privacy|tabs   (matches part of an area's name; --list shows the names)
 const ONLY = (process.argv.find((a) => a.startsWith("--only=")) || "").slice(7).toLowerCase().split("|").filter(Boolean);
 // Build in the plan popup. With one recipe that can make several, nothing is chosen at first: like the old default, choose them all first.
 function chooseAll(w) {
@@ -12,7 +12,7 @@ function pressBuild(w) {
   if (tiles && !w.document.getElementById("bdPick").hidden && !tiles.querySelector('[aria-checked="true"]') && tiles.lastElementChild) tiles.lastElementChild.click();
   w.document.getElementById("confirmYes").click();
 }
-const SECTION_NAMES = ["launch screen", "sharing card in the editor", "music sharing", "music sharing songs", "developer options", "the save pointer", "a guide for facilitators", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version icon", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "marker colors", "marker hugs corners", "popups close only", "narrow more button", "the silence card", "privacy: why the counts", "build button centered in minimalist mode", "no double-tap zoom", "backup link in step 2", "hiding the donate button", "spotify premium", "step 3 order and text", "the build icon", "python status at the bottom", "hover feedback on buttons", "questions and feedback", "settings below the segments, pink outline", "the tagline", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'the Donate panel', 'dimming, fading, and Donate in the Create popup', 'tabs that scroll sideways', 'Donate only after a success', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
+const SECTION_NAMES = ["launch screen", "sharing card in the editor", "music sharing", "music sharing songs", "developer options", "the save pointer", "a guide for facilitators", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version icon", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "marker colors", "marker hugs corners", "popups close only", "narrow more button", "the silence card", "privacy: why the counts", "build button centered in minimalist mode", "no double-tap zoom", "backup link in step 2", "spotify premium", "step 3 order and text", "the build icon", "python status at the bottom", "hover feedback on buttons", "questions and feedback", "settings below the segments, pink outline", "the tagline", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'fading and Close in the Create popup', 'tabs that scroll sideways', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
 // areas that need another area's setup to have run first
 const NEEDS = {
   "the page's styles for tags and phones": ["silences, dragging and removing"],
@@ -54,11 +54,6 @@ function planRows(w) {
   });
 }
 // The groups in the build popup when one build makes playlists for several recipes
-function wB_support_ok(html) {
-  const box = html.match(/<div id="createSupport"[\s\S]*?<\/div>\s*<\/div>/);
-  const foot = html.match(/<div id="createCloseRow"[\s\S]*?<\/div>/);
-  return !!box && /id="createDonate" class="primary"/.test(box[0]) && !!foot && !/createDonate/.test(foot[0]) && /id="createClose"/.test(foot[0]);
-}
 function planGroups(w) { return Array.from(w.document.querySelectorAll("#results .bd-group b")).map((b) => b.textContent); }
 
 const MADE = 'Made by Ceremony Playlist Builder from the format "x". Please leave this description as it is: the app uses it to recognize the playlists it made.';
@@ -508,20 +503,8 @@ print(json.dumps(out))
   check("confirming forgets the Client ID, formats and sign-in, then reloads", wClear.localStorage.length === 0 && wClear.sessionStorage.length === 0 && wClear.__reloaded === true, `${wClear.localStorage.length} local, ${wClear.sessionStorage.length} session`);
   check("troubleshooting is available before connecting too", !!fresh.document.getElementById("clearData") && fresh.document.getElementById("appSection").hidden === true);
 
-  // 6i. Ko-fi support: a floating link that opens Ko-fi in a new tab
-  var sb = fresh.document.getElementById("supportButton");
-  check("the floating button is a link to Ko-fi, as the fallback, labeled Support me, with the Ko-fi cup", sb.tagName === "A" && sb.textContent.trim() === "Support me" && !!sb.querySelector("img[src=\"cup-border.png\"]") && sb.querySelector("img").getAttribute("alt") === "" && sb.href === "https://ko-fi.com/roncarmel" && sb.target === "_blank" && /noopener/.test(sb.rel) && /noreferrer/.test(sb.rel) && sb.getAttribute("title") === "Support me on Ko-fi", sb.outerHTML);
-  check("no Ko-fi frame, panel or script is ever loaded", !fresh.document.querySelector("iframe") && !fresh.document.getElementById("supportPanel") && !Array.from(fresh.document.querySelectorAll("script")).some((x) => /ko-fi/.test(x.src)));
-  var cap = fresh.document.getElementById("supportCaption");
-  check("the caption sits with the Donate button in the same floating box, with the new wording", !!cap && cap.textContent === "Everyone is welcome to use this app. If it\u2019s been helpful, please give whatever feels right to you." && cap.previousElementSibling === sb && cap.parentElement === sb.parentElement && sb.parentElement.id === "supportBox", cap && cap.textContent);
   check("every button is filled #ff38b8 and no green is left", /--button: #ff38b8/.test(css) && /\n  button \{[^}]*background: var\(--button\)/.test(css) && !/1a7f4b|3ccf84/.test(css));
-  check("the Tip me button has the same shape as the other buttons", /#supportButton \{[^}]*padding: 8px 14px;[^}]*border-radius: 8px/.test(css.replace(/\n\s+/g, " ")));
-  var cupImg = sb.querySelector("img");
-  var flat = css.replace(/\s+/g, " ");
-  check("the cup wiggles every 3 seconds using Ko-fi's keyframes", /animation: kofi-wiggle 3s infinite/.test(flat) && /@keyframes kofi-wiggle \{ 0% \{ transform: rotate\(0\) scale\(1\); \} 60% \{ transform: rotate\(0\) scale\(1\); \} 75% \{ transform: rotate\(0\) scale\(1\.12\); \} 80% \{ transform: rotate\(0\) scale\(1\.1\); \} 84% \{ transform: rotate\(-10deg\) scale\(1\.1\); \} 88% \{ transform: rotate\(10deg\) scale\(1\.1\); \} 92% \{ transform: rotate\(-10deg\) scale\(1\.1\); \} 96% \{ transform: rotate\(10deg\) scale\(1\.1\); \} 100% \{ transform: rotate\(0\) scale\(1\); \} \}/.test(flat));
-  check("the wiggle stops for people who ask for less motion", /@media \(prefers-reduced-motion: reduce\) \{ #supportButton img \{ animation: none; \} \}/.test(flat));
-  check("the button keeps the app's pink and still opens Ko-fi in a new tab", /#supportButton \{[^}]*background: var\(--button\)/.test(flat) && /--button: #ff38b8/.test(css) && sb.target === "_blank" && sb.href === "https://ko-fi.com/roncarmel");
-  check("the button and caption float together, and the page keeps only a little room at the bottom until the tip becomes a strip", /#supportBox \{ position: fixed;/.test(css) && /main \{ max-width: 720px; margin: 0 auto; padding: 24px 16px 24px; \}/.test(css));
+  check("no Support me: no Ko-fi link, caption or cup on the page", !fresh.document.getElementById("supportButton") && !fresh.document.getElementById("supportCaption") && !fresh.document.querySelector('a[href*="ko-fi"], img[src="cup-border.png"]'));
 
   // 6j. the browser-tab icon is wired up, with files beside the page
   var icons = Array.from(fresh.document.head.querySelectorAll('link[rel="icon"], link[rel="apple-touch-icon"]')).map((l) => `${l.getAttribute("rel")}:${l.getAttribute("href")}`);
@@ -706,13 +689,7 @@ print(json.dumps(out))
   check("More options does not show the app version", wB.document.getElementById("appVersionLabel") === null && !/App version/.test(wB.document.getElementById("moreOptions").textContent));
   check("while Python loads, the note beside Create says Python, not planner", /Getting Python ready/.test(appSource()) && /Python could not start, so building is unavailable/.test(appSource()) && !/planner/i.test(appSource()));
 
-  // J. the thank-you prompt only follows a successful create
-  var promptsAfterCreate = Array.from(wB.document.querySelectorAll("#createDialog .support-prompt")).filter((el) => !el.hidden);
-  var promptLink = promptsAfterCreate[0] && promptsAfterCreate[0].querySelector("a");
-  check("the thank-you line reads right, as plain text with no link, with the Support me button under it", promptsAfterCreate.length === 1 && promptsAfterCreate[0].querySelector("p").textContent === "If this app has been helpful to you, I’d be grateful for your support, in whatever amount feels right." && !/donat/i.test(promptsAfterCreate[0].textContent) && promptsAfterCreate[0].querySelector("#createDonate") !== null);
-  check("it has no link, since the Support me button is right there", promptsAfterCreate[0].querySelectorAll("a").length === 0 && !promptLink && !/KOFI_URL/.test(appSource()));
-  check("no prompt after cancelling", wE.document.getElementById("createSupport").hidden);
-  check("no prompt after a failed create", wE.document.getElementById("createSupport").hidden);
+  check("no thank-you prompt or photo after a build", !wB.document.querySelector("#createDialog .support-prompt, #createSupport, img[src=\"ron.jpg\"]"));
 
   // ---------------- backing up and restoring formats
   var EX = (w) => w.document.getElementById("formats").value;
@@ -778,9 +755,9 @@ print(json.dumps(out))
   check("an About this app section tells what it does, what it is good for, how it works, what is needed, and the privacy details", /^About this app$/.test(aboutFresh.querySelector("summary").textContent) && ["What it does", "What it's good for", "How it works", "What you need", "Privacy"].every((t) => aboutText.includes(t)) && aboutFresh.querySelectorAll("ol li").length === 3 && /Premium/.test(aboutText) && /never changed/.test(aboutText) && /Privacy/.test(aboutText));
   check("the More about this app section always starts closed, for first-time and returning visitors alike", aboutFresh.open === false && !/<details id="about"[^>]*\bopen\b/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && !/\$\("about"\)\.open/.test(appSource()));
   check("it starts closed once a Client ID is saved, and once connected", returning.document.getElementById("about").open === false && t0.document.getElementById("about").open === false);
-  var staticText = pageHtml.replace("Yes, I have", "").replace("I have done this before", "").replace("No, this is my first time", "").replace('"I have supported you!"', "").replace(/<style>[\s\S]*?<\/style>/g, "").replace(/<details id="guideSection"[\s\S]*?<details id="moreOptions"/, "").replace(/<label class="choice-row"><input type="checkbox" id="donateHideBox">[\s\S]*?<\/label>/, "").replace(/<id="supportButton"[\s\S]*?<\/a>/, "").replace(/<a id="supportButton"[\s\S]*?<\/a>/, "").replace(/<p id="supportCaption">[\s\S]*?<\/p>/, "").replace(/<div id="createSupport"[\s\S]*?<\/p>/, "").replace(/<button id="createDonate"[\s\S]*?<\/button>/, "").replace(/<[^>]+>/g, " ");
+  var staticText = pageHtml.replace("Yes, I have", "").replace("I have done this before", "").replace("No, this is my first time", "").replace(/<style>[\s\S]*?<\/style>/g, "").replace(/<details id="guideSection"[\s\S]*?<details id="moreOptions"/, "").replace(/<[^>]+>/g, " ");
   var firstPerson = staticText.match(/\b(my|mine|myself|I|I'm|I've|I'll)\b/gi) || [];
-  check("no first-person wording anywhere in the page text, apart from the setup choice you worded yourself, the checkbox for people who have donated (and Privacy quoting it), which is in the person's own voice, and the guide for facilitators, which is in Ron's", firstPerson.length === 0, JSON.stringify(firstPerson));
+  check("no first-person wording anywhere in the page text, apart from the setup choice you worded yourself, and the guide for facilitators, which is in Ron's", firstPerson.length === 0, JSON.stringify(firstPerson));
   check("the two setup answers are plain labels", /Yes, I have/.test(fresh.document.getElementById("loginSection").textContent) && /No, this is my first time/.test(fresh.document.getElementById("loginSection").textContent));
   var tpl = t0.document.getElementById("formats").value;
   check("the editor starts with one format called Generated playlist, with one segment waiting for a playlist", t0.document.querySelectorAll("#feTabs .fe-tab").length === 1 && t0.document.querySelector("#feTabs .fe-tab").textContent === "Generated playlist" && t0.document.querySelectorAll("#feRows .fe-row").length === 1 && t0.document.querySelector("#feRows .fe-row .fe-title").textContent === "Choose a playlist", t0.document.getElementById("formatEditor").textContent);
@@ -860,11 +837,11 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08zq" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08zr" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-08zq/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-08zr/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
-  check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
+  check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -971,7 +948,7 @@ print(json.dumps(out))
   await runPreview(x_nudge);
   pressBuild(x_nudge);
   await waitFor(() => /in your Spotify library\.$/.test(x_nudge.document.getElementById("actionMessage").textContent), 20000);
-  check("creating playlists adds no reminder to back up, only the thank-you line", !x_nudge.document.querySelector("#results .backup-nudge") && !/Your formats worked|Back them up/.test(x_nudge.document.getElementById("createDialog").textContent) && !x_nudge.document.getElementById("createSupport").hidden);
+  check("creating playlists adds no reminder to back up", !x_nudge.document.querySelector("#results .backup-nudge") && !/Your formats worked|Back them up/.test(x_nudge.document.getElementById("createDialog").textContent));
 
   // ---------------- headings: the page title outranks the step headings, which are easy to spot
   var hcss = fs.readFileSync(ROOT + "index.html", "utf8");
@@ -992,9 +969,9 @@ print(json.dumps(out))
   var ab = t0.document.getElementById("about");
   var leads = Array.from(ab.querySelectorAll("strong")).map((x) => x.textContent);
   check("the headings in What is this app? stand on their own line, without trailing periods", JSON.stringify(leads) === JSON.stringify(["What it does", "What it's good for", "How it works", "What you need", "Reporting problems", "Privacy"]) && Array.from(ab.querySelectorAll("p")).filter((p) => p.querySelector("strong + br")).length === 5, JSON.stringify(leads));
-  var pill = Array.from(t0.document.querySelectorAll("button:not(.linklike):not(.theme-button):not(#kofiClose):not(#createDonate):not(#cnContinue):not(#usOk), a.button-link")).filter((b) => !b.closest("#formatEditor") && !b.closest("#startupProblem") && b.id !== "infoClose" && b.id !== "msClose" && b.id !== "msCard" && b.id !== "homeBuilder" && !b.classList.contains("wp-tool-head") && !b.classList.contains("hp-more-item") && !b.classList.contains("sp-choice") && b.id !== "appHome" && !b.closest("#appBar") && b.id !== "updateGet");   // the Music sharing card (covers, not an icon) and the update card's Get it (its gift is on the card)   // the Setup complete button has words only; the startup popup and the info popup's close draw their icons inline
+  var pill = Array.from(t0.document.querySelectorAll("button:not(.linklike):not(.theme-button):not(#cnContinue):not(#usOk), a.button-link")).filter((b) => !b.closest("#formatEditor") && !b.closest("#startupProblem") && b.id !== "infoClose" && b.id !== "msClose" && b.id !== "msCard" && b.id !== "homeBuilder" && !b.classList.contains("wp-tool-head") && !b.classList.contains("hp-more-item") && !b.classList.contains("sp-choice") && b.id !== "appHome" && !b.closest("#appBar") && b.id !== "updateGet");   // the Music sharing card (covers, not an icon) and the update card's Get it (its gift is on the card)   // the Setup complete button has words only; the startup popup and the info popup's close draw their icons inline
   var pillsIn = pill.filter((b) => b.querySelector("img.btn-icon"));
-  check("every pink button has an icon in front of its label (the Donate button has the cup)", pill.length >= 15 && pillsIn.length === pill.length, `${pillsIn.length} of ${pill.length} ` + pill.filter((b) => !b.querySelector("img.btn-icon")).map((b) => b.id || b.outerHTML.slice(0, 60)).join(","));
+  check("every pink button has an icon in front of its label", pill.length >= 15 && pillsIn.length === pill.length, `${pillsIn.length} of ${pill.length} ` + pill.filter((b) => !b.querySelector("img.btn-icon")).map((b) => b.id || b.outerHTML.slice(0, 60)).join(","));
   check("each icon is a small file, 20 by 20 (the Build sparkles 24 by 24), decorative, and the file exists", pill.every((b) => { const i = b.querySelector("img.btn-icon"); const size = i.getAttribute("src") === "icons/build.svg" ? "24" : "20"; return i.getAttribute("width") === size && i.getAttribute("height") === size && i.getAttribute("alt") === "" && /^icons\/[a-z]+\.svg$/.test(i.getAttribute("src")) && fs.existsSync(ROOT + i.getAttribute("src")); }));
   check("text-style links (Restore, Reset, Undo) have no icons", Array.from(t0.document.querySelectorAll("button.linklike")).every((b) => !b.querySelector("img")));
   check("each icon sits left of a label (a forward button such as Get started, right of it), and the label is its own element", pill.every((b) => { const i = b.querySelector("img.btn-icon, img"); return i === (["getStarted", "startSetup"].includes(b.id) ? b.lastElementChild : b.firstElementChild) && !!b.querySelector(".btn-label, span"); }));
@@ -1130,7 +1107,7 @@ print(json.dumps(out))
   var finalHtml = fs.readFileSync(ROOT + "index.html", "utf8");
   check("the page has six scripts of its own, with the theme first, and nothing about embeds", finalHtml.match(/<script src="[^"]+"><\/script>/g).join("").replace(/\?v=[^"]+/g, "") === '<script src="theme.js"></script><script src="formats.js"></script><script src="editor.js"></script><script src="shared-spotify.js"></script><script src="app.js"></script><script src="sharing.js"></script>' && finalHtml.indexOf('<script src="theme.js">') < finalHtml.indexOf("</head>") && !/embeds/i.test(finalHtml) && !/embeds/i.test(appSource()) && !fs.existsSync(ROOT + "embeds.js"));
   check("the app never names an outside script, so no Ko-fi or Tally code can run in the page", !/tally\.so\/widgets|overlay-widget|storage\.ko-fi\.com\/cdn\/scripts/.test(appSource() + finalHtml));
-  check("Tip me and the report links are the new-tab links again", (() => { const a = t0.document.getElementById("supportButton"); const r = t0.document.getElementById("reportLink"); return a.target === "_blank" && a.href === "https://ko-fi.com/roncarmel" && r.target === "_blank" && r.href.startsWith("https://tally.so/r/VppLZN"); })());
+  check("the report link is a new-tab link", (() => { const r = t0.document.getElementById("reportLink"); return r.target === "_blank" && r.href.startsWith("https://tally.so/r/VppLZN"); })());
   var stale = await boot({ url: "http://127.0.0.1:8000/?embeds=on", session: { ...signedIn(), embeds: "on" }, local: { formats: MINI } });
 
 
@@ -1757,10 +1734,9 @@ print(json.dumps(out))
   var q_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   var q_h1 = fresh.document.querySelector("h1");
   check("the title is the one word Arc", Array.from(q_h1.querySelectorAll(".brand-text > span")).map((x) => x.textContent).join("|") === "Arc" && q_h1.textContent === "Arc");
-  check("when the corner would reach the app (under 1184 pixels wide) the button and its note sit in a strip along the bottom, across the whole width of the screen, the button always at the right with the note right-aligned beside it, on a background that fades out upward, and the button never squeezes its own label onto two lines", /@media \(max-width: 1183px\) \{ main \{[^}]*\}[^#]*#supportBox \{ left: 0; right: 0; bottom: 0; width: auto; box-sizing: border-box; max-width: none; flex-direction: row-reverse; align-items: center; justify-content: flex-start; gap: 12px;/.test(q_css) && /background: linear-gradient\(to top, var\(--bg\) 0%, var\(--bg\) 55%, transparent 100%\)/.test(q_css) && /#supportButton \{ flex: none; white-space: nowrap; \}/.test(q_css) && /#supportCaption \{ flex: 0 1 auto; width: auto; min-width: 0; max-width: 52ch; padding: 0; background: none; box-shadow: none; text-align: right; text-wrap: balance;/.test(q_css));
-  check("on a wide screen the note sits above the button in the corner, its right edge level with the button's, up to 160 pixels wide (four lines), in slightly smaller type, and right-aligned", /#supportBox \{ position: fixed; right: 16px; bottom: 16px;[^}]*flex-direction: column-reverse; align-items: flex-end;[^}]*width: max-content;/.test(q_css) && /#supportCaption \{ margin: 0 0 0 auto; width: max-content; max-width: 160px; box-sizing: border-box; padding: 0; color: var\(--muted\); font-size: 0\.72rem;[^}]*text-align: right;/.test(q_css) && !/#supportCaption \{ margin: 0 0 0 auto[^}]*background/.test(q_css));
-  check("the fading strip does not block taps on the app behind its see-through top, only the note and the button take taps", /#supportBox \{[^}]*pointer-events: none;/.test(q_css) && /#supportBox > \* \{ pointer-events: auto; \}/.test(q_css));
-  check("the button comes before the note in the page, so the row-reverse layout puts the note to its left", fresh.document.getElementById("supportBox").firstElementChild.id === "supportButton" && fresh.document.getElementById("supportButton").nextElementSibling.id === "supportCaption");   // the update card comes after them
+  check("when the corner would reach the app (under 1184 pixels wide) the update card sits in a strip along the bottom, on a background that fades out upward, and the page keeps room for it only while it shows", /@media \(max-width: 1183px\) \{ \.update-ready main \{[^}]*\}[^#]*#supportBox \{ left: 0; right: 0; bottom: 0;/.test(q_css) && /background: linear-gradient\(to top, var\(--bg\) 0%, var\(--bg\) 55%, transparent 100%\)/.test(q_css));
+  check("the corner holds only the update card, and is not drawn without one", /html:not\(\.update-ready\) #supportBox \{ display: none; \}/.test(q_css) && Array.from(fresh.document.getElementById("supportBox").children).map((c) => c.id).join("|") === "updateCard");
+  check("the fading strip does not block taps on the app behind its see-through top, only the card takes taps", /#supportBox \{[^}]*pointer-events: none;/.test(q_css) && /#supportBox > \* \{ pointer-events: auto; \}/.test(q_css));
 
 
   
@@ -2111,7 +2087,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var mm_hidden = ["body.minimal main > #about", "body.minimal #connectedSection", "body.minimal #editHeading", "body.minimal #savedNote", "body.minimal #createHeading", "body.minimal #createNote", "body.minimal #backupBlock"];
   check("the app page hides About this app, the connected Spotify section, the Edit your recipes heading, the saved note, the Create playlists heading, the note under it, and the whole backup step", mm_hidden.every((sel) => mm_css.includes(sel)) && /body\.minimal [^{]*\{ display: none; \}/.test(mm_css));
   var mm_hideRule = (mm_css.match(/body\.minimal #backupCard:not\(\.opened\)[^{]*\{ display: none; \}/) || [""])[0];
-  check("and nothing else is in that list: the editor, the Create button, the restore message and the tip button all stay", mm_hideRule.length > 0 && !/#formatEditor|#create\b|#backupMessage|#supportBox|#feAppMenu|h1/.test(mm_hideRule), mm_hideRule);
+  check("and nothing else is in that list: the editor, the Create button, the restore message and the update corner all stay", mm_hideRule.length > 0 && !/#formatEditor|#create\b|#backupMessage|#supportBox|#feAppMenu|h1/.test(mm_hideRule), mm_hideRule);
   var mm_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var mm_ids = ["editHeading", "savedNote", "createHeading", "createNote", "backupBlock", "about", "connectedSection"];
   check("each of those has its place in the page: the headings and notes have their own ids, and the backup step is one block holding its heading, button, messages and status", mm_ids.every((id) => !!mm_w.document.getElementById(id)) && mm_w.document.getElementById("backupBlock").contains(mm_w.document.getElementById("backupSection")) && mm_w.document.getElementById("backupBlock").contains(mm_w.document.getElementById("backupDownload")) && mm_w.document.getElementById("backupBlock").contains(mm_w.document.getElementById("backupStatus")) && mm_w.document.querySelector(".tagline") !== null);
@@ -2127,7 +2103,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var mm_mo = mm_w.document.getElementById("homeMore");
   check("when connected, the menu has no Spotify row and no Disconnect: Change Spotify login is under Everything else on home instead", !mm_w.document.querySelector("#feAppMenuPanel .fe-sp-block") && !mm_w.document.getElementById("feDisconnect") && !!mm_mo.querySelector("#changeSpotifyLogin") && /Change Spotify login/.test(mm_mo.textContent));
   check("the app menu's button ends where the card does: the row above the card has no padding on its right, on any screen width", /\.fe-toprow \{ display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; \}/.test(mm_css) && !/\.fe-toprow \{[^}]*padding-right/.test(mm_css));
-  var mm_cap = mm_w.document.getElementById("supportCaption");
 
 
   
@@ -2216,7 +2191,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   pp_w3.document.getElementById("createOverlay").click();
   check("and a click outside dismisses it", pp_w3.document.getElementById("createOverlay").hidden === true && pp_w3.document.body.style.overflow === "");
   var pp_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("the popup sits above everything, even the tip strip, and scrolls inside itself if the result is long", /\.app-overlay \{ position: fixed;[^}]*z-index: 1100;/.test(pp_css) && /\.app-dialog \{[^}]*max-height: calc\(100vh - 32px\); max-height: calc\(100dvh - 32px\); overflow: auto;/.test(pp_css) && /#supportBox \{ position: fixed; right: 16px; bottom: 16px; z-index: 1001;/.test(pp_css));
+  check("the popup sits above everything, even the update strip, and scrolls inside itself if the result is long", /\.app-overlay \{ position: fixed;[^}]*z-index: 1100;/.test(pp_css) && /\.app-dialog \{[^}]*max-height: calc\(100vh - 32px\); max-height: calc\(100dvh - 32px\); overflow: auto;/.test(pp_css) && /#supportBox \{ position: fixed; right: 16px; bottom: 16px; z-index: 1001;/.test(pp_css));
   check("the page's bottom: 24 pixels while the tip is in the corner, and in the strip the strip's own measured height, kept up to date as the page is resized", /--tip-h/.test(appSource()) && /document\.documentElement\.style\.setProperty\("--tip-h", box\.offsetHeight \+ "px"\)/.test(appSource()) && /window\.addEventListener\("resize", set\)/.test(appSource()) && /new ResizeObserver\(set\)/.test(appSource()));
   check("the tip's height has been measured and set for the page", pp_w.document.documentElement.style.getPropertyValue("--tip-h") !== "");
 
@@ -2246,59 +2221,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   
   } catch (err) { areaCrashed("the popup after Create, and the room at the bottom", err); }
 }
-  if (want('the Donate panel')) { try {
-  // ================================================================ the Donate panel
-  var dnp_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI } });
-  var dnp_btn = dnp_w.document.getElementById("supportButton");
-  var dnp_panel = dnp_w.document.getElementById("kofiPanel");
-  check("before anyone clicks Donate, the panel is closed, there is no frame, and Ko-fi is not contacted", dnp_panel.hidden === true && !dnp_w.document.querySelector("iframe") && dnp_btn.getAttribute("aria-expanded") === "false" && dnp_btn.getAttribute("aria-haspopup") === "dialog");
-  dnp_w.document.getElementById("supportBox").getBoundingClientRect = () => ({ top: 900, left: 0, width: 200, height: 80 });
-  Object.defineProperty(dnp_w, "innerHeight", { value: 1000, configurable: true });
-  var dnp_click = new dnp_w.MouseEvent("click", { bubbles: true, cancelable: true });
-  var dnp_notPrevented = dnp_btn.dispatchEvent(dnp_click);
-  var dnp_frame = dnp_panel.querySelector("iframe");
-  check("clicking Donate opens Ko-fi's page in a panel in this page instead of leaving it", dnp_notPrevented === false && dnp_panel.hidden === false && dnp_btn.getAttribute("aria-expanded") === "true" && !!dnp_frame && dnp_frame.src === "https://ko-fi.com/roncarmel/?hidefeed=true&widget=true&embed=true" && dnp_frame.title === "Support me on Ko-fi");
-  dnp_w.document.getElementById("supportBox").getBoundingClientRect = () => ({ top: 300, left: 0, width: 200, height: 80 });
-  dnp_w.dispatchEvent(new dnp_w.Event("resize"));
-  Object.defineProperty(dnp_w, "innerHeight", { value: 360, configurable: true });
-  dnp_w.dispatchEvent(new dnp_w.Event("resize"));
-  check("on a short window it is never shorter than 400, and it is resized when the window changes", dnp_panel.style.height === "400px");
-  check("the bar above the frame says Choose any amount that feels right to you., with the x at the right and no link to Ko-fi in it, and the page loads no Ko-fi script, only a frame", dnp_panel.querySelector(".kofi-bar").children.length === 2 && dnp_panel.querySelector(".kofi-bar").firstElementChild.id === "kofiPrompt" && dnp_panel.querySelector("#kofiPrompt").textContent === "Choose any amount that feels right to you." && dnp_panel.querySelector(".kofi-bar").lastElementChild.id === "kofiClose" && !dnp_panel.querySelector(".kofi-bar a") && !/ko-fi\.com/.test(Array.from(dnp_w.document.scripts).map((x) => x.src).join(" ")) && !/storage\.ko-fi|overlay-widget/.test(appSource() + fs.readFileSync(ROOT + "index.html", "utf8")));
-  check("the text is bold and centered in that bar, and the x sits at the right", /#kofiPanel \.kofi-bar \{ display: grid; grid-template-columns: 1fr auto 1fr;/.test(fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ")) && /#kofiPrompt \{ grid-column: 2; text-align: center; font-weight: bold; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /#kofiClose \{ grid-column: 3; justify-self: end; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
-  dnp_w.document.getElementById("kofiClose").click();
-  check("the x closes it", dnp_panel.hidden === true && dnp_btn.getAttribute("aria-expanded") === "false");
-  dnp_btn.dispatchEvent(new dnp_w.MouseEvent("click", { bubbles: true, cancelable: true }));
-  dnp_w.document.dispatchEvent(new dnp_w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-  check("Escape closes it too, and opening it again reuses the same frame", dnp_panel.hidden === true && dnp_w.document.querySelectorAll("#kofiPanel iframe").length === 1);
-  dnp_btn.dispatchEvent(new dnp_w.MouseEvent("click", { bubbles: true, cancelable: true }));
-  dnp_w.document.getElementById("feCaption").click();
-  check("a click anywhere outside the panel closes it", dnp_panel.hidden === true);
-  dnp_btn.dispatchEvent(new dnp_w.MouseEvent("click", { bubbles: true, cancelable: true }));
-  dnp_panel.querySelector(".kofi-bar").click();
-  check("a click inside the panel does not", dnp_panel.hidden === false);
-  dnp_btn.dispatchEvent(new dnp_w.MouseEvent("click", { bubbles: true, cancelable: true }));
-  check("clicking Donate again closes it, rather than closing and reopening", dnp_panel.hidden === true);
-  var dnp_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("the panel and its dimming sit above the tip strip, so they cover the button and its note, and above the build popup, which stays open behind them", /#kofiPanel \{[^}]*z-index: 1111;/.test(dnp_css) && /#kofiDim \{ position: fixed;[^}]*z-index: 1110; background: rgba\(0, 0, 0, 0\.65\); \}/.test(dnp_css) && /#supportBox \{ position: fixed; right: 16px; bottom: 16px; z-index: 1001;/.test(dnp_css) && /\.app-overlay \{ position: fixed;[^}]*z-index: 1100;/.test(dnp_css));
-  check("nothing in the page still says tip or tipping, except the word donate", !/\btip me\b|\bTip me\b|Tipping/.test(fs.readFileSync(ROOT + "index.html", "utf8").replace(/<style>[\s\S]*?<\/style>/, "") + appSource()));
-
-
-  
-  } catch (err) { areaCrashed("the Donate panel", err); }
-}
-  if (want('dimming, fading, and Donate in the Create popup')) { try {
-  // ================================================================ dimming, fading, and Donate in the Create popup
+  if (want('fading and Close in the Create popup')) { try {
+  // ================================================================ fading and Close in the Create popup
   var dd_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
-  var dd_dim = dd_w.document.getElementById("kofiDim");
-  var dd_panel = dd_w.document.getElementById("kofiPanel");
-  check("the screen is not dimmed until the donation popup opens", dd_dim.hidden === true && dd_panel.hidden === true);
-  dd_w.document.getElementById("supportButton").dispatchEvent(new dd_w.MouseEvent("click", { bubbles: true, cancelable: true }));
-  check("opening the donation popup dims the rest of the screen, as the Create popup does, and moves the focus into it", dd_dim.hidden === false && dd_panel.hidden === false && dd_w.document.activeElement === dd_w.document.getElementById("kofiClose"));
-  dd_dim.click();
-  check("clicking the dimmed screen closes both and returns the focus to the Donate button", dd_dim.hidden === true && dd_panel.hidden === true && dd_w.document.activeElement === dd_w.document.getElementById("supportButton"));
-  dd_w.document.getElementById("supportButton").dispatchEvent(new dd_w.MouseEvent("click", { bubbles: true, cancelable: true }));
-  dd_w.document.dispatchEvent(new dd_w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-  check("Escape closes the panel and the dimming together", dd_dim.hidden === true && dd_panel.hidden === true);
   var dd_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("hidden still means hidden in the end (display none), and while a popup fades out it cannot be clicked", /\[hidden\] \{ display: none !important; \}/.test(dd_css) && /\.fx-leaving, \.fx-ghost \{ pointer-events: none; \}/.test(dd_css));
   check("popups come and go with the shared curves", /--ease-out: cubic-bezier\(0\.2, 0, 0, 1\)/.test(dd_css) && /const EASE_OUT = "cubic-bezier\(0\.2, 0, 0, 1\)"/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && typeof dd_w.initMotion === "function");
@@ -2308,31 +2233,18 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   dd_w2.eval("setPlaylistLimit(1)");
   dd_w2.document.getElementById("create").click();
   await waitFor(() => visible(dd_w2, "confirmBox"), 30000);
-  check("the Create popup has no Close or Donate button while it asks", dd_w2.document.getElementById("createCloseRow").hidden === true);
+  check("the Create popup has no Close button while it asks", dd_w2.document.getElementById("createCloseRow").hidden === true);
   pressBuild(dd_w2);
   await waitFor(() => dd_w2.document.getElementById("createCloseRow").hidden === false, 30000);
   var dd_btns = Array.from(dd_w2.document.querySelectorAll("#createCloseRow button"));
-  check("when it is done, the footer offers only Close, and Support me with the cup is a pink button in the thank-you box", dd_btns.map((b) => b.textContent.trim()).join("|") === "Close" && dd_w2.document.getElementById("createDonate").closest("#createSupport") !== null && !!dd_w2.document.getElementById("createDonate").querySelector('img[src="cup-border.png"]') && dd_w2.document.getElementById("createDonate").classList.contains("primary"));
-  dd_w2.document.getElementById("createDonate").click();
-  check("Support me opens the Ko-fi panel above the build popup, which stays open behind it", dd_w2.document.getElementById("createOverlay").hidden === false && Number(dd_w2.getComputedStyle(dd_w2.document.getElementById("kofiPanel")).zIndex) > Number(dd_w2.getComputedStyle(dd_w2.document.getElementById("createOverlay")).zIndex) && dd_w2.document.getElementById("kofiPanel").hidden === false && dd_w2.document.getElementById("kofiDim").hidden === false && !!dd_w2.document.querySelector("#kofiPanel iframe"));
-  dd_w2.document.dispatchEvent(new dd_w2.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-  check("Escape closes only the Ko-fi panel: the build popup is still there, with focus back on Support me", dd_w2.document.getElementById("kofiPanel").hidden === true && dd_w2.document.getElementById("kofiDim").hidden === true && dd_w2.document.getElementById("createOverlay").hidden === false && dd_w2.document.activeElement === dd_w2.document.getElementById("createDonate"));
-  dd_w2.document.getElementById("createDonate").click();
-  dd_w2.document.getElementById("kofiClose").click();
-  check("closing the panel with its x also returns to the build popup", dd_w2.document.getElementById("kofiPanel").hidden === true && dd_w2.document.getElementById("createOverlay").hidden === false);
+  check("when it is done, the footer offers only Close, and there is no Support me, thank-you box or photo anywhere", dd_btns.map((b) => b.textContent.trim()).join("|") === "Close" && !dd_w2.document.getElementById("createSupport") && !dd_w2.document.getElementById("createDonate") && !dd_w2.document.querySelector('img[src="ron.jpg"]'));
   dd_w2.document.getElementById("createClose").click();
-  check("and closing the build popup then leaves a clean page: nothing dimmed, nothing open, Create ready again", dd_w2.document.getElementById("kofiDim").hidden === true && dd_w2.document.getElementById("kofiPanel").hidden === true && dd_w2.document.getElementById("createOverlay").hidden === true && !dd_w2.document.getElementById("create").disabled);
+  check("closing the build popup leaves a clean page", dd_w2.document.getElementById("createOverlay").hidden === true);
   dd_w2.document.getElementById("create").click();
   await waitFor(() => visible(dd_w2, "confirmBox") || dd_w2.document.getElementById("createCloseRow").hidden === false, 30000);
   check("Close in the Create popup still just closes it", (() => { if (visible(dd_w2, "confirmBox")) dd_w2.document.getElementById("confirmNo").click(); return true; })());
-
-
-  var cl_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("after a build, Support me is a pink button in the thank-you box near the top, and the footer has only Close", wB_support_ok(fs.readFileSync(ROOT + "index.html", "utf8")));
-
-
-  
-  } catch (err) { areaCrashed("dimming, fading, and Donate in the Create popup", err); }
+  check("nothing of Support me is left: no Ko-fi, no button, no panel, no hiding choice", !/ko-fi|kofi|supportButton|supportCaption|donateHid|Support me/i.test(fs.readFileSync(ROOT + "index.html", "utf8") + appSource()));
+  } catch (err) { areaCrashed("fading and Close in the Create popup", err); }
 }
   if (want('tabs that scroll sideways')) { try {
   // ================================================================ tabs that scroll sideways
@@ -2355,47 +2267,10 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sc_after = sc_cur();
   check("choosing a tab selects it, and the row is told to keep the selected tab in view", sc_after.querySelector('.fe-tab[aria-pressed="true"]').getAttribute("data-id") === "c" && /function scrollSelectedTab\(\)/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && /scrollSelectedTab\(\);\n\}/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
   check("the app's menu keeps its place at the end of Arc's bar, and the tabs row is still the tabs", sc_w.document.getElementById("appBar").lastElementChild.id === "feAppMenu" && sc_w.document.querySelector(".fe-toprow").children[0].id === "feTabs");
-  var fr_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI } });
-  fr_w.document.getElementById("supportButton").dispatchEvent(new fr_w.MouseEvent("click", { bubbles: true, cancelable: true }));
-  check("the donation frame is allowed to offer Apple Pay and Google Pay, which a frame cannot otherwise do", fr_w.document.querySelector("#kofiPanel iframe").getAttribute("allow") === "payment *");
 
 
   
   } catch (err) { areaCrashed("tabs that scroll sideways", err); }
-}
-  if (want('Donate only after a success')) { try {
-  // ================================================================ Donate only after a success
-  var ds_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { denyCreate: true } });
-  await readyToPreview(ds_w);
-  ds_w.eval("setPlaylistLimit(2)");
-  ds_w.document.getElementById("create").click();
-  await waitFor(() => visible(ds_w, "confirmBox"), 30000);
-  pressBuild(ds_w);
-  await waitFor(() => ds_w.document.getElementById("createCloseRow").hidden === false, 30000);
-  check("when creating fails, the popup offers only Close: Donate is hidden", ds_w.document.getElementById("createDonate").hidden === true && ds_w.document.getElementById("createClose").offsetParent !== undefined && ds_w.document.querySelectorAll("#results .support-prompt").length === 0 && !/in your Spotify library\.$/.test(ds_w.document.getElementById("actionMessage").textContent));
-  var ds_w2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn() });
-  await readyToPreview(ds_w2);
-  ds_w2.document.getElementById("create").click();
-  await waitFor(() => ds_w2.document.getElementById("createCloseRow").hidden === false, 20000);
-  check("when there is a problem with the plan, the popup offers only Close too", ds_w2.document.getElementById("createDonate").hidden === true && ds_w2.document.getElementById("output").hidden === false);
-  var ds_w3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
-  await readyToPreview(ds_w3);
-  ds_w3.eval("setPlaylistLimit(1)");
-  ds_w3.document.getElementById("create").click();
-  await waitFor(() => visible(ds_w3, "confirmBox"), 30000);
-  check("while the popup asks, there is no Donate either", ds_w3.document.getElementById("createDonate").hidden === true);
-  pressBuild(ds_w3);
-  await waitFor(() => ds_w3.document.getElementById("createCloseRow").hidden === false, 30000);
-  check("after a success the popup offers Close and Donate", ds_w3.document.getElementById("createDonate").hidden === false && /in your Spotify library\.$/.test(ds_w3.document.getElementById("actionMessage").textContent));
-  ds_w3.document.getElementById("createClose").click();
-  ds_w3.document.getElementById("create").click();
-  await waitFor(() => visible(ds_w3, "confirmBox"), 30000);
-  ds_w3.document.getElementById("confirmNo").click();
-  check("a later run starts without Donate until it succeeds", ds_w3.document.getElementById("createDonate").hidden === true);
-
-
-  
-  } catch (err) { areaCrashed("Donate only after a success", err); }
 }
   if (want('when Spotify cannot be reached')) { try {
   // ================================================================ when Spotify cannot be reached
@@ -2551,7 +2426,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await readyToPreview(lw_w5);
   lw_w5.document.getElementById("create").click();
   await waitFor(() => lw_w5.document.getElementById("createCloseRow").hidden === false, 20000);
-  check("a quota error while reading songs shows the same message in the Create popup, after one request, with no Donate", /^Spotify asked this app to waitNo playlists were built\. Waiting is the only fix: try again in about 4 hours and 5 minutes\.$/.test(lw_w5.document.getElementById("actionMessage").textContent) && (lw_o5.trackRequests || []).length === 1 && lw_w5.document.getElementById("createDonate").hidden === true, JSON.stringify(lw_o5.trackRequests));
+  check("a quota error while reading songs shows the same message in the Create popup, after one request", /^Spotify asked this app to waitNo playlists were built\. Waiting is the only fix: try again in about 4 hours and 5 minutes\.$/.test(lw_w5.document.getElementById("actionMessage").textContent) && (lw_o5.trackRequests || []).length === 1, JSON.stringify(lw_o5.trackRequests));
   check("and the page is still connected, since the playlists were read: only this request was refused", lw_w5.eval("connection") === "ready");
 
   
@@ -2591,7 +2466,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var ws_until = Date.now() + 3600000;
   var ws_w3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, clientId: "abc", spotifyPausedUntil: JSON.stringify({ until: ws_until, reason: "", clientId: "abc" }) }, fetchOptions: { meStatus: 429, retryAfter: 14689 } });
   await waitFor(() => !!ws_w3.document.getElementById("fePauseDialog"), 8000);
-  check("a new visit during a wait opens the popup once, over the Support me button", !!ws_w3.document.getElementById("fePauseDialog") && ws_w3.sessionStorage.getItem("pauseSeen") === String(ws_until) && /#fePauseDialog \{ z-index: 1040; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /#supportBox \{[^}]*z-index: 1001/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  check("a new visit during a wait opens the popup once, over the update card", !!ws_w3.document.getElementById("fePauseDialog") && ws_w3.sessionStorage.getItem("pauseSeen") === String(ws_until) && /#fePauseDialog \{ z-index: 1040; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /#supportBox \{[^}]*z-index: 1001/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   check("a wait with no list kept shows Choosing playlists as waiting, and one with no start gets one when read, with a full ring", /Choosing playlistsWaits/.test(ws_w3.document.getElementById("fePauseList").textContent) && /^(99\.9\d|100\.00)%$/.test(ws_w3.document.getElementById("fePauseRing").style.getPropertyValue("--left")) && Math.abs(JSON.parse(ws_w3.localStorage.getItem("spotifyPausedUntil")).from - Date.now()) < 15000, ws_w3.localStorage.getItem("spotifyPausedUntil"));
   ws_w3.localStorage.setItem("spotifyPausedUntil", JSON.stringify({ until: ws_until, from: ws_until - 4 * 3600000, reason: "", clientId: "abc" }));
   ws_w3.eval("setPauseRing()");
@@ -2837,11 +2712,11 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var pv_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var pv_sec = pv_w.document.getElementById("privacySection");
   check("the Privacy section is the last thing on the page, below More options and the hidden Developer options, in the same footer, and starts closed", !!pv_sec && pv_sec.tagName === "DETAILS" && pv_sec.open === false && pv_sec.previousElementSibling.id === "devOptions" && pv_sec.previousElementSibling.previousElementSibling.id === "moreOptions" && pv_sec.nextElementSibling === null && pv_sec.parentElement.tagName === "FOOTER" && pv_sec.querySelector("summary").textContent === "Privacy");
-  check("it covers what stays in the browser, the Spotify account, who the page talks to, Music sharing, the visit counts, support, problem reports, and accounts and ads", JSON.stringify(Array.from(pv_sec.querySelectorAll("details.gd-topic > summary")).filter((h) => !h.closest("[hidden]")).map((h) => h.textContent)) === JSON.stringify(["What stays in this browser", "Your Spotify account", "Who the page talks to", "Music sharing", "Anonymous visit counts", "Support me", "Problem reports", "Accounts and ads"]));
+  check("it covers what stays in the browser, the Spotify account, who the page talks to, Music sharing, the visit counts, problem reports, and accounts and ads", JSON.stringify(Array.from(pv_sec.querySelectorAll("details.gd-topic > summary")).filter((h) => !h.closest("[hidden]")).map((h) => h.textContent)) === JSON.stringify(["What stays in this browser", "Your Spotify account", "Who the page talks to", "Music sharing", "Anonymous visit counts", "Problem reports", "Accounts and ads"]));
   var pv_text = pv_sec.textContent.replace(/\s+/g, " ");
   check("it says the app never sees the Spotify password, what it asks Spotify to allow, and that existing playlists are only read", /never sees your Spotify password/.test(pv_text) && /read your playlists, create playlists, remove playlists, and set their cover images/.test(pv_text) && /Your existing playlists are only read, never changed/.test(pv_text) && /anyone with a playlist's link can still open it/.test(pv_text));
   check("it says a problem report goes only to the developer, only if sent, and lists what is attached and what never is", /sent only if you choose to send it, and it goes only to me, the developer of this app/.test(pv_text) && /app version, browser, window size, last error, and recent steps/.test(pv_text) && /Your sign-in, Client ID, playlist names, and song titles are never included/.test(pv_text));
-  check("it describes the counts honestly: GoatCounter, no cookies, what is recorded, the four actions, and what it never receives", /GoatCounter/.test(pv_text) && /uses no cookies/.test(pv_text) && /browser, screen size, country, and the site you came from/.test(pv_text) && /first time a browser connects to Spotify, how many playlists get created, when Support me is opened, and the kind of connection problem/.test(pv_text) && /never receives playlist names, recipes, song titles, or your Client ID/.test(pv_text));
+  check("it describes the counts honestly: GoatCounter, no cookies, what is recorded, the three actions, and what it never receives", /GoatCounter/.test(pv_text) && /uses no cookies/.test(pv_text) && /browser, screen size, country, and the site you came from/.test(pv_text) && /first time a browser connects to Spotify, how many playlists get created, and the kind of connection problem/.test(pv_text) && /never receives playlist names, recipes, song titles, or your Client ID/.test(pv_text));
   check("it says what is kept in the browser and that Sign out and clear data removes it, with no Disconnect to mention", /Your Client ID, your Spotify sign-in, your recipes, the list of your playlists, your color choice, a copy of the songs from your playlists, and a count of the requests this app sends to Spotify \(to learn how often Spotify limits them\) are saved in this browser/.test(pv_text) && !/Disconnect/.test(pv_text) && /Sign out and clear data, in More options, removes everything/.test(pv_text));
   check("About links to it, and the setup and welcome pages do not, since they leave Privacy out", pv_w.document.querySelectorAll("#about a.privacy-link").length === 1 && pv_w.document.querySelectorAll("#loginSection a.privacy-link").length === 0 && pv_w.document.querySelectorAll("#welcomePage a.privacy-link").length === 0 && /html\.page-welcome footer, /.test(pv_html) && Array.from(pv_w.document.querySelectorAll("a.privacy-link")).every((a) => a.getAttribute("href") === "#privacySection"));
   var pv_click2 = new pv_w.MouseEvent("click", { bubbles: true, cancelable: true });
@@ -2873,11 +2748,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   pressBuild(pv_c4);
   await waitFor(() => pv_c4.document.getElementById("createCloseRow").hidden === false, 30000);
   check("a successful create counts how many playlists were made, as a number and nothing else", JSON.stringify(pv_counts(pv_c4).map((e) => [e.path, e.title])) === JSON.stringify([["playlists-created", "2"]]));
-  pv_c4.document.getElementById("createDonate").click();
-  check("opening Donate is counted, from the Create popup or from the button", pv_counts(pv_c4).filter((e) => e.path === "donate-opened").length === 1);
-  pv_c4.document.getElementById("kofiClose").click();
-  pv_c4.document.getElementById("supportButton").dispatchEvent(new pv_c4.MouseEvent("click", { bubbles: true, cancelable: true }));
-  check("and each time it is opened", pv_counts(pv_c4).filter((e) => e.path === "donate-opened").length === 2);
   var pv_all = pv_counts(pv_c1).concat(pv_counts(pv_c3), pv_counts(pv_c4));
   check("nothing sent ever holds a name, a format or an ID: every title is a number or a short word", pv_all.every((e) => /^[a-z]+(-[a-z]+)*$/.test(e.path) && /^(\d+|[a-z]+(-[a-z]+)*)$/.test(e.title)));
   var pv_none = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
@@ -2893,7 +2763,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var pm_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var pm_priv = pm_w.document.getElementById("privacySection");
   check("the Privacy section still has its part on problem reports, which is about where a report goes, but the About paragraph on privacy no longer mentions reporting", /Problem reports/.test(pm_priv.textContent) && !/report/i.test(Array.from(pm_w.document.querySelectorAll("#about p")).find((p) => /^Privacy/.test(p.textContent)).textContent));
-  check("the donation popup's line reads Choose any amount that feels right to you.", pm_w.document.getElementById("kofiPrompt").textContent === "Choose any amount that feels right to you.");
   
   } catch (err) { areaCrashed("privacy: hidden in minimalist mode, gap, and where reporting is mentioned", err); }
 }
@@ -3038,7 +2907,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   su_none.document.getElementById("connect").click();
   check("Connect, which comes after it in the startup code, is still wired", /Enter your Client ID|Client ID/i.test(su_none.document.getElementById("loginMessage").textContent) || su_none.document.getElementById("loginMessage").textContent !== "");
   var su_css = su_html.replace(/\s+/g, " ");
-  check("the bottom strip and the corner note let clicks through everywhere except on the button and the words", /#supportBox \{ pointer-events: none; \}/.test(su_css) && /#supportBox > \* \{ pointer-events: auto; \}/.test(su_css));
+  check("the bottom strip lets clicks through everywhere except on the update card", /#supportBox \{ pointer-events: none; \}/.test(su_css) && /#supportBox > \* \{ pointer-events: auto; \}/.test(su_css));
   check("all the page's listeners go through the guarded helper (but Setup complete's Continue, which only lets the startup go on), and the script ends by catching a startup that fails", !/\$\("\w+"\)\.addEventListener\(/.test(su_js.replace('$("cnContinue").addEventListener("click", () => resolve(true), { once: true })', "")) && /\nmain\(\)\.catch\(startupFailed\);\s*$/.test(su_js));
   
   } catch (err) { areaCrashed("startup that survives problems", err); }
@@ -3065,7 +2934,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08zq", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08zr", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3458,8 +3327,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var py_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var py_heads = Array.from(py_w.document.querySelectorAll("#moreOptions details.gd-topic > summary")).filter((h) => !h.closest("[hidden]")).map((h) => h.textContent);
   var py_home = Array.from(py_w.document.querySelectorAll("#homeMore details.gd-topic > summary")).map((h) => h.textContent);
-  check("More options is Build all recipes, Remove built playlists and Autosave or backup; Hide support button is last in Everything else on home; Python status is in Developer options", JSON.stringify(py_heads) === JSON.stringify(["Build all recipes", "Remove built playlists", "Autosave or backup"]) && py_home[py_home.length - 1] === "Hide support button" && !py_heads.includes("Python status") && !!py_w.document.querySelector("#devOptions #pythonStatus"), JSON.stringify(py_heads) + " / " + JSON.stringify(py_home));
-  check("the Sign out and clear data question still opens right under its button, ahead of the Hide support button section", !!(py_w.document.getElementById("clearConfirm").compareDocumentPosition(py_w.document.getElementById("donateHideBox")) & 4));
+  check("More options is Build all recipes, Remove built playlists and Autosave or backup; Sign out and clear data is the last topic in Everything else on home; Python status is in Developer options", JSON.stringify(py_heads) === JSON.stringify(["Build all recipes", "Remove built playlists", "Autosave or backup"]) && py_home[py_home.length - 1] === "Sign out and clear data" && !py_heads.includes("Python status") && !!py_w.document.querySelector("#devOptions #pythonStatus"), JSON.stringify(py_heads) + " / " + JSON.stringify(py_home));
   } catch (err) { areaCrashed("python status at the bottom", err); } }
 
   if (want("the build icon")) { try {
@@ -3525,34 +3393,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("recipe again closes it, and so does Escape", (rw_word.click(), rw_word.click(), rw_note.hidden === true) && (rw_word.click(), rw_w.document.dispatchEvent(new rw_w.KeyboardEvent("keydown", { key: "Escape" })), rw_note.hidden === true));
   } catch (err) { areaCrashed("welcome recipe link", err); } }
 
-  if (want("hiding the donate button")) { try {
-  // ================================================================ Hiding the Support me button: for people who have donated, on the honor system
-  var dh_html = fs.readFileSync(ROOT + "index.html", "utf8");
-  var dh_css = dh_html.replace(/\s+/g, " ");
-  var dh_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
-  var dh_d = dh_w.document;
-  var dh_h3 = Array.from(dh_d.querySelectorAll("#homeMore details.gd-topic > summary")).map((h) => h.textContent);
-  check("Everything else has a section called Hide support button, right after Sign out and clear data", dh_h3.includes("Hide support button") && dh_h3.indexOf("Hide support button") === dh_h3.indexOf("Sign out and clear data") + 1, JSON.stringify(dh_h3));
-  var dh_p = dh_d.querySelector("#donateHideBox").closest("label").previousElementSibling;
-  check("it is direct and playful: the button is meant to be visible until you have donated, please give what feels right, thank you if you did, check the box and it leaves you alone, honor system, nobody is looking, and it waits patiently", dh_p.textContent === "The Support me button stays visible until you have... supported me 🙂. If this app has been helpful to you, please give whatever feels right. Already did? Thank you! Check the box and the button will leave you alone. This runs on the honor system, so nobody\u2019s looking, and the button waits patiently.");
-  check("there is one checkbox, labeled I have supported you!, for people who have donated, and no second answer for people who have not", dh_d.getElementById("donateHideBox").type === "checkbox" && dh_d.getElementById("donateHideBox").closest("label").textContent.trim() === "I have supported you!" && !dh_d.getElementById("hideDonated") && !dh_d.getElementById("hideDeclined") && !dh_d.getElementById("showDonate"));
-  check("to begin with the box is unchecked, the Donate button shows, and there is no thank-you under the box", dh_d.getElementById("donateHideBox").checked === false && dh_d.getElementById("donateHiddenMessage").hidden === true && !dh_w.document.documentElement.classList.contains("donate-hidden") && !dh_w.localStorage.getItem("donateHidden"));
-  dh_d.getElementById("donateHideBox").checked = true; dh_d.getElementById("donateHideBox").dispatchEvent(new dh_w.Event("change", { bubbles: true }));
-  check("checking it hides the Donate button, keeps the answer in this browser, and says thank you", dh_w.document.documentElement.classList.contains("donate-hidden") && dh_w.localStorage.getItem("donateHidden") === "donated" && dh_d.getElementById("donateHiddenMessage").hidden === false && dh_d.getElementById("donateHiddenMessage").textContent === "The Support me button is hidden. Thank you for your support!");
-  dh_d.getElementById("donateHideBox").checked = false; dh_d.getElementById("donateHideBox").dispatchEvent(new dh_w.Event("change", { bubbles: true }));
-  check("unchecking it brings the button back and clears the saved answer, so no separate button is needed", !dh_w.document.documentElement.classList.contains("donate-hidden") && !dh_w.localStorage.getItem("donateHidden") && dh_d.getElementById("donateHiddenMessage").hidden === true);
-  var dh_w2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, donateHidden: "donated" }, fetchOptions: {} });
-  check("a later visit starts with it hidden and the box checked", dh_w2.document.documentElement.classList.contains("donate-hidden") && dh_w2.document.getElementById("donateHideBox").checked === true && dh_w2.document.getElementById("donateHiddenMessage").hidden === false);
-  var dh_w5 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, donateHidden: "declined" }, fetchOptions: {} });
-  check("an answer saved by the earlier version of this section (declined) still hides it, with the box checked", dh_w5.document.documentElement.classList.contains("donate-hidden") && dh_w5.document.getElementById("donateHideBox").checked === true);
-  check("the CSS hides the Donate button with its note, and the Donate button in the Build popup (the box stays for an update card)", /\.donate-hidden:not\(\.update-ready\) #supportBox, \.donate-hidden #createDonate, \.donate-hidden #supportButton, \.donate-hidden #supportCaption \{ display: none !important; \}/.test(dh_css));
-  var dh_early = dh_html.match(/try \{ if \(localStorage\.getItem\("donateHidden"\)\) document\.documentElement\.classList\.add\("donate-hidden"\); \} catch \(e\) \{[^}]*\}/);
-  check("a tiny script in the page's head sets the class before the page is drawn, so a hidden Donate button never flashes up", !!dh_early && dh_html.indexOf(dh_early[0]) < dh_html.indexOf("\n</head>"));
-  if (dh_early) { var dh_w3 = await boot({ url: "http://127.0.0.1:8000/", local: { donateHidden: "donated" } }); dh_w3.document.documentElement.classList.remove("donate-hidden"); dh_w3.eval(dh_early[0]); check("and that script does it when an answer is saved", dh_w3.document.documentElement.classList.contains("donate-hidden")); }
-  check("the thank-you line after a build shows unless the Donate button was hidden", /\$\("createSupport"\)\.hidden = donateHiddenChoice\(\);/.test(appSource()));
-  var dh_app = appSource();
-  check("the answer stays in this browser: it is never counted or sent anywhere, and Privacy says so", !/countEvent\("donate-hid/.test(dh_app) && /const DONATE_KEY = "donateHidden";/.test(dh_app) && !/fetch\([^)]*donateHidden/.test(dh_app) && /If you check "I have supported you!" in [\s\S]*?More options[\s\S]*?, that choice is saved in this browser and goes nowhere else\./.test(dh_html));
-  } catch (err) { areaCrashed("hiding the donate button", err); } }
 
   if (want("backup link in step 2")) { try {
   // ================================================================ the download link in Step 2, and where to find the backup
@@ -3590,7 +3430,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var wc_h = Array.from(wc_w.document.querySelectorAll("#privacySection details.gd-topic > summary")).find((h) => h.textContent === "Anonymous visit counts");
   var wc_p = wc_h.nextElementSibling.textContent;
   check("Anonymous visit counts opens by saying why anything is counted: to see how many people use this app and how it is used", /^The page keeps simple counts, to see how many people use this app and how it is used\. It counts visits with GoatCounter, /.test(wc_p));
-  check("and the rest is still there: no cookies, what a visit records, the few actions counted, what is never received, and the once-only marker", /uses no cookies/.test(wc_p) && /the browser, screen size, country, and the site you came from, but not who you are/.test(wc_p) && /how many playlists get created, when Support me is opened, and the kind of connection problem/.test(wc_p) && /never receives playlist names, recipes, song titles, or your Client ID/.test(wc_p) && /so it is counted once\.$/.test(wc_p));
+  check("and the rest is still there: no cookies, what a visit records, the few actions counted, what is never received, and the once-only marker", /uses no cookies/.test(wc_p) && /the browser, screen size, country, and the site you came from, but not who you are/.test(wc_p) && /how many playlists get created, and the kind of connection problem/.test(wc_p) && /never receives playlist names, recipes, song titles, or your Client ID/.test(wc_p) && /so it is counted once\.$/.test(wc_p));
   } catch (err) { areaCrashed("privacy: why the counts", err); } }
 
   if (want("the silence card")) { try {
@@ -4673,7 +4513,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // ================================================================ the method card as a popup
   var bp_html = fs.readFileSync(ROOT + "index.html", "utf8");
   var bp_z = (re) => Number((bp_html.match(re) || [])[1]);
-  check("opened, the card is fixed over the page, above the Donate bar, with its backdrop just under it", /#backupCard\.opened \{ position: fixed;/.test(bp_html) && bp_z(/#backupCard\.opened \{[^}]*z-index: (\d+)/) > bp_z(/#supportBox \{[^}]*z-index: (\d+)/) && bp_z(/#backupBackdrop \{[^}]*z-index: (\d+)/) > bp_z(/#supportBox \{[^}]*z-index: (\d+)/) && bp_z(/#backupBackdrop \{[^}]*z-index: (\d+)/) < bp_z(/#backupCard\.opened \{[^}]*z-index: (\d+)/));
+  check("opened, the card is fixed over the page, above the update corner, with its backdrop just under it", /#backupCard\.opened \{ position: fixed;/.test(bp_html) && bp_z(/#backupCard\.opened \{[^}]*z-index: (\d+)/) > bp_z(/#supportBox \{[^}]*z-index: (\d+)/) && bp_z(/#backupBackdrop \{[^}]*z-index: (\d+)/) > bp_z(/#supportBox \{[^}]*z-index: (\d+)/) && bp_z(/#backupBackdrop \{[^}]*z-index: (\d+)/) < bp_z(/#backupCard\.opened \{[^}]*z-index: (\d+)/));
   check("its OK and Cancel buttons stay at the bottom of the popup while the rest scrolls, and the page behind does not scroll", /#backupCard\.opened #backupDoneRow \{ position: sticky; bottom: 0;/.test(bp_html) && /body\.backup-card-open \{ overflow: hidden; \}/.test(bp_html) && /max-height: calc\(100dvh - 32px\)/.test(bp_html));
   var bp_w = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "manual", connectedBefore: "1", minimalMode: "1" }, fetchOptions: {} });
   var bp_d = bp_w.document;
@@ -5435,7 +5275,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08zq"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08zr"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5587,9 +5427,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("done: how many, how much music, and a tile for each", doneSentence(bp_a) === "2 playlists are in your Spotify library." && /^\d+ h( \d+ min)? of music$|^\d+ min of music$/.test(bp_a.document.querySelector("#actionMessage .bd-hours").textContent) && bp_a.document.querySelectorAll("#actionMessage .bd-tiles .bd-tile").length === 2, bp_text(bp_a, "actionMessage"));
   check("done: a fanned cover for each playlist, five at most", bp_a.document.querySelectorAll("#actionMessage .bd-fan .bd-card-img").length === 2 && /Math\.min\(made, 5\)/.test(appSource()));
   check("done: the playlists are not links, each one ticked with its songs and length", bp_rows(bp_a).length === 2 && bp_rows(bp_a).every((r) => !r.querySelector("a") && /songs ·/.test(r.querySelector(".bd-meta").textContent)));
-  check("done: Open in Spotify opens the first new playlist, then the thank-you box, then the list", visible(bp_a, "createOpen") && /^https:\/\/open\.spotify\.com\/playlist\/new\w+$/.test(bp_a.document.getElementById("createOpenLink").href) && bp_a.document.getElementById("createOpenLink").textContent === "Open in Spotify" && bp_a.document.getElementById("createOpen").nextElementSibling.id === "createSupport", bp_a.document.getElementById("createOpenLink").href);
+  check("done: Open in Spotify opens the first new playlist, then the list", visible(bp_a, "createOpen") && /^https:\/\/open\.spotify\.com\/playlist\/new\w+$/.test(bp_a.document.getElementById("createOpenLink").href) && bp_a.document.getElementById("createOpenLink").textContent === "Open in Spotify" && bp_a.document.getElementById("createOpen").nextElementSibling.id === "mainReportHint", bp_a.document.getElementById("createOpenLink").href);
   check("done: the status line is hidden", bp_a.document.getElementById("output").hidden);
-  check("done: the thank-you line, Close and Support me", visible(bp_a, "createSupport") && visible(bp_a, "createDonate") && !visible(bp_a, "createNotes"));
+  check("done: no notes", !visible(bp_a, "createNotes"));
 
   // with a limit on the number there is no hint, and the table says where the number comes from
   var bp_b = await boot({ url: EDURL, session: signedIn(), local: { formats: bp_RAN } });
@@ -5625,7 +5465,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the rows say what happened to each", /songs ·/.test(bp_rows(bp_n.w)[0].querySelector(".bd-meta").textContent) && bp_rows(bp_n.w)[1].querySelector(".bd-meta").textContent === "incomplete", bp_rows(bp_n.w).map((r) => r.textContent).join(" | "));
   check("the Build step shows the failure", bp_steps(bp_n.w) === "done,done,fail,-", bp_steps(bp_n.w));
   check("after a stop the count is gone: the message and the rows say how far it got", !visible(bp_n.w, "bdTally"));
-  check("only Close is offered: no Support me, no report link", visible(bp_n.w, "createCloseRow") && !visible(bp_n.w, "createDonate") && !visible(bp_n.w, "mainReportHint") && !visible(bp_n.w, "createSupport"));
+  check("only Close is offered: no report link", visible(bp_n.w, "createCloseRow") && !visible(bp_n.w, "mainReportHint"));
   var bp_h = await bp_fail("hang", { answerMs: 200 });
   check("no answer at all reads the same", /^Spotify stopped answering/.test(bp_h.card), bp_h.card);
   var bp_r = await bp_fail(429);
@@ -5799,7 +5639,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var nv_card = nv_b.document.getElementById("updateCard");
   check("a different version, with nothing going on: the page does not load again by itself, and asks for no fresh copies", nv_b.__reloaded === 0 && nv_b.__fetched.filter((f) => f.cache === "reload").length === 0);
   check("a card says Update available, the version running and the new one, and Get it", !nv_card.hidden && /Update available/.test(nv_card.textContent) && nv_b.document.getElementById("updateFrom").textContent === nv_version && nv_b.document.getElementById("updateTo").textContent === "2099-01-01a" && nv_b.document.getElementById("updateGet").textContent === "Get it");
-  check("the card sits in the Support me box, which hides Support me and its note while it shows", nv_card.parentElement.id === "supportBox" && nv_b.document.documentElement.classList.contains("update-ready") && /\.update-ready #supportButton, \.update-ready #supportCaption \{ display: none; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  check("the card sits in the bottom corner, which shows only while it does", nv_card.parentElement.id === "supportBox" && nv_b.document.documentElement.classList.contains("update-ready"));
   check("no message under the bar about it", !/newer version|update available/i.test(capText(nv_b)));
   nv_b.document.getElementById("updateGet").click();
   await new Promise((r) => setTimeout(r, 200));
@@ -5828,9 +5668,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var nv_v = await boot({ url: EDURL, session: {}, local: { formats: MINI, connectedBefore: "1", backupMode: "manual" }, fetchOptions: {}, before: (w) => w.document.documentElement.classList.add("updating") });
   await new Promise((r) => setTimeout(r, 3000));
   check("a start that does not end ready (no sign-in) takes the card down quietly, so the problem shows as usual", !nv_v.document.documentElement.classList.contains("updating") || nv_v.document.getElementById("updateScreen").classList.contains("us-out"));
-  var nv_c = await nv_make({ serverVersion: "2099-01-01a" }, {}, { donateHidden: "1" });
-  await nv_check(nv_c);
-  check("with Support me hidden by choice, the card still shows", !nv_c.document.getElementById("updateCard").hidden && nv_c.document.documentElement.classList.contains("donate-hidden") && nv_c.document.documentElement.classList.contains("update-ready"));
   for (const [label, fetchOptions] of [["no connection", { versionFail: true }], ["a missing file", { versionStatus: 404, serverVersion: "Not found" }], ["an error page instead of a stamp", { serverVersion: "<html><body>Not found</body></html>" }], ["an empty answer", { serverVersion: "" }]]) {
     const w = await nv_make(fetchOptions);
     await nv_check(w);

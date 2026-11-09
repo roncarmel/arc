@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-08zq">
-<script src="theme.js?v=2026-11-08zq"></script>
+<meta name="app-version" content="2026-11-08zr">
+<script src="theme.js?v=2026-11-08zr"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -77,7 +77,7 @@
   a.button-link { display: inline-flex; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--button); background: var(--button); color: var(--on-button, #fff); text-decoration: none; }
   pre.report-preview { min-height: 0; font-size: 12.5px; margin: 6px 0; }
   .report-hint { margin: 6px 0; }
-  #startupProblem { z-index: 2000; }   /* above everything, including the Support me panel */
+  #startupProblem { z-index: 2000; }   /* above everything */
   #startupProblem[hidden] { display: none; }
   /* Back from Spotify's sign-in: a screen until the editor is ready (see the connecting screen in app.js). Above the page, below the startup popup. In the setup page's look
      (decided by Ron, 2026-11-08, mockups/connecting-new.html): the welcome band where the setup page has it, the line to Spotify's mark with a spinner where the 1 was, a title, and the steps in a card.
@@ -255,21 +255,12 @@
   body.minimal #buildRow { justify-content: center; }
   body.minimal #pythonNote, body.minimal #spotifyNote { text-align: center; }
   button.linklike { background: none; border: none; padding: 0; color: var(--accent); font-weight: normal; text-decoration: underline; }
-  #supportBox { position: fixed; right: 16px; bottom: 16px; z-index: 1001; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 8px; width: max-content; max-width: min(240px, calc(100vw - 32px)); }
-  #supportButton { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--button);
-    background: var(--button); color: var(--on-button, #fff); font-weight: 600; text-decoration: none; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28); }
-  #supportButton img { width: 22px; height: auto; aspect-ratio: 285 / 229; display: block; animation: kofi-wiggle 3s infinite; }
-  /* The same little wiggle Ko-fi's own button does: the cup rests, then grows and wiggles for a moment every 3 seconds. */
-  @keyframes kofi-wiggle { 0% { transform: rotate(0) scale(1); } 60% { transform: rotate(0) scale(1); } 75% { transform: rotate(0) scale(1.12); } 80% { transform: rotate(0) scale(1.1); }
-    84% { transform: rotate(-10deg) scale(1.1); } 88% { transform: rotate(10deg) scale(1.1); } 92% { transform: rotate(-10deg) scale(1.1); } 96% { transform: rotate(10deg) scale(1.1); } 100% { transform: rotate(0) scale(1); } }
-  @media (prefers-reduced-motion: reduce) { #supportButton img { animation: none; } }
-  #supportCaption { margin: 0 0 0 auto; width: max-content; max-width: 160px; box-sizing: border-box; padding: 0; color: var(--muted); font-size: 0.72rem; line-height: 1.35; text-align: right; text-wrap: balance; }   /* above the button, its right edge level with the button's, and four lines at most, narrow enough to stay clear of the silence tags that hang out of the page */
-  /* Update available: a capsule in place of Support me and its note (showUpdateCard in app.js; a capsule so a phone's rounded screen corners do not clip it), light pink with a pink edge and glow, the gift in a pink circle, Get it */
+  #supportBox { position: fixed; right: 16px; bottom: 16px; z-index: 1001; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 8px; width: max-content; max-width: min(340px, calc(100vw - 32px)); }
+  html:not(.update-ready) #supportBox { display: none; }   /* it holds only the update card now */
+  /* Update available: a capsule at the bottom right, or a strip along the bottom (showUpdateCard in app.js; a capsule so a phone's rounded screen corners do not clip it), light pink with a pink edge and glow, the gift in a pink circle, Get it */
   #updateCard { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 999px; box-sizing: border-box; background: color-mix(in srgb, var(--accent) 12%, var(--bg)); border: 1.5px solid var(--accent);
     box-shadow: 0 6px 24px color-mix(in srgb, var(--accent) 35%, transparent); animation: uc-arrive 0.45s var(--ease-out) both; }
   #updateCard[hidden] { display: none; }
-  .update-ready #supportButton, .update-ready #supportCaption { display: none; }
-  .update-ready #supportBox { max-width: min(340px, calc(100vw - 32px)); }
   #updateCard .uc-icon { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; }
   #updateCard .uc-text { flex: 1; min-width: 0; line-height: 1.3; }
   #updateCard .uc-title { display: block; color: var(--fg); font-size: 0.95rem; font-weight: 700; }
@@ -279,16 +270,14 @@
   @keyframes uc-arrive { from { opacity: 0; transform: translateY(12px); } }
   @media (prefers-reduced-motion: reduce) { #updateCard { animation: none; } }
   @media (max-width: 520px) { #supportBox { right: 8px; bottom: 8px; } }
-  /* When the corner would reach the app (the page is 720px wide, and silence tags hang out of its right edge), the button and note go in a strip along the bottom instead. */
+  /* When the corner would reach the app (the page is 720px wide, and silence tags hang out of its right edge), the update card goes in a strip along the bottom instead. */
   @media (max-width: 1183px) {
-    main { padding-bottom: calc(var(--tip-h, 96px) + 4px); }   /* the strip's own height, so the last thing on the page sits just above it */
+    .update-ready main { padding-bottom: calc(var(--tip-h, 96px) + 4px); }   /* the strip's own height, so the last thing on the page sits just above it */
     #supportBox { left: 0; right: 0; bottom: 0; width: auto; box-sizing: border-box; max-width: none; flex-direction: row-reverse; align-items: center; justify-content: flex-start; gap: 12px; padding: 40px 12px calc(10px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, var(--bg) 0%, var(--bg) 55%, transparent 100%); pointer-events: none; }
     #supportBox { padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }   /* viewport-fit=cover: keep clear of a notch on a phone turned sideways */
     #supportBox > * { pointer-events: auto; }
-    #supportButton { flex: none; white-space: nowrap; }
     .update-ready #supportBox { max-width: none; padding-top: 28px; }
     #updateCard { flex: 1; max-width: 520px; margin-left: auto; }
-    #supportCaption { flex: 0 1 auto; width: auto; min-width: 0; max-width: 52ch; padding: 0; background: none; box-shadow: none; text-align: right; text-wrap: balance; }   /* lines of about the same length, and never one long line */
   }
 
   /* the format editor */
@@ -309,7 +298,7 @@
   #formatEditor .fe-trigger.fe-saving .fe-saveicon { opacity: 1; }
   #formatEditor .fe-trigger.fe-saving > .fe-icon { opacity: 0; }
   body.minimal #feAppMenuButton.fe-saving { border-color: transparent; background-clip: padding-box; }   /* the cloud sits inside the border, so a pink border showed as a rim around it */
-  /* the pointer that says recipes save by themselves (showSaveTip in editor.js) and the one-pixel blur over everything but the menu button, the Support me corner included */
+  /* the pointer that says recipes save by themselves (showSaveTip in editor.js) and the one-pixel blur over everything but the menu button, the update card included */
   .fe-st-blur { position: fixed; inset: 0; z-index: 1030; backdrop-filter: blur(1px); -webkit-backdrop-filter: blur(1px); pointer-events: none; }
   .fe-st-tip { position: fixed; z-index: 1031; box-sizing: border-box; width: 250px; padding: 14px 16px 12px; border-radius: 14px; background: var(--bg); color: var(--fg); border: 1px solid var(--line);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08); font-size: 0.95rem; line-height: 1.4; text-align: left; }
@@ -500,7 +489,7 @@
   .fe-dialog p { margin: 0 0 12px; }
   .fe-dialog .row { margin-top: 4px; }
   #feNewFormatDialog { padding-top: calc(16px + 2 * 44px); }   /* centered one button height lower, so the new tab above it stays in sight with a phone's keyboard up */
-  #fePauseDialog { z-index: 1040; }   /* over the Support me button, which is dimmed with the rest while the app waits */
+  #fePauseDialog { z-index: 1040; }   /* over the update card, which is dimmed with the rest while the app waits */
   .fe-pause-dialog { text-align: center; outline: none; display: flex; flex-direction: column; }
   .fe-pause-dialog h3 { margin-bottom: 4px; }
   .fe-pause-ring { --left: 100%; width: 184px; height: 184px; margin: 8px auto 16px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -1095,10 +1084,6 @@
   #createDialog .bd-problems { margin: 4px 0 0; padding-left: 18px; font-size: 0.9rem; }
   #createDialog .bd-problems li { margin: 0 0 8px; }
   #createDialog .bd-problems li:last-child { margin-bottom: 0; }
-  #createDialog .bd-support { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 10px; align-items: start; border: 1px solid var(--accent-tint-border); background: var(--accent-tint); border-radius: 16px; padding: 12px; margin: 0 0 10px; }   /* after a build: the thank-you, where it is seen */
-  #createDialog .bd-support .bd-face { border-radius: 50%; display: block; }   /* Ron, since the box speaks in his voice */
-  #createDialog .bd-support p { margin: 0 0 8px; line-height: 1.4; color: var(--fg); }
-  #createDialog .bd-support button { min-height: 36px; }
   #createDialog .bd-open { margin: 0 0 12px; text-align: center; }
   #createDialog .bd-open a { display: inline-block; text-decoration: none; background: var(--button); color: var(--on-button, #fff); font-weight: 700; padding: 10px 22px; border-radius: 999px; }
   #createDialog .bd-info { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; margin: 0 0 8px; font-size: 0.86rem; line-height: 1.35; color: var(--fg); }
@@ -1157,19 +1142,9 @@
   .theme-list.theme-up { top: auto; bottom: calc(100% + 4px); }
   /* a menu or list too close to the bottom of the screen opens upward instead */
   #formatEditor .fe-pop.fe-up { top: auto; bottom: calc(100% + 4px); }
-  /* the Support me panel: Ko-fi's own page in a frame, above the button, so nothing of Ko-fi's code runs in this page */
-  #kofiDim { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 1110; background: rgba(0, 0, 0, 0.65); }
-  #kofiPanel { position: fixed; right: 16px; bottom: 16px; width: 364px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); z-index: 1111; display: flex; flex-direction: column; background: #fff; color: #444; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 36px rgba(0, 0, 0, 0.3); }
-  #kofiPanel .kofi-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; padding: 6px 10px; font-size: 0.85rem; line-height: 1.25; }   /* a line of text centered over Ko-fi's card, and the x at the right */
-  #kofiPrompt { grid-column: 2; text-align: center; font-weight: bold; }
-  #kofiClose { grid-column: 3; justify-self: end; }
-  #kofiPanel .kofi-bar button { background: none; border: none; color: #444; font-size: 1.4rem; line-height: 1; padding: 0 6px; min-height: 36px; font-weight: normal; }
-  #kofiFrameHolder { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-  #kofiFrameHolder iframe { flex: 1; width: 100%; border: none; background: #fff; }
-  @media (max-width: 520px) { #kofiPanel { left: 8px; right: 8px; bottom: 8px; width: auto; max-width: none; max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); } }   /* on a phone it spans the width with equal margins, not right-aligned with a wider gap at the left */
   /* popups come and go with motion (initMotion in editor.js): one that is hidden stays drawn while it fades out, and cannot be touched */
   .fx-leaving[hidden], .fx-collapsing[hidden] { display: block !important; }
-  .app-overlay.fx-leaving[hidden], #kofiPanel.fx-leaving[hidden], #reconnectScreen.fx-leaving[hidden] { display: flex !important; }
+  .app-overlay.fx-leaving[hidden], #reconnectScreen.fx-leaving[hidden] { display: flex !important; }
   .fx-leaving, .fx-ghost { pointer-events: none; }
   /* the Build button carries the name of the format it will build, cut short with an ellipsis when it does not fit */
   #create { max-width: 100%; min-width: 0; }
@@ -1177,7 +1152,7 @@
   #create .build-verb { flex: none; white-space: nowrap; }
   #create .build-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; opacity: 0.9; }
   #formatEditor .fe-toprow.fe-noformats .fe-newformat { order: -1; }
-  /* the bottom strip and the corner note catch clicks only on the button and the words, never on the empty space around them */
+  /* the bottom strip catches clicks only on the update card, never on the empty space around it */
   #supportBox { pointer-events: none; }
   #supportBox > * { pointer-events: auto; }
   /* the card's header: the silence between segments, then Duplicate and Delete together at the right */
@@ -1228,9 +1203,9 @@
      small controls grow a touch; and the playlist name in a segment does nothing of its own, because the whole segment lights up */
   @media (hover: hover) {
     #formatEditor .fe-step, #formatEditor .fe-more, #formatEditor .fe-grip { transition: transform 0.12s var(--ease-out); }
-    button:not(:disabled):hover, a.button-link:hover, #supportButton:hover { filter: brightness(1.12); outline: 1px solid var(--button); outline-offset: -1px; }
+    button:not(:disabled):hover, a.button-link:hover { filter: brightness(1.12); outline: 1px solid var(--button); outline-offset: -1px; }
     @supports (color: color-mix(in srgb, red 50%, white)) {
-      button:not(:disabled):hover, a.button-link:hover, #supportButton:hover { outline-color: color-mix(in srgb, var(--button) 50%, #fff); }
+      button:not(:disabled):hover, a.button-link:hover { outline-color: color-mix(in srgb, var(--button) 50%, #fff); }
     }
     /* the selected tab: its own 1px border turns lighter, flush with its edge, and so do the sides of the arrow under it, drawn inside the arrow's own shape, so nothing gets bigger */
     #formatEditor .fe-tab[aria-pressed="true"]:hover { outline: none; --ring: var(--button); border-color: var(--ring); }
@@ -1262,7 +1237,6 @@
     #formatEditor .fe-notice-pause .fe-notice-more:hover .fe-more-word { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
     button.linklike:hover, #formatEditor .fe-linkbutton:hover { outline: none; filter: brightness(1.25); text-decoration-thickness: 2px; }
     #formatEditor .fe-item:not(.fe-static):hover, #formatEditor .fe-option:hover { filter: none; outline: none; background: rgba(127, 127, 127, 0.18); }
-    #kofiPanel .kofi-bar button:hover { filter: none; outline: none; background: rgba(0, 0, 0, 0.08); }
     details > summary:hover { filter: brightness(1.2); }
     /* the pencil on the selected tab lights up, since pressing the tab renames the format */
     #formatEditor .fe-tab[aria-pressed="true"]:hover .fe-icon { background: rgba(255, 255, 255, 0.3); box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3); border-radius: 50%; }
@@ -1270,8 +1244,6 @@
   /* a notice that must not be missed: a pink outline, the same weight all around, and a faint pink fill */
   .notice { margin: 0 0 14px; padding: 12px 16px; border: 1px solid var(--accent-tint-border, rgba(255, 56, 184, 0.5)); border-radius: 12px; background: rgba(255, 56, 184, 0.08); color: var(--fg); }
   .notice strong { display: block; margin-bottom: 2px; font-size: 1.1rem; }
-  /* the Support me button, its note, and the one in the Build popup, for someone who chose to hide them */
-  .donate-hidden:not(.update-ready) #supportBox, .donate-hidden #createDonate, .donate-hidden #supportButton, .donate-hidden #supportCaption { display: none !important; }
   /* popups that are not dialogs: in dark mode a black shadow on a near-black page cannot be seen, so they also get a faint light edge and a surface a touch lighter than the page */
   @media (prefers-color-scheme: dark) {
     #formatEditor .fe-pop, .theme-list { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 6px 14px rgba(0, 0, 0, 0.5), 0 18px 40px rgba(0, 0, 0, 0.6); background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)); }
@@ -1376,7 +1348,7 @@
   .ms-more svg { width: 18px; height: 18px; }
   .ms-more-wrap { position: relative; flex: none; display: flex; margin: 0 -8px 0 -6px; }
   .ms-more-wrap .ms-more { margin: 0 !important; }
-  .ms-songmenu { width: 252px; max-width: calc(100vw - 48px); z-index: 6; scroll-margin: 12px 0 104px; }   /* scrolled clear of the Support me corner (SONG_MENU_FOOT) */
+  .ms-songmenu { width: 252px; max-width: calc(100vw - 48px); z-index: 6; scroll-margin: 12px; }
   .ms-songmenu.ms-up { top: auto; bottom: calc(100% + 6px); }
   #msDialog .ms-songmenu .ms-mi { display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%; box-sizing: border-box; margin: 0; min-height: 0; padding: 9px 10px; border: 0; border-radius: 9px; background: none; box-shadow: none; color: var(--fg); font: inherit; font-size: 0.9rem; font-weight: 600; text-align: left; text-decoration: none; cursor: pointer; }
   #msDialog .ms-songmenu .ms-mi:hover:not(:disabled) { background: var(--accent-tint); }
@@ -1606,8 +1578,6 @@
   // If the page's own script never starts (a file that did not load, an old copy kept by the browser, an error), the page says so,
   // with the first error, instead of leaving buttons that do nothing. The script marks itself started as the first thing it does.
   window.pageStart = { started: false, errors: [] };
-  // A person who hid the Support me button should not see it flash up while the page loads (the checkbox for people who have supported, in More options).
-  try { if (localStorage.getItem("donateHidden")) document.documentElement.classList.add("donate-hidden"); } catch (e) { /* no saved choice to read */ }
   window.addEventListener("error", function (e) {
     var t = e.target;
     var file = function (s) { return String(s).split("/").pop().split("?")[0]; };
@@ -1972,11 +1942,6 @@
           </div>
         </div>
         </details>
-        <details class="gd-topic" data-icon="eyeoff"><summary>Hide support button</summary>
-        <p class="muted">The Support me button stays visible until you have... supported me 🙂. If this app has been helpful to you, please give whatever feels right. Already did? Thank you! Check the box and the button will leave you alone. This runs on the honor system, so nobody’s looking, and the button waits patiently.</p>
-        <label class="choice-row"><input type="checkbox" id="donateHideBox"> <span>I have supported you!</span></label>
-        <p id="donateHiddenMessage" class="muted" hidden>The Support me button is hidden. Thank you for your support!</p>
-        </details>
         <button id="homePrivacy" class="hp-more-item" type="button" data-icon="lock"><span class="hp-more-label">Privacy</span><svg class="hp-more-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
         <button id="homeReport" class="hp-more-item" type="button" data-icon="flag"><span class="hp-more-label">Report a problem</span><svg class="hp-more-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
         <a id="homeFeedback" class="hp-more-item" target="_blank" rel="noopener noreferrer" data-icon="chat" hidden><span class="hp-more-label">Feedback and questions</span><svg class="hp-more-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
@@ -2048,13 +2013,6 @@
         <div id="output" class="bd-status" hidden></div>
         <div id="actionMessage" aria-live="polite"></div>
         <p id="createOpen" class="bd-open" hidden><a id="createOpenLink" href="https://open.spotify.com/" target="_blank" rel="noopener noreferrer">Open in Spotify</a></p>
-        <div id="createSupport" class="bd-support support-prompt" hidden>
-          <img class="bd-face" src="ron.jpg" alt="Ron" width="48" height="48">
-          <div>
-            <p>If this app has been helpful to you, I’d be grateful for your support, in whatever amount feels right.</p>
-            <button id="createDonate" class="primary" type="button"><img src="cup-border.png" alt="" width="22" height="18"><span class="btn-label">Support me</span></button>
-          </div>
-        </div>
         <p id="mainReportHint" class="report-hint muted" hidden>If it keeps happening, <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">report this problem</a>.</p>
         <div id="confirmBox" hidden>
           <p id="confirmText" class="bd-summary"></p>
@@ -2095,18 +2053,11 @@
   </div>
   </div>
   <div id="supportBox">
-    <a id="supportButton" href="https://ko-fi.com/roncarmel" target="_blank" rel="noopener noreferrer" title="Support me on Ko-fi" aria-haspopup="dialog" aria-expanded="false"><img src="cup-border.png" alt="" width="22" height="18"><span>Support me</span></a>
-    <p id="supportCaption">Everyone is welcome to use this app. If it’s been helpful, please give whatever feels right to you.</p>
     <div id="updateCard" role="status" hidden>
       <span class="uc-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg></span>
       <div class="uc-text"><b class="uc-title">Update available</b><span class="uc-versions"><span id="updateFrom"></span> → <em id="updateTo"></em></span></div>
       <button id="updateGet" type="button" aria-label="Get the update">Get it</button>
     </div>
-  </div>
-  <div id="kofiDim" hidden></div>
-  <div id="kofiPanel" role="dialog" aria-label="Support me on Ko-fi" hidden>
-    <div class="kofi-bar"><span id="kofiPrompt">Choose any amount that feels right to you.</span><button id="kofiClose" type="button" aria-label="Close">&times;</button></div>
-    <div id="kofiFrameHolder"></div>
   </div>
 
   <footer class="debug">
@@ -2222,7 +2173,7 @@
       <p>Playlists created by this app stay off your Spotify profile and out of search, though anyone with a playlist's link can still open it. To change that, use Make private in the Spotify app.</p>
       </details>
       <details class="gd-topic" data-icon="globe"><summary>Who the page talks to</summary>
-      <p>Spotify, for everything about your music. The page's code comes from GitHub, and the Python it runs comes from a public code host (jsDelivr). Ko-fi's page loads only if you <span data-act>press</span> Support me, and the report form opens only if you choose to report a problem<span id="privacyFeedbackWho" hidden>, and the feedback form only if you choose to send feedback</span>.</p>
+      <p>Spotify, for everything about your music. The page's code comes from GitHub, and the Python it runs comes from a public code host (jsDelivr). The report form opens only if you choose to report a problem<span id="privacyFeedbackWho" hidden>, and the feedback form only if you choose to send feedback</span>.</p>
       <p id="privacyWaitRelay" hidden>When Spotify limits how often this app may ask it for things, it says how long to wait, but in a way a web page cannot read. So the page asks once more through a small relay on Cloudflare, run by the developer of this app, which can read it. That request carries your temporary Spotify sign-in, which expires within an hour, and which kind of request was refused (for a playlist, its Spotify ID), and nothing else. The relay passes it to Spotify, sends back only the wait, and keeps nothing.</p>
       </details>
       <details class="gd-topic" data-icon="swap" id="privacyMusicSharing"><summary>Music sharing</summary>
@@ -2231,10 +2182,7 @@
       <p>A shared playlist's page lists its songs. When you <span data-act>click</span> a song's play button, the app asks Deezer for a 30 second preview of that one song, sending only its recording code. Deezer also sees your internet address, as any site you load does. Nothing goes to Deezer before that.</p>
       </details>
       <details class="gd-topic" data-icon="chart"><summary>Anonymous visit counts</summary>
-      <p>The page keeps simple counts, to see how many people use this app and how it is used. It counts visits with GoatCounter, a service that uses no cookies and does not use unique identifiers to follow people around the web. It records that the page was opened, with the browser, screen size, country, and the site you came from, but not who you are. It also counts a few actions: the first time a browser connects to Spotify, how many playlists get created, when Support me is opened, and the kind of connection problem that happened. It never receives playlist names, recipes, song titles, or your Client ID. A small marker in this browser remembers that your first connection was counted, so it is counted once.</p>
-      </details>
-      <details class="gd-topic" data-icon="heart"><summary>Support me</summary>
-      <p>Ko-fi handles any support you give, along with its payment providers, so this app never sees your payment details. If you check "I have supported you!" in <span class="ui">More options</span>, that choice is saved in this browser and goes nowhere else.</p>
+      <p>The page keeps simple counts, to see how many people use this app and how it is used. It counts visits with GoatCounter, a service that uses no cookies and does not use unique identifiers to follow people around the web. It records that the page was opened, with the browser, screen size, country, and the site you came from, but not who you are. It also counts a few actions: the first time a browser connects to Spotify, how many playlists get created, and the kind of connection problem that happened. It never receives playlist names, recipes, song titles, or your Client ID. A small marker in this browser remembers that your first connection was counted, so it is counted once.</p>
       </details>
       <details class="gd-topic" data-icon="flag"><summary>Problem reports</summary>
       <p>A problem report is sent only if you choose to send it, and it goes only to me, the developer of this app. The form opens in a new tab, and nothing is sent until you submit it there. The details attached are shown in <span class="ui">More options</span> first: the app version, browser, window size, last error, and recent steps. Your sign-in, Client ID, playlist names, and song titles are never included.</p>
@@ -2271,10 +2219,10 @@
     <div id="msFoot" hidden></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-08zq"></script>
-<script src="editor.js?v=2026-11-08zq"></script>
-<script src="shared-spotify.js?v=2026-11-08zq"></script>
-<script src="app.js?v=2026-11-08zq"></script>
-<script src="sharing.js?v=2026-11-08zq"></script>
+<script src="formats.js?v=2026-11-08zr"></script>
+<script src="editor.js?v=2026-11-08zr"></script>
+<script src="shared-spotify.js?v=2026-11-08zr"></script>
+<script src="app.js?v=2026-11-08zr"></script>
+<script src="sharing.js?v=2026-11-08zr"></script>
 </body>
 </html>

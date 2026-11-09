@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-08zq";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-08zr";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -338,12 +338,11 @@ function plainText(text) { return String(text).replace(/[\u2068\u2069]/g, ""); }
 const EASE_OUT = "cubic-bezier(0.2, 0, 0, 1)", EASE_IN = "cubic-bezier(0.4, 0, 1, 1)";
 function motionAllowed(el) { return !!(el && el.animate) && typeof matchMedia === "function" && !matchMedia("(prefers-reduced-motion: reduce)").matches; }
 
-// How each kind of thing comes and goes: a dim backdrop fades; a popup's box fades while it rises a little and grows to full size; the Support me
-// panel rises from its corner; a menu or list grows out of the button that opened it. Leaving is the same, backward and quicker.
+// How each kind of thing comes and goes: a dim backdrop fades; a popup's box fades while it rises a little and grows to full size;
+// a menu or list grows out of the button that opened it. Leaving is the same, backward and quicker.
 const MOTION = {
   dim: { frames: [{ opacity: 0 }, { opacity: 1 }], in: 200, out: 150 },
   box: { frames: [{ opacity: 0, transform: "translateY(8px) scale(0.98)" }, { opacity: 1, transform: "none" }], in: 200, out: 150 },
-  panel: { frames: [{ opacity: 0, transform: "translateY(16px)" }, { opacity: 1, transform: "none" }], in: 220, out: 150 },
   menu: { in: 140, out: 100 },   // its frames depend on where it is: menuFrames
 };
 function playMotion(el, kind, coming) {
@@ -430,7 +429,7 @@ function bringOpenedIntoView(details) {
   if (by > 0) window.scrollBy({ top: by, behavior: motionAllowed(details) ? "smooth" : "auto" });
 }
 
-// Something that stays in the page and is shown and hidden with its hidden attribute (the build and menu popups, the Support me panel, the sign-in
+// Something that stays in the page and is shown and hidden with its hidden attribute (the build and menu popups, the sign-in
 // screen, the color list). The attribute changes at once, so the app always knows what is open; while it fades out, the class fx-leaving keeps it drawn.
 function fadeWithHidden(el, kind, box, boxKind) {
   if (!el || typeof MutationObserver === "undefined") return;
@@ -459,8 +458,6 @@ function initMotion() {
   fadeWithHidden($("createOverlay"), "dim", $("createDialog"), "box");
   fadeWithHidden($("infoOverlay"), "dim", $("infoDialog"), "box");
   fadeWithHidden($("reconnectScreen"), "dim", document.querySelector("#reconnectScreen .rc-card"), "box");
-  fadeWithHidden($("kofiDim"), "dim");
-  fadeWithHidden($("kofiPanel"), "panel");
   fadeWithHidden($("themeList"), "menu");
   fadeWithHidden($("premiumWhyText"), "menu");
   fadeWithHidden($("recipeWhatText"), "menu");
@@ -946,7 +943,7 @@ function saveTipQuiet() {
   if (editor.appMenu) return false;
   const active = document.activeElement;
   if (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return false;
-  if (document.querySelector(".fe-overlay:not(.fx-ghost):not([hidden]), .fe-pop:not(.fx-ghost), #createOverlay:not([hidden]), #infoOverlay:not([hidden]), #reconnectScreen:not([hidden]), #kofiPanel:not([hidden])")) return false;
+  if (document.querySelector(".fe-overlay:not(.fx-ghost):not([hidden]), .fe-pop:not(.fx-ghost), #createOverlay:not([hidden]), #infoOverlay:not([hidden]), #reconnectScreen:not([hidden])")) return false;
   return Date.now() - notices.lastEditAt >= saveTip.quietMs;
 }
 function trySaveTip() {

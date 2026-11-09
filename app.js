@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08zq";
+const APP_VERSION = "2026-11-08zr";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -81,7 +81,7 @@ function guarded(name, work) {
 // Is there a newer version of the page than the one that is running? version.txt, on the site, holds only the stamp of the version uploaded last, so asking costs a few bytes.
 // It is asked a few seconds after a clean start, and whenever the person comes back to the tab or the window (at most every 30 seconds), so leaving and coming back is a manual
 // check. Not when the app menu opens: the card arrived behind the open menu, and the first click on it only closed the menu (changed by Ron, 2026-11-07). Newer means different, since stamps do not sort once there are more than 26 in a day. The page never loads again by itself: a card at the bottom of the screen,
-// in place of Support me, says Update available with both stamps and Get it (decided by Ron, 2026-11-05: updating should feel good, so the person does it). A running page is
+// at the bottom right, says Update available with both stamps and Get it (decided by Ron, 2026-11-05: updating should feel good, so the person does it). A running page is
 // never harmed by an upload: it keeps what it loaded, and the Python engine is read once, at the start.
 const versionCheck = { last: 0, everyMs: 30 * 1000, running: false, latest: "" };
 
@@ -110,7 +110,7 @@ function showUpdateCard(latest) {
   $("updateFrom").textContent = APP_VERSION;
   $("updateTo").textContent = latest;
   card.hidden = false;
-  document.documentElement.classList.add("update-ready");   // Support me and its note step aside while the card shows
+  document.documentElement.classList.add("update-ready");   // the corner, or the strip along the bottom, shows while the card does
 }
 
 function reloadForNewVersion(failed) {
@@ -1703,7 +1703,6 @@ function setBusy(flag) {
 // went wrong, what was built, and what to do; it never tries to repair anything. It can be dismissed while it is asking and once it is done
 // (the Close button, a click outside it, or Escape), but not while the app is reading or creating.
 let createStage = "closed";   // closed, planning, question, creating or done
-let createSucceeded = false;  // the playlists were all made, so the popup may offer Donate
 
 function setCreateStage(stage) {
   createStage = stage;
@@ -1711,7 +1710,6 @@ function setCreateStage(stage) {
   $("bdBusyRow").hidden = stage !== "planning" && stage !== "creating";
   setLabel($("bdBusy"), stage === "creating" ? "Building…" : "Planning…");
   $("createCloseRow").hidden = stage !== "done";
-  $("createDonate").hidden = stage !== "done" || !createSucceeded;   // only after a success, never beside an error or a problem
 }
 
 function openCreateDialog(keys) {
@@ -1780,7 +1778,6 @@ function resetBuildPopup() {
   $("planText").textContent = "";
   for (const id of ["bdPickWhy", "bdPickHead", "bdPick"]) $(id).hidden = true;
   $("createNotes").hidden = true;
-  $("createSupport").hidden = true;
   $("createOpen").hidden = true;
 }
 
@@ -2838,7 +2835,6 @@ async function startCreate(keys = null) {
   resetBuildPopup();
   clearReportHints("mainReportHint");
   $("editorNote").textContent = "";
-  createSucceeded = false;
   const wanted = selectedKeys();
   openCreateDialog(wanted);
   setBuildSteps("read");
@@ -3013,7 +3009,6 @@ async function createFromPlan(plan) {
     if (coverBlocked) notes.push(`The cover art was not added, because your Spotify sign-in does not include permission to upload images. Sign in again with Change Spotify login in More options to allow it. Playlists you build after that will get the cover.`);
     else if (coverUnloaded) notes.push("The cover art could not be loaded, so the playlists have Spotify's default cover.");
     else if (coverFailed) notes.push(`Spotify would not accept the cover art for ${plural(coverFailed, "playlist")}.`);
-    createSucceeded = created > 0;
     if (created > 0) countEvent("playlists-created", String(created));
     await glideToTop(body);   // the finale plays at the top, so it starts once the list is back there
     showFinale(created, planned.slice(0, created).reduce((n, p) => n + (p.minutes || 0), 0));
@@ -3022,7 +3017,6 @@ async function createFromPlan(plan) {
     $("createOpen").hidden = !createdIds.length;
     const showNotes = () => { $("createNotes").textContent = notes.join("\n\n"); $("createNotes").hidden = !notes.length; };
     showNotes();
-    $("createSupport").hidden = donateHiddenChoice();   // someone who hid the Donate button is not asked again
     await loadMyPlaylists();
     // The mark in the description is how this app finds its own playlists later. If Spotify's list does not show it, say so.
     const marked = new Set(playlists.filter((p) => p.madeByApp).map((p) => p.id));
@@ -3123,30 +3117,8 @@ async function removeEarlier() {
 }
 
 // ---------------------------------------------------------------- start up
-// ---------------------------------------------------------------- hiding the Donate button
-// For people who have donated, on the honor system: one checkbox, nothing checked. The choice is kept in this browser only and never sent anywhere.
-// It hides the Donate button, its note, the Donate button in the Build popup, and the thank-you line after a build.
-// (An earlier version also saved "declined"; any saved value still means hidden.)
-const DONATE_KEY = "donateHidden";
-
-function donateHiddenChoice() {
-  try { return localStorage.getItem(DONATE_KEY) || ""; } catch (err) { return ""; }
-}
-
-function applyDonateChoice() {
-  const hidden = !!donateHiddenChoice();
-  document.documentElement.classList.toggle("donate-hidden", hidden);
-  $("donateHideBox").checked = hidden;
-  $("donateHiddenMessage").hidden = !hidden;
-}
-
-function setDonateChoice(choice) {
-  try { if (choice) localStorage.setItem(DONATE_KEY, choice); else localStorage.removeItem(DONATE_KEY); } catch (err) { /* it just stays as it was */ }
-  applyDonateChoice();
-}
-
-function initDonateChoice() {
-  on("donateHideBox", "change", () => setDonateChoice($("donateHideBox").checked ? "donated" : ""));
+// ---------------------------------------------------------------- the backup card, sign-in returns, saving when the page is left
+function initPageEvents() {
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && backupCardOpen) dismissBackupCard(); });
   on("backupOk", "click", () => { const radio = document.querySelector('input[name="backupMode"]:checked'); if (radio) chooseBackupMode(radio.value); else dismissBackupCard(); });
   on("backupCancel", "click", dismissBackupCard);
@@ -3168,63 +3140,6 @@ function initDonateChoice() {
   window.addEventListener("focus", () => { if (startupDone && Date.now() - versionCheck.last > versionCheck.everyMs) checkForNewVersion(); });
   refreshBackupCard();
   applyBackupMode();
-  applyDonateChoice();
-}
-
-let openDonatePanel = () => {};   // set once the page is ready; the Create popup's Donate button uses it
-
-function initDonatePanel() {
-  // The Donate button opens Ko-fi's page in a frame above it, instead of leaving this page. Only a frame is used, so none of
-  // Ko-fi's code runs here, and the frame is created only when someone first opens the panel. The link to Ko-fi in a new
-  // tab stays on the button as the fallback.
-  const MIN_HEIGHT = 400;   // the limits Ko-fi's own widget uses for its panel
-  const MAX_HEIGHT = 690;
-  const button = $("supportButton");
-  const box = $("supportBox");
-  const panel = $("kofiPanel");
-  const dim = $("kofiDim");
-  if (!button || !panel) return;
-  const handle = new URL(button.href).pathname.replace(/^\//, "");
-  const frameUrl = `https://ko-fi.com/${handle}/?hidefeed=true&widget=true&embed=true`;
-  let frame = null;
-  const place = () => {
-    // It sits in the corner, over the button and its note, and takes as much of the height as Ko-fi's page needs.
-    panel.style.height = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, window.innerHeight - 32)) + "px";
-  };
-  const open = () => {
-    place();
-    if (!frame) {
-      frame = document.createElement("iframe");
-      frame.src = frameUrl;
-      frame.title = "Support me on Ko-fi";
-      frame.setAttribute("allow", "payment *");   // lets the page inside offer Apple Pay and Google Pay, which a frame is not allowed to otherwise
-      $("kofiFrameHolder").appendChild(frame);
-    }
-    dim.hidden = false;
-    panel.hidden = false;
-    button.setAttribute("aria-expanded", "true");
-    $("kofiClose").focus();
-    logStep("donate panel opened");
-    countEvent("donate-opened");
-  };
-  let opener = button;   // focus goes back to the button that opened it (the build popup's Support me stays open behind it)
-  const close = () => {
-    if (panel.hidden) return;
-    dim.hidden = true;
-    panel.hidden = true;
-    button.setAttribute("aria-expanded", "false");
-    (opener && opener.isConnected && !opener.closest("[hidden]") ? opener : button).focus();
-    opener = button;
-  };
-  openDonatePanel = (from) => { if (panel.hidden) { opener = from || button; open(); } };
-  button.addEventListener("click", (event) => {
-    event.preventDefault();
-    if (panel.hidden) open(); else close();
-  });
-  on("kofiClose", "click", close);
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !panel.hidden) { event.preventDefault(); close(); } });
-  document.addEventListener("click", (event) => { if (!panel.hidden && !panel.contains(event.target) && !button.contains(event.target) && !(event.target.closest && event.target.closest("#createDonate"))) close(); });   // the Create popup's Donate button opens it, so that click must not close it again
-  window.addEventListener("resize", () => { if (!panel.hidden) place(); });
 }
 
 function trackTipHeight() {
@@ -3447,15 +3362,13 @@ async function main() {
   initMotion();
   smoothResize($("createDialog"), document.querySelector("#createDialog .bd-body"));
   smoothResize($("infoDialog"), $("infoSlot"));
-  on("createDonate", "click", () => openDonatePanel($("createDonate")));   // the build popup stays open behind the panel, to come back to
   on("createOverlay", "click", (event) => { if (event.target === $("createOverlay")) dismissCreateDialog(); });
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !event.defaultPrevented && !$("createOverlay").hidden && $("kofiPanel").hidden) dismissCreateDialog(); });   // an Escape that closed the guide or the Support me panel above it is not for the build popup
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !event.defaultPrevented && !$("createOverlay").hidden) dismissCreateDialog(); });   // an Escape that closed the guide above it is not for the build popup
   guarded("tip note", () => trackTipHeight());
-  guarded("donation panel", () => initDonatePanel());
   on("updateGet", "click", getUpdate);
   on("usOk", "click", closeUpdateScreen);
   document.addEventListener("keydown", (event) => { if (updateScreen && $("updateScreen").classList.contains("us-done") && (event.key === "Escape" || event.key === "Enter")) { event.preventDefault(); closeUpdateScreen(); } });
-  guarded("hiding the Donate button", () => initDonateChoice());
+  guarded("page events", () => initPageEvents());
   on("removeOld", "click", removeEarlier);
   on("removeKey", "change", updateButtons);
   on("buildAll", "click", () => startCreate(currentFormats.map((f) => f.id)));
