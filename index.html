@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-08zzb">
-<script src="theme.js?v=2026-11-08zzb"></script>
+<meta name="app-version" content="2026-11-08zzc">
+<script src="theme.js?v=2026-11-08zzc"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -264,7 +264,7 @@
   #updateCard .uc-icon { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; }
   #updateCard .uc-text { flex: 1; min-width: 0; line-height: 1.3; }
   #updateCard .uc-title { display: block; color: var(--fg); font-size: 0.95rem; font-weight: 700; }
-  #updateCard .uc-versions { color: var(--muted); font-size: 0.78rem; white-space: nowrap; }
+  #updateCard .uc-versions { display: block; color: var(--muted); font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #updateCard .uc-versions em { font-style: normal; font-weight: 700; color: var(--accent); }
   #updateGet { flex: none; min-height: 40px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--accent); color: #fff; font: inherit; font-weight: 700; white-space: nowrap; }
   @keyframes uc-arrive { from { opacity: 0; transform: translateY(12px); } }
@@ -277,7 +277,7 @@
     #supportBox { padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }   /* viewport-fit=cover: keep clear of a notch on a phone turned sideways */
     #supportBox > * { pointer-events: auto; }
     .update-ready #supportBox { max-width: none; padding-top: 28px; }
-    #updateCard { flex: 1; max-width: 520px; margin-left: auto; }
+    #updateCard { flex: 1; min-width: 0; max-width: 520px; margin: 0 auto; }   /* min-width 0: its nowrap versions pushed it past the left edge */
   }
 
   /* the format editor */
@@ -2230,10 +2230,10 @@
     <div id="msFoot" hidden></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-08zzb"></script>
-<script src="editor.js?v=2026-11-08zzb"></script>
-<script src="shared-spotify.js?v=2026-11-08zzb"></script>
-<script src="app.js?v=2026-11-08zzb"></script>
-<script src="sharing.js?v=2026-11-08zzb"></script>
+<script src="formats.js?v=2026-11-08zzc"></script>
+<script src="editor.js?v=2026-11-08zzc"></script>
+<script src="shared-spotify.js?v=2026-11-08zzc"></script>
+<script src="app.js?v=2026-11-08zzc"></script>
+<script src="sharing.js?v=2026-11-08zzc"></script>
 </body>
 </html>
