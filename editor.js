@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-08zc";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-08zd";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -149,7 +149,7 @@ function addTopicIcons(root) {
 }
 addTopicIcons();
 // Developer mode turns on and off from a hold on Arc's icon wherever it shows: each pink band (welcome, setup, connecting), home, and Arc's bar
-for (const icon of document.querySelectorAll(".wp-band-icon, #homePage .hp-brand img, #appHome img")) watchDevHold(icon);
+for (const icon of document.querySelectorAll(".wp-band-icon, #appHome img")) watchDevHold(icon);
 
 // diagonal stripes running from lower left to upper right; each stripe is as thick as its share of the mix
 function feStripes(shareA, period) {
@@ -413,9 +413,20 @@ function toggleDetailsSmoothly(details) {
   details.open = true;
   const full = details.getBoundingClientRect().height;
   const frames = (to) => [{ height: from + "px", overflow: "hidden" }, { height: to + "px", overflow: "hidden" }];
-  if (opening) { foldMotion(details, frames(full), true); return; }
+  if (opening) { foldMotion(details, frames(full), true); bringOpenedIntoView(details, full); return; }
   details._fxClosing = true;
   foldMotion(details, frames(shut), false, (finished) => { if (finished && details._fxClosing) { details._fxClosing = false; details.open = false; } });
+}
+
+// Everything else on home, and each topic in it, sits near the foot of the page: once opened, the page scrolls so what opened is in view (its
+// bottom, but never past its top). `height` is the height it will have once unfolded.
+function bringOpenedIntoView(details, height) {
+  if (!details.closest || !details.closest("#homeMore") || typeof window.scrollBy !== "function") return;
+  const gap = 16;
+  const top = details.getBoundingClientRect().top;
+  const below = top + height - (window.innerHeight - gap);
+  const by = Math.min(below, top - gap);
+  if (by > 0) window.scrollBy({ top: by, behavior: motionAllowed(details) ? "smooth" : "auto" });
 }
 
 // Something that stays in the page and is shown and hidden with its hidden attribute (the build and menu popups, the Support me panel, the sign-in
@@ -460,6 +471,11 @@ function initMotion() {
     event.preventDefault();
     toggleDetailsSmoothly(details);
   });
+  // with no motion the <details> opens by itself; it is brought into view the same way
+  document.addEventListener("toggle", (event) => {
+    const details = event.target;
+    if (details && details.tagName === "DETAILS" && details.open && !motionAllowed(details)) bringOpenedIntoView(details, details.getBoundingClientRect().height);
+  }, true);
   const ghost = (node, parent, rect) => {
     if (!motionAllowed(node)) return;
     node.classList.add("fx-ghost");
@@ -593,6 +609,7 @@ function syncEditorFromText() {
   if (editor.model && !editor.model.formats.some((f) => f.id === editor.activeId)) {
     editor.activeId = editor.model.formats.length ? editor.model.formats[0].id : null;
   }
+  if (typeof renderHomeRecipes === "function") renderHomeRecipes();   // the recipes' strip on home's builder card
   editor.panel = null;
   editor.gapPanel = null;
   editor.cardMenu = false;

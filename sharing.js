@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08zc";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08zd";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -84,8 +84,8 @@ function startOverlapIfOpen() {
 }
 
 // ---------------------------------------------------------------- Music sharing's card on Arc's home (#msCard)
-// Three covers fanned out and how many playlists others share; it opens Find playlists. Shown before the library arrives
-// (and if it never does) with the menu's line and no covers.
+// Under its name, a strip of what is waiting: the newest covers (up to four, overlapping) and how many playlists others share. It opens Shared by others.
+// Before the library arrives (and if it never does) the strip is empty and hidden.
 function renderSharingCard() {
   const card = $("msCard");
   if (!card) return;
@@ -94,21 +94,15 @@ function renderSharingCard() {
   const others = shares.filter((s) => !isMine(s));
   // covers: others' not gotten yet, then the person's own, then gotten ones (the library comes newest first)
   const order = [...others.filter((s) => !isAdded(s)), ...shares.filter(isMine), ...others.filter(isAdded)];
-  const covers = order.filter((s) => s.cover).slice(0, 3);
+  const covers = order.filter((s) => s.cover).slice(0, 4);
   const fan = $("msCardFan");
   fan.textContent = "";
-  fan.classList.toggle("ms-card-noart", !covers.length);
-  if (covers.length) covers.forEach((s) => fan.appendChild(feEl("img", { src: s.cover, alt: "", loading: "lazy" })));
-  else {   // no covers anywhere: the app icon in front of two pink cards
-    fan.appendChild(feEl("span", { class: "ms-card-blank" }));
-    fan.appendChild(feEl("span", { class: "ms-card-blank" }));
-    fan.appendChild(feEl("img", { src: "apple-touch-icon.png", alt: "" }));
-  }
+  covers.forEach((s) => fan.appendChild(feEl("img", { src: s.cover, alt: "", loading: "lazy" })));
   card.setAttribute("aria-disabled", String(!devMode()));
-  if (!devMode()) { $("msCardText").textContent = "A shared library of ceremony music, from facilitators like you."; return; }   // Coming soon outside developer mode (index.html)
+  if (!lib) { $("msCardText").textContent = ""; return; }
   $("msCardText").textContent = others.length
-    ? `${others.length} ${others.length === 1 ? "playlist" : "playlists"} shared by other facilitators. Find music for your recipes, or share your own.`
-    : "Find playlists other facilitators share, and share your own.";
+    ? `${others.length} ${others.length === 1 ? "playlist" : "playlists"} shared by others`
+    : "Nothing shared by others yet. Share the first one.";
 }
 // Once connected on a device that has never read which shares are the person's own (a new browser, a Home Screen app added again), they are read once, so the
 // card's count of playlists shared by other facilitators leaves them out. After that the list is refreshed whenever Music sharing opens (loadMine).
