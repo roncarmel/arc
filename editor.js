@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-08zd";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-08ze";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -413,18 +413,18 @@ function toggleDetailsSmoothly(details) {
   details.open = true;
   const full = details.getBoundingClientRect().height;
   const frames = (to) => [{ height: from + "px", overflow: "hidden" }, { height: to + "px", overflow: "hidden" }];
-  if (opening) { foldMotion(details, frames(full), true); bringOpenedIntoView(details, full); return; }
+  if (opening) { foldMotion(details, frames(full), true, (finished) => { if (finished) bringOpenedIntoView(details); }); return; }
   details._fxClosing = true;
   foldMotion(details, frames(shut), false, (finished) => { if (finished && details._fxClosing) { details._fxClosing = false; details.open = false; } });
 }
 
 // Everything else on home, and each topic in it, sits near the foot of the page: once opened, the page scrolls so what opened is in view (its
-// bottom, but never past its top). `height` is the height it will have once unfolded.
-function bringOpenedIntoView(details, height) {
+// bottom, but never past its top), once it has unfolded (before that the page may be too short to scroll).
+function bringOpenedIntoView(details) {
   if (!details.closest || !details.closest("#homeMore") || typeof window.scrollBy !== "function") return;
   const gap = 16;
-  const top = details.getBoundingClientRect().top;
-  const below = top + height - (window.innerHeight - gap);
+  const { top, bottom } = details.getBoundingClientRect();
+  const below = bottom - (window.innerHeight - gap);
   const by = Math.min(below, top - gap);
   if (by > 0) window.scrollBy({ top: by, behavior: motionAllowed(details) ? "smooth" : "auto" });
 }
@@ -474,7 +474,7 @@ function initMotion() {
   // with no motion the <details> opens by itself; it is brought into view the same way
   document.addEventListener("toggle", (event) => {
     const details = event.target;
-    if (details && details.tagName === "DETAILS" && details.open && !motionAllowed(details)) bringOpenedIntoView(details, details.getBoundingClientRect().height);
+    if (details && details.tagName === "DETAILS" && details.open && !motionAllowed(details)) bringOpenedIntoView(details);
   }, true);
   const ghost = (node, parent, rect) => {
     if (!motionAllowed(node)) return;
