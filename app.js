@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08u";
+const APP_VERSION = "2026-11-08v";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -287,7 +287,7 @@ function slideScreens(change, event) {
   const mine = ++slideCount;
   root.classList.add("vt-slide");
   let move;
-  const arriving = [];   // a line that comes in with the new screen waits until the screen is in place, then fades in (it looked odd sliding)
+  const arriving = [];   // the dashes of a line that comes in with the new screen fade in instead of sliding (it looked odd), ending with the slide (CSS wp-joint-in)
   try {
     move = document.startViewTransition(() => {
       const before = shownJoints();
@@ -297,9 +297,10 @@ function slideScreens(change, event) {
       root.classList.toggle("vt-back", to < from);
     });
   } catch (err) { root.classList.remove("vt-slide", "vt-back"); return; }   // change() ran, or will
-  move.ready.then(() => { if (to < 0 || to === from) move.skipTransition(); }).catch(() => {});
+  const fadeIn = () => { for (const joint of arriving.splice(0)) { joint.classList.remove("wp-joint-wait"); joint.classList.add("wp-joint-in"); } };
+  move.ready.then(() => { if (to < 0 || to === from) move.skipTransition(); fadeIn(); }).catch(() => {});
   move.finished.finally(() => {
-    for (const joint of arriving) { joint.classList.remove("wp-joint-wait"); void joint.offsetWidth; joint.classList.add("wp-joint-in"); }
+    fadeIn();   // a slide that never started
     if (slideCount === mine) root.classList.remove("vt-slide", "vt-back");   // not when a later slide has started
   });
 }
