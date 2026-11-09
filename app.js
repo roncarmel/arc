@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-09a";
+const APP_VERSION = "2026-11-09b";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -187,6 +187,8 @@ function showView(view, push = true) {
   const was = appView;
   // from one tool to the other the tool slides half a screen and fades (sharing is below the builder), Arc's bar staying put (Ron, 2026-11-08, mockups/tool-motion.html B)
   if (was !== "home" && view !== "home" && slideTools(was, view, () => switchView(was, view, push))) return;
+  // home and a tool: the whole screen slides sideways like the setup screens, a tool coming in from the right and home from the left (Ron, 2026-11-09, mockups/tool-motion.html)
+  if ((was === "home" || view === "home") && slideHome(view === "home", () => switchView(was, view, push))) return;
   switchView(was, view, push);
 }
 function switchView(was, view, push) {
@@ -217,6 +219,21 @@ function slideTools(from, to, change) {
   try { move = document.startViewTransition(change); }
   catch (err) { root.classList.remove("vt-tools", "vt-tools-up"); return false; }
   move.finished.finally(() => { if (toolSlideCount === mine) root.classList.remove("vt-tools", "vt-tools-up"); });
+  return true;
+}
+
+// Not when the browser animates a back or forward gesture itself (uaHistorySlide, set by pageHistoryMoved for its own change).
+let homeSlideCount = 0, uaHistorySlide = false;
+function slideHome(back, change) {
+  const root = document.documentElement;
+  if (uaHistorySlide || typeof document.startViewTransition !== "function" || (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) return false;
+  const mine = ++homeSlideCount;
+  root.classList.add("vt-home");
+  root.classList.toggle("vt-home-back", back);
+  let move;
+  try { move = document.startViewTransition(change); }
+  catch (err) { root.classList.remove("vt-home", "vt-home-back"); return false; }
+  move.finished.finally(() => { if (homeSlideCount === mine) root.classList.remove("vt-home", "vt-home-back"); });
   return true;
 }
 
@@ -716,7 +733,8 @@ function setupLeft() {
 }
 
 function pageHistoryMoved(event) {
-  slideScreens(() => historyMoved(), event);
+  uaHistorySlide = !!(event && event.hasUAVisualTransition);
+  try { slideScreens(() => historyMoved(), event); } finally { uaHistorySlide = false; }
 }
 function historyMoved() {
   const state = history.state;
