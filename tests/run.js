@@ -837,9 +837,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08zr" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08zs" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-08zr/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-08zs/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -2038,12 +2038,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("More options opens in a popup, open, and the menu closes", am_info("moreOptions") && am_w.document.getElementById("moreOptions").open === true && !am_w.document.getElementById("feAppMenuPanel") && am_w.document.getElementById("infoDialog").getAttribute("aria-label") === "More options");
   am_w.document.dispatchEvent(new am_w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   check("Escape closes it, and More options goes back to its place, closed as it was", am_w.document.getElementById("infoOverlay").hidden === true && !!am_w.document.getElementById("moreOptions").closest("footer") && am_w.document.getElementById("moreOptions").open === false && am_w.document.getElementById("infoSlot").children.length === 0);
-  am_w.document.getElementById("homePrivacy").click();
-  check("Privacy opens in the popup from Everything else on home, and the menu has no About this app", am_info("privacySection") && !am_w.document.getElementById("feAbout"));
-  am_w.document.getElementById("infoClose").click();
-  check("the close button closes it", am_w.document.getElementById("infoOverlay").hidden === true && !!am_w.document.getElementById("privacySection").closest("footer"));
-  am_w.document.getElementById("homePrivacy").click();
-  check("Privacy opens in the popup", am_info("privacySection"));
+  am_w.document.getElementById("homeMore").open = true;
+  check("Privacy opens in place under Everything else on home, not in the popup, and the menu has no About this app", !am_w.document.getElementById("homePrivacy") && !!am_w.document.getElementById("privacySection").closest("#homeMore") && am_w.document.getElementById("infoOverlay").hidden === true && !am_w.document.getElementById("feAbout"));
   am_w.document.getElementById("infoOverlay").dispatchEvent(new am_w.MouseEvent("click", { bubbles: true }));
   check("a tap outside it closes it", am_w.document.getElementById("infoOverlay").hidden === true);
   am_w.document.getElementById("feAppMenuButton").click();
@@ -2585,7 +2581,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("a refused /me/playlists asks the relay for /me/playlists", sr_r6.seen.length === 1 && /path=%2Fme%2Fplaylists$/.test(sr_r6.seen[0].url) && sr_r6.entry.relay.path === "/me/playlists", JSON.stringify(sr_r6.seen));
   var sr_r5 = await sr_relayRun(sr_x, { relayUrl: "" });
   check("with no relay set, nothing is asked", sr_r5.seen.length === 0 && /did not say how long to wait/.test(sr_r5.message));
-  check("Privacy describes the relay only when there is one", sr_x.document.getElementById("privacyWaitRelay").hidden === true && /temporary Spotify sign-in, which expires within an hour, and which kind of request was refused \(for a playlist, its Spotify ID\), and nothing else\. The relay passes it to Spotify, sends back only the wait, and keeps nothing\./.test(sr_x.document.getElementById("privacyWaitRelay").textContent));
+  check("Privacy describes the relay only when there is one", sr_x.document.getElementById("privacyWaitRelay").hidden === true && /one check goes through Arc's relay on Cloudflare with your temporary sign-in, and it keeps nothing\./.test(sr_x.document.getElementById("privacyWaitRelay").textContent));
   } catch (err) { areaCrashed("a record of Spotify limits", err); }
 }
   if (want("who sees the editor, and what a rate limit says")) { try {
@@ -2711,18 +2707,13 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var pv_html = fs.readFileSync(ROOT + "index.html", "utf8");
   var pv_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var pv_sec = pv_w.document.getElementById("privacySection");
-  check("the Privacy section is the last thing on the page, below More options and the hidden Developer options, in the same footer, and starts closed", !!pv_sec && pv_sec.tagName === "DETAILS" && pv_sec.open === false && pv_sec.previousElementSibling.id === "devOptions" && pv_sec.previousElementSibling.previousElementSibling.id === "moreOptions" && pv_sec.nextElementSibling === null && pv_sec.parentElement.tagName === "FOOTER" && pv_sec.querySelector("summary").textContent === "Privacy");
-  check("it covers what stays in the browser, the Spotify account, who the page talks to, Music sharing, the visit counts, problem reports, and accounts and ads", JSON.stringify(Array.from(pv_sec.querySelectorAll("details.gd-topic > summary")).filter((h) => !h.closest("[hidden]")).map((h) => h.textContent)) === JSON.stringify(["What stays in this browser", "Your Spotify account", "Who the page talks to", "Music sharing", "Anonymous visit counts", "Problem reports", "Accounts and ads"]));
+  check("Privacy is a topic under Everything else on home, closed at first, with its icon", !!pv_sec && pv_sec.tagName === "DETAILS" && pv_sec.open === false && pv_sec.parentElement.closest("#homeMore") !== null && pv_sec.getAttribute("data-icon") === "lock" && /^Privacy/.test(pv_sec.querySelector("summary").textContent.trim()));
   var pv_text = pv_sec.textContent.replace(/\s+/g, " ");
-  check("it says the app never sees the Spotify password, what it asks Spotify to allow, and that existing playlists are only read", /never sees your Spotify password/.test(pv_text) && /read your playlists, create playlists, remove playlists, and set their cover images/.test(pv_text) && /Your existing playlists are only read, never changed/.test(pv_text) && /anyone with a playlist's link can still open it/.test(pv_text));
-  check("it says a problem report goes only to the developer, only if sent, and lists what is attached and what never is", /sent only if you choose to send it, and it goes only to me, the developer of this app/.test(pv_text) && /app version, browser, window size, last error, and recent steps/.test(pv_text) && /Your sign-in, Client ID, playlist names, and song titles are never included/.test(pv_text));
-  check("it describes the counts honestly: GoatCounter, no cookies, what is recorded, the three actions, and what it never receives", /GoatCounter/.test(pv_text) && /uses no cookies/.test(pv_text) && /browser, screen size, country, and the site you came from/.test(pv_text) && /first time a browser connects to Spotify, how many playlists get created, and the kind of connection problem/.test(pv_text) && /never receives playlist names, recipes, song titles, or your Client ID/.test(pv_text));
-  check("it says what is kept in the browser and that Sign out and clear data removes it, with no Disconnect to mention", /Your Client ID, your Spotify sign-in, your recipes, the list of your playlists, your color choice, a copy of the songs from your playlists, and a count of the requests this app sends to Spotify \(to learn how often Spotify limits them\) are saved in this browser/.test(pv_text) && !/Disconnect/.test(pv_text) && /Sign out and clear data, in More options, removes everything/.test(pv_text));
-  check("About links to it, and the setup and welcome pages do not, since they leave Privacy out", pv_w.document.querySelectorAll("#about a.privacy-link").length === 1 && pv_w.document.querySelectorAll("#loginSection a.privacy-link").length === 0 && pv_w.document.querySelectorAll("#welcomePage a.privacy-link").length === 0 && /html\.page-welcome footer, /.test(pv_html) && Array.from(pv_w.document.querySelectorAll("a.privacy-link")).every((a) => a.getAttribute("href") === "#privacySection"));
+  check("it opens with what Arc stands for, then one short line per topic", /^Arc runs in your browser\. What you make here stays between this browser and your own Spotify account, unless you choose to share it\. No accounts, no ads\.$/.test(pv_sec.querySelector(".pv-lead").textContent) && JSON.stringify(Array.from(pv_sec.querySelectorAll("li > b")).map((b) => b.textContent)) === JSON.stringify(["In this browser:", "In your Spotify:", "Music sharing:", "Anonymous counts:", "Spotify waits:", "Reports and feedback:"]));
+  check("it says the app never sees the Spotify password, that the person's playlists are only read, that Sign out and clear data erases what is kept, and what reports never hold", /never sees your Spotify password/.test(pv_text) && /Your own playlists are only read, never changed/.test(pv_text) && /Sign out and clear data erases it all/.test(pv_text) && /Never your sign-in, Client ID, playlist names or songs/.test(pv_text) && /GoatCounter counts visits without cookies/.test(pv_text));
   var pv_click2 = new pv_w.MouseEvent("click", { bubbles: true, cancelable: true });
   pv_w.document.querySelector("#about a.privacy-link").dispatchEvent(pv_click2);
-  check("in the app, it opens Privacy in the popup instead", pv_click2.defaultPrevented === true && pv_w.document.getElementById("infoOverlay").hidden === false && pv_w.document.getElementById("infoSlot").firstElementChild === pv_sec);
-  pv_w.eval("closeInfo()");
+  check("About's Privacy link opens it in place on home", pv_click2.defaultPrevented === true && pv_w.document.documentElement.classList.contains("view-home") && pv_w.document.getElementById("homeMore").open === true && pv_sec.open === true && pv_w.document.getElementById("infoOverlay").hidden === true);
   // the counter script
   check("the counter is the GoatCounter script with this account's code, loaded without blocking the page", /<script data-goatcounter="https:\/\/roncarmel\.goatcounter\.com\/count" async src="https:\/\/gc\.zgo\.at\/count\.js"><\/script>/.test(pv_html));
   check("the page is always counted as /, so the one-time code in the address after Spotify's sign-in is never sent, and that return is not counted as a second visit", /window\.goatcounter = \{ path: "\/", no_onload: \/\[\?&\]\(code\|error\)=\/\.test\(location\.search\) \};/.test(pv_html) && pv_html.indexOf("window.goatcounter = {") < pv_html.indexOf("gc.zgo.at/count.js"));
@@ -2762,7 +2753,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the app page hides the Privacy section along with More options, at the bottom of the page", /body\.minimal #formatHelp, body\.minimal footer, /.test(pm_css));
   var pm_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var pm_priv = pm_w.document.getElementById("privacySection");
-  check("the Privacy section still has its part on problem reports, which is about where a report goes, but the About paragraph on privacy no longer mentions reporting", /Problem reports/.test(pm_priv.textContent) && !/report/i.test(Array.from(pm_w.document.querySelectorAll("#about p")).find((p) => /^Privacy/.test(p.textContent)).textContent));
+  check("Privacy still says where reports go, but the About paragraph on privacy does not mention reporting", /Reports/.test(pm_priv.textContent) && !/report/i.test(Array.from(pm_w.document.querySelectorAll("#about p")).find((p) => /^Privacy/.test(p.textContent)).textContent));
   
   } catch (err) { areaCrashed("privacy: hidden in minimalist mode, gap, and where reporting is mentioned", err); }
 }
@@ -2934,7 +2925,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08zr", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08zs", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3107,12 +3098,12 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("Several playlists shows an example table like Why N?, with the playlist that sets the most marked", gf_d.querySelectorAll("#gdSeveral .gd-why tbody tr").length === 3 && gf_d.querySelector("#gdSeveral tr.bd-limit").lastElementChild.textContent === "4 playlists");
   // icons: every topic heading has one (grey, pink while open in the CSS), and each popup title has its menu item's icon
   var gf_html = fs.readFileSync(ROOT + "index.html", "utf8");
-  check("every topic heading in the guide, More options, Everything else and Privacy has an icon, ahead of its text", ["guideSection", "moreOptions", "homeMore", "privacySection"].every(id => [...gf_d.querySelectorAll("#" + id + " details.gd-topic > summary")].every(s => s.querySelector(".gd-thead > .gd-ticon svg") && s.querySelector(".gd-thead > .gd-ttext").textContent.trim() && !s.querySelector(".gd-ticon").textContent)));
+  check("every topic heading in the guide, More options, Everything else and Privacy has an icon, ahead of its text", ["guideSection", "moreOptions", "homeMore"].every(id => [...gf_d.querySelectorAll("#" + id + " details.gd-topic > summary")].every(s => s.querySelector(".gd-thead > .gd-ticon svg") && s.querySelector(".gd-thead > .gd-ttext").textContent.trim() && !s.querySelector(".gd-ticon").textContent)));
   check("a heading's icon is grey, and pink while its topic is open", /details\.gd-topic > summary \.gd-ticon \{[^}]*color: var\(--muted\)/.test(gf_html) && /details\.gd-topic\[open\] > summary \.gd-ticon \{ color: var\(--accent\)/.test(gf_html));
   check("Sign out and clear data has the sign-out arrow", gf_w.eval("feIcon(\"logout\").innerHTML") === [...gf_d.querySelectorAll("#homeMore summary")].find(s => s.textContent.trim() === "Sign out and clear data").querySelector(".gd-ticon").innerHTML);
   var gf_titles = {};
-  for (const id of ["guideSection", "moreOptions", "privacySection", "reportBlock"]) { gf_w.eval(`openInfo("${id}")`); const t = gf_d.getElementById("infoTitle"); gf_titles[id] = [t.textContent, t.querySelector(".info-ticon") && t.querySelector(".info-ticon").innerHTML]; gf_d.getElementById("infoClose").click(); }
-  check("each popup title has its menu item's icon and the same text as before", JSON.stringify(Object.keys(gf_titles).map(k => gf_titles[k][0])) === JSON.stringify(["A guide for facilitators", "More options", "Privacy", "Report a problem"]) && gf_titles.guideSection[1] === gf_w.eval("feIcon(\"help\").innerHTML") && gf_titles.moreOptions[1] === gf_w.eval("feIcon(\"sliders\").innerHTML") && gf_titles.privacySection[1] === gf_w.eval("feIcon(\"lock\").innerHTML") && gf_titles.reportBlock[1] === gf_w.eval("feIcon(\"flag\").innerHTML"), JSON.stringify(gf_titles));
+  for (const id of ["guideSection", "moreOptions", "reportBlock"]) { gf_w.eval(`openInfo("${id}")`); const t = gf_d.getElementById("infoTitle"); gf_titles[id] = [t.textContent, t.querySelector(".info-ticon") && t.querySelector(".info-ticon").innerHTML]; gf_d.getElementById("infoClose").click(); }
+  check("each popup title has its menu item's icon and the same text as before", JSON.stringify(Object.keys(gf_titles).map(k => gf_titles[k][0])) === JSON.stringify(["A guide for facilitators", "More options", "Report a problem"]) && gf_titles.guideSection[1] === gf_w.eval("feIcon(\"help\").innerHTML") && gf_titles.moreOptions[1] === gf_w.eval("feIcon(\"sliders\").innerHTML") && gf_titles.reportBlock[1] === gf_w.eval("feIcon(\"flag\").innerHTML"), JSON.stringify(gf_titles));
   check("the popup title shrinks only on narrow screens, so A guide for facilitators fits on one line at 320 px", /#infoTitle \{[^}]*font-size: min\(1\.2rem, calc\(\(100vw - 140px\) \/ 11\)\)/.test(gf_html));
   } catch (err) { areaCrashed("a guide for facilitators", err); } }
 
@@ -3228,7 +3219,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // the wording
   var bt_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/<!--[\s\S]*?-->/g, "").replace(/<style>[\s\S]*?<\/style>/g, "");
   var bt_app = appSource().split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
-  check("the page calls the action Build everywhere: the only create playlists left is the Spotify permission it describes in Privacy", (bt_html.match(/create playlists/gi) || []).length === 1 && /read your playlists, create playlists, remove playlists/.test(bt_html) && !/create playlists/i.test(bt_app), String((bt_html.match(/create playlists/gi) || []).length));
+  check("the page calls the action Build everywhere, never create playlists", !/create playlists/i.test(bt_html) && !/create playlists/i.test(bt_app), String((bt_html.match(/create playlists/gi) || []).length));
   check("the messages that follow a build say built and building", /Building your playlist/.test(bt_app) && /"are"\} in your Spotify library/.test(bt_app) && /"was" : "were"\} built/.test(bt_app) && /Nothing can be built from/.test(bt_app));
   } catch (err) { areaCrashed("duplicate question, format names, empty note and equal widths", err); } }
 
@@ -3294,7 +3285,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("questions and feedback")) { try {
   // ================================================================ questions and feedback
   var qf_w0 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
-  check("until the form's address is set, nothing about it shows: not the lines in Privacy", qf_w0.document.getElementById("privacyFeedback").hidden === true && qf_w0.document.getElementById("privacyFeedbackWho").hidden === true);
+  check("until the form's address is set, nothing about it shows: not the words in Privacy", qf_w0.document.getElementById("privacyFeedback").hidden === true);
   var QF = "https://tally.so/r/EXAMPLE";
   var qf_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {}, feedbackUrl: QF });
   check("there is no Feedback and questions section or popup any more: the form says it all", !qf_w.document.getElementById("feedbackSection") && !qf_w.document.getElementById("feedbackLink") && !fs.existsSync(ROOT + "icons/feedback.svg"));
@@ -3306,10 +3297,10 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await new Promise((r) => setTimeout(r, 20));   // the menu closes just after the click, so the link is still there to open the form
   check("pressing it opens no popup and adds nothing to the address", qf_w.document.getElementById("infoOverlay").hidden === true && qf_link.getAttribute("href") === QF);
   var qf_priv = qf_w.document.getElementById("privacySection").textContent.replace(/\s+/g, " ");
-  check("Privacy then says the form sends only what you type, that an email goes only if you enter one and is used only to respond, and that the feedback form opens only if you choose to send feedback", /The form sends only what you type, and nothing else is attached\. An email address is included only if you choose to enter one, and it is used only to respond to you\./.test(qf_priv) && /the feedback form only if you choose to send feedback/.test(qf_priv) && qf_w.document.getElementById("privacyFeedback").hidden === false);
+  check("Privacy then names feedback beside reports: sent only if you submit the form", /Reports and feedback: sent only if you submit the form\./.test(qf_priv) && qf_w.document.getElementById("privacyFeedback").hidden === false);
   check("the form that ships is the Tally one, at its real address", /const FEEDBACK_FORM_URL = "https:\/\/tally\.so\/r\/4aayDd";/.test(appSource()));
   qf_w0.document.getElementById("feAppMenuButton").click();
-  check("without the form's address, Everything else has no Feedback and questions", qf_w0.document.getElementById("homeFeedback").hidden === true && !!qf_w0.document.getElementById("homePrivacy"));
+  check("without the form's address, Everything else has no Feedback and questions", qf_w0.document.getElementById("homeFeedback").hidden === true && !!qf_w0.document.getElementById("privacySection"));
   } catch (err) { areaCrashed("questions and feedback", err); } }
 
   if (want("hover feedback on buttons")) { try {
@@ -3427,10 +3418,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("privacy: why the counts")) { try {
   // ================================================================ Privacy: why anything is counted
   var wc_w = await boot({ url: "http://127.0.0.1:8000/" });
-  var wc_h = Array.from(wc_w.document.querySelectorAll("#privacySection details.gd-topic > summary")).find((h) => h.textContent === "Anonymous visit counts");
-  var wc_p = wc_h.nextElementSibling.textContent;
-  check("Anonymous visit counts opens by saying why anything is counted: to see how many people use this app and how it is used", /^The page keeps simple counts, to see how many people use this app and how it is used\. It counts visits with GoatCounter, /.test(wc_p));
-  check("and the rest is still there: no cookies, what a visit records, the few actions counted, what is never received, and the once-only marker", /uses no cookies/.test(wc_p) && /the browser, screen size, country, and the site you came from, but not who you are/.test(wc_p) && /how many playlists get created, and the kind of connection problem/.test(wc_p) && /never receives playlist names, recipes, song titles, or your Client ID/.test(wc_p) && /so it is counted once\.$/.test(wc_p));
+  var wc_p = Array.from(wc_w.document.querySelectorAll("#privacySection li")).find((li) => /^Anonymous counts:/.test(li.textContent)).textContent;
+  check("Anonymous counts says what is counted and what never is", /GoatCounter counts visits without cookies, plus a few actions such as playlists built\. Never names, recipes or songs\./.test(wc_p));
   } catch (err) { areaCrashed("privacy: why the counts", err); } }
 
   if (want("the silence card")) { try {
@@ -4194,7 +4183,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("spotify wording")) { try {
   // ================================================================ the wording that depends on the way the formats are backed up
   var sw_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("the privacy text says that with automatic backup each recipe is also kept in a private playlist in the person's own Spotify account, in its description, and goes nowhere else", /Recipes are saved to Spotify unless you choose otherwise: each recipe is also kept in a private playlist in your own Spotify account, in the playlist's description\. That is where this app saves it and reads it back, and it goes nowhere else\./.test(sw_html));
+  check("the privacy text says that each recipe is kept in a private playlist's description in the person's own Spotify unless they back up by hand", /each recipe, in a private playlist's description \(unless you back up by hand\)/.test(sw_html));
   var sw_m = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "manual" }, fetchOptions: {} });
   check("with the backup file as the way, Sign out and clear data talks about restoring from the file, with Restore in the Playlist builder's menu", /Restore in the Playlist builder\u2019?'?s menu/.test(sw_m.document.getElementById("clearRestoreHelp").textContent) && /Restore in the Playlist builder\u2019?'?s menu/.test(sw_m.document.getElementById("clearConfirmHelp").textContent));
   var sw_s = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "spotify" }, fetchOptions: {} });
@@ -4801,7 +4790,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var ms_d = ms_w.document;
   await ms_w.eval("Promise.all([loadTracks('p2'), loadTracks('p4')])");   // the recipe's playlists are kept in the browser, so overlap can be measured
   ms_w.eval("openInfo('devOptions')");
-  check("Developer options does not open Music sharing, Arc's home does, and Privacy has its topic, which names what a share keeps", !ms_d.getElementById("devOpenSharing") && ms_d.getElementById("privacyMusicSharing").hidden === false && /the type you chose with its books, phases, mood words or name/.test(ms_d.getElementById("privacyMusicSharing").textContent) && (ms_w.eval("closeInfo(true)"), !!ms_d.getElementById("msCard")));
+  check("Developer options does not open Music sharing, Arc's home does, and Privacy has its topic, which names what a share keeps", !ms_d.getElementById("devOpenSharing") && /its name, cover, songs, the details you add, and your Spotify name unless anonymous/.test(ms_d.getElementById("privacyMusicSharing").textContent) && (ms_w.eval("closeInfo(true)"), !!ms_d.getElementById("msCard")));
   ms_d.getElementById("msCard").click();
   var ms_names = () => Array.from(ms_d.querySelectorAll("#msResults .ms-row .ms-name")).map((e) => e.textContent);
   var ms_labels = () => Array.from(ms_d.querySelectorAll("#msResults .ms-row .ms-klabel")).map((e) => e.textContent);
@@ -5094,7 +5083,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   sg_d.getElementById("msBack").click();
   await waitFor(() => sg_w.eval("sharing.detail") === null, 3000);
   check("leaving the page closes a song's menu", sg_w.eval("sharing.songMenu") === null && !sg_d.getElementById("msSongMenu"));
-  check("Privacy says what goes to Deezer, and when", /asks Deezer for a 30 second preview of that one song, sending only its recording code/.test(sg_d.getElementById("privacyMusicSharing").textContent) && !/no titles/.test(sg_d.getElementById("privacyMusicSharing").textContent));
+  check("Privacy says what goes to Deezer, and when", /Pressing play on a song asks Deezer for a preview, sending only that song's code/.test(sg_d.getElementById("privacyMusicSharing").textContent));
   } catch (err) { areaCrashed("music sharing songs", err); }
 }
 
@@ -5275,7 +5264,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08zr"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08zs"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5356,7 +5345,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_w8 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { clientId: "cid-1", connectedBefore: "1", formats: MINI }, fetchOptions: { premiumRequired: true } });
   await new Promise((r) => setTimeout(r, 600));
   check("a problem signing in again cannot fix (here Premium) shows no reconnect screen", sr_w8.eval("connection") === "problem" && !sr_screen(sr_w8), sr_w8.eval("connection"));
-  check("Privacy says the sign-in is saved in this browser, and why", /Your Client ID, your Spotify sign-in, your recipes, the list of your playlists, your color choice, a copy of the songs from your playlists, and a count of the requests this app sends to Spotify \(to learn how often Spotify limits them\) are saved in this browser, and nowhere else\. The saved sign-in lets this app reconnect to Spotify by itself when you come back\./.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  check("Privacy says the sign-in is saved in this browser", /In this browser:<\/b> your Client ID, Spotify sign-in, recipes/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   } catch (err) { areaCrashed("sign-in renewal", err); } }
   if (want("build popup")) { try {
   // The build popup: steps along the top, the plan as a list with "Why N?", and a build that stops with a plain message when something goes wrong.

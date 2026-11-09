@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-08zr">
-<script src="theme.js?v=2026-11-08zr"></script>
+<meta name="app-version" content="2026-11-08zs">
+<script src="theme.js?v=2026-11-08zs"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -669,6 +669,8 @@
   #homePage #homeMore details.gd-topic:last-of-type { border-bottom: none; }
   #homeMore .hp-more-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 52px; margin: 0; padding: 0; box-sizing: border-box; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; box-shadow: none; color: var(--fg); font: inherit; font-weight: 600; text-align: left; text-decoration: none; cursor: pointer; }
   #homeMore .hp-more-item[hidden] { display: none; }
+  html:not(.dev-mode) #privacyMusicSharing { display: none; }   /* Music sharing is Coming soon outside developer mode */
+  #homeMore .pv-list b { color: var(--fg); font-weight: 600; }
   @media (hover: hover) { #homeMore .hp-more-item:hover { outline: none; filter: none; color: var(--accent); } }
   #homeMore .hp-more-item .gd-thead { display: flex; align-items: center; gap: 10px; min-width: 0; }
   #homeMore .hp-more-item .gd-ticon { flex: none; display: flex; color: var(--muted); }
@@ -1908,7 +1910,7 @@
       <button id="msCard" class="hp-tool" type="button"><span class="hp-head"><span class="tool-icon" aria-hidden="true"><span class="tool-badge"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5L4 7l3.5 3.5M4 7h15M16.5 13.5L20 17l-3.5 3.5M20 17H5"/></svg></span></span><span class="hp-text"><span class="hp-soon">Coming soon</span><b>Music sharing</b><span class="hp-tag">A shared library of ceremony music. Bring some, get some!</span></span><span class="hp-go"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></span><span class="hp-glimpse ms-glimpse"><span id="msCardFan" class="hp-covers" aria-hidden="true"></span><span id="msCardText"></span></span></button>
     </div>
     <!-- Everything else: what belongs to the whole app rather than one tool, closed at first (decided by Ron, 2026-11-08, mockups/home-menu.html B). Color, the Spotify login,
-         Sign out and clear data and Hide support button open in place; Privacy and Report a problem open in the info popup; Feedback opens its form. -->
+         Sign out and clear data and Privacy open in place; Report a problem opens in the info popup; Feedback opens its form. -->
     <details id="homeMore" class="hp-more">
       <summary><span class="hp-more-text"><b>Everything else</b><span>Color, Spotify account, Privacy, Report a problem</span></span></summary>
       <div class="hp-more-list">
@@ -1942,7 +1944,18 @@
           </div>
         </div>
         </details>
-        <button id="homePrivacy" class="hp-more-item" type="button" data-icon="lock"><span class="hp-more-label">Privacy</span><svg class="hp-more-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+        <!-- Privacy, short and in place (decided by Ron, 2026-11-08): what Arc stands for first, then one line per thing that leaves or stays -->
+        <details class="gd-topic" data-icon="lock" id="privacySection"><summary>Privacy</summary>
+        <p class="muted pv-lead">Arc runs in your browser. What you make here stays between this browser and your own Spotify account, unless you choose to share it. No accounts, no ads.</p>
+        <ul class="muted pv-list">
+          <li><b>In this browser:</b> your Client ID, Spotify sign-in, recipes, settings, the list of your playlists and a copy of their songs. <span class="ui">Sign out and clear data</span> erases it all.</li>
+          <li><b>In your Spotify:</b> each recipe, in a private playlist's description (unless you back up by hand). Your own playlists are only read, never changed. Arc never sees your Spotify password.</li>
+          <li id="privacyMusicSharing"><b>Music sharing:</b> a playlist you share (its name, cover, songs, the details you add, and your Spotify name unless anonymous) is kept on a small service run by Arc's developer. It knows your shares by a scrambled code, not your username. Pressing play on a song asks Deezer for a preview, sending only that song's code.</li>
+          <li><b>Anonymous counts:</b> GoatCounter counts visits without cookies, plus a few actions such as playlists built. Never names, recipes or songs.</li>
+          <li id="privacyWaitRelay" hidden><b>Spotify waits:</b> when Spotify limits requests, one check goes through Arc's relay on Cloudflare with your temporary sign-in, and it keeps nothing.</li>
+          <li><b>Reports<span id="privacyFeedback" hidden> and feedback</span>:</b> sent only if you submit the form. Never your sign-in, Client ID, playlist names or songs.</li>
+        </ul>
+        </details>
         <button id="homeReport" class="hp-more-item" type="button" data-icon="flag"><span class="hp-more-label">Report a problem</span><svg class="hp-more-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
         <a id="homeFeedback" class="hp-more-item" target="_blank" rel="noopener noreferrer" data-icon="chat" hidden><span class="hp-more-label">Feedback and questions</span><svg class="hp-more-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
       </div>
@@ -2162,38 +2175,6 @@
       </details>
     </details>
 
-    <details id="privacySection" class="card">
-      <summary>Privacy</summary>
-      <details class="gd-topic" data-icon="device"><summary>What stays in this browser</summary>
-      <p>Your Client ID, your Spotify sign-in, your recipes, the list of your playlists, your color choice, a copy of the songs from your playlists, and a count of the requests this app sends to Spotify (to learn how often Spotify limits them) are saved in this browser, and nowhere else. The saved sign-in lets this app reconnect to Spotify by itself when you come back. The copy of your songs lets this app skip asking Spotify for them again. <span class="ui">Sign out and clear data</span>, in <span class="ui">More options</span>, removes everything.</p>
-      <p>Recipes are saved to Spotify unless you choose otherwise: each recipe is also kept in a private playlist in your own Spotify account, in the playlist's description. That is where this app saves it and reads it back, and it goes nowhere else. You can change this at any time in More options.</p>
-      </details>
-      <details class="gd-topic" data-icon="user"><summary>Your Spotify account</summary>
-      <p>You sign in on Spotify's own page, and this app never sees your Spotify password. It asks Spotify for permission to read your playlists, create playlists, remove playlists, and set their cover images. Your existing playlists are only read, never changed. Removing only touches the playlists this app made, unless you choose to remove others too.</p>
-      <p>Playlists created by this app stay off your Spotify profile and out of search, though anyone with a playlist's link can still open it. To change that, use Make private in the Spotify app.</p>
-      </details>
-      <details class="gd-topic" data-icon="globe"><summary>Who the page talks to</summary>
-      <p>Spotify, for everything about your music. The page's code comes from GitHub, and the Python it runs comes from a public code host (jsDelivr). The report form opens only if you choose to report a problem<span id="privacyFeedbackWho" hidden>, and the feedback form only if you choose to send feedback</span>.</p>
-      <p id="privacyWaitRelay" hidden>When Spotify limits how often this app may ask it for things, it says how long to wait, but in a way a web page cannot read. So the page asks once more through a small relay on Cloudflare, run by the developer of this app, which can read it. That request carries your temporary Spotify sign-in, which expires within an hour, and which kind of request was refused (for a playlist, its Spotify ID), and nothing else. The relay passes it to Spotify, sends back only the wait, and keeps nothing.</p>
-      </details>
-      <details class="gd-topic" data-icon="swap" id="privacyMusicSharing"><summary>Music sharing</summary>
-      <p>Music sharing runs on a small service on Cloudflare, run by the developer of this app. Browsing it sends nothing about you. When you share a playlist, it keeps the playlist's name, its picture's address, your Spotify name (or none, when you share anonymously), the type you chose with its books, phases, mood words or name, the description, its songs as Spotify IDs and recording codes with each song's title, artist and length, how many songs and how long, and the few artists heard most. It does not keep your Spotify username: your temporary sign-in is checked with Spotify and only a scrambled code made from your Spotify ID is kept, so it knows which shares are yours. Stop sharing a playlist and it is deleted.</p>
-      <p>A report keeps its reason, your note and the same kind of scrambled code, and is emailed to the developer. Adding a shared playlist makes a private copy in your Spotify, and this browser remembers it is a copy so it is not shared again. Nothing records who added what.</p>
-      <p>A shared playlist's page lists its songs. When you <span data-act>click</span> a song's play button, the app asks Deezer for a 30 second preview of that one song, sending only its recording code. Deezer also sees your internet address, as any site you load does. Nothing goes to Deezer before that.</p>
-      </details>
-      <details class="gd-topic" data-icon="chart"><summary>Anonymous visit counts</summary>
-      <p>The page keeps simple counts, to see how many people use this app and how it is used. It counts visits with GoatCounter, a service that uses no cookies and does not use unique identifiers to follow people around the web. It records that the page was opened, with the browser, screen size, country, and the site you came from, but not who you are. It also counts a few actions: the first time a browser connects to Spotify, how many playlists get created, and the kind of connection problem that happened. It never receives playlist names, recipes, song titles, or your Client ID. A small marker in this browser remembers that your first connection was counted, so it is counted once.</p>
-      </details>
-      <details class="gd-topic" data-icon="flag"><summary>Problem reports</summary>
-      <p>A problem report is sent only if you choose to send it, and it goes only to me, the developer of this app. The form opens in a new tab, and nothing is sent until you submit it there. The details attached are shown in <span class="ui">More options</span> first: the app version, browser, window size, last error, and recent steps. Your sign-in, Client ID, playlist names, and song titles are never included.</p>
-      </details>
-      <details class="gd-topic" id="privacyFeedback" hidden data-icon="chat"><summary>Feedback and questions</summary>
-      <p>The form sends only what you type, and nothing else is attached. An email address is included only if you choose to enter one, and it is used only to respond to you. The form opens in a new tab, and nothing is sent until you submit it there.</p>
-      </details>
-      <details class="gd-topic" data-icon="ban"><summary>Accounts and ads</summary>
-      <p>There are no accounts and no ads.</p>
-      </details>
-    </details>
   </footer>
 </main>
     <!-- Report a problem: opened from the app menu in the info popup, so it is not part of More options -->
@@ -2219,10 +2200,10 @@
     <div id="msFoot" hidden></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-08zr"></script>
-<script src="editor.js?v=2026-11-08zr"></script>
-<script src="shared-spotify.js?v=2026-11-08zr"></script>
-<script src="app.js?v=2026-11-08zr"></script>
-<script src="sharing.js?v=2026-11-08zr"></script>
+<script src="formats.js?v=2026-11-08zs"></script>
+<script src="editor.js?v=2026-11-08zs"></script>
+<script src="shared-spotify.js?v=2026-11-08zs"></script>
+<script src="app.js?v=2026-11-08zs"></script>
+<script src="sharing.js?v=2026-11-08zs"></script>
 </body>
 </html>

@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08zr";
+const APP_VERSION = "2026-11-08zs";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -610,7 +610,7 @@ function openInfo(id) {
   const title = node.querySelector("summary, h3");
   $("infoDialog").setAttribute("aria-label", title ? title.textContent.trim() : "");
   // the title in the pink band, with the same icon as its item in the app menu
-  const titleIcon = { guideSection: "help", moreOptions: "sliders", privacySection: "lock", reportBlock: "flag" }[id];
+  const titleIcon = { guideSection: "help", moreOptions: "sliders", reportBlock: "flag" }[id];
   $("infoTitle").textContent = "";
   if (titleIcon && typeof feIcon === "function") $("infoTitle").appendChild(feIcon(titleIcon)).className = "info-ticon";
   $("infoTitle").appendChild(Object.assign(document.createElement("span"), { textContent: title ? title.textContent.trim() : "" }));
@@ -3334,8 +3334,7 @@ async function main() {
   try { if (history.state && (history.state.view || history.state.step)) history.replaceState(null, ""); } catch (err) { /* nothing to forget */ }   // a reload keeps the step, but the page opens on home (and the welcome page on its first step)
   on("appHome", "click", goHome);
   on("homeBuilder", "click", () => showView("builder"));
-  // Everything else on home: Privacy and Report a problem open in the info popup, Feedback opens its form
-  on("homePrivacy", "click", () => openInfo("privacySection"));
+  // Everything else on home: Privacy opens in place, Report a problem in the info popup, Feedback opens its form
   on("homeReport", "click", () => openInfo("reportBlock"));
   if (FEEDBACK_FORM_URL) { $("homeFeedback").href = FEEDBACK_FORM_URL; $("homeFeedback").hidden = false; }
   window.addEventListener("resize", placeSharingPage);
@@ -3347,13 +3346,14 @@ async function main() {
   on("reconnectButton", "click", startLogin);
   on("create", "click", () => startCreate());
   if (FEEDBACK_FORM_URL) {
-    for (const id of ["privacyFeedback", "privacyFeedbackWho"]) $(id).hidden = false;   // the form itself opens from the app menu
+    $("privacyFeedback").hidden = false;   // Privacy names the feedback form only when there is one
   }
   $("privacyWaitRelay").hidden = !WAIT_RELAY_URL;   // Privacy says what the relay sees only once there is one
   for (const link of document.querySelectorAll(".privacy-link")) {
     link.addEventListener("click", (event) => {
       event.preventDefault();
-      if (pageName() === "app") { openInfo("privacySection"); return; }   // in the app, Privacy is in the menu's popup
+      if (pageName() === "app" && typeof showView === "function") showView("home");   // Privacy is under Everything else on home
+      $("homeMore").open = true;
       $("privacySection").open = true;
       $("privacySection").scrollIntoView({ behavior: "smooth", block: "start" });
     });
