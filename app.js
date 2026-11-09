@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08zzf";
+const APP_VERSION = "2026-11-08zzg";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -187,6 +187,11 @@ function showView(view, push = true) {
   if (view === "sharing" && !devMode()) view = "home";   // Music sharing is Coming soon outside developer mode
   if (view === appView) return;
   const was = appView;
+  // from one tool to the other the tool slides half a screen and fades (sharing is below the builder), Arc's bar staying put (Ron, 2026-11-08, mockups/tool-motion.html B)
+  if (was !== "home" && view !== "home" && slideTools(was, view, () => switchView(was, view, push))) return;
+  switchView(was, view, push);
+}
+function switchView(was, view, push) {
   appView = view;
   if (was === "sharing" && typeof closeSharing === "function") closeSharing();
   if (typeof editor === "object" && editor.appMenu && typeof closePanels === "function") closePanels();
@@ -200,6 +205,21 @@ function showView(view, push = true) {
   if (view === "sharing") { placeSharingPage(); openSharing("find"); }
   if (view === "home") { renderHomeRecipes(); alignWelcomeIcons(); }   // drawn while hidden, the band's icon measured nothing
   placeDevPill();
+}
+// Builder and Music sharing as if stacked: to sharing the builder goes up half a screen as it fades and sharing rises half a screen into place; back the other way.
+// View Transitions with Arc's bar named (vt-tools in index.html), so only the tool below it moves. Not under reduced motion or without View Transitions.
+let toolSlideCount = 0;
+function slideTools(from, to, change) {
+  const root = document.documentElement;
+  if (typeof document.startViewTransition !== "function" || (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) return false;
+  const mine = ++toolSlideCount;
+  root.classList.add("vt-tools");
+  root.classList.toggle("vt-tools-up", to === "builder");
+  let move;
+  try { move = document.startViewTransition(change); }
+  catch (err) { root.classList.remove("vt-tools", "vt-tools-up"); return false; }
+  move.finished.finally(() => { if (toolSlideCount === mine) root.classList.remove("vt-tools", "vt-tools-up"); });
+  return true;
 }
 
 // The DEV capsule sits in home's pink band at its lower right (Arc's bar is hidden on home), and in Arc's bar in the tools
