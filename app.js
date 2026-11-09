@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08zu";
+const APP_VERSION = "2026-11-08zv";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -192,7 +192,8 @@ function showView(view, push = true) {
   if (typeof editor === "object" && editor.appMenu && typeof closePanels === "function") closePanels();
   const root = document.documentElement;
   for (const v of VIEWS) root.classList.toggle("view-" + v, v === view);
-  $("appTool").textContent = TOOL_NAMES[view] || "";
+  $("appToolName").textContent = TOOL_NAMES[view] || "";
+  closeToolMenu(false);
   if (push && view !== "home") { try { history.pushState({ view }, ""); } catch (err) { /* the back button just leaves the page */ } }
   window.scrollTo(0, 0);
   if (view === "builder" && typeof renderEditor === "function") renderEditor();   // drawn while hidden, the tabs and the welcome arrow measured nothing
@@ -219,6 +220,57 @@ function goHome() {
   if (appView === "home") return;
   if (history.state && history.state.view) { history.back(); return; }   // the popstate that follows shows home
   showView("home", false);
+}
+
+// The tool's name in Arc's bar opens a list: both tools (the one shown ticked; Music sharing Coming soon outside developer mode) and Arc home.
+// Decided by Ron, 2026-11-08 (mockups/switch-tools.html A). It closes on a choice, a click or tap anywhere else, or Escape (which returns focus to the name).
+function openToolMenu() {
+  const menu = $("appToolMenu"), button = $("appTool");
+  if (!menu.hidden) { closeToolMenu(true); return; }
+  if (typeof editor === "object" && editor.appMenu && typeof closePanels === "function") closePanels();
+  for (const item of menu.querySelectorAll(".ab-mi[data-view]")) {
+    const view = item.dataset.view;
+    if (view !== "home") item.setAttribute("aria-checked", String(view === appView));
+    item.disabled = view === "sharing" && !devMode();
+  }
+  button.setAttribute("aria-expanded", "true");
+  menu.hidden = false;
+  // under the name, kept inside the bar
+  const bar = $("appBar").getBoundingClientRect(), from = button.getBoundingClientRect();
+  menu.style.left = Math.max(0, Math.min(from.left - bar.left, bar.width - menu.offsetWidth)) + "px";
+}
+
+function closeToolMenu(focusName) {
+  const menu = $("appToolMenu");
+  if (!menu || menu.hidden) return;
+  menu.hidden = true;
+  $("appTool").setAttribute("aria-expanded", "false");
+  if (focusName) $("appTool").focus();
+}
+
+function chooseTool(view) {
+  closeToolMenu(false);
+  if (view === appView) return;
+  if (view === "home") { goHome(); return; }
+  if (appView === "home") { showView(view); return; }
+  // from one tool to the other: the other takes the tool's place in the history, so back still goes home
+  showView(view, false);
+  try { if (history.state && history.state.view) history.replaceState({ view }, ""); else history.pushState({ view }, ""); } catch (err) { /* the back button just leaves the page */ }
+}
+
+function initToolMenu() {
+  on("appTool", "click", (event) => { event.stopPropagation(); openToolMenu(); });
+  $("appToolMenu").addEventListener("click", (event) => {
+    const item = event.target.closest && event.target.closest(".ab-mi");
+    if (item && !item.disabled) chooseTool(item.dataset.view);
+  });
+  // like the editor's menus, a tap elsewhere only closes the list
+  document.addEventListener("click", (event) => {
+    if ($("appToolMenu").hidden || $("appToolMenu").contains(event.target) || $("appTool").contains(event.target)) return;
+    event.stopPropagation(); event.preventDefault();
+    closeToolMenu(false);
+  }, true);
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !$("appToolMenu").hidden) { event.preventDefault(); closeToolMenu(true); } });
 }
 
 // Developer mode went on or off (setDevMode in editor.js). Off, Music sharing is Coming soon: its page and its welcome card close, and nothing is read for it.
@@ -3319,6 +3371,7 @@ async function main() {
   window.addEventListener("popstate", pageHistoryMoved);
   try { if (history.state && (history.state.view || history.state.step)) history.replaceState(null, ""); } catch (err) { /* nothing to forget */ }   // a reload keeps the step, but the page opens on home (and the welcome page on its first step)
   on("appHome", "click", goHome);
+  initToolMenu();
   on("homeBuilder", "click", () => showView("builder"));
   // Everything else on home: Privacy opens in place, Report a problem in the info popup, Feedback opens its form
   on("homeReport", "click", () => openInfo("reportBlock"));
