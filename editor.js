@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-09c";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-09g";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -698,7 +698,7 @@ function renderEditor() {
     root.appendChild(feEl("div", { class: "fe-welcome", id: "feWelcome" },
       feEl("span", { class: "fe-welcome-arrow", id: "feWelcomeArrow", "aria-hidden": "true" }),
       feEl("div", { class: "fe-welcome-card" },
-        feEl("img", { class: "fe-welcome-icon", src: "apple-touch-icon.png", alt: "", width: "56", height: "56" }),   // phones only: wide, the icon is already in the row above
+        feEl("img", { class: "fe-welcome-icon", src: "arc-mark.png", alt: "", width: "56", height: "56" }),   // phones only: wide, the icon is already in the row above
         feEl("h2", { class: "fe-welcome-title", text: "Time to make your first recipe!" }),
         feEl("p", { class: "fe-welcome-lead", text: `${actWord(true)} New recipe above to start.` }),
         feEl("p", { class: "muted fe-welcome-text", text: "A recipe says which of your playlists to play, in what order, and for how long. The app turns it into as many playlists as your songs allow, with no song used twice." }))));
@@ -823,14 +823,14 @@ function renderAppMenu() {
   // in Music sharing the menu has only what is not the builder's: Connect while not connected, and Report a problem (Ron, 2026-11-08)
   if (typeof appView === "string" && appView === "sharing") {
     slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" },
-      feEl("div", { class: "fe-menuhead", id: "feMenuHead" }, feEl("img", { class: "fe-menuicon", src: "apple-touch-icon.png", alt: "", width: "40", height: "40" }), feEl("span", { class: "fe-menuname", text: "Arc" })),
+      feEl("div", { class: "fe-menuhead", id: "feMenuHead" }, feEl("img", { class: "fe-menuicon", src: "arc-mark.png", alt: "", width: "40", height: "40" }), feEl("span", { class: "fe-menuname", text: "Arc" })),
       ...spotifyItems,
       ...(spotifyItems.length ? [feEl("div", { class: "fe-rule" })] : []),
       infoItem("feReport", "reportBlock", "flag", "Report a problem")));
     return;
   }
   slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" },
-    feEl("div", { class: "fe-menuhead", id: "feMenuHead" }, feEl("img", { class: "fe-menuicon", src: "apple-touch-icon.png", alt: "", width: "40", height: "40" }), feEl("span", { class: "fe-menuname", text: "Arc" })),
+    feEl("div", { class: "fe-menuhead", id: "feMenuHead" }, feEl("img", { class: "fe-menuicon", src: "arc-mark.png", alt: "", width: "40", height: "40" }), feEl("span", { class: "fe-menuname", text: "Arc" })),
     ...spotifyItems,
     ...(backupBlock ? [...(spotifyItems.length ? [feEl("div", { class: "fe-rule" })] : []), backupBlock] : []),
     ...(spotifyItems.length || backupBlock ? [feEl("div", { class: "fe-rule" })] : []),

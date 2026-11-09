@@ -839,10 +839,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-09c" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-09g" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-09c/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-09g/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkboxes in More options are the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -979,7 +979,7 @@ print(json.dumps(out))
   // ---------------- every numbered section title says what the person will do
   var verbs = ["Find", "Connect", "Edit", "Build", "Back up"];
   var allH2 = Array.from(t0.document.querySelectorAll("h2")).filter((h) => !h.closest("#msOverlay")).map((h) => h.textContent);
-  check("the welcome and setup pages have their own headings, and every numbered section title left is an action", JSON.stringify(allH2) === JSON.stringify(["Connecting to Spotify", "Setup complete!", "Unwrapping the update", "Tools available now", "Coming soon", "Connect your Spotify account", "Have you set up Arc before?", "Find your Client ID", "1. Connect to Spotify", "1. Connect to Spotify", "2. Edit your recipes", "3. Build playlists", "4. Back up manually to this device (optional)"]) && allH2.slice(7).every((t) => verbs.some((v) => t.replace(/^\d\.\s/, "").startsWith(v))), JSON.stringify(allH2));
+  check("the welcome and setup pages have their own headings, and every numbered section title left is an action", JSON.stringify(allH2) === JSON.stringify(["Connecting to Spotify", "Setup complete!", "Unwrapping the update", "Tools", "Coming soon", "Connect your Spotify account", "Have you set up Arc before?", "Find your Client ID", "1. Connect to Spotify", "1. Connect to Spotify", "2. Edit your recipes", "3. Build playlists", "4. Back up manually to this device (optional)"]) && allH2.slice(7).every((t) => verbs.some((v) => t.replace(/^\d\.\s/, "").startsWith(v))), JSON.stringify(allH2));
 
 
   // ---------------- What is this app? headings, and placeholder icons on the buttons
@@ -1559,7 +1559,8 @@ print(json.dumps(out))
   if (want('small changes')) { try {
   // ================================================================ small changes
   check("Everything else on home and each topic in it scroll into view once opened (bottom in view, never past the top; with or without motion)", /function bringOpenedIntoView\(details\) \{\n  if \(!details\.closest \|\| !details\.closest\("#homeMore"\)/.test(appJs) && /const by = Math\.min\(below, top - gap\);/.test(appJs) && /foldMotion\(details, frames\(full\), true, \(finished\) => \{ if \(finished\) bringOpenedIntoView\(details\); \}\)/.test(appJs) && /details\.open && !motionAllowed\(details\)\) bringOpenedIntoView\(details\)/.test(appJs));
-  check("the title has the app icon on its left", (() => { const h1 = fresh.document.querySelector("h1"); const img = h1.querySelector("img.app-icon"); return h1.classList.contains("brand") && !!img && img.getAttribute("src") === "apple-touch-icon.png" && img.getAttribute("alt") === "" && h1.firstElementChild === img && h1.textContent === "Arc"; })());
+  check("the solid strip under the status bar sits above Arc's bar and Music sharing's search page, which scroll under it, and below popups", (() => { const h = fs.readFileSync(ROOT + "index.html", "utf8"); const z = (re) => +((h.match(re) || [])[1] || NaN); const top = z(/#topEdge \{[^}]*z-index: (\d+)/), bar = z(/html\.page-app #appBar \{[^}]*z-index: (\d+)/), typing = z(/#msOverlay\.ms-typing-page \{ z-index: (\d+)/), pop = z(/\.fe-overlay \{[^}]*z-index: (\d+)/); return top > bar && top > typing && top < pop; })());
+  check("the title has the app icon on its left", (() => { const h1 = fresh.document.querySelector("h1"); const img = h1.querySelector("img.app-icon"); return h1.classList.contains("brand") && !!img && img.getAttribute("src") === "arc-mark.png" && img.getAttribute("alt") === "" && h1.firstElementChild === img && h1.textContent === "Arc"; })());
   var pngSize = (name) => { const b = fs.readFileSync(ROOT + name); return b.slice(0, 8).toString("hex") === "89504e470d0a1a0a" ? [b.readUInt32BE(16), b.readUInt32BE(20)].join("x") : "not a png"; };
   var headHtml = fs.readFileSync(ROOT + "index.html", "utf8").slice(0, fs.readFileSync(ROOT + "index.html", "utf8").indexOf("\n</head>"));   // the real end of the head: the Phone width script holds one as text
   check("every icon the page asks for exists, at the size its name or link says", pngSize("favicon-16.png") === "16x16" && pngSize("favicon-32.png") === "32x32" && pngSize("apple-touch-icon.png") === "180x180" && pngSize("icon-192.png") === "192x192" && pngSize("icon-512.png") === "512x512" && fs.readFileSync(ROOT + "favicon.ico").readUInt16LE(2) === 1 && fs.readFileSync(ROOT + "favicon.ico").readUInt16LE(4) === 3, [pngSize("favicon-16.png"), pngSize("apple-touch-icon.png")].join(" "));
@@ -1625,12 +1626,15 @@ print(json.dumps(out))
   var z_THEMES = Array.from(z_t.eval("THEMES"));
   var z_ids = z_THEMES.map((t) => t.id);
   check("there are 17 themes, each with its own id and a one-word color name and two valid colors", z_THEMES.length === 17 && new Set(z_ids).size === 17 && new Set(z_THEMES.map((t) => t.name)).size === 17 && z_THEMES.every((t) => /^[A-Z][a-z]+$/.test(t.name)) && z_THEMES.every((t) => z_t.normalizeHex(t.accent) === t.accent && z_t.normalizeHex(t.neutral) === t.neutral));
+  var z_html = fs.readFileSync(ROOT + "index.html", "utf8");
+  check("Arc's icon in the page takes the theme's color: the white arc over --icon-bg (band, tool cards, every icon picture); the Home Screen icon stays the pink file", /\.wp-band-icon \{ position: relative;[^}]*background: url\(arc-mark\.png\) center \/ cover, var\(--icon-bg/.test(z_html) && /\.tool-icon \{[^}]*background: url\(arc-mark\.png\) center \/ cover, var\(--icon-bg/.test(z_html) && /img\[src="arc-mark\.png"\] \{ background-color: var\(--icon-bg/.test(z_html) && !/<img[^>]+src="apple-touch-icon\.png"/.test(z_html) && /<link rel="apple-touch-icon" href="apple-touch-icon\.png">/.test(z_html) && fs.existsSync(ROOT + "arc-mark.png"));
   var z_bad = [];
   for (const t of z_THEMES) {
     for (const dark of [false, true]) {
       const v = z_t.themeVariables(t.accent, t.neutral, dark);
       const c = (a, b) => z_t.contrastRatio(v[a], v[b]);
       const rules = [
+        ["the badge drawing on Arc's icon in the page, on its white circle", z_t.contrastRatio(v["--icon-ink"], "#ffffff") >= 3 && /^#[0-9a-f]{6}$/.test(v["--icon-bg"])],
         ["text on the page", c("--fg", "--bg") >= 12],
         ["gray text on the page", c("--muted", "--bg") >= 4.5],
         ["gray text on a card", c("--muted", "--card") >= 4.2],
@@ -2122,7 +2126,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var m2_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var m2_row = m2_w.document.querySelector(".fe-toprow");
   var m2_home = m2_w.document.getElementById("appHome");
-  check("the tabs row is only the tabs; the app's icon is in Arc's bar above, from the same file as the home screen icon, with Arc beside it", m2_row.children.length === 1 && m2_row.children[0].id === "feTabs" && m2_home.querySelector("img").getAttribute("src") === "apple-touch-icon.png" && m2_home.querySelector("img").getAttribute("alt") === "" && m2_home.textContent === "Arc" && m2_home.getAttribute("aria-label") === "Home");
+  check("the tabs row is only the tabs; the app's icon is in Arc's bar above, in the theme's color, with Arc beside it", m2_row.children.length === 1 && m2_row.children[0].id === "feTabs" && m2_home.querySelector("img").getAttribute("src") === "arc-mark.png" && m2_home.querySelector("img").getAttribute("alt") === "" && m2_home.textContent === "Arc" && m2_home.getAttribute("aria-label") === "Home");
   check("a tab button is 44 pixels high", /#formatEditor \.fe-tab \{ flex: none; white-space: nowrap; min-height: 44px;/.test(m2_css));
   check("the page's title goes in minimalist mode, once the editor is there to take its place, and not before", /body\.minimal\.has-editor h1\.brand \{ display: none; \}/.test(m2_css) && m2_w.document.body.classList.contains("has-editor") && !(await boot({ url: "http://127.0.0.1:8000/" })).document.body.classList.contains("has-editor"));
 
@@ -2934,7 +2938,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-09c", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-09g", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3277,7 +3281,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("it sits in the welcome page's pink band, under Arc and beside the icon, which only the welcome page shows", !!tg_w.document.querySelector("#welcomePage .wp-band .wp-band-text .tagline") && tg_w.document.querySelector("#welcomePage .wp-band-name").textContent === "Arc" && !!tg_w.document.querySelector("#welcomePage .wp-band .wp-band-icon") && /#welcomePage \{ display: none; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   check("the band's and the cards' icons are sized to the letters beside them", /function alignWelcomeIcons\(\)/.test(appSource()) && /function letterBounds\(el\)/.test(appSource()) && /icon\.style\.width = icon\.style\.height = Math\.round\(b\.bottom - a\.top\) \+ "px"/.test(appSource()));
   var tg_d = tg_w.document, tg_heads = Array.from(tg_d.querySelectorAll("#welcomePage .wp-tool-head"));
-  check("under Tools available now, a card per tool: name, tagline, and Arc's icon with a badge", tg_d.querySelector("#welcomePage .wp-sec").textContent === "Tools available now" && JSON.stringify(tg_heads.map((h) => [h.querySelector("b").textContent, h.querySelector(".wp-tool-tag").textContent])) === JSON.stringify([["Playlist builder", "Ceremony playlists, ready in minutes."], ["Shared music library", "Bring some, get some!"]]) && tg_heads.every((h) => !!h.querySelector(".tool-icon .tool-badge svg")));
+  check("under Tools, a card per tool: name, tagline, and Arc's icon with a badge", tg_d.querySelector("#welcomePage .wp-sec").textContent === "Tools" && JSON.stringify(tg_heads.map((h) => [h.querySelector("b").textContent, h.querySelector(".wp-tool-tag").textContent])) === JSON.stringify([["Playlist builder", "Ceremony playlists, ready in minutes"], ["Shared music library", "Bring some, get some!"]]) && tg_heads.every((h) => !!h.querySelector(".tool-icon .tool-badge svg")));
   check("both cards start closed", tg_heads.every((h) => h.getAttribute("aria-expanded") === "false" && tg_d.getElementById(h.getAttribute("aria-controls")).hidden));
   tg_heads[0].click();
   var tg_more0 = tg_d.getElementById("wpBuilderMore"), tg_more1 = tg_d.getElementById("wpSharingMore");
@@ -4417,7 +4421,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("a page that did not start is never hidden behind it", /pageStart\.show = function \(detail\) \{\n    document\.documentElement\.classList\.remove\("launching"\);/.test(ls_html));
   var ls_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "manual" }, before: (w) => w.document.documentElement.classList.add("launching") });
   var ls_d = ls_w.document;
-  check("it shows the icon, the name, the tagline and the step under way", ls_d.documentElement.classList.contains("launching") && ls_d.querySelector("#launchScreen img").getAttribute("src") === "apple-touch-icon.png" && ls_d.querySelector("#launchScreen .ls-name").textContent === "Arc" && ls_d.querySelector("#launchScreen .ls-tag").textContent === "Ceremony playlist tools for your Spotify library" && /Spotify|playlists|playlist builder/.test(ls_d.getElementById("lsStep").textContent), ls_d.getElementById("lsStep").textContent);
+  check("it shows the icon, the name, the tagline and the step under way", ls_d.documentElement.classList.contains("launching") && ls_d.querySelector("#launchScreen img").getAttribute("src") === "arc-mark.png" && ls_d.querySelector("#launchScreen .ls-name").textContent === "Arc" && ls_d.querySelector("#launchScreen .ls-tag").textContent === "Ceremony playlist tools for your Spotify library" && /Spotify|playlists|playlist builder/.test(ls_d.getElementById("lsStep").textContent), ls_d.getElementById("lsStep").textContent);
   await waitFor(() => ls_d.getElementById("launchScreen").classList.contains("ls-ready"), 20000);
   check("once signed in, the playlists read and Python started, the spinner gives way to a check and Ready, still on the launch screen", ls_w.eval("connection") === "ready" && ls_d.getElementById("lsStep").textContent === "Ready" && ls_d.documentElement.classList.contains("launching") && ls_w.getComputedStyle(ls_d.querySelector("#launchScreen .ls-spin")).display === "none");
   check("it is up at least 2 seconds in all, and Ready at least a moment", /const LAUNCH_MIN_MS = 2000, LAUNCH_READY_MS = 1050;/.test(appSource()) && /Math\.max\(LAUNCH_READY_MS, LAUNCH_MIN_MS - shown\)/.test(appSource()));
@@ -5248,7 +5252,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   b7_menu.document.getElementById("feAppMenuButton").click();
   var b7_kids = b7_menu.document.querySelectorAll("#feAppMenuPanel > *");
   var b7_more = Array.from(b7_kids).findIndex((k) => k.id === "feMoreOptions");
-  check("the menu begins with the app's icon and name, as a band, then A guide for facilitators as the first item, and More options later", b7_kids[0].id === "feMenuHead" && b7_kids[0].querySelector("img").getAttribute("src") === "apple-touch-icon.png" && b7_kids[0].querySelector(".fe-menuname").textContent === "Arc" && (Array.from(b7_kids).slice(1).find((k) => k.id && k.offsetParent !== undefined && !k.hidden && k.id.startsWith("fe") && !/fe-rule/.test(k.className)) || {}).id === "feGuide" && b7_more > 1 && /^More options$/.test(b7_kids[b7_more].textContent.trim()), Array.from(b7_kids).map((k) => k.id || k.className).join(","));
+  check("the menu begins with the app's icon and name, as a band, then A guide for facilitators as the first item, and More options later", b7_kids[0].id === "feMenuHead" && b7_kids[0].querySelector("img").getAttribute("src") === "arc-mark.png" && b7_kids[0].querySelector(".fe-menuname").textContent === "Arc" && (Array.from(b7_kids).slice(1).find((k) => k.id && k.offsetParent !== undefined && !k.hidden && k.id.startsWith("fe") && !/fe-rule/.test(k.className)) || {}).id === "feGuide" && b7_more > 1 && /^More options$/.test(b7_kids[b7_more].textContent.trim()), Array.from(b7_kids).map((k) => k.id || k.className).join(","));
   check("the header is only a picture and a name: not a button, not a link, and nothing about it reacts to the mouse", b7_kids[0].tagName === "DIV" && !b7_kids[0].querySelector("button, a") && !/fe-menuhead[^{]*:hover/.test(b7_html) && b7_kids[0].querySelector("img").getAttribute("alt") === "");
   b7_menu.document.body.click();
 
@@ -5329,7 +5333,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-09c"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-09g"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

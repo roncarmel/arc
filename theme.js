@@ -10,7 +10,7 @@
 // To add a theme, add a line to THEMES (the id is only for remembering the choice, so keep it the same once people may have chosen it; the name is what the list shows). To try two colors without changing any file, open the page with
 // ?accent=0a84ff&neutral=8a8a92 on the end of the address (hex colors; ?theme=reset goes back).
 // This file runs first, in the <head>, so the colors are in place before anything is drawn.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["theme.js"] = "2026-11-09c";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["theme.js"] = "2026-11-09g";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const THEMES = [   // in the order the swatches show: around the color wheel from Pink, row by row, Silver last (Ron, 2026-11-09)
   { id: "pinks-and-grays", name: "Pink", accent: "#ff38b8", neutral: "#8a8a92" },
@@ -85,11 +85,11 @@ function withAlpha(hex, alpha) {
 }
 
 // the accent, nudged lighter or darker until text in it is easy to read on the background
-function readableAccent(accent, background, dark) {
+function readableAccent(accent, background, dark, ratio = 4.5) {
   const [h, s, l0] = rgbToHsl(hexToRgb(accent));
   let l = l0;
   let color = accent;
-  for (let i = 0; i < 40 && contrastRatio(color, background) < 4.5; i += 1) {
+  for (let i = 0; i < 40 && contrastRatio(color, background) < ratio; i += 1) {
     l = dark ? Math.min(0.95, l + 0.02) : Math.max(0.05, l - 0.02);
     color = rgbToHex(hslToRgb([h, s, l]));
   }
@@ -111,7 +111,13 @@ function themeVariables(accent, neutral, dark) {
     deepRgb = deepRgb.map((v) => v * 0.88);
     deep = rgbToHex(deepRgb);
   }
+  // Arc's icon in the page: a white arc (icons/arc-mark.png) over the accent made a little deeper and richer, so the arc stands out on pale accents
+  // too (decided by Ron, 2026-11-09); its tools' badges draw in the accent, dark enough to read on their white circle
+  const [ih, is, il] = rgbToHsl(hexToRgb(accent));
+  const iconBg = rgbToHex(hslToRgb([ih, Math.min(1, is * 1.3), il * 0.9]));   // richer in proportion, so Silver stays grey
   return {
+    "--icon-bg": iconBg,
+    "--icon-ink": readableAccent(iconBg, "#ffffff", false, 3),
     "--bg": ramp.bg,
     "--card": ramp.card,
     "--line": ramp.line,
