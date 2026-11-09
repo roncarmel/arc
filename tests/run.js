@@ -855,9 +855,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08ze" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08zf" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-08ze/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-08zf/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3060,7 +3060,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08ze", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08zf", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4965,8 +4965,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var ms_tile = (k) => ms_d.querySelector(`#msBody .ms-ktile[data-kind="${k}"]`);
   await waitFor(() => ms_names().length === 5 && ms_w.eval("sortChoices().length") === 5, 5000);
   check("the tabs are Shared by others and Shared by you, with no ? and no pink card", Array.from(ms_d.querySelectorAll("#msTabs .ms-tab-name")).map((b) => b.textContent).join("|") === "Shared by others|Shared by you" && !ms_d.querySelector(".ms-tab-info") && !ms_d.getElementById("msIntroCard"));
-  check("Shared by others starts with tiles for All and the four types, and no line about Get", Array.from(ms_d.querySelectorAll("#msBody .ms-ktile")).map((b) => b.textContent).join("|") === "All|Ceremony|Phase|Mood|Other" && ms_tile("all").classList.contains("ms-on") && !/Get puts/.test(ms_d.getElementById("msBody").textContent));
-  check("All lists every share, newest first, each with its type's line above its name", JSON.stringify(ms_names()) === JSON.stringify(["Deep water", "Forest floor", "Night sky", "Bowls and gongs", "Soft rain"]) && ms_labels().join("|") === "Ceremony · Book 2|Phase · Beginning, Ending|Mood · grief, tender|Sound bath|Mood · tender, awe", ms_labels().join("|"));
+  check("Shared by others starts with tiles for All and the four types, and no line about Get", Array.from(ms_d.querySelectorAll("#msBody .ms-ktile")).map((b) => b.textContent).join("|") === "All|Ceremonies|Phases|Moods|Other" && ms_tile("all").classList.contains("ms-on") && !/Get puts/.test(ms_d.getElementById("msBody").textContent));
+  check("All lists every share, newest first, each with its type's line above its name", JSON.stringify(ms_names()) === JSON.stringify(["Deep water", "Forest floor", "Night sky", "Bowls and gongs", "Soft rain"]) && ms_labels().join("|") === "Ceremonies · Book 2|Phases · Beginning, Ending|Moods · grief, tender|Sound bath|Moods · tender, awe", ms_labels().join("|"));
   check("an anonymous share says Anonymous, and each row has Get", /^Anonymous · 1 h 30 min$/.test(ms_d.querySelectorAll("#msResults .ms-row .ms-sub")[1].textContent) && ms_d.querySelectorAll("#msResults .ms-add").length === 5);
   ms_d.getElementById("msSortButton").click();
   check("All has a search, Hide playlists you have (on) and Sort, whose menu has Newest, A to Z, Longest, Most in your recipes and Least in your recipes", !!ms_d.getElementById("msSearch") && ms_d.getElementById("msHideAdded").checked && Array.from(ms_d.querySelectorAll("#msSortMenu button")).map((b) => b.textContent).join("|") === "Newest|A to Z|Longest|Most in your recipes|Least in your recipes");
@@ -5003,7 +5003,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ms_tile("all").click();
   ms_d.querySelector("#msResults .ms-row").click();
   await waitFor(() => !!ms_d.querySelector("#msBody .ms-hero"), 5000);
-  check("a playlist's page: its type, name, who on one line and the songs and length on the next", ms_d.querySelector("#msBody .ms-hero .ms-klabel").textContent === "Ceremony" && ms_d.querySelector("#msBody h3").textContent === "Deep water" && Array.from(ms_d.querySelectorAll("#msBody .ms-hero .ms-sub")).map((e) => e.textContent).join("|") === "Shared by Maya|100 songs · 6 h");
+  check("a playlist's page: its type, name, who on one line and the songs and length on the next", ms_d.querySelector("#msBody .ms-hero .ms-klabel").textContent === "Ceremonies" && ms_d.querySelector("#msBody h3").textContent === "Deep water" && Array.from(ms_d.querySelectorAll("#msBody .ms-hero .ms-sub")).map((e) => e.textContent).join("|") === "Shared by Maya|100 songs · 6 h");
   check("a ceremony's page shows its book lit under For use with, then the description with Report under it", /For use with/.test(ms_d.querySelector("#msBody .ms-facts").textContent) && ms_d.querySelector("#msBody .ms-btile.ms-on").textContent === "Book2" && ms_d.querySelector("#msBody .ms-long").textContent === "Slow and spacious, almost no vocals." && ms_d.querySelector("#msBody .ms-long").nextElementSibling.classList.contains("ms-reportrow"));
   check("Back is at the top and Get this playlist is wide under the header, with no bottom row", ms_d.querySelector("#msBody > #msBack").textContent === "Back" && ms_d.querySelector("#msBody .ms-hero + #msMain.ms-getwide").textContent === "Get this playlist" && ms_d.getElementById("msFoot").hidden);
   ms_w.eval("sharing.detail = 'b'; renderSharing();");
@@ -5071,7 +5071,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("Next with no type says so under the tiles", /Choose a type\./.test(ms_d.querySelector('#msBody [data-field="kind"] .ms-ferr').textContent));
   ms_tile("ceremony").click();
   ms_d.getElementById("msAnon").click();
-  check("choosing a type and Share anonymously changes the card at once, and the error goes", ms_card().querySelector(".ms-klabel").textContent === "Ceremony" && /^Anonymous · /.test(ms_card().querySelector(".ms-sub").textContent) && !ms_d.querySelector("#msBody .ms-ferr"));
+  check("choosing a type and Share anonymously changes the card at once, and the error goes", ms_card().querySelector(".ms-klabel").textContent === "Ceremonies" && /^Anonymous · /.test(ms_card().querySelector(".ms-sub").textContent) && !ms_d.querySelector("#msBody .ms-ferr"));
   ms_d.getElementById("msMain").click();
   check("Next goes to Details, with the books and a description and Share now", ms_w.eval("sharing.flow.step") === 2 && ms_d.querySelector('#msBody [data-field="books"] .ms-flabel b').textContent === "For use with which books?" && !!ms_d.getElementById("msDesc") && ms_d.getElementById("msMain").textContent === "Share now");
   check("a playlist with no Spotify description has no Mine | Spotify's switch", !ms_d.getElementById("msDescSpotify"));
@@ -5079,9 +5079,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => ms_d.querySelectorAll("#msBody .ms-bad").length === 2, 3000);
   check("Share now with fields missing marks each red with a message under it, and sends nothing", ms_d.querySelector('[data-field="books"] .ms-ferr').textContent === "Choose at least one book." && ms_d.querySelector('[data-field="description"] .ms-ferr').textContent === "Add a sentence or two." && ms_sh.posts.length === 0);
   ms_d.querySelectorAll('#msBody [data-field="books"] .ms-btile')[2].click();
-  check("a field put right loses its red at once, and the card follows", !ms_d.querySelector('[data-field="books"]').classList.contains("ms-bad") && ms_card().querySelector(".ms-klabel").textContent === "Ceremony · Book 3");
+  check("a field put right loses its red at once, and the card follows", !ms_d.querySelector('[data-field="books"]').classList.contains("ms-bad") && ms_card().querySelector(".ms-klabel").textContent === "Ceremonies · Book 3");
   ms_d.querySelectorAll('#msBody [data-field="books"] .ms-btile')[0].click();
-  check("ceremonies take more than one book", ms_card().querySelector(".ms-klabel").textContent === "Ceremony · Books 1, 3");
+  check("ceremonies take more than one book", ms_card().querySelector(".ms-klabel").textContent === "Ceremonies · Books 1, 3");
   { const t = ms_d.getElementById("msDesc"); t.value = "Long and quiet."; t.dispatchEvent(new ms_w.Event("input")); }
   ms_d.getElementById("msMain").click();
   await waitFor(() => !!ms_d.querySelector("#msBody .ms-shared"), 5000);
@@ -5091,7 +5091,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ms_d.getElementById("msDone").click();
   await waitFor(() => !!ms_d.querySelector("#msBody .ms-yrow"), 5000);
   var ms_yrow = () => ms_d.querySelector("#msBody .ms-yrow");
-  check("Done shows the list of shares: its type, name, Anonymous, and Share another playlist at the bottom", ms_yrow().querySelector(".ms-klabel").textContent === "Ceremony · Books 1, 3" && /^Anonymous/.test(ms_yrow().querySelector(".ms-sub").textContent) && ms_d.getElementById("msMain").textContent === "Share another playlist");
+  check("Done shows the list of shares: its type, name, Anonymous, and Share another playlist at the bottom", ms_yrow().querySelector(".ms-klabel").textContent === "Ceremonies · Books 1, 3" && /^Anonymous/.test(ms_yrow().querySelector(".ms-sub").textContent) && ms_d.getElementById("msMain").textContent === "Share another playlist");
   check("a playlist already shared is not offered again", (ms_d.getElementById("msMain").click(), !ms_pick().includes("p3")) && (ms_d.getElementById("msBack").click(), true));
   var ms_openEdit = async () => {
     ms_yrow().click();
@@ -5391,7 +5391,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08ze"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08zf"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
