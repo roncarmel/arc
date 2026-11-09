@@ -6,19 +6,13 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08zk";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08zl";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
 // The phases of a session, drawn as one curve: low and flat, rising, high and flat, falling, low and flat (decided by Ron, 2026-11-06).
 const PHASES = ["Beginning", "Ascent", "Plateau", "Descent", "Ending"];
 const BOOKS = 5;   // the facilitators' books, Book 1 to Book 5 (they know what they are)
-// a sixth tile, Other, for a book that is not one of the five: a ? in the book until its code is typed, up to 2 letters or numbers
-// (decided by Ron, 2026-11-08, mockups/book-other.html B). It is position 5 in a share's books, and the code is its bookOther.
-const OTHER_BOOK = BOOKS, BOOK_CODE_MAX = 2;
-const cleanBookCode = (t) => String(t || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, BOOK_CODE_MAX);
-// a book as it is named: its number, or the other book's code
-const bookName = (i, code) => (i === OTHER_BOOK ? cleanBookCode(code) || "?" : String(i + 1));
 // The types of a share, in this order everywhere, each with its icon (kindIcon) and a line for the big tiles
 const KINDS = [
   ["ceremony", "Ceremony", "A whole session, start to finish.", "Ceremonies"],
@@ -38,7 +32,7 @@ const TAG_COMMON = new Set("music musical playlist playlists session sessions ce
 
 const sharing = {
   tab: "find", detail: null, flow: null, library: null, libraryAt: 0, loading: false, error: "",
-  type: "all", search: "", sort: "newest", hideAdded: true, book: null, bookCode: null, phases: new Set(), moods: new Set(),
+  type: "all", search: "", sort: "newest", hideAdded: true, book: null, phases: new Set(), moods: new Set(),
   mine: null, mineError: "", adding: new Set(), addErrors: {},
   overlap: null, overlapShown: null, reading: false, readStop: false, showOverlapSongs: false,
   songNames: new Map(), player: null, previewNote: "",
@@ -236,7 +230,7 @@ function kindIcon(kind) {
 function kindLabel(s) {
   if (!s || !s.kind) return "";
   if (s.kind === "other") return s.other || "";
-  const list = s.kind === "ceremony" ? (s.books || []).slice().sort((a, b) => a - b).map((i) => bookName(i, s.bookOther))
+  const list = s.kind === "ceremony" ? (s.books || []).slice().sort().map((i) => i + 1)
     : s.kind === "phase" ? (s.phases || []).slice().sort().map((i) => PHASES[i]) : (s.moods || []).slice();
   let part = "";
   if (s.kind === "ceremony" && list.length) part = (list.length === 1 ? "Book " : "Books ") + list.join(", ");
@@ -254,26 +248,22 @@ function kindTiles(on, choose, { filter = false, big = false } = {}) {
   for (const [value, name, line, plural] of KINDS) box.appendChild(tile(value, filter ? plural : name, line, kindIcon(value)));
   return box;
 }
-// a closed book with its number on it, under the word Book (A2, decided by Ron, 2026-11-08); the other book's two letters are smaller
+// a closed book with its number on it, under the word Book (A2, decided by Ron, 2026-11-08)
 function bookIcon(n) {
   const holder = feEl("span", { class: "ms-bookicon", "aria-hidden": "true" });
-  const t = String(n);
-  holder.innerHTML = `<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M10 5h20a2 2 0 0 1 2 2v26a2 2 0 0 1-2 2H10z"/><path d="M10 5a3 3 0 0 0-3 3v24a3 3 0 0 0 3 3"/><text x="21" y="${t.length > 1 ? 24.5 : 25}" text-anchor="middle" font-size="${t.length > 1 ? 12 : 15}" font-weight="800" fill="currentColor" stroke="none"></text></svg>`;
-  holder.querySelector("text").textContent = t;
+  holder.innerHTML = `<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M10 5h20a2 2 0 0 1 2 2v26a2 2 0 0 1-2 2H10z"/><path d="M10 5a3 3 0 0 0-3 3v24a3 3 0 0 0 3 3"/><text x="21" y="25" text-anchor="middle" font-size="15" font-weight="800" fill="currentColor" stroke="none">${n}</text></svg>`;
   return holder;
 }
-// the five books and Other as tiles: single (the filter) chooses one at a time, choosing it again clears it; without choose they only show which are lit.
-// code is the other book's code, shown in its book (a ? until there is one)
-function bookTiles(on, choose = null, single = false, code = "") {
+// the five books as tiles: single (the filter) chooses one at a time, choosing it again clears it; without choose they only show which are lit
+function bookTiles(on, choose = null, single = false) {
   const box = feEl("div", { class: "ms-btiles" + (choose ? "" : " ms-btiles-ro"), role: choose ? "group" : null, "aria-label": choose ? "Books" : null });
-  for (let i = 0; i <= OTHER_BOOK; i++) {
-    const lit = on.has(i), other = i === OTHER_BOOK;
-    const inner = [feEl("span", { class: "ms-btile-word" }, other ? "Other" : "Book"), bookIcon(bookName(i, code))];
-    const label = other ? "Other book" + (cleanBookCode(code) ? " " + cleanBookCode(code) : "") : "Book " + (i + 1);
+  for (let i = 0; i < BOOKS; i++) {
+    const lit = on.has(i);
+    const inner = [feEl("span", { class: "ms-btile-word" }, "Book"), bookIcon(i + 1)];
     box.appendChild(choose
-      ? feEl("button", { type: "button", class: "ms-btile" + (lit ? " ms-on" : "") + (other ? " ms-btile-other" : ""), "aria-pressed": String(lit), "aria-label": label,
+      ? feEl("button", { type: "button", class: "ms-btile" + (lit ? " ms-on" : ""), "aria-pressed": String(lit), "aria-label": "Book " + (i + 1),
         onClick: () => { if (on.has(i)) on.delete(i); else { if (single) on.clear(); on.add(i); } choose(i); } }, ...inner)
-      : feEl("span", { class: "ms-btile" + (lit ? " ms-on" : "") + (other ? " ms-btile-other" : ""), "aria-label": `${label}${lit ? "" : ", not this one"}` }, ...inner));
+      : feEl("span", { class: "ms-btile" + (lit ? " ms-on" : ""), "aria-label": `Book ${i + 1}${lit ? "" : ", not this one"}` }, ...inner));
   }
   return box;
 }
@@ -575,7 +565,6 @@ function setType(type) {
   if (type === sharing.type) return;
   sharing.type = type;
   sharing.book = null;
-  sharing.bookCode = null;
   sharing.phases.clear();
   sharing.moods.clear();
   renderSharing();
@@ -590,8 +579,7 @@ function renderFind(body) {
     if (t === "ceremony") {
       tools.appendChild(feEl("p", { class: "ms-flabel2" }, "For use with (one at a time)"));
       const on = new Set(sharing.book == null ? [] : [sharing.book]);
-      tools.appendChild(bookTiles(on, () => { sharing.book = on.size ? [...on][0] : null; sharing.bookCode = null; renderSharing(); }, true, sharing.book === OTHER_BOOK ? sharing.bookCode || "" : ""));
-      if (sharing.book === OTHER_BOOK) tools.appendChild(otherBookChips());
+      tools.appendChild(bookTiles(on, () => { sharing.book = on.size ? [...on][0] : null; renderSharing(); }, true));
     } else if (t === "phase") {
       tools.appendChild(feEl("p", { class: "ms-flabel2" }, "Which phases"));
       tools.appendChild(phaseCurve(sharing.phases, () => renderResults(), "Which phases"));
@@ -626,18 +614,6 @@ function addedCount() {
 function mineCount() {
   if (sharing.mine) return sharing.mine.length;
   try { return (JSON.parse(localStorage.getItem(SHARING_MINE_KEY)) || []).length; } catch (err) { return 0; }
-}
-// with Other chosen in the filter: Any, then a chip per other book used on two or more ceremonies (as mood words are)
-function otherBookChips() {
-  const counts = new Map();
-  for (const s of sharing.library.shares) if (s.kind === "ceremony" && (s.books || []).includes(OTHER_BOOK) && cleanBookCode(s.bookOther)) {
-    const c = cleanBookCode(s.bookOther);
-    counts.set(c, (counts.get(c) || 0) + 1);
-  }
-  const codes = [...counts.entries()].filter(([, n]) => n > 1).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([c]) => c);
-  const chip = (code, text) => feEl("button", { type: "button", class: "ms-chip" + (sharing.bookCode === code ? " ms-on" : ""), "aria-pressed": String(sharing.bookCode === code),
-    onClick: () => { sharing.bookCode = code; renderSharing(); } }, text);
-  return feEl("div", { id: "msBookCodes", class: "ms-chips" }, chip(null, "Any"), ...codes.map((c) => chip(c, c)));
 }
 function renderMoodChips() {
   const box = $("msMoods");
@@ -689,11 +665,11 @@ function matchesSearch(s, q) {
   return q.toLowerCase().split(/\s+/).filter(Boolean).every((w) => hay.includes(w));
 }
 function narrowed() { return sharing.book != null || sharing.phases.size > 0 || sharing.moods.size > 0 || !!sharing.search.trim(); }
-function clearNarrowing() { sharing.book = null; sharing.bookCode = null; sharing.phases.clear(); sharing.moods.clear(); sharing.search = ""; }
+function clearNarrowing() { sharing.book = null; sharing.phases.clear(); sharing.moods.clear(); sharing.search = ""; }
 // the playlists of the chosen type that the filters and search leave, before Hide playlists you have (so the empty list can say what hides them)
 function filteredShares(hide = sharing.hideAdded) {
   return ofType().filter((s) => matchesSearch(s, sharing.search)
-    && (sharing.book == null || ((s.books || []).includes(sharing.book) && (sharing.book !== OTHER_BOOK || !sharing.bookCode || cleanBookCode(s.bookOther) === sharing.bookCode)))
+    && (sharing.book == null || (s.books || []).includes(sharing.book))
     && (!sharing.phases.size || (s.phases || []).some((i) => sharing.phases.has(i)))
     && (!sharing.moods.size || (s.moods || []).some((m) => sharing.moods.has(cleanMood(m))))
     && !(hide && (isAdded(s) || isMine(s))));
@@ -832,7 +808,7 @@ function renderDetail(body, foot) {
   const into = mine ? feEl("div", { class: "ms-dcard" }, feEl("div", { class: "ms-dhead" }, feEl("b", {}, "Details"),
     feEl("button", { type: "button", class: "ms-editlink", id: "msEdit", onClick: () => { const tab = sharing.tab; editShare(mine); sharing.backTo = { id: s.id, tab }; } }, feIcon("pencil"), "Edit details"))) : body;
   const report = () => feEl("div", { class: "ms-reportrow" }, feEl("button", { type: "button", class: "linklike ms-report", onClick: () => reportShare(s) }, feIcon("flag"), "Report"));
-  if (s.kind === "ceremony") into.appendChild(feEl("div", { class: "ms-facts" }, feEl("div", { class: "ms-sec" }, "For use with"), bookTiles(new Set(s.books || []), null, false, s.bookOther)));
+  if (s.kind === "ceremony") into.appendChild(feEl("div", { class: "ms-facts" }, feEl("div", { class: "ms-sec" }, "For use with"), bookTiles(new Set(s.books || []))));
   if (s.kind === "phase") { into.appendChild(phaseLine(s)); into.appendChild(phaseCurve(new Set(s.phases || []))); }
   if (s.kind === "mood") into.appendChild(feEl("div", { class: "ms-facts" }, feEl("div", { class: "ms-sec" }, "Moods"), feEl("div", { class: "ms-chips" }, ...(s.moods || []).map((m) => feEl("span", { class: "ms-chip ms-chip-ro" }, m)))));
   if (s.description) into.appendChild(feEl("p", { class: "ms-long" }, s.description));
@@ -1166,10 +1142,10 @@ async function updateShare(m) {
 // A draft: the playlist, its type, what the type asks for, the description (the person's own, or the playlist's Spotify description, kept in step
 // when the share is updated), and whether it is shared anonymously.
 function newDraft(p) {
-  return { playlist: p.id, shareId: null, kind: null, books: new Set(), bookOther: "", phases: new Set(), moods: [], other: "", desc: "", descSource: "mine", anon: false, errors: null, refused: "", problem: "", sending: false };
+  return { playlist: p.id, shareId: null, kind: null, books: new Set(), phases: new Set(), moods: [], other: "", desc: "", descSource: "mine", anon: false, errors: null, refused: "", problem: "", sending: false };
 }
 function draftFromShare(m, p) {
-  return { playlist: m.playlist, shareId: m.id, kind: m.kind, books: new Set(m.books || []), bookOther: m.bookOther || "", phases: new Set(m.phases || []), moods: (m.moods || []).slice(), other: m.other || "",
+  return { playlist: m.playlist, shareId: m.id, kind: m.kind, books: new Set(m.books || []), phases: new Set(m.phases || []), moods: (m.moods || []).slice(), other: m.other || "",
     desc: m.descSource === "spotify" ? "" : m.description || "", descSource: m.descSource === "spotify" && spotifyDescription(p) ? "spotify" : "mine", anon: !m.by,
     errors: null, refused: "", problem: "", sending: false };
 }
@@ -1296,7 +1272,7 @@ async function pickPlaylist(p) {
 function othersWillSee(p, d) {
   const tracks = trackCache.get(p.id);
   const ms = tracks ? tracks.reduce((n, t) => n + (t.ms || 0), 0) : (sharing.flow.share && sharing.flow.share.ms) || 0;
-  const look = { kind: d.kind, books: [...d.books], bookOther: d.bookOther, phases: [...d.phases], moods: d.moods, other: cleanWord(d.other, SHARE_OTHER_MAX) };
+  const look = { kind: d.kind, books: [...d.books], phases: [...d.phases], moods: d.moods, other: cleanWord(d.other, SHARE_OTHER_MAX) };
   const by = d.anon ? "Anonymous" : (me && (me.display_name || me.id)) || "";
   return feEl("div", { class: "ms-pcard", id: "msCardPreview" },
     feEl("div", { class: "ms-pcard-cap" }, "Others will see"),
@@ -1364,36 +1340,16 @@ function anonBox(d) {
 }
 function detailFields(p, d) {
   const out = [];
-  if (d.kind === "ceremony") out.push(field("books", "For use with which books?", booksContent(d), fieldNote("all that apply")));
+  if (d.kind === "ceremony") out.push(field("books", "For use with which books?", bookTiles(d.books, () => { draftChanged(); refreshBooks(d); }), fieldNote("all that apply")));
   if (d.kind === "phase") out.push(field("phases", "Which phases?", phaseCurve(d.phases, draftChanged, "Which phases?"), fieldNote("all that apply")));
   if (d.kind === "mood") out.push(field("moods", "Which moods?", moodField(d), fieldNote("at least 1")));
   if (d.kind === "other") out.push(field("other", "What kind of playlist is this?", otherField(d), fieldNote("a word or two")));
   if (d.kind) out.push(descriptionField(p, d));
   return out;
 }
-// the books, and with Other lit a small field for its code under them (the tile shows the code as it is typed)
-function booksContent(d) {
-  const box = feEl("div", { id: "msBooks" }, bookTiles(d.books, (i) => { draftChanged(); refreshBooks(d, i === OTHER_BOOK && d.books.has(OTHER_BOOK)); }, false, d.bookOther));
-  if (d.books.has(OTHER_BOOK)) {
-    const input = feEl("input", { type: "text", class: "ms-input ms-bcode", id: "msBookCode", maxlength: String(BOOK_CODE_MAX), value: d.bookOther, autocapitalize: "characters",
-      autocomplete: "off", spellcheck: "false", enterkeyhint: "next", "aria-label": "Other book, up to 2 letters or numbers" });
-    input.addEventListener("input", () => {
-      const code = cleanBookCode(input.value);
-      if (input.value !== code) input.value = code;
-      d.bookOther = code;
-      const tile = document.querySelector("#msBooks .ms-btile-other");
-      if (tile) { tile.querySelector(".ms-bookicon").replaceWith(bookIcon(bookName(OTHER_BOOK, code))); tile.setAttribute("aria-label", "Other book" + (code ? " " + code : "")); }
-      draftChanged();
-    });
-    input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); const next = $("msDesc"); if (next && !next.readOnly) next.focus(); else input.blur(); } });
-    box.appendChild(feEl("label", { class: "ms-bcode-row" }, feEl("b", {}, "Other book"), input, feEl("span", { class: "ms-fnote" }, "Up to 2 letters or numbers")));
-  }
-  return box;
-}
-function refreshBooks(d, focusCode = false) {
-  const old = $("msBooks");
-  if (old) old.replaceWith(booksContent(d));
-  if (focusCode && $("msBookCode")) $("msBookCode").focus();
+function refreshBooks(d) {
+  const old = document.querySelector('#msBody [data-field="books"] .ms-btiles');
+  if (old) old.replaceWith(bookTiles(d.books, () => { draftChanged(); refreshBooks(d); }));
 }
 function otherField(d) {
   const input = feEl("input", { type: "text", class: "ms-input", id: "msOther", maxlength: String(SHARE_OTHER_MAX), value: d.other, placeholder: "e.g. Sound bath", enterkeyhint: "next", "aria-label": "What kind of playlist is this?" });
@@ -1479,11 +1435,6 @@ function draftErrors(d, p) {
   const e = {};
   if (!d.kind) e.kind = "Choose a type.";
   if (d.kind === "ceremony" && !d.books.size) e.books = "Choose at least one book.";
-  else if (d.kind === "ceremony" && d.books.has(OTHER_BOOK)) {
-    const code = cleanBookCode(d.bookOther);
-    if (!code) e.books = "Type the other book, up to 2 letters or numbers.";
-    else if (blockedWord(code)) e.books = "That other book can't be used.";
-  }
   if (d.kind === "phase" && !d.phases.size) e.phases = "Choose at least one phase.";
   if (d.kind === "mood" && !d.moods.length) e.moods = "Add at least one mood.";
   if (d.kind === "other") {
@@ -1545,7 +1496,7 @@ async function sendShare(p, d) {
   const kind = d.kind;
   await sharingFetch("POST", "/share", {
     playlist: p.id, snapshot: p.snapshot || null, name: p.name, by: d.anon ? null : (me && (me.display_name || me.id)) || null,
-    kind, books: kind === "ceremony" ? [...d.books].sort((a, b) => a - b) : [], bookOther: kind === "ceremony" && d.books.has(OTHER_BOOK) ? cleanBookCode(d.bookOther) : "", phases: kind === "phase" ? [...d.phases].sort() : [], moods: kind === "mood" ? d.moods.slice() : [],
+    kind, books: kind === "ceremony" ? [...d.books].sort() : [], phases: kind === "phase" ? [...d.phases].sort() : [], moods: kind === "mood" ? d.moods.slice() : [],
     other: kind === "other" ? cleanWord(d.other, SHARE_OTHER_MAX) : "", description: draftDescription(d, p), descSource: d.descSource,
     cover: p.cover || null, songs, names, ms, artists: topArtists(tracks),
   });
