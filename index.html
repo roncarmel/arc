@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-08za">
-<script src="theme.js?v=2026-11-08za"></script>
+<meta name="app-version" content="2026-11-08zb">
+<script src="theme.js?v=2026-11-08zb"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -241,8 +241,11 @@
   footer.debug h3 { font-size: 1rem; margin: 20px 0 6px; color: var(--fg); }
   /* More options: body text is gray, so the headings, buttons, links and widgets are what stand out. */
   #moreOptions, #devOptions, #privacySection, #guideSection { color: var(--muted); }
+  #homeMore .hp-more-list { color: var(--muted); }
   #moreOptions input, #moreOptions select { color: var(--fg); }
-  #moreOptions #removeConfirmBox, #moreOptions #clearConfirm { color: var(--fg); }
+  #homeMore input, #homeMore select { color: var(--fg); }
+  #homeMore #clearConfirm { color: var(--fg); }
+  #moreOptions #removeConfirmBox { color: var(--fg); }
   #clearConfirm { scroll-margin-bottom: 16px; }   /* a little room under its buttons when it is scrolled into view */
   .plan-links { margin: 8px 0 0; }
   #moreOptions pre.report-preview { color: var(--muted); }
@@ -331,7 +334,6 @@
   #formatEditor .fe-appmenu .fe-itemnote { padding-left: 42px; }   /* a line under a plain row starts where that row's words do */   /* the icons of the plain rows take the width of the checkbox, so their words start in line with Compact view */   /* the app's icon and name: who this menu belongs to, and not something to press */
   #formatEditor .fe-menuicon { width: 32px; height: 32px; flex: none; border-radius: 22%; display: block; }
   #formatEditor .fe-menuname { font-weight: 700; font-size: 1.02rem; letter-spacing: 0.01em; }
-  #formatEditor .fe-version { padding: 4px 12px 6px; color: var(--muted); font-size: 0.78rem; }   /* the last line of the app menu: which version this is */
   #formatEditor .fe-bk-actions { display: flex; gap: 6px; padding: 0 6px 6px; }
   #formatEditor .fe-bk-actions button { flex: 1; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; padding: 0 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 10px; font: inherit; font-weight: 600; }
   #formatEditor .fe-itemnote { width: 0; min-width: 100%; box-sizing: border-box; padding: 0 12px 6px 40px; margin-top: -4px; font-size: 0.78rem; color: var(--muted); line-height: 1.3; }   /* the last-backup label, under its item, wrapping inside the menu */
@@ -628,6 +630,7 @@
   html.page-app #appBar { display: flex; align-items: center; gap: 8px; min-height: 44px; margin: 0 0 12px; position: relative; z-index: 60; }
   #appBar .ab-left { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
   html.view-home #appBar .ab-left { visibility: hidden; }
+  html.page-app:not(.view-builder) #feAppMenu { visibility: hidden; }   /* the menu is the builder's; what belongs to the whole app is under Everything else on home */
   #appBar .ab-home { flex: none; display: flex; align-items: center; gap: 9px; margin: 0; padding: 0; min-height: 0; background: none; border: 0; box-shadow: none; color: var(--fg); font: inherit; cursor: pointer; }
   #appBar .ab-home img { width: 32px; height: 32px; border-radius: 22%; }
   #appBar .ab-name { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.01em; }
@@ -638,6 +641,9 @@
   html.page-app.view-home #homePage { display: block; }
   #homePage { max-width: 560px; margin: 0 auto; }
   #homePage .hp-brand { text-align: center; margin: 4px 0 30px; }
+  #homePage .hp-brand { position: relative; }
+  #homePage .hp-brand .wp-band-ver { top: 0; right: 0; color: var(--muted); }   /* a tap on the icon shows the version here (flashBandVersion) */
+  #homePage .hp-brand img { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
   #homePage .hp-brand img { width: 84px; height: 84px; border-radius: 22%; box-shadow: 0 0 0 9px color-mix(in srgb, var(--accent) 10%, transparent), 0 0 0 20px color-mix(in srgb, var(--accent) 5%, transparent); }
   #homePage .hp-name { margin: 22px 0 0; font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; color: var(--fg); }
   #homePage .hp-tag { margin: 4px 0 0; color: var(--muted); font-size: 0.92rem; }
@@ -650,6 +656,27 @@
   #homePage .hp-text b { display: block; font-size: 1.05rem; margin-bottom: 3px; }
   #homePage .hp-text span { color: var(--muted); font-size: 0.86rem; }
   #homePage .hp-go { flex: none; color: var(--accent); display: flex; }
+  /* Everything else on home (decided by Ron, 2026-11-08): one card under the tools, closed at first; its title, a grey line naming what is inside, a chevron.
+     Open, the app-wide topics (opening in place, as in More options) and the rows that open a popup or the feedback form. */
+  #homeMore { margin: 26px 0 0; border-radius: 18px; background: var(--card); border: 1px solid var(--line); }
+  #homeMore > summary { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; list-style: none; color: var(--fg); }
+  #homeMore > summary::-webkit-details-marker { display: none; }
+  #homeMore > summary::after { content: ""; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: translateY(-3px) rotate(45deg); margin-right: 6px; transition: transform 0.2s var(--ease-out); }
+  #homeMore[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
+  @media (prefers-reduced-motion: reduce) { #homeMore > summary::after { transition: none; } }
+  #homeMore .hp-more-text { flex: 1; min-width: 0; line-height: 1.35; }
+  #homeMore .hp-more-text b { display: block; font-size: 1.05rem; }
+  #homeMore .hp-more-text span { color: var(--muted); font-size: 0.86rem; }
+  #homeMore .hp-more-list { padding: 0 16px 6px; }
+  #homePage #homeMore details.gd-topic:first-of-type { border-top: 1px solid var(--line); }
+  #homePage #homeMore details.gd-topic:last-of-type { border-bottom: none; }
+  #homeMore .hp-more-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 52px; margin: 0; padding: 0; box-sizing: border-box; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; box-shadow: none; color: var(--fg); font: inherit; font-weight: 600; text-align: left; text-decoration: none; cursor: pointer; }
+  #homeMore .hp-more-item[hidden] { display: none; }
+  @media (hover: hover) { #homeMore .hp-more-item:hover { outline: none; filter: none; color: var(--accent); } }
+  #homeMore .hp-more-item .gd-thead { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  #homeMore .hp-more-item .gd-ticon { flex: none; display: flex; color: var(--muted); }
+  #homeMore .hp-more-item .gd-ticon svg { width: 18px; height: 18px; stroke-width: 2; }
+  #homeMore .hp-more-go { flex: none; color: var(--muted); margin-right: 2px; }
   /* Music sharing is a page of its own under the bar (its top is set by placeSharingPage in app.js) */
   html.page-app #msOverlay { background: var(--bg); padding: 0; z-index: 50; align-items: stretch; }
   html.page-app #msDialog { width: 100%; height: 100%; max-height: none; border-radius: 0; border: 0; box-shadow: none; }
@@ -925,19 +952,19 @@
   #reportBlock > :not(h3) { margin-left: 16px; }
   /* Privacy: the same rhythm and indent as More options */
   /* More options, Privacy and A guide for facilitators: one row per topic, each opening in place, the text under a title grey and indented */
-  :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic { border-top: 1px solid var(--line); }
-  :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic:last-of-type { border-bottom: 1px solid var(--line); }
+  :is(#guideSection, #privacySection, #moreOptions, #devOptions, #homeMore) details.gd-topic { border-top: 1px solid var(--line); }
+  :is(#guideSection, #privacySection, #moreOptions, #devOptions, #homeMore) details.gd-topic:last-of-type { border-bottom: 1px solid var(--line); }
   #infoSlot :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic:first-of-type { border-top: none; }   /* the band above is line enough */
-  #infoDialog :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic > summary { display: flex; pointer-events: auto; font-size: inherit; margin: 0; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; font-weight: 600; color: var(--fg); cursor: pointer; list-style: none; }
-  :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic > summary::-webkit-details-marker { display: none; }
-  :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic > summary::after { content: ""; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: translateY(-3px) rotate(45deg); margin-right: 6px; transition: transform 0.2s var(--ease-out); }
-  :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
-  @media (prefers-reduced-motion: reduce) { :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic > summary::after { transition: none; } }
-  :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic > :not(summary) { margin: 0 0 12px 16px; line-height: 1.5; }
-  :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic[open] { padding-bottom: 6px; }
-  :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic ul, :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic ol { padding-left: 1.3em; }
-  :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic li { margin-bottom: 6px; }
-  #moreOptions p, #moreOptions .row, #moreOptions select, #devOptions p, #devOptions .row, #moreOptions pre.report-preview, #moreOptions .choice-row, #moreOptions .button-link, #reportBlock p, #reportBlock pre.report-preview, #reportBlock .button-link { margin-top: 0; margin-bottom: 10px; }
+  #infoDialog :is(#guideSection, #privacySection, #moreOptions, #devOptions) details.gd-topic > summary, #homeMore details.gd-topic > summary { display: flex; pointer-events: auto; font-size: inherit; margin: 0; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; font-weight: 600; color: var(--fg); cursor: pointer; list-style: none; }
+  :is(#guideSection, #privacySection, #moreOptions, #devOptions, #homeMore) details.gd-topic > summary::-webkit-details-marker { display: none; }
+  :is(#guideSection, #privacySection, #moreOptions, #devOptions, #homeMore) details.gd-topic > summary::after { content: ""; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: translateY(-3px) rotate(45deg); margin-right: 6px; transition: transform 0.2s var(--ease-out); }
+  :is(#guideSection, #privacySection, #moreOptions, #devOptions, #homeMore) details.gd-topic[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
+  @media (prefers-reduced-motion: reduce) { :is(#guideSection, #privacySection, #moreOptions, #devOptions, #homeMore) details.gd-topic > summary::after { transition: none; } }
+  :is(#guideSection, #privacySection, #moreOptions, #devOptions, #homeMore) details.gd-topic > :not(summary) { margin: 0 0 12px 16px; line-height: 1.5; }
+  :is(#guideSection, #privacySection, #moreOptions, #devOptions, #homeMore) details.gd-topic[open] { padding-bottom: 6px; }
+  :is(#guideSection, #privacySection, #moreOptions, #devOptions, #homeMore) details.gd-topic ul, :is(#guideSection, #privacySection, #moreOptions, #devOptions, #homeMore) details.gd-topic ol { padding-left: 1.3em; }
+  :is(#guideSection, #privacySection, #moreOptions, #devOptions, #homeMore) details.gd-topic li { margin-bottom: 6px; }
+  #moreOptions p, #moreOptions .row, #moreOptions select, #homeMore .gd-topic p, #homeMore .gd-topic .row, #homeMore .choice-row, #devOptions p, #devOptions .row, #moreOptions pre.report-preview, #moreOptions .choice-row, #moreOptions .button-link, #reportBlock p, #reportBlock pre.report-preview, #reportBlock .button-link { margin-top: 0; margin-bottom: 10px; }
   #moreOptions .row select, #moreOptions .row .button-link { margin-bottom: 0; }   /* inside a row, the row supplies the space below, so the items centre on each other */
   body.minimal #feAppMenuButton { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
   /* the popup that holds everything after a click on Create: the plan, the question, the progress, and the result */
@@ -1842,6 +1869,51 @@
       <button id="homeBuilder" class="hp-tool" type="button"><span class="hp-art hp-one" aria-hidden="true"><img src="playlist-cover.jpg" alt=""></span><span class="hp-text"><b>Playlist builder</b><span>Build long timed playlists from your own, with a recipe.</span></span><span class="hp-go"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
       <button id="msCard" class="hp-tool" type="button"><span id="msCardFan" class="ms-card-fan hp-art" aria-hidden="true"></span><span class="hp-text"><b>Music sharing</b><span id="msCardText"></span></span><span class="hp-go"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
     </div>
+    <!-- Everything else: what belongs to the whole app rather than one tool, closed at first (decided by Ron, 2026-11-08, mockups/home-menu.html B). Color, the Spotify login,
+         Sign out and clear data and Hide support button open in place; Privacy and Report a problem open in the info popup; Feedback opens its form. -->
+    <details id="homeMore" class="hp-more">
+      <summary><span class="hp-more-text"><b>Everything else</b><span>Color, Spotify account, Privacy, Report a problem</span></span></summary>
+      <div class="hp-more-list">
+        <details class="gd-topic" data-icon="palette"><summary>Color</summary>
+        <p class="muted">Choose the main color of this page. It's used for buttons, links, and highlights.</p>
+        <div class="row" style="margin-top:0">
+          <div class="theme-picker">
+            <button id="themeButton" type="button" class="theme-button" aria-haspopup="listbox" aria-expanded="false" aria-label="Color"><span class="swatch" id="themeSwatch"></span><span id="themeName"></span><svg class="theme-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+            <ul id="themeList" class="theme-list" role="listbox" aria-label="Color" hidden></ul>
+          </div>
+        </div>
+        <p id="themeNote" class="muted" hidden></p>
+        </details>
+        <details class="gd-topic" data-icon="user"><summary>Change Spotify login</summary>
+        <p class="muted">Sign in with a different Spotify account. Spotify’s sign-in page opens, where <span class="ui">Not you?</span> lets you choose another account. Your recipes stay as they are and are saved to the account you sign in with.</p>
+        <p><button id="changeSpotifyLogin" class="linklike" type="button">Change Spotify login</button></p>
+        </details>
+        <details class="gd-topic" data-icon="logout"><summary>Sign out and clear data</summary>
+        <p class="muted">For when you’re done on a computer that isn’t yours, or when something here isn’t working. This signs you out of Spotify and erases everything this app keeps in this browser: your Client ID, your recipes, and your settings. Nothing in your Spotify account changes.</p>
+        <p id="clearRestoreHelp" class="muted">Your recipes are erased too. To get them back afterward, choose <span class="ui">Restore</span> in the Playlist builder's menu and pick the backup you made on this device. If you haven't backed up to this device, choose <span class="ui">Back up now</span> there first.</p>
+        <p id="clearBackupNote"></p>
+        <div class="row">
+          <button id="clearData" type="button"><img class="btn-icon" src="icons/clear.svg" alt="" width="20" height="20"><span class="btn-label">Sign out and clear data</span></button>
+        </div>
+        <div id="clearConfirm" hidden>
+          <p>Sign out of Spotify, erase this app’s data in this browser, and reload this page?</p>
+          <p id="clearConfirmHelp" class="muted">Your recipes will be erased from this device. To get them back, choose <span class="ui">Restore</span> in the Playlist builder's menu and pick the backup you made on this device.</p>
+          <div class="row">
+            <button id="clearYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Sign out and clear</span></button>
+            <button id="clearNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
+          </div>
+        </div>
+        </details>
+        <details class="gd-topic" data-icon="eyeoff"><summary>Hide support button</summary>
+        <p class="muted">The Support me button stays visible until you have... supported me 🙂. If this app has been helpful to you, please give whatever feels right. Already did? Thank you! Check the box and the button will leave you alone. This runs on the honor system, so nobody’s looking, and the button waits patiently.</p>
+        <label class="choice-row"><input type="checkbox" id="donateHideBox"> <span>I have supported you!</span></label>
+        <p id="donateHiddenMessage" class="muted" hidden>The Support me button is hidden. Thank you for your support!</p>
+        </details>
+        <button id="homePrivacy" class="hp-more-item" type="button" data-icon="lock"><span class="hp-more-label">Privacy</span><svg class="hp-more-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+        <button id="homeReport" class="hp-more-item" type="button" data-icon="flag"><span class="hp-more-label">Report a problem</span><svg class="hp-more-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+        <a id="homeFeedback" class="hp-more-item" target="_blank" rel="noopener noreferrer" data-icon="chat" hidden><span class="hp-more-label">Feedback and questions</span><svg class="hp-more-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+      </div>
+    </details>
   </section>
   <h2 id="editHeading">2. Edit your recipes</h2>
   <p id="savedNote" class="muted" hidden>You back your recipes up to this device yourself: <button id="backupDownloadLink" class="linklike" type="button">back up now</button>, and <button id="backupRestore" class="linklike" type="button">restore from a backup</button> at any time.</p>
@@ -2034,48 +2106,13 @@
       <p id="removeMessage" aria-live="polite"></p>
       <p id="removeReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="https://tally.so/r/VppLZN" target="_blank" rel="noopener noreferrer">Report this problem</a></p>
       </details>
-      <details class="gd-topic" data-icon="palette"><summary>Color</summary>
-      <p class="muted">Choose the main color of this page. It's used for buttons, links, and highlights.</p>
-      <div class="row" style="margin-top:0">
-        <div class="theme-picker">
-          <button id="themeButton" type="button" class="theme-button" aria-haspopup="listbox" aria-expanded="false" aria-label="Color"><span class="swatch" id="themeSwatch"></span><span id="themeName"></span><svg class="theme-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
-          <ul id="themeList" class="theme-list" role="listbox" aria-label="Color" hidden></ul>
-        </div>
-      </div>
-      <p id="themeNote" class="muted" hidden></p>
-      </details>
       <details class="gd-topic" data-icon="cloud"><summary>Autosave or backup</summary>
       <p class="muted">Your recipes are saved to Spotify automatically, and a change you make on one device shows up on your others. The other choice is a manual backup: you download a file yourself and restore from it later. Changing this is not recommended. With a manual backup, nothing is saved unless you remember to make a backup, so clearing your browser's data can lose your recipes, and your devices will not stay in step.</p>
       <p><button id="changeSaveMethod" class="linklike" type="button">Change how your recipes are saved</button></p>
       </details>
-      <details class="gd-topic" data-icon="user"><summary>Change Spotify login</summary>
-      <p class="muted">Sign in with a different Spotify account. Spotify’s sign-in page opens, where <span class="ui">Not you?</span> lets you choose another account. Your recipes stay as they are and are saved to the account you sign in with.</p>
-      <p><button id="changeSpotifyLogin" class="linklike" type="button">Change Spotify login</button></p>
-      </details>
-      <details class="gd-topic" data-icon="logout"><summary>Sign out and clear data</summary>
-      <p class="muted">For when you’re done on a computer that isn’t yours, or when something here isn’t working. This signs you out of Spotify and erases everything this app keeps in this browser: your Client ID, your recipes, and your settings. Nothing in your Spotify account changes.</p>
-      <p id="clearRestoreHelp" class="muted">Your recipes are erased too. To get them back afterward, choose <span class="ui">Restore</span> in the app menu and pick the backup you made on this device. If you haven't backed up to this device, choose <span class="ui">Back up now</span> there first.</p>
-      <p id="clearBackupNote"></p>
-      <div class="row">
-        <button id="clearData" type="button"><img class="btn-icon" src="icons/clear.svg" alt="" width="20" height="20"><span class="btn-label">Sign out and clear data</span></button>
-      </div>
-      <div id="clearConfirm" hidden>
-        <p>Sign out of Spotify, erase this app’s data in this browser, and reload this page?</p>
-        <p id="clearConfirmHelp" class="muted">Your recipes will be erased from this device. To get them back, choose <span class="ui">Restore</span> in the app menu and pick the backup you made on this device.</p>
-        <div class="row">
-          <button id="clearYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Sign out and clear</span></button>
-          <button id="clearNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
-        </div>
-      </div>
-      </details>
-      <details class="gd-topic" data-icon="eyeoff"><summary>Hide support button</summary>
-      <p class="muted">The Support me button stays visible until you have... supported me 🙂. If this app has been helpful to you, please give whatever feels right. Already did? Thank you! Check the box and the button will leave you alone. This runs on the honor system, so nobody’s looking, and the button waits patiently.</p>
-      <label class="choice-row"><input type="checkbox" id="donateHideBox"> <span>I have supported you!</span></label>
-      <p id="donateHiddenMessage" class="muted" hidden>The Support me button is hidden. Thank you for your support!</p>
-      </details>
     </details>
 
-    <!-- Developer options: opened only by holding the app menu's header for 3 seconds (editor.js, watchDevHold), with nothing on screen that shows it -->
+    <!-- Developer options: opened only by holding Arc's icon (a band's, home's) or the app menu's header for 3 seconds (editor.js, watchDevHold), with nothing on screen that shows it -->
     <details id="devOptions" class="card" hidden>
       <summary>Developer options</summary>
       <details class="gd-topic" data-icon="tag"><summary>Music sharing moods</summary>
@@ -2166,10 +2203,10 @@
     <div id="msFoot" hidden></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-08za"></script>
-<script src="editor.js?v=2026-11-08za"></script>
-<script src="shared-spotify.js?v=2026-11-08za"></script>
-<script src="app.js?v=2026-11-08za"></script>
-<script src="sharing.js?v=2026-11-08za"></script>
+<script src="formats.js?v=2026-11-08zb"></script>
+<script src="editor.js?v=2026-11-08zb"></script>
+<script src="shared-spotify.js?v=2026-11-08zb"></script>
+<script src="app.js?v=2026-11-08zb"></script>
+<script src="sharing.js?v=2026-11-08zb"></script>
 </body>
 </html>

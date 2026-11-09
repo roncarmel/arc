@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-08za";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-08zb";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -135,8 +135,21 @@ function addTopicIcons(root) {
     head.append(icon, text);
     summary.appendChild(head);
   }
+  // the rows under Everything else on home that open a popup or a form: the same icon ahead of the label
+  for (const row of (root || document).querySelectorAll(".hp-more-item[data-icon]")) {
+    const label = row.querySelector(".hp-more-label");
+    if (!label || row.querySelector(".gd-thead") || !FE_ICONS[row.dataset.icon]) continue;
+    const icon = feIcon(row.dataset.icon);
+    icon.className = "gd-ticon";
+    const head = document.createElement("span");
+    head.className = "gd-thead";
+    label.replaceWith(head);
+    head.append(icon, label);
+  }
 }
 addTopicIcons();
+// Developer options also open from a hold on Arc's icon: in each pink band (welcome, setup, connecting) and on home
+for (const icon of document.querySelectorAll(".wp-band-icon, #homePage .hp-brand img")) watchDevHold(icon);
 
 // diagonal stripes running from lower left to upper right; each stripe is as thick as its share of the mix
 function feStripes(shareA, period) {
@@ -812,43 +825,37 @@ function renderAppMenu() {
     feEl("button", { type: "button", class: "fe-item fe-gditem", id: "feGuide", role: "menuitem", onClick: choose(() => openGuide()) }, feIcon("help"),
       feEl("span", { class: "fe-gditem-text" }, feEl("span", { text: "A guide for facilitators" }), feEl("span", { class: "fe-gditem-note", text: "The thinking behind this app and how to use it well" }))),
     infoItem("feMoreOptions", "moreOptions", "sliders", "More options"),
-    // the form says all there is to say about itself, so the item opens it straight away, in a new tab, with nothing attached
-    typeof FEEDBACK_FORM_URL !== "undefined" && FEEDBACK_FORM_URL ? feEl("a", { class: "fe-item", id: "feFeedback", role: "menuitem", href: FEEDBACK_FORM_URL, target: "_blank", rel: "noopener noreferrer", onClick: () => setTimeout(() => { editor.appMenu = false; renderAppMenu(); }, 0) }, feIcon("chat"), "Feedback and questions") : null,
-    infoItem("feReport", "reportBlock", "flag", "Report a problem"),
-    infoItem("fePrivacy", "privacySection", "lock", "Privacy"),
-    feEl("div", { class: "fe-rule" }),
-    versionLine()));
+    // the builder's own menu (decided by Ron, 2026-11-08): what belongs to the whole app (Privacy, Feedback, Color, the account) is under Everything else on home,
+    // and the version shows from a tap on Arc's icon in a band
+    infoItem("feReport", "reportBlock", "flag", "Report a problem")));
   watchDevHold($("feMenuHead"));
 }
 
-// Developer options open by holding the menu's header for 3 seconds. Nothing shows while holding, on purpose: it is not for people to find.
+// Developer options open by holding Arc's icon (in a pink band, or on home) or the builder menu's header for 3 seconds. Nothing shows while holding, on purpose: it is not for people to find.
 // The header takes no text selection, image callout or browser menu, so a long press on a phone reaches the end.
 const DEV_HOLD_MS = 3000;
 function watchDevHold(head) {
   if (!head) return;
   const img = head.querySelector("img");
   if (img) img.draggable = false;
-  let timer = null, from = null;
+  let timer = null, from = null, held = false;
   const stop = () => { clearTimeout(timer); timer = null; };
+  head.addEventListener("click", (event) => { if (held) { held = false; event.stopImmediatePropagation(); event.preventDefault(); } }, true);   // the release after a hold is not also a tap (the version)
   head.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
+    held = false;
     from = { x: event.clientX, y: event.clientY };
     stop();
     timer = setTimeout(() => {
       timer = null;
-      editor.appMenu = false;
-      renderAppMenu();
+      held = true;
+      if (editor.appMenu) { editor.appMenu = false; renderAppMenu(); }
       openInfo("devOptions");
     }, DEV_HOLD_MS);
   });
   head.addEventListener("pointermove", (event) => { if (timer && from && Math.hypot(event.clientX - from.x, event.clientY - from.y) > 10) stop(); });
   for (const type of ["pointerup", "pointercancel", "pointerleave"]) head.addEventListener(type, stop);
   head.addEventListener("contextmenu", (event) => event.preventDefault());
-}
-
-// The menu's last line: which version this is (a newer one shows as a card at the bottom of the screen: showUpdateCard in app.js)
-function versionLine() {
-  return feEl("div", { class: "fe-version", id: "feVersion", text: `App version ${typeof APP_VERSION === "undefined" ? "" : APP_VERSION}` });
 }
 
 // While recipes are being saved to Spotify the menu button shows the cloud-save picture in place of its dots, with a short cross-fade, and keeps it for at least a second so a
@@ -872,7 +879,7 @@ function offerSaveTip() {
 }
 function saveTipQuiet() {
   const button = $("feAppMenuButton");
-  if (!button || !document.documentElement.classList.contains("page-app") || button.closest("[hidden]") || document.visibilityState === "hidden") return false;
+  if (!button || !document.documentElement.classList.contains("page-app") || !document.documentElement.classList.contains("view-builder") || button.closest("[hidden]") || document.visibilityState === "hidden") return false;
   if (typeof backupMode === "function" && backupMode() !== "spotify") return false;
   if (typeof busy !== "undefined" && busy) return false;
   if (typeof connectingScreen !== "undefined" && connectingScreen) return false;

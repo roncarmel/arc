@@ -658,7 +658,7 @@ print(json.dumps(out))
   await readyToPreview(wG);
   var removeOpts = Array.from(wG.document.getElementById("removeKey").options).map((o) => o.value);
   check("the removal dropdown lists a blank, the formats, then All recipes", JSON.stringify(removeOpts) === JSON.stringify(["", "a", "b", "__all__"]), JSON.stringify(removeOpts));
-  check("removal is inside More options", !!wG.document.querySelector("#moreOptions #removeOld") && !!wG.document.querySelector("#moreOptions #clearData") && /More options/.test(wG.document.querySelector("#moreOptions summary").textContent));
+  check("removal is inside More options; Sign out and clear data is under Everything else on home", !!wG.document.querySelector("#moreOptions #removeOld") && !!wG.document.querySelector("#homeMore #clearData") && /More options/.test(wG.document.querySelector("#moreOptions summary").textContent));
   check("the removal dropdown starts blank and Remove waits for a choice", wG.document.getElementById("removeKey").value === "" && wG.document.getElementById("removeOld").disabled === true);
   wG.document.getElementById("removeKey").value = "b";
   removeNow(wG);
@@ -854,9 +854,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08za" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08zb" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-08za/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-08zb/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -924,8 +924,8 @@ print(json.dumps(out))
   var cb = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: null } });
   cb.eval("saveFile = (name, text) => { window.__savedFromClear = { name, text }; }");
   var note = () => cb.document.getElementById("clearBackupNote").textContent;
-  var clearSection = cb.document.getElementById("moreOptions").textContent.replace(/\s+/g, " ");
-  check("the Sign out and clear data section starts with You, says formats are erased too, and points to Restore and Back up now in the app menu", /^For when you’re done on a computer that isn’t yours, or when something here isn’t working\. This signs you out of Spotify and erases everything this app keeps in this browser: your Client ID, your recipes, and your settings\. Nothing in your Spotify account changes\./.test(clearSection.slice(clearSection.indexOf("Sign out and clear data") + 23).trim()) && /Your recipes are erased too\. To get them back afterward, choose Restore in the app menu and pick the backup you made on this device\. If you haven't backed up to this device, choose Back up now there first\./.test(clearSection) && !/If something looks stuck/.test(clearSection));
+  var clearSection = cb.document.getElementById("homeMore").textContent.replace(/\s+/g, " ");
+  check("the Sign out and clear data section starts with You, says formats are erased too, and points to Restore and Back up now in the Playlist builder's menu", /^For when you’re done on a computer that isn’t yours, or when something here isn’t working\. This signs you out of Spotify and erases everything this app keeps in this browser: your Client ID, your recipes, and your settings\. Nothing in your Spotify account changes\./.test(clearSection.slice(clearSection.indexOf("Sign out and clear data") + 23).trim()) && /Your recipes are erased too\. To get them back afterward, choose Restore in the Playlist builder's menu and pick the backup you made on this device\. If you haven't backed up to this device, choose Back up now there first\./.test(clearSection) && !/If something looks stuck/.test(clearSection));
   check("untouched example: nothing to lose", note() === "You haven't made any recipes yet, so there is nothing to lose.", note());
   cb.document.getElementById("formats").value += "\n# my change";
   cb.document.getElementById("formats").dispatchEvent(new cb.Event("input"));
@@ -938,7 +938,7 @@ print(json.dumps(out))
   check("editing after a backup says to back up again first", note() === "Your recipes have been edited since your last backup. Back up again first to keep the changes.", note());
   cb.document.getElementById("clearData").click();
   var confirmText = cb.document.getElementById("clearConfirm").textContent.replace(/\s+/g, " ");
-  check("the confirmation repeats what will be erased and how to get it back", !cb.document.getElementById("clearConfirm").hidden && /Your recipes will be erased from this device\. To get them back, choose Restore in the app menu and pick the backup you made on this device\./.test(confirmText));
+  check("the confirmation repeats what will be erased and how to get it back", !cb.document.getElementById("clearConfirm").hidden && /Your recipes will be erased from this device\. To get them back, choose Restore in the Playlist builder's menu and pick the backup you made on this device\./.test(confirmText));
   check("Step 2's own status and this section's note agree", /edited since your last backup/.test(cb.document.getElementById("backupStatus").textContent) && /edited since your last backup/.test(note()));
 
 
@@ -986,7 +986,7 @@ print(json.dumps(out))
   var ab = t0.document.getElementById("about");
   var leads = Array.from(ab.querySelectorAll("strong")).map((x) => x.textContent);
   check("the headings in What is this app? stand on their own line, without trailing periods", JSON.stringify(leads) === JSON.stringify(["What it does", "What it's good for", "How it works", "What you need", "Reporting problems", "Privacy"]) && Array.from(ab.querySelectorAll("p")).filter((p) => p.querySelector("strong + br")).length === 5, JSON.stringify(leads));
-  var pill = Array.from(t0.document.querySelectorAll("button:not(.linklike):not(.theme-button):not(#kofiClose):not(#createDonate):not(#cnContinue):not(#usOk), a.button-link")).filter((b) => !b.closest("#formatEditor") && !b.closest("#startupProblem") && b.id !== "infoClose" && b.id !== "msClose" && b.id !== "msCard" && b.id !== "homeBuilder" && !b.classList.contains("wp-tool-head") && !b.classList.contains("sp-choice") && b.id !== "appHome" && !b.closest("#appBar") && b.id !== "updateGet");   // the Music sharing card (covers, not an icon) and the update card's Get it (its gift is on the card)   // the Setup complete button has words only; the startup popup and the info popup's close draw their icons inline
+  var pill = Array.from(t0.document.querySelectorAll("button:not(.linklike):not(.theme-button):not(#kofiClose):not(#createDonate):not(#cnContinue):not(#usOk), a.button-link")).filter((b) => !b.closest("#formatEditor") && !b.closest("#startupProblem") && b.id !== "infoClose" && b.id !== "msClose" && b.id !== "msCard" && b.id !== "homeBuilder" && !b.classList.contains("wp-tool-head") && !b.classList.contains("hp-more-item") && !b.classList.contains("sp-choice") && b.id !== "appHome" && !b.closest("#appBar") && b.id !== "updateGet");   // the Music sharing card (covers, not an icon) and the update card's Get it (its gift is on the card)   // the Setup complete button has words only; the startup popup and the info popup's close draw their icons inline
   var pillsIn = pill.filter((b) => b.querySelector("img.btn-icon"));
   check("every pink button has an icon in front of its label (the Donate button has the cup)", pill.length >= 15 && pillsIn.length === pill.length, `${pillsIn.length} of ${pill.length} ` + pill.filter((b) => !b.querySelector("img.btn-icon")).map((b) => b.id || b.outerHTML.slice(0, 60)).join(","));
   check("each icon is a small file, 20 by 20 (the Build sparkles 24 by 24), decorative, and the file exists", pill.every((b) => { const i = b.querySelector("img.btn-icon"); const size = i.getAttribute("src") === "icons/build.svg" ? "24" : "20"; return i.getAttribute("width") === size && i.getAttribute("height") === size && i.getAttribute("alt") === "" && /^icons\/[a-z]+\.svg$/.test(i.getAttribute("src")) && fs.existsSync(ROOT + i.getAttribute("src")); }));
@@ -1100,11 +1100,11 @@ print(json.dumps(out))
   var moCss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("the More options box is gray by default", /#moreOptions(, [#\w-]+)* \{ color: var\(--muted\); \}/.test(moCss));
   check("its headings stay in the normal text color, and its title stays pink", /footer\.debug h3 \{[^}]*color: var\(--fg\)/.test(moCss) && /details\.card > summary \{[^}]*color: var\(--accent\)/.test(moCss));
-  check("its inputs, dropdowns and confirmation questions keep the normal text color, and the report details are gray like the rest", /#moreOptions input, #moreOptions select \{ color: var\(--fg\); \}/.test(moCss) && /#moreOptions #removeConfirmBox, #moreOptions #clearConfirm \{ color: var\(--fg\); \}/.test(moCss) && /#moreOptions pre\.report-preview \{ color: var\(--muted\); \}/.test(moCss) && !/#moreOptions pre, /.test(moCss));
+  check("its inputs, dropdowns and confirmation questions keep the normal text color, and the report details are gray like the rest", /#moreOptions input, #moreOptions select \{ color: var\(--fg\); \}/.test(moCss) && /#moreOptions #removeConfirmBox \{ color: var\(--fg\); \}/.test(moCss) && /#homeMore #clearConfirm \{ color: var\(--fg\); \}/.test(moCss) && /#moreOptions pre\.report-preview \{ color: var\(--muted\); \}/.test(moCss) && !/#moreOptions pre, /.test(moCss));
   var moreBox = fresh.document.getElementById("moreOptions");
   var loud = Array.from(moreBox.querySelectorAll("p, label, span")).filter((el) => el.closest("#removeConfirmBox, #clearConfirm, .btn-label") === null && el.hasAttribute("style") && /color\s*:/.test(el.getAttribute("style")));
   check("no paragraph in More options sets its own text color, so the gray applies everywhere", loud.length === 0, loud.map((e) => e.id || e.textContent.slice(0, 30)).join(","));
-  check("buttons in More options keep their own white-on-pink look", /\n  button \{[^}]*color: var\(--on-button, #fff\)/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && moreBox.querySelectorAll("button:not(.linklike)").length >= 5);
+  check("buttons in More options keep their own white-on-pink look", /\n  button \{[^}]*color: var\(--on-button, #fff\)/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && moreBox.querySelectorAll("button:not(.linklike)").length >= 4);
 
 
   // ---------------- the hidden field Tally expects is called python
@@ -1586,7 +1586,7 @@ print(json.dumps(out))
   // ================================================================ the color theme
   var y_thm = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI } });
   var y_root = y_thm.document.documentElement.style;
-  check("More options has a Color heading and a list of 17 single-color names, Pink first, each with its color as a swatch", Array.from(y_thm.document.querySelectorAll("#moreOptions details.gd-topic > summary")).some((h) => h.textContent === "Color") && Array.from(y_thm.document.querySelectorAll("#themeList .theme-option")).length === 17 && y_thm.document.querySelector("#themeList .theme-option").textContent === "Pink" && y_thm.document.getElementById("themeName").textContent === "Pink" && /#ff38b8|rgb\(255, 56, 184\)/.test(y_thm.document.getElementById("themeSwatch").style.background) && Array.from(y_thm.document.querySelectorAll("#themeList .theme-option")).every((o) => o.querySelector(".swatch").style.background !== "" && !/\band\b/.test(o.textContent)));
+  check("Everything else on home has a Color heading and a list of 17 single-color names, Pink first, each with its color as a swatch", Array.from(y_thm.document.querySelectorAll("#homeMore details.gd-topic > summary")).some((h) => h.textContent === "Color") && Array.from(y_thm.document.querySelectorAll("#themeList .theme-option")).length === 17 && y_thm.document.querySelector("#themeList .theme-option").textContent === "Pink" && y_thm.document.getElementById("themeName").textContent === "Pink" && /#ff38b8|rgb\(255, 56, 184\)/.test(y_thm.document.getElementById("themeSwatch").style.background) && Array.from(y_thm.document.querySelectorAll("#themeList .theme-option")).every((o) => o.querySelector(".swatch").style.background !== "" && !/\band\b/.test(o.textContent)));
   check("the theme's two colors become every color the page uses", y_root.getPropertyValue("--button") === "#ff38b8" && y_root.getPropertyValue("--silence-line") === "#8a8a92" && ["--bg", "--fg", "--muted", "--line", "--card", "--cover", "--accent", "--accent-deep", "--accent-tint", "--accent-tint-border", "--accent-wash", "--on-button", "--icon-filter"].every((v) => y_root.getPropertyValue(v) !== ""), y_root.getPropertyValue("--bg"));
   check("light mode: a white page, dark text, and white text on the pink buttons", y_root.getPropertyValue("--bg") === "#ffffff" && y_thm.contrastRatio(y_root.getPropertyValue("--fg"), y_root.getPropertyValue("--bg")) > 12 && y_root.getPropertyValue("--on-button") === "#ffffff" && y_root.getPropertyValue("--icon-filter") === "none");
   check("link and title text in light mode is darkened until it can be read (4.5 to 1 or better)", y_thm.contrastRatio(y_root.getPropertyValue("--accent"), y_root.getPropertyValue("--bg")) >= 4.5);
@@ -1643,7 +1643,8 @@ print(json.dumps(out))
     }
   }
   check("in every theme, in light and dark, the text, links, buttons and silence tags are readable", z_bad.length === 0, z_bad.join("; "));
-  z_t.eval('openInfo("moreOptions")');   // the color list is in More options, which the app menu opens in a popup
+  z_t.eval('showView("home", false)');
+  z_t.document.getElementById("homeMore").open = true;   // the color list is under Everything else on home
   z_t.document.getElementById("themeButton").click();
   check("the list opens on the button, with the current color's option focused and selected", !z_t.document.getElementById("themeList").hidden && z_t.document.getElementById("themeButton").getAttribute("aria-expanded") === "true" && z_t.document.querySelector("#themeList [aria-selected=true]").textContent === "Pink" && z_t.document.activeElement.textContent === "Pink");
   z_t.document.getElementById("themeList").dispatchEvent(new z_t.KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
@@ -1658,6 +1659,7 @@ print(json.dumps(out))
 
   check("choosing a theme applies it at once and remembers it", z_t.document.documentElement.style.getPropertyValue("--button") === "#ffb020" && z_t.localStorage.getItem("theme") === "ambers-and-umbers" && z_t.document.documentElement.style.getPropertyValue("--on-button") === "#111111");
   var z_secs = () => Array.from(z_t.document.querySelectorAll("#moreOptions details"));
+  z_t.eval('openInfo("moreOptions")');
   z_secs().forEach((d) => { d.open = true; });
   z_t.eval("closeInfo()");
   z_t.eval('openInfo("moreOptions")');
@@ -2046,20 +2048,18 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   am_w.document.getElementById("feAppMenuButton").click();
   var am_items = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel .fe-item")).map((b) => b.textContent.trim());
   var am_ids = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel [id]")).map((n) => n.id).filter((id) => ["feMoreOptions", "feAbout", "feTips", "fePrivacy", "feReport", "feBackupMethod", "feBackup", "feRestore", "feDisconnect"].includes(id));
-  check("it has no Disconnect, then the backup block (what it is, a Change how your recipes are saved link, how it is going, then Back up now and Restore), then More options, Report a problem and Privacy, in that order", JSON.stringify(am_ids) === JSON.stringify(["feBackupMethod", "feBackup", "feRestore", "feMoreOptions", "feReport", "fePrivacy"]) && /Manual backup to this device/.test(am_w.document.getElementById("feBackupMethod").closest(".fe-bk-block").textContent), JSON.stringify(am_ids));
+  check("it has no Disconnect, then the backup block (what it is, a Change how your recipes are saved link, how it is going, then Back up now and Restore), then More options and Report a problem, in that order (Privacy is under Everything else on home)", JSON.stringify(am_ids) === JSON.stringify(["feBackupMethod", "feBackup", "feRestore", "feMoreOptions", "feReport"]) && /Manual backup to this device/.test(am_w.document.getElementById("feBackupMethod").closest(".fe-bk-block").textContent), JSON.stringify(am_ids));
   check("there is no Compact view item: the app page is always compact", !am_w.document.getElementById("feMinimal") && am_w.document.body.classList.contains("minimal") && !/minimalMode/.test(fs.readFileSync(ROOT + "editor.js", "utf8") + appSource()));
   var am_info = (id) => am_w.document.getElementById("infoSlot").firstElementChild && am_w.document.getElementById("infoSlot").firstElementChild.id === id && am_w.document.getElementById("infoOverlay").hidden === false;
   am_w.document.getElementById("feMoreOptions").click();
   check("More options opens in a popup, open, and the menu closes", am_info("moreOptions") && am_w.document.getElementById("moreOptions").open === true && !am_w.document.getElementById("feAppMenuPanel") && am_w.document.getElementById("infoDialog").getAttribute("aria-label") === "More options");
   am_w.document.dispatchEvent(new am_w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   check("Escape closes it, and More options goes back to its place, closed as it was", am_w.document.getElementById("infoOverlay").hidden === true && !!am_w.document.getElementById("moreOptions").closest("footer") && am_w.document.getElementById("moreOptions").open === false && am_w.document.getElementById("infoSlot").children.length === 0);
-  am_w.document.getElementById("feAppMenuButton").click();
-  am_w.document.getElementById("fePrivacy").click();
-  check("Privacy opens in the popup, and the menu has no About this app", am_info("privacySection") && !am_w.document.getElementById("feAbout"));
+  am_w.document.getElementById("homePrivacy").click();
+  check("Privacy opens in the popup from Everything else on home, and the menu has no About this app", am_info("privacySection") && !am_w.document.getElementById("feAbout"));
   am_w.document.getElementById("infoClose").click();
   check("the close button closes it", am_w.document.getElementById("infoOverlay").hidden === true && !!am_w.document.getElementById("privacySection").closest("footer"));
-  am_w.document.getElementById("feAppMenuButton").click();
-  am_w.document.getElementById("fePrivacy").click();
+  am_w.document.getElementById("homePrivacy").click();
   check("Privacy opens in the popup", am_info("privacySection"));
   am_w.document.getElementById("infoOverlay").dispatchEvent(new am_w.MouseEvent("click", { bubbles: true }));
   check("a tap outside it closes it", am_w.document.getElementById("infoOverlay").hidden === true);
@@ -2117,8 +2117,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("downloading from the menu shows its message in the line under the editor's bar, which minimalist mode leaves visible", /^Backed up to this device\./.test(capText(mm_w)));
   mm_w.document.getElementById("feAppMenuButton").click();
   check("after a backup the label reads Last backup, with the time", /^Last backup: .+\.$/.test(mm_label()) && mm_label() === mm_w.document.getElementById("backupStatus").textContent, String(mm_label()));
-  var mm_mo = mm_w.document.getElementById("moreOptions");
-  check("when connected, the menu has no Spotify row and no Disconnect: Change Spotify login is in More options instead", !mm_w.document.querySelector("#feAppMenuPanel .fe-sp-block") && !mm_w.document.getElementById("feDisconnect") && !!mm_mo.querySelector("#changeSpotifyLogin") && /Change Spotify login/.test(mm_mo.textContent));
+  var mm_mo = mm_w.document.getElementById("homeMore");
+  check("when connected, the menu has no Spotify row and no Disconnect: Change Spotify login is under Everything else on home instead", !mm_w.document.querySelector("#feAppMenuPanel .fe-sp-block") && !mm_w.document.getElementById("feDisconnect") && !!mm_mo.querySelector("#changeSpotifyLogin") && /Change Spotify login/.test(mm_mo.textContent));
   check("the app menu's button ends where the card does: the row above the card has no padding on its right, on any screen width", /\.fe-toprow \{ display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; \}/.test(mm_css) && !/\.fe-toprow \{[^}]*padding-right/.test(mm_css));
   var mm_cap = mm_w.document.getElementById("supportCaption");
 
@@ -3058,7 +3058,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08za", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08zb", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3231,9 +3231,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("Several playlists shows an example table like Why N?, with the playlist that sets the most marked", gf_d.querySelectorAll("#gdSeveral .gd-why tbody tr").length === 3 && gf_d.querySelector("#gdSeveral tr.bd-limit").lastElementChild.textContent === "4 playlists");
   // icons: every topic heading has one (grey, pink while open in the CSS), and each popup title has its menu item's icon
   var gf_html = fs.readFileSync(ROOT + "index.html", "utf8");
-  check("every topic heading in the guide, More options and Privacy has an icon, ahead of its text", ["guideSection", "moreOptions", "privacySection"].every(id => [...gf_d.querySelectorAll("#" + id + " details.gd-topic > summary")].every(s => s.querySelector(".gd-thead > .gd-ticon svg") && s.querySelector(".gd-thead > .gd-ttext").textContent.trim() && !s.querySelector(".gd-ticon").textContent)));
+  check("every topic heading in the guide, More options, Everything else and Privacy has an icon, ahead of its text", ["guideSection", "moreOptions", "homeMore", "privacySection"].every(id => [...gf_d.querySelectorAll("#" + id + " details.gd-topic > summary")].every(s => s.querySelector(".gd-thead > .gd-ticon svg") && s.querySelector(".gd-thead > .gd-ttext").textContent.trim() && !s.querySelector(".gd-ticon").textContent)));
   check("a heading's icon is grey, and pink while its topic is open", /details\.gd-topic > summary \.gd-ticon \{[^}]*color: var\(--muted\)/.test(gf_html) && /details\.gd-topic\[open\] > summary \.gd-ticon \{ color: var\(--accent\)/.test(gf_html));
-  check("Sign out and clear data has the sign-out arrow", gf_w.eval("feIcon(\"logout\").innerHTML") === [...gf_d.querySelectorAll("#moreOptions summary")].find(s => s.textContent.trim() === "Sign out and clear data").querySelector(".gd-ticon").innerHTML);
+  check("Sign out and clear data has the sign-out arrow", gf_w.eval("feIcon(\"logout\").innerHTML") === [...gf_d.querySelectorAll("#homeMore summary")].find(s => s.textContent.trim() === "Sign out and clear data").querySelector(".gd-ticon").innerHTML);
   var gf_titles = {};
   for (const id of ["guideSection", "moreOptions", "privacySection", "reportBlock"]) { gf_w.eval(`openInfo("${id}")`); const t = gf_d.getElementById("infoTitle"); gf_titles[id] = [t.textContent, t.querySelector(".info-ticon") && t.querySelector(".info-ticon").innerHTML]; gf_d.getElementById("infoClose").click(); }
   check("each popup title has its menu item's icon and the same text as before", JSON.stringify(Object.keys(gf_titles).map(k => gf_titles[k][0])) === JSON.stringify(["A guide for facilitators", "More options", "Privacy", "Report a problem"]) && gf_titles.guideSection[1] === gf_w.eval("feIcon(\"help\").innerHTML") && gf_titles.moreOptions[1] === gf_w.eval("feIcon(\"sliders\").innerHTML") && gf_titles.privacySection[1] === gf_w.eval("feIcon(\"lock\").innerHTML") && gf_titles.reportBlock[1] === gf_w.eval("feIcon(\"flag\").innerHTML"), JSON.stringify(gf_titles));
@@ -3422,19 +3422,18 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var QF = "https://tally.so/r/EXAMPLE";
   var qf_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {}, feedbackUrl: QF });
   check("there is no Feedback and questions section or popup any more: the form says it all", !qf_w.document.getElementById("feedbackSection") && !qf_w.document.getElementById("feedbackLink") && !fs.existsSync(ROOT + "icons/feedback.svg"));
-  qf_w.document.getElementById("feAppMenuButton").click();
-  var qf_link = qf_w.document.getElementById("feFeedback");
-  check("once the address is set, the app menu has Feedback and questions, after More options", !!qf_link && qf_w.document.getElementById("feMoreOptions").nextElementSibling === qf_link && qf_link.textContent.trim() === "Feedback and questions");
-  check("it is as bold as the button rows beside it", qf_w.getComputedStyle(qf_link).fontWeight === qf_w.getComputedStyle(qf_w.document.getElementById("feMoreOptions")).fontWeight && qf_w.getComputedStyle(qf_link).fontWeight === "600", qf_w.getComputedStyle(qf_link).fontWeight);
+  var qf_link = qf_w.document.getElementById("homeFeedback");
+  check("once the address is set, Everything else on home has Feedback and questions, after Report a problem", !!qf_link && !qf_link.hidden && qf_w.document.getElementById("homeReport").nextElementSibling === qf_link && qf_link.textContent.trim() === "Feedback and questions");
+  check("it is as bold as the button rows beside it", qf_w.getComputedStyle(qf_link).fontWeight === qf_w.getComputedStyle(qf_w.document.getElementById("homeReport")).fontWeight && qf_w.getComputedStyle(qf_link).fontWeight === "600", qf_w.getComputedStyle(qf_link).fontWeight);
   check("it is a link that opens the form in a new tab, safely, at exactly the form's address: no details are attached, unlike a problem report", qf_link.tagName === "A" && qf_link.getAttribute("href") === QF && qf_link.target === "_blank" && /noopener/.test(qf_link.rel) && /noreferrer/.test(qf_link.rel));
   qf_link.dispatchEvent(new qf_w.MouseEvent("click", { bubbles: true, cancelable: true }));
   await new Promise((r) => setTimeout(r, 20));   // the menu closes just after the click, so the link is still there to open the form
-  check("pressing it closes the menu, opens no popup, and adds nothing to the address", !qf_w.document.getElementById("feAppMenuPanel") && qf_w.document.getElementById("infoOverlay").hidden === true && qf_link.getAttribute("href") === QF);
+  check("pressing it opens no popup and adds nothing to the address", qf_w.document.getElementById("infoOverlay").hidden === true && qf_link.getAttribute("href") === QF);
   var qf_priv = qf_w.document.getElementById("privacySection").textContent.replace(/\s+/g, " ");
   check("Privacy then says the form sends only what you type, that an email goes only if you enter one and is used only to respond, and that the feedback form opens only if you choose to send feedback", /The form sends only what you type, and nothing else is attached\. An email address is included only if you choose to enter one, and it is used only to respond to you\./.test(qf_priv) && /the feedback form only if you choose to send feedback/.test(qf_priv) && qf_w.document.getElementById("privacyFeedback").hidden === false);
   check("the form that ships is the Tally one, at its real address", /const FEEDBACK_FORM_URL = "https:\/\/tally\.so\/r\/4aayDd";/.test(appSource()));
   qf_w0.document.getElementById("feAppMenuButton").click();
-  check("without the form's address, the menu has no Feedback and questions", !qf_w0.document.getElementById("feFeedback") && !!qf_w0.document.getElementById("fePrivacy"));
+  check("without the form's address, Everything else has no Feedback and questions", qf_w0.document.getElementById("homeFeedback").hidden === true && !!qf_w0.document.getElementById("homePrivacy"));
   } catch (err) { areaCrashed("questions and feedback", err); } }
 
   if (want("hover feedback on buttons")) { try {
@@ -3524,8 +3523,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var dh_css = dh_html.replace(/\s+/g, " ");
   var dh_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var dh_d = dh_w.document;
-  var dh_h3 = Array.from(dh_d.querySelectorAll("#moreOptions details.gd-topic > summary")).map((h) => h.textContent);
-  check("More options has a section called Hide support button, right after Sign out and clear data", dh_h3.includes("Hide support button") && dh_h3.indexOf("Hide support button") === dh_h3.indexOf("Sign out and clear data") + 1, JSON.stringify(dh_h3));
+  var dh_h3 = Array.from(dh_d.querySelectorAll("#homeMore details.gd-topic > summary")).map((h) => h.textContent);
+  check("Everything else has a section called Hide support button, right after Sign out and clear data", dh_h3.includes("Hide support button") && dh_h3.indexOf("Hide support button") === dh_h3.indexOf("Sign out and clear data") + 1, JSON.stringify(dh_h3));
   var dh_p = dh_d.querySelector("#donateHideBox").closest("label").previousElementSibling;
   check("it is direct and playful: the button is meant to be visible until you have donated, please give what feels right, thank you if you did, check the box and it leaves you alone, honor system, nobody is looking, and it waits patiently", dh_p.textContent === "The Support me button stays visible until you have... supported me 🙂. If this app has been helpful to you, please give whatever feels right. Already did? Thank you! Check the box and the button will leave you alone. This runs on the honor system, so nobody\u2019s looking, and the button waits patiently.");
   check("there is one checkbox, labeled I have supported you!, for people who have donated, and no second answer for people who have not", dh_d.getElementById("donateHideBox").type === "checkbox" && dh_d.getElementById("donateHideBox").closest("label").textContent.trim() === "I have supported you!" && !dh_d.getElementById("hideDonated") && !dh_d.getElementById("hideDeclined") && !dh_d.getElementById("showDonate"));
@@ -5368,7 +5367,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08za"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08zb"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

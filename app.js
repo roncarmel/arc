@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08za";
+const APP_VERSION = "2026-11-08zb";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -341,10 +341,10 @@ function alignIconToText(icon, text, first, last) {
     text.style.marginBottom = -below + "px";
   }
 }
-// A tap on the icon in a pink band (welcome, setup, connecting) shows the version at the band's top right for a second, then fades it out over another second.
+// A tap on the icon in a pink band (welcome, setup, connecting), or on home's, shows the version at the band's top right for a second, then fades it out over another second.
 document.addEventListener("click", (event) => {
-  const icon = event.target.closest && event.target.closest(".wp-band-icon");
-  const band = icon && icon.closest(".wp-band");
+  const icon = event.target.closest && event.target.closest(".wp-band-icon, #homePage .hp-brand img");
+  const band = icon && icon.closest(".wp-band, .hp-brand");
   if (band) flashBandVersion(band);
 });
 function flashBandVersion(band) {
@@ -613,6 +613,7 @@ function closeInfo(quiet = false) {
   info.opener = null;
   if (quiet) return;
   if (under && opener && under.contains(opener)) opener.focus({ preventScroll: true });
+  else if (!under && opener && opener.closest && opener.closest("#homeMore")) opener.focus({ preventScroll: true });   // opened from Everything else on home
   else if (!under && $("feAppMenuButton")) $("feAppMenuButton").focus();
 }
 
@@ -3372,6 +3373,10 @@ async function main() {
   try { if (history.state && (history.state.view || history.state.step)) history.replaceState(null, ""); } catch (err) { /* nothing to forget */ }   // a reload keeps the step, but the page opens on home (and the welcome page on its first step)
   on("appHome", "click", goHome);
   on("homeBuilder", "click", () => showView("builder"));
+  // Everything else on home: Privacy and Report a problem open in the info popup, Feedback opens its form
+  on("homePrivacy", "click", () => openInfo("privacySection"));
+  on("homeReport", "click", () => openInfo("reportBlock"));
+  if (FEEDBACK_FORM_URL) { $("homeFeedback").href = FEEDBACK_FORM_URL; $("homeFeedback").hidden = false; }
   window.addEventListener("resize", placeSharingPage);
   on("infoClose", "click", () => closeInfo());
   on("infoOverlay", "click", (event) => { if (event.target === $("infoOverlay")) closeInfo(); });
