@@ -839,10 +839,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-09i" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-09j" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-09i/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-09j/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkboxes in More options are the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2938,7 +2938,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-09i", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-09j", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -5333,7 +5333,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-09i"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-09j"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5437,7 +5437,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // the plan
   var bp_a = await boot({ url: EDURL, session: signedIn(), local: { formats: bp_RAN } });
   await bp_open(bp_a);
-  check("the plan says how many the songs allow, then what more than one means", bp_text(bp_a, "confirmText") === "The playlists you chose for this recipe have enough songs to build up to 2 playlists. Why 2?" && !!bp_a.document.querySelector("#confirmText #planToggle") && visible(bp_a, "bdPickWhy") && /^Build one, or several from the same recipe with no song repeated across them\. With 2 playlists, a client can come to 2 ceremonies and never hear the same song twice\. More in A guide for facilitators$/.test(bp_text(bp_a, "bdPickWhy")), bp_text(bp_a, "confirmText"));
+  check("the plan says how many the songs allow, then what more than one means", bp_text(bp_a, "confirmText") === "The playlists you chose for this recipe have enough songs to build up to 2 playlists. Why 2?" && !!bp_a.document.querySelector("#confirmText #planToggle") && visible(bp_a, "bdPickWhy") && /^Build one, or several from the same recipe with no song repeated across them\. With 2 playlists, a participant can come to 2 ceremonies and never hear the same song twice\. More in A guide for facilitators$/.test(bp_text(bp_a, "bdPickWhy")), bp_text(bp_a, "confirmText"));
   check("the Why table opens right under that sentence, then the line on several, then the choice", bp_a.document.getElementById("confirmText").nextElementSibling.id === "planText" && bp_a.document.getElementById("planText").nextElementSibling.id === "bdPickWhy" && bp_a.document.getElementById("bdPickWhy").nextElementSibling.id === "bdPickHead" && bp_text(bp_a, "bdPickHead") === "Choose how many playlists you\u2019d like to build from this recipe.");
   var bp_opts = () => Array.from(bp_a.document.querySelectorAll("#bdPickTiles .bd-pick-opt"));
   check("a tile per playlist with its number above, none chosen, and Build does nothing yet", visible(bp_a, "bdPick") && bp_opts().map((o) => o.textContent).join(",") === "1,2" && !bp_a.document.querySelector("#bdPickTiles .bd-on, #bdPickTiles [aria-checked=true]") && bp_a.document.getElementById("confirmYes").disabled && bp_text(bp_a, "confirmYes") === "Build playlists" && (bp_a.document.getElementById("confirmYes").click(), visible(bp_a, "confirmBox")));
