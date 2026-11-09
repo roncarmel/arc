@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-09h";
+const APP_VERSION = "2026-11-09i";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -60,6 +60,34 @@ function sendDashboardToSafari() {
   });
   document.querySelectorAll("[data-home]").forEach((el) => { el.textContent = el.dataset.home; });
 }
+
+// The Home Screen app's top strip (#topEdge in index.html): there only while the page rests at its top, and put in as a new element a quarter second after
+// scrolling stops there, because iOS notices a strip that is added but not one that comes back. The page scrolls the window, Music sharing its #msBody;
+// other scrolling (tabs sideways, lists in popups) is left alone.
+(function restStrip() {
+  const standalone = navigator.standalone === true || !!(window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+  if (!standalone) return;
+  let timer = 0;
+  const sharingBody = () => (document.documentElement.classList.contains("view-sharing") ? document.getElementById("msBody") : null);
+  const atTop = () => { const body = sharingBody(); return window.scrollY <= 2 && !(body && body.scrollTop > 2); };
+  const take = () => { const old = document.getElementById("topEdge"); if (old) old.remove(); };
+  const put = () => {
+    take();
+    if (!atTop() || !document.body) return;
+    const strip = document.createElement("div");
+    strip.id = "topEdge";
+    strip.setAttribute("aria-hidden", "true");
+    document.body.insertBefore(strip, document.body.firstChild);
+  };
+  document.addEventListener("scroll", (event) => {
+    const t = event.target;
+    if (t !== document && t !== sharingBody()) return;
+    if (!atTop()) take();
+    clearTimeout(timer);
+    timer = setTimeout(put, 250);
+  }, { capture: true, passive: true });
+  put();
+})();
 
 // Things that did not start properly are collected here and shown in a banner, so a half-started page says so instead of just not responding.
 const startupProblems = [];
