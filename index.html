@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-08x">
-<script src="theme.js?v=2026-11-08x"></script>
+<meta name="app-version" content="2026-11-08z">
+<script src="theme.js?v=2026-11-08z"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -746,8 +746,17 @@
   html.vt-slide::view-transition-old(wp-wire):only-child { animation: wp-wire-out 0.12s ease-in both; }
   @keyframes wp-wire-in { from { opacity: 0; } to { opacity: 1; } }
   @keyframes wp-wire-out { from { opacity: 1; } to { opacity: 0; } }
-  html.vt-slide::view-transition-group(wp-wire), html.vt-slide::view-transition-group(wp-ok), html.vt-slide::view-transition-group(wp-spot), html.vt-slide::view-transition-group(wp-spot-name) { z-index: 1; }
-  html.vt-slide::view-transition-group(wp-icon) { z-index: 2; }   /* as on the still page: the band, the line, then the icon */
+  /* While a screen slides, the page's background covers the viewport from its top to the band's foot (#vtCover, height from slideScreens) and stays still, so nothing
+     moves behind the band or at its corners; the sticky band's own background strip is left out then (it widened the band's picture and showed as a dark edge). */
+  #vtCover { display: none; }
+  html.vt-slide:is(.page-welcome, .page-setup) #vtCover { display: block; position: fixed; left: 0; right: 0; top: 0; height: var(--vt-cover, 0px); background: var(--bg); pointer-events: none; view-transition-name: wp-cover; }
+  html.vt-slide #loginSection .sp-band::before { display: none; }
+  html.vt-slide::view-transition-old(wp-cover) { animation: none; opacity: 0; }
+  html.vt-slide::view-transition-new(wp-cover) { animation: none; opacity: 1; }
+  html.vt-slide::view-transition-group(wp-cover) { animation: none; z-index: 1; }
+  html.vt-slide::view-transition-group(wp-band) { z-index: 2; }
+  html.vt-slide::view-transition-group(wp-wire), html.vt-slide::view-transition-group(wp-ok), html.vt-slide::view-transition-group(wp-spot), html.vt-slide::view-transition-group(wp-spot-name) { z-index: 3; }
+  html.vt-slide::view-transition-group(wp-icon) { z-index: 4; }   /* as on the still page: the cover, the band, the line, then the icon */
   @keyframes vt-to-left { to { transform: translateX(-100%); } }
   @keyframes vt-from-right { from { transform: translateX(100%); } }
   @keyframes vt-to-right { to { transform: translateX(100%); } }
@@ -757,6 +766,10 @@
   .wp-band { display: flex; align-items: flex-start; gap: 16px; padding: 16px; margin: 4px 0 16px; border-radius: 22px; color: #fff;
     background: linear-gradient(135deg, var(--accent-deep, #c2177f), var(--accent) 55%, color-mix(in srgb, var(--accent) 60%, #fff 40%)); box-shadow: 0 12px 34px color-mix(in srgb, var(--accent) 30%, transparent); }
   .wp-band { position: relative; }
+  /* the colors drift slowly back and forth (9 s each way); the light end stays on the right, away from the text */
+  .wp-band { background: linear-gradient(120deg, var(--accent-deep, #c2177f), var(--accent) 45%, color-mix(in srgb, var(--accent) 60%, #fff 40%) 70%, var(--accent)); background-size: 220% 100%; animation: wp-drift 9s ease-in-out infinite alternate; }
+  @keyframes wp-drift { from { background-position: 0% 50%; } to { background-position: 55% 50%; } }
+  @media (prefers-reduced-motion: reduce) { .wp-band { animation: none; background-position: 0% 50%; } }
   .wp-band-ver { position: absolute; top: 12px; right: 16px; font-size: 0.8rem; font-weight: 600; opacity: 0; pointer-events: none; font-variant-numeric: tabular-nums; }   /* the version, shown for a moment by a tap on the icon (flashBandVersion) */
   .wp-band-icon { cursor: default; -webkit-tap-highlight-color: transparent; }
   .wp-band-icon { position: relative; z-index: 1; flex: none; width: 67px; height: 67px; border-radius: 22%; background: url(apple-touch-icon.png) center / cover; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55), 0 6px 18px rgba(120, 0, 70, 0.35); }
@@ -848,11 +861,12 @@
   html.page-setup main > h1.brand { display: none; }
   #loginSection { margin-top: 8px; }
   #welcomePage #wpSetup .wp-setup-title, #spAsk .wp-setup-title { margin: 0 0 8px; text-align: center; font-size: 1.35rem; }
-  /* while the steps show, the band stays where it is as they scroll (Ron, 2026-11-08): sticky at its own place (main's 24 px and #loginSection's 8 px), the page's background above it, so the steps pass under it unseen */
+  /* while the steps show, the band stays where it is as they scroll (Ron, 2026-11-08): sticky at its own place (main's 24 px and #loginSection's 8 px), the page's background above it and at its corners, so the steps pass under it unseen */
   html.page-setup #loginSection:has(#spSteps:not([hidden])) .sp-band { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 32px); z-index: 5; }
-  html.page-setup #loginSection:has(#spSteps:not([hidden])) .sp-band::before { content: ""; position: absolute; z-index: -1; left: -16px; right: -16px; top: calc(-32px - env(safe-area-inset-top, 0px)); bottom: 50%; background: var(--bg); }
+  html.page-setup #loginSection:has(#spSteps:not([hidden])) .sp-band::before { content: ""; position: absolute; z-index: -1; left: -16px; right: -16px; top: calc(-32px - env(safe-area-inset-top, 0px)); bottom: 0; background: var(--bg); }
   html.page-setup #loginSection:has(#spSteps:not([hidden])) .sp-band { background: none; }   /* the band's own pink drawn over that background (a child's background would sit over its parent's) */
-  html.page-setup #loginSection:has(#spSteps:not([hidden])) .sp-band::after { content: ""; position: absolute; z-index: -1; inset: 0; border-radius: inherit; background: linear-gradient(135deg, var(--accent-deep, #c2177f), var(--accent) 55%, color-mix(in srgb, var(--accent) 60%, #fff 40%)); }
+  html.page-setup #loginSection:has(#spSteps:not([hidden])) .sp-band::after { content: ""; position: absolute; z-index: -1; inset: 0; border-radius: inherit; background: linear-gradient(120deg, var(--accent-deep, #c2177f), var(--accent) 45%, color-mix(in srgb, var(--accent) 60%, #fff 40%) 70%, var(--accent)); background-size: 220% 100%; animation: wp-drift 9s ease-in-out infinite alternate; }   /* the band's drifting pink, in step with it (alignLoops) */
+  @media (prefers-reduced-motion: reduce) { html.page-setup #loginSection .sp-band::after { animation: none; background-position: 0% 50%; } }
   html.vt-slide.page-setup #loginSection .wp-band { view-transition-name: wp-band; }
   .sp-card { margin-top: 18px; }
   .sp-card h2 { margin: 0 0 8px; font-size: 1.2rem; }
@@ -1576,6 +1590,7 @@
 <script data-goatcounter="https://roncarmel.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </head>
 <body>
+<div id="vtCover" aria-hidden="true"></div>
 <div id="launchScreen" role="status" aria-live="polite"><img src="apple-touch-icon.png" alt=""><p class="ls-name">Arc</p><p class="ls-tag">Ceremony playlist tools for your Spotify library</p><div class="ls-foot"><span class="ls-spin" aria-hidden="true"></span><span class="ls-ok" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span id="lsStep">Starting</span></div></div>
 <div id="connectingScreen" role="status">
   <div class="cn-page">
@@ -2143,10 +2158,10 @@
     <div id="msFoot" hidden></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-08x"></script>
-<script src="editor.js?v=2026-11-08x"></script>
-<script src="shared-spotify.js?v=2026-11-08x"></script>
-<script src="app.js?v=2026-11-08x"></script>
-<script src="sharing.js?v=2026-11-08x"></script>
+<script src="formats.js?v=2026-11-08z"></script>
+<script src="editor.js?v=2026-11-08z"></script>
+<script src="shared-spotify.js?v=2026-11-08z"></script>
+<script src="app.js?v=2026-11-08z"></script>
+<script src="sharing.js?v=2026-11-08z"></script>
 </body>
 </html>

@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08x";
+const APP_VERSION = "2026-11-08z";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -268,6 +268,12 @@ function drawSetupJoint() {
     Object.assign(joint.querySelector(".wp-spotify").style, { left: cx - size / 2 + "px", top: y - size / 2 + "px" });
     Object.assign(joint.querySelector(".wp-spotify-name").style, { left: cx + "px", top: y + size / 2 + 6 + "px" });
   }
+  alignLoops();
+}
+// The band's drifting pink and the line's flowing dashes run on one clock: each copy (the welcome page's, the setup page's, the sticky band's) starts its loop when
+// it appears, so two screens' copies were out of step and jumped as a slide passed from one to the other. Started at the clock's zero, they always agree.
+function alignLoops() {
+  for (const a of document.getAnimations()) if ((a.animationName === "wp-flow" || a.animationName === "wp-drift") && a.startTime !== 0) a.startTime = 0;
 }
 function welcomeStepBack() {
   if (history.state && history.state.page === "welcome" && history.state.step === 2) { history.back(); return; }   // the popstate that follows shows the tools
@@ -290,11 +296,14 @@ function slideScreens(change, event) {
   if (still) { change(); return; }
   let to = -1;
   const mine = ++slideCount;
+  const band = [...document.querySelectorAll("#welcomePage .wp-band, #loginSection .wp-band")].find((el) => el.getClientRects().length > 0);
+  root.style.setProperty("--vt-cover", band ? Math.max(0, band.getBoundingClientRect().bottom) + "px" : "0px");   // #vtCover: still, from the top to the band's foot
   root.classList.add("vt-slide");
   let move;
   try {
     move = document.startViewTransition(() => {
       change();
+      alignLoops();
       to = screenRank();
       root.classList.toggle("vt-back", to < from);
     });
