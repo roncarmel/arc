@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08zy";
+const APP_VERSION = "2026-11-08zz";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -653,18 +653,17 @@ function openInfo(id) {
   node.before(info.marker);
   $("infoSlot").appendChild(node);
   if (node.tagName === "DETAILS") node.open = true;
-  if (id === "devOptions") for (const d of node.querySelectorAll("details")) d.open = true;   // short, and only for Ron: everything shows at once
   info.wasHidden = node.hidden;
   node.hidden = false;
   const title = node.querySelector("summary, h3");
   $("infoDialog").setAttribute("aria-label", title ? title.textContent.trim() : "");
   // the title in the pink band, with the same icon as its item in the app menu
-  const titleIcon = { guideSection: "help", moreOptions: "sliders", reportBlock: "flag" }[id];
+  const titleIcon = { guideSection: "help", moreOptions: "sliders", reportBlock: "flag", devMoods: "tag", devReports: "flag" }[id];
   $("infoTitle").textContent = "";
   if (titleIcon && typeof feIcon === "function") $("infoTitle").appendChild(feIcon(titleIcon)).className = "info-ticon";
   $("infoTitle").appendChild(Object.assign(document.createElement("span"), { textContent: title ? title.textContent.trim() : "" }));
   if (id === "reportBlock" || id === "moreOptions") refreshReportBox();
-  if (id === "devOptions" && typeof sharingDevOpened === "function") sharingDevOpened();   // Music sharing's tags and reports (sharing.js)
+  if ((id === "devMoods" || id === "devReports") && typeof sharingDevOpened === "function") sharingDevOpened(id);   // Music sharing's mood words or reports (sharing.js)
   $("infoOverlay").hidden = false;
   document.body.style.overflow = "hidden";
   $("infoSlot").scrollTop = 0;
@@ -2224,17 +2223,21 @@ function useKeptPlaylists() {
   if (typeof editorPlaylistsChanged === "function") editorPlaylistsChanged();
 }
 
-// The owner's Client ID, as a SHA-256 hash so it is not in the page's source. Only there is the record offered for copying.
-const OWNER_CLIENT_HASHES = [];
-let isOwnerHere = false;
-async function checkOwner() {
+// The DEV menu just opened (showDevMenu in editor.js): Phone width shows what is kept, and the owner's Music sharing rows are brought up to date
+function devMenuOpened() {
+  let width = ""; try { width = localStorage.getItem("devPhoneWidth") || ""; } catch (e) {}
+  for (const button of document.querySelectorAll("#devMenu [data-width]")) button.setAttribute("aria-pressed", String(button.dataset.width === width));
+  if (typeof sharingDevMenu === "function") sharingDevMenu();
+}
+
+// The owner is whoever the Music sharing worker says is (its OWNER_SPOTIFY_IDS), asked in developer mode only and kept per Spotify account (askOwner in
+// sharing.js), so nothing in the page names the owner. Only there are the DEV menu's Music sharing tools shown and the log offered for copying.
+const OWNER_KEY = "sharingOwner";
+function checkOwner() {
   try {
-    const id = (localStorage.getItem("clientId") || "").trim();
-    if (!id || !OWNER_CLIENT_HASHES.length || !(window.crypto && crypto.subtle)) return false;
-    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(id)));
-    isOwnerHere = OWNER_CLIENT_HASHES.includes(Array.from(digest, (b) => b.toString(16).padStart(2, "0")).join(""));
-  } catch (err) { isOwnerHere = false; }
-  return isOwnerHere;
+    const kept = JSON.parse(localStorage.getItem(OWNER_KEY) || "null");
+    return !!(kept && kept.owner && kept.account && kept.account === localStorage.getItem("spotifyAccount"));
+  } catch (err) { return false; }
 }
 
 function limitRecordText() {
@@ -2247,22 +2250,22 @@ function limitRecordText() {
 
 async function copyLimitRecord() {
   try { await navigator.clipboard.writeText(limitRecordText()); }
-  catch (err) { showNotices([{ text: "The record could not be copied.", transient: true }]); return; }
+  catch (err) { showNotices([{ text: "The Spotify request log could not be copied.", transient: true }]); return; }
   try { localStorage.setItem("spotifyRecordCopiedAt", String(Date.now())); } catch (err) { /* private browsing */ }
   if (typeof clearHeldNotice === "function") clearHeldNotice();
-  showNotices([{ text: "Spotify record copied. Paste it into the chat with Claude.", transient: true }]);
+  showNotices([{ text: "Spotify request log copied. Paste it into the chat with Claude.", transient: true }]);
 }
 
 // For the owner: once connected, a held message offers the record when Spotify has refused since the last copy, or a week has passed with requests sent.
 async function offerLimitRecord() {
-  if (!(await checkOwner())) return;
+  if (!checkOwner()) return;
   if (typeof renderAppMenu === "function") renderAppMenu();
   const copiedAt = Number(localStorage.getItem("spotifyRecordCopiedAt")) || 0;
   const refusals = readRecord(LIMITS_KEY, []).filter((e) => !e.note && e.at > copiedAt).length;
   const weekOld = Date.now() - copiedAt > 7 * 86400000 && Object.keys(readRecord(CALLS_KEY, {})).some((m) => Number(m) * 60000 > copiedAt);
   if (!refusals && !weekOld) return;
   if (typeof notices !== "undefined" && notices.held) return;   // a held message (a newer version) comes first
-  const text = refusals ? `Spotify refused requests ${refusals === 1 ? "once" : refusals + " times"} since the last copy of the record.` : "A week of Spotify request counts is ready to copy.";
+  const text = refusals ? `Spotify refused requests ${refusals === 1 ? "once" : refusals + " times"} since the last copy of the request log.` : "A week of Spotify request counts is ready to copy.";
   showNotices([{ text, icon: "copy", hold: true, actions: [{ label: "Copy", run: () => copyLimitRecord() }] }]);
 }
 
@@ -2369,7 +2372,7 @@ async function startPython() {
   for (const version of PYODIDE_VERSIONS) {
     const base = `https://cdn.jsdelivr.net/pyodide/${version}/full/`;
     try {
-      $("pythonStatus").textContent = `Loading Python (${version}). The first time takes a little while...`;
+      $("pythonStatus").textContent = `Loading Pyodide ${version.replace(/^v/, "")}...`;
       await loadScript(base + "pyodide.js");
       const pyodide = await loadPyodide({ indexURL: base });
       const source = await (await fetch("engine.py", { cache: "no-cache" })).text();
@@ -2384,7 +2387,9 @@ async function startPython() {
         buildPlaylists: get("build_playlists"),
         existingMatches: get("existing_matches"),
       };
-      $("pythonStatus").textContent = `Ready. Python ${version} is running in your browser.`;
+      let pythonNumber = "";
+      try { pythonNumber = await pyodide.runPythonAsync("import sys; sys.version.split()[0]"); } catch (err) { /* the version is only for the DEV menu's foot */ }
+      $("pythonStatus").textContent = `${typeof pythonNumber === "string" && pythonNumber ? `Python ${pythonNumber} · ` : ""}Pyodide ${version.replace(/^v/, "")} ready`;
       pythonVersion = version;
       logStep("python ready");
       return;
@@ -3346,23 +3351,21 @@ async function main() {
     $("clearData").disabled = false;
   });
   on("clearYes", "click", () => clearSavedData());
-  // Developer options (held open from the menu's header): each closes the popup first, so its question or message is in view
+  // The DEV menu's rows (editor.js opens and closes it): each closes the menu first, so its question or message is in view
   on("devStartOver", "click", async () => {
-    closeInfo();
-    const choice = await askSyncChoice("Start over?", "This signs you out and erases everything this app keeps in this browser. The Client ID is copied to the clipboard first.",
-      [{ label: "Start over", value: "yes" }, { label: "Cancel", value: "no" }], { focusLast: true });
+    showDevMenu(false);
+    const choice = await askSyncChoice("Clear data and start over?", "This signs you out and erases everything Arc keeps in this browser. Your Client ID is copied to the clipboard first, so setting up again is a paste.",
+      [{ label: "Clear data", value: "yes", danger: true }, { label: "Cancel", value: "no" }], { focusLast: true });
     if (choice === "yes") await startOver();
   });
-  on("devCopyRecord", "click", () => { closeInfo(); copyLimitRecord(); });
+  on("devCopyRecord", "click", () => { showDevMenu(false); copyLimitRecord(); });
   // Phone width: kept in this browser; the outer page reloads to put the page in its frame, or out of it
-  document.querySelectorAll('input[name="devPhoneWidth"]').forEach((input) => {
-    let now = ""; try { now = localStorage.getItem("devPhoneWidth") || ""; } catch (e) {}
-    input.checked = input.value === now;
-    input.addEventListener("change", () => {
-      try { if (input.value) localStorage.setItem("devPhoneWidth", input.value); else localStorage.removeItem("devPhoneWidth"); } catch (e) {}
+  for (const button of document.querySelectorAll("#devMenu [data-width]")) {
+    button.addEventListener("click", () => {
+      try { if (button.dataset.width) localStorage.setItem("devPhoneWidth", button.dataset.width); else localStorage.removeItem("devPhoneWidth"); } catch (e) {}
       pageWindow().location.reload();
     });
-  });
+  }
   on("connect", "click", startLogin);
   on("startSetup", "click", () => slideScreens(() => goToSetup(false)));
   on("getStarted", "click", () => slideScreens(() => showWelcomeStep(2, true)));

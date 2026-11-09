@@ -102,6 +102,7 @@ function makeFetch(options = {}) {
       const out = (s) => ({ id: s.id, name: s.name, by: s.by || null, ...kindOf(s), cover: s.cover || null, songs: s.songs, count: s.songs.length, ms: s.ms, avgMs: s.ms / Math.max(1, s.songs.length), artists: s.artists || [], sharedAt: s.sharedAt, updatedAt: s.sharedAt });
       if (method === "GET" && path === "/library") return json({ shares: sh.shares.filter((s) => !s.hidden).sort((a, b) => b.sharedAt - a.sharedAt).map(out), words: sh.words, at: Date.now() });
       if (method === "GET" && path.startsWith("/songs/")) { const s = sh.shares.find((x) => x.id === path.slice(7) && !x.hidden); sh.songReads = (sh.songReads || []).concat([{ id: path.slice(7), auth: (init.headers || {}).Authorization || null }]); return s ? json({ id: s.id, names: s.names || null }) : json({ error: "That shared playlist is gone." }, 404); }
+      if (method === "GET" && path === "/admin/reports") { sh.ownerAsks = (sh.ownerAsks || 0) + 1; return sh.owner ? json({ shares: sh.adminReports || [] }) : json({ error: "Only the owner of the app can do that." }, 403); }
       if (method === "GET" && path === "/mine") return json({ shares: sh.shares.filter((s) => s.owner === "ron").map((s) => ({ id: s.id, playlist: s.playlist, snapshot: s.snapshot || null, name: s.name, by: s.by || null, ...kindOf(s), descSource: s.descSource || "mine", cover: s.cover || null, count: s.songs.length, ms: s.ms, sharedAt: s.sharedAt, updatedAt: s.sharedAt, hidden: !!s.hidden })) });
       if (method === "POST" && path === "/share") {
         sh.posts.push(body);
@@ -289,7 +290,7 @@ async function boot({ url, session = {}, local = {}, fetchOptions = {}, before =
   w.document.documentElement.classList.add("view-" + view);   // as the <head> script would (it does not run here)
   if (savedLocal.devMode === "1") w.document.documentElement.classList.add("dev-mode");   // developer mode, as the <head> script would
   w.__scriptsRequested = [];
-  w.eval(appJs.replace("const sharing = {", "var sharing = {").replace("const previewUrls =", "var previewUrls =").replace("let spotifyAnswerMs = 30000;", "var spotifyAnswerMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const BACKED_UP_MESSAGE =", "var BACKED_UP_MESSAGE =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("const saveTip =", "var saveTip =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let busy =", "var busy =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let isOwnerHere =", "var isOwnerHere =").replace("const OWNER_CLIENT_HASHES =", "var OWNER_CLIENT_HASHES =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("let launchScreen =", "var launchScreen =").replace("const GAP_STEPS =", "var GAP_STEPS ="));  // test harness only: lets a test replace the reload
+  w.eval(appJs.replace("const sharing = {", "var sharing = {").replace("const previewUrls =", "var previewUrls =").replace("let spotifyAnswerMs = 30000;", "var spotifyAnswerMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const BACKED_UP_MESSAGE =", "var BACKED_UP_MESSAGE =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("const saveTip =", "var saveTip =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let busy =", "var busy =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("let launchScreen =", "var launchScreen =").replace("const GAP_STEPS =", "var GAP_STEPS ="));  // test harness only: lets a test replace the reload
   await Promise.race([w.__main, new Promise((r) => setTimeout(r, 1500))]);   // ready as soon as the page has finished starting up
   await new Promise((r) => setTimeout(r, 30));
   global.bootCount += 1; global.bootMs += Date.now() - bootStarted;
@@ -419,7 +420,7 @@ print(json.dumps(out))
 
   // 6b. first runtime versions unavailable: falls back to a later one
   var w6 = await boot({ url: "http://127.0.0.1:8000/", session: { token: JSON.stringify({ value: "t", expires: Date.now() + 3600000, scope: SCOPE_ALL }) }, fetchOptions: { brokenVersions: ["v0.29.3", "v0.29.2"] } });
-  check("falls back to a later runtime version", /Ready\. Python v0\.29\.1 is running in your browser\./.test(w6.document.getElementById("pythonStatus").textContent) && w6.eval("selectedKeys()")[0] === "format-1", w6.document.getElementById("pythonStatus").textContent);
+  check("falls back to a later runtime version", /Pyodide 0\.29\.1 ready$/.test(w6.document.getElementById("pythonStatus").textContent) && w6.eval("selectedKeys()")[0] === "format-1", w6.document.getElementById("pythonStatus").textContent);
 
   // 6c. every version unavailable: clear message, dropdown says so
   var w7 = await boot({ url: "http://127.0.0.1:8000/", session: { token: JSON.stringify({ value: "t", expires: Date.now() + 3600000, scope: SCOPE_ALL }) }, fetchOptions: { brokenVersions: ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"] } });
@@ -684,8 +685,8 @@ print(json.dumps(out))
   check("the hidden text is not in the way: it is hidden from sight and from assistive tools", wB.document.getElementById("formats").hidden === true && wB.document.getElementById("formats").getAttribute("aria-hidden") === "true");
 
   // I3. the Python status moved out of the way
-  check("the Python status lives in Developer options, under a heading that says what it is, with plain wording", !!wB.document.querySelector("#devOptions #pythonStatus") && /^Ready\. Python v[\d.]+ is running in your browser\.$/.test(wB.document.getElementById("pythonStatus").textContent) && !wB.document.querySelector("#appSection #pythonStatus") && Array.from(wB.document.querySelectorAll("#devOptions details.gd-topic > summary")).some((h) => h.textContent === "Python status"), wB.document.getElementById("pythonStatus").textContent);
-  check("Developer options never says planner, and explains Python in one sentence", !/planner/i.test(wB.document.getElementById("devOptions").textContent) && /The code that builds your playlists is written in Python and runs inside your browser, so nothing about your music is sent to a server\./.test(wB.document.getElementById("devOptions").textContent) && !/planner/i.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  check("the Python status is the DEV menu's foot, short: the versions and ready", !!wB.document.querySelector("#devMenu #pythonStatus.dm-foot") && /^(Python [\d.]+ · )?Pyodide [\d.]+ ready$/.test(wB.document.getElementById("pythonStatus").textContent) && !wB.document.querySelector("#appSection #pythonStatus"), wB.document.getElementById("pythonStatus").textContent);
+  check("the page never says planner", !/planner/i.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   check("More options does not show the app version", wB.document.getElementById("appVersionLabel") === null && !/App version/.test(wB.document.getElementById("moreOptions").textContent));
   check("while Python loads, the note beside Create says Python, not planner", /Getting Python ready/.test(appSource()) && /Python could not start, so building is unavailable/.test(appSource()) && !/planner/i.test(appSource()));
 
@@ -837,9 +838,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08zy" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08zz" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-08zy/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-08zz/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -2525,21 +2526,20 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("and the record notes it", (sr_record(sr_b, "spotifyLimits") || []).some((e) => /100 songs per add refused/.test(e.note || "")));
   // the owner is offered a copy; nobody else is
   var sr_id = "OWNER-TEST-ID";
-  var sr_hash = require("crypto").createHash("sha256").update(sr_id).digest("hex");
   var sr_limits = JSON.stringify([{ at: Date.now() - 1000, what: "POST /playlists/{id}/items", kind: "add", reason: "", sent30s: 40, sent10m: 90, sent1h: 300, sent24h: 300, refusedAgain: 0, lastRefusedAt: Date.now() - 1000, clearedAt: null }]);
   var sr_x = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, clientId: "SOMEONE-ELSE", spotifyLimits: sr_limits }, fetchOptions: {} });
   await waitFor(() => sr_x.eval("connection") === "ready");
-  sr_x.eval(`OWNER_CLIENT_HASHES.push(${JSON.stringify(sr_hash)})`);
+  sr_x.localStorage.setItem("sharingOwner", JSON.stringify({ account: sr_x.localStorage.getItem("spotifyAccount"), owner: false }));   // the worker said no
   await sr_x.eval("offerLimitRecord()");
   sr_x.eval("editor.appMenu = true; renderAppMenu()");
-  check("someone else's Client ID gets no offer and no menu item", !sr_x.eval("notices.held") && !sr_x.document.getElementById("feCopyRecord"));
+  check("someone the worker does not call the owner gets no offer and no menu item", !sr_x.eval("notices.held") && !sr_x.document.getElementById("feCopyRecord"));
   var sr_ow = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, clientId: sr_id, spotifyLimits: sr_limits }, fetchOptions: {} });
   await waitFor(() => sr_ow.eval("connection") === "ready");
-  sr_ow.eval(`OWNER_CLIENT_HASHES.push(${JSON.stringify(sr_hash)})`);
+  sr_ow.localStorage.setItem("sharingOwner", JSON.stringify({ account: sr_ow.localStorage.getItem("spotifyAccount"), owner: true }));   // the worker said yes
   await sr_ow.eval("offerLimitRecord()");
   check("the owner is offered the record when Spotify refused since the last copy", /Spotify refused requests once since the last copy/.test((sr_ow.eval("notices.held") || {}).text || ""), JSON.stringify(sr_ow.eval("notices.held")));
   sr_ow.eval("editor.appMenu = true; renderAppMenu()");
-  check("Copy Spotify record is not in the menu, even for the owner: it is in Developer options", !sr_ow.document.getElementById("feCopyRecord") && !!sr_ow.document.querySelector("#devOptions #devCopyRecord"));
+  check("Copy Spotify request log is not in the builder menu, even for the owner: it is in the DEV menu", !sr_ow.document.getElementById("feCopyRecord") && !!sr_ow.document.querySelector("#devMenu #devCopyRecord") && /Copy Spotify request log/.test(sr_ow.document.getElementById("devCopyRecord").textContent));
   var sr_copied = "";
   sr_ow.navigator.clipboard = { writeText: async (t) => { sr_copied = t; } };
   await sr_ow.eval("copyLimitRecord()");
@@ -2925,7 +2925,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08zy", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08zz", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3318,7 +3318,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var py_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var py_heads = Array.from(py_w.document.querySelectorAll("#moreOptions details.gd-topic > summary")).filter((h) => !h.closest("[hidden]")).map((h) => h.textContent);
   var py_home = Array.from(py_w.document.querySelectorAll("#homeMore details.gd-topic > summary")).map((h) => h.textContent);
-  check("More options is Build all recipes, Remove built playlists and Autosave or backup; Sign out and clear data is the last topic in Everything else on home; Python status is in Developer options", JSON.stringify(py_heads) === JSON.stringify(["Build all recipes", "Remove built playlists", "Autosave or backup"]) && py_home[py_home.length - 1] === "Sign out and clear data" && !py_heads.includes("Python status") && !!py_w.document.querySelector("#devOptions #pythonStatus"), JSON.stringify(py_heads) + " / " + JSON.stringify(py_home));
+  check("More options is Build all recipes, Remove built playlists and Autosave or backup; Everything else on home ends with Sign out and clear data, then Privacy; Python status is in the DEV menu", JSON.stringify(py_heads) === JSON.stringify(["Build all recipes", "Remove built playlists", "Autosave or backup"]) && py_home.slice(-2).join("|") === "Sign out and clear data|Privacy" && !py_heads.includes("Python status") && !!py_w.document.querySelector("#devMenu #pythonStatus"), JSON.stringify(py_heads) + " / " + JSON.stringify(py_home));
   } catch (err) { areaCrashed("python status at the bottom", err); } }
 
   if (want("the build icon")) { try {
@@ -4429,7 +4429,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   cn_w.document.getElementById("cnContinue").click();
   await waitFor(() => !cn_on(cn_w), 3000);
   check("by the time the screen goes, every step is ticked", cn_state(cn_w) === "cn-done,cn-done,cn-done,cn-done", cn_state(cn_w));
-  check("the screen goes once everything is ready: connected, the recipes saved to Spotify, Python running", cn_w.eval("connection") === "ready" && cn_w.eval("saveState.savedAt") !== null && !cn_w.eval("saveState.running") && /Ready/.test(cn_w.document.getElementById("pythonStatus").textContent));
+  check("the screen goes once everything is ready: connected, the recipes saved to Spotify, Python running", cn_w.eval("connection") === "ready" && cn_w.eval("saveState.savedAt") !== null && !cn_w.eval("saveState.running") && /ready$/.test(cn_w.document.getElementById("pythonStatus").textContent));
   check("and Arc's home is what is left, where the person picks a tool", cn_w.document.documentElement.classList.contains("page-app") && cn_w.document.documentElement.classList.contains("view-home") && !cn_w.document.documentElement.classList.contains("view-builder"));
   // a refused sign-in takes the screen down at once and shows the setup page with what went wrong
   var cn_f = await boot({ ...cn_back, local: { clientId: "client-1", setupStarted: "1" }, fetchOptions: { failToken: true, tokenDelayMs: 200 } });
@@ -4810,8 +4810,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => ms_w.eval("connection") === "ready", 15000);
   var ms_d = ms_w.document;
   await ms_w.eval("Promise.all([loadTracks('p2'), loadTracks('p4')])");   // the recipe's playlists are kept in the browser, so overlap can be measured
-  ms_w.eval("openInfo('devOptions')");
-  check("Developer options does not open Music sharing, Arc's home does, and Privacy has its topic, which names what a share keeps", !ms_d.getElementById("devOpenSharing") && /its name, cover, songs, the details you add, and your Spotify name unless anonymous/.test(ms_d.getElementById("privacyMusicSharing").textContent) && (ms_w.eval("closeInfo(true)"), !!ms_d.getElementById("msCard")));
+  check("the DEV menu does not open Music sharing, Arc's home does, and Privacy has its topic, which names what a share keeps", !ms_d.getElementById("devOpenSharing") && /its name, cover, songs, the details you add, and your Spotify name unless anonymous/.test(ms_d.getElementById("privacyMusicSharing").textContent) && (ms_w.eval("closeInfo(true)"), !!ms_d.getElementById("msCard")));
   ms_d.getElementById("msCard").click();
   var ms_names = () => Array.from(ms_d.querySelectorAll("#msResults .ms-row .ms-name")).map((e) => e.textContent);
   var ms_labels = () => Array.from(ms_d.querySelectorAll("#msResults .ms-row .ms-klabel")).map((e) => e.textContent);
@@ -5110,7 +5109,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
 
   if (want("developer options")) { try {
   // ================================================================ Developer mode: held on and off from Arc's icon, with nothing that gives it away
-  var dv_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: {} });
+  var dv_sh = { shares: [], words: {}, posts: [], deletes: [], reports: [], owner: true, adminReports: [{ id: "r1", name: "Loud one", by: "Kai", hidden: 0, reports: [{ at: Date.now(), reason: "Not music", note: "" }] }, { id: "r2", name: "Old one", by: null, hidden: 2, reports: [{ at: Date.now(), reason: "Spam", note: "" }] }] };
+  var dv_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: { sharing: dv_sh } });
   await waitFor(() => dv_w.eval("connection") === "ready", 15000);
   dv_w.eval("window.__t = []; const st = window.setTimeout; window.setTimeout = (f, ms, ...a) => { if (ms === 3000) { window.__t.push(f); return 0; } return st(f, ms, ...a); }");
   var dv_PE = (type, x) => new dv_w.MouseEvent(type, { bubbles: true, button: 0, clientX: x || 10, clientY: 10 });
@@ -5128,15 +5128,30 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("held to the end, developer mode is on, kept on this device, and a message says so", dv_root.classList.contains("dev-mode") && dv_w.localStorage.getItem("devMode") === "1" && dv_d.getElementById("devToast").hidden === false && dv_d.getElementById("devToastText").textContent === "Developer mode on");
   await waitFor(() => dv_w.eval("sharing.library") !== null, 8000);
   check("on: Music sharing's card comes alive and its library is read", dv_d.getElementById("msCard").getAttribute("aria-disabled") === "false" && /shared by others|Nothing shared by others yet/.test(dv_d.getElementById("msCardText").textContent));
+  await waitFor(() => dv_sh.ownerAsks === 1, 5000);
+  check("on, the worker is asked once whether this Spotify account is the owner, and the answer is kept for that account", JSON.parse(dv_w.localStorage.getItem("sharingOwner") || "{}").owner === true && JSON.parse(dv_w.localStorage.getItem("sharingOwner")).account === dv_w.localStorage.getItem("spotifyAccount"));
   dv_d.getElementById("devPill").click();
-  check("the DEV capsule opens Developer options and Turn off developer mode", dv_d.getElementById("devMenu").hidden === false && dv_d.getElementById("devMenuOptions").textContent.startsWith("Developer options") && dv_d.getElementById("devMenuOff").textContent.startsWith("Turn off developer mode"));
-  dv_d.getElementById("devMenuOptions").click();
-  check("Developer options opens in the info popup", dv_d.getElementById("devMenu").hidden === true && dv_d.getElementById("infoOverlay").hidden === false && dv_d.getElementById("infoSlot").firstElementChild.id === "devOptions" && dv_d.getElementById("infoTitle").textContent === "Developer options");
-  var dv_topics = Array.from(dv_d.querySelectorAll("#devOptions details.gd-topic > summary")).map((h) => h.textContent);
-  check("it has the two Music sharing topics (moods and reports), Start over, Copy Spotify record, Phone width and Python status, all open", JSON.stringify(dv_topics) === JSON.stringify(["Music sharing moods", "Music sharing reports", "Start over", "Copy Spotify record", "Phone width", "Python status"]) && Array.from(dv_d.querySelectorAll("#devOptions details.gd-topic")).every((d) => d.open), JSON.stringify(dv_topics));
-  check("Phone width offers Off, 360 px and 320 px, Off chosen, and the page frames itself only when one is kept and it is not in a frame already", (() => { const r = Array.from(dv_d.querySelectorAll('#devOptions input[name="devPhoneWidth"]')); const html = fs.readFileSync(ROOT + "index.html", "utf8"); return r.map((x) => x.value).join(",") === ",360,320" && r[0].checked && !r[1].checked && /if \(!\(w === 360 \|\| w === 320\) \|\| window\.top !== window\) return;/.test(html) && /pageWindow\(\)\.location\.href = "https:\/\/accounts\.spotify\.com\/authorize\?"/.test(appSource()); })());
+  var dv_rows = () => Array.from(dv_d.querySelectorAll("#devMenu > button, #devMenu > .dm-item")).filter((r) => !r.hidden).map((r) => r.querySelector("span").textContent);
+  check("the DEV menu: Turn off developer mode as its pink header, then Manage mood words, Review reports, Phone width, Copy Spotify request log, Clear data and start over, and Python at its foot", dv_d.getElementById("devMenu").hidden === false && dv_d.querySelector("#devMenu > .dm-head").id === "devMenuOff" && JSON.stringify(dv_rows()) === JSON.stringify(["Turn off developer mode", "Manage mood words", "Review reports", "Phone width", "Copy Spotify request log", "Clear data and start over"]) && dv_d.querySelector("#devMenu > :last-child").id === "pythonStatus", JSON.stringify(dv_rows()));
+  await waitFor(() => dv_d.getElementById("devReportsCount").textContent !== "", 3000);
+  check("Review reports counts the shares that wait for a look (not ones the owner hid)", dv_d.getElementById("devReportsCount").textContent === "1 reported", dv_d.getElementById("devReportsCount").textContent);
+  check("Clear data and start over is red", dv_d.getElementById("devStartOver").classList.contains("dm-red"));
+  check("Phone width offers Off, 360 and 320, Off chosen, and the page frames itself only when one is kept and it is not in a frame already", (() => { const r = Array.from(dv_d.querySelectorAll("#devMenu [data-width]")); const html = fs.readFileSync(ROOT + "index.html", "utf8"); return r.map((x) => x.dataset.width).join(",") === ",360,320" && r[0].getAttribute("aria-pressed") === "true" && r[1].getAttribute("aria-pressed") === "false" && /if \(!\(w === 360 \|\| w === 320\) \|\| window\.top !== window\) return;/.test(html) && /pageWindow\(\)\.location\.href = "https:\/\/accounts\.spotify\.com\/authorize\?"/.test(appSource()); })());
+  dv_d.getElementById("devMenuReports").click();
+  await waitFor(() => /Loud one/.test(dv_d.getElementById("devReportList").textContent), 3000);
+  check("Review reports opens alone in the info popup, titled in the band", dv_d.getElementById("devMenu").hidden === true && dv_d.getElementById("infoSlot").firstElementChild.id === "devReports" && dv_d.getElementById("infoTitle").textContent === "Review reports");
   dv_d.getElementById("infoClose").click();
-  check("closed, it goes back to its place, hidden", dv_d.getElementById("devOptions").hidden === true && !dv_d.getElementById("devOptions").closest("#infoSlot"));
+  dv_d.getElementById("devPill").click(); dv_d.getElementById("devMenuMoods").click();
+  check("Manage mood words opens alone the same way", dv_d.getElementById("infoSlot").firstElementChild.id === "devMoods" && dv_d.getElementById("infoTitle").textContent === "Manage mood words" && !!dv_d.querySelector("#devTagWords .ms-tags"));
+  dv_d.getElementById("infoClose").click();
+  check("closed, it goes back to its place, hidden", dv_d.getElementById("devMoods").hidden === true && !dv_d.getElementById("devMoods").closest("#infoSlot"));
+  check("there is no Developer options popup any more", !dv_d.getElementById("devOptions") && !dv_d.getElementById("devMenuOptions"));
+  var dv_xo = {};
+  var dv_x = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", devMode: "1" }, fetchOptions: dv_xo });
+  await waitFor(() => dv_x.eval("connection") === "ready", 15000);
+  await waitFor(() => JSON.parse(dv_x.localStorage.getItem("sharingOwner") || "{}").owner === false, 5000);
+  dv_x.document.getElementById("devPill").click(); dv_x.document.getElementById("devPill").click(); dv_x.document.getElementById("devPill").click();
+  check("anyone else's DEV menu has no Music sharing rows, and the worker is asked only once", dv_x.document.getElementById("devMenuMoods").hidden && dv_x.document.getElementById("devMenuReports").hidden && dv_xo.sharing.ownerAsks === 1, String(dv_xo.sharing.ownerAsks));
   dv_w.eval("showView('sharing')");
   check("on, Music sharing opens", dv_root.classList.contains("view-sharing"));
   var dv_bar = dv_d.querySelector("#appHome img");
@@ -5158,12 +5173,11 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var dv_wel2 = await boot({ url: "http://127.0.0.1:8000/", local: { devMode: "1" } });
   dv_wel2.document.getElementById("wpSharingHead").click();
   check("in developer mode the <head> script marks the page before it is drawn, and the welcome card opens", /if \(localStorage\.getItem\("devMode"\) === "1"\) document\.documentElement\.classList\.add\("dev-mode"\);/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && dv_wel2.document.getElementById("wpSharingHead").getAttribute("aria-expanded") === "true");
-  dv_w.eval("openInfo('devOptions')");
-  check("there is no Disconnect in it", !dv_w.document.getElementById("devDisconnect") && !/Disconnect/.test(dv_w.document.getElementById("devOptions").textContent));
-  dv_w.eval("openInfo('devOptions')");
+  check("there is no Disconnect in the DEV menu", !dv_w.document.getElementById("devDisconnect") && !/Disconnect/.test(dv_w.document.getElementById("devMenu").textContent));
+  dv_w.eval("setDevMode(true)"); dv_w.document.getElementById("devPill").click();
   dv_w.document.getElementById("devStartOver").click();
   await new Promise((r) => setTimeout(r, 80));
-  check("Start over asks first, and says the Client ID is copied", /Start over\?/.test((dv_w.document.getElementById("feSyncDialog") || {}).textContent || "") && /Client ID is copied to the clipboard/.test(dv_w.document.getElementById("feSyncDialog").textContent));
+  check("Clear data and start over asks first, says the Client ID is copied, and its button is red", /Clear data and start over\?/.test((dv_w.document.getElementById("feSyncDialog") || {}).textContent || "") && /Client ID is copied to the clipboard/.test(dv_w.document.getElementById("feSyncDialog").textContent) && dv_w.document.getElementById("feSyncChoice0").classList.contains("fe-danger-button") && dv_w.document.getElementById("devMenu").hidden);
   var dv_copied = []; dv_w.navigator.clipboard = { writeText: async (t) => { dv_copied.push(t); } };
   dv_w.localStorage.setItem("clientId", "dv-id");
   dv_w.eval("reloadPage = () => { window.__dvReloaded = true; }");
@@ -5285,7 +5299,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08zy"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08zz"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

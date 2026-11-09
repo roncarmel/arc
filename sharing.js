@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08zy";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08zz";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -114,6 +114,7 @@ function renderSharingCard() {
 // Once connected on a device that has never read which shares are the person's own (a new browser, a Home Screen app added again), they are read once, so the
 // card's count of playlists shared by other facilitators leaves them out. After that the list is refreshed whenever Music sharing opens (loadMine).
 function sharingConnected() {
+  if (devMode() && !ownerKnown()) askOwner();   // the owner's tools in the DEV menu, and the request log offered (offerLimitRecord in app.js)
   let known = !!sharing.mine;
   try { known = known || localStorage.getItem(SHARING_MINE_KEY) !== null; } catch (err) { known = true; }   // no storage: it would be read on every visit
   if (!known) loadMine().then(renderSharingCard);
@@ -1767,11 +1768,49 @@ function topArtists(tracks, n = 4) {
   return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).filter(([, c]) => c > 1).map(([a]) => a);
 }
 
-// ---------------------------------------------------------------- Developer options: mood words and reports
-function sharingDevOpened() {
-  renderDevTags();
-  loadLibrary(true).then(renderDevTags);
-  loadDevReports();
+// ---------------------------------------------------------------- the DEV menu's owner tools: mood words and reports
+// Whether this Spotify account is the owner is the worker's answer to GET /admin/reports (403 for anyone else), asked in developer mode only, once per account,
+// and kept (OWNER_KEY in app.js): someone who finds developer mode never sees tools that would only refuse them. The worker checks every change anyway.
+const ownerTools = { asking: null, reports: null };
+function askOwner() {
+  if (ownerTools.asking) return ownerTools.asking;
+  if (!devMode() || !token || !me) return Promise.resolve(false);
+  ownerTools.asking = (async () => {
+    try {
+      const data = await sharingFetch("GET", "/admin/reports");
+      ownerTools.reports = data.shares || [];
+      try { localStorage.setItem(OWNER_KEY, JSON.stringify({ account: me.id, owner: true })); } catch (err) { /* private browsing */ }
+    } catch (err) {
+      if (err.status === 403) try { localStorage.setItem(OWNER_KEY, JSON.stringify({ account: me.id, owner: false })); } catch (e) { /* private browsing */ }
+    } finally { ownerTools.asking = null; }
+    renderDevMenuRows();
+    return checkOwner();
+  })();
+  return ownerTools.asking;
+}
+function ownerKnown() {
+  try { const kept = JSON.parse(localStorage.getItem(OWNER_KEY) || "null"); return !!kept && kept.account === localStorage.getItem("spotifyAccount"); } catch (err) { return true; }
+}
+// the menu just opened: the owner's rows with fresh counts; anyone else's menu is asked about once
+function sharingDevMenu() {
+  renderDevMenuRows();
+  if (checkOwner()) { if (!sharing.library) loadLibrary().then(renderDevMenuRows); askOwner(); }
+  else if (!ownerKnown()) askOwner();
+}
+function renderDevMenuRows() {
+  const moods = $("devMenuMoods"), reports = $("devMenuReports");
+  if (!moods || !reports) return;
+  const mine = checkOwner();
+  moods.hidden = reports.hidden = !mine;
+  if (!mine) return;
+  const hidden = (sharing.moodIndex || []).filter((t) => t.hidden).length;
+  $("devMoodsCount").textContent = sharing.library && hidden ? `${hidden} hidden` : "";
+  const open = ownerTools.reports && ownerTools.reports.filter((r) => r.hidden !== 2).length;   // hidden by the owner is settled; the rest wait for a look
+  $("devReportsCount").textContent = ownerTools.reports ? (open ? `${open} reported` : "None") : "";
+}
+function sharingDevOpened(id) {
+  if (id === "devMoods") { renderDevTags(); loadLibrary(true).then(renderDevTags); }
+  else loadDevReports();
 }
 let devTagFilter = "shown";
 function renderDevTags() {
@@ -1811,6 +1850,8 @@ async function loadDevReports() {
   box.textContent = "Loading...";
   try {
     const data = await sharingFetch("GET", "/admin/reports");
+    ownerTools.reports = data.shares;
+    renderDevMenuRows();
     box.textContent = "";
     if (!data.shares.length) { box.appendChild(feEl("p", { class: "muted" }, "No reports.")); return; }
     for (const s of data.shares) {
