@@ -1458,7 +1458,7 @@ print(json.dumps(out))
   var wCss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("body text in What is this app? and How recipes work is gray, with headings and control names staying bright", /details\.about, #formatHelp \{ color: var\(--muted\); \}/.test(wCss) && /details\.about strong, #formatHelp h3 \{ color: var\(--fg\); \}/.test(wCss) && /\.ui \{ color: var\(--fg\); \}/.test(wCss));
   var uiNames = Array.from(fresh.document.querySelectorAll("span.ui")).map((x) => x.textContent);
-  check("the names of buttons and links in running text are marked up the same way", ["More options", "Build.", "New segment", "Add a mix", "Reset to default", "Restore", "Report a problem"].every((n) => uiNames.includes(n)), JSON.stringify(uiNames));
+  check("the names of buttons and links in running text are marked up the same way", ["More options", "New segment", "Add a mix", "Reset to default", "Restore", "Report a problem"].every((n) => uiNames.includes(n)), JSON.stringify(uiNames));
   check("no button or link name is left in single or curly quotes, since the style now sets it apart", !/[\u2018\u2019'](More options|Preview|Create|New segment|Add a mix)[\u2018\u2019']/.test(fresh.document.body.textContent));
 
 
@@ -1468,8 +1468,8 @@ print(json.dumps(out))
   check("headings, the two setup choices, code, results and confirmation boxes are white", /h2, h3, label\.choice, code, #confirmBox, #removeConfirmBox, #clearConfirm \{ color: var\(--fg\); \}/.test(gCss));
   var gh = fs.readFileSync(ROOT + "index.html", "utf8");
   var aboutRange = gh.slice(gh.indexOf('<details id="about"'), gh.indexOf("</details>", gh.indexOf('<details id="about"')));
-  var outside = gh.replace(aboutRange, "").replace(/<details id="guideSection"[\s\S]*?<details id="moreOptions"/, "").slice(gh.indexOf("<body")).replace('<span class="hp-text"><b>Playlist builder</b>', "").replace('<span class="hp-text"><b>Music sharing</b>', "").replace("<b>Bold</b> is shown", "");   // the Music sharing card's title, and Developer options showing what bold means there
-  check("bold is kept for the six headings in About this app (and the guide for facilitators, the titles of the tools on Arc's home, and Developer options' tag list), and nowhere else", (aboutRange.match(/<strong>/g) || []).length === 6 && (outside.match(/<strong[ >]/g) || []).length === 0 && !/<b>/.test(outside));
+  var outside = gh.replace(aboutRange, "").replace(/<details id="guideSection"[\s\S]*?<details id="moreOptions"/, "").slice(gh.indexOf("<body")).replace(/<span class="(?:hp|wp-tool)-text">(?:<span class="hp-soon">[^<]*<\/span>)?<b>[^<]*<\/b>/g, "").replace('<span class="hp-more-text"><b>Everything else</b>', "").replace("<b>Bold</b> is shown", "");   // the tools' titles on home and the welcome page, Everything else's title, and Developer options showing what bold means there
+  check("bold is kept for the six headings in About this app (and the guide for facilitators, the titles of the tools on Arc's home and the welcome page, Everything else's title, and Developer options' tag list), and nowhere else", (aboutRange.match(/<strong>/g) || []).length === 6 && (outside.match(/<strong[ >]/g) || []).length === 0 && !/<b>/.test(outside));
   var setupText = fresh.document.getElementById("spSteps");
   check("the setup steps' field names and buttons are highlighted in white, and nothing there is bold", setupText.querySelectorAll("strong, b").length === 0 && Array.from(setupText.querySelectorAll("span.ui")).map((x) => x.textContent).some((t) => /^Create app$/.test(t)) && Array.from(setupText.querySelectorAll("span.ui")).some((x) => /App name/.test(x.textContent)));
   check("the connected message and Step 4's text are plain gray text, not wrapped in any highlight", !fresh.document.getElementById("connectedMessage").querySelector(".ui") && !t0.document.getElementById("backupSection").nextElementSibling.querySelector(".ui") && t0.document.getElementById("backupSection").nextElementSibling.tagName === "P" && !t0.document.getElementById("backupSection").nextElementSibling.classList.contains("ui"));
@@ -3039,7 +3039,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("Connect, which comes after it in the startup code, is still wired", /Enter your Client ID|Client ID/i.test(su_none.document.getElementById("loginMessage").textContent) || su_none.document.getElementById("loginMessage").textContent !== "");
   var su_css = su_html.replace(/\s+/g, " ");
   check("the bottom strip and the corner note let clicks through everywhere except on the button and the words", /#supportBox \{ pointer-events: none; \}/.test(su_css) && /#supportBox > \* \{ pointer-events: auto; \}/.test(su_css));
-  check("all the page's listeners go through the guarded helper, and the script ends by catching a startup that fails", !/\$\("\w+"\)\.addEventListener\(/.test(su_js) && /\nmain\(\)\.catch\(startupFailed\);\s*$/.test(su_js));
+  check("all the page's listeners go through the guarded helper (but Setup complete's Continue, which only lets the startup go on), and the script ends by catching a startup that fails", !/\$\("\w+"\)\.addEventListener\(/.test(su_js.replace('$("cnContinue").addEventListener("click", () => resolve(true), { once: true })', "")) && /\nmain\(\)\.catch\(startupFailed\);\s*$/.test(su_js));
   
   } catch (err) { areaCrashed("startup that survives problems", err); }
 }
@@ -3457,7 +3457,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // ================================================================ the Python status at the bottom of More options
   var py_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var py_heads = Array.from(py_w.document.querySelectorAll("#moreOptions details.gd-topic > summary")).filter((h) => !h.closest("[hidden]")).map((h) => h.textContent);
-  check("More options ends with Hide support button; Python status is in Developer options", py_heads[py_heads.length - 1] === "Hide support button" && !py_heads.includes("Python status") && !!py_w.document.querySelector("#devOptions #pythonStatus"), JSON.stringify(py_heads));
+  var py_home = Array.from(py_w.document.querySelectorAll("#homeMore details.gd-topic > summary")).map((h) => h.textContent);
+  check("More options is Build all recipes, Remove built playlists and Autosave or backup; Hide support button is last in Everything else on home; Python status is in Developer options", JSON.stringify(py_heads) === JSON.stringify(["Build all recipes", "Remove built playlists", "Autosave or backup"]) && py_home[py_home.length - 1] === "Hide support button" && !py_heads.includes("Python status") && !!py_w.document.querySelector("#devOptions #pythonStatus"), JSON.stringify(py_heads) + " / " + JSON.stringify(py_home));
   check("the Sign out and clear data question still opens right under its button, ahead of the Hide support button section", !!(py_w.document.getElementById("clearConfirm").compareDocumentPosition(py_w.document.getElementById("donateHideBox")) & 4));
   } catch (err) { areaCrashed("python status at the bottom", err); } }
 
@@ -4355,12 +4356,12 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sw_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("the privacy text says that with automatic backup each recipe is also kept in a private playlist in the person's own Spotify account, in its description, and goes nowhere else", /Recipes are saved to Spotify unless you choose otherwise: each recipe is also kept in a private playlist in your own Spotify account, in the playlist's description\. That is where this app saves it and reads it back, and it goes nowhere else\./.test(sw_html));
   var sw_m = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "manual" }, fetchOptions: {} });
-  check("with the backup file as the way, Sign out and clear data talks about restoring from the file, with Restore in the app menu", /Restore in the app menu/.test(sw_m.document.getElementById("clearRestoreHelp").textContent) && /Restore in the app menu/.test(sw_m.document.getElementById("clearConfirmHelp").textContent));
+  check("with the backup file as the way, Sign out and clear data talks about restoring from the file, with Restore in the Playlist builder's menu", /Restore in the Playlist builder\u2019?'?s menu/.test(sw_m.document.getElementById("clearRestoreHelp").textContent) && /Restore in the Playlist builder\u2019?'?s menu/.test(sw_m.document.getElementById("clearConfirmHelp").textContent));
   var sw_s = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "spotify" }, fetchOptions: {} });
   check("with Spotify as the way, it says the backups in Spotify stay, and that connecting again loads the formats back, and does not mention a file", /Recipes saved to Spotify stay there/.test(sw_s.document.getElementById("clearRestoreHelp").textContent) && /connecting to Spotify again brings them back/.test(sw_s.document.getElementById("clearConfirmHelp").textContent) && !/restore from a backup/.test(sw_s.document.getElementById("clearRestoreHelp").textContent + sw_s.document.getElementById("clearConfirmHelp").textContent));
   check("and the note above the button says clearing does not remove those backups", /does not remove them/.test(sw_s.document.getElementById("clearBackupNote").textContent));
   sw_s.document.getElementById("backupCard") && sw_s.eval('localStorage.setItem("backupMode", "manual"); applyBackupMode();');
-  check("switching back to the backup file puts its wording back", /Restore in the app menu/.test(sw_s.document.getElementById("clearRestoreHelp").textContent));
+  check("switching back to the backup file puts its wording back", /Restore in the Playlist builder\u2019?'?s menu/.test(sw_s.document.getElementById("clearRestoreHelp").textContent));
   } catch (err) { areaCrashed("spotify wording", err); } }
 
   if (want("backup switching")) { try {
@@ -4892,16 +4893,13 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var vl_ready = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: {} });
   vl_ready.document.getElementById("feAppMenuButton").click();
   var vl_menu = vl_ready.document.getElementById("feAppMenuPanel");
-  check("the app menu ends with the version", vl_menu.lastElementChild.id === "feVersion" && vl_ready.document.getElementById("feVersion").textContent === "App version " + vl_ready.eval("APP_VERSION"));
-  check("it is only text: small, muted, with a divider above it, and nothing to press", vl_menu.lastElementChild.tagName === "DIV" && vl_menu.lastElementChild.previousElementSibling.className === "fe-rule" && /#formatEditor \.fe-version \{[^}]*color: var\(--muted\); font-size: 0\.78rem;/.test(vl_css) && !/fe-version[^{]*:hover/.test(vl_css));
+  check("the builder's menu has no version line any more: it ends with Report a problem (the version shows when Arc's icon is tapped)", vl_menu.lastElementChild.id === "feReport" && !vl_ready.document.getElementById("feVersion") && /function flashBandVersion/.test(appSource() + fs.readFileSync(ROOT + "editor.js", "utf8")));
   vl_ready.document.body.click();
   var vl_out = await boot({ url: EDURL, local: { formats: MINI, connectedBefore: "1", clientId: "c1" }, fetchOptions: {} });
   vl_out.document.getElementById("feAppMenuButton").click();
-  check("and it is there when Spotify is not connected too", vl_out.document.getElementById("feAppMenuPanel").lastElementChild.id === "feVersion");
+  check("and none when Spotify is not connected either", vl_out.document.getElementById("feAppMenuPanel").lastElementChild.id === "feReport" && !vl_out.document.getElementById("feVersion"));
   vl_out.document.body.click();
   var vl_minimal = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", minimalMode: "1" }, fetchOptions: {} });
-  vl_minimal.document.getElementById("feAppMenuButton").click();
-  check("and in minimalist mode, where More options is hidden, so this is how to see it", vl_minimal.document.body.classList.contains("minimal") && vl_minimal.document.getElementById("feAppMenuPanel").lastElementChild.id === "feVersion");
   check("the app icon goes home from Arc's bar, and shows no version", !/showVersionNotice|APP_VERSION[^;]*fe-appicon/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && (() => { vl_minimal.document.body.click(); const before = capText(vl_minimal); vl_minimal.document.getElementById("appHome").click(); return vl_minimal.document.documentElement.classList.contains("view-home") && capText(vl_minimal) === before; })());
   } catch (err) { areaCrashed("version line", err); } }
 
@@ -5328,10 +5326,10 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("spotify last")) { try {
   // ================================================================ the Spotify item is always first in the menu, under the app's name; then the rest in a fixed order, and the version
   var sl_ids = (w) => { w.document.getElementById("feAppMenuButton").click(); const ids = Array.from(w.document.querySelectorAll("#feAppMenuPanel > *")).map((k) => k.id || k.className); w.document.body.click(); return ids; };
-  var sl_rest = ["fe-rule", "feGuide", "feMoreOptions", "feFeedback", "feReport", "fePrivacy", "fe-rule", "feVersion"];
+  var sl_rest = ["fe-rule", "feGuide", "feMoreOptions", "feReport"];   // Feedback, Privacy and the version moved to Everything else on home or were dropped (2026-11-08)
   var sl_ready = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: {}, feedbackUrl: "https://tally.so/r/X" });
   var sl_r = sl_ids(sl_ready);
-  check("connected: the app's name, then A guide for facilitators, More options, Feedback and questions, Report a problem, Privacy, and the version", JSON.stringify(sl_r) === JSON.stringify(["feMenuHead"].concat(sl_rest.slice(1))), JSON.stringify(sl_r));
+  check("connected: the app's name, then A guide for facilitators, More options and Report a problem", JSON.stringify(sl_r) === JSON.stringify(["feMenuHead"].concat(sl_rest.slice(1))), JSON.stringify(sl_r));
   var sl_ms = sl_ready.document; sl_ready.document.getElementById("feAppMenuButton").click();
   var sl_msi = sl_ms.getElementById("feMusicSharing");
   check("Music sharing is not in the menu: it is a tool on Arc's home", !sl_msi && /Music sharing/.test(sl_ms.getElementById("homePage").textContent));
@@ -5860,7 +5858,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var nv_h = await nv_make({ serverVersion: "2099-01-01a" });
   nv_h.eval("versionCheck.last = Date.now() - 31 * 1000; toggleAppMenu()");
   await new Promise((r) => setTimeout(r, 200));
-  check("opening the menu does not ask, and its last line says which version this is", nv_seen(nv_h).length === 0 && nv_h.document.getElementById("updateCard").hidden && nv_h.document.getElementById("feVersion").textContent === `App version ${nv_version}`);
+  check("opening the menu does not ask", nv_seen(nv_h).length === 0 && nv_h.document.getElementById("updateCard").hidden);
   } catch (err) { areaCrashed("newer version", err); } }
   console.log(failures ? `\n${failures} check(s) failed` : "\nall checks passed");
   if (areaPrev) areaTimes.push({ name: areaPrev, ms: Date.now() - areaStart });
