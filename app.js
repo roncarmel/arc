@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08zs";
+const APP_VERSION = "2026-11-08zu";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -200,32 +200,18 @@ function showView(view, push = true) {
   if (view === "home") { renderHomeRecipes(); alignWelcomeIcons(); }   // drawn while hidden, the band's icon measured nothing
 }
 
-// The Playlist builder's card on home: a strip with the first recipe's shape (segments full pink, silences paler, by length) and how many recipes there are, by name
+// The Playlist builder's card on home: a strip saying how many recipes are ready ("4 recipes ready to build"; option C, Ron, 2026-11-08)
 function renderHomeRecipes() {
   const strip = $("homeRecipes");
   if (!strip) return;
   strip.textContent = "";
   const model = typeof editor === "object" ? editor.model : null;
-  const recipes = model ? model.formats.filter((f) => !f.draft) : [];
-  if (!recipes.length) { strip.textContent = "No recipes yet. Make your first one."; return; }
-  const first = recipes[0], parts = [];
-  first.items.forEach((item, i) => {
-    if (i > 0) { const sec = gapInfo(first, i).sec; if (sec > 0) parts.push({ min: sec / 60, quiet: true }); }
-    parts.push({ min: item.minutes, quiet: false });
-  });
-  const total = parts.reduce((sum, p) => sum + p.min, 0) || 1;
-  const pills = document.createElement("span");
-  pills.className = "hp-pills";
-  pills.setAttribute("aria-hidden", "true");
-  for (const p of parts.slice(0, 12)) {
-    const pill = document.createElement("i");
-    pill.style.flex = String(p.min / total);
-    if (p.quiet) pill.className = "hp-quiet";
-    pills.appendChild(pill);
-  }
-  const names = recipes.map((f) => cleanTitle(f.title).replace(/\s*\{(n|letter)\}/g, "").trim());
-  const shown = names.slice(0, 3).join(", ") + (names.length > 3 ? ", and more" : "");
-  strip.append(pills, document.createTextNode(`${recipes.length} ${recipes.length === 1 ? "recipe" : "recipes"} · ${shown}`));
+  const count = model ? model.formats.filter((f) => !f.draft).length : 0;
+  if (!count) { strip.textContent = "No recipes yet. Make your first one."; return; }
+  const b = document.createElement("b");
+  b.className = "hp-count";
+  b.textContent = `${count} ${count === 1 ? "recipe" : "recipes"}`;
+  strip.append(b, document.createTextNode(" ready to build"));
 }
 
 // Back home: undoes the tool's step in the history when there is one, so the back button does not return to the tool
