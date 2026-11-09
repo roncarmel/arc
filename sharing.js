@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08zm";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08zo";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -590,8 +590,11 @@ function renderFind(body) {
     if (t === "ceremony") {
       tools.appendChild(feEl("p", { class: "ms-flabel2" }, "For use with (one at a time)"));
       const on = new Set(sharing.book == null ? [] : [sharing.book]);
-      tools.appendChild(bookTiles(on, () => { sharing.book = on.size ? [...on][0] : null; sharing.bookCode = null; renderSharing(); }, true, sharing.book === OTHER_BOOK ? sharing.bookCode || "" : ""));
-      if (sharing.book === OTHER_BOOK) tools.appendChild(otherBookChips());
+      const tiles = bookTiles(on, (i) => { sharing.book = on.size ? [...on][0] : null; sharing.bookCode = null; renderSharing(); if (i === OTHER_BOOK && sharing.book === OTHER_BOOK && $("msBookCode")) $("msBookCode").focus(); },
+        true, sharing.book === OTHER_BOOK ? sharing.bookCode || "" : "");
+      tools.appendChild(tiles);
+      // Other: the same field as in Share a playlist; empty shows every other book, a code only that one
+      if (sharing.book === OTHER_BOOK) tools.appendChild(bookCodeRow(sharing.bookCode || "", tiles, (code) => { sharing.bookCode = code || null; renderResults(); }));
     } else if (t === "phase") {
       tools.appendChild(feEl("p", { class: "ms-flabel2" }, "Which phases"));
       tools.appendChild(phaseCurve(sharing.phases, () => renderResults(), "Which phases"));
@@ -626,18 +629,6 @@ function addedCount() {
 function mineCount() {
   if (sharing.mine) return sharing.mine.length;
   try { return (JSON.parse(localStorage.getItem(SHARING_MINE_KEY)) || []).length; } catch (err) { return 0; }
-}
-// with Other chosen in the filter: Any, then a chip per other book used on two or more ceremonies (as mood words are)
-function otherBookChips() {
-  const counts = new Map();
-  for (const s of sharing.library.shares) if (s.kind === "ceremony" && (s.books || []).includes(OTHER_BOOK) && cleanBookCode(s.bookOther)) {
-    const c = cleanBookCode(s.bookOther);
-    counts.set(c, (counts.get(c) || 0) + 1);
-  }
-  const codes = [...counts.entries()].filter(([, n]) => n > 1).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([c]) => c);
-  const chip = (code, text) => feEl("button", { type: "button", class: "ms-chip" + (sharing.bookCode === code ? " ms-on" : ""), "aria-pressed": String(sharing.bookCode === code),
-    onClick: () => { sharing.bookCode = code; renderSharing(); } }, text);
-  return feEl("div", { id: "msBookCodes", class: "ms-chips" }, chip(null, "Any"), ...codes.map((c) => chip(c, c)));
 }
 function renderMoodChips() {
   const box = $("msMoods");
@@ -1374,20 +1365,7 @@ function detailFields(p, d) {
 // the books, and with Other lit a small field for its code under them (the tile shows the code as it is typed)
 function booksContent(d) {
   const box = feEl("div", { id: "msBooks" }, bookTiles(d.books, (i) => { draftChanged(); refreshBooks(d, i === OTHER_BOOK && d.books.has(OTHER_BOOK)); }, false, d.bookOther));
-  if (d.books.has(OTHER_BOOK)) {
-    const input = feEl("input", { type: "text", class: "ms-input ms-bcode", id: "msBookCode", maxlength: String(BOOK_CODE_MAX), value: d.bookOther, autocapitalize: "characters",
-      autocomplete: "off", spellcheck: "false", enterkeyhint: "next", "aria-label": "Other book, up to 2 letters or numbers" });
-    input.addEventListener("input", () => {
-      const code = cleanBookCode(input.value);
-      if (input.value !== code) input.value = code;
-      d.bookOther = code;
-      const tile = document.querySelector("#msBooks .ms-btile-other");
-      if (tile) { tile.querySelector(".ms-bookicon").replaceWith(bookIcon(bookName(OTHER_BOOK, code))); tile.setAttribute("aria-label", "Other book" + (code ? " " + code : "")); }
-      draftChanged();
-    });
-    input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); const next = $("msDesc"); if (next && !next.readOnly) next.focus(); else input.blur(); } });
-    box.appendChild(feEl("label", { class: "ms-bcode-row" }, feEl("b", {}, "Other book"), input, feEl("span", { class: "ms-fnote" }, "Up to 2 letters or numbers")));
-  }
+  if (d.books.has(OTHER_BOOK)) box.appendChild(bookCodeRow(d.bookOther, box, (code) => { d.bookOther = code; draftChanged(); }, () => $("msDesc")));
   return box;
 }
 function refreshBooks(d, focusCode = false) {
@@ -1537,6 +1515,20 @@ async function submitDraft(p) {
   }
 }
 // sends a share (new, edited or updated): what the draft says, and the playlist's songs as they are now
+// the Other book field: up to 2 letters or numbers, kept in capitals, shown in the Other tile (inside tiles) as it is typed
+function bookCodeRow(value, tiles, changed, next = null) {
+  const input = feEl("input", { type: "text", class: "ms-input ms-bcode", id: "msBookCode", maxlength: String(BOOK_CODE_MAX), value, autocapitalize: "characters",
+    autocomplete: "off", spellcheck: "false", enterkeyhint: next ? "next" : "done", "aria-label": "Other book, up to 2 letters or numbers" });
+  input.addEventListener("input", () => {
+    const code = cleanBookCode(input.value);
+    if (input.value !== code) input.value = code;
+    const tile = tiles.querySelector(".ms-btile-other");
+    if (tile) { tile.querySelector(".ms-bookicon").replaceWith(bookIcon(bookName(OTHER_BOOK, code))); tile.setAttribute("aria-label", "Other book" + (code ? " " + code : "")); }
+    changed(code);
+  });
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); const to = next && next(); if (to && !to.readOnly) to.focus(); else input.blur(); } });
+  return feEl("label", { class: "ms-bcode-row" }, feEl("b", {}, "Other book"), input, feEl("span", { class: "ms-fnote" }, "Up to 2 letters or numbers"));
+}
 async function sendShare(p, d) {
   const tracks = await loadTracks(p.id);
   const ms = tracks.reduce((n, t) => n + (t.ms || 0), 0);
