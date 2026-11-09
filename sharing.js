@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08zze";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08zzf";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -734,6 +734,9 @@ function renderResults() {
       feEl("button", { type: "button", class: "ms-empty-ghost", onClick: () => { clearNarrowing(); renderSharing(); } }, "Clear search and filters")));
     return;
   }
+  // how many there are: "3 of 12 playlists" when the filters, search or Hide playlists you have leave fewer
+  const all = ofType().length, word = (n) => n === 1 ? "playlist" : "playlists";
+  box.appendChild(feEl("p", { id: "msCount", class: "ms-count", "aria-live": "polite" }, list.length < all ? `${list.length} of ${all} ${word(all)}` : `${all} ${word(all)}`));
   for (const s of list) box.appendChild(shareRow(s, ov));
 }
 function shareCoverEl(s, cls = "ms-cover") {
@@ -1725,6 +1728,11 @@ function watchKeyboard() {
     dialog.classList.toggle("ms-typing", !!typing);
     dialog.style.height = typing ? vv.height + "px" : "";
     dialog.style.transform = typing && vv.offsetTop ? `translateY(${vv.offsetTop}px)` : "";
+    // as a page it starts under Arc's bar; while typing it starts at the top, so its foot is the keyboard's top and the bar's space is not left blank
+    if (document.documentElement.classList.contains("page-app")) {
+      $("msOverlay").classList.toggle("ms-typing-page", !!typing);
+      if (typing) $("msOverlay").style.top = "0px"; else if (typeof placeSharingPage === "function") placeSharingPage();
+    }
   };
   vv.addEventListener("resize", fit);
   vv.addEventListener("scroll", fit);
@@ -1739,6 +1747,7 @@ function endTyping() {
   const a = document.activeElement;
   if (a && $("msDialog") && $("msDialog").contains(a) && a.matches("input, textarea")) a.blur();
   if ($("msDialog")) { $("msDialog").classList.remove("ms-typing"); $("msDialog").style.height = ""; $("msDialog").style.transform = ""; }
+  if ($("msOverlay") && $("msOverlay").classList.contains("ms-typing-page")) { $("msOverlay").classList.remove("ms-typing-page"); if (typeof placeSharingPage === "function") placeSharingPage(); }
 }
 
 // ---------------------------------------------------------------- what this device remembers about refusals
