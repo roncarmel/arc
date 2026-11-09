@@ -17,7 +17,7 @@
 import BLOCKED from "../../blocked-words/blocked-words.json";
 
 const LIMITS = {
-  nameChars: 200, shownChars: 40, descChars: 300, moodsMax: 8, moodChars: 30, otherChars: 24, phases: 5, books: 5, maxSongs: 5000, artists: 5, songChars: 100,
+  nameChars: 200, shownChars: 40, descChars: 300, moodsMax: 8, moodChars: 30, otherChars: 24, phases: 5, books: 6, maxSongs: 5000, artists: 5, songChars: 100,
   sharesPerDay: 60, reportsPerDay: 30, noteChars: 500, copyShare: 0.9, hideAfterReports: 3,
 };
 const KINDS = ["ceremony", "phase", "mood", "other"];
@@ -106,7 +106,7 @@ async function countToday(env, whoId, kind, limit) {
 // ---------------------------------------------------------------- reading
 // what a share is, the same in the library and in /mine
 function kindOf(r) {
-  return { kind: r.kind, books: bitList(r.books, LIMITS.books), phases: bitList(r.phases, LIMITS.phases), moods: r.moods ? JSON.parse(r.moods) : [], other: r.other || "", description: r.description || "" };
+  return { kind: r.kind, books: bitList(r.books, LIMITS.books), bookOther: r.book_other || "", phases: bitList(r.phases, LIMITS.phases), moods: r.moods ? JSON.parse(r.moods) : [], other: r.other || "", description: r.description || "" };
 }
 function publicShare(r) {
   return {
@@ -117,7 +117,7 @@ function publicShare(r) {
 }
 async function library(env) {
   // the song names stay out: they are read one playlist at a time (songNames)
-  const shares = await env.DB.prepare("SELECT id, name, shown_as, kind, books, phases, moods, other, description, cover, songs, song_count, total_ms, avg_ms, artists, shared_at, updated_at FROM shares WHERE hidden = 0 ORDER BY shared_at DESC").all();
+  const shares = await env.DB.prepare("SELECT id, name, shown_as, kind, books, book_other, phases, moods, other, description, cover, songs, song_count, total_ms, avg_ms, artists, shared_at, updated_at FROM shares WHERE hidden = 0 ORDER BY shared_at DESC").all();
   const words = await env.DB.prepare("SELECT word, hidden FROM words").all();
   return { shares: shares.results.map(publicShare), words: Object.fromEntries(words.results.map((w) => [w.word, w.hidden])), at: Date.now() };
 }
@@ -128,11 +128,12 @@ async function songNames(env, id) {
   return { id, names: r.names ? JSON.parse(r.names) : null };
 }
 async function mine(env, whoId) {
-  const rows = await env.DB.prepare("SELECT id, playlist, snapshot, name, shown_as, kind, books, phases, moods, other, description, desc_source, cover, song_count, total_ms, shared_at, updated_at, hidden FROM shares WHERE owner = ?").bind(whoId).all();
+  const rows = await env.DB.prepare("SELECT id, playlist, snapshot, name, shown_as, kind, books, book_other, phases, moods, other, description, desc_source, cover, song_count, total_ms, shared_at, updated_at, hidden FROM shares WHERE owner = ?").bind(whoId).all();
   return { shares: rows.results.map((r) => ({ id: r.id, playlist: r.playlist, snapshot: r.snapshot, name: r.name, by: r.shown_as || null, ...kindOf(r), descSource: r.desc_source || "mine",
     cover: r.cover || null, count: r.song_count, ms: r.total_ms, sharedAt: r.shared_at, updatedAt: r.updated_at, hidden: !!r.hidden })) };
 }
 // books and phases are kept as one number, a bit each (the first is 1, the second 2, then 4, 8, 16), and sent as a list of positions
+const OTHER_BOOK = 5;   // the sixth book, Other: a bit like the others, its code in book_other
 const bitList = (mask, n) => Array.from({ length: n }, (_, i) => i).filter((i) => mask & (1 << i));
 const bitMask = (list, n) => (Array.isArray(list) ? list : []).reduce((m, i) => Number.isInteger(i) && i >= 0 && i < n ? m | (1 << i) : m, 0);
 // a mood word or an Other name as the page makes it: lower case for moods, single spaces, letters, numbers and a few marks
@@ -160,10 +161,16 @@ async function share(env, whoId, d) {
   if (!kind) throw new Refusal(400, "Choose what type of playlist it is.", "kind");
   const description = text(d.description, LIMITS.descChars);
   const descSource = d.descSource === "spotify" ? "spotify" : "mine";
-  let books = 0, phases = 0, moods = null, other = null;
+  let books = 0, bookOther = null, phases = 0, moods = null, other = null;
   if (kind === "ceremony") {
     books = bitMask(d.books, LIMITS.books);
     if (!books) throw new Refusal(400, "Choose at least one book.", "books");
+    // the sixth, Other, is a book not among the five, named by up to 2 letters or numbers (the page's cleanBookCode)
+    if (books & (1 << OTHER_BOOK)) {
+      bookOther = String(d.bookOther || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 2);
+      if (!bookOther) throw new Refusal(400, "Type the other book, up to 2 letters or numbers.", "books");
+      if (blockedWord(bookOther)) throw new Refusal(400, "That other book cannot be used.", "books");
+    }
   }
   if (kind === "phase") {
     phases = bitMask(d.phases, LIMITS.phases);
@@ -205,12 +212,12 @@ async function share(env, whoId, d) {
   const now = Date.now();
   const existing = await env.DB.prepare("SELECT id, hidden FROM shares WHERE owner = ? AND playlist = ?").bind(whoId, playlist).first();
   const id = existing ? existing.id : newId();
-  await env.DB.prepare(`INSERT INTO shares (id, owner, playlist, snapshot, name, shown_as, kind, books, phases, moods, other, description, desc_source, cover, songs, song_count, total_ms, avg_ms, artists, names, shared_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT (owner, playlist) DO UPDATE SET snapshot = excluded.snapshot, name = excluded.name, shown_as = excluded.shown_as, kind = excluded.kind, books = excluded.books, phases = excluded.phases,
+  await env.DB.prepare(`INSERT INTO shares (id, owner, playlist, snapshot, name, shown_as, kind, books, book_other, phases, moods, other, description, desc_source, cover, songs, song_count, total_ms, avg_ms, artists, names, shared_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT (owner, playlist) DO UPDATE SET snapshot = excluded.snapshot, name = excluded.name, shown_as = excluded.shown_as, kind = excluded.kind, books = excluded.books, book_other = excluded.book_other, phases = excluded.phases,
         moods = excluded.moods, other = excluded.other, description = excluded.description, desc_source = excluded.desc_source,
         cover = excluded.cover, songs = excluded.songs, song_count = excluded.song_count, total_ms = excluded.total_ms, avg_ms = excluded.avg_ms, artists = excluded.artists, names = excluded.names, updated_at = excluded.updated_at`)
-    .bind(id, whoId, playlist, text(d.snapshot, 100) || null, name, shown, kind, books, phases, moods ? JSON.stringify(moods) : null, other, description || null, descSource,
+    .bind(id, whoId, playlist, text(d.snapshot, 100) || null, name, shown, kind, books, bookOther, phases, moods ? JSON.stringify(moods) : null, other, description || null, descSource,
       cover, JSON.stringify(songs), songs.length, ms, avg, JSON.stringify(artists), names ? JSON.stringify(names) : null, now, now).run();
   return { id, updated: !!existing, hidden: !!(existing && existing.hidden) };
 }

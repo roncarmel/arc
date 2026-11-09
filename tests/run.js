@@ -103,7 +103,7 @@ function makeFetch(options = {}) {
       // staleToken: the worker turns down any sign-in but a renewed one, as Spotify does once an hour has passed
       if (sh.staleToken && !String(url).endsWith("/library") && !/^Bearer renewed/.test((init.headers || {}).Authorization || "")) return json({ error: "Spotify did not accept the sign-in.", code: "signin" }, 401);
       const path = new URL(url).pathname, body = init.body ? JSON.parse(init.body) : null;
-      const kindOf = (s) => ({ kind: s.kind || "phase", books: s.books || [], phases: s.phases || [], moods: s.moods || [], other: s.other || "", description: s.description || "" });
+      const kindOf = (s) => ({ kind: s.kind || "phase", books: s.books || [], bookOther: s.bookOther || "", phases: s.phases || [], moods: s.moods || [], other: s.other || "", description: s.description || "" });
       const out = (s) => ({ id: s.id, name: s.name, by: s.by || null, ...kindOf(s), cover: s.cover || null, songs: s.songs, count: s.songs.length, ms: s.ms, avgMs: s.ms / Math.max(1, s.songs.length), artists: s.artists || [], sharedAt: s.sharedAt, updatedAt: s.sharedAt });
       if (method === "GET" && path === "/library") return json({ shares: sh.shares.filter((s) => !s.hidden).sort((a, b) => b.sharedAt - a.sharedAt).map(out), words: sh.words, at: Date.now() });
       if (method === "GET" && path.startsWith("/songs/")) { const s = sh.shares.find((x) => x.id === path.slice(7) && !x.hidden); sh.songReads = (sh.songReads || []).concat([{ id: path.slice(7), auth: (init.headers || {}).Authorization || null }]); return s ? json({ id: s.id, names: s.names || null }) : json({ error: "That shared playlist is gone." }, 404); }
@@ -855,9 +855,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08zi" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08zk" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-08zi/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-08zk/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3060,7 +3060,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08zi", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08zk", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4965,7 +4965,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var ms_tile = (k) => ms_d.querySelector(`#msBody .ms-ktile[data-kind="${k}"]`);
   await waitFor(() => ms_names().length === 5 && ms_w.eval("sortChoices().length") === 5, 5000);
   check("the tabs are Shared by others and Shared by you, with no ? and no pink card", Array.from(ms_d.querySelectorAll("#msTabs .ms-tab-name")).map((b) => b.textContent).join("|") === "Shared by others|Shared by you" && !ms_d.querySelector(".ms-tab-info") && !ms_d.getElementById("msIntroCard"));
-  check("Shared by others starts with tiles for All and the four types, and no line about Get", Array.from(ms_d.querySelectorAll("#msBody .ms-ktile")).map((b) => b.textContent).join("|") === "All|Ceremonies|Phases|Moods|Others" && ms_tile("all").classList.contains("ms-on") && !/Get puts/.test(ms_d.getElementById("msBody").textContent));
+  check("Shared by others starts with tiles for the four types, none lit, and no line about Get", Array.from(ms_d.querySelectorAll("#msBody .ms-ktile")).map((b) => b.textContent).join("|") === "Ceremonies|Phases|Moods|Others" && !ms_d.querySelector("#msBody .ms-ktile.ms-on") && !/Get puts/.test(ms_d.getElementById("msBody").textContent));
   check("All lists every share, newest first, each with its type's line above its name", JSON.stringify(ms_names()) === JSON.stringify(["Deep water", "Forest floor", "Night sky", "Bowls and gongs", "Soft rain"]) && ms_labels().join("|") === "Ceremony · Book 2|Phase · Beginning, Ending|Mood · grief, tender|Sound bath|Mood · tender, awe", ms_labels().join("|"));
   check("an anonymous share says Anonymous, and each row has Get", /^Anonymous · 1 h 30 min$/.test(ms_d.querySelectorAll("#msResults .ms-row .ms-sub")[1].textContent) && ms_d.querySelectorAll("#msResults .ms-add").length === 5);
   ms_d.getElementById("msSortButton").click();
@@ -4981,11 +4981,13 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ms_d.querySelector("#msResults .ms-empty-ghost").click();
   check("which clears it", ms_names().length === 5 && ms_d.getElementById("msSearch").value === "");
   ms_tile("ceremony").click();
-  check("Ceremony shows only ceremonies, with the five books to choose one at a time and a search of descriptions, and no Sort", JSON.stringify(ms_names()) === '["Deep water"]' && ms_d.querySelectorAll("#msTools .ms-btile").length === 5 && ms_d.getElementById("msSearch").placeholder === "Search descriptions" && !ms_d.getElementById("msSortButton"));
+  check("Ceremony shows only ceremonies, with the five books and Other to choose one at a time and a search of descriptions, and no Sort", JSON.stringify(ms_names()) === '["Deep water"]' && ms_d.querySelectorAll("#msTools .ms-btile").length === 6 && /\?/.test(ms_d.querySelectorAll("#msTools .ms-btile")[5].textContent) && ms_d.getElementById("msSearch").placeholder === "Search descriptions" && !ms_d.getElementById("msSortButton"));
   ms_d.querySelectorAll("#msTools .ms-btile")[0].click();
   check("a book shows the ceremonies for it", ms_names().length === 0 && /Nothing matches/.test(ms_d.getElementById("msResults").textContent));
   ms_d.querySelectorAll("#msTools .ms-btile")[1].click();
   check("one book at a time: choosing another takes its place", ms_d.querySelectorAll("#msTools .ms-btile.ms-on").length === 1 && JSON.stringify(ms_names()) === '["Deep water"]');
+  ms_d.querySelectorAll("#msTools .ms-btile")[5].click();
+  check("Other in the filter shows ceremonies for another book, with Any chosen and no codes until two shares use one", ms_names().length === 0 && ms_d.querySelector("#msBookCodes .ms-chip.ms-on").textContent === "Any" && ms_d.querySelectorAll("#msBookCodes .ms-chip").length === 1);
   ms_tile("phase").click();
   check("Phase shows the curve to choose phases, and changing type clears the book", JSON.stringify(ms_names()) === '["Forest floor"]' && !!ms_d.querySelector("#msTools .ms-phases-pick") && ms_w.eval("sharing.book") === null);
   ms_d.querySelectorAll("#msTools .ms-phase-names button")[2].click();
@@ -5000,7 +5002,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ms_w.eval("sharing.library.shares = sharing.library.shares.filter((s) => s.kind !== 'other'); renderSharing();");
   check("a type no one has shared yet says so, with Share one of yours", /No one has shared one of these yet/.test(ms_d.getElementById("msResults").textContent) && ms_d.querySelector("#msResults .ms-empty-ghost").textContent === "Share one of yours");
   ms_w.eval("sharing.libraryAt = 0"); await ms_w.eval("loadLibrary(true)");
-  ms_tile("all").click();
+  ms_w.eval('setType("all")');
   ms_d.querySelector("#msResults .ms-row").click();
   await waitFor(() => !!ms_d.querySelector("#msBody .ms-hero"), 5000);
   check("a playlist's page: its type, name, who on one line and the songs and length on the next", ms_d.querySelector("#msBody .ms-hero .ms-klabel").textContent === "Ceremony" && ms_d.querySelector("#msBody h3").textContent === "Deep water" && Array.from(ms_d.querySelectorAll("#msBody .ms-hero .ms-sub")).map((e) => e.textContent).join("|") === "Shared by Maya|100 songs · 6 h");
@@ -5032,7 +5034,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("with every one of a type already the person's, the list says so with Show them", /You have it already/.test(ms_d.getElementById("msResults").textContent) && ms_d.querySelector("#msResults .ms-empty-ghost").textContent === "Show them");
   ms_d.querySelector("#msResults .ms-empty-ghost").click();
   check("Show them shows it, Gotten", ms_names().join() === "Deep water" && /Gotten/.test(ms_d.querySelector("#msResults .ms-add").textContent));
-  ms_tile("all").click();
+  ms_w.eval('setType("all")');
   check("another device knows a copy by the [origin: ID] at the end of its description, with no record of its own, and a copy deleted in Spotify can be gotten again", ms_w.eval(`(() => {
     const keep = localStorage.getItem("sharingCopies"); localStorage.removeItem("sharingCopies");
     const s = sharing.library.shares[0], p = playlists.find((x) => x.name === "Deep water");
@@ -5082,16 +5084,25 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("a field put right loses its red at once, and the card follows", !ms_d.querySelector('[data-field="books"]').classList.contains("ms-bad") && ms_card().querySelector(".ms-klabel").textContent === "Ceremony · Book 3");
   ms_d.querySelectorAll('#msBody [data-field="books"] .ms-btile')[0].click();
   check("ceremonies take more than one book", ms_card().querySelector(".ms-klabel").textContent === "Ceremony · Books 1, 3");
+  check("no field for the other book until Other is chosen", !ms_d.getElementById("msBookCode"));
+  ms_d.querySelectorAll('#msBody [data-field="books"] .ms-btile')[5].click();
+  check("Other opens a field for its code under the books, focused", !!ms_d.getElementById("msBookCode") && ms_d.activeElement === ms_d.getElementById("msBookCode") && /Up to 2 letters or numbers/.test(ms_d.querySelector(".ms-bcode-row").textContent));
+  { const t = ms_d.getElementById("msDesc"); t.value = "Long and quiet."; t.dispatchEvent(new ms_w.Event("input")); }
+  ms_d.getElementById("msMain").click();
+  await waitFor(() => !!ms_d.querySelector('[data-field="books"] .ms-ferr'), 3000);
+  check("Other with no code says so under the books and sends nothing", ms_d.querySelector('[data-field="books"] .ms-ferr').textContent === "Type the other book, up to 2 letters or numbers." && ms_sh.posts.length === 0);
+  { const t = ms_d.getElementById("msBookCode"); t.value = "b-w7"; t.dispatchEvent(new ms_w.Event("input")); }
+  check("the code keeps 2 letters or numbers in capitals, shows in its book and in the card, and the error goes", ms_d.getElementById("msBookCode").value === "BW" && ms_d.querySelectorAll('#msBody [data-field="books"] .ms-btile')[5].textContent.includes("BW") && ms_card().querySelector(".ms-klabel").textContent === "Ceremony · Books 1, 3, BW" && !ms_d.querySelector('[data-field="books"] .ms-ferr'));
   { const t = ms_d.getElementById("msDesc"); t.value = "Long and quiet."; t.dispatchEvent(new ms_w.Event("input")); }
   ms_d.getElementById("msMain").click();
   await waitFor(() => !!ms_d.querySelector("#msBody .ms-shared"), 5000);
   var ms_post = ms_sh.posts[ms_sh.posts.length - 1];
-  check("Share now sends the type, its books, the description, anonymous, and the songs with their names", ms_post.playlist === "p3" && ms_post.kind === "ceremony" && JSON.stringify(ms_post.books) === "[0,2]" && ms_post.description === "Long and quiet." && ms_post.descSource === "mine" && ms_post.by === null && ms_post.songs.length === 130 && ms_post.names.length === 130 && !("tags" in ms_post));
+  check("Share now sends the type, its books, the description, anonymous, and the songs with their names", ms_post.playlist === "p3" && ms_post.kind === "ceremony" && JSON.stringify(ms_post.books) === "[0,2,5]" && ms_post.bookOther === "BW" && ms_post.description === "Long and quiet." && ms_post.descSource === "mine" && ms_post.by === null && ms_post.songs.length === 130 && ms_post.names.length === 130 && !("tags" in ms_post));
   check("then a page says it is shared, with Share another playlist and Done", /💗💗 evocative is shared/.test(ms_d.getElementById("msBody").textContent) && /Other facilitators can find it in Shared by others now\./.test(ms_d.getElementById("msBody").textContent) && ms_d.getElementById("msMain").textContent === "Share another playlist" && !!ms_d.getElementById("msDone"));
   ms_d.getElementById("msDone").click();
   await waitFor(() => !!ms_d.querySelector("#msBody .ms-yrow"), 5000);
   var ms_yrow = () => ms_d.querySelector("#msBody .ms-yrow");
-  check("Done shows the list of shares: its type, name, Anonymous, and Share another playlist at the bottom", ms_yrow().querySelector(".ms-klabel").textContent === "Ceremony · Books 1, 3" && /^Anonymous/.test(ms_yrow().querySelector(".ms-sub").textContent) && ms_d.getElementById("msMain").textContent === "Share another playlist");
+  check("Done shows the list of shares: its type, name, Anonymous, and Share another playlist at the bottom", ms_yrow().querySelector(".ms-klabel").textContent === "Ceremony · Books 1, 3, BW" && /^Anonymous/.test(ms_yrow().querySelector(".ms-sub").textContent) && ms_d.getElementById("msMain").textContent === "Share another playlist");
   check("a playlist already shared is not offered again", (ms_d.getElementById("msMain").click(), !ms_pick().includes("p3")) && (ms_d.getElementById("msBack").click(), true));
   var ms_openEdit = async () => {
     ms_yrow().click();
@@ -5391,7 +5402,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08zi"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08zk"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

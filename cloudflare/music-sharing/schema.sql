@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS shares (
   name TEXT NOT NULL,
   shown_as TEXT,                      -- the sharer's Spotify name; NULL is anonymous
   kind TEXT NOT NULL,                 -- ceremony, phase, mood or other
-  books INTEGER NOT NULL DEFAULT 0,   -- a ceremony's books, a bit each: Book 1 is 1, Book 2 is 2, Book 3 is 4, Book 4 is 8, Book 5 is 16
+  books INTEGER NOT NULL DEFAULT 0,   -- a ceremony's books, a bit each: Book 1 is 1, Book 2 is 2, Book 3 is 4, Book 4 is 8, Book 5 is 16, Other is 32
+  book_other TEXT,                   -- with Other: its code, up to 2 letters or numbers in capitals (added 2026-11-08: add-book-other.sql)
   phases INTEGER NOT NULL DEFAULT 0,  -- a phase playlist's phases, a bit each: Beginning 1, Ascent 2, Plateau 4, Descent 8, Ending 16
   moods TEXT,                         -- JSON: a mood playlist's words, lower case
   other TEXT,                         -- what an Other playlist is, in a word or two
