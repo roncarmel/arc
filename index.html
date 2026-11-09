@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-08zx">
-<script src="theme.js?v=2026-11-08zx"></script>
+<meta name="app-version" content="2026-11-08zy">
+<script src="theme.js?v=2026-11-08zy"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -663,7 +663,7 @@
   #homePage { max-width: 560px; margin: 0 auto; }
   #homePage .hp-band { margin-top: 0; }
   #homePage .hp-band .wp-band-name { color: inherit; }   /* an h1 here, white like the welcome page's name */
-  html.page-app.view-home:not(.dev-mode) #appBar { display: none; }   /* home's bar would be empty (the menu is the builder's), so the band starts the page */
+  html.page-app.view-home #appBar { display: none; }   /* home's bar would be empty (the menu is the builder's; the DEV capsule moves into the band), so the band starts the page */
   #homePage .hp-sec { display: flex; align-items: center; gap: 10px; margin: 22px 0 10px; color: var(--muted); font-size: 0.76rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
   #homePage .hp-sec::after { content: ""; flex: 1; height: 1px; background: var(--line); }
   #homePage .hp-tools { display: grid; gap: 12px; }
@@ -729,6 +729,12 @@
   #devPill { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 6px 11px; min-height: 0; border-radius: 999px; font-family: inherit; font-size: 0.75rem; font-weight: 700; line-height: 1; letter-spacing: 0.06em; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--bg)); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); box-shadow: none; cursor: pointer; }
   #devPill svg { width: 14px; height: 14px; }
   @media (hover: hover) { #devPill:hover { outline: none; filter: none; border-color: var(--accent); } }
+  /* in home's pink band: its lower right corner, white on the pink, 14 px from the bottom and right edges (placeDevPill in app.js) */
+  .hp-band #devWrap { position: absolute; right: 14px; bottom: 14px; }
+  .hp-band #devPill { color: #fff; background: rgba(255, 255, 255, 0.18); border-color: rgba(255, 255, 255, 0.5); }
+  @media (hover: hover) { .hp-band #devPill:hover { border-color: #fff; background: rgba(255, 255, 255, 0.26); } }
+  .hp-band #devMenu { color: var(--fg); }
+  @media (max-width: 420px) { .hp-band #devPill svg { display: none; } }   /* clears the tagline's last line on a phone */
   #devMenu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 70; width: 262px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35); overflow: hidden; }
   #devMenu .dm-menu-head { display: flex; align-items: center; gap: 8px; padding: 12px 14px; background: var(--accent); color: #fff; font-weight: 700; }
   #devMenu .dm-menu-head svg { width: 18px; height: 18px; }
@@ -2231,10 +2237,10 @@
     <div id="msFoot" hidden></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-08zx"></script>
-<script src="editor.js?v=2026-11-08zx"></script>
-<script src="shared-spotify.js?v=2026-11-08zx"></script>
-<script src="app.js?v=2026-11-08zx"></script>
-<script src="sharing.js?v=2026-11-08zx"></script>
+<script src="formats.js?v=2026-11-08zy"></script>
+<script src="editor.js?v=2026-11-08zy"></script>
+<script src="shared-spotify.js?v=2026-11-08zy"></script>
+<script src="app.js?v=2026-11-08zy"></script>
+<script src="sharing.js?v=2026-11-08zy"></script>
 </body>
 </html>

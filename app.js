@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08zx";
+const APP_VERSION = "2026-11-08zy";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -199,7 +199,18 @@ function showView(view, push = true) {
   if (view === "builder" && typeof renderEditor === "function") renderEditor();   // drawn while hidden, the tabs and the welcome arrow measured nothing
   if (view === "sharing") { placeSharingPage(); openSharing("find"); }
   if (view === "home") { renderHomeRecipes(); alignWelcomeIcons(); }   // drawn while hidden, the band's icon measured nothing
+  placeDevPill();
 }
+
+// The DEV capsule sits in home's pink band at its lower right (Arc's bar is hidden on home), and in Arc's bar in the tools
+function placeDevPill() {
+  const wrap = $("devWrap"), band = document.querySelector("#homePage .hp-band"), menu = $("feAppMenu");
+  if (!wrap || !band || !menu) return;
+  if (typeof showDevMenu === "function") showDevMenu(false);
+  if (appView === "home") { if (wrap.parentNode !== band) band.appendChild(wrap); }
+  else if (wrap.nextElementSibling !== menu) menu.parentNode.insertBefore(wrap, menu);
+}
+placeDevPill();
 
 // The Playlist builder's card on home: a strip saying how many recipes are ready ("4 recipes ready to build"; option C, Ron, 2026-11-08)
 function renderHomeRecipes() {
