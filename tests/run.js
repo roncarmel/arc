@@ -287,6 +287,7 @@ async function boot({ url, session = {}, local = {}, fetchOptions = {}, before =
   w.indexedDB = idb || new FDBFactory();   // a browser's own database for saved songs; pass the same one to a second boot to pretend the page was reloaded
   if (before) before(w);
   w.document.documentElement.classList.add("view-" + view);   // as the <head> script would (it does not run here)
+  if (savedLocal.devMode === "1") w.document.documentElement.classList.add("dev-mode");   // developer mode, as the <head> script would
   w.__scriptsRequested = [];
   w.eval(appJs.replace("const sharing = {", "var sharing = {").replace("const previewUrls =", "var previewUrls =").replace("let spotifyAnswerMs = 30000;", "var spotifyAnswerMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const BACKED_UP_MESSAGE =", "var BACKED_UP_MESSAGE =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("const saveTip =", "var saveTip =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let busy =", "var busy =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let isOwnerHere =", "var isOwnerHere =").replace("const OWNER_CLIENT_HASHES =", "var OWNER_CLIENT_HASHES =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("let launchScreen =", "var launchScreen =").replace("const GAP_STEPS =", "var GAP_STEPS ="));  // test harness only: lets a test replace the reload
   await Promise.race([w.__main, new Promise((r) => setTimeout(r, 1500))]);   // ready as soon as the page has finished starting up
@@ -854,9 +855,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08zb" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08zc" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-08zb/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-08zc/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3058,7 +3059,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08zb", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08zc", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3378,7 +3379,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
 
   if (want("the tagline")) { try {
   // ================================================================ the tagline under the title
-  var tg_w = await boot({ url: "http://127.0.0.1:8000/" });
+  var tg_w = await boot({ url: "http://127.0.0.1:8000/", local: { devMode: "1" } });   // developer mode: Music sharing opens
   check("the tagline says Arc is ceremony playlist tools for a Spotify library", tg_w.document.querySelector(".tagline").textContent === "Ceremony playlist tools for your Spotify library");
   check("it sits in the welcome page's pink band, under Arc and beside the icon, which only the welcome page shows", !!tg_w.document.querySelector("#welcomePage .wp-band .wp-band-text .tagline") && tg_w.document.querySelector("#welcomePage .wp-band-name").textContent === "Arc" && !!tg_w.document.querySelector("#welcomePage .wp-band .wp-band-icon") && /#welcomePage \{ display: none; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   check("the band's and the cards' icons are sized to the letters beside them", /function alignWelcomeIcons\(\)/.test(appSource()) && /function letterBounds\(el\)/.test(appSource()) && /icon\.style\.width = icon\.style\.height = Math\.round\(b\.bottom - a\.top\) \+ "px"/.test(appSource()));
@@ -4901,7 +4902,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("sharing card in the editor")) { try {
   // ================================================================ Music sharing shown in the editor: a card under Build, and the playlist picker's last line
   var sc_sh = { words: {}, posts: [], deletes: [], reports: [], shares: ["a", "b", "c", "d"].map((id, i) => ({ id, owner: "other-" + id, name: "Share " + id, by: "Tom", phases: [i], tags: ["piano", "slow", "ambient"], notes: "", songs: [["x" + id, ""]], ms: 3 * 3600000, artists: [], sharedAt: 4000 - i, cover: i < 2 ? "https://i.scdn.co/image/" + id : null })) };
-  var sc_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: { sharing: sc_sh } });
+  var sc_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", devMode: "1" }, fetchOptions: { sharing: sc_sh } });
   var sc_d = sc_w.document;
   await waitFor(() => /4 playlists/.test(sc_d.getElementById("msCardText").textContent), 8000);
   check("Music sharing's card on Arc's home says how many playlists others share and fans the newest covers", sc_d.getElementById("msCardText").textContent === "4 playlists shared by other facilitators. Find music for your recipes, or share your own." && Array.from(sc_d.querySelectorAll("#msCardFan img")).map((i) => i.getAttribute("src")).join() === "https://i.scdn.co/image/a,https://i.scdn.co/image/b" && !!sc_d.getElementById("msCard").closest("#homePage"));
@@ -4909,7 +4910,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("Arc's home, with the card, shows only on the app page's home view, and the builder's parts only in the builder", /html\.page-app\.view-home #homePage \{ display: block; \}/.test(Array.from(sc_d.querySelectorAll("style")).map((x) => x.textContent).join("")) && /html\.page-app:not\(\.view-builder\) #appSection > :is\(#formatEditor, #editorNote, #buildRow/.test(Array.from(sc_d.querySelectorAll("style")).map((x) => x.textContent).join("")));
   check("on connecting, a device that never read the person's shares reads them once and keeps the list (none here), so later visits do not ask again", sc_w.localStorage.getItem("sharingMineIds") === "[]" && /let known = !!sharing\.mine;[\s\S]{0,200}if \(!known\) loadMine\(\)/.test(fs.readFileSync(ROOT + "sharing.js", "utf8")));
   var sc_own = { words: {}, posts: [], deletes: [], reports: [], shares: sc_sh.shares.map((x, i) => Object.assign({}, x, i < 2 ? { owner: "ron", playlist: "p" + i } : {})) };
-  var sc_o = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: { sharing: sc_own } });
+  var sc_o = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", devMode: "1" }, fetchOptions: { sharing: sc_own } });
   await waitFor(() => /^2 playlists/.test(sc_o.document.getElementById("msCardText").textContent), 8000);
   check("on a device that has never opened Music sharing, the person's own shares are read once on connecting and left out of the card's count", sc_o.document.getElementById("msCardText").textContent.startsWith("2 playlists shared by other facilitators") && JSON.parse(sc_o.localStorage.getItem("sharingMineIds")).sort().join() === "a,b", sc_o.document.getElementById("msCardText").textContent);
   sc_w.eval("sharing.mine = [{ id: 'a' }, { id: 'b' }]; renderSharingCard()");
@@ -4947,7 +4948,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
     ms_share("e", "Soft rain", "Kai", "mood", { moods: ["tender", "awe"] }, ms_other("e", 30), 1, 1000),
   ] };
   var ms_opts = { sharing: ms_sh };
-  var ms_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: ms_opts });
+  var ms_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", devMode: "1" }, fetchOptions: ms_opts });
   await waitFor(() => ms_w.eval("connection") === "ready", 15000);
   var ms_d = ms_w.document;
   await ms_w.eval("Promise.all([loadTracks('p2'), loadTracks('p4')])");   // the recipe's playlists are kept in the browser, so overlap can be measured
@@ -5154,7 +5155,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
     { id: "n1", owner: "other-n1", name: "With names", by: "Maya", phases: [2], tags: ["a1", "b1", "c1"], notes: "", songs: [["sg1", "GBAAA0000001"], ["sg2", "GBAAA0000002"], ["sg3", "GBAAA0000003"], ["sg4", ""]], names: sg_names, ms: 3 * 3600000, artists: ["Brian Eno"], sharedAt: 2000 },
     { id: "o1", owner: "other-o1", name: "Older share", by: "Tom", phases: [1], tags: ["a1", "b1", "c1"], notes: "", songs: [["sg5", "GBAAA0000005"]], ms: 3 * 3600000, artists: ["Hammock", "Brian Eno"], sharedAt: 1000 },
   ] };
-  var sg_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: { sharing: sg_sh } });
+  var sg_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", devMode: "1" }, fetchOptions: { sharing: sg_sh } });
   await waitFor(() => sg_w.eval("connection") === "ready", 15000);
   var sg_d = sg_w.document;
   sg_w.eval("window._plays = []; HTMLMediaElement.prototype.play = function () { window._plays.push(this.src); return Promise.resolve(); }; HTMLMediaElement.prototype.pause = function () {}; HTMLMediaElement.prototype.load = function () {};");
@@ -5209,37 +5210,55 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
 }
 
   if (want("developer options")) { try {
-  // ================================================================ Developer options: held open from the app menu's header, with nothing that gives it away
+  // ================================================================ Developer mode: held on and off from Arc's icon, with nothing that gives it away
   var dv_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: {} });
   await waitFor(() => dv_w.eval("connection") === "ready", 15000);
   dv_w.eval("window.__t = []; const st = window.setTimeout; window.setTimeout = (f, ms, ...a) => { if (ms === 3000) { window.__t.push(f); return 0; } return st(f, ms, ...a); }");
-  var dv_ev = (type, x) => new dv_w.MouseEvent(type, { bubbles: true, button: 0, clientX: x || 10, clientY: 10 });
-  var dv_PE = (type, x) => { const e = dv_ev(type, x); return e; };
-  var dv_open = () => { dv_w.document.getElementById("feAppMenuButton").click(); return dv_w.document.getElementById("feMenuHead"); };
-  var dv_head = dv_open();
-  var dv_before = dv_head.outerHTML;
-  dv_head.dispatchEvent(dv_PE("pointerdown"));
-  check("holding the header starts a 3 second wait, and nothing on screen changes", dv_w.eval("window.__t.length") === 1 && /const DEV_HOLD_MS = 3000;/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && dv_head.outerHTML === dv_before && !!dv_w.document.getElementById("feAppMenuPanel"));
-  dv_head.dispatchEvent(dv_PE("pointerup"));
-  check("Developer options is not in the menu, and no menu item names it", !/Developer/.test(dv_w.document.getElementById("feAppMenuPanel").textContent) && dv_w.document.getElementById("devOptions").hidden === true);
-  dv_head = dv_w.document.getElementById("feMenuHead");
-  dv_head.dispatchEvent(dv_PE("pointerdown"));
+  var dv_PE = (type, x) => new dv_w.MouseEvent(type, { bubbles: true, button: 0, clientX: x || 10, clientY: 10 });
+  var dv_d = dv_w.document, dv_root = dv_d.documentElement;
+  var dv_icon = dv_d.querySelector("#homePage .hp-brand img");
+  check("regular mode: Music sharing is Coming soon on home, with no library read, and its card does not open it", !dv_root.classList.contains("dev-mode") && dv_d.getElementById("msCardText").textContent === "A shared library of ceremony music, from facilitators like you." && dv_d.getElementById("msCard").getAttribute("aria-disabled") === "true" && dv_d.querySelector("#msCard .hp-soon").textContent === "Coming soon" && dv_w.eval("sharing.library") === null && (dv_d.getElementById("msCard").click(), dv_root.classList.contains("view-home") && dv_d.getElementById("msOverlay").hidden === true));
+  check("regular mode: no DEV capsule, and no hold on the builder menu's header", (dv_w.getComputedStyle(dv_d.getElementById("devWrap")).display === "none") && !/watchDevHold\(\$\("feMenuHead"\)\)/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
+  var dv_before = dv_icon.outerHTML;
+  dv_icon.dispatchEvent(dv_PE("pointerdown"));
+  check("holding Arc's icon starts a 3 second wait, and nothing on screen changes", dv_w.eval("window.__t.length") === 1 && /const DEV_HOLD_MS = 3000;/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && dv_icon.outerHTML === dv_before);
+  dv_icon.dispatchEvent(dv_PE("pointerup"));
+  check("let go early, nothing changes", !dv_root.classList.contains("dev-mode"));
+  dv_icon.dispatchEvent(dv_PE("pointerdown"));
   dv_w.eval("window.__t[window.__t.length - 1]()");
-  check("held to the end, the menu closes and Developer options opens in the info popup", !dv_w.document.getElementById("feAppMenuPanel") && dv_w.document.getElementById("infoOverlay").hidden === false && dv_w.document.getElementById("infoSlot").firstElementChild.id === "devOptions" && dv_w.document.getElementById("infoTitle").textContent === "Developer options");
-  var dv_topics = Array.from(dv_w.document.querySelectorAll("#devOptions details.gd-topic > summary")).map((h) => h.textContent);
-  check("it has the two Music sharing topics (moods and reports), Start over, Copy Spotify record, Phone width and Python status, all open, and no way to turn it off", JSON.stringify(dv_topics) === JSON.stringify(["Music sharing moods", "Music sharing reports", "Start over", "Copy Spotify record", "Phone width", "Python status"]) && Array.from(dv_w.document.querySelectorAll("#devOptions details.gd-topic")).every((d) => d.open) && !/Turn off/.test(dv_w.document.getElementById("devOptions").textContent), JSON.stringify(dv_topics));
-  check("Phone width offers Off, 360 px and 320 px, Off chosen, and the page frames itself only when one is kept and it is not in a frame already", (() => { const r = Array.from(dv_w.document.querySelectorAll('#devOptions input[name="devPhoneWidth"]')); const html = fs.readFileSync(ROOT + "index.html", "utf8"); return r.map((x) => x.value).join(",") === ",360,320" && r[0].checked && !r[1].checked && /^<!doctype html>\n<html lang="en">\n<head>\n(?:<(?:meta|style)[^\n]*\n)*<script>\n  \/\/ Developer options > Phone width/.test(html) && /if \(!\(w === 360 \|\| w === 320\) \|\| window\.top !== window\) return;/.test(html) && /pageWindow\(\)\.location\.href = "https:\/\/accounts\.spotify\.com\/authorize\?"/.test(appSource()); })());
-  dv_w.eval("openInfo('devOptions')");
-  dv_w.document.getElementById("infoClose").click();
-  check("closed, it goes back to its place, hidden", dv_w.document.getElementById("devOptions").hidden === true && !dv_w.document.getElementById("devOptions").closest("#infoSlot"));
-  check("the header takes no callout, selection or scrolling, and its icon cannot be dragged", /\.fe-menuhead \{ -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: none; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && (() => { const h = dv_open(); const ok = h.querySelector("img").draggable === false; const e = new dv_w.MouseEvent("contextmenu", { bubbles: true, cancelable: true }); h.dispatchEvent(e); dv_w.document.getElementById("feAppMenuButton").click(); return ok && e.defaultPrevented; })());
-  dv_head = dv_open();
-  dv_head.dispatchEvent(dv_PE("pointerdown", 10));
+  check("held to the end, developer mode is on, kept on this device, and a message says so", dv_root.classList.contains("dev-mode") && dv_w.localStorage.getItem("devMode") === "1" && dv_d.getElementById("devToast").hidden === false && dv_d.getElementById("devToastText").textContent === "Developer mode on");
+  await waitFor(() => dv_w.eval("sharing.library") !== null, 8000);
+  check("on: Music sharing's card comes alive and its library is read", dv_d.getElementById("msCard").getAttribute("aria-disabled") === "false" && /shared by other facilitators|Find playlists other facilitators share/.test(dv_d.getElementById("msCardText").textContent));
+  dv_d.getElementById("devPill").click();
+  check("the DEV capsule opens Developer options and Turn off developer mode", dv_d.getElementById("devMenu").hidden === false && dv_d.getElementById("devMenuOptions").textContent.startsWith("Developer options") && dv_d.getElementById("devMenuOff").textContent.startsWith("Turn off developer mode"));
+  dv_d.getElementById("devMenuOptions").click();
+  check("Developer options opens in the info popup", dv_d.getElementById("devMenu").hidden === true && dv_d.getElementById("infoOverlay").hidden === false && dv_d.getElementById("infoSlot").firstElementChild.id === "devOptions" && dv_d.getElementById("infoTitle").textContent === "Developer options");
+  var dv_topics = Array.from(dv_d.querySelectorAll("#devOptions details.gd-topic > summary")).map((h) => h.textContent);
+  check("it has the two Music sharing topics (moods and reports), Start over, Copy Spotify record, Phone width and Python status, all open", JSON.stringify(dv_topics) === JSON.stringify(["Music sharing moods", "Music sharing reports", "Start over", "Copy Spotify record", "Phone width", "Python status"]) && Array.from(dv_d.querySelectorAll("#devOptions details.gd-topic")).every((d) => d.open), JSON.stringify(dv_topics));
+  check("Phone width offers Off, 360 px and 320 px, Off chosen, and the page frames itself only when one is kept and it is not in a frame already", (() => { const r = Array.from(dv_d.querySelectorAll('#devOptions input[name="devPhoneWidth"]')); const html = fs.readFileSync(ROOT + "index.html", "utf8"); return r.map((x) => x.value).join(",") === ",360,320" && r[0].checked && !r[1].checked && /if \(!\(w === 360 \|\| w === 320\) \|\| window\.top !== window\) return;/.test(html) && /pageWindow\(\)\.location\.href = "https:\/\/accounts\.spotify\.com\/authorize\?"/.test(appSource()); })());
+  dv_d.getElementById("infoClose").click();
+  check("closed, it goes back to its place, hidden", dv_d.getElementById("devOptions").hidden === true && !dv_d.getElementById("devOptions").closest("#infoSlot"));
+  dv_w.eval("showView('sharing')");
+  check("on, Music sharing opens", dv_root.classList.contains("view-sharing"));
+  var dv_bar = dv_d.querySelector("#appHome img");
+  dv_bar.dispatchEvent(dv_PE("pointerdown", 10));
   var dv_n = dv_w.eval("window.__t.length");
-  dv_head.dispatchEvent(dv_PE("pointermove", 40));
-  dv_head.dispatchEvent(dv_PE("pointerup", 40));
-  check("moving the finger more than a little cancels it", dv_w.document.getElementById("devOptions").hidden === true && dv_n >= 1);
-  dv_w.document.getElementById("feAppMenuButton").click();
+  dv_bar.dispatchEvent(dv_PE("pointermove", 40));
+  dv_bar.dispatchEvent(dv_PE("pointerup", 40));
+  check("moving the finger more than a little cancels it", dv_root.classList.contains("dev-mode") && dv_n >= 2);
+  dv_bar.dispatchEvent(dv_PE("pointerdown"));
+  dv_w.eval("window.__t[window.__t.length - 1]()");
+  await waitFor(() => dv_root.classList.contains("view-home"), 3000);
+  check("held again (here on the bar's icon), it turns off, leaves Music sharing for home, and says so", !dv_root.classList.contains("dev-mode") && dv_w.localStorage.getItem("devMode") === null && dv_root.classList.contains("view-home") && dv_d.getElementById("devToastText").textContent === "Developer mode off" && dv_d.getElementById("msCard").getAttribute("aria-disabled") === "true");
+  dv_w.eval("setDevMode(true)"); dv_d.getElementById("devPill").click(); dv_d.getElementById("devMenuOff").click();
+  check("Turn off developer mode in the DEV menu turns it off", !dv_root.classList.contains("dev-mode") && dv_d.getElementById("devMenu").hidden === true);
+  var dv_wel = await boot({ url: "http://127.0.0.1:8000/" });
+  var dv_wh = dv_wel.document.getElementById("wpSharingHead");
+  dv_wh.click();
+  check("regular mode on the welcome page: Music sharing sits under its own Coming soon heading and does not open", dv_wel.document.getElementById("wpSoon").textContent === "Coming soon" && dv_wel.document.getElementById("wpSoon").nextElementSibling.contains(dv_wh) && dv_wh.getAttribute("aria-expanded") === "false" && /html:not\(\.dev-mode\) #welcomePage #wpSoon \{ display: flex;/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  var dv_wel2 = await boot({ url: "http://127.0.0.1:8000/", local: { devMode: "1" } });
+  dv_wel2.document.getElementById("wpSharingHead").click();
+  check("in developer mode the <head> script marks the page before it is drawn, and the welcome card opens", /if \(localStorage\.getItem\("devMode"\) === "1"\) document\.documentElement\.classList\.add\("dev-mode"\);/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && dv_wel2.document.getElementById("wpSharingHead").getAttribute("aria-expanded") === "true");
   dv_w.eval("openInfo('devOptions')");
   check("there is no Disconnect in it", !dv_w.document.getElementById("devDisconnect") && !/Disconnect/.test(dv_w.document.getElementById("devOptions").textContent));
   dv_w.eval("openInfo('devOptions')");
@@ -5367,7 +5386,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08zb"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08zc"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

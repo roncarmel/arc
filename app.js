@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08zb";
+const APP_VERSION = "2026-11-08zc";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -184,6 +184,7 @@ const TOOL_NAMES = { builder: "Playlist builder", sharing: "Music sharing" };
 
 function showView(view, push = true) {
   if (!VIEWS.includes(view)) view = "home";
+  if (view === "sharing" && !devMode()) view = "home";   // Music sharing is Coming soon outside developer mode
   if (view === appView) return;
   const was = appView;
   appView = view;
@@ -203,6 +204,21 @@ function goHome() {
   if (appView === "home") return;
   if (history.state && history.state.view) { history.back(); return; }   // the popstate that follows shows home
   showView("home", false);
+}
+
+// Developer mode went on or off (setDevMode in editor.js). Off, Music sharing is Coming soon: its page and its welcome card close, and nothing is read for it.
+// On, the library is read as on a normal start.
+function devModeChanged(on) {
+  if (!on) {
+    if (appView === "sharing") goHome();
+    const head = $("wpSharingHead");
+    if (head && head.getAttribute("aria-expanded") === "true") toggleWelcomeTool(head);
+  }
+  if (typeof renderSharingCard === "function") renderSharingCard();
+  if (on && pageName() === "app" && typeof loadLibrary === "function") {
+    loadLibrary();
+    if (connection === "ready") sharingConnected();
+  }
 }
 
 // Music sharing is a page under the bar: it starts where the bar ends
@@ -364,6 +380,7 @@ function alignWelcomeIcons() {
 
 // Each tool's card on the welcome page opens in place to its picture and text; opening one closes the other, so the page stays short.
 function toggleWelcomeTool(head) {
+  if (head.id === "wpSharingHead" && !devMode() && head.getAttribute("aria-expanded") !== "true") return;   // Coming soon: it does not open
   const opening = head.getAttribute("aria-expanded") !== "true";
   for (const h of document.querySelectorAll("#welcomePage .wp-tool-head")) {
     const open = h === head ? opening : false;
@@ -1616,7 +1633,7 @@ function setConnection(state, message = "", kind = "retry") {
   if (typeof applyMinimalMode === "function") applyMinimalMode();   // minimalist mode steps aside while Step 1 has a problem to show
   if (typeof renderAppMenu === "function") renderAppMenu();
   if (typeof editorPlaylistsChanged === "function") editorPlaylistsChanged();
-  if (state === "ready" && typeof sharingConnected === "function") sharingConnected();   // Music sharing learns which shares are the person's own (sharing.js)
+  if (state === "ready" && typeof sharingConnected === "function" && devMode()) sharingConnected();   // Music sharing learns which shares are the person's own (sharing.js)
 }
 
 async function connectToSpotify() {

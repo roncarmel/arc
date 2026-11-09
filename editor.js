@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-08zb";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-08zc";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -148,8 +148,8 @@ function addTopicIcons(root) {
   }
 }
 addTopicIcons();
-// Developer options also open from a hold on Arc's icon: in each pink band (welcome, setup, connecting) and on home
-for (const icon of document.querySelectorAll(".wp-band-icon, #homePage .hp-brand img")) watchDevHold(icon);
+// Developer mode turns on and off from a hold on Arc's icon wherever it shows: each pink band (welcome, setup, connecting), home, and Arc's bar
+for (const icon of document.querySelectorAll(".wp-band-icon, #homePage .hp-brand img, #appHome img")) watchDevHold(icon);
 
 // diagonal stripes running from lower left to upper right; each stripe is as thick as its share of the mix
 function feStripes(shareA, period) {
@@ -828,11 +828,12 @@ function renderAppMenu() {
     // the builder's own menu (decided by Ron, 2026-11-08): what belongs to the whole app (Privacy, Feedback, Color, the account) is under Everything else on home,
     // and the version shows from a tap on Arc's icon in a band
     infoItem("feReport", "reportBlock", "flag", "Report a problem")));
-  watchDevHold($("feMenuHead"));
 }
 
-// Developer options open by holding Arc's icon (in a pink band, or on home) or the builder menu's header for 3 seconds. Nothing shows while holding, on purpose: it is not for people to find.
-// The header takes no text selection, image callout or browser menu, so a long press on a phone reaches the end.
+// Developer mode (decided by Ron, 2026-11-08, mockups/dev-mode.html): holding Arc's icon for 3 seconds turns it on, and again off. Nothing shows while holding, on purpose:
+// it is not for people to find. A short message says which way it went. Kept on this device (devMode in localStorage; the <head> script sets html.dev-mode before the
+// first paint). While it is on, a DEV capsule in Arc's bar opens Developer options and Turn off developer mode. Off, Music sharing is Coming soon (devModeChanged in app.js).
+// The icon takes no text selection, image callout or browser menu, so a long press on a phone reaches the end.
 const DEV_HOLD_MS = 3000;
 function watchDevHold(head) {
   if (!head) return;
@@ -850,13 +851,52 @@ function watchDevHold(head) {
       timer = null;
       held = true;
       if (editor.appMenu) { editor.appMenu = false; renderAppMenu(); }
-      openInfo("devOptions");
+      setDevMode(!devMode());
     }, DEV_HOLD_MS);
   });
   head.addEventListener("pointermove", (event) => { if (timer && from && Math.hypot(event.clientX - from.x, event.clientY - from.y) > 10) stop(); });
   for (const type of ["pointerup", "pointercancel", "pointerleave"]) head.addEventListener(type, stop);
   head.addEventListener("contextmenu", (event) => event.preventDefault());
 }
+
+function devMode() { return document.documentElement.classList.contains("dev-mode"); }
+function setDevMode(on) {
+  document.documentElement.classList.toggle("dev-mode", on);
+  try { if (on) localStorage.setItem("devMode", "1"); else localStorage.removeItem("devMode"); } catch (err) { /* no storage: for this visit only */ }
+  showDevMenu(false);
+  showDevToast(on ? "Developer mode on" : "Developer mode off");
+  if (typeof devModeChanged === "function") devModeChanged(on);
+}
+// the message after a hold rises, stays 2 s and fades
+let devToastTimer = null;
+function showDevToast(text) {
+  const toast = $("devToast");
+  if (!toast) return;
+  $("devToastText").textContent = text;
+  clearTimeout(devToastTimer);
+  toast.hidden = false;
+  void toast.offsetWidth;   // drawn hidden first, so the rise plays
+  toast.classList.add("dm-toast-in");
+  devToastTimer = setTimeout(() => {
+    toast.classList.remove("dm-toast-in");
+    devToastTimer = setTimeout(() => { toast.hidden = true; }, 300);
+  }, 2000);
+}
+function showDevMenu(open) {
+  const menu = $("devMenu");
+  if (!menu || menu.hidden === !open) return;
+  menu.hidden = !open;
+  $("devPill").setAttribute("aria-expanded", String(open));
+}
+(function watchDevMenu() {
+  const $ = (id) => document.getElementById(id);   // app.js, which has the page's $, loads later
+  if (!$("devPill")) return;
+  $("devPill").addEventListener("click", () => showDevMenu($("devMenu").hidden));
+  $("devMenuOptions").addEventListener("click", () => { showDevMenu(false); openInfo("devOptions"); });
+  $("devMenuOff").addEventListener("click", () => setDevMode(false));
+  document.addEventListener("click", (event) => { if (!event.target.closest || !event.target.closest("#devWrap")) showDevMenu(false); });
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !$("devMenu").hidden) { showDevMenu(false); $("devPill").focus(); } });
+})();
 
 // While recipes are being saved to Spotify the menu button shows the cloud-save picture in place of its dots, with a short cross-fade, and keeps it for at least a second so a
 // quick save can still be seen. It stays up for as long as saves follow each other.

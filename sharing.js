@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08zb";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08zc";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -104,6 +104,8 @@ function renderSharingCard() {
     fan.appendChild(feEl("span", { class: "ms-card-blank" }));
     fan.appendChild(feEl("img", { src: "apple-touch-icon.png", alt: "" }));
   }
+  card.setAttribute("aria-disabled", String(!devMode()));
+  if (!devMode()) { $("msCardText").textContent = "A shared library of ceremony music, from facilitators like you."; return; }   // Coming soon outside developer mode (index.html)
   $("msCardText").textContent = others.length
     ? `${others.length} ${others.length === 1 ? "playlist" : "playlists"} shared by other facilitators. Find music for your recipes, or share your own.`
     : "Find playlists other facilitators share, and share your own.";
@@ -121,7 +123,7 @@ function startSharingCard() {
   if (!card) return;
   card.addEventListener("click", () => showView("sharing"));
   renderSharingCard();
-  if (pageName() === "app") loadLibrary();
+  if (pageName() === "app" && devMode()) loadLibrary();
 }
 
 async function loadMine() {
