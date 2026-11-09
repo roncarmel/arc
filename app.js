@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08z";
+const APP_VERSION = "2026-11-08za";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -273,6 +273,7 @@ function drawSetupJoint() {
 // The band's drifting pink and the line's flowing dashes run on one clock: each copy (the welcome page's, the setup page's, the sticky band's) starts its loop when
 // it appears, so two screens' copies were out of step and jumped as a slide passed from one to the other. Started at the clock's zero, they always agree.
 function alignLoops() {
+  if (typeof document.getAnimations !== "function") return;   // an old browser: the loops just run on their own
   for (const a of document.getAnimations()) if ((a.animationName === "wp-flow" || a.animationName === "wp-drift") && a.startTime !== 0) a.startTime = 0;
 }
 function welcomeStepBack() {
