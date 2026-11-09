@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-08zp">
-<script src="theme.js?v=2026-11-08zp"></script>
+<meta name="app-version" content="2026-11-08zq">
+<script src="theme.js?v=2026-11-08zq"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -1369,6 +1369,32 @@
   .ms-have-key { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--muted); margin: 4px 0 2px; }
   .ms-track-len { flex: none; color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
   .ms-track-left { color: var(--accent); font-weight: 700; }
+  /* a song's menu (songMenu in sharing.js): Add to Liked Songs, Add to a playlist, Open in Spotify */
+  #msDialog .ms-more { flex: none; width: 32px; height: 32px; min-width: 0; min-height: 0; margin: 0 -8px 0 -6px; padding: 0; border: 0; border-radius: 50%; background: none; box-shadow: none; color: var(--muted); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  #msDialog .ms-more:hover, #msDialog .ms-more.ms-on { color: var(--fg); background: var(--card); }
+  .ms-more .fe-icon { display: flex; }
+  .ms-more svg { width: 18px; height: 18px; }
+  .ms-more-wrap { position: relative; flex: none; display: flex; margin: 0 -8px 0 -6px; }
+  .ms-more-wrap .ms-more { margin: 0 !important; }
+  .ms-songmenu { width: 252px; max-width: calc(100vw - 48px); z-index: 6; scroll-margin: 12px 0 104px; }   /* scrolled clear of the Support me corner (SONG_MENU_FOOT) */
+  .ms-songmenu.ms-up { top: auto; bottom: calc(100% + 6px); }
+  #msDialog .ms-songmenu .ms-mi { display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%; box-sizing: border-box; margin: 0; min-height: 0; padding: 9px 10px; border: 0; border-radius: 9px; background: none; box-shadow: none; color: var(--fg); font: inherit; font-size: 0.9rem; font-weight: 600; text-align: left; text-decoration: none; cursor: pointer; }
+  #msDialog .ms-songmenu .ms-mi:hover:not(:disabled) { background: var(--accent-tint); }
+  #msDialog .ms-songmenu .ms-mi:disabled { cursor: default; color: var(--muted); }
+  .ms-songmenu .ms-mi > .fe-icon { flex: none; display: flex; color: var(--accent); }
+  .ms-songmenu .ms-mi > .fe-icon svg { width: 18px; height: 18px; }
+  .ms-songmenu .ms-mi-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ms-songmenu .ms-mi-end { flex: none; margin-left: auto; display: flex; color: var(--muted); }
+  .ms-songmenu .ms-mi-chev svg { width: 12px; height: 12px; transform: rotate(-90deg); }
+  .ms-songmenu .ms-mi-has { color: var(--accent); }
+  .ms-songmenu .ms-mi-has svg { width: 13px; height: 13px; }
+  .ms-songmenu .ms-play-spin { color: var(--accent); }
+  .ms-songmenu #msSongBack svg { width: 16px; height: 16px; }
+  .ms-mi-rule { height: 1px; background: var(--line); margin: 4px 6px; }
+  .ms-mi-lists { max-height: 248px; overflow: auto; }
+  .ms-mi-head { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 8px 10px 2px; }
+  .ms-mi-empty { font-size: 0.85rem; color: var(--muted); padding: 8px 10px; }
+  .ms-songmenu .er-small, .ms-songmenu .er-box { margin: 6px 4px 2px; }
   .ms-song-note { color: var(--muted); font-size: 0.88rem; margin: 6px 0 0; }
   .ms-report { color: var(--muted); text-decoration: none; display: inline-flex; gap: 6px; align-items: center; font-size: 0.88rem; }
   .ms-ta { display: block; width: 100%; min-height: 0; height: auto; box-sizing: border-box; border-radius: 10px; border: 1px solid var(--line); padding: 6px 10px; font: inherit; font-size: 0.92rem; line-height: 1.35; background: var(--bg); color: var(--fg); resize: none; overflow: hidden; }
@@ -2245,10 +2271,10 @@
     <div id="msFoot" hidden></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-08zp"></script>
-<script src="editor.js?v=2026-11-08zp"></script>
-<script src="shared-spotify.js?v=2026-11-08zp"></script>
-<script src="app.js?v=2026-11-08zp"></script>
-<script src="sharing.js?v=2026-11-08zp"></script>
+<script src="formats.js?v=2026-11-08zq"></script>
+<script src="editor.js?v=2026-11-08zq"></script>
+<script src="shared-spotify.js?v=2026-11-08zq"></script>
+<script src="app.js?v=2026-11-08zq"></script>
+<script src="sharing.js?v=2026-11-08zq"></script>
 </body>
 </html>

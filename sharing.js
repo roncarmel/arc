@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08zp";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-08zq";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -42,6 +42,7 @@ const sharing = {
   mine: null, mineError: "", adding: new Set(), addErrors: {},
   overlap: null, overlapShown: null, reading: false, readStop: false, showOverlapSongs: false,
   songNames: new Map(), player: null, previewNote: "",
+  songMenu: null, songMenuClose: null, liked: new Set(), addedTo: new Map(),   // a song's menu, and what it did this visit
 };
 
 // ---------------------------------------------------------------- talking to the worker
@@ -518,6 +519,7 @@ function renderSharing() {
   const body = $("msBody");
   if (!body || $("msOverlay").hidden) return;
   if (sharing.player && sharing.player.share !== sharing.detail) stopPreview();   // a preview plays only on its playlist's page
+  if (sharing.songMenu && (sharing.songMenu.share !== sharing.detail || sharing.flow)) dropSongMenu();   // and a song's menu only stays on it
   const keepScroll = body.scrollTop;
   body.textContent = "";
   const foot = $("msFoot");
@@ -939,7 +941,152 @@ function songRow(s, i, [title, artist, ms], had) {
       feEl("div", { class: "ms-track-name" }, feEl("span", { class: "ms-track-title", text: label }), had ? feEl("span", { class: "ms-track-have", title: "Already in your recipes", "aria-label": "Already in your recipes" }, feIcon("check")) : null),
       artist ? feEl("div", { class: "ms-track-artist", text: artist }) : null),
     // while its preview is on, the length counts the preview down instead
-    feEl("span", { class: "ms-track-len" + (on && p.state !== "loading" ? " ms-track-left" : "") }, on && p.state !== "loading" ? previewLeft() : songLength(ms)));
+    feEl("span", { class: "ms-track-len" + (on && p.state !== "loading" ? " ms-track-left" : "") }, on && p.state !== "loading" ? previewLeft() : songLength(ms)),
+    songMoreButton(s, i, [title, artist, ms], label));
+}
+
+// ---------------------------------------------------------------- a song's menu
+// A ⋯ on every song opens Add to Liked Songs, Add to a playlist (the person's own, the recipes' first) and Open in Spotify, so a song
+// heard in a preview can be kept (decided by Ron, 2026-11-08, mockups/song-open.html C). Kept in sharing.songMenu so a new drawing of
+// the page (a preview starting or ending) keeps it open.
+function songMoreButton(s, i, names, label) {
+  const m = sharing.songMenu, open = !!(m && m.share === s.id && m.index === i);
+  if (!s.songs[i] || !s.songs[i][0]) return null;
+  const btn = feEl("button", { type: "button", class: "ms-more" + (open ? " ms-on" : ""), id: open ? "msSongMore" : null, "aria-label": `More for ${label}`,
+    "aria-haspopup": "menu", "aria-expanded": String(open), onClick: () => (open ? closeSongMenu() : openSongMenu(s, i, names)) }, feIcon("dots"));
+  return open ? feEl("div", { class: "ms-more-wrap" }, btn, songMenu(s, i, label)) : btn;
+}
+function openSongMenu(s, i, names) {
+  dropSongMenu();
+  sharing.songMenu = { share: s.id, index: i, names, view: "main", busy: null, note: "" };
+  const close = (e) => {
+    if (e.type === "keydown") { if (e.key !== "Escape") return; e.preventDefault(); e.stopPropagation(); closeSongMenu(); return; }
+    const menu = $("msSongMenu"), button = $("msSongMore");
+    if ((menu && menu.contains(e.target)) || (button && button.contains(e.target))) return;
+    closeSongMenu(false);
+  };
+  sharing.songMenuClose = close;
+  setTimeout(() => { document.addEventListener("pointerdown", close, true); document.addEventListener("keydown", close, true); });
+  renderSharing();
+  focusSongMenu();
+}
+// The menu opens down from its ⋯, or up when the list cannot scroll far enough to show it clear of the Support me corner
+function placeSongMenu() {
+  const menu = $("msSongMenu"), body = $("msBody"), m = sharing.songMenu;
+  if (!menu || !body || !m || !menu.getBoundingClientRect) return;
+  menu.classList.remove("ms-up");
+  const box = body.getBoundingClientRect(), r = menu.getBoundingClientRect();
+  const below = r.bottom - (box.bottom - SONG_MENU_FOOT), canScroll = body.scrollHeight - body.clientHeight - body.scrollTop;
+  m.up = below > canScroll && r.height > 0;
+  menu.classList.toggle("ms-up", m.up);
+}
+const SONG_MENU_FOOT = 104;   // the room the Support me corner takes at the bottom of the screen
+function focusSongMenu() {
+  const menu = $("msSongMenu");
+  if (!menu) return;
+  placeSongMenu();
+  if (menu.scrollIntoView) menu.scrollIntoView({ block: "nearest" });
+  const first = menu.querySelector("button:not(:disabled), a");
+  if (first) first.focus();
+}
+function dropSongMenu() {
+  if (sharing.songMenuClose) { document.removeEventListener("pointerdown", sharing.songMenuClose, true); document.removeEventListener("keydown", sharing.songMenuClose, true); sharing.songMenuClose = null; }
+  sharing.songMenu = null;
+}
+function closeSongMenu(focusButton = true) {
+  if (!sharing.songMenu) return;
+  dropSongMenu();
+  const b = $("msSongMore");
+  renderSharing();
+  if (focusButton && b) { const again = document.querySelector(`#msBody .ms-more[aria-label="${CSS.escape(b.getAttribute("aria-label"))}"]`); if (again) again.focus(); }
+}
+function songMenuItem(icon, text, { onClick, disabled, end, id } = {}) {
+  return feEl("button", { type: "button", role: "menuitem", class: "ms-mi", id, disabled: disabled ? true : undefined, onClick },
+    icon, feEl("span", { class: "ms-mi-text", text }), end || null);
+}
+function songMenu(s, i, label) {
+  const m = sharing.songMenu, id = s.songs[i][0];
+  const ready = typeof connection !== "undefined" && connection === "ready";
+  const menu = feEl("div", { id: "msSongMenu", class: "ms-menu ms-songmenu" + (m.up ? " ms-up" : ""), role: "menu", "aria-label": label });
+  if (m.view === "lists") {
+    menu.appendChild(songMenuItem(feIcon("back"), "Add to a playlist", { id: "msSongBack", onClick: () => { m.view = "main"; m.note = ""; renderSharing(); focusSongMenu(); } }));
+    menu.appendChild(feEl("div", { class: "ms-mi-rule" }));
+    const own = typeof readablePlaylists === "function" ? readablePlaylists() : [];
+    const inRecipes = new Set(recipePlaylistIds());
+    const first = own.filter((p) => inRecipes.has(p.id)), rest = own.filter((p) => !inRecipes.has(p.id));
+    const scroller = feEl("div", { class: "ms-mi-lists" });
+    const group = (title, list) => {
+      if (!list.length) return;
+      if (first.length && rest.length) scroller.appendChild(feEl("div", { class: "ms-mi-head", text: title }));
+      for (const p of list) {
+        const has = songIsIn(s, i, p.id), busy = m.busy === p.id;
+        scroller.appendChild(songMenuItem(null, p.name, {
+          disabled: has || !!m.busy, onClick: () => addSongTo(s, i, p),
+          end: busy ? feEl("span", { class: "ms-play-spin ms-mi-end" }) : has ? feEl("span", { class: "ms-mi-end ms-mi-has", title: "Already in it" }, feIcon("check")) : null,
+        }));
+      }
+    };
+    group("In your recipes", first);
+    group("Other playlists", rest);
+    if (!own.length) scroller.appendChild(feEl("div", { class: "ms-mi-empty", text: "No playlists of yours to add it to." }));
+    menu.appendChild(scroller);
+  } else {
+    const liked = sharing.liked.has(id);
+    menu.appendChild(songMenuItem(feIcon(liked ? "check" : "heart"), liked ? "In your Liked Songs" : m.busy === "like" ? "Adding to Liked Songs..." : "Add to Liked Songs",
+      { id: "msSongLike", disabled: !ready || liked || !!m.busy, onClick: () => likeSong(s, i) }));
+    menu.appendChild(songMenuItem(feIcon("musicplus"), "Add to a playlist", { id: "msSongAdd", disabled: !ready,
+      end: feEl("span", { class: "ms-mi-end ms-mi-chev" }, feIcon("chevron")),
+      onClick: () => { m.view = "lists"; m.note = ""; renderSharing(); focusSongMenu(); } }));
+    menu.appendChild(feEl("div", { class: "ms-mi-rule" }));
+    menu.appendChild(feEl("a", { role: "menuitem", class: "ms-mi", id: "msSongOpen", href: `https://open.spotify.com/track/${encodeURIComponent(id)}`, target: "_blank", rel: "noopener noreferrer",
+      onClick: () => setTimeout(() => closeSongMenu(false)) }, feIcon("spotify"), feEl("span", { class: "ms-mi-text", text: "Open in Spotify" })));
+  }
+  if (m.note) menu.appendChild(problemBox(m.note, "", [], true));
+  return menu;
+}
+// whether a playlist already has the song, by what this browser keeps of it or what was added this visit
+function songIsIn(s, i, playlistId) {
+  const [id, isrc] = s.songs[i];
+  if ((sharing.addedTo.get(playlistId) || new Set()).has(id)) return true;
+  const tracks = trackCache.get(playlistId);
+  return !!tracks && tracks.some((t) => t.uri === "spotify:track:" + id || (isrc && t.key === "isrc:" + String(isrc).toUpperCase()));
+}
+async function likeSong(s, i) {
+  const m = sharing.songMenu, id = s.songs[i][0];
+  m.busy = "like"; m.note = "";
+  renderSharing();
+  try {
+    await spotifyRequest("PUT", "/me/library", { params: { uris: "spotify:track:" + id } });
+    sharing.liked.add(id);
+  } catch (err) { m.note = "It wasn\u2019t added. " + (err && err.message ? err.message : ""); }
+  m.busy = null;
+  if (sharing.songMenu === m) { renderSharing(); if ($("msSongLike")) $("msSongLike").focus(); }
+}
+async function addSongTo(s, i, p) {
+  const m = sharing.songMenu, [id, isrc] = s.songs[i], uri = "spotify:track:" + id;
+  m.busy = p.id; m.note = "";
+  renderSharing();
+  try {
+    const res = await spotifyRequest("POST", `/playlists/${p.id}/items`, { json: { uris: [uri] } });
+    if (!sharing.addedTo.has(p.id)) sharing.addedTo.set(p.id, new Set());
+    sharing.addedTo.get(p.id).add(id);
+    // what this browser keeps of the playlist gets the song too, so the checks and the overlap follow at once
+    const info = playlists.find((x) => x.id === p.id);
+    if (info && res && res.snapshot_id) info.snapshot = res.snapshot_id;
+    if (info && typeof info.count === "number") info.count++;
+    const kept = await keptSongsFor(p.id);
+    if (kept) {
+      const [title, artist, ms] = m.names || [];
+      const song = { uri, ms: ms || 0, label: `${artist || ""} - ${title || ""}` };
+      if (isrc) song.key = "isrc:" + String(isrc).toUpperCase();
+      const tracks = [...kept, song];
+      trackCache.set(p.id, tracks);
+      await saveSongs({ id: p.id, snapshot: info && info.snapshot ? info.snapshot : null, tracks, v: SONGS_VERSION, savedAt: Date.now() });
+    }
+    if (recipePlaylistIds().includes(p.id)) sharing.overlap = await measureOverlap();
+  } catch (err) { m.note = "It wasn\u2019t added. " + (err && err.message ? err.message : ""); }
+  m.busy = null;
+  if (sharing.songMenu === m) renderSharing();
 }
 function previewLeft() {
   if (!previewAudio) return "0:30";

@@ -6,7 +6,7 @@ const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3",
 const SCOPES = [
   "playlist-read-private", "playlist-read-collaborative",   // read your playlists
   "playlist-modify-private", "playlist-modify-public",      // create playlists
-  "user-library-modify",                                    // Spotify's generic endpoint for removing playlists
+  "user-library-modify",                                    // Spotify's generic library endpoint: removing playlists, and a song's menu in Music sharing saving it to Liked Songs
   "ugc-image-upload",                                       // the cover art on the playlists it creates
 ].join(" ");
 const REQUIRED_SCOPES = ["playlist-modify-private", "playlist-modify-public"];   // cover art is optional, so an older sign-in without it keeps working
@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08zp";
+const APP_VERSION = "2026-11-08zq";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.

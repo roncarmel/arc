@@ -171,6 +171,11 @@ function makeFetch(options = {}) {
       writes.push({ type: "add", id: url.match(/playlists\/(\w+)\/items/)[1], uris: JSON.parse(init.body).uris });
       return json({ snapshot_id: "x" }, 201);
     }
+    if (method === "PUT" && url.includes("/v1/me/library")) {   // saving a song to Liked Songs (a song's menu in Music sharing)
+      if (options.failLike) return json({}, 500);
+      writes.push({ type: "like", uris: new URL(url).searchParams.get("uris").split(",") });
+      return { ok: true, status: 200, headers: { get: () => null }, text: async () => "", json: async () => { throw new Error("no body"); } };
+    }
     if (method === "DELETE" && url.includes("/v1/me/library") && options.failRemove) return json({}, 500);
     if (method === "DELETE" && url.includes("/v1/me/library")) {
       const removedUris = new URL(url).searchParams.get("uris").split(",");
@@ -855,9 +860,9 @@ print(json.dumps(out))
   check("the report link opens the form in a new tab, safely", rl.target === "_blank" && /noopener/.test(rl.rel) && /noreferrer/.test(rl.rel) && rl.href.startsWith("https://tally.so/r/VppLZN?"), rl.href);
   var q = params(rl.href);
   check("the link fills exactly the six hidden fields the form expects, and nothing else", JSON.stringify([...q.keys()].sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify([...q.keys()]));
-  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08zp" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
+  check("the details are real: version, browser, window size, python, last error, steps", q.get("appVersion") === "2026-11-08zq" && / on /.test(q.get("browser")) && /^\d+x\d+$/.test(q.get("windowSize")) && /^ready \(Python v[\d.]+\)$/.test(q.get("python")) && q.get("lastError") === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(q.get("recentSteps")), JSON.stringify([...q.entries()]));
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("the page shows people exactly what will be attached", /Version: 2026-11-08zp/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the page shows people exactly what will be attached", /Version: 2026-11-08zq/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and the link never carries formats (the only checkboxes in More options are the remove toggle and the one for hiding the Donate button)", !/include my formats/i.test(rp.document.body.textContent) && !q.has("formats") && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle):not(#donateHideBox)'));
   check("every report link opens in a new tab without giving the new page access to this one", ["reportLink", "mainReportHint", "removeReportHint", "loginReportHint"].every((id) => { const a = rp.document.getElementById(id).tagName === "A" ? rp.document.getElementById(id) : rp.document.getElementById(id).querySelector("a"); return a.target === "_blank" && /noopener/.test(a.rel) && a.href.startsWith("https://tally.so/r/VppLZN"); }));
@@ -3060,7 +3065,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08zp", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-08zq", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -5171,7 +5176,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
     { id: "n1", owner: "other-n1", name: "With names", by: "Maya", phases: [2], tags: ["a1", "b1", "c1"], notes: "", songs: [["sg1", "GBAAA0000001"], ["sg2", "GBAAA0000002"], ["sg3", "GBAAA0000003"], ["sg4", ""]], names: sg_names, ms: 3 * 3600000, artists: ["Brian Eno"], sharedAt: 2000 },
     { id: "o1", owner: "other-o1", name: "Older share", by: "Tom", phases: [1], tags: ["a1", "b1", "c1"], notes: "", songs: [["sg5", "GBAAA0000005"]], ms: 3 * 3600000, artists: ["Hammock", "Brian Eno"], sharedAt: 1000 },
   ] };
-  var sg_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", devMode: "1" }, fetchOptions: { sharing: sg_sh } });
+  var sg_fo = { sharing: sg_sh };
+  var sg_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", devMode: "1" }, fetchOptions: sg_fo });
   await waitFor(() => sg_w.eval("connection") === "ready", 15000);
   var sg_d = sg_w.document;
   sg_w.eval("window._plays = []; HTMLMediaElement.prototype.play = function () { window._plays.push(this.src); return Promise.resolve(); }; HTMLMediaElement.prototype.pause = function () {}; HTMLMediaElement.prototype.load = function () {};");
@@ -5221,6 +5227,35 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   sg_w.eval("openDetail('o1')");
   await waitFor(() => !!sg_d.querySelector("#msBody .ms-facts"), 5000);
   check("a share made before names were kept shows Includes and no song list", sg_d.querySelector("#msBody .ms-facts").textContent === "Includes Hammock, Brian Eno, and more." && !sg_d.querySelector("#msBody .ms-tracks") && !/Songs/.test(Array.from(sg_d.querySelectorAll("#msBody .ms-sec")).map((e) => e.textContent).join()));
+  // a song's menu: Add to Liked Songs, Add to a playlist (recipes' first), Open in Spotify
+  sg_w.eval("openDetail('n1')");
+  await waitFor(() => sg_rows().length === 4, 5000);
+  check("every song with a Spotify ID has a closed ⋯ menu button", sg_rows().every((r) => r.querySelector(".ms-more") && r.querySelector(".ms-more").getAttribute("aria-expanded") === "false") && !sg_d.getElementById("msSongMenu"));
+  sg_rows()[1].querySelector(".ms-more").click();
+  await waitFor(() => !!sg_d.getElementById("msSongMenu"), 3000);
+  var sg_menuText = () => Array.from(sg_d.querySelectorAll("#msSongMenu .ms-mi")).map((e) => e.textContent).join("|");
+  check("the ⋯ opens the menu on that song: Add to Liked Songs, Add to a playlist, Open in Spotify (the song's address, in a new tab)", sg_menuText() === "Add to Liked Songs|Add to a playlist|Open in Spotify" && sg_rows()[1].contains(sg_d.getElementById("msSongMenu")) && sg_d.getElementById("msSongOpen").href === "https://open.spotify.com/track/sg2" && sg_d.getElementById("msSongOpen").target === "_blank", sg_menuText());
+  sg_d.getElementById("msSongLike").click();
+  await waitFor(() => sg_w.eval("sharing.liked.has('sg2')"), 3000);
+  await waitFor(() => /In your Liked Songs/.test(sg_menuText()), 3000);
+  check("Add to Liked Songs saves the song to the library and then says it is there, greyed", (sg_fo.writes || []).some((x) => x.type === "like" && x.uris.join() === "spotify:track:sg2") && sg_d.getElementById("msSongLike").disabled && sg_d.getElementById("msSongLike").textContent === "In your Liked Songs");
+  sg_rows()[0].querySelector(".ms-play").click();
+  await waitFor(() => sg_w.eval("sharing.player && sharing.player.state") === "playing", 3000);
+  check("a preview starting does not close the menu", !!sg_d.getElementById("msSongMenu"));
+  sg_d.getElementById("msSongAdd").click();
+  await waitFor(() => !!sg_d.querySelector("#msSongMenu .ms-mi-lists"), 3000);
+  var sg_lists = () => Array.from(sg_d.querySelectorAll("#msSongMenu .ms-mi-lists .ms-mi")).map((e) => e.textContent);
+  var sg_own = sg_w.eval("JSON.stringify(readablePlaylists().map((p) => p.name))");
+  check("Add to a playlist lists the person's own playlists, with Back at the top", sg_lists().length === JSON.parse(sg_own).length && sg_lists().length > 0 && !!sg_d.getElementById("msSongBack"), sg_lists().join("|") + " / " + sg_own);
+  sg_d.querySelector("#msSongMenu .ms-mi-lists .ms-mi").click();
+  await waitFor(() => sg_d.querySelector("#msSongMenu .ms-mi-lists .ms-mi") && sg_d.querySelector("#msSongMenu .ms-mi-lists .ms-mi").disabled && !!sg_d.querySelector("#msSongMenu .ms-mi-has"), 3000);
+  check("choosing one adds the song to it and marks it with a check, so it is not added twice", (sg_fo.writes || []).some((x) => x.type === "add" && x.uris.join() === "spotify:track:sg2") && !!sg_d.querySelector("#msSongMenu .ms-mi-lists .ms-mi .ms-mi-has"));
+  sg_d.dispatchEvent(new sg_w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  check("Escape closes the menu and leaves the page open", !sg_d.getElementById("msSongMenu") && sg_w.eval("sharing.detail") === "n1");
+  sg_rows()[2].querySelector(".ms-more").click();
+  sg_d.getElementById("msBack").click();
+  await waitFor(() => sg_w.eval("sharing.detail") === null, 3000);
+  check("leaving the page closes a song's menu", sg_w.eval("sharing.songMenu") === null && !sg_d.getElementById("msSongMenu"));
   check("Privacy says what goes to Deezer, and when", /asks Deezer for a 30 second preview of that one song, sending only its recording code/.test(sg_d.getElementById("privacyMusicSharing").textContent) && !/no titles/.test(sg_d.getElementById("privacyMusicSharing").textContent));
   } catch (err) { areaCrashed("music sharing songs", err); }
 }
@@ -5402,7 +5437,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08zp"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-08zq"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
