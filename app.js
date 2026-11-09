@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-08v";
+const APP_VERSION = "2026-11-08w";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -255,6 +255,10 @@ function drawSetupJoint() {
     const x0 = ib.left + ib.width / 2 - jb.left, top = ib.top + ib.height / 2 - jb.top, y = 62, size = 74, r = 14;
     const cx = bb.right - 16 - size / 2 - jb.left, x1 = cx - size / 2;
     const d = `M${x0} ${top} V${y - r} Q${x0} ${y} ${x0 + r} ${y} H${x1}`;   // drawn from Arc; the dash offset grows, so the dashes flow back from Spotify
+    // The drawing reaches up over the band, so its box does too: a slide's snapshot of it (view transitions) leaves out what lies outside its box.
+    const lift = Math.max(0, jb.top - bb.top), wire = joint.querySelector(".wp-wire");
+    Object.assign(wire.style, { top: -lift + "px", height: jb.height + lift + "px" });
+    for (const part of wire.querySelectorAll(".wp-wire-main, .wp-wire-band")) part.setAttribute("transform", `translate(0 ${lift})`);   // the band clip moves with them (it is in their space)
     joint.querySelector(".wp-wire-main").setAttribute("d", d);
     joint.querySelector(".wp-wire-band").setAttribute("d", d);
     const rect = joint.querySelector(".wp-band-rect");
@@ -271,7 +275,7 @@ function welcomeStepBack() {
 
 // Moving between the screens before the app (the tools, what setup is, the setup question, its steps) slides: forward, the screen leaves to the left as the next
 // comes in from the right; back, the other way. The welcome band stays still between the two welcome steps. Drawn by the browser (View Transitions, CSS in
-// index.html, vt-*); a browser without them, reduced motion, or a back gesture the browser animates itself just changes the screen.
+// index.html, vt-*; the setup line stays, fades in or fades out, wp-wire); a browser without them, reduced motion, or a back gesture the browser animates itself just changes the screen.
 function screenRank() {
   const page = pageName();
   if (page === "welcome") return $("wpSetup").hidden ? 0 : 1;
@@ -287,24 +291,16 @@ function slideScreens(change, event) {
   const mine = ++slideCount;
   root.classList.add("vt-slide");
   let move;
-  const arriving = [];   // the dashes of a line that comes in with the new screen fade in instead of sliding (it looked odd), ending with the slide (CSS wp-joint-in)
   try {
     move = document.startViewTransition(() => {
-      const before = shownJoints();
       change();
-      for (const joint of shownJoints()) if (!before.includes(joint)) { joint.classList.remove("wp-joint-in"); joint.classList.add("wp-joint-wait"); arriving.push(joint); }
       to = screenRank();
       root.classList.toggle("vt-back", to < from);
     });
   } catch (err) { root.classList.remove("vt-slide", "vt-back"); return; }   // change() ran, or will
-  const fadeIn = () => { for (const joint of arriving.splice(0)) { joint.classList.remove("wp-joint-wait"); joint.classList.add("wp-joint-in"); } };
-  move.ready.then(() => { if (to < 0 || to === from) move.skipTransition(); fadeIn(); }).catch(() => {});
-  move.finished.finally(() => {
-    fadeIn();   // a slide that never started
-    if (slideCount === mine) root.classList.remove("vt-slide", "vt-back");   // not when a later slide has started
-  });
+  move.ready.then(() => { if (to < 0 || to === from) move.skipTransition(); }).catch(() => {});
+  move.finished.finally(() => { if (slideCount === mine) root.classList.remove("vt-slide", "vt-back"); });   // not when a later slide has started
 }
-function shownJoints() { return [...document.querySelectorAll(".wp-joint")].filter(joint => joint.getClientRects().length > 0); }
 let slideCount = 0;
 
 // On the welcome page an icon spans exactly from the top of the letters of the name beside it to the bottom of the letters of the tagline under it (the band's
