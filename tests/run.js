@@ -871,10 +871,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-10w" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-10x" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-10w/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-10x/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2708,7 +2708,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var pv_sec = pv_w.document.getElementById("privacySection");
   check("Privacy is a panel under Everything else on home, closed at first, behind its lock icon", !!pv_sec && pv_sec.hidden === true && pv_sec.closest("#homeMore") !== null && pv_w.document.getElementById("eeTabPrivacy").dataset.icon === "lock" && pv_w.document.getElementById("eeTabPrivacy").getAttribute("aria-controls") === "privacySection" && pv_sec.querySelector("h3").textContent === "Privacy");
   var pv_text = pv_sec.textContent.replace(/\s+/g, " ");
-  check("it opens with what Arc stands for, then one short line per topic", /^Arc runs in your browser\. What you make here stays between this browser and your own Spotify account, unless you choose to share it\. No accounts, no ads\.$/.test(pv_sec.querySelector(".pv-lead").textContent) && JSON.stringify(Array.from(pv_sec.querySelectorAll("li > b")).map((b) => b.textContent)) === JSON.stringify(["In this browser:", "In your Spotify:", "Shared music library:", "Anonymous counts:", "Spotify waits:", "Reports and feedback:"]));
+  check("it opens with what Arc stands for, then one short line per topic", /^Arc runs in your browser\. What you make here stays between this browser and your own Spotify account, unless you choose to share it\. No accounts, no ads\.$/.test(pv_sec.querySelector(".pv-lead").textContent) && JSON.stringify(Array.from(pv_sec.querySelectorAll("li > b")).map((b) => b.textContent)) === JSON.stringify(["In this browser:", "In your Spotify:", "Shared playlist library:", "Anonymous counts:", "Spotify waits:", "Reports and feedback:"]));
   check("it says the app never sees the Spotify password, that the person's playlists are only read, that Sign out and clear data erases what is kept, and what reports never hold", /never sees your password/.test(pv_text) && /Your playlists are only read, never changed/.test(pv_text) && /Sign out and clear data erases it all/.test(pv_text) && /Never your sign-in, Client ID, playlist names or songs/.test(pv_text) && /GoatCounter counts visits and a few actions, without cookies/.test(pv_text));
   var pv_click2 = new pv_w.MouseEvent("click", { bubbles: true, cancelable: true });
   pv_w.document.querySelector("#about a.privacy-link").dispatchEvent(pv_click2);
@@ -2919,7 +2919,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-10w", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-10x", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3264,7 +3264,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the tagline says Arc is ceremony playlist tools for a Spotify library", tg_w.document.querySelector(".tagline").textContent === "Ceremony playlist tools for your Spotify library");
   check("it sits in the welcome page's pink band, under Arc and beside the icon, which only the welcome page shows", !!tg_w.document.querySelector("#welcomePage .wp-band .wp-band-text .tagline") && tg_w.document.querySelector("#welcomePage .wp-band-name").textContent === "Arc" && !!tg_w.document.querySelector("#welcomePage .wp-band .wp-band-icon") && /#welcomePage \{ display: none; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   var tg_d = tg_w.document, tg_heads = Array.from(tg_d.querySelectorAll("#welcomePage .wp-tool-head"));
-  check("under Tools, a card per tool: name, tagline, and Arc's icon with a badge", tg_d.querySelector("#welcomePage .wp-sec").textContent === "Tools" && JSON.stringify(tg_heads.map((h) => [h.querySelector("b").textContent, h.querySelector(".wp-tool-tag").textContent])) === JSON.stringify([["Playlist builder", "Ceremony playlists, ready in minutes"], ["Shared music library", "Bring some, get some!"]]) && tg_heads.every((h) => !!h.querySelector(".tool-icon .tool-badge svg")));
+  check("under Tools, a card per tool: name, tagline, and Arc's icon with a badge", tg_d.querySelector("#welcomePage .wp-sec").textContent === "Tools" && JSON.stringify(tg_heads.map((h) => [h.querySelector("b").textContent, h.querySelector(".wp-tool-tag").textContent])) === JSON.stringify([["Playlist builder", "Ceremony playlists, ready in minutes"], ["Shared playlist library", "Bring some, get some!"]]) && tg_heads.every((h) => !!h.querySelector(".tool-icon .tool-badge svg")));
   check("both cards start closed", tg_heads.every((h) => h.getAttribute("aria-expanded") === "false" && tg_d.getElementById(h.getAttribute("aria-controls")).hidden));
   tg_heads[0].click();
   var tg_more0 = tg_d.getElementById("wpBuilderMore"), tg_more1 = tg_d.getElementById("wpSharingMore");
@@ -4632,7 +4632,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sc_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", devMode: "1" }, fetchOptions: { sharing: sc_sh } });
   var sc_d = sc_w.document;
   await waitFor(() => /4 by others/.test(sc_d.getElementById("msCardText").textContent), 8000);
-  check("the shared music library's card on Arc's home has three lines: its name, Bring some, get some!, and how many playlists others share, the number set apart", sc_d.querySelector("#msCard .hp-text > b").textContent === "Shared music library" && sc_d.querySelector("#msCard .hp-tag").textContent === "Bring some, get some!" && sc_d.getElementById("msCardText").textContent === "0 shares by you, 4 by others" && sc_d.querySelectorAll("#msCardText .hp-num")[1].textContent === "4" && !sc_d.querySelector("#msCard img") && !!sc_d.getElementById("msCard").closest("#homePage"));
+  check("the shared playlist library's card on Arc's home has three lines: its name, Bring some, get some!, and how many playlists others share, the number set apart", sc_d.querySelector("#msCard .hp-text > b").textContent === "Shared playlist library" && sc_d.querySelector("#msCard .hp-tag").textContent === "Bring some, get some!" && sc_d.getElementById("msCardText").textContent === "0 shares by you, 4 by others" && sc_d.querySelectorAll("#msCardText .hp-num")[1].textContent === "4" && !sc_d.querySelector("#msCard img") && !!sc_d.getElementById("msCard").closest("#homePage"));
   check("reading the library for the card starts no overlap reading while the popup is closed", sc_w.eval("sharing.overlap === null && !sharing.reading"));
   check("Arc's home, with the card, shows only on the app page's home view, and the builder's parts only in the builder", /html\.page-app\.view-home #homePage \{ display: block; \}/.test(Array.from(sc_d.querySelectorAll("style")).map((x) => x.textContent).join("")) && /html\.page-app:not\(\.view-builder\) #appSection > :is\(#formatEditor, #editorNote, #buildRow/.test(Array.from(sc_d.querySelectorAll("style")).map((x) => x.textContent).join("")));
   check("on connecting, a device that never read the person's shares reads them once and keeps the list (none here), so later visits do not ask again", sc_w.localStorage.getItem("sharingMineIds") === "[]" && /let known = !!sharing\.mine;[\s\S]{0,200}if \(!known\) loadMine\(\)/.test(fs.readFileSync(ROOT + "sharing.js", "utf8")));
@@ -4652,7 +4652,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   sc_d.getElementById("formats").value = MINI; sc_w.eval("syncEditorFromText()");   // the recipe back for the checks that follow
   sc_w.eval("sharing.libraryAt = 0"); await sc_w.eval("loadLibrary()");
   sc_d.getElementById("msCard").click();
-  check("the card opens Music sharing as a page of its own on Shared by others, Arc's bar naming it", sc_d.getElementById("msOverlay").hidden === false && sc_w.eval("sharing.tab") === "find" && sc_d.documentElement.classList.contains("view-sharing") && sc_d.getElementById("appTool").textContent === "Shared music library");
+  check("the card opens Music sharing as a page of its own on Shared by others, Arc's bar naming it", sc_d.getElementById("msOverlay").hidden === false && sc_w.eval("sharing.tab") === "find" && sc_d.documentElement.classList.contains("view-sharing") && sc_d.getElementById("appTool").textContent === "Shared playlist library");
   sc_d.getElementById("appHome").click();
   await new Promise((r) => setTimeout(r, 50));
   check("playlists built before the rename (Made by Ceremony Playlist Builder) are still the app's own, as are new ones (Made by Arc)", sc_w.eval("madeByAppText('Made by Ceremony Playlist Builder. Please do not edit') && madeByAppText('Made by Arc. Please do not edit') && !madeByAppText('Made by me') && !madeByAppText(null)"));
@@ -4663,8 +4663,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sc_tm = sc_d.getElementById("appToolMenu");
   check("the tool's name in Arc's bar opens a list of the tools and Arc home, the one shown ticked", sc_tm.hidden === false && sc_d.getElementById("appTool").getAttribute("aria-expanded") === "true" && Array.from(sc_tm.querySelectorAll(".ab-mi")).map((b) => b.dataset.view).join() === "builder,sharing,home" && sc_tm.querySelector('[data-view="builder"]').getAttribute("aria-checked") === "true" && sc_tm.querySelector('[data-view="sharing"]').getAttribute("aria-checked") === "false");
   sc_tm.querySelector('[data-view="sharing"]').click();
-  check("on a phone Arc's bar calls it Shared music, the full name not fitting", sc_w.eval("toolName('sharing', true)") === "Shared music" && sc_w.eval("toolName('sharing', false)") === "Shared music library" && sc_w.eval("toolName('builder', true)") === "Playlist builder");
-  check("choosing Music sharing there opens it and closes the list", sc_d.documentElement.classList.contains("view-sharing") && sc_tm.hidden === true && sc_d.getElementById("appTool").textContent === "Shared music library");
+  check("on a phone Arc's bar calls it Shared playlists, the full name not fitting", sc_w.eval("toolName('sharing', true)") === "Shared playlists" && sc_w.eval("toolName('sharing', false)") === "Shared playlist library" && sc_w.eval("toolName('builder', true)") === "Playlist builder");
+  check("choosing Music sharing there opens it and closes the list", sc_d.documentElement.classList.contains("view-sharing") && sc_tm.hidden === true && sc_d.getElementById("appTool").textContent === "Shared playlist library");
   sc_d.getElementById("appTool").click();
   sc_d.body.click();
   check("a tap elsewhere closes the list", sc_tm.hidden === true && sc_d.documentElement.classList.contains("view-sharing"));
@@ -5114,7 +5114,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("connected: Watch the tutorial, Feedback, Report a problem, then Build all recipes, Remove built playlists, Autosave or backup, then the version", JSON.stringify(sl_r) === JSON.stringify(sl_rest.slice(1)), JSON.stringify(sl_r));
   var sl_ms = sl_ready.document; sl_ready.document.getElementById("feAppMenuButton").click();
   var sl_msi = sl_ms.getElementById("feMusicSharing");
-  check("Music sharing is not in the menu: it is a tool on Arc's home", !sl_msi && /Shared music library/.test(sl_ms.getElementById("homePage").textContent));
+  check("Music sharing is not in the menu: it is a tool on Arc's home", !sl_msi && /Shared playlist library/.test(sl_ms.getElementById("homePage").textContent));
   sl_ready.document.body.click();
   sl_ready.eval("appView = \"sharing\""); var sl_sh = sl_ids(sl_ready); sl_ready.eval("appView = \"builder\"");
   check("in Music sharing the menu is Feedback, Report a problem and the version", JSON.stringify(sl_sh) === JSON.stringify(["feFeedback", "feReport", "fe-rule", "feMenuVersion"]), JSON.stringify(sl_sh));
@@ -5216,7 +5216,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-10w"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-10x"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
