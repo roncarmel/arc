@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-09v";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-09w";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -503,12 +503,17 @@ function closeSharing() {
 }
 function switchTab(tab) {
   if (tab === sharing.tab && !sharing.detail && !sharing.flow) return;
-  sharing.tab = tab;
-  sharing.detail = null;
-  sharing.flow = null;
-  if (tab === "find") sharing.overlapShown = sharing.overlap;
-  renderSharing();
-  $("msBody").scrollTop = 0;
+  const change = () => {
+    sharing.tab = tab;
+    sharing.detail = null;
+    sharing.flow = null;
+    if (tab === "find") sharing.overlapShown = sharing.overlap;
+    renderSharing();
+    $("msBody").scrollTop = 0;
+  };
+  // By you sits to the right of By others, as the capsule shows
+  if (tab !== sharing.tab && !$("msOverlay").hidden) shiftPage($("msBody"), tab === "share" ? 1 : -1, change);
+  else change();
   if (tab === "share") loadMine();
 }
 
@@ -565,6 +570,19 @@ function renderFlowPopup() {
   }
 }
 function flowTop() { if ($("msFlowBody")) $("msFlowBody").scrollTop = 0; }
+// to the next step of the wizard (dir 1) or back (-1): the step moves aside (shiftPage) and the bar's part fills or empties
+function stepFlow(dir, change) {
+  const from = sharing.flow && sharing.flow.step;
+  shiftPage($("msFlowBody"), dir, () => { change(); renderSharing(); flowTop(); });
+  const f = sharing.flow, steps = $("msFlowHead") && $("msFlowHead").querySelectorAll(".ms-steps li");
+  if (!f || !steps || !steps.length || typeof motionAllowed !== "function" || !motionAllowed(steps[0])) return;
+  const css = getComputedStyle(steps[0]), line = css.getPropertyValue("--line").trim(), accent = css.getPropertyValue("--accent").trim();
+  const fill = (li, colors) => { try { li.animate(colors.map((c) => ({ backgroundColor: c })), { duration: 300, easing: EASE_OUT, pseudoElement: "::before" }); } catch (err) {} };
+  if (line && accent && steps[f.step] && steps[from]) {
+    if (dir > 0) fill(steps[f.step], [line, accent]);
+    else fill(steps[from], [accent, line]);
+  }
+}
 function closeFlow() {
   endTyping();
   sharing.flow = null;
@@ -684,6 +702,7 @@ function openSortMenu() {
   }
   button.parentElement.appendChild(menu);   // under the button, in Search's row (not under the type's filter)
   button.setAttribute("aria-expanded", "true");
+  menuArrives(menu);
   const close = (e) => { if (e.type === "keydown" ? e.key === "Escape" : !menu.contains(e.target) && !button.contains(e.target)) { if (e.type === "keydown") { e.preventDefault(); e.stopPropagation(); } closeSortMenu(); } };
   sharing.sortClose = close;
   setTimeout(() => { document.addEventListener("pointerdown", close, true); document.addEventListener("keydown", close, true); });
@@ -693,7 +712,7 @@ function closeSortMenu() {
   const menu = $("msSortMenu");
   if (sharing.sortClose) { document.removeEventListener("pointerdown", sharing.sortClose, true); document.removeEventListener("keydown", sharing.sortClose, true); sharing.sortClose = null; }
   if (!menu) return;
-  menu.remove();
+  menuLeaves(menu, menu.getBoundingClientRect());
   const b = $("msSortButton");
   if (b) { b.setAttribute("aria-expanded", "false"); b.focus(); }
 }
@@ -798,10 +817,8 @@ function openDetail(id) {
 function closeDetail() {
   slideBody(-1, () => { sharing.detail = null; renderSharing(); $("msBody").scrollTop = sharing.listScroll || 0; });
 }
-function slideBody(dir, change) {
-  const body = $("msBody");
-  if (typeof motionAllowed !== "function" || !motionAllowed(body)) { change(); return; }
-  // the old page stays drawn as an untouchable copy while it leaves
+// the old page stays drawn as an untouchable copy while it leaves
+function pageGhost(body) {
   const ghost = body.cloneNode(true);
   ghost.removeAttribute("id");
   for (const el of ghost.querySelectorAll("[id]")) el.removeAttribute("id");
@@ -812,10 +829,43 @@ function slideBody(dir, change) {
   const top = body.scrollTop;
   body.after(ghost);
   ghost.scrollTop = top;
+  return ghost;
+}
+// a playlist's page comes in over the list from the right, and goes back the same way
+function slideBody(dir, change) {
+  const body = $("msBody");
+  if (typeof motionAllowed !== "function" || !motionAllowed(body)) { change(); return; }
+  const ghost = pageGhost(body);
   change();
   const opts = { duration: 320, easing: EASE_OUT };
   ghost.animate([{ transform: "translateX(0)", opacity: 1 }, { transform: `translateX(${-dir * 40}%)`, opacity: 0 }], opts).onfinish = () => ghost.remove();
   body.animate([{ transform: `translateX(${dir * 100}%)` }, { transform: "translateX(0)" }], opts);
+}
+// another tab or another step of the wizard: the old page moves half its width away and fades as the new one comes from half its width
+// on the other side (Ron, 2026-11-09, mockups/sharing-motion.html B with half a screen)
+function shiftPage(body, dir, change) {
+  if (!body || typeof motionAllowed !== "function" || !motionAllowed(body)) { change(); return; }
+  const ghost = pageGhost(body);
+  change();
+  ghost.animate([{ transform: "translateX(0)", opacity: 1 }, { transform: `translateX(${-dir * 50}%)`, opacity: 0 }], { duration: 140, easing: EASE_IN, fill: "forwards" }).onfinish = () => ghost.remove();
+  body.animate([{ transform: `translateX(${dir * 50}%)`, opacity: 0 }, { transform: "translateX(0)", opacity: 1 }], { duration: 240, delay: 60, easing: EASE_OUT, fill: "backwards" });
+}
+// a menu grows out of its button (the app's menu motion, editor.js) and shrinks back into it, kept drawn in #msDialog where it was
+function menuArrives(menu) {
+  if (!menu || typeof motionAllowed !== "function" || !motionAllowed(menu)) return;
+  aimMenu(menu);
+  playMotion(menu, "menu", true);
+}
+function menuLeaves(menu, rect) {
+  if (!menu || !rect || !rect.width || typeof motionAllowed !== "function" || !motionAllowed(menu) || !$("msDialog")) { if (menu) menu.remove(); return; }
+  menu.classList.add("fx-ghost");
+  menu.setAttribute("aria-hidden", "true");
+  menu.inert = true;
+  for (const el of [menu, ...menu.querySelectorAll("[id]")]) el.removeAttribute("id");
+  const box = $("msDialog").getBoundingClientRect();
+  Object.assign(menu.style, { position: "absolute", left: rect.left - box.left + "px", top: rect.top - box.top + "px", width: rect.width + "px", height: rect.height + "px", right: "auto", bottom: "auto", margin: "0" });
+  $("msDialog").appendChild(menu);
+  playMotion(menu, "menu", false).onfinish = () => menu.remove();
 }
 function isMine(s) {
   if (sharing.mine) return sharing.mine.some((m) => m.id === s.id);
@@ -996,6 +1046,7 @@ function openSongMenu(s, i, names) {
   setTimeout(() => { document.addEventListener("pointerdown", close, true); document.addEventListener("keydown", close, true); });
   renderSharing();
   focusSongMenu();
+  menuArrives($("msSongMenu"));
 }
 // The menu opens down from its ⋯, or up when the list cannot scroll far enough to show it whole
 function placeSongMenu() {
@@ -1023,9 +1074,29 @@ function dropSongMenu() {
 function closeSongMenu(focusButton = true) {
   if (!sharing.songMenu) return;
   dropSongMenu();
-  const b = $("msSongMore");
+  const b = $("msSongMore"), menu = $("msSongMenu"), rect = menu && menu.getBoundingClientRect();
   renderSharing();
+  menuLeaves(menu, rect);
   if (focusButton && b) { const again = document.querySelector(`#msBody .ms-more[aria-label="${CSS.escape(b.getAttribute("aria-label"))}"]`); if (again) again.focus(); }
+}
+// Add to a playlist › and back: the menu's items move half its width aside and fade as the others come, and the menu eases to its new height
+function turnSongMenu(dir, change) {
+  const old = $("msSongMenu"), h0 = old ? old.offsetHeight : 0;
+  change();
+  renderSharing();
+  focusSongMenu();
+  const menu = $("msSongMenu");
+  if (!old || !menu || typeof motionAllowed !== "function" || !motionAllowed(menu)) return;
+  const parts = [...menu.children];
+  const ghost = feEl("div", { class: "ms-menu-ghost", "aria-hidden": "true" });
+  for (const el of [...old.children]) { for (const x of [el, ...el.querySelectorAll("[id]")]) x.removeAttribute("id"); ghost.appendChild(el); }
+  ghost.inert = true;
+  menu.appendChild(ghost);
+  const h1 = menu.offsetHeight, edges = h1 - parseFloat(getComputedStyle(menu).height);   // its padding and border, outside the height animated
+  menu.style.overflow = "hidden";
+  menu.animate([{ height: h0 - edges + "px" }, { height: h1 - edges + "px" }], { duration: 260, easing: EASE_OUT }).onfinish = () => { menu.style.overflow = ""; };
+  ghost.animate([{ transform: "translateX(0)", opacity: 1 }, { transform: `translateX(${-dir * 50}%)`, opacity: 0 }], { duration: 140, easing: EASE_IN, fill: "forwards" }).onfinish = () => ghost.remove();
+  for (const el of parts) el.animate([{ transform: `translateX(${dir * 50}%)`, opacity: 0 }, { transform: "translateX(0)", opacity: 1 }], { duration: 240, delay: 60, easing: EASE_OUT, fill: "backwards" });
 }
 function songMenuItem(icon, text, { onClick, disabled, end, id } = {}) {
   return feEl("button", { type: "button", role: "menuitem", class: "ms-mi", id, disabled: disabled ? true : undefined, onClick },
@@ -1036,7 +1107,7 @@ function songMenu(s, i, label) {
   const ready = typeof connection !== "undefined" && connection === "ready";
   const menu = feEl("div", { id: "msSongMenu", class: "ms-menu ms-songmenu" + (m.up ? " ms-up" : ""), role: "menu", "aria-label": label });
   if (m.view === "lists") {
-    menu.appendChild(songMenuItem(feIcon("back"), "Add to a playlist", { id: "msSongBack", onClick: () => { m.view = "main"; m.note = ""; renderSharing(); focusSongMenu(); } }));
+    menu.appendChild(songMenuItem(feIcon("back"), "Add to a playlist", { id: "msSongBack", onClick: () => turnSongMenu(-1, () => { m.view = "main"; m.note = ""; }) }));
     menu.appendChild(feEl("div", { class: "ms-mi-rule" }));
     const own = typeof readablePlaylists === "function" ? readablePlaylists() : [];
     const inRecipes = new Set(recipePlaylistIds());
@@ -1063,7 +1134,7 @@ function songMenu(s, i, label) {
       { id: "msSongLike", disabled: !ready || liked || !!m.busy, onClick: () => likeSong(s, i) }));
     menu.appendChild(songMenuItem(feIcon("musicplus"), "Add to a playlist", { id: "msSongAdd", disabled: !ready,
       end: feEl("span", { class: "ms-mi-end ms-mi-chev" }, feIcon("chevron")),
-      onClick: () => { m.view = "lists"; m.note = ""; renderSharing(); focusSongMenu(); } }));
+      onClick: () => turnSongMenu(1, () => { m.view = "lists"; m.note = ""; }) }));
     menu.appendChild(feEl("div", { class: "ms-mi-rule" }));
     menu.appendChild(feEl("a", { role: "menuitem", class: "ms-mi", id: "msSongOpen", href: `https://open.spotify.com/track/${encodeURIComponent(id)}`, target: "_blank", rel: "noopener noreferrer",
       onClick: () => setTimeout(() => closeSongMenu(false)) }, feIcon("spotify"), feEl("span", { class: "ms-mi-text", text: "Open in Spotify" })));
@@ -1353,7 +1424,7 @@ function flowBack() {
   const f = sharing.flow;
   if (!f) return;
   endTyping();
-  if (f.mode === "new" && f.step > 0 && f.step < 3) { f.step--; f.draft.errors = null; renderSharing(); flowTop(); return; }
+  if (f.mode === "new" && f.step > 0 && f.step < 3) { stepFlow(-1, () => { f.step--; f.draft.errors = null; }); return; }
   if (f.mode === "edit" && backToDetail()) return;
   sharing.flow = null;
   renderSharing();
@@ -1384,10 +1455,7 @@ function renderFlow(body, foot) {
     body.appendChild(anonBox(f.draft));
     footButtons(foot, { onClick: flowBack, wizard: true }, mainButton("Next", () => {
       if (!f.draft.kind) { f.draft.errors = { kind: "Choose a type." }; renderSharing(); return; }
-      f.draft.errors = null;
-      f.step = 2;
-      renderSharing();
-      flowTop();
+      stepFlow(1, () => { f.draft.errors = null; f.step = 2; });
     }, { iconAfter: "next" }));
     return;
   }
@@ -1433,8 +1501,8 @@ async function pickPlaylist(p) {
     const tracks = await loadTracks(p.id);
     if (sharing.flow !== f) return;
     if (!tracks.length) throw new Error("It has no songs");
-    f.draft = newDraft(p);
-    f.step = 1;
+    stepFlow(1, () => { f.draft = newDraft(p); f.step = 1; f.reading = null; });
+    return;
   } catch (err) { f.readError = { p, title: `The songs of ${named(p.name)} couldn\u2019t be read`, text: String(err.message || err).replace(/\.?$/, ".") }; }
   f.reading = null;
   renderSharing();
@@ -1707,10 +1775,28 @@ function renderShared(body, foot) {
     feEl("span", { class: "ms-bigcheck" }, feIcon("check")),
     feEl("h3", { text: `${named(f.name)} is shared` }),
     feEl("p", { class: "ms-sub" }, "Other facilitators can find it in Shared by others now.")));
+  if (!f.played) { f.played = true; playSharedCheck(body); }
   foot.hidden = false;
   foot.appendChild(feEl("div", { class: "ms-footcol" },
     mainButton("Share another playlist", startShare, { icon: "plus" }),
     feEl("button", { type: "button", class: "ms-backbtn ms-wide", id: "msDone", onClick: () => { sharing.flow = null; renderSharing(); } }, "Done")));
+}
+// once, as the page arrives: the circle fades in, the tick draws itself, one pink ring spreads out from it, and the words rise in under it
+// (Ron, 2026-11-09, mockups/sharing-motion.html B)
+function playSharedCheck(body) {
+  const circle = body.querySelector(".ms-bigcheck"), path = circle && circle.querySelector("path");
+  if (!path || typeof motionAllowed !== "function" || !motionAllowed(circle)) return;
+  circle.animate([{ opacity: 0, transform: "scale(0.9)" }, { opacity: 1, transform: "none" }], { duration: 260, easing: EASE_OUT });
+  path.setAttribute("pathLength", "1");
+  path.setAttribute("stroke-dasharray", "1");
+  path.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 360, delay: 140, easing: EASE_OUT, fill: "backwards" });
+  const glow = getComputedStyle(circle).boxShadow, accent = getComputedStyle(circle).getPropertyValue("--accent").trim();
+  if (accent) {
+    const ring = (size, share) => `0 0 0 ${size}px color-mix(in srgb, ${accent} ${share}%, transparent)` + (glow && glow !== "none" ? ", " + glow : "");
+    circle.animate([{ boxShadow: ring(0, 60) }, { boxShadow: ring(26, 0) }], { duration: 700, delay: 420, easing: EASE_OUT });
+  }
+  body.querySelectorAll(".ms-shared h3, .ms-shared p").forEach((el, i) =>
+    el.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 260, delay: 300 + i * 60, easing: EASE_OUT, fill: "backwards" }));
 }
 async function stopSharing(m) {
   const answer = await askSyncChoice(`Stop sharing ${named(m.name)}?`, "Copies others already got stay theirs.",
