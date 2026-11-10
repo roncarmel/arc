@@ -839,10 +839,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-09k" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-09l" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-09k/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-09l/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkboxes in More options are the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2938,7 +2938,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-09k", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-09l", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -5153,7 +5153,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var dv_PE = (type, x) => new dv_w.MouseEvent(type, { bubbles: true, button: 0, clientX: x || 10, clientY: 10 });
   var dv_d = dv_w.document, dv_root = dv_d.documentElement;
   var dv_icon = dv_d.querySelector("#homePage .wp-band-icon");
-  check("regular mode: Music sharing is Coming soon on home, with no library read, and its card does not open it", !dv_root.classList.contains("dev-mode") && dv_d.querySelector("#msCard .hp-tag").textContent === "Bring some, get some!" && /html:not\(\.dev-mode\) #msCard \.hp-data \{ display: none; \}/.test(Array.from(dv_d.querySelectorAll("style")).map((x) => x.textContent).join("")) && dv_d.getElementById("msCard").getAttribute("aria-disabled") === "true" && dv_d.querySelector("#msCard .hp-soon").textContent === "Coming soon" && dv_w.eval("sharing.library") === null && (dv_d.getElementById("msCard").click(), dv_root.classList.contains("view-home") && dv_d.getElementById("msOverlay").hidden === true));
+  check("regular mode: Music sharing is Coming soon on home, with no library read, and its card does not open it", !dv_root.classList.contains("dev-mode") && dv_d.querySelector("#msCard .hp-tag").textContent === "Bring some, get some!" && /html:not\(\.dev-mode\) #msCard \.hp-data \{ display: none; \}/.test(Array.from(dv_d.querySelectorAll("style")).map((x) => x.textContent).join("")) && dv_d.getElementById("msCard").getAttribute("aria-disabled") === "true" && dv_d.getElementById("hpSoon").textContent === "Coming soon" && dv_w.getComputedStyle(dv_d.getElementById("hpSoon")).display !== "none" && !dv_d.querySelector("#msCard .hp-soon") && dv_w.eval("sharing.library") === null && (dv_d.getElementById("msCard").click(), dv_root.classList.contains("view-home") && dv_d.getElementById("msOverlay").hidden === true));
   check("regular mode: no DEV capsule, and no hold on the builder menu's header", (dv_w.getComputedStyle(dv_d.getElementById("devWrap")).display === "none") && !/watchDevHold\(\$\("feMenuHead"\)\)/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
   var dv_before = dv_icon.outerHTML;
   dv_icon.dispatchEvent(dv_PE("pointerdown"));
@@ -5336,7 +5336,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-09k"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-09l"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
