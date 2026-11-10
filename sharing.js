@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-09x";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-09y";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -1306,7 +1306,7 @@ async function reportShare(s) {
         feEl("h3", { text: `Report ${named(s.name)}` }),
         feEl("p", { class: "muted" }, "The developer of this app reads every report."),
         feEl("div", { class: "ms-radios" }, ...radios), note,
-        feEl("div", { class: "row" }, send, feEl("button", { type: "button", onClick: () => done(null) }, "Cancel"))));
+        feEl("div", { class: "row" }, feEl("button", { type: "button", onClick: () => done(null) }, "Cancel"), send)));
     document.body.appendChild(overlay);
     document.addEventListener("keydown", onKey);
     radios[0].querySelector("input").focus();

@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-09x">
-<script src="theme.js?v=2026-11-09x"></script>
+<meta name="app-version" content="2026-11-09y">
+<script src="theme.js?v=2026-11-09y"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -2066,8 +2066,8 @@
           <p>Sign out and erase Arc’s data in this browser?</p>
           <p id="clearConfirmHelp" class="muted">Your recipes will be erased from this device. To get them back, choose <span class="ui">Restore</span> in the Playlist builder's menu and pick the backup you made on this device.</p>
           <div class="row">
-            <button id="clearYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Sign out and clear</span></button>
             <button id="clearNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
+            <button id="clearYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Sign out and clear</span></button>
           </div>
         </div>
       </div>
@@ -2135,8 +2135,8 @@
     <label class="choice-row"><input type="radio" name="backupMode" id="backupModeManual" value="manual"> <span>Backed up to this device manually</span></label>
     <p class="muted choice-note">Your recipes live on this device only. You back them up to a file when you choose, and restore from it when you need it.</p>
     <div class="row" id="backupDoneRow">
-      <button id="backupOk" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">OK</span></button>
       <button id="backupCancel" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
+      <button id="backupOk" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">OK</span></button>
     </div>
   </div>
   <div id="formatEditor"></div>
@@ -2204,8 +2204,8 @@
       </div>
       <div class="bd-foot">
         <div id="confirmButtons" class="row" hidden>
-          <button id="confirmYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Build</span></button>
           <button id="confirmNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
+          <button id="confirmYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Build</span></button>
         </div>
         <div id="bdBusyRow" class="row" hidden>
           <button id="bdBusy" class="primary" type="button" disabled><img class="btn-icon" src="icons/build.svg" alt="" width="24" height="24"><span class="btn-label">Building…</span></button>
@@ -2292,8 +2292,8 @@
         <ul id="removeConfirmMoreList"></ul>
         <label id="removeToggleRow" class="choice-row" hidden><input type="checkbox" id="removeToggle"> <span id="removeToggleLabel"></span></label>
         <div class="row">
-          <button id="removeConfirmYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Remove</span></button>
           <button id="removeConfirmNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
+          <button id="removeConfirmYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Remove</span></button>
         </div>
       </div>
       <p id="removeMessage" aria-live="polite"></p>
@@ -2335,10 +2335,10 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-09x"></script>
-<script src="editor.js?v=2026-11-09x"></script>
-<script src="shared-spotify.js?v=2026-11-09x"></script>
-<script src="app.js?v=2026-11-09x"></script>
-<script src="sharing.js?v=2026-11-09x"></script>
+<script src="formats.js?v=2026-11-09y"></script>
+<script src="editor.js?v=2026-11-09y"></script>
+<script src="shared-spotify.js?v=2026-11-09y"></script>
+<script src="app.js?v=2026-11-09y"></script>
+<script src="sharing.js?v=2026-11-09y"></script>
 </body>
 </html>
