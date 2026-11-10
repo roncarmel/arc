@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-10i";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-10j";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -472,8 +472,8 @@ async function markOldCopies() {
 
 // ---------------------------------------------------------------- the popup
 // tab "find" is Shared by others, "share" Shared by you. sharing.detail is a playlist's page; sharing.flow is Share a playlist,
-// the edit page of one of the person's shares, or the page that says a share went through: a popup over the page (#msFlowWrap), so the tabs
-// and the page stay where they are under it (Ron, 2026-11-09).
+// the edit page of one of the person's shares, or the page that says a share went through. Both are a popup over the page (#msFlowWrap),
+// so the tabs and the list stay where they are under it (Ron, 2026-11-09; the playlist's page since 2026-11-10). The flow comes first.
 function openSharing(tab = "find") {
   if (typeof closeInfo === "function") closeInfo(true);
   sharing.tab = tab;
@@ -529,19 +529,29 @@ function renderSharing() {
   foot.textContent = "";
   foot.hidden = true;
   renderSharingTabs();
-  if (sharing.detail) renderDetail(body, foot);
-  else if (sharing.tab === "find") renderFind(body);
+  if (sharing.tab === "find") renderFind(body);
   else renderShareYours(body, foot);
   body.scrollTop = keepScroll;
   renderFlowPopup();
 }
-// the popup that holds Share a playlist, Edit details and the page after a share: its title with Close, then the form, then its buttons. The page under it is inert meanwhile.
+// the popup that holds Share a playlist, Edit details and the page after a share (its title with Close, then the form, then its buttons),
+// or a playlist's page (no title band: a round X at its top right, B in mockups/share-popup-*.png, Ron, 2026-11-10). The page under it is inert meanwhile.
 function renderFlowPopup() {
   const wrap = $("msFlowWrap"), f = sharing.flow;
   if (!wrap) return;
   const page = [$("msTabsBar"), $("msBody"), $("msFoot")];
-  if (!f) {
-    if (!wrap.hidden) { wrap.hidden = true; $("msOverlay").classList.remove("ms-flow-open"); page.forEach((el) => { el.inert = false; }); }
+  const detail = !f && sharing.detail;
+  $("msFlow").classList.toggle("ms-pop-detail", !!detail);
+  $("msFlow").setAttribute("aria-labelledby", detail ? "msDetailTitle" : "msFlowTitle");
+  for (const x of $("msFlow").querySelectorAll(".ms-popx")) if (f || !x.id) x.remove();   // the playlist page's X goes with the share form, or once a closed one has faded
+  if (!f && !detail) {
+    if (!wrap.hidden) {
+      wrap.hidden = true;
+      $("msOverlay").classList.remove("ms-flow-open");
+      page.forEach((el) => { el.inert = false; });
+      // what it held stays drawn while it fades, without its ids, so nothing finds it as if it were open
+      for (const el of [...$("msFlow").querySelectorAll("#msFlowHead [id], #msFlowBody [id], #msFlowFoot [id]"), $("msPopClose")]) if (el) el.removeAttribute("id");
+    }
     return;
   }
   const head = $("msFlowHead"), body = $("msFlowBody"), foot = $("msFlowFoot");
@@ -550,6 +560,14 @@ function renderFlowPopup() {
   body.textContent = "";
   foot.textContent = "";
   foot.hidden = true;
+  if (detail) {
+    renderDetail(body);
+    if (!sharing.detail) return;   // its playlist is gone: it closed itself and drew again
+    if (!$("msPopClose")) $("msFlow").appendChild(feEl("button", { type: "button", id: "msPopClose", class: "ms-popx", "aria-label": "Close", onClick: () => closeDetail() }, feIcon("close")));
+    body.scrollTop = keepScroll;
+    showFlowPopup(wrap, page);
+    return;
+  }
   head.appendChild(feEl("h2", { class: "ms-flowtitle", id: "msFlowTitle" }, f.mode === "edit" ? "Edit details" : f.mode === "done" ? "Shared" : "Share a playlist"));
   head.appendChild(feEl("button", { type: "button", id: "msFlowClose", class: "ms-flowclose", "aria-label": "Close", onClick: closeFlow }, feIcon("close")));
   renderFlow(body, foot);
@@ -557,12 +575,14 @@ function renderFlowPopup() {
   // its buttons have ids of their own, since the page under it may have its own main button and Back
   for (const [from, to] of [["msMain", "msFlowMain"], ["msBack", "msFlowBack"]]) { const el = $("msFlow").querySelector("#" + from); if (el) el.id = to; }
   body.scrollTop = keepScroll;
-  if (wrap.hidden) {
-    wrap.hidden = false;
-    $("msOverlay").classList.add("ms-flow-open");
-    page.forEach((el) => { el.inert = true; });
-    $("msFlow").focus({ preventScroll: true });
-  }
+  showFlowPopup(wrap, page);
+}
+function showFlowPopup(wrap, page) {
+  if (!wrap.hidden) return;
+  wrap.hidden = false;
+  $("msOverlay").classList.add("ms-flow-open");
+  page.forEach((el) => { el.inert = true; });
+  $("msFlow").focus({ preventScroll: true });
 }
 function flowTop() { if ($("msFlowBody")) $("msFlowBody").scrollTop = 0; }
 function closeFlow() {
@@ -864,13 +884,16 @@ function shareRow(s, ov) {
 function getError(s) {
   return problemBox("Couldn\u2019t get it", sharing.addErrors[s.id], [{ label: "Try again", run: (e) => { e.stopPropagation(); addShared(s); } }]);
 }
-// A page slides in from the right, pushing the one before out to the left; going back reverses it. The list keeps where it was scrolled to.
+// A playlist's page opens in the popup over the list (Ron, 2026-11-10), which stays where it was scrolled to under it.
 function openDetail(id) {
-  sharing.listScroll = $("msBody").scrollTop;
-  slideBody(1, () => { sharing.detail = id; sharing.showOverlapSongs = false; renderSharing(); $("msBody").scrollTop = 0; });
+  sharing.detail = id;
+  sharing.showOverlapSongs = false;
+  renderSharing();
+  flowTop();
 }
 function closeDetail() {
-  slideBody(-1, () => { sharing.detail = null; renderSharing(); $("msBody").scrollTop = sharing.listScroll || 0; });
+  sharing.detail = null;
+  renderSharing();
 }
 // the old page stays drawn as an untouchable copy while it leaves
 function pageGhost(body) {
@@ -886,16 +909,6 @@ function pageGhost(body) {
   body.after(ghost);
   ghost.scrollTop = top;
   return ghost;
-}
-// a playlist's page comes in over the list from the right, and goes back the same way
-function slideBody(dir, change) {
-  const body = $("msBody");
-  if (typeof motionAllowed !== "function" || !motionAllowed(body)) { change(); return; }
-  const ghost = pageGhost(body);
-  change();
-  const opts = { duration: 320, easing: EASE_OUT };
-  ghost.animate([{ transform: "translateX(0)", opacity: 1 }, { transform: `translateX(${-dir * 40}%)`, opacity: 0 }], opts).onfinish = () => ghost.remove();
-  body.animate([{ transform: `translateX(${dir * 100}%)` }, { transform: "translateX(0)" }], opts);
 }
 // another tab: the old page moves half its width away and fades as the new one comes from half its width
 // on the other side (Ron, 2026-11-09, mockups/sharing-motion.html B with half a screen)
@@ -921,11 +934,13 @@ function menuLeaves(menu, rect) {
   menu.setAttribute("aria-hidden", "true");
   menu.inert = true;
   for (const el of [menu, ...menu.querySelectorAll("[id]")]) el.removeAttribute("id");
-  const box = $("msDialog").getBoundingClientRect();
+  const host = popupHost(), box = host.getBoundingClientRect();
   Object.assign(menu.style, { position: "absolute", left: rect.left - box.left + "px", top: rect.top - box.top + "px", width: rect.width + "px", height: rect.height + "px", right: "auto", bottom: "auto", margin: "0" });
-  $("msDialog").appendChild(menu);
+  host.appendChild(menu);
   playMotion(menu, "menu", false).onfinish = () => menu.remove();
 }
+// where a leaving menu or the sheet after a Get is drawn: the popup while it is open, else the page
+const popupHost = () => ($("msFlowWrap") && !$("msFlowWrap").hidden ? $("msFlow") : $("msDialog"));
 function isMine(s) {
   if (sharing.mine) return sharing.mine.some((m) => m.id === s.id);
   try { return (JSON.parse(localStorage.getItem(SHARING_MINE_KEY)) || []).includes(s.id); } catch (err) { return false; }
@@ -938,17 +953,17 @@ function phaseLine(s) {
   return feEl("div", { class: "ms-phase-line" }, who, ...names);
 }
 // A playlist's page: its cover, type, name, who and how long; what its type says; the description, with Report right under what the sharer typed
-// (none when nothing was typed); the songs with previews. Back at the top; Get this playlist wide under the header (B), or on the person's own,
+// (none when nothing was typed); the songs with previews. Get this playlist wide under the header (B), or on the person's own,
 // a Details card with Edit details (A). No bottom row, so it does not look like a step of the wizard (decided by Ron, 2026-11-08).
-function renderDetail(body, foot) {
+// It is drawn in the popup (#msFlowBody), closed with its X.
+function renderDetail(body) {
   const s = sharing.library && sharing.library.shares.find((x) => x.id === sharing.detail);
   if (!s) { sharing.detail = null; renderSharing(); return; }
   const mine = isMine(s) && sharing.mine && sharing.mine.find((m) => m.id === s.id);
-  body.appendChild(feEl("button", { type: "button", class: "ms-backlink", id: "msBack", onClick: () => closeDetail() }, feIcon("back"), "Back"));
   body.appendChild(feEl("div", { class: "ms-hero" }, shareCoverEl(s, "ms-cover ms-cover-big"),
     feEl("div", { class: "ms-hero-text" },
       feEl("div", { class: "ms-klabel" }, kindName(s.kind) === "Other" ? s.other : kindName(s.kind)),
-      feEl("h3", { text: s.name }),
+      feEl("h3", { id: "msDetailTitle", text: s.name }),
       feEl("div", { class: "ms-sub" }, isMine(s) ? "Shared by you" : s.by ? `Shared by ${s.by}` : "Shared anonymously"),
       feEl("div", { class: "ms-sub" }, `${songCountText(s.count)} · ${lengthText(s.ms / 60000)}`))));
   if (!isMine(s)) { const get = addButton(s, true); get.classList.add("ms-getwide"); body.appendChild(get); }
@@ -1001,7 +1016,7 @@ function offerToShare(s) {
         : mainButton("OK", () => closeSheet(), { id: "msGotOk" })));
   sheet.appendChild(panel);
   sheet.addEventListener("click", (e) => { if (e.target === sheet) closeSheet(); });
-  $("msDialog").appendChild(sheet);
+  popupHost().appendChild(sheet);   // inside the popup when it is open, so it rises over the playlist's page
   if (typeof motionAllowed === "function" && motionAllowed(panel)) {
     sheet.animate([{ backgroundColor: "rgba(0,0,0,0)" }, { backgroundColor: "rgba(0,0,0,0.55)" }], { duration: 220, easing: EASE_OUT });
     panel.animate([{ transform: "translateY(100%)" }, { transform: "translateY(0)" }], { duration: 300, easing: EASE_OUT });
@@ -1109,7 +1124,7 @@ function openSongMenu(s, i, names) {
 }
 // The menu opens down from its ⋯, or up when the list cannot scroll far enough to show it whole
 function placeSongMenu() {
-  const menu = $("msSongMenu"), body = $("msBody"), m = sharing.songMenu;
+  const menu = $("msSongMenu"), body = $("msFlowBody"), m = sharing.songMenu;
   if (!menu || !body || !m || !menu.getBoundingClientRect) return;
   menu.classList.remove("ms-up");
   const box = body.getBoundingClientRect(), r = menu.getBoundingClientRect();
@@ -1136,7 +1151,7 @@ function closeSongMenu(focusButton = true) {
   const b = $("msSongMore"), menu = $("msSongMenu"), rect = menu && menu.getBoundingClientRect();
   renderSharing();
   menuLeaves(menu, rect);
-  if (focusButton && b) { const again = document.querySelector(`#msBody .ms-more[aria-label="${CSS.escape(b.getAttribute("aria-label"))}"]`); if (again) again.focus(); }
+  if (focusButton && b) { const again = document.querySelector(`#msFlowBody .ms-more[aria-label="${CSS.escape(b.getAttribute("aria-label"))}"]`); if (again) again.focus(); }
 }
 // Add to a playlist › and back: the menu's items move half its width aside and fade as the others come, and the menu eases to its new height
 function turnSongMenu(dir, change) {
@@ -1252,8 +1267,8 @@ function previewLeft() {
 }
 const PREVIEW_FADE_S = 2;   // the last two seconds fade out, so the end sounds meant
 function previewTick() {
-  setRing(document.querySelector("#msBody .ms-play-on .ms-ring"));
-  const left = document.querySelector("#msBody .ms-track-left");
+  setRing(document.querySelector("#msFlowBody .ms-play-on .ms-ring"));
+  const left = document.querySelector("#msFlowBody .ms-track-left");
   if (left) left.textContent = previewLeft();
   const d = previewAudio.duration && isFinite(previewAudio.duration) ? previewAudio.duration : 30;
   try { previewAudio.volume = Math.max(0, Math.min(1, (d - previewAudio.currentTime) / PREVIEW_FADE_S)); } catch (err) { /* iPhones set the volume themselves */ }
@@ -1504,6 +1519,7 @@ function backToDetail() {
   sharing.tab = back.tab;
   sharing.detail = back.id;
   renderSharing();
+  flowTop();
   return true;
 }
 function renderFlow(body, foot) {
@@ -2110,9 +2126,11 @@ async function loadDevReports() {
   startSharingCard();
   if ($("msClose")) $("msClose").addEventListener("click", () => closeSharing());
   if (typeof fadeWithHidden === "function") fadeWithHidden($("msFlowWrap"), "dim", $("msFlow"), "box");
+  // a tap outside a playlist's page closes it (not the share form, where it would lose what was typed)
+  if ($("msFlowWrap")) $("msFlowWrap").addEventListener("click", (e) => { if (e.target === $("msFlowWrap") && sharing.detail && !sharing.flow) closeDetail(); });
   watchKeyboard();
   document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape" || !$("msOverlay") || $("msOverlay").hidden || document.querySelector(".fe-overlay")) return;
+    if (e.key !== "Escape" || !$("msOverlay") || $("msOverlay").hidden || document.querySelector(".fe-overlay:not([hidden])")) return;
     if ($("msSheet")) closeSheet(); else if (sharing.flow) flowBack(); else if (sharing.detail) closeDetail();   // a page of its own now (Arc's home): Escape does not leave it
   });
 })();
