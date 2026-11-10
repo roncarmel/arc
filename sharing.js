@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-10h";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-10i";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -19,12 +19,12 @@ const OTHER_BOOK = BOOKS, BOOK_CODE_MAX = 2;
 const cleanBookCode = (t) => String(t || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, BOOK_CODE_MAX);
 // a book as it is named: its number, or the other book's code
 const bookName = (i, code) => (i === OTHER_BOOK ? cleanBookCode(code) || "?" : String(i + 1));
-// The types of a share, in this order everywhere, each with its icon (kindIcon) and a line for the big tiles
+// The types of a share, in this order everywhere, each with its icon (kindIcon) and the line under the share form's tiles
 const KINDS = [
-  ["ceremony", "Ceremony", "A whole session, start to finish.", "Ceremonies"],
-  ["phase", "Phase", "One or more phases of a session.", "Phases"],
-  ["mood", "Mood", "A feeling that could fit anywhere.", "Moods"],
-  ["other", "Other", "Anything else. You name it.", "Others"],
+  ["ceremony", "Ceremony", "The whole arc of a ceremony, from start to finish.", "Ceremonies"],
+  ["phase", "Phase", "Made for part of a ceremony, like the ascent or the ending.", "Phases"],
+  ["mood", "Mood", "Carries a feeling, wherever it falls in a session.", "Moods"],
+  ["other", "Other", "Anything else, under a name you choose.", "Others"],
 ];
 const SHARING_COPIES_KEY = "sharingCopies";   // { shared playlist id: the person's copy's Spotify id }
 const SHARING_BLOCKED_KEY = "sharingBlocked";   // { playlist id: { snap, why: "copy", of } }: refused as a copy of someone else's share; kept until the playlist changes in Spotify
@@ -1525,7 +1525,7 @@ function renderFlow(body, foot) {
 // under the type tiles, what the chosen type is
 function kindLine(kind) {
   const k = KINDS.find((x) => x[0] === kind);
-  return feEl("p", { class: "ms-kline", id: "msKindLine" }, feEl("b", {}, kindName(kind) + ":"), " " + k[2]);
+  return feEl("p", { class: "ms-kline", id: "msKindLine" }, k[2]);
 }
 // The playlist's card: empty, a dashed button that opens the list; chosen, the row as others will see it (type line, name, who and length)
 // with Share anonymously at its foot. A tap on it opens the list again to choose another; in Edit details the playlist is fixed.
