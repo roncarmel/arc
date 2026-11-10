@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-09m";
+const APP_VERSION = "2026-11-09n";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -265,13 +265,12 @@ function slideHome(back, change) {
   return true;
 }
 
-// The DEV capsule sits in home's pink band at its lower right (Arc's bar is hidden on home), and in Arc's bar in the tools
+// The DEV capsule floats at the screen's lower right (fixed, in <body>, so no band, bar or transform holds it)
 function placeDevPill() {
-  const wrap = $("devWrap"), band = document.querySelector("#homePage .hp-band"), menu = $("feAppMenu");
-  if (!wrap || !band || !menu) return;
+  const wrap = $("devWrap");
+  if (!wrap) return;
   if (typeof showDevMenu === "function") showDevMenu(false);
-  if (appView === "home") { if (wrap.parentNode !== band) band.appendChild(wrap); }
-  else if (wrap.nextElementSibling !== menu) menu.parentNode.insertBefore(wrap, menu);
+  if (wrap.parentNode !== document.body) document.body.appendChild(wrap);
 }
 placeDevPill();
 
