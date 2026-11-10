@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-09j";
+const APP_VERSION = "2026-11-09k";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -659,11 +659,34 @@ function updateStep(text) {
 }
 
 // ---------------------------------------------------------------- the launch screen
-// Opened from an iPhone's Home Screen, the script in index.html's <head> puts up a launch screen like an app's: the icon, the name and the tagline, and at the foot a
-// spinner with the step under way (the update card's steps). It stays until signed in, playlists read, recipes settled and Python ready, so the page settles out of
-// sight, then fades to the app. A start with no sign-in ends it as soon as that is known; anything that needs the page (a question, the pause popup, a startup problem)
-// ends it at once. Not in a browser tab. Decided by Ron, 2026-11-07 (mockup C).
+// Opened from an iPhone's Home Screen, the script in index.html's <head> puts up a launch screen like an app's: home's pink band in the middle of the screen and the
+// step under way under it (the update card's steps). It stays until signed in, playlists read, recipes settled and Python ready, so the page settles out of sight.
+// Then Ready, and the band glides up to where home's own band sits while home's parts rise in under it (decided by Ron, 2026-11-09, mockups/launch-band.html B).
+// A start with no sign-in ends it as soon as that is known; anything that needs the page (a question, the pause popup, a startup problem) ends it at once, by fading.
+// Not in a browser tab, except from the DEV menu's Launch screen (launchTest in sessionStorage, "slow" for a third of the speed).
 let launchScreen = document.documentElement.classList.contains("launching");
+let launchSlow = 1;
+if (launchScreen) {
+  try { launchSlow = sessionStorage.getItem("launchTest") === "slow" ? 3 : 1; sessionStorage.removeItem("launchTest"); } catch (err) { /* a Home Screen app */ }
+  $("launchScreen").style.setProperty("--ls-x", launchSlow);
+}
+
+// The band over home's own band (left, width, top), moved down to the middle of the screen, a little above it so the step line under it is in the middle too
+function placeLaunchBand() {
+  const mid = $("launchScreen").querySelector(".ls-mid"), home = $("homePage").querySelector(".hp-band");
+  const rect = home.getBoundingClientRect();
+  if (!rect.width) return;   // home is not shown: the band stays in the middle by CSS
+  mid.classList.add("ls-placed");
+  mid.style.left = rect.left + "px";
+  mid.style.width = rect.width + "px";
+  mid.style.top = rect.top + "px";
+  mid.style.transform = `translateY(${Math.max(0, Math.round((window.innerHeight - rect.height) / 2 - 20 - rect.top))}px)`;
+}
+if (launchScreen) {
+  placeLaunchBand();
+  window.addEventListener("resize", () => { if (launchScreen) placeLaunchBand(); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(placeLaunchBand);
+}
 
 function endLaunchScreen() {
   if (!launchScreen) return;
@@ -673,18 +696,44 @@ function endLaunchScreen() {
   setTimeout(() => { document.documentElement.classList.remove("launching"); screen.classList.remove("ls-out", "ls-ready"); }, 800);   // after the fade, slower than the other screens' (Ron, 2026-11-07)
 }
 
+// Home's parts under the band, each tool's card on its own, in the order they rise
+function launchParts() {
+  return [...$("homePage").children].flatMap((el) => el.classList.contains("hp-tools") ? [...el.children] : [el]).filter((el) => !el.classList.contains("hp-band") && el.getClientRects().length);
+}
+
+// The band glides to home's band, the background goes and home's parts rise in one after another; then home's band takes over in the same place. Only on home, with motion.
+async function glideLaunchScreen() {
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!document.documentElement.classList.contains("view-home") || still) return endLaunchScreen();
+  launchScreen = false;
+  const screen = $("launchScreen"), root = document.documentElement;
+  placeLaunchBand();   // measured again, in case the page moved under it
+  let i = 0;
+  for (const part of launchParts()) part.style.setProperty("--ls-i", i++);
+  root.style.setProperty("--ls-x", launchSlow);
+  void screen.offsetHeight;
+  screen.classList.add("ls-glide");
+  root.classList.add("ls-arrive");
+  await new Promise((r) => setTimeout(r, 750 * launchSlow));
+  root.classList.remove("launching");
+  screen.classList.remove("ls-glide", "ls-ready");
+  await new Promise((r) => setTimeout(r, (350 + i * 70 + 520) * launchSlow));   // the last part has risen
+  root.classList.remove("ls-arrive");
+  root.style.removeProperty("--ls-x");
+  for (const part of launchParts()) part.style.removeProperty("--ls-i");
+}
+
 // A start that ended ready says so: a pink check and Ready for a moment, and the screen is up at least LAUNCH_MIN_MS in all, so a fast start does not
 // flash it by (Ron, 2026-11-07, option A over an Open button to tap every launch). A start that did not end ready goes at once, so the problem shows.
 const LAUNCH_MIN_MS = 2000, LAUNCH_READY_MS = 1050;
 async function finishLaunchScreen(ready) {
   if (!launchScreen) return;
-  if (ready) {
-    $("launchScreen").classList.add("ls-ready");
-    $("lsStep").textContent = "Ready";
-    const shown = typeof performance !== "undefined" && performance.now ? performance.now() : 0;   // since the page began, when the screen went up
-    await new Promise((r) => setTimeout(r, Math.max(LAUNCH_READY_MS, LAUNCH_MIN_MS - shown)));
-  }
-  endLaunchScreen();
+  if (!ready) return endLaunchScreen();
+  $("launchScreen").classList.add("ls-ready");
+  $("lsStep").textContent = "Ready";
+  const shown = typeof performance !== "undefined" && performance.now ? performance.now() : 0;   // since the page began, when the screen went up
+  await new Promise((r) => setTimeout(r, Math.max(LAUNCH_READY_MS * launchSlow, LAUNCH_MIN_MS - shown)));
+  if (launchScreen) await glideLaunchScreen();   // a question may have taken it down meanwhile
 }
 
 function getUpdate() {
@@ -3537,6 +3586,13 @@ async function main() {
     if (choice === "yes") await startOver();
   });
   on("devCopyRecord", "click", () => { showDevMenu(false); copyLimitRecord(); });
+  // Launch screen: the page again with the launch screen, as a Home Screen app starts (Slow: a third of the speed)
+  for (const button of document.querySelectorAll("#devMenu [data-launch]")) {
+    button.addEventListener("click", () => {
+      try { sessionStorage.setItem("launchTest", button.dataset.launch); } catch (e) {}
+      pageWindow().location.reload();
+    });
+  }
   // Phone width: kept in this browser; the outer page reloads to put the page in its frame, or out of it
   for (const button of document.querySelectorAll("#devMenu [data-width]")) {
     button.addEventListener("click", () => {

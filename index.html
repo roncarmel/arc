@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-09j">
-<script src="theme.js?v=2026-11-09j"></script>
+<meta name="app-version" content="2026-11-09k">
+<script src="theme.js?v=2026-11-09k"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -157,22 +157,34 @@
   #updateScreen.us-done .us-busy { display: none; }
   #updateScreen.us-done #usOk { display: block; animation: cn-rise 450ms var(--ease-out) both; }
   @media (prefers-reduced-motion: reduce) { #updateScreen, #updateScreen .us-card, #usOk { transition: none; animation: none !important; } #updateScreen .us-spin { animation: none; } #updateScreen .bd-spark { display: none; } }
-  /* The launch screen: opened from an iPhone's Home Screen, the app starts like an app. The icon in soft rings, the name and the tagline, and at the foot a spinner with
-     the step under way, until Spotify and Python are ready; then it fades to the app (launchScreen in app.js). Not in a browser tab. Decided by Ron, 2026-11-07 (mockup C). */
-  #launchScreen { display: none; position: fixed; inset: 0; z-index: 1500; flex-direction: column; align-items: center; justify-content: center; padding: 0 16px; background: var(--bg); color: var(--fg); text-align: center; transition: opacity 800ms var(--ease-out); }
-  html.launching #launchScreen { display: flex; }
+  /* The launch screen: opened from an iPhone's Home Screen, the app starts like an app. Home's pink band in the middle of the screen with the step under way under it,
+     until Spotify and Python are ready; then Ready, and the band glides up to where home's own band sits while home's parts rise in under it, one after another
+     (launchScreen in app.js). Not in a browser tab, except from the DEV menu's Launch screen. Decided by Ron, 2026-11-07 (mockup C), redone 2026-11-09 (mockups/launch-band.html B). */
+  #launchScreen { display: none; position: fixed; inset: 0; z-index: 1500; color: var(--fg); transition: opacity 800ms var(--ease-out); }
+  html.launching #launchScreen { display: block; }
+  html.launching #homePage .hp-band { visibility: hidden; }   /* the launch screen's band takes its place, and gives it back where it sits */
   #launchScreen.ls-out { opacity: 0; pointer-events: none; }
-  #launchScreen > img { width: 96px; height: 96px; border-radius: 22px; box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent) 10%, transparent), 0 0 0 22px color-mix(in srgb, var(--accent) 5%, transparent); }
-  #launchScreen .ls-name { margin: 30px 0 0; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em; }
-  #launchScreen .ls-tag { margin: 4px 0 0; color: var(--muted); font-size: 0.85rem; }
-  #launchScreen .ls-foot { position: absolute; left: 16px; right: 16px; bottom: calc(56px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--muted); font-size: 0.8rem; }
+  #launchScreen .ls-shade { position: absolute; inset: 0; background: var(--bg); }
+  /* the band and the step line, placed by placeLaunchBand over home's band (left, width, top) and moved down to the middle; before that, in the middle by CSS */
+  #launchScreen .ls-mid { position: absolute; left: 16px; right: 16px; top: 50%; max-width: 560px; margin: 0 auto; transform: translateY(-50%); }
+  #launchScreen .ls-mid.ls-placed { right: auto; margin: 0; }
+  #launchScreen .ls-band { margin: 0; }
+  #launchScreen .ls-foot { position: absolute; left: 0; right: 0; top: calc(100% + 26px); display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--muted); font-size: 0.85rem; text-align: center; }
   #launchScreen .ls-spin { width: 13px; height: 13px; flex: none; box-sizing: border-box; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--accent) 25%, transparent); border-top-color: var(--accent); animation: cn-spin 0.9s linear infinite; }
-  /* ready: the spinner gives way to a pink check and Ready for a moment before the fade (finishLaunchScreen) */
+  /* ready: the spinner gives way to a pink check and Ready for a moment before the glide (finishLaunchScreen) */
   #launchScreen .ls-ok { display: none; width: 16px; height: 16px; flex: none; border-radius: 50%; background: var(--button); align-items: center; justify-content: center; }
   #launchScreen.ls-ready .ls-spin { display: none; }
   #launchScreen.ls-ready .ls-ok { display: inline-flex; animation: ls-pop 400ms var(--ease-out) both; }
   #launchScreen.ls-ready .ls-foot { color: var(--fg); font-weight: 600; font-size: 0.9rem; }
   @keyframes ls-pop { from { transform: scale(0.3); opacity: 0; } 60% { transform: scale(1.2); opacity: 1; } }
+  /* the glide (class ls-glide, timed by --ls-x: 1, or 3 for the DEV menu's Slow): the step line fades, the band moves up, the background goes, and home's parts rise in turn */
+  #launchScreen { --ls-x: 1; }
+  #launchScreen.ls-glide { pointer-events: none; }
+  #launchScreen.ls-glide .ls-foot { opacity: 0; transition: opacity calc(200ms * var(--ls-x)) ease; }
+  #launchScreen.ls-glide .ls-mid { transform: none !important; transition: transform calc(700ms * var(--ls-x)) var(--ease-out); }
+  #launchScreen.ls-glide .ls-shade { opacity: 0; transition: opacity calc(200ms * var(--ls-x)) ease calc(250ms * var(--ls-x)); }
+  html.ls-arrive #homePage > :not(.hp-band, .hp-tools), html.ls-arrive #homePage .hp-tools > * { animation: ls-rise calc(520ms * var(--ls-x, 1)) var(--ease-out) both; animation-delay: calc((350ms + var(--ls-i, 0) * 70ms) * var(--ls-x, 1)); }
+  @keyframes ls-rise { from { opacity: 0; transform: translateY(14px); } }
   @media (prefers-reduced-motion: reduce) { #launchScreen { transition: none; } #launchScreen .ls-spin, #launchScreen.ls-ready .ls-ok { animation: none; } }
   @media (prefers-reduced-motion: reduce) { #connectingScreen, .cn-step { transition: none; } .cn-active .cn-mark::before, .cn-mid::before { animation: none; } #connectingScreen.cn-finished .cn-finish, #connectingScreen.cn-finished .cn-go { animation: none; } }
   details.about summary { cursor: pointer; font-weight: 600; color: var(--accent); }
@@ -1737,7 +1749,8 @@
     // just updated (Get it): the update card stays up over the app until it is ready (updateScreen in app.js); the mark is used once
     try { if (sessionStorage.getItem("updating")) { sessionStorage.removeItem("updating"); if (page === "app" && !document.documentElement.classList.contains("connecting")) document.documentElement.classList.add("updating"); } } catch (err) { /* no storage: no card */ }
     // opened from an iPhone's Home Screen: the launch screen until the app is ready (launchScreen in app.js), unless another screen already covers it
-    try { var cls = document.documentElement.classList; if (page === "app" && (navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)) && !cls.contains("connecting") && !cls.contains("updating")) cls.add("launching"); } catch (err) { /* no launch screen */ }
+    // (or from the DEV menu's Launch screen, in any tab: the launchTest mark, used once by app.js)
+    try { var cls = document.documentElement.classList; if (page === "app" && (navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || sessionStorage.getItem("launchTest")) && !cls.contains("connecting") && !cls.contains("updating")) cls.add("launching"); } catch (err) { /* no launch screen */ }
     try { if (localStorage.getItem("devMode") === "1") document.documentElement.classList.add("dev-mode"); } catch (err) { /* no storage: regular mode */ }   // developer mode (devMode in editor.js)
     document.documentElement.classList.add("page-" + page, "view-home");   // the app page always opens on Arc's home (showView in app.js)
   })();
@@ -1750,7 +1763,7 @@
 </head>
 <body>
 <div id="vtCover" aria-hidden="true"></div>
-<div id="launchScreen" role="status" aria-live="polite"><img src="arc-mark.png" alt=""><p class="ls-name">Arc</p><p class="ls-tag">Ceremony playlist tools for your Spotify library</p><div class="ls-foot"><span class="ls-spin" aria-hidden="true"></span><span class="ls-ok" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span id="lsStep">Starting</span></div></div>
+<div id="launchScreen" role="status" aria-live="polite"><div class="ls-shade"></div><div class="ls-mid"><div class="wp-band ls-band"><span class="wp-band-icon" aria-hidden="true"></span><div class="wp-band-text"><p class="wp-band-name">Arc</p><p class="wp-band-tag">Ceremony playlist tools<br> for your Spotify library</p></div></div><div class="ls-foot"><span class="ls-spin" aria-hidden="true"></span><span class="ls-ok" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span id="lsStep">Starting</span></div></div></div>
 <div id="connectingScreen" role="status">
   <div class="cn-page">
     <div class="wp-band"><span class="wp-band-icon" aria-hidden="true"></span><div class="wp-band-text"><p class="wp-band-name">Arc</p><p class="wp-band-tag">Ceremony playlist tools<br> for your Spotify library</p></div></div>
@@ -1986,7 +1999,7 @@
   <div id="appBar">
     <span class="ab-left"><button id="appHome" class="ab-home" type="button" aria-label="Home"><img src="arc-mark.png" alt="" width="44" height="44"><span class="ab-name">Arc</span></button><span class="ab-sep" aria-hidden="true">/</span><button id="appTool" class="ab-tool" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="appToolMenu"><span id="appToolName" class="ab-tool-name"></span><svg class="ab-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></span>
     <div id="appToolMenu" class="ab-menu" role="menu" aria-label="Tools" hidden><button type="button" class="ab-mi" role="menuitemradio" aria-checked="false" data-view="builder"><span class="ab-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="4" rx="2"/><rect x="3" y="10" width="12" height="4" rx="2"/><rect x="3" y="15.5" width="15" height="4" rx="2"/></svg></span><span class="ab-mi-text"><b>Playlist builder</b><small>Ceremony playlists, ready in minutes.</small></span><svg class="ab-tick" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><button type="button" class="ab-mi" role="menuitemradio" aria-checked="false" data-view="sharing"><span class="ab-glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5L4 7l3.5 3.5M4 7h15M16.5 13.5L20 17l-3.5 3.5M20 17H5"/></svg></span><span class="ab-mi-text"><span class="ab-soon">Coming soon</span><b>Shared music library</b><small>Bring some, get some!</small></span><svg class="ab-tick" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><div class="ab-rule" aria-hidden="true"></div><button type="button" class="ab-mi ab-mi-home" role="menuitem" data-view="home"><span class="ab-homeic" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/></svg></span><span class="ab-mi-text"><b>Arc home</b></span></button></div>
-<span id="devWrap" class="dm-wrap"><button id="devPill" class="dm-pill" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="devMenu">DEV</button><div id="devMenu" class="dm-menu" role="menu" hidden><button id="devMenuOff" class="dm-head" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.3 7.5a8 8 0 1 0 11.4 0"/></svg><span>Turn off developer mode</span></button><button id="devMenuMoods" class="dm-item" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/></svg><span>Manage mood words</span><span id="devMoodsCount" class="dm-end"></span></button><button id="devMenuReports" class="dm-item" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Review reports</span><span id="devReportsCount" class="dm-end"></span></button><div class="dm-item dm-width" role="group" aria-label="Phone width"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/></svg><span>Phone width</span><span class="dm-seg"><button type="button" data-width="" aria-pressed="false">Off</button><button type="button" data-width="360" aria-pressed="false">360</button><button type="button" data-width="320" aria-pressed="false">320</button></span></div><button id="devCopyRecord" class="dm-item" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span>Copy Spotify request log</span></button><button id="devStartOver" class="dm-item dm-red" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span>Clear data and start over</span></button><div id="pythonStatus" class="dm-foot">Starting Python...</div></div></span>
+<span id="devWrap" class="dm-wrap"><button id="devPill" class="dm-pill" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="devMenu">DEV</button><div id="devMenu" class="dm-menu" role="menu" hidden><button id="devMenuOff" class="dm-head" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.3 7.5a8 8 0 1 0 11.4 0"/></svg><span>Turn off developer mode</span></button><button id="devMenuMoods" class="dm-item" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/></svg><span>Manage mood words</span><span id="devMoodsCount" class="dm-end"></span></button><button id="devMenuReports" class="dm-item" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Review reports</span><span id="devReportsCount" class="dm-end"></span></button><div class="dm-item dm-width" role="group" aria-label="Phone width"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/></svg><span>Phone width</span><span class="dm-seg"><button type="button" data-width="" aria-pressed="false">Off</button><button type="button" data-width="360" aria-pressed="false">360</button><button type="button" data-width="320" aria-pressed="false">320</button></span></div><div class="dm-item dm-width" role="group" aria-label="Launch screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg><span>Launch screen</span><span class="dm-seg"><button type="button" data-launch="1">Play</button><button type="button" data-launch="slow">Slow</button></span></div><button id="devCopyRecord" class="dm-item" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span>Copy Spotify request log</span></button><button id="devStartOver" class="dm-item dm-red" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span>Clear data and start over</span></button><div id="pythonStatus" class="dm-foot">Starting Python...</div></div></span>
     <div class="fe-appmenuwrap" id="feAppMenu"></div>
   </div>
   <div id="devToast" class="dm-toast" role="status" aria-live="polite" hidden><span class="dm-toast-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg></span><span id="devToastText"></span></div>
@@ -2299,10 +2312,10 @@
     <div id="msFoot" hidden></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-09j"></script>
-<script src="editor.js?v=2026-11-09j"></script>
-<script src="shared-spotify.js?v=2026-11-09j"></script>
-<script src="app.js?v=2026-11-09j"></script>
-<script src="sharing.js?v=2026-11-09j"></script>
+<script src="formats.js?v=2026-11-09k"></script>
+<script src="editor.js?v=2026-11-09k"></script>
+<script src="shared-spotify.js?v=2026-11-09k"></script>
+<script src="app.js?v=2026-11-09k"></script>
+<script src="sharing.js?v=2026-11-09k"></script>
 </body>
 </html>
