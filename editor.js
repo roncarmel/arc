@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-10r";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-10s";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -841,8 +841,8 @@ function renderAppMenu() {
   const buildAll = feEl("button", { type: "button", class: "fe-item", id: "feBuildAll", role: "menuitem", disabled: typeof canBuildAll === "function" && !canBuildAll(), onClick: choose(() => buildAllRecipes()) }, feIcon("sparkle"), "Build all recipes");
   const top = [...spotifyItems, ...(backupBlock ? [...(spotifyItems.length ? [rule()] : []), backupBlock] : [])];
   panel(...top, ...(top.length ? [rule()] : []),
-    tutorial, ...help, rule(),
-    buildAll, infoItem("feRemoveBuilt", "removeSection", "trash", "Remove built playlists"), infoItem("feSaveMethod", "saveMethodSection", "cloud", "Autosave or backup"), rule(),
+    tutorial, rule(), ...help, rule(),
+    buildAll, infoItem("feRemoveBuilt", "removeSection", "trash", "Remove built playlists"), feEl("button", { type: "button", class: "fe-item", id: "feSaveMethod", role: "menuitem", onClick: choose(() => openBackupCard()) }, feIcon("cloud"), "Autosave or backup"), rule(),
     version());
 }
 

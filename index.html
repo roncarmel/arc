@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-10r">
-<script src="theme.js?v=2026-11-10r"></script>
+<meta name="app-version" content="2026-11-10s">
+<script src="theme.js?v=2026-11-10s"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -249,12 +249,6 @@
   .choice-row { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 0 0 8px; cursor: pointer; }
   .choice-row input { width: 20px; height: 20px; accent-color: var(--button); flex: none; }
   .choice-note { margin: -4px 0 12px 30px; font-size: 0.9rem; }
-  #backupCard { margin: 12px 0; }
-  /* Opened from the app menu, the card is a popup over the page, so it never moves the editor (in minimalist mode too) and its Done button is never out of reach. Before a way is chosen it stays in the page. */
-  #backupBackdrop { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 1099; background: rgba(0, 0, 0, 0.65); }
-  #backupCard.opened { position: fixed; z-index: 1100; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(480px, calc(100vw - 32px)); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); margin: 0; overflow-y: auto; box-sizing: border-box; box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5); overscroll-behavior: contain; }
-  #backupCard.opened #backupDoneRow { position: sticky; bottom: 0; margin: 8px 0 0; padding-top: 10px; background: var(--card); }
-  body.backup-card-open { overflow: hidden; }
   #actionMessage, #removeMessage { white-space: pre-line; }
   footer.debug { margin-top: 32px; font-size: 0.95rem; }
   details.card > summary { cursor: pointer; font-weight: 600; color: var(--accent); }
@@ -607,7 +601,7 @@
   .swatch { width: 18px; height: 18px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.55); }
   /* minimalist mode: the page with only what is needed. The headings and explanations of the steps, the "more about" box, the Spotify
      connection once it is made, and the backup step all go; the app menu has the backup and sign-out. */
-  body.minimal #backupCard:not(.opened), body.minimal #savedNoteSpotify, body.minimal #spotifySaveLine, body.minimal main > #about, body.minimal #connectedSection, body.minimal #editHeading, body.minimal #savedNote,
+  body.minimal #savedNoteSpotify, body.minimal #spotifySaveLine, body.minimal main > #about, body.minimal #connectedSection, body.minimal #editHeading, body.minimal #savedNote,
   body.minimal #createHeading, body.minimal #createNote, body.minimal #backupBlock, body.minimal #formatHelp, body.minimal footer, body.minimal #loginSection, body.minimal #connectionProblem { display: none; }
   /* the page's title goes (once the editor is there), and the icon takes its place at the left of the tabs, as tall as they are */
   body.minimal.has-editor h1.brand { display: none; }
@@ -747,12 +741,13 @@
   .mf-form .mf-sent p { font-size: 0.8rem; }
   .mf-form .mf-error:not(:empty) { margin-top: 12px; }
   .mf-form .mf-send { display: flex; width: 100%; justify-content: center; margin: 14px 0 10px; min-height: 46px; border-radius: 14px; font-weight: 700; }
+  .mf-form .dlg-foot .mf-send { margin: 0; min-height: 50px; border-radius: 12px; }
   .mf-form .mf-send:disabled { opacity: 0.4; cursor: default; }
   .mf-form.mf-sending .mf-send { opacity: 0.6; }
   .mf-done { text-align: center; padding: 10px 6px 12px; }
   .mf-done .mf-ok { width: 56px; height: 56px; margin: 0 auto 12px; border-radius: 50%; background: var(--accent); color: var(--on-button, #fff); display: grid; place-items: center; }
   .mf-done b { display: block; color: var(--fg); font-size: 1.05rem; margin-bottom: 4px; }
-  #reportBlock > .mf-form, #reportBlock > .mf-done { margin-left: 0; }   /* the panel's own title says it; in the info popup the pink band does */
+  #reportBlock > .mf-form, #reportBlock > .mf-done { margin-left: 0; }
   html:not(.dev-mode) #privacyMusicSharing { display: none; }   /* Music sharing is Coming soon outside developer mode */
   #homeMore .pv-list { padding-left: 1.3em; }
   #homeMore .pv-list li { margin-bottom: 6px; }
@@ -1043,21 +1038,51 @@
   #infoDialog details.card, #infoDialog .card { background: none; border: none; padding: 0; margin: 0; }
   /* the title and the Close button sit in a header that never scrolls; only the part below it does */
   #infoDialog { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
-  /* the title sits in a band like the app menu's header, without the icon */
-  #infoHeader { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; margin-bottom: 6px; background: var(--accent-deep, #a8217c); background: linear-gradient(135deg, var(--accent-deep, #a8217c), color-mix(in srgb, var(--accent-deep, #a8217c) 76%, #fff 24%)); color: var(--on-deep, #fff); }
-  /* below about 350 px the title shrinks with the room beside the Close button (the screen less about 140 px), so a long title stays on one line at 320 px */
-  #infoTitle { margin: 0; font-size: min(1.2rem, calc((100vw - 140px) / 11)); font-weight: 700; letter-spacing: 0.01em; line-height: 1.3; color: var(--on-deep, #fff); display: flex; align-items: center; gap: 10px; min-width: 0; }
-  #infoTitle .info-ticon { flex: none; display: flex; }
-  #infoTitle .info-ticon svg { width: 22px; height: 22px; }
+  /* in the build popup's style (Ron, 2026-11-10, mockups/menu-dialogs.png): a bold title, a round grey X, a line under them; centered and 440 px wide from 501 px, a sheet from the bottom on phones */
+  #infoDialog { max-width: 440px; }
+  @media (max-width: 500px) {
+    #infoOverlay { align-items: flex-end; padding: 0; }
+    #infoDialog { max-width: none; max-height: calc(100dvh - 40px); border-radius: 22px 22px 0 0; border-bottom: 0; }
+    #infoSlot .dlg-foot { padding-bottom: max(18px, env(safe-area-inset-bottom)); }
+  }
+  #infoHeader { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 18px; padding: 16px 0 12px; border-bottom: 1px solid var(--line); }
+  /* below about 350 px the title shrinks with the room beside the X (the screen less about 140 px), so a long title stays on one line at 320 px */
+  #infoTitle { margin: 0; font-size: min(1.15rem, calc((100vw - 140px) / 11)); font-weight: 700; line-height: 1.3; color: var(--fg); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* a topic heading's icon: grey, pink while the topic is open */
   details.gd-topic > summary .gd-thead { display: flex; align-items: center; gap: 10px; min-width: 0; }
   details.gd-topic > summary .gd-ticon { flex: none; display: flex; color: var(--muted); }
   details.gd-topic > summary .gd-ticon svg { width: 18px; height: 18px; stroke-width: 2; }
   details.gd-topic[open] > summary .gd-ticon { color: var(--accent); }
-  /* a circled X, not a Close button: these popups are for reading, and the band has room for only the title */
-  #infoDialog #infoClose { flex: none; margin: 0; width: 40px; height: 40px; min-height: 0; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.16); border: 1.5px solid rgba(255, 255, 255, 0.55); color: var(--on-deep, #fff); box-shadow: none; }
-  #infoDialog #infoClose:hover { background: rgba(255, 255, 255, 0.28); }
-  #infoSlot { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 18px 18px; }
+  #infoDialog #infoClose { flex: none; margin: 0; width: 32px; height: 32px; min-height: 0; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--muted) 14%, transparent); border: 0; box-shadow: none; color: var(--muted); }
+  #infoDialog #infoClose svg { width: 14px; height: 14px; }
+  #infoDialog #infoClose:hover { background: color-mix(in srgb, var(--muted) 22%, transparent); }
+  #infoDialog #infoClose:focus:not(:focus-visible) { outline: none; }
+  #infoSlot { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 16px 18px 0; }
+  #infoSlot > :not(:has(.dlg-foot:not([hidden]))) { padding-bottom: 18px; }   /* a block with no buttons ends with room; one with buttons ends with them */
+  /* The shared dialog parts (dlg-*): the buttons at the foot, stuck to the bottom while the rest scrolls; Cancel (or Back, Done) grey and narrower beside the main one */
+  .dlg-foot { display: flex; gap: 10px; margin: 0; }
+  #infoSlot .dlg-foot { position: sticky; bottom: 0; margin: 10px -18px 0; padding: 12px 18px 18px; background: var(--bg); }
+  .dlg-foot > button { flex: 1 1 0; min-width: 0; min-height: 50px; margin: 0; border-radius: 12px; font-size: 1.05rem; font-weight: 700; justify-content: center; white-space: nowrap; }
+  .dlg-foot > :is(.dlg-cancel, .dlg-quiet) { flex: 0 0 38%; background: color-mix(in srgb, var(--muted) 14%, transparent); border-color: transparent; color: var(--fg); box-shadow: none; }
+  .dlg-foot > .dlg-wide { flex: 1 1 auto; }
+  .dlg-foot > .dlg-danger { background: #d11f2e; border-color: #d11f2e; color: #fff; }   /* the same red as the editor's Delete */
+  .dlg-foot > button:disabled { opacity: 0.4; cursor: default; }
+  #homeMore .dlg-cancel, #homeMore .dlg-popup-only { display: none; }   /* on home the forms sit in a panel, which its own X closes */
+  .dlg-label { display: block; margin: 0 0 6px; color: var(--fg); font-weight: 600; font-size: 0.9rem; }
+  .dlg-select { width: 100%; max-width: none; min-height: 46px; border-radius: 12px; margin-bottom: 10px; }
+  .dlg-list { list-style: none; padding: 0; margin: 4px 0 12px; border-top: 1px solid var(--line); color: var(--fg); }
+  .dlg-list li { padding: 10px 0; border-bottom: 1px solid var(--line); font-weight: 600; overflow-wrap: anywhere; }
+  .dlg-choice { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; margin: 0 0 10px; border: 1.5px solid var(--line); border-radius: 14px; cursor: pointer; }
+  .dlg-choice:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); }
+  .dlg-choice input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--accent); flex: none; }
+  .dlg-choice-text { display: flex; flex-direction: column; gap: 2px; }
+  .dlg-choice-text b { color: var(--fg); }
+  .dlg-choice-text b em { font-style: normal; color: var(--accent); font-weight: 600; font-size: 0.82rem; margin-left: 4px; }
+  .dlg-choice-text > span { font-size: 0.88rem; color: var(--muted); }
+  #removeDone { text-align: center; padding-top: 6px; }
+  #removeDone .mf-ok:not([hidden]) { width: 56px; height: 56px; margin: 0 auto 4px; border-radius: 50%; background: var(--accent); color: var(--on-button, #fff); display: grid; place-items: center; }
+  #infoSlot .dlg-list { padding: 0; }
+  #removeDone #removeMessage { color: var(--fg); font-weight: 600; margin: 12px 0; }
   #infoDialog details > summary, #infoSlot > :is(#reportBlock, #feedbackBlock, .menu-popup, #devMoods, #devReports) > h3:first-child { display: none; }
   /* the menu's popups: one rhythm, and everything under a heading indented a little */
   #reportBlock > :not(h3) { margin-left: 16px; }
@@ -1234,6 +1259,7 @@
   #createDialog .bd-foot .row { margin: 0; gap: 10px; flex-wrap: nowrap; }
   #createDialog .bd-foot button { flex: 1 1 0; min-height: 44px; justify-content: center; white-space: nowrap; min-width: 0; }
   #createDialog .bd-foot button { min-height: 50px; border-radius: 12px; font-size: 1.05rem; font-weight: 700; }
+  #createDialog .bd-foot #confirmNo { flex: 0 0 38%; }   /* Cancel is the smaller of the two, Build the wider */
   #createDialog .bd-foot button.bd-done { background: color-mix(in srgb, var(--muted) 14%, transparent); border-color: transparent; color: var(--fg); }
   #createDialog .bd-spin { animation: cn-spin 0.9s linear infinite; transform-origin: 50% 50%; }
   @media (prefers-reduced-motion: reduce) {
@@ -2143,9 +2169,9 @@
           <p class="muted">Never your sign-in, Client ID, playlist names or songs.</p>
         </div>
         <div class="mf-error"></div>
-        <button class="mf-send" type="submit" disabled><img class="btn-icon" src="icons/send.svg" alt="" width="20" height="20"><span class="btn-label">Send report</span></button>
+        <div class="dlg-foot"><button class="dlg-cancel" type="button">Cancel</button><button class="mf-send" type="submit" disabled><img class="btn-icon" src="icons/send.svg" alt="" width="20" height="20"><span class="btn-label">Send report</span></button></div>
       </form>
-      <div class="mf-done" hidden><span class="mf-ok" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><b>Report sent</b><p class="muted">Thank you. If you left your email, a reply comes there.</p><button class="linklike mf-again" type="button">Send another</button></div>
+      <div class="mf-done" hidden><span class="mf-ok" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><b>Report sent</b><p class="muted">Thank you. If you left your email, a reply comes there.</p><button class="linklike mf-again" type="button">Send another</button><div class="dlg-foot dlg-popup-only"><button class="dlg-cancel dlg-wide" type="button">Done</button></div></div>
       </div>
       </div>
       <div id="eeFeedback" class="hp-ee-panel" role="tabpanel" aria-labelledby="eeTabFeedback" hidden>
@@ -2160,9 +2186,9 @@
         <label class="mf-label" for="feedbackEmail">Your email <small>(optional, for a reply)</small></label>
         <input id="feedbackEmail" class="mf-email" type="email" maxlength="120" autocomplete="email" placeholder="you@example.com">
         <div class="mf-error"></div>
-        <button class="mf-send" type="submit" disabled><img class="btn-icon" src="icons/send.svg" alt="" width="20" height="20"><span class="btn-label">Send</span></button>
+        <div class="dlg-foot"><button class="dlg-cancel" type="button">Cancel</button><button class="mf-send" type="submit" disabled><img class="btn-icon" src="icons/send.svg" alt="" width="20" height="20"><span class="btn-label">Send</span></button></div>
       </form>
-      <div class="mf-done" hidden><span class="mf-ok" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><b>Sent</b><p class="muted">Thank you. If you left your email, a reply comes there.</p><button class="linklike mf-again" type="button">Send another</button></div>
+      <div class="mf-done" hidden><span class="mf-ok" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><b>Sent</b><p class="muted">Thank you. If you left your email, a reply comes there.</p><button class="linklike mf-again" type="button">Send another</button><div class="dlg-foot dlg-popup-only"><button class="dlg-cancel dlg-wide" type="button">Done</button></div></div>
       </div>
       </div>
     </div>
@@ -2171,19 +2197,6 @@
   <p id="savedNote" class="muted" hidden>You back your recipes up to this device yourself: <button id="backupDownloadLink" class="linklike" type="button">back up now</button>, and <button id="backupRestore" class="linklike" type="button">restore from a backup</button> at any time.</p>
   <input id="restoreFile" type="file" accept=".txt,text/plain" hidden>
   <p id="spotifySaveLine" class="muted"><span id="spotifySaveStatus" aria-live="polite"></span></p>
-  <div id="backupBackdrop" hidden></div>
-  <div id="backupCard" class="card" hidden>
-    <h3 id="backupCardTitle">How should your recipes be saved?</h3>
-    <p>Pick where your recipes live.</p>
-    <label class="choice-row"><input type="radio" name="backupMode" id="backupModeSpotify" value="spotify"> <span>Saved to Spotify automatically (recommended)</span></label>
-    <p class="muted choice-note">Each recipe is kept in a private playlist of its own, named like the recipe and ending in (recipe). The recipe is stored in that playlist's description, so please do not edit it.</p>
-    <label class="choice-row"><input type="radio" name="backupMode" id="backupModeManual" value="manual"> <span>Backed up to this device manually</span></label>
-    <p class="muted choice-note">Your recipes live on this device only. You back them up to a file when you choose, and restore from it when you need it.</p>
-    <div class="row" id="backupDoneRow">
-      <button id="backupCancel" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
-      <button id="backupOk" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">OK</span></button>
-    </div>
-  </div>
   <div id="formatEditor"></div>
   <p id="editorNote" class="muted" aria-live="polite"></p>
   <textarea id="formats" spellcheck="false" hidden aria-hidden="true" tabindex="-1"></textarea>
@@ -2251,7 +2264,9 @@
         <p id="createNotes" class="bd-note" hidden></p>
       </div>
       <div class="bd-foot">
+        <!-- Cancel beside Build, for whoever misses the X (Ron, 2026-11-10) -->
         <div id="confirmButtons" class="row" hidden>
+          <button id="confirmNo" class="bd-done" type="button"><span class="btn-label">Cancel</span></button>
           <button id="confirmYes" class="primary" type="button"><span class="btn-label">Build</span></button>
         </div>
         <div id="bdBusyRow" class="row" hidden>
@@ -2283,33 +2298,39 @@
 
   <footer class="debug">
     <!-- The builder menu's own popups (renderAppMenu in editor.js): each opens alone in the info popup, its h3 as the title in the pink band (Ron, 2026-11-10, replacing More options and A guide for facilitators) -->
+    <!-- Remove built playlists: three states in one popup, choosing, the question, the result (removeStage in app.js; Ron, 2026-11-10, mockups/menu-dialogs.png) -->
     <section id="removeSection" class="menu-popup" hidden>
       <h3>Remove built playlists</h3>
-      <p class="muted">Removes the playlists this app built from a recipe from your Spotify library. Your recipes and your other playlists are not touched. It only looks at playlists that match the recipe’s name, and it asks before removing anything.</p>
-      <div class="row">
-        <label for="removeKey">Built from</label>
-        <select id="removeKey" style="max-width:260px"></select>
-        <button id="removeOld" type="button" disabled><img class="btn-icon" src="icons/remove.svg" alt="" width="20" height="20"><span class="btn-label">Remove playlists</span></button>
+      <div id="removeChoose">
+        <p class="muted">Removes the playlists Arc built from a recipe. Your recipes and your other playlists are not touched.</p>
+        <label class="dlg-label" for="removeKey">Built from</label>
+        <select id="removeKey" class="dlg-select"></select>
+        <p id="removeCount" class="muted"></p>
+        <p id="removeNote" class="muted" hidden>Removing playlists needs a working connection to Spotify.</p>
+        <div class="dlg-foot"><button class="dlg-cancel" type="button">Cancel</button><button id="removeOld" class="dlg-danger" type="button" disabled><span class="btn-label">Remove playlists</span></button></div>
       </div>
-      <p id="removeNote" class="muted" hidden>Removing playlists needs a working connection to Spotify.</p>
-      <div id="removeConfirmBox" class="card" hidden>
+      <div id="removeConfirmBox" hidden>
         <p id="removeConfirmText"></p>
-        <ul id="removeConfirmList"></ul>
+        <ul id="removeConfirmList" class="dlg-list"></ul>
         <p id="removeConfirmMoreText"></p>
-        <ul id="removeConfirmMoreList"></ul>
+        <ul id="removeConfirmMoreList" class="dlg-list"></ul>
         <label id="removeToggleRow" class="choice-row" hidden><input type="checkbox" id="removeToggle"> <span id="removeToggleLabel"></span></label>
-        <div class="row">
-          <button id="removeConfirmNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
-          <button id="removeConfirmYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Remove</span></button>
-        </div>
+        <div class="dlg-foot"><button id="removeConfirmNo" class="dlg-quiet" type="button"><span class="btn-label">Back</span></button><button id="removeConfirmYes" class="dlg-danger" type="button"><span class="btn-label">Remove</span></button></div>
       </div>
-      <p id="removeMessage" aria-live="polite"></p>
-      <p id="removeReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="#" class="report-open">Report this problem</a></p>
+      <div id="removeDone" hidden>
+        <span id="removeOk" class="mf-ok" aria-hidden="true" hidden><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+        <p id="removeMessage" aria-live="polite"></p>
+        <p id="removeReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="#" class="report-open">Report this problem</a></p>
+        <div class="dlg-foot"><button class="dlg-cancel dlg-wide" type="button">Done</button></div>
+      </div>
     </section>
+    <!-- Autosave or backup: the choice itself, in one popup (it replaced the backup card; Ron, 2026-11-10, mockups/menu-dialogs.png). OK only marks; Save keeps it. -->
     <section id="saveMethodSection" class="menu-popup" hidden>
       <h3>Autosave or backup</h3>
-      <p class="muted">Your recipes are saved to Spotify automatically, and a change you make on one device shows up on your others. The other choice is a manual backup: you download a file yourself and restore from it later. Changing this is not recommended. With a manual backup, nothing is saved unless you remember to make a backup, so clearing your browser's data can lose your recipes, and your devices will not stay in step.</p>
-      <p><button id="changeSaveMethod" class="linklike" type="button">Change how your recipes are saved</button></p>
+      <p class="muted">How your recipes are kept.</p>
+      <label class="dlg-choice"><input type="radio" name="backupMode" id="backupModeSpotify" value="spotify"><span class="dlg-choice-text"><b>Save to Spotify <em>Recommended</em></b><span>Saved as you edit, in a private playlist per recipe. Your other devices stay in step.</span></span></label>
+      <label class="dlg-choice"><input type="radio" name="backupMode" id="backupModeManual" value="manual"><span class="dlg-choice-text"><b>Back up by hand</b><span>Recipes stay on this device. You download a backup file and restore from it. Clearing your browser's data can lose them.</span></span></label>
+      <div class="dlg-foot"><button id="backupCancel" class="dlg-cancel" type="button">Cancel</button><button id="backupOk" class="primary" type="button" disabled><span class="btn-label">Save</span></button></div>
     </section>
     <!-- the builder menu's Watch the tutorial: the video is not made yet (Ron, 2026-11-10: to be discussed) -->
     <section id="tutorialSection" class="menu-popup" hidden>
@@ -2357,10 +2378,10 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-10r"></script>
-<script src="editor.js?v=2026-11-10r"></script>
-<script src="shared-spotify.js?v=2026-11-10r"></script>
-<script src="app.js?v=2026-11-10r"></script>
-<script src="sharing.js?v=2026-11-10r"></script>
+<script src="formats.js?v=2026-11-10s"></script>
+<script src="editor.js?v=2026-11-10s"></script>
+<script src="shared-spotify.js?v=2026-11-10s"></script>
+<script src="app.js?v=2026-11-10s"></script>
+<script src="sharing.js?v=2026-11-10s"></script>
 </body>
 </html>

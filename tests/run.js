@@ -313,8 +313,10 @@ function removeNow(w) {
 // The method card's radio buttons only mark a choice: pick one, then press OK.
 function pickMode(w, id) {
   w.document.getElementById(id).click();
-  w.document.getElementById("backupOk").click();
+  w.document.getElementById(w.document.getElementById("backupOk").disabled ? "backupCancel" : "backupOk").click();
 }
+// Autosave or backup is open in the menu's popup
+function saveOpen(w) { const slot = w.document.getElementById("infoSlot"); return !w.document.getElementById("infoOverlay").hidden && !!slot.firstElementChild && slot.firstElementChild.id === "saveMethodSection"; }
 
 async function waitFor(condition, ms = 15000) {
   const start = Date.now();
@@ -657,10 +659,10 @@ print(json.dumps(out))
   await waitFor(() => visible(wG, "removeConfirmBox"));
   check("the removal question appears inside the Remove section, below its button, not up in Step 3", !!wG.document.querySelector("#removeSection #removeConfirmBox") && !visible(wG, "confirmBox") && !!(wG.document.getElementById("removeOld").compareDocumentPosition(wG.document.getElementById("removeConfirmBox")) & 4));
   check("choosing one format removes only its playlists", JSON.stringify(Array.from(wG.document.querySelectorAll("#removeConfirmList li")).map((li) => li.textContent)) === JSON.stringify(["beta 1", "beta 2"]));
-  check("the removal question has its own confirm and cancel buttons", /^Remove 2 playlists$/.test(wG.document.getElementById("removeConfirmYes").textContent) && wG.document.getElementById("removeConfirmNo").textContent === "Cancel");
+  check("the removal question has its own Remove and Back buttons, the count in the title of the question", wG.document.getElementById("removeConfirmYes").textContent.trim() === "Remove" && wG.document.getElementById("removeConfirmNo").textContent.trim() === "Back" && wG.document.getElementById("removeConfirmYes").dataset.total === "2" && wG.document.getElementById("removeChoose").hidden);
   wG.document.getElementById("removeConfirmNo").click();
-  await waitFor(() => /Cancelled/.test(wG.document.getElementById("removeMessage").textContent));
-  check("cancelling a removal says so inside that section and changes nothing", oG.writes.length === 0 && !visible(wG, "removeConfirmBox"));
+  await waitFor(() => !wG.document.getElementById("removeChoose").hidden);
+  check("Back returns to choosing a recipe and changes nothing", oG.writes.length === 0 && wG.document.getElementById("removeConfirmBox").hidden && wG.document.getElementById("removeDone").hidden);
   removeNow(wG);
   await waitFor(() => visible(wG, "removeConfirmBox"));
   wG.document.getElementById("removeConfirmYes").click();
@@ -837,10 +839,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-10r" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-10s" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-10r/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-10s/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -984,7 +986,7 @@ print(json.dumps(out))
   var ab = t0.document.getElementById("about");
   var leads = Array.from(ab.querySelectorAll("strong")).map((x) => x.textContent);
   check("the headings in What is this app? stand on their own line, without trailing periods", JSON.stringify(leads) === JSON.stringify(["What it does", "What it's good for", "How it works", "What you need", "Reporting problems", "Privacy"]) && Array.from(ab.querySelectorAll("p")).filter((p) => p.querySelector("strong + br")).length === 5, JSON.stringify(leads));
-  var pill = Array.from(t0.document.querySelectorAll("button:not(.linklike):not(.theme-swatch):not(.mf-sent-toggle):not(#cnContinue):not(#usOk), a.button-link")).filter((b) => !b.closest("#formatEditor") && !b.closest("#startupProblem") && !b.closest("#createDialog") && !b.closest("#devMenu") && b.id !== "infoClose" && b.id !== "msClose" && b.id !== "msCard" && b.id !== "homeBuilder" && !b.classList.contains("wp-tool-head") && !b.closest("#homeMore .hp-ee-bar") && !b.classList.contains("sp-choice") && b.id !== "appHome" && !b.closest("#appBar") && b.id !== "updateGet");   // the Music sharing card (covers, not an icon) and the update card's Get it (its gift is on the card)   // the Setup complete button has words only; the startup popup and the info popup's close draw their icons inline
+  var pill = Array.from(t0.document.querySelectorAll("button:not(.linklike):not(.theme-swatch):not(.mf-sent-toggle):not(#cnContinue):not(#usOk), a.button-link")).filter((b) => !b.closest("#formatEditor") && !b.closest("#startupProblem") && !b.closest("#createDialog") && !b.closest(".dlg-foot") && !b.closest("#devMenu") && b.id !== "infoClose" && b.id !== "msClose" && b.id !== "msCard" && b.id !== "homeBuilder" && !b.classList.contains("wp-tool-head") && !b.closest("#homeMore .hp-ee-bar") && !b.classList.contains("sp-choice") && b.id !== "appHome" && !b.closest("#appBar") && b.id !== "updateGet");   // the Music sharing card (covers, not an icon) and the update card's Get it (its gift is on the card)   // the Setup complete button has words only; the startup popup and the info popup's close draw their icons inline
   var pillsIn = pill.filter((b) => b.querySelector("img.btn-icon"));
   check("every pink button has an icon in front of its label", pill.length >= 15 && pillsIn.length === pill.length, `${pillsIn.length} of ${pill.length} ` + pill.filter((b) => !b.querySelector("img.btn-icon")).map((b) => b.id || b.outerHTML.slice(0, 60)).join(","));
   check("each icon is a small file, 20 by 20 (the Build sparkles 24 by 24), decorative, and the file exists", pill.every((b) => { const i = b.querySelector("img.btn-icon"); const size = i.getAttribute("src") === "icons/build.svg" ? "24" : "20"; return i.getAttribute("width") === size && i.getAttribute("height") === size && i.getAttribute("alt") === "" && /^icons\/[a-z]+\.svg$/.test(i.getAttribute("src")) && fs.existsSync(ROOT + i.getAttribute("src")); }));
@@ -1446,7 +1448,7 @@ print(json.dumps(out))
   check("How it works has your two reworded steps", steps[0] === "Connect to Spotify through a free developer app. This takes a few minutes to set up, but you\u2019ll only need to do it once." && steps[1] === "Define your recipe(s): which of your playlists to draw from, in what order, and for how long." && steps.length === 3, JSON.stringify(steps));
   check("the About section has a Reporting problems paragraph, then Privacy as its last, which points to the full section and says nothing about reporting", aboutParas[aboutParas.length - 1] === "PrivacyYour existing Spotify playlists are only read, never changed. Everything runs in this browser, and nothing about your music, such as playlist names or songs, goes anywhere except to you and Spotify. For the full details, see Privacy." && aboutParas[aboutParas.length - 2] === "Reporting problemsIf you run into a problem, choose Report a problem in the app menu." && !!aboutBox.querySelector("span.ui") && aboutBox.querySelector("span.ui").textContent === "Report a problem", aboutParas[aboutParas.length - 1]);
   var removeP = Array.from(fresh.document.querySelectorAll("#removeSection p")).find((p) => /Removes the playlists/.test(p.textContent));
-  check("the Remove playlists built from a recipe text says what it touches, in your wording", !!removeP && /It only looks at playlists that match the recipe\u2019s name, and it asks before removing anything\./.test(removeP.textContent) && !/whose names match a format's naming pattern/.test(removeP.textContent), removeP && removeP.textContent);
+  check("the Remove built playlists text says what it touches", !!removeP && /Removes the playlists Arc built from a recipe\. Your recipes and your other playlists are not touched\./.test(removeP.textContent), removeP && removeP.textContent);
   var wCss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("body text in What is this app? and How recipes work is gray, with headings and control names staying bright", /details\.about, #formatHelp \{ color: var\(--muted\); \}/.test(wCss) && /details\.about strong, #formatHelp h3 \{ color: var\(--fg\); \}/.test(wCss) && /\.ui \{ color: var\(--fg\); \}/.test(wCss));
   var uiNames = Array.from(fresh.document.querySelectorAll("span.ui")).map((x) => x.textContent);
@@ -2056,7 +2058,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   am_w.document.getElementById("feAppMenuButton").click();
   check("the version is a grey line at the menu's foot, not a button", am_w.document.getElementById("feMenuVersion").textContent === "Arc " + am_w.eval("APP_VERSION") && am_w.document.getElementById("feMenuVersion").tagName === "DIV" && am_w.document.querySelector("#feAppMenuPanel").lastElementChild.id === "feMenuVersion");
   am_w.document.getElementById("feSaveMethod").click();
-  check("Autosave or backup opens alone, with its link to change how recipes are saved", am_info("saveMethodSection") && !!am_w.document.querySelector("#infoSlot #changeSaveMethod"));
+  check("Autosave or backup opens alone, with the two ways in it", am_info("saveMethodSection") && am_w.document.querySelectorAll("#infoSlot .dlg-choice").length === 2);
   am_w.document.getElementById("infoClose").click();
   am_w.document.getElementById("feAppMenuButton").click();
   am_w.document.getElementById("feBackup").click();
@@ -2095,7 +2097,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var mm_css = mm_html.replace(/\s+/g, " ");
   var mm_hidden = ["body.minimal main > #about", "body.minimal #connectedSection", "body.minimal #editHeading", "body.minimal #savedNote", "body.minimal #createHeading", "body.minimal #createNote", "body.minimal #backupBlock"];
   check("the app page hides About this app, the connected Spotify section, the Edit your recipes heading, the saved note, the Create playlists heading, the note under it, and the whole backup step", mm_hidden.every((sel) => mm_css.includes(sel)) && /body\.minimal [^{]*\{ display: none; \}/.test(mm_css));
-  var mm_hideRule = (mm_css.match(/body\.minimal #backupCard:not\(\.opened\)[^{]*\{ display: none; \}/) || [""])[0];
+  var mm_hideRule = (mm_css.match(/body\.minimal #savedNoteSpotify[^{]*\{ display: none; \}/) || [""])[0];
   check("and nothing else is in that list: the editor, the Create button, the restore message and the update corner all stay", mm_hideRule.length > 0 && !/#formatEditor|#create\b|#backupMessage|#supportBox|#feAppMenu|h1/.test(mm_hideRule), mm_hideRule);
   var mm_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var mm_ids = ["editHeading", "savedNote", "createHeading", "createNote", "backupBlock", "about", "connectedSection"];
@@ -2938,7 +2940,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-10r", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-10s", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3096,12 +3098,12 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the first tip has no link to playlists to start from", !!gf_d.getElementById("feFirstTip") && !gf_d.getElementById("feFirstTipGuide") && !/Ron/.test(gf_d.getElementById("feFirstTip").textContent));
   check("the ? beside the silence stepper says what it opens", gf_d.getElementById("feSilenceHelp").getAttribute("aria-label") === "Why silence between segments?");
   gf_d.getElementById("feSilenceHelp").click();
-  check("the ? opens Silence between segments in a popup of its own, with the muted-speaker icon", gf_d.getElementById("infoOverlay").hidden === false && gf_d.getElementById("infoSlot").firstElementChild.id === "silenceHelp" && gf_d.getElementById("infoTitle").textContent === "Silence between segments" && /Give space\./.test(gf_d.getElementById("silenceHelp").textContent) && gf_d.querySelector("#infoTitle .info-ticon").innerHTML === gf_w.eval("feIcon(\"mute\").innerHTML"));
+  check("the ? opens Silence between segments in a popup of its own", gf_d.getElementById("infoOverlay").hidden === false && gf_d.getElementById("infoSlot").firstElementChild.id === "silenceHelp" && gf_d.getElementById("infoTitle").textContent === "Silence between segments" && /Give space\./.test(gf_d.getElementById("silenceHelp").textContent));
   gf_d.getElementById("infoClose").click();
   check("closing puts it back, hidden", gf_d.getElementById("silenceHelp").hidden && !!gf_d.getElementById("silenceHelp").closest("footer"));
   gf_d.getElementById("feAppMenuButton").click();
   var gf_item = gf_d.getElementById("feTutorial");
-  check("the menu begins with Watch the tutorial, with a line under it, then Feedback and Report a problem", !!gf_item && gf_item.nextElementSibling.id === "feFeedback" && gf_item.nextElementSibling.nextElementSibling.id === "feReport" && /^Watch the tutorial/.test(gf_item.textContent) && gf_item.querySelector(".fe-gditem-note").textContent === "3 minutes, from recipe to playlists");
+  check("the menu begins with Watch the tutorial, with a line under it, then a divider, Feedback and Report a problem", !!gf_item && gf_item.nextElementSibling.classList.contains("fe-rule") && gf_item.nextElementSibling.nextElementSibling.id === "feFeedback" && gf_item.nextElementSibling.nextElementSibling.nextElementSibling.id === "feReport" && /^Watch the tutorial/.test(gf_item.textContent) && gf_item.querySelector(".fe-gditem-note").textContent === "3 minutes, from recipe to playlists");
   gf_item.click();
   check("for now the tutorial says the video is coming soon", gf_d.getElementById("infoSlot").firstElementChild.id === "tutorialSection" && /coming soon/.test(gf_d.getElementById("tutorialSection").textContent));
   gf_d.getElementById("infoClose").click();
@@ -3129,8 +3131,20 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the arrow keys move between the icons", gf_d.activeElement === gf_d.getElementById("eeTabLogin"));
   var gf_titles = {};
   for (const id of ["removeSection", "saveMethodSection", "feedbackBlock", "reportBlock"]) { gf_w.eval(`openInfo("${id}")`); const t = gf_d.getElementById("infoTitle"); gf_titles[id] = [t.textContent, t.querySelector(".info-ticon") && t.querySelector(".info-ticon").innerHTML]; gf_d.getElementById("infoClose").click(); }
-  check("each popup title has its menu item's icon and its name", JSON.stringify(Object.keys(gf_titles).map(k => gf_titles[k][0])) === JSON.stringify(["Remove built playlists", "Autosave or backup", "Feedback", "Report a problem"]) && gf_titles.removeSection[1] === gf_w.eval("feIcon(\"trash\").innerHTML") && gf_titles.saveMethodSection[1] === gf_w.eval("feIcon(\"cloud\").innerHTML") && gf_titles.feedbackBlock[1] === gf_w.eval("feIcon(\"chat\").innerHTML") && gf_titles.reportBlock[1] === gf_w.eval("feIcon(\"flag\").innerHTML"), JSON.stringify(gf_titles));
-  check("the popup title shrinks only on narrow screens, so a long title fits on one line at 320 px", /#infoTitle \{[^}]*font-size: min\(1\.2rem, calc\(\(100vw - 140px\) \/ 11\)\)/.test(gf_html));
+  check("each popup has its name as its title, with no icon, as in the build popup", JSON.stringify(Object.keys(gf_titles).map(k => gf_titles[k][0])) === JSON.stringify(["Remove built playlists", "Autosave or backup", "Feedback", "Report a problem"]) && Object.keys(gf_titles).every(k => !gf_titles[k][1]), JSON.stringify(gf_titles));
+  gf_w.eval('openInfo("feedbackBlock")');
+  check("Feedback's foot is Cancel then Send, and Cancel closes the popup", JSON.stringify(Array.from(gf_d.querySelectorAll("#infoSlot #feedbackForm .dlg-foot button")).map((b) => b.textContent.trim())) === JSON.stringify(["Cancel", "Send"]) && (gf_d.querySelector("#infoSlot #feedbackForm .dlg-cancel").click(), gf_d.getElementById("infoOverlay").hidden === true && !!gf_d.getElementById("feedbackBlock").closest("#eeFeedback")));
+  check("on home the forms show no Cancel or Done: the panel's own X closes them", /#homeMore \.dlg-cancel, #homeMore \.dlg-popup-only \{ display: none; \}/.test(gf_html));
+  gf_w.eval('openInfo("removeSection")');
+  check("Remove built playlists opens on choosing, with Cancel and a red Remove", !gf_d.getElementById("removeChoose").hidden && gf_d.getElementById("removeConfirmBox").hidden && gf_d.getElementById("removeDone").hidden && gf_d.getElementById("removeOld").classList.contains("dlg-danger") && gf_d.querySelector("#removeChoose .dlg-cancel").textContent === "Cancel");
+  gf_w.eval('setRemoveMessage("Removed 2 playlists from your library."); removeStage("done")');
+  check("its result is in the same popup, with Done", !gf_d.getElementById("removeDone").hidden && gf_d.getElementById("removeChoose").hidden && gf_d.querySelector("#removeDone .dlg-cancel").textContent === "Done");
+  gf_d.getElementById("infoClose").click();
+  gf_w.eval('openInfo("removeSection")');
+  check("opened again, it is back to choosing", !gf_d.getElementById("removeChoose").hidden && gf_d.getElementById("removeDone").hidden);
+  gf_d.getElementById("infoClose").click();
+  check("the popup's title has a round grey X and a line under it, like the build popup", /#infoHeader \{[^}]*border-bottom: 1px solid var\(--line\)/.test(gf_html) && /#infoDialog #infoClose \{[^}]*width: 32px; height: 32px;[^}]*border-radius: 50%/.test(gf_html));
+  check("the popup title shrinks only on narrow screens, so a long title fits on one line at 320 px", /#infoTitle \{[^}]*font-size: min\(1\.15rem, calc\(\(100vw - 140px\) \/ 11\)\)/.test(gf_html));
   } catch (err) { areaCrashed("menu popups and the silence help", err); } }
 
   if (want("first segment tip")) { try {
@@ -3744,35 +3758,33 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("backup method")) { try {
   // ================================================================ choosing how the formats are backed up: two radio buttons
   var bm_w = await boot({ url: EDURL, session: signedIn(), local: { backupMode: null }, fetchOptions: {} });
-  var bm_card = () => bm_w.document.getElementById("backupCard");
-  check("a new visitor is asked nothing: saved to Spotify is chosen, and the card is not on the page until it is asked for", bm_card().hidden === true && bm_w.document.getElementById("backupModeSpotify").checked && !bm_w.document.getElementById("backupModeManual").checked && bm_w.localStorage.getItem("backupMode") === null);
-  check("it says that saved to Spotify keeps each recipe in a private playlist, in its description, which is not to be edited, and that backing up to the device keeps the recipes on this device only", /stored in that playlist's description, so please do not edit it/.test(bm_card().textContent) && /ending in \(recipe\)/.test(bm_card().textContent) && /Your recipes live on this device only/.test(bm_card().textContent));
-  check("it is the two radio buttons and OK and Cancel buttons, always shown", bm_card().querySelectorAll("button").length === 2 && !!bm_card().querySelector("#backupOk") && !!bm_card().querySelector("#backupCancel") && bm_card().querySelector("#backupDoneRow").hidden === false && bm_card().querySelectorAll('input[type="radio"]').length === 2);
+  var bm_card = () => bm_w.document.getElementById("saveMethodSection");
+  check("a new visitor is asked nothing: saved to Spotify is the way, and nothing is open", !saveOpen(bm_w) && bm_w.localStorage.getItem("backupMode") === null && bm_w.eval("backupMode()") === "spotify");
+  check("it says what each way means: saved as you edit in a private playlist per recipe, or kept on this device and backed up to a file", /Saved as you edit, in a private playlist per recipe/.test(bm_card().textContent) && /Recipes stay on this device\. You download a backup file/.test(bm_card().textContent));
+  check("it is the two ways as choices, then Cancel and Save at its foot", bm_card().querySelectorAll(".dlg-choice input[type=\"radio\"]").length === 2 && JSON.stringify(Array.from(bm_card().querySelectorAll(".dlg-foot button")).map((b) => b.id)) === JSON.stringify(["backupCancel", "backupOk"]) && bm_w.document.getElementById("backupOk").textContent.trim() === "Save");
   pickMode(bm_w, "backupModeManual");
-  check("choosing manual saves it and takes the card away", bm_w.localStorage.getItem("backupMode") === "manual" && bm_card().hidden === true);
-  var bm_menuItems = () => Array.from(bm_w.document.querySelectorAll("#feAppMenuPanel .fe-item")).map((b) => b.textContent.trim());
+  check("choosing manual saves it, and nothing is left open", bm_w.localStorage.getItem("backupMode") === "manual" && !saveOpen(bm_w));
   bm_w.document.getElementById("feAppMenuButton").click();
-  check("the app menu has the backup block: the row that opens the method card comes before Back up now and Restore", (() => { const ids = Array.from(bm_w.document.querySelectorAll("#feAppMenuPanel [id]")).map((n) => n.id); return ids.indexOf("feBackupMethod") >= 0 && ids.indexOf("feBackupMethod") < ids.indexOf("feBackup") && ids.indexOf("feBackup") < ids.indexOf("feRestore"); })());
+  check("the app menu has the backup block: the row that opens the choice comes before Back up now and Restore", (() => { const ids = Array.from(bm_w.document.querySelectorAll("#feAppMenuPanel [id]")).map((n) => n.id); return ids.indexOf("feBackupMethod") >= 0 && ids.indexOf("feBackupMethod") < ids.indexOf("feBackup") && ids.indexOf("feBackup") < ids.indexOf("feRestore"); })());
   bm_w.document.getElementById("feBackupMethod").click();
-  check("choosing it brings the card back with the current choice selected, and closes the menu", bm_card().hidden === false && bm_w.document.getElementById("backupModeManual").checked && !bm_w.document.getElementById("feAppMenuPanel"));
-  pickMode(bm_w, "backupModeManual");
-  check("choosing the same one again simply closes it, and the choice stays", bm_card().hidden === true && bm_w.localStorage.getItem("backupMode") === "manual");
+  check("choosing it opens Autosave or backup with the current way marked and Save pale, and closes the menu", saveOpen(bm_w) && bm_w.document.getElementById("backupModeManual").checked && bm_w.document.getElementById("backupOk").disabled && !bm_w.document.getElementById("feAppMenuPanel") && bm_w.document.getElementById("infoTitle").textContent === "Autosave or backup");
+  bm_w.document.getElementById("backupModeSpotify").click();
+  check("marking the other way makes Save pink, and marking it back makes it pale again", !bm_w.document.getElementById("backupOk").disabled && (bm_w.document.getElementById("backupModeManual").click(), bm_w.document.getElementById("backupOk").disabled));
+  bm_w.document.getElementById("backupCancel").click();
+  check("Cancel closes it, and the way stays", !saveOpen(bm_w) && bm_w.localStorage.getItem("backupMode") === "manual");
   bm_w.document.getElementById("feAppMenuButton").click();
-  bm_w.document.getElementById("feBackupMethod").click();
+  bm_w.document.getElementById("feSaveMethod").click();
+  bm_w.document.getElementById("backupModeSpotify").click();
   bm_w.document.dispatchEvent(new bm_w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-  check("Escape also closes it, without changing anything", bm_card().hidden === true && bm_w.localStorage.getItem("backupMode") === "manual");
+  check("Escape also closes it, without changing anything, and the menu's Autosave or backup opens it too", !saveOpen(bm_w) && bm_w.localStorage.getItem("backupMode") === "manual");
   bm_w.document.getElementById("feAppMenuButton").click();
-  bm_w.document.getElementById("feBackupMethod").click();
-  // minimalist mode: the first-time card steps aside, but a card asked for from the menu is shown
-  var bm_w2 = await boot({ url: EDURL, session: signedIn(), local: { minimalMode: "1", connectedBefore: "1" }, fetchOptions: {} });
-  var bm_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("in minimalist mode the first-time card is out of the way, but one asked for from the menu is not", /body\.minimal #backupCard:not\(\.opened\)/.test(bm_css) && bm_w2.document.body.classList.contains("minimal"));
-  bm_w2.document.getElementById("feAppMenuButton").click();
-  bm_w2.document.getElementById("feBackupMethod").click();
-  check("and it then carries the class that makes it show", bm_w2.document.getElementById("backupCard").classList.contains("opened") && bm_w2.document.getElementById("backupCard").hidden === false);
-  // a person who already chose is not asked again
-  var bm_w3 = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "manual" }, fetchOptions: {} });
-  check("someone who chose before is not asked again, and the card has their choice selected when it is opened", bm_w3.document.getElementById("backupCard").hidden === true && bm_w3.document.getElementById("backupModeManual").checked);
+  bm_w.document.getElementById("feSaveMethod").click();
+  check("opened again, the way as it is now is marked, not what was marked before", saveOpen(bm_w) && bm_w.document.getElementById("backupModeManual").checked);
+  bm_w.document.getElementById("backupModeSpotify").click();
+  bm_w.document.getElementById("backupOk").click();
+  await new Promise((r) => setTimeout(r, 60));
+  check("Save keeps the other way and closes it", !saveOpen(bm_w) && bm_w.localStorage.getItem("backupMode") === "spotify");
+  check("there is no separate method card or backdrop any more", !bm_w.document.getElementById("backupCard") && !bm_w.document.getElementById("backupBackdrop") && !bm_w.document.getElementById("changeSaveMethod"));
   } catch (err) { areaCrashed("backup method", err); } }
 
   if (want("size limit")) { try {
@@ -3954,7 +3966,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var ss_spotifyMenu = ss_menuTexts(ss_w1);
   check("when recipes are saved to Spotify the menu says nothing about saving: no title, no link, no status, no Back up now or Restore", !/backup|saved|Last saved|Change how/i.test(ss_spotifyMenu.join("|").replace("Autosave or backup", "").replace(/Ceremony Playlist Builder|App version[^|]*/g, "")) && !ss_spotifyMenu.some((t) => /Back up now|Restore/.test(t)));
   ss_w1.document.getElementById("feAppMenuButton").click();
-  check("the way to change how recipes are saved is in Autosave or backup, as a link, since the menu has no saving block to hold it", !ss_w1.document.getElementById("feBackupMethod") && !ss_w1.document.querySelector("#feAppMenuPanel .fe-bk-block") && ss_w1.document.getElementById("changeSaveMethod").textContent === "Change how your recipes are saved" && ss_w1.document.getElementById("changeSaveMethod").classList.contains("linklike") && !!ss_w1.document.querySelector("#saveMethodSection #changeSaveMethod"));
+  check("the way to change how recipes are saved is the menu's Autosave or backup, since the menu has no saving block to hold it", !ss_w1.document.getElementById("feBackupMethod") && !ss_w1.document.querySelector("#feAppMenuPanel .fe-bk-block") && ss_w1.document.querySelectorAll("#saveMethodSection .dlg-choice").length === 2);
   ss_w1.document.body.click();
   check("for Spotify, the note about the backup file and the step about it are not on the page", ss_w1.document.getElementById("savedNote").hidden === true && ss_w1.document.getElementById("backupBlock").hidden === true && ss_w1.document.body.classList.contains("spotify-backup"));
   var ss_manualMenu = ss_menuTexts(ss_w4);
@@ -3971,7 +3983,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var ss_w8 = await ss_started({ formats: ss_two }, ss_o8);
   pickMode(ss_w8, "backupModeSpotify");
   await waitFor(() => ss_writes(ss_o8, "create").length >= 2, 8000);
-  check("choosing Spotify in the card saves the formats at once, and the card goes away", ss_writes(ss_o8, "create").length === 2 && ss_w8.localStorage.getItem("backupMode") === "spotify" && ss_w8.document.getElementById("backupCard").hidden === true);
+  check("choosing Spotify in the card saves the formats at once, and the card goes away", ss_writes(ss_o8, "create").length === 2 && ss_w8.localStorage.getItem("backupMode") === "spotify" && !saveOpen(ss_w8));
   } catch (err) { areaCrashed("spotify saves", err); } }
 
   if (want("save pacing")) { try {
@@ -4220,7 +4232,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sw_s = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "spotify" }, fetchOptions: {} });
   check("with Spotify as the way, it says the backups in Spotify stay, and that connecting again loads the formats back, and does not mention a file", /Your recipes stay in Spotify/.test(sw_s.document.getElementById("clearRestoreHelp").textContent) && /come back when you connect again/.test(sw_s.document.getElementById("clearConfirmHelp").textContent) && !/restore from a backup/.test(sw_s.document.getElementById("clearRestoreHelp").textContent + sw_s.document.getElementById("clearConfirmHelp").textContent));
   check("and no second note says it again above the button", sw_s.document.getElementById("clearBackupNote").hidden === true && sw_s.document.getElementById("clearBackupNote").textContent === "");
-  sw_s.document.getElementById("backupCard") && sw_s.eval('localStorage.setItem("backupMode", "manual"); applyBackupMode();');
+  sw_s.eval('localStorage.setItem("backupMode", "manual"); applyBackupMode();');
   check("switching back to the backup file puts its wording back", /Restore in the Playlist builder\u2019?'?s menu/.test(sw_s.document.getElementById("clearRestoreHelp").textContent));
   } catch (err) { areaCrashed("spotify wording", err); } }
 
@@ -4237,7 +4249,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var bs_settled = async (w) => { await waitFor(() => !w.eval("saveState.running") && !w.eval("saveState.timer"), 8000); await new Promise((r) => setTimeout(r, 120)); };
   var bs_writes = (o, t) => o.writes.filter((x) => x.type === t);
   var bs_synced = JSON.stringify({ f1: { rev: 2 }, f2: { rev: 1 } });
-  var bs_leave = (w) => { w.document.getElementById("changeSaveMethod").click(); pickMode(w, "backupModeManual"); };
+  var bs_leave = (w) => { w.eval("openBackupCard()"); pickMode(w, "backupModeManual"); };
 
   // leaving Spotify, keeping the backups
   var bs_o1 = { descStore: {}, nameStore: {}, extraPlaylists: bs_account() };
@@ -4498,8 +4510,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("backup wording")) { try {
   // ================================================================ Automatic and Manual, said the same way everywhere
   var bw_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("the method card asks how the recipes should be saved, and offers the two ways", /<h3 id="backupCardTitle">How should your recipes be saved\?<\/h3> <p>Pick where your recipes live\.<\/p>/.test(bw_html));
-  check("its two options are Saved to Spotify automatically and Backed up to this device manually, the second with its note", /<span>Saved to Spotify automatically \(recommended\)<\/span><\/label>/.test(bw_html) && /<span>Backed up to this device manually<\/span><\/label> <p class="muted choice-note">Your recipes live on this device only\. You back them up to a file when you choose, and restore from it when you need it\.<\/p>/.test(bw_html));
+  check("Autosave or backup says how the recipes are kept, and offers the two ways", /<h3>Autosave or backup<\/h3> <p class="muted">How your recipes are kept\.<\/p>/.test(bw_html));
+  check("its two ways are Save to Spotify, marked Recommended, and Back up by hand", /<b>Save to Spotify <em>Recommended<\/em><\/b>/.test(bw_html) && /<b>Back up by hand<\/b>/.test(bw_html));
   check("nothing on the page calls the manual way a file any more, in the card, the notes, Step 4 or the menu", !/Manually, to your phone or computer|Automatically to Spotify|Download a backup|Restore from backup|Change how your recipes are saved\u2026/.test(bw_html + fs.readFileSync(ROOT + "editor.js", "utf8") + appSource()));
   var bw_m = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "manual", connectedBefore: "1" }, fetchOptions: {} });
   bw_m.document.getElementById("feAppMenuButton").click();
@@ -4508,7 +4520,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("Back up now and Restore are side by side in the same block", bw_m.document.querySelector("#feAppMenuPanel .fe-bk-block .fe-bk-actions") && bw_m.document.querySelectorAll("#feAppMenuPanel .fe-bk-block .fe-bk-actions button").length === 2 && bw_head.closest(".fe-bk-block") === bw_m.document.querySelector("#feAppMenuPanel .fe-bk-block"));
   bw_head.click();
   await new Promise((r) => setTimeout(r, 100));
-  check("pressing Change how your recipes are saved closes the menu and opens the method card, with the manual way chosen", !bw_m.document.getElementById("feAppMenuPanel") && !bw_m.document.getElementById("backupCard").hidden && bw_m.document.getElementById("backupModeManual").checked);
+  check("pressing Change how your recipes are saved closes the menu and opens Autosave or backup, with the manual way marked", !bw_m.document.getElementById("feAppMenuPanel") && saveOpen(bw_m) && bw_m.document.getElementById("backupModeManual").checked);
   var bw_s = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "spotify", connectedBefore: "1" }, fetchOptions: { descStore: {}, nameStore: {} } });
   bw_s.document.getElementById("feAppMenuButton").click();
   check("with recipes saved to Spotify the menu has no saving block at all, and no actions", !bw_s.document.querySelector("#feAppMenuPanel .fe-bk-title") && !bw_s.document.getElementById("feBackupMethod") && !bw_s.document.querySelector("#feAppMenuPanel .fe-bk-actions"));
@@ -4519,53 +4531,34 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
 
   if (want("backup card done")) { try {
   // ================================================================ closing the method card without changing anything
-  var bd_new = await boot({ url: EDURL, session: signedIn(), local: { connectedBefore: "1", backupMode: null }, fetchOptions: {} });
-  check("a new visitor has no card on the page, and the card has its OK and Cancel buttons whenever it is opened", bd_new.document.getElementById("backupCard").hidden && bd_new.document.getElementById("backupDoneRow").hidden === false);
   var bd_w = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "manual", connectedBefore: "1" }, fetchOptions: {} });
-  check("with a way chosen, the card is not on the page", bd_w.document.getElementById("backupCard").hidden);
   bd_w.document.getElementById("feAppMenuButton").click();
   bd_w.document.getElementById("feBackupMethod").click();
   await new Promise((r) => setTimeout(r, 100));
-  check("opened from the menu, it has OK and Cancel buttons, with an icon like the page's other buttons", !bd_w.document.getElementById("backupCard").hidden && !bd_w.document.getElementById("backupDoneRow").hidden && bd_w.document.getElementById("backupOk").querySelector(".btn-icon").getAttribute("src") === "icons/confirm.svg" && bd_w.document.getElementById("backupOk").textContent.trim() === "OK" && bd_w.document.getElementById("backupCancel").textContent.trim() === "Cancel");
+  check("opened from the menu, it has Cancel and Save, in words only like the build popup's", saveOpen(bd_w) && !bd_w.document.querySelector("#saveMethodSection .dlg-foot .btn-icon"));
+  bd_w.document.getElementById("backupModeSpotify").click();
   bd_w.document.getElementById("backupCancel").click();
   await new Promise((r) => setTimeout(r, 100));
-  check("Cancel closes it and changes nothing: the way is still Manual", bd_w.document.getElementById("backupCard").hidden && bd_w.localStorage.getItem("backupMode") === "manual" && bd_w.document.getElementById("backupModeManual").checked);
+  check("Cancel closes it and changes nothing: the way is still Manual", !saveOpen(bd_w) && bd_w.localStorage.getItem("backupMode") === "manual");
   } catch (err) { areaCrashed("backup card done", err); } }
 
   if (want("backup popup")) { try {
   // ================================================================ the method card as a popup
-  var bp_html = fs.readFileSync(ROOT + "index.html", "utf8");
-  var bp_z = (re) => Number((bp_html.match(re) || [])[1]);
-  check("opened, the card is fixed over the page, above the update corner, with its backdrop just under it", /#backupCard\.opened \{ position: fixed;/.test(bp_html) && bp_z(/#backupCard\.opened \{[^}]*z-index: (\d+)/) > bp_z(/#supportBox \{[^}]*z-index: (\d+)/) && bp_z(/#backupBackdrop \{[^}]*z-index: (\d+)/) > bp_z(/#supportBox \{[^}]*z-index: (\d+)/) && bp_z(/#backupBackdrop \{[^}]*z-index: (\d+)/) < bp_z(/#backupCard\.opened \{[^}]*z-index: (\d+)/));
-  check("its OK and Cancel buttons stay at the bottom of the popup while the rest scrolls, and the page behind does not scroll", /#backupCard\.opened #backupDoneRow \{ position: sticky; bottom: 0;/.test(bp_html) && /body\.backup-card-open \{ overflow: hidden; \}/.test(bp_html) && /max-height: calc\(100dvh - 32px\)/.test(bp_html));
-  var bp_w = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "manual", connectedBefore: "1", minimalMode: "1" }, fetchOptions: {} });
+  var bp_w = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "manual", connectedBefore: "1" }, fetchOptions: {} });
   var bp_d = bp_w.document;
-  check("before it is opened, the backdrop is not shown and the page can scroll", bp_d.getElementById("backupBackdrop").hidden && !bp_d.body.classList.contains("backup-card-open") && !bp_d.getElementById("backupCard").getAttribute("role"));
   bp_d.getElementById("feAppMenuButton").click();
   bp_d.getElementById("feBackupMethod").click();
   await new Promise((r) => setTimeout(r, 100));
-  check("from the menu it opens as a popup: the backdrop shows, the page behind is locked, and it is a dialog for a screen reader", !bp_d.getElementById("backupBackdrop").hidden && bp_d.body.classList.contains("backup-card-open") && bp_d.getElementById("backupCard").classList.contains("opened") && bp_d.getElementById("backupCard").getAttribute("role") === "dialog" && bp_d.getElementById("backupCard").getAttribute("aria-modal") === "true" && bp_d.getElementById("backupCard").getAttribute("aria-labelledby") === "backupCardTitle" && !!bp_d.getElementById("backupCardTitle"));
-  check("the keyboard starts on the chosen way, and the buttons are there", bp_d.activeElement.id === "backupModeManual" && !bp_d.getElementById("backupDoneRow").hidden);
-  bp_d.getElementById("backupCancel").click();
-  check("Cancel closes it, unlocks the page, and returns to the menu button", bp_d.getElementById("backupBackdrop").hidden && !bp_d.body.classList.contains("backup-card-open") && bp_d.getElementById("backupCard").hidden && !bp_d.getElementById("backupCard").getAttribute("role") && bp_d.activeElement.id === "feAppMenuButton" && bp_w.localStorage.getItem("backupMode") === "manual");
-  bp_d.getElementById("feAppMenuButton").click(); bp_d.getElementById("feBackupMethod").click();
-  await new Promise((r) => setTimeout(r, 60));
-  bp_d.getElementById("backupBackdrop").click();
-  check("pressing the backdrop closes it without changing anything", bp_d.getElementById("backupCard").hidden && bp_d.getElementById("backupBackdrop").hidden && bp_w.localStorage.getItem("backupMode") === "manual");
-  bp_d.getElementById("feAppMenuButton").click(); bp_d.getElementById("feBackupMethod").click();
-  await new Promise((r) => setTimeout(r, 60));
-  bp_d.dispatchEvent(new bp_w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-  check("so does Escape", bp_d.getElementById("backupCard").hidden && bp_d.getElementById("backupBackdrop").hidden && !bp_d.body.classList.contains("backup-card-open"));
+  check("the keyboard starts on the chosen way", bp_d.activeElement.id === "backupModeManual");
+  bp_d.getElementById("infoOverlay").dispatchEvent(new bp_w.MouseEvent("click", { bubbles: true }));
+  check("a tap outside closes it without changing anything", !saveOpen(bp_w) && bp_w.localStorage.getItem("backupMode") === "manual");
   bp_d.getElementById("feAppMenuButton").click(); bp_d.getElementById("feBackupMethod").click();
   await new Promise((r) => setTimeout(r, 60));
   bp_d.getElementById("backupModeSpotify").click();
-  check("clicking a radio button alone does not close the card or change anything", !bp_d.getElementById("backupCard").hidden && bp_w.localStorage.getItem("backupMode") !== "spotify");
+  check("clicking a choice alone does not close it or change anything", saveOpen(bp_w) && bp_w.localStorage.getItem("backupMode") === "manual");
   bp_d.getElementById("backupOk").click();
   await new Promise((r) => setTimeout(r, 100));
-  check("choosing the other way closes it and saves the choice, as before", bp_d.getElementById("backupCard").hidden && bp_d.getElementById("backupBackdrop").hidden && bp_w.localStorage.getItem("backupMode") === "spotify" && !bp_d.body.classList.contains("backup-card-open"));
-  // the first time, before any choice, it is part of the page, not a popup
-  var bp_n = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: null }, fetchOptions: {} });
-  check("a new visitor has no card, no backdrop and no lock on the page", bp_n.document.getElementById("backupCard").hidden && bp_n.document.getElementById("backupBackdrop").hidden && !bp_n.document.body.classList.contains("backup-card-open"));
+  check("Save closes it and keeps the choice", !saveOpen(bp_w) && bp_w.localStorage.getItem("backupMode") === "spotify");
   } catch (err) { areaCrashed("backup popup", err); } }
 
   if (want("notice line")) { try {
@@ -5247,7 +5240,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("spotify last")) { try {
   // ================================================================ the Spotify item is always first in the menu, under the app's name; then the rest in a fixed order, and the version
   var sl_ids = (w) => { w.document.getElementById("feAppMenuButton").click(); const ids = Array.from(w.document.querySelectorAll("#feAppMenuPanel > *")).map((k) => k.id || k.className); w.document.body.click(); return ids; };
-  var sl_rest = ["fe-rule", "feTutorial", "feFeedback", "feReport", "fe-rule", "feBuildAll", "feRemoveBuilt", "feSaveMethod", "fe-rule", "feMenuVersion"];   // no title row since 2026-11-10
+  var sl_rest = ["fe-rule", "feTutorial", "fe-rule", "feFeedback", "feReport", "fe-rule", "feBuildAll", "feRemoveBuilt", "feSaveMethod", "fe-rule", "feMenuVersion"];   // no title row since 2026-11-10
   var sl_ready = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: {} });
   var sl_r = sl_ids(sl_ready);
   check("connected: Watch the tutorial, Feedback, Report a problem, then Build all recipes, Remove built playlists, Autosave or backup, then the version", JSON.stringify(sl_r) === JSON.stringify(sl_rest.slice(1)), JSON.stringify(sl_r));
@@ -5356,7 +5349,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-10r"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-10s"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5494,7 +5487,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the marked row is pale pink with its number in pink, and the rows are striped", /tr\.bd-limit td \{ background: color-mix\(in srgb, var\(--accent\)/.test(bp_html) && /tr\.bd-limit td:last-child \{ color: var\(--accent\);/.test(bp_html) && /tbody tr:nth-child\(odd\) td \{ background: var\(--card\); \}/.test(bp_html));
   check("songs in more than one source get their own box, not a line under the table", /notes\.push\(\["Songs in more than one playlist", `\$\{plural\(shared, "song"\)\}/.test(bp_js) && !/className: "bd-note", textContent: `\$\{plural\(shared/.test(bp_js));
   check("and the link then offers to hide it", bp_text(bp_a, "planToggle") === "Hide");
-  check("only Build is offered, and the X closes", visible(bp_a, "confirmButtons") && !bp_a.document.getElementById("confirmNo") && !bp_a.document.getElementById("bdClose").classList.contains("bd-x-off") && !visible(bp_a, "createCloseRow") && !visible(bp_a, "bdBusyRow") && /Build 2 playlists/.test(bp_text(bp_a, "confirmYes")));
+  check("Build is offered with Cancel beside it, and the X closes", visible(bp_a, "confirmButtons") && bp_a.document.getElementById("confirmNo").textContent.trim() === "Cancel" && !bp_a.document.getElementById("bdClose").classList.contains("bd-x-off") && !visible(bp_a, "createCloseRow") && !visible(bp_a, "bdBusyRow") && /Build 2 playlists/.test(bp_text(bp_a, "confirmYes")));
   pressBuild(bp_a);
   await waitFor(() => visible(bp_a, "bdTally"), 20000);
   check("while building: a count of the playlists made, Arc's icon for each, and Keep this tab open", /^\d+of 2 playlists$/.test(bp_text(bp_a, "bdCount")) && bp_a.document.querySelectorAll("#bdTiles .bd-arc").length === 2 && bp_text(bp_a, "bdCountNote") === "Keep this tab open.", bp_text(bp_a, "bdCount"));

@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-10r";
+const APP_VERSION = "2026-11-10s";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -853,12 +853,10 @@ function openInfo(id) {
   node.hidden = false;
   const title = node.querySelector("summary, h3");
   $("infoDialog").setAttribute("aria-label", title ? title.textContent.trim() : "");
-  // the title in the pink band, with the same icon as its item in the app menu
-  const titleIcon = { reportBlock: "flag", feedbackBlock: "chat", removeSection: "trash", saveMethodSection: "cloud", silenceHelp: "mute", tutorialSection: "video", devMoods: "tag", devReports: "flag" }[id];
-  $("infoTitle").textContent = "";
-  if (titleIcon && typeof feIcon === "function") $("infoTitle").appendChild(feIcon(titleIcon)).className = "info-ticon";
-  $("infoTitle").appendChild(Object.assign(document.createElement("span"), { textContent: title ? title.textContent.trim() : "" }));
+  // the title over a line, with a round X, as in the build popup (Ron, 2026-11-10)
+  $("infoTitle").textContent = title ? title.textContent.trim() : "";
   if (id === "reportBlock") refreshReportBox();
+  if (id === "removeSection") removeStage("choose");
   if ((id === "devMoods" || id === "devReports") && typeof sharingDevOpened === "function") sharingDevOpened(id);   // Music sharing's mood words or reports (sharing.js)
   $("infoOverlay").hidden = false;
   document.body.style.overflow = "hidden";
@@ -866,11 +864,18 @@ function openInfo(id) {
   $("infoDialog").focus({ preventScroll: true });
 }
 
+// Cancel (and Done) at the foot of a popup from the menu closes it, like its X
+document.addEventListener("click", (event) => {
+  const cancel = event.target.closest && event.target.closest(".dlg-cancel");
+  if (cancel && info.node && info.node.contains(cancel)) closeInfo();
+});
+
 function motionOk() {
   return !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 }
 function closeInfo(quiet = false) {
   if (!info.node) return;
+  if (info.node.id === "saveMethodSection") backupCardOpen = false;
   if (info.node.tagName === "DETAILS") info.node.open = info.wasOpen;
   for (const d of info.node.querySelectorAll("details")) d.open = false;   // reopened, every section starts closed again
   info.node.hidden = info.wasHidden;
@@ -1627,34 +1632,32 @@ function backupMode() {
   try { return localStorage.getItem("backupMode") === "manual" ? "manual" : "spotify"; } catch (err) { return "spotify"; }
 }
 
+// Autosave or backup is a popup from the menu (#saveMethodSection, Ron, 2026-11-10): the two ways, marked as they are now, and Save, pale until the mark changes
 function refreshBackupCard() {
-  const card = $("backupCard");
-  if (!card) return;
-  card.hidden = !backupCardOpen;
-  card.classList.toggle("opened", backupCardOpen);
-  // opened, it is a popup: with a backdrop, no scrolling of the page behind it, and what a screen reader needs to know
-  $("backupBackdrop").hidden = !backupCardOpen;
-  document.body.classList.toggle("backup-card-open", backupCardOpen);
-  if (backupCardOpen) { card.setAttribute("role", "dialog"); card.setAttribute("aria-modal", "true"); card.setAttribute("aria-labelledby", "backupCardTitle"); }
-  else { card.removeAttribute("role"); card.removeAttribute("aria-modal"); card.removeAttribute("aria-labelledby"); }
   const mode = backupMode();
   $("backupModeManual").checked = mode === "manual";
   $("backupModeSpotify").checked = mode === "spotify";
+  refreshBackupSave();
+}
+function refreshBackupSave() {
+  const radio = document.querySelector('input[name="backupMode"]:checked');
+  $("backupOk").disabled = !radio || radio.value === backupMode();
 }
 
 function openBackupCard() {
+  openInfo("saveMethodSection");
   backupCardOpen = true;
   refreshBackupCard();
   const chosen = $("backupModeManual").checked ? $("backupModeManual") : $("backupModeSpotify");
-  chosen.focus({ preventScroll: true });   // the popup is on screen as it opens, and a keyboard starts on the choice
+  chosen.focus({ preventScroll: true });   // a keyboard starts on the choice
 }
 
-// The radio buttons only mark a choice. OK saves it and closes the card; Cancel, Escape and the backdrop close it and change nothing.
+// The radio buttons only mark a choice. Save keeps it and closes the popup; Cancel, the X, Escape and a tap outside close it and change nothing.
 async function chooseBackupMode(value) {
   const was = backupMode();
   try { localStorage.setItem("backupMode", value); } catch (err) { /* private browsing */ }
   backupCardOpen = false;
-  refreshBackupCard();
+  if (info.node && info.node.id === "saveMethodSection") closeInfo(true);
   applyBackupMode();
   // To Spotify: the first pass settles what is here against what is there, and asks only about formats that differ.
   if (value === "spotify" && was !== "spotify") scheduleSpotifySave(200);
@@ -1716,9 +1719,7 @@ function applyBackupMode() {
 
 function dismissBackupCard() {
   backupCardOpen = false;
-  refreshBackupCard();
-  const trigger = $("feAppMenuButton");
-  if (trigger) trigger.focus({ preventScroll: true });   // back to where the person came from
+  if (info.node && info.node.id === "saveMethodSection") closeInfo();
 }
 
 function backupState() {
@@ -1893,7 +1894,7 @@ function updateButtonsNow() {
     setIcon($("create"), "build");
     $("create").disabled = !ready;
   }
-  $("removeOld").disabled = !ready || !$("removeKey").value;
+  $("removeOld").disabled = !ready || !$("removeKey").value || removeNone;
   // The notes appear when Create cannot work because there is no connection, not while the app is still connecting.
   const noConnection = !$("appSection").hidden && (connection === "problem" || connection === "none");
   if (noConnection && minimalActive()) {
@@ -3317,10 +3318,37 @@ async function createFromPlan(plan) {
   }
 }
 
+// Remove built playlists has three states in one popup (Ron, 2026-11-10): choosing a recipe, the question, and the result. The popup's title follows.
+function removeStage(stage) {
+  $("removeChoose").hidden = stage !== "choose";
+  $("removeConfirmBox").hidden = stage !== "ask";
+  $("removeDone").hidden = stage !== "done";
+  if (stage === "choose") { setRemoveMessage(""); clearReportHints("removeReportHint"); refreshRemoveCount(); }
+  if (info.node && info.node.id === "removeSection") {
+    const total = stage === "ask" ? Number($("removeConfirmYes").dataset.total || 0) : 0;
+    $("infoTitle").textContent = total ? `Remove ${plural(total, "playlist")}?` : "Remove built playlists";
+  }
+}
+
+// While choosing, how many of Arc's playlists from the chosen recipe are in the library now, from the list already read (the button says the number)
+let removeNone = false;   // the list already read shows none of Arc's playlists from the chosen recipe
+function refreshRemoveCount() {
+  let count = null;
+  try {
+    if (py && me && playlists && $("removeKey").value) {
+      const made = new Set(playlists.filter((p) => p.madeByApp).map((p) => p.id));
+      count = JSON.parse(py.existingMatches($("formats").value, JSON.stringify(removeKeys()), JSON.stringify(playlists), me.id)).filter((p) => made.has(p.id)).length;
+    }
+  } catch (err) { count = null; }
+  const key = $("removeKey").value, label = key === ALL_FORMATS ? "all recipes" : formatLabel(key);
+  putNamed($("removeCount"), count === null ? "" : count ? `${plural(count, "playlist")} from ${key === ALL_FORMATS ? label : named(label)} ${count === 1 ? "is" : "are"} in your library.` : `None of Arc's playlists from ${key === ALL_FORMATS ? label : named(label)} are in your library.`);
+  setLabel($("removeOld"), count ? `Remove ${count}` : "Remove playlists");
+  if (removeNone !== (count === 0)) { removeNone = count === 0; updateButtons(); }
+}
+
 function askToRemove(marked, others, label) {
   // Resolves with the playlists to remove, or null when cancelled.
   return new Promise((resolve) => {
-    const box = $("removeConfirmBox");
     let include = false;
     const many = others.length !== 1;
     const draw = () => {
@@ -3336,19 +3364,19 @@ function askToRemove(marked, others, label) {
       $("removeToggleRow").hidden = others.length === 0;
       $("removeToggle").checked = include;
       $("removeToggleLabel").textContent = `Remove ${many ? "them" : "it"} too`;
-      setLabel($("removeConfirmYes"), total ? `Remove ${plural(total, "playlist")}` : "Nothing to remove");
+      setLabel($("removeConfirmYes"), total ? "Remove" : "Nothing to remove");
       $("removeConfirmYes").disabled = total === 0;
-      setLabel($("removeConfirmNo"), "Cancel");
+      $("removeConfirmYes").dataset.total = String(total);
+      setLabel($("removeConfirmNo"), "Back");
+      removeStage("ask");
     };
     const finish = (value) => {
-      box.hidden = true;
       $("removeConfirmYes").onclick = null;
       $("removeConfirmNo").onclick = null;
       $("removeToggle").onchange = null;
       resolve(value);
     };
     draw();
-    box.hidden = false;
     $("removeConfirmYes").onclick = () => finish(include ? marked.concat(others) : marked);
     $("removeConfirmNo").onclick = () => finish(null);
     $("removeToggle").onchange = () => { include = $("removeToggle").checked; draw(); };
@@ -3356,35 +3384,38 @@ function askToRemove(marked, others, label) {
 }
 
 async function removeEarlier() {
-  // Everything about removing, including the question and the result, stays inside the Remove section.
+  // Everything about removing, including the question and the result, stays inside the Remove popup.
   setBusy(true);
   setRemoveMessage("");
   clearReportHints("removeReportHint");
   logStep("remove started");
+  const done = (text, ok = false) => { setRemoveMessage(text); $("removeOk").hidden = !ok; removeStage("done"); };
   try {
     await loadMyPlaylists();   // what is in Spotify now, including anything changed there since this page loaded
     const formatsText = $("formats").value;
     const keys = removeKeys();
     const existing = JSON.parse(py.existingMatches(formatsText, JSON.stringify(keys), JSON.stringify(playlists), me.id));
     if (!existing.length) {
-      setRemoveMessage("No playlists matching these recipes' names were found.");
+      done("No playlists matching these recipes' names were found.");
       return;
     }
     const madeByApp = new Set(playlists.filter((p) => p.madeByApp).map((p) => p.id));
     const chosen = await askToRemove(existing.filter((p) => madeByApp.has(p.id)), existing.filter((p) => !madeByApp.has(p.id)), keys.map(formatLabel).join(", "));
     if (!chosen) {
-      setRemoveMessage("Cancelled. Nothing was changed.");
+      removeStage("choose");   // Back: nothing was changed
       return;
     }
-    setRemoveMessage("Removing...");
+    setLabel($("removeConfirmYes"), "Removing\u2026");
+    $("removeConfirmYes").disabled = $("removeConfirmNo").disabled = true;
     await removePlaylists(chosen.map((p) => p.id));
     logStep(`remove finished (${plural(chosen.length, "playlist")})`);
-    setRemoveMessage(`Removed ${plural(chosen.length, "playlist")} from your library.`);
+    done(`Removed ${plural(chosen.length, "playlist")} from your library.`, true);
     await loadMyPlaylists();
   } catch (err) {
-    setRemoveMessage("Something went wrong: " + cleanError(err));
+    done("Something went wrong: " + cleanError(err));
     offerReport("removeReportHint", cleanError(err));
   } finally {
+    $("removeConfirmNo").disabled = false;
     setBusy(false);
   }
 }
@@ -3392,12 +3423,10 @@ async function removeEarlier() {
 // ---------------------------------------------------------------- start up
 // ---------------------------------------------------------------- the backup card, sign-in returns, saving when the page is left
 function initPageEvents() {
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && backupCardOpen) dismissBackupCard(); });
   on("backupOk", "click", () => { const radio = document.querySelector('input[name="backupMode"]:checked'); if (radio) chooseBackupMode(radio.value); else dismissBackupCard(); });
   on("backupCancel", "click", dismissBackupCard);
   on("changeSpotifyLogin", "click", () => changeSpotifyLogin());
-  on("changeSaveMethod", "click", () => { closeInfo(true); openBackupCard(); });   // Autosave or backup is a popup too, and would cover the card
-  on("backupBackdrop", "click", dismissBackupCard);
+  for (const id of ["backupModeSpotify", "backupModeManual"]) on(id, "change", refreshBackupSave);
   // Back from Spotify's page, a browser may show this page as it was left, with the buttons still waiting
   window.addEventListener("pageshow", (event) => { if (event.persisted && signingIn) { setSigningIn(false); setLoginMessage(""); } });
   // the connection coming back after a failed save: try again, without waiting to be asked
@@ -3608,7 +3637,8 @@ async function main() {
     });
   }
   on("createClose", "click", closeCreateDialog);
-  on("bdClose", "click", closeCreateDialog);   // the X: cancels the question, or closes the popup once the build is done
+  on("bdClose", "click", closeCreateDialog);
+  on("confirmNo", "click", closeCreateDialog);   // Cancel, beside Build: the same as the X   // the X: cancels the question, or closes the popup once the build is done
   initMotion();
   smoothResize($("createDialog"), document.querySelector("#createDialog .bd-body"));
   smoothResize($("infoDialog"), $("infoSlot"));
@@ -3620,7 +3650,7 @@ async function main() {
   document.addEventListener("keydown", (event) => { if (updateScreen && $("updateScreen").classList.contains("us-done") && (event.key === "Escape" || event.key === "Enter")) { event.preventDefault(); closeUpdateScreen(); } });
   guarded("page events", () => initPageEvents());
   on("removeOld", "click", removeEarlier);
-  on("removeKey", "change", updateButtons);
+  on("removeKey", "change", () => { updateButtons(); refreshRemoveCount(); });
   on("backupDownload", "click", downloadBackup);
   on("backupRestore", "click", () => $("restoreFile").click());
   on("backupDownloadLink", "click", () => downloadBackup());   // the same as the menu's Back up now a backup
