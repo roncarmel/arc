@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-09q";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-09r";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -472,7 +472,8 @@ async function markOldCopies() {
 
 // ---------------------------------------------------------------- the popup
 // tab "find" is Shared by others, "share" Shared by you. sharing.detail is a playlist's page; sharing.flow is Share a playlist (the wizard),
-// the edit page of one of the person's shares, or the page that says a share went through.
+// the edit page of one of the person's shares, or the page that says a share went through: a popup over the page (#msFlowWrap), so the tabs
+// and the page stay where they are under it (Ron, 2026-11-09).
 function openSharing(tab = "find") {
   if (typeof closeInfo === "function") closeInfo(true);
   sharing.tab = tab;
@@ -516,34 +517,64 @@ function renderSharing() {
   if (!body || $("msOverlay").hidden) return;
   if (sharing.player && sharing.player.share !== sharing.detail) stopPreview();   // a preview plays only on its playlist's page
   if (sharing.songMenu && (sharing.songMenu.share !== sharing.detail || sharing.flow)) dropSongMenu();   // and a song's menu only stays on it
+  if (sharing.flow) closeSortMenu();
   const keepScroll = body.scrollTop;
   body.textContent = "";
   const foot = $("msFoot");
   foot.textContent = "";
   foot.hidden = true;
   renderSharingTabs();
-  if (sharing.flow) renderFlow(body, foot);
-  else if (sharing.detail) renderDetail(body, foot);
+  if (sharing.detail) renderDetail(body, foot);
   else if (sharing.tab === "find") renderFind(body);
   else renderShareYours(body, foot);
   body.scrollTop = keepScroll;
+  renderFlowPopup();
 }
-// the top row: the two tabs as words with a pink line under the chosen one, and Close. In Share a playlist and the edit page,
-// a title in their place, and for the wizard its three steps under it.
+// the popup that holds Share a playlist, Edit details and the page after a share: its title (and the wizard's steps) with Close, then the
+// step, then its buttons. The page under it is inert meanwhile.
+function renderFlowPopup() {
+  const wrap = $("msFlowWrap"), f = sharing.flow;
+  if (!wrap) return;
+  const page = [$("msTabsBar"), $("msBody"), $("msFoot")];
+  if (!f) {
+    if (!wrap.hidden) { wrap.hidden = true; $("msOverlay").classList.remove("ms-flow-open"); page.forEach((el) => { el.inert = false; }); }
+    return;
+  }
+  const head = $("msFlowHead"), body = $("msFlowBody"), foot = $("msFlowFoot");
+  const keepScroll = body.scrollTop;
+  head.textContent = "";
+  body.textContent = "";
+  foot.textContent = "";
+  foot.hidden = true;
+  head.appendChild(feEl("h2", { class: "ms-flowtitle", id: "msFlowTitle" }, f.mode === "edit" ? "Edit details" : f.mode === "done" ? "Shared" : "Share a playlist"));
+  if (f.mode === "new") {
+    head.appendChild(feEl("ol", { class: "ms-steps", "aria-label": "Steps" }, ...["Playlist", "Type", "Details"].map((name, i) =>
+      feEl("li", { class: i < f.step ? "ms-done" : i === f.step ? "ms-now" : "", "aria-current": i === f.step ? "step" : null }, name))));
+  }
+  head.appendChild(feEl("button", { type: "button", id: "msFlowClose", class: "ms-flowclose", "aria-label": "Close", onClick: closeFlow }, feIcon("close")));
+  renderFlow(body, foot);
+  if (sharing.flow !== f) return;   // it ended itself (its playlist is gone) and drew again
+  // its buttons have ids of their own, since the page under it may have its own main button and Back
+  for (const [from, to] of [["msMain", "msFlowMain"], ["msBack", "msFlowBack"]]) { const el = $("msFlow").querySelector("#" + from); if (el) el.id = to; }
+  body.scrollTop = keepScroll;
+  if (wrap.hidden) {
+    wrap.hidden = false;
+    $("msOverlay").classList.add("ms-flow-open");
+    page.forEach((el) => { el.inert = true; });
+    $("msFlow").focus({ preventScroll: true });
+  }
+}
+function flowTop() { if ($("msFlowBody")) $("msFlowBody").scrollTop = 0; }
+function closeFlow() {
+  endTyping();
+  sharing.flow = null;
+  sharing.backTo = null;
+  renderSharing();
+}
+// the top row: the two tabs as words with a pink line under the chosen one, and Close
 function renderSharingTabs() {
   const bar = $("msTabs");
   bar.textContent = "";
-  const flow = sharing.flow;
-  $("msTabsBar").classList.toggle("ms-flowbar", !!flow);
-  if (flow) {
-    bar.removeAttribute("role");
-    bar.appendChild(feEl("div", { class: "ms-flowtitle" }, flow.mode === "edit" ? "Edit details" : "Share a playlist"));
-    if (flow.mode === "new") {
-      bar.appendChild(feEl("ol", { class: "ms-steps", "aria-label": "Steps" }, ...["Playlist", "Type", "Details"].map((name, i) =>
-        feEl("li", { class: i < flow.step ? "ms-done" : i === flow.step ? "ms-now" : "", "aria-current": i === flow.step ? "step" : null }, name))));
-    }
-    return;
-  }
   bar.setAttribute("role", "tablist");
   const tab = (value, name) => feEl("div", { class: "ms-tab" + (sharing.tab === value ? " ms-on" : "") },
     feEl("button", { type: "button", role: "tab", "aria-selected": String(sharing.tab === value), class: "ms-tab-name", onClick: () => switchTab(value) }, name));
@@ -635,13 +666,14 @@ function renderMoodChips() {
 // the sort menu drops from its button; choosing closes it, and so does a click elsewhere or Escape
 function openSortMenu() {
   const button = $("msSortButton");
-  if (!button || $("msSortMenu")) return;
+  if (!button) return;
+  if ($("msSortMenu")) { closeSortMenu(); return; }   // its button closes it too
   const menu = feEl("div", { id: "msSortMenu", class: "ms-menu", role: "menu", "aria-label": "Sort" });
   for (const [value, label] of sortChoices()) {
     menu.appendChild(feEl("button", { type: "button", role: "menuitemradio", "aria-checked": String(value === sharing.sort), class: value === sharing.sort ? "ms-on" : "",
       onClick: () => { closeSortMenu(); setSort(value); } }, label, value === sharing.sort ? feIcon("check") : null));
   }
-  $("msTools").appendChild(menu);
+  button.parentElement.appendChild(menu);   // under the button, in Search's row (not under the type's filter)
   button.setAttribute("aria-expanded", "true");
   const close = (e) => { if (e.type === "keydown" ? e.key === "Escape" : !menu.contains(e.target) && !button.contains(e.target)) { if (e.type === "keydown") { e.preventDefault(); e.stopPropagation(); } closeSortMenu(); } };
   sharing.sortClose = close;
@@ -1307,26 +1339,23 @@ function startShare() {
   sharing.detail = null;
   sharing.flow = { mode: "new", step: 0, draft: null, reading: null };
   renderSharing();
-  $("msBody").scrollTop = 0;
+  flowTop();
 }
-function editShare(m) {
+function editShare(m) {   // the page under it stays (the playlist's page, or Shared by you)
   const p = playlistFor(m);
-  sharing.tab = "share";
-  sharing.detail = null;
   sharing.flow = { mode: "edit", share: m, draft: draftFromShare(m, p) };
   loadBlockedWords().then((l) => { blockedNow = l; });
   renderSharing();
-  $("msBody").scrollTop = 0;
+  flowTop();
 }
 function flowBack() {
   const f = sharing.flow;
   if (!f) return;
   endTyping();
-  if (f.mode === "new" && f.step > 0 && f.step < 3) { f.step--; f.draft.errors = null; renderSharing(); $("msBody").scrollTop = 0; return; }
+  if (f.mode === "new" && f.step > 0 && f.step < 3) { f.step--; f.draft.errors = null; renderSharing(); flowTop(); return; }
   if (f.mode === "edit" && backToDetail()) return;
   sharing.flow = null;
   renderSharing();
-  $("msBody").scrollTop = 0;
 }
 // from the edit page back to the playlist's page it was opened from (and its tab), when there is one
 function backToDetail() {
@@ -1337,7 +1366,6 @@ function backToDetail() {
   sharing.tab = back.tab;
   sharing.detail = back.id;
   renderSharing();
-  $("msBody").scrollTop = 0;
   return true;
 }
 function renderFlow(body, foot) {
@@ -1358,7 +1386,7 @@ function renderFlow(body, foot) {
       f.draft.errors = null;
       f.step = 2;
       renderSharing();
-      $("msBody").scrollTop = 0;
+      flowTop();
     }, { iconAfter: "next" }));
     return;
   }
@@ -1409,7 +1437,7 @@ async function pickPlaylist(p) {
   } catch (err) { f.readError = { p, title: `The songs of ${named(p.name)} couldn\u2019t be read`, text: String(err.message || err).replace(/\.?$/, ".") }; }
   f.reading = null;
   renderSharing();
-  $("msBody").scrollTop = 0;
+  flowTop();
 }
 // "Others will see": the row as it will be in Shared by others, following each choice; parts not chosen yet are blank.
 // While typing on a phone it shrinks to one line (CSS, .ms-typing).
@@ -1446,7 +1474,7 @@ function draftChanged() {
   refreshCard();
 }
 function clearFieldError(key) {
-  const box = document.querySelector(`#msBody [data-field="${key}"]`);
+  const box = document.querySelector(`#msFlowBody [data-field="${key}"]`);
   if (!box) return;
   box.classList.remove("ms-bad");
   const err = box.querySelector(".ms-ferr");
@@ -1591,7 +1619,7 @@ function descriptionField(p, d) {
   area.addEventListener("input", () => { if (!spotify) { d.desc = area.value; draftChanged(); } });
   const sw = theirs ? feEl("span", { class: "ms-mseg", role: "radiogroup", "aria-label": "Whose description" },
     ...[["mine", "Mine"], ["spotify", "Spotify's"]].map(([v, label]) => feEl("button", { type: "button", role: "radio", "aria-checked": String(d.descSource === v), class: d.descSource === v ? "ms-on" : "",
-      id: v === "mine" ? "msDescMine" : "msDescSpotify", onClick: () => { if (d.descSource !== v) { d.descSource = v; draftChanged(); const old = document.querySelector('#msBody [data-field="description"]'); if (old) old.replaceWith(descriptionField(p, d)); } } }, label))) : null;
+      id: v === "mine" ? "msDescMine" : "msDescSpotify", onClick: () => { if (d.descSource !== v) { d.descSource = v; draftChanged(); const old = document.querySelector('#msFlowBody [data-field="description"]'); if (old) old.replaceWith(descriptionField(p, d)); } } }, label))) : null;
   return field("description", "Description", feEl("div", {}, area, spotify ? feEl("p", { class: "ms-fsub ms-keptnote" }, "Kept in step with Spotify when you Update.") : null),
     sw || fieldNote(required ? "a sentence or two" : "optional"));
 }
@@ -1626,7 +1654,7 @@ async function submitDraft(p) {
   d.errors = draftErrors(d, p);
   if (Object.keys(d.errors).length) {
     renderSharing();
-    const first = document.querySelector("#msBody .ms-bad");
+    const first = document.querySelector("#msFlowBody .ms-bad");
     if (first && first.scrollIntoView) first.scrollIntoView({ block: "center", behavior: typeof motionAllowed === "function" && motionAllowed(first) ? "smooth" : "auto" });
     return;
   }
@@ -1640,10 +1668,10 @@ async function submitDraft(p) {
     rememberBlock(p, null);
     await loadMine();
     loadLibrary(true);
-    if (f.mode === "edit") { if (backToDetail()) return; sharing.flow = null; renderSharing(); $("msBody").scrollTop = 0; return; }
+    if (f.mode === "edit") { if (backToDetail()) return; sharing.flow = null; renderSharing(); return; }
     sharing.flow = { mode: "done", name: p.name };
     renderSharing();
-    $("msBody").scrollTop = 0;
+    flowTop();
   } catch (err) {
     d.sending = false;
     if (err.code === "copy") {
@@ -1654,7 +1682,7 @@ async function submitDraft(p) {
       d.errors = { [err.code]: err.message.replace("cannot", "can't") };
     } else d.problem = err.message;
     renderSharing();
-    $("msBody").scrollTop = 0;
+    flowTop();
   }
 }
 // sends a share (new, edited or updated): what the draft says, and the playlist's songs as they are now
@@ -1692,6 +1720,8 @@ async function stopSharing(m) {
     await sharingFetch("DELETE", "/share/" + m.id);
     sharing.flow = null;
     sharing.backTo = null;
+    if (sharing.detail === m.id) sharing.detail = null;   // its page is gone with it
+    renderSharing();
     await loadMine();
     loadLibrary(true);
   } catch (err) { if (d) { d.problem = err.message; renderSharing(); } }
@@ -1720,7 +1750,7 @@ function watchKeyboard() {
   vv.addEventListener("scroll", fit);
   dialog.addEventListener("focusin", () => setTimeout(fit, 50));
   dialog.addEventListener("focusout", () => setTimeout(fit, 50));
-  $("msBody").addEventListener("pointerdown", (e) => {
+  for (const box of [$("msBody"), $("msFlowBody")]) box && box.addEventListener("pointerdown", (e) => {
     const a = document.activeElement;
     if (a && a.matches("input, textarea") && !e.target.closest("input, textarea, button, label, .ms-moodbox")) a.blur();
   });
@@ -1862,6 +1892,7 @@ async function loadDevReports() {
 (function wireSharing() {
   startSharingCard();
   if ($("msClose")) $("msClose").addEventListener("click", () => closeSharing());
+  if (typeof fadeWithHidden === "function") fadeWithHidden($("msFlowWrap"), "dim", $("msFlow"), "box");
   watchKeyboard();
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" || !$("msOverlay") || $("msOverlay").hidden || document.querySelector(".fe-overlay")) return;
