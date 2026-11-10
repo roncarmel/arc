@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-10k">
-<script src="theme.js?v=2026-11-10k"></script>
+<meta name="app-version" content="2026-11-10l">
+<script src="theme.js?v=2026-11-10l"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -138,7 +138,8 @@
   #updateScreen { display: none; position: fixed; inset: 0; z-index: 1500; align-items: center; justify-content: center; padding: 16px; background: color-mix(in srgb, var(--bg) 55%, transparent); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); transition: opacity 450ms var(--ease-out); }
   html.updating #updateScreen { display: flex; }
   #updateScreen.us-out { opacity: 0; pointer-events: none; }
-  #updateScreen .us-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; width: 300px; max-width: 100%; box-sizing: border-box; background: var(--bg); color: var(--fg); border: 1.5px solid var(--button); border-radius: 24px; padding: 30px 24px 24px; box-shadow: 0 20px 50px color-mix(in srgb, var(--button) 30%, rgba(0, 0, 0, 0.2)); }
+  /* one height in every state (the tallest, The update did not arrive on two lines), the spinner and OK at its foot, so the card never changes size (Ron, 2026-11-10) */
+  #updateScreen .us-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; width: 300px; max-width: 100%; height: 316px; box-sizing: border-box; background: var(--bg); color: var(--fg); border: 1.5px solid var(--button); border-radius: 24px; padding: 30px 24px 24px; box-shadow: 0 20px 50px color-mix(in srgb, var(--button) 30%, rgba(0, 0, 0, 0.2)); }
   html.us-arrive #updateScreen { animation: us-fade 300ms var(--ease-out) both; }
   @keyframes us-fade { from { opacity: 0; } }
   html.us-arrive #updateScreen .us-card { animation: cn-rise 450ms var(--ease-out) both; }   /* only on the click: after the reload it is simply there, so it does not seem to come twice */
@@ -151,9 +152,9 @@
   #updateScreen p { margin: 0; line-height: 1.4; }
   #updateScreen .us-text { color: var(--muted); font-size: 0.95rem; }
   #updateScreen .us-text em { font-style: normal; font-weight: 700; color: var(--accent); }
-  #updateScreen .us-busy { display: flex; align-items: center; gap: 10px; margin-top: 4px; color: var(--muted); font-size: 0.88rem; }
+  #updateScreen .us-busy { display: flex; align-items: center; gap: 10px; margin-top: auto; color: var(--muted); font-size: 0.88rem; }
   #updateScreen .us-spin { width: 18px; height: 18px; flex: none; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--button); animation: cn-spin 0.9s linear infinite; }
-  #usOk { display: none; margin-top: 6px; padding: 12px 34px; font-size: 1.02rem; border-radius: 999px; }
+  #usOk { display: none; margin-top: auto; padding: 12px 34px; font-size: 1.02rem; border-radius: 999px; }
   #updateScreen.us-done .us-busy { display: none; }
   #updateScreen.us-done #usOk { display: block; animation: cn-rise 450ms var(--ease-out) both; }
   @media (prefers-reduced-motion: reduce) { #updateScreen, #updateScreen .us-card, #usOk { transition: none; animation: none !important; } #updateScreen .us-spin { animation: none; } #updateScreen .bd-spark { display: none; } }
@@ -2374,10 +2375,10 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-10k"></script>
-<script src="editor.js?v=2026-11-10k"></script>
-<script src="shared-spotify.js?v=2026-11-10k"></script>
-<script src="app.js?v=2026-11-10k"></script>
-<script src="sharing.js?v=2026-11-10k"></script>
+<script src="formats.js?v=2026-11-10l"></script>
+<script src="editor.js?v=2026-11-10l"></script>
+<script src="shared-spotify.js?v=2026-11-10l"></script>
+<script src="app.js?v=2026-11-10l"></script>
+<script src="sharing.js?v=2026-11-10l"></script>
 </body>
 </html>
