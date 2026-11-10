@@ -11,6 +11,8 @@ the page runs in jsdom, Spotify is a pretend server written in `run.js` (`makeFe
 
 Python 3 is needed (standard library only). Use the quotes around `--only=` when it has a `|`.
 
+Playwright (1.48.2, matching the Chromium already in `~/Library/Caches/ms-playwright`) is installed here for mockups and screenshots. It is not used by `run.js`. A script elsewhere loads it with `require("/Users/roncarmel/Desktop/arc/tests/node_modules/playwright")`. Never install it again or download browsers.
+
 ## How a check is written
 
 - An area is `if (want("area name")) { try { ... } catch (err) { areaCrashed("area name", err); } }`, and its name is in `SECTION_NAMES` at the top. Checks are `check("what is true", condition)`.

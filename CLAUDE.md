@@ -144,7 +144,7 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 - Exception: the guide's Designed for long playlists and Adding new music speak in Ron's voice (decided by Ron, 2026-11-04).
 - Page text says "click" or "tap" by device (`actWord` in app.js; `<span data-act>` in the markup), never "press".
 - Answers to Ron: brief, essentials only; answer what was asked. Say what was done and what is next. Do not report passing tests (only failures), and do not report time breakdowns.
-- For anything visual, show a mockup early (screenshots of the real page with Playwright, Spotify stubbed with `page.route`) and let Ron pick before building. When he says "let's discuss", discuss and do not build.
+- For anything visual, show a mockup early (screenshots of the real page with Playwright, Spotify stubbed with `page.route`) and let Ron pick before building. Playwright is already in `tests/node_modules` (`require("/Users/roncarmel/Desktop/arc/tests/node_modules/playwright")`); never search for it, install it, or download browsers. When he says "let's discuss", discuss and do not build.
 - Flag language that suggests an AI has feelings or personhood.
 
 ## Known issues and open items
