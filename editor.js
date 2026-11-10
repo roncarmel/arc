@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-10g";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-10h";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -846,7 +846,7 @@ function renderAppMenu() {
 
 // Developer mode (decided by Ron, 2026-11-08, mockups/dev-mode.html): holding Arc's icon for 3 seconds turns it on, and again off. Nothing shows while holding, on purpose:
 // it is not for people to find. A short message says which way it went. Kept on this device (devMode in localStorage; the <head> script sets html.dev-mode before the
-// first paint). While it is on, a DEV capsule (home's band, Arc's bar) opens the developer menu: Turn off developer mode as its pink header, the owner's Music sharing tools, Phone width, Copy Spotify request log, Clear data and start over, and Python's state. Off, Music sharing is Coming soon (devModeChanged in app.js).
+// first paint). While it is on, a tap on the word Arc (Arc's bar, or home's band on home) opens the developer menu: Turn off developer mode as its pink header, the owner's Music sharing tools, Phone width, Copy Spotify request log, Clear data and start over, and Python's state. Off, Music sharing is Coming soon (devModeChanged in app.js).
 // The icon takes no text selection, image callout or browser menu, so a long press on a phone reaches the end.
 const DEV_HOLD_MS = 3000;
 function watchDevHold(head) {
@@ -896,22 +896,48 @@ function showDevToast(text) {
     devToastTimer = setTimeout(() => { toast.hidden = true; }, 300);
   }, 2000);
 }
-function showDevMenu(open) {
-  const menu = $("devMenu");
+// In developer mode a tap on the word Arc opens the DEV menu under it: in Arc's bar in a tool, in home's band on home (where the bar's is hidden). The word looks the
+// same as ever, and outside developer mode the bar's still goes home (Ron, 2026-11-10; it replaced a floating DEV capsule).
+const DEV_ANCHORS = "#appBar .ab-name, #homePage .hp-band .wp-band-name";
+let devAnchor = null;
+function showDevMenu(open, anchor) {
+  const menu = document.getElementById("devMenu");
   if (!menu || menu.hidden === !open) return;
+  if (open) {
+    devAnchor = anchor || document.querySelector(DEV_ANCHORS.split(", ")[document.documentElement.classList.contains("view-home") ? 1 : 0]);
+    if (devAnchor) placeDevMenu(devAnchor);
+  }
   menu.hidden = !open;
-  $("devPill").setAttribute("aria-expanded", String(open));
   if (open && typeof devMenuOpened === "function") devMenuOpened();   // the owner's rows and their counts (sharing.js), Phone width's choice (app.js)
+}
+function placeDevMenu(anchor) {
+  const wrap = document.getElementById("devWrap"), menu = document.getElementById("devMenu");
+  const r = anchor.getBoundingClientRect(), width = Math.min(296, window.innerWidth - 36);
+  const top = Math.round(r.bottom + 8);
+  wrap.style.top = top + "px";
+  wrap.style.left = Math.round(Math.max(14, Math.min(r.left, window.innerWidth - width - 14))) + "px";
+  menu.style.maxHeight = Math.max(160, window.innerHeight - top - 14) + "px";
 }
 (function watchDevMenu() {
   const $ = (id) => document.getElementById(id);   // app.js, which has the page's $, loads later
-  if (!$("devPill")) return;
-  $("devPill").addEventListener("click", () => showDevMenu($("devMenu").hidden));
+  if (!$("devMenu")) return;
   $("devMenuMoods").addEventListener("click", () => { showDevMenu(false); openInfo("devMoods"); });
   $("devMenuReports").addEventListener("click", () => { showDevMenu(false); openInfo("devReports"); });
   $("devMenuOff").addEventListener("click", () => setDevMode(false));
-  document.addEventListener("click", (event) => { if (!event.target.closest || !event.target.closest("#devWrap")) showDevMenu(false); });
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !$("devMenu").hidden) { showDevMenu(false); $("devPill").focus(); } });
+  // capture, so the bar's word does not also go home
+  document.addEventListener("click", (event) => {
+    const name = event.target.closest && event.target.closest(DEV_ANCHORS);
+    if (name && devMode()) { event.preventDefault(); event.stopPropagation(); showDevMenu($("devMenu").hidden, name); return; }
+    if (!event.target.closest || !event.target.closest("#devWrap")) showDevMenu(false);
+  }, true);
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || $("devMenu").hidden) return;
+    showDevMenu(false);
+    const back = devAnchor && devAnchor.closest("button");
+    if (back) back.focus();
+  });
+  document.addEventListener("scroll", (event) => { if (!(event.target instanceof Node && $("devWrap").contains(event.target))) showDevMenu(false); }, true);   // it stays under the word, so it goes when the page moves
+  window.addEventListener("resize", () => showDevMenu(false));
 })();
 
 // While recipes are being saved to Spotify the menu button shows the cloud-save picture in place of its dots, with a short cross-fade, and keeps it for at least a second so a

@@ -839,10 +839,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-10g" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-10h" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-10g/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-10h/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkboxes in More options are the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -986,7 +986,7 @@ print(json.dumps(out))
   var ab = t0.document.getElementById("about");
   var leads = Array.from(ab.querySelectorAll("strong")).map((x) => x.textContent);
   check("the headings in What is this app? stand on their own line, without trailing periods", JSON.stringify(leads) === JSON.stringify(["What it does", "What it's good for", "How it works", "What you need", "Reporting problems", "Privacy"]) && Array.from(ab.querySelectorAll("p")).filter((p) => p.querySelector("strong + br")).length === 5, JSON.stringify(leads));
-  var pill = Array.from(t0.document.querySelectorAll("button:not(.linklike):not(.theme-swatch):not(.mf-sent-toggle):not(#cnContinue):not(#usOk), a.button-link")).filter((b) => !b.closest("#formatEditor") && !b.closest("#startupProblem") && !b.closest("#createDialog") && !b.closest("#devMenu") && b.id !== "devPill" && b.id !== "infoClose" && b.id !== "msClose" && b.id !== "msCard" && b.id !== "homeBuilder" && !b.classList.contains("wp-tool-head") && !b.closest("#homeMore .hp-ee-bar") && !b.classList.contains("sp-choice") && b.id !== "appHome" && !b.closest("#appBar") && b.id !== "updateGet");   // the Music sharing card (covers, not an icon) and the update card's Get it (its gift is on the card)   // the Setup complete button has words only; the startup popup and the info popup's close draw their icons inline
+  var pill = Array.from(t0.document.querySelectorAll("button:not(.linklike):not(.theme-swatch):not(.mf-sent-toggle):not(#cnContinue):not(#usOk), a.button-link")).filter((b) => !b.closest("#formatEditor") && !b.closest("#startupProblem") && !b.closest("#createDialog") && !b.closest("#devMenu") && b.id !== "infoClose" && b.id !== "msClose" && b.id !== "msCard" && b.id !== "homeBuilder" && !b.classList.contains("wp-tool-head") && !b.closest("#homeMore .hp-ee-bar") && !b.classList.contains("sp-choice") && b.id !== "appHome" && !b.closest("#appBar") && b.id !== "updateGet");   // the Music sharing card (covers, not an icon) and the update card's Get it (its gift is on the card)   // the Setup complete button has words only; the startup popup and the info popup's close draw their icons inline
   var pillsIn = pill.filter((b) => b.querySelector("img.btn-icon"));
   check("every pink button has an icon in front of its label", pill.length >= 15 && pillsIn.length === pill.length, `${pillsIn.length} of ${pill.length} ` + pill.filter((b) => !b.querySelector("img.btn-icon")).map((b) => b.id || b.outerHTML.slice(0, 60)).join(","));
   check("each icon is a small file, 20 by 20 (the Build sparkles 24 by 24), decorative, and the file exists", pill.every((b) => { const i = b.querySelector("img.btn-icon"); const size = i.getAttribute("src") === "icons/build.svg" ? "24" : "20"; return i.getAttribute("width") === size && i.getAttribute("height") === size && i.getAttribute("alt") === "" && /^icons\/[a-z]+\.svg$/.test(i.getAttribute("src")) && fs.existsSync(ROOT + i.getAttribute("src")); }));
@@ -2938,7 +2938,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-10g", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-10h", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -5160,7 +5160,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var dv_d = dv_w.document, dv_root = dv_d.documentElement;
   var dv_icon = dv_d.querySelector("#homePage .wp-band-icon");
   check("regular mode: Music sharing is Coming soon on home, with no library read, and its card does not open it", !dv_root.classList.contains("dev-mode") && dv_d.querySelector("#msCard .hp-tag").textContent === "Bring some, get some!" && /html:not\(\.dev-mode\) #msCard \.hp-data \{ display: none; \}/.test(Array.from(dv_d.querySelectorAll("style")).map((x) => x.textContent).join("")) && dv_d.getElementById("msCard").getAttribute("aria-disabled") === "true" && dv_d.getElementById("hpSoon").textContent === "Coming soon" && dv_w.getComputedStyle(dv_d.getElementById("hpSoon")).display !== "none" && !dv_d.querySelector("#msCard .hp-soon") && dv_w.eval("sharing.library") === null && (dv_d.getElementById("msCard").click(), dv_root.classList.contains("view-home") && dv_d.getElementById("msOverlay").hidden === true));
-  check("regular mode: no DEV capsule, and no hold on the builder menu's header", (dv_w.getComputedStyle(dv_d.getElementById("devWrap")).display === "none") && !/watchDevHold\(\$\("feMenuHead"\)\)/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
+  dv_d.querySelector("#homePage .hp-band .wp-band-name").click();
+  check("regular mode: no DEV menu, the word Arc opens nothing, and no hold on the builder menu's header", dv_w.getComputedStyle(dv_d.getElementById("devWrap")).display === "none" && dv_d.getElementById("devMenu").hidden && !dv_d.getElementById("devPill") && !/watchDevHold\(\$\("feMenuHead"\)\)/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
   var dv_before = dv_icon.outerHTML;
   dv_icon.dispatchEvent(dv_PE("pointerdown"));
   check("holding Arc's icon starts a 3 second wait, and nothing on screen changes", dv_w.eval("window.__t.length") === 1 && /const DEV_HOLD_MS = 3000;/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && dv_icon.outerHTML === dv_before);
@@ -5173,8 +5174,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("on: Music sharing's card comes alive and its library is read", dv_d.getElementById("msCard").getAttribute("aria-disabled") === "false" && /shares? by you, \d+ by others/.test(dv_d.getElementById("msCardText").textContent));
   await waitFor(() => dv_sh.ownerAsks === 1, 5000);
   check("on, the worker is asked once whether this Spotify account is the owner, and the answer is kept for that account", JSON.parse(dv_w.localStorage.getItem("sharingOwner") || "{}").owner === true && JSON.parse(dv_w.localStorage.getItem("sharingOwner")).account === dv_w.localStorage.getItem("spotifyAccount"));
-  check("on: the DEV capsule floats at the screen's lower right, in <body>, its menu opening upward", dv_d.getElementById("devWrap").parentNode === dv_d.body && dv_w.getComputedStyle(dv_d.getElementById("devWrap")).position === "fixed" && /#devMenu \{ position: absolute; bottom: calc\(100% \+ 8px\)/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
-  dv_d.getElementById("devPill").click();
+  var dv_hname = dv_d.querySelector("#homePage .hp-band .wp-band-name"), dv_hstyle = dv_w.getComputedStyle(dv_hname).cssText + dv_hname.outerHTML;
+  dv_hname.click();
+  check("on, home: no DEV capsule; a tap on the word Arc in home's band opens the DEV menu under it, in <body>, the word unchanged", !dv_d.getElementById("devPill") && dv_d.getElementById("devWrap").parentNode === dv_d.body && dv_w.getComputedStyle(dv_d.getElementById("devWrap")).position === "fixed" && dv_d.getElementById("devMenu").hidden === false && dv_d.getElementById("devMenu").getBoundingClientRect().top >= dv_hname.getBoundingClientRect().bottom && dv_w.getComputedStyle(dv_hname).cssText + dv_hname.outerHTML === dv_hstyle);
   var dv_rows = () => Array.from(dv_d.querySelectorAll("#devMenu > button, #devMenu > .dm-item")).filter((r) => !r.hidden).map((r) => r.querySelector("span").textContent);
   check("the DEV menu: Turn off developer mode as its pink header, then Manage mood words, Review reports, Phone width, Launch screen, Copy Spotify request log, Clear data and start over, and Python at its foot", dv_d.getElementById("devMenu").hidden === false && dv_d.querySelector("#devMenu > .dm-head").id === "devMenuOff" && JSON.stringify(dv_rows()) === JSON.stringify(["Turn off developer mode", "Manage mood words", "Review reports", "Phone width", "Launch screen", "Copy Spotify request log", "Clear data and start over"]) && dv_d.querySelector("#devMenu > :last-child").id === "pythonStatus", JSON.stringify(dv_rows()));
   await waitFor(() => dv_d.getElementById("devReportsCount").textContent !== "", 3000);
@@ -5185,7 +5187,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => /Loud one/.test(dv_d.getElementById("devReportList").textContent), 3000);
   check("Review reports opens alone in the info popup, titled in the band", dv_d.getElementById("devMenu").hidden === true && dv_d.getElementById("infoSlot").firstElementChild.id === "devReports" && dv_d.getElementById("infoTitle").textContent === "Review reports");
   dv_d.getElementById("infoClose").click();
-  dv_d.getElementById("devPill").click(); dv_d.getElementById("devMenuMoods").click();
+  dv_d.querySelector("#homePage .hp-band .wp-band-name").click(); dv_d.getElementById("devMenuMoods").click();
   check("Manage mood words opens alone the same way", dv_d.getElementById("infoSlot").firstElementChild.id === "devMoods" && dv_d.getElementById("infoTitle").textContent === "Manage mood words" && !!dv_d.querySelector("#devTagWords .ms-tags"));
   dv_d.getElementById("infoClose").click();
   check("closed, it goes back to its place, hidden", dv_d.getElementById("devMoods").hidden === true && !dv_d.getElementById("devMoods").closest("#infoSlot"));
@@ -5194,10 +5196,12 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var dv_x = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", devMode: "1" }, fetchOptions: dv_xo });
   await waitFor(() => dv_x.eval("connection") === "ready", 15000);
   await waitFor(() => JSON.parse(dv_x.localStorage.getItem("sharingOwner") || "{}").owner === false, 5000);
-  dv_x.document.getElementById("devPill").click(); dv_x.document.getElementById("devPill").click(); dv_x.document.getElementById("devPill").click();
+  for (var dv_k = 0; dv_k < 3; dv_k++) dv_x.document.querySelector("#homePage .hp-band .wp-band-name").click();
   check("anyone else's DEV menu has no Music sharing rows, and the worker is asked only once", dv_x.document.getElementById("devMenuMoods").hidden && dv_x.document.getElementById("devMenuReports").hidden && dv_xo.sharing.ownerAsks === 1, String(dv_xo.sharing.ownerAsks));
   dv_w.eval("showView('sharing')");
   check("on, Music sharing opens", dv_root.classList.contains("view-sharing"));
+  dv_d.querySelector("#appBar .ab-name").click();
+  check("in a tool, a tap on the word Arc in Arc's bar opens the DEV menu and does not go home; a tap elsewhere closes it", dv_root.classList.contains("view-sharing") && dv_d.getElementById("devMenu").hidden === false && (dv_d.body.click(), dv_d.getElementById("devMenu").hidden === true));
   var dv_bar = dv_d.querySelector("#appHome img");
   dv_bar.dispatchEvent(dv_PE("pointerdown", 10));
   var dv_n = dv_w.eval("window.__t.length");
@@ -5208,7 +5212,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   dv_w.eval("window.__t[window.__t.length - 1]()");
   await waitFor(() => dv_root.classList.contains("view-home"), 3000);
   check("held again (here on the bar's icon), it turns off, leaves Music sharing for home, and says so", !dv_root.classList.contains("dev-mode") && dv_w.localStorage.getItem("devMode") === null && dv_root.classList.contains("view-home") && dv_d.getElementById("devToastText").textContent === "Developer mode off" && dv_d.getElementById("msCard").getAttribute("aria-disabled") === "true");
-  dv_w.eval("setDevMode(true)"); dv_d.getElementById("devPill").click(); dv_d.getElementById("devMenuOff").click();
+  dv_w.eval("setDevMode(true)"); dv_d.querySelector("#homePage .hp-band .wp-band-name").click(); dv_d.getElementById("devMenuOff").click();
   check("Turn off developer mode in the DEV menu turns it off", !dv_root.classList.contains("dev-mode") && dv_d.getElementById("devMenu").hidden === true);
   var dv_wel = await boot({ url: "http://127.0.0.1:8000/" });
   var dv_wh = dv_wel.document.getElementById("wpSharingHead");
@@ -5218,7 +5222,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   dv_wel2.document.getElementById("wpSharingHead").click();
   check("in developer mode the <head> script marks the page before it is drawn, and the welcome card opens", /if \(localStorage\.getItem\("devMode"\) === "1"\) document\.documentElement\.classList\.add\("dev-mode"\);/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && dv_wel2.document.getElementById("wpSharingHead").getAttribute("aria-expanded") === "true");
   check("there is no Disconnect in the DEV menu", !dv_w.document.getElementById("devDisconnect") && !/Disconnect/.test(dv_w.document.getElementById("devMenu").textContent));
-  dv_w.eval("setDevMode(true)"); dv_w.document.getElementById("devPill").click();
+  dv_w.eval("setDevMode(true)"); dv_w.document.querySelector("#homePage .hp-band .wp-band-name").click();
   dv_w.document.getElementById("devStartOver").click();
   await new Promise((r) => setTimeout(r, 80));
   check("Clear data and start over asks first, says the Client ID is copied, and its button is red", /Clear data and start over\?/.test((dv_w.document.getElementById("feSyncDialog") || {}).textContent || "") && /Client ID is copied to the clipboard/.test(dv_w.document.getElementById("feSyncDialog").textContent) && dv_w.document.getElementById("feSyncChoice0").classList.contains("fe-danger-button") && dv_w.document.getElementById("devMenu").hidden);
@@ -5343,7 +5347,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-10g"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-10h"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
