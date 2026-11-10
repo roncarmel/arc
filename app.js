@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-10b";
+const APP_VERSION = "2026-11-10c";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2013,26 +2013,22 @@ function setCreateStage(stage) {
   createStage = stage;
   $("confirmButtons").hidden = stage !== "question";
   $("bdBusyRow").hidden = stage !== "planning" && stage !== "creating";
-  setLabel($("bdBusy"), stage === "creating" ? "Building…" : "Planning…");
+  setLabel($("bdBusy"), stage === "creating" ? "Building…" : "Build playlists");   // while reading, the button that will build waits, pale
   $("createCloseRow").hidden = stage !== "done";
+  const closable = stage === "question" || stage === "done";   // the X stays in its place, unseen, while the popup cannot be closed (reading and building)
+  $("bdClose").classList.toggle("bd-x-off", !closable);
+  $("bdClose").disabled = !closable;
 }
 
 function openCreateDialog(keys) {
-  // The header: one recipe shows its name, its bar and its length; several just say how many.
+  // The header: one recipe shows its name (and, over the question, its length); several just say how many.
   $("bdTitle").textContent = keys.length === 1 ? formatLabel(keys[0]) : `Build ${plural(keys.length, "recipe")}`;
   const f = keys.length === 1 && editor.model ? editor.model.formats.find((x) => x.id === keys[0]) : null;
-  const bar = $("bdShape"), info = $("bdShapeInfo");
-  bar.textContent = info.textContent = "";
-  bar.hidden = info.hidden = !f;
+  const info = $("bdShapeInfo");
+  info.hidden = !f;
   if (f) {
-    const { pieces, music, quiet } = recipeShape(f);
-    for (const piece of pieces) {
-      const span = Object.assign(document.createElement("span"), { className: "bd-shape-piece" + (piece.silence ? " bd-shape-silence" : "") });
-      span.style.cssText = piece.style;
-      bar.appendChild(span);
-    }
-    const silence = quiet ? ` + ${quiet < 60 ? `${quiet} sec` : lengthText(quiet / 60)} of silence` : "";
-    info.append(Object.assign(document.createElement("b"), { textContent: lengthText(music) }), ` of music${silence} · ${plural(f.items.length, "segment")}`);
+    const { music, quiet } = recipeShape(f);
+    info.textContent = `${lengthText(music + quiet / 60)} per playlist · ${plural(f.items.length, "segment")}`;
   }
   $("createOverlay").hidden = false;
   document.body.style.overflow = "hidden";
@@ -2045,6 +2041,7 @@ function closeCreateDialog() {
   $("createOverlay").hidden = true;
   document.body.style.overflow = "";
   createStage = "closed";
+  $("createDialog").classList.remove("bd-listing");
   closeQuestion("cancel");   // dismissing the question is the same as cancelling it
   $("create").focus();
 }
@@ -2079,9 +2076,12 @@ function resetBuildPopup() {
   $("bdTally").hidden = true;
   $("bdTiles").textContent = "";
   $("bdInfo").textContent = "";
+  $("bdRead").hidden = true;
+  $("bdReadList").textContent = "";
+  $("createDialog").classList.remove("bd-listing");
   $("planText").hidden = true;
   $("planText").textContent = "";
-  for (const id of ["bdPickWhy", "bdPickHead", "bdPick"]) $(id).hidden = true;
+  for (const id of ["bdPickHead", "bdPick"]) $(id).hidden = true;
   $("createNotes").hidden = true;
   $("createOpen").hidden = true;
 }
@@ -2159,7 +2159,7 @@ function setRowState(li, state, note) {
 }
 
 function setTally(made, total, status, now) {
-  // While building, at the top of the popup: how many playlists are made, a tile for each (lit when made, breathing while under way), and what is happening.
+  // While building, at the top of the popup: how many playlists are made, what is happening, and Arc's icon for each (lit when made, breathing while under way), 8 to a row.
   const count = $("bdCount");
   count.textContent = "";
   count.classList.toggle("bd-count-one", total === 1);
@@ -2168,8 +2168,8 @@ function setTally(made, total, status, now) {
   $("bdCountNote").textContent = status;
   const tiles = $("bdTiles");
   tiles.hidden = total < 2;   // one tile alone says nothing
-  while (tiles.children.length < total) tiles.appendChild(Object.assign(document.createElement("span"), { className: "bd-tile" }));
-  Array.from(tiles.children).forEach((tile, i) => { tile.className = "bd-tile" + (i < made ? " bd-on" : i === made && now ? " bd-now" : ""); });
+  while (tiles.children.length < total) tiles.appendChild(Object.assign(document.createElement("span"), { className: "bd-arc" }));
+  Array.from(tiles.children).forEach((tile, i) => { tile.className = "bd-arc" + (i < made ? " bd-on" : i === made && now ? " bd-now" : ""); });
   $("bdTally").hidden = false;
 }
 
@@ -2244,8 +2244,8 @@ function glideToTop(box) {
 }
 
 function showFinale(made, minutes) {
-  // After a build: the covers fanned out with a glow behind them and confetti, how many playlists and how much music (counting up), and a tile for each
-  // that ripples once. It plays once, about two seconds, then holds still; with reduced motion it simply appears.
+  // After a build: the covers fanned out with a glow behind them and confetti, and how many playlists and how much music (counting up).
+  // It plays once, about two seconds, then holds still; with reduced motion it simply appears.
   const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const el = (tag, className, text) => Object.assign(document.createElement(tag), { className, textContent: text || "" });
   const box = el("div", "bd-finale");
@@ -2263,17 +2263,6 @@ function showFinale(made, minutes) {
   const music = el("p", "bd-hours");
   music.append(hours, document.createTextNode(" of music"));
   box.append(fan, el("p", "bd-big", plural(made, "playlist")), music, el("p", "bd-lib", `${made === 1 ? "is" : "are"} in your Spotify library.`));
-  if (made > 1) {
-    const tiles = el("div", "bd-tiles bd-ripple");
-    tiles.setAttribute("aria-hidden", "true");
-    const step = Math.min(45, 900 / made);   // the ripple crosses in under a second however many there are
-    for (let i = 0; i < made; i++) {
-      const tile = el("span", "bd-tile bd-on");
-      tile.style.animationDelay = `${Math.round(700 + i * step)}ms`;
-      tiles.appendChild(tile);
-    }
-    box.appendChild(tiles);
-  }
   setActionMessage("");
   $("actionMessage").appendChild(box);
   if (still || typeof requestAnimationFrame !== "function") return;
@@ -2322,6 +2311,7 @@ function problemCard(title, items, text = "") {
 function showPlanProblems(items, recipes) {
   // Nothing can be built: every reason at once, each with what to do about it.
   setOutput("");
+  $("bdRead").hidden = true;
   $("output").appendChild(problemCard(`Nothing can be built from ${recipes > 1 ? "these recipes" : "this recipe"} yet`, items));
   $("output").hidden = false;
   setBuildSteps("plan", true);
@@ -2347,6 +2337,7 @@ function showBuildStop(err, done) {
   else if (done && (done.built || done.incomplete)) what = `${done.built} of ${plural(done.total, "playlist")} ${done.built === 1 ? "was" : "were"} built` + (done.incomplete ? `, and ${named(done.incomplete)} is incomplete.` : ".");
   const again = done && (done.built || done.incomplete) ? " Building again replaces the ones made so far." : "";
   setActionMessage("");
+  $("bdRead").hidden = true;
   const card = problemCard(problem.title, [], `${what} ${problem.advice}${again}`);
   $("actionMessage").appendChild(card);
   setBuildSteps(buildStep === "done" ? "build" : buildStep, true);
@@ -2744,11 +2735,18 @@ async function gatherInputs() {
   const match = JSON.parse(py.matchPlaylists(JSON.stringify(names), JSON.stringify(playlists), me.id));
   for (const name of match.missing || []) problems.push([`${named(name)} is not in your Spotify playlists.`, "Choose another playlist in the recipe, or check its name in Spotify."]);
   for (const name of match.notMine || []) problems.push([`${named(name)} is not yours.`, "Spotify only lets this app read playlists you own. Copy its songs into a playlist of your own and use that."]);
+  // Each source playlist in the reading list: waiting, then a spinner while it is read, then ticked with its songs.
   const tracks = {};
-  for (const name of names) {
-    if (!match.found[name]) continue;
-    setOutput(`Reading songs from ${named(name)}…`);
+  const reading = names.filter((name) => match.found[name]).map((name) => {
+    const row = playlistRow({ name }, "wait");
+    $("bdReadList").appendChild(row);
+    return row;
+  });
+  for (const row of reading) {
+    const name = row.bd.p.name;
+    setRowState(row, "now");
     tracks[name] = await loadTracks(match.found[name]);
+    setRowState(row, "done", plural(tracks[name].length, "song"));
   }
   if (problems.length) {
     // The recipe cannot be planned as it is. Playlists that are too short are found from their minutes alone, so they are listed too, all at once.
@@ -2788,7 +2786,6 @@ async function planSelected(startedWith) {
   const matching = JSON.parse(py.existingMatches(inputs.formatsText, JSON.stringify(inputs.keys), JSON.stringify(playlists), me.id));
   const madeByApp = new Set(playlists.filter((p) => p.madeByApp).map((p) => p.id));
   const marked = matching.filter((p) => madeByApp.has(p.id));
-  setOutput("Planning…");
   const built = [];
   const problems = inputs.failedNotes.slice();
   for (const key of inputs.keys) {
@@ -2913,40 +2910,24 @@ function fillWhyTable(plan) {
   }
 }
 
-function infoBox(icon, ...lines) {
-  // One of the small boxes above the list of playlists: an icon, then its lines (elements or text).
+function infoBox(icon, title, ...more) {
+  // One of the rows above the Build button: an icon, a short title and a chevron. A tap opens what is behind it (elements or sentences) in place.
   const box = Object.assign(document.createElement("div"), { className: "bd-info" });
-  box.appendChild(Object.assign(document.createElement("span"), { className: "bd-info-ic", innerHTML: BD_ICON[icon] }));
-  const text = document.createElement("div");
-  for (const line of lines) {
-    if (typeof line === "string") putNamed(text.appendChild(document.createElement("p")), line);
-    else text.appendChild(line);
+  const row = Object.assign(document.createElement("button"), { type: "button", className: "bd-info-row" });
+  row.setAttribute("aria-expanded", "false");
+  const text = document.createElement("span");
+  putNamed(text, title);
+  row.append(Object.assign(document.createElement("span"), { className: "bd-info-ic", innerHTML: BD_ICON[icon] }), text,
+    Object.assign(document.createElement("span"), { className: "bd-chev", innerHTML: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>' }));
+  const body = Object.assign(document.createElement("div"), { className: "bd-info-more", hidden: true });
+  for (const line of more) {
+    if (typeof line === "string") putNamed(body.appendChild(Object.assign(document.createElement("p"), { className: "bd-info-lead" })), line);
+    else body.appendChild(line);
   }
-  box.appendChild(text);
+  row.onclick = () => { revealSmoothly(body, body.hidden); row.setAttribute("aria-expanded", String(!body.hidden)); };
+  box.append(row, body);
   $("bdInfo").appendChild(box);
-  return text;
-}
-
-function sentence(text, link) {
-  // A line of text with a link at its end.
-  const p = document.createElement("p");
-  putNamed(p, text + " ");
-  if (link) p.appendChild(link);
-  return p;
-}
-
-function linkButton(label, onClick) {
-  const b = Object.assign(document.createElement("button"), { type: "button", className: "linklike", textContent: label });
-  b.onclick = onClick;
-  return b;
-}
-
-function detailsLink(more) {
-  // "Details" opens the part of a box that is hidden at first, and "Hide details" closes it.
-  more.hidden = true;
-  more.classList.add("bd-info-more");
-  const b = linkButton("Details", () => { revealSmoothly(more, more.hidden); b.textContent = more.hidden ? "Details" : "Hide details"; });
-  return b;
+  return box;
 }
 
 function songLink(where) {
@@ -2959,19 +2940,18 @@ function songLink(where) {
 }
 
 function fillInfoBoxes(plan, keep) {
-  // What else the build does or found, each in its own box: earlier playlists, the person's own playlists in the way, songs listed more than once, songs in more than one source, and songs in more than one recording.
+  // What else the build does or found, a row each with the rest behind it: earlier playlists replaced, the person's own playlists renamed out of the way,
+  // and notes on songs (listed more than once, in more than one of these playlists, in more than one recording) gathered in one row.
   $("bdInfo").textContent = "";
   if (plan.marked.length) {
-    // Replacing is the usual thing, so the choice to keep them waits behind Details.
+    // Replacing is the usual thing, so the choice to keep them waits behind the row.
     const one = plan.marked.length === 1;
-    const more = document.createElement("div");
-    more.appendChild(Object.assign(document.createElement("p"), { textContent: `Replacing ${one ? "it" : "them"} is the usual choice, but you can keep the old ${one ? "one" : "ones"} if you like.` }));
     const label = document.createElement("label");
     const words = document.createElement("span");   // one piece of text beside the checkbox, so the label's gap does not split it
     putNamed(words, `Keep ${one ? "it" : "them"}, renamed to ${named(`\u2026 (version ${nextVersionLetter(plan.marked)})`)}`);
     label.append(keep, words);
-    more.appendChild(label);
-    infoBox("replace", sentence(`${plural(plan.marked.length, "earlier playlist")} from ${plan.many ? "these recipes" : "this recipe"} will be replaced.`, detailsLink(more)), more);
+    const why = Object.assign(document.createElement("p"), { textContent: `Replacing ${one ? "it" : "them"} is the usual choice, but you can keep the old ${one ? "one" : "ones"} if you like.` });
+    infoBox("replace", one ? `Replaces ${named(plan.marked[0].name)}` : `Replaces ${plural(plan.marked.length, "earlier playlist")}`, why, label);
   }
   if (plan.others.length) {
     const letter = nextVersionLetter(plan.others);
@@ -2983,8 +2963,10 @@ function fillInfoBoxes(plan, keep) {
       list.appendChild(li);
     }
     const one = plan.others.length === 1;
-    infoBox("rename", sentence(one ? "One of your own playlists will be renamed to free its name." : `${plan.others.length} of your own playlists will be renamed to free their names.`, detailsLink(list)), list);
+    infoBox("rename", one ? "Renames one of your playlists" : `Renames ${plan.others.length} of your playlists`,
+      one ? "It has a name a new playlist uses, so it gets a new one:" : "They have names the new playlists use, so they get new ones:", list);
   }
+  const notes = [];   // [title when it is the only note, sentence, details...]
   const repeats = plan.repeats || [];
   if (repeats.length) {
     const list = document.createElement("ul");
@@ -2992,17 +2974,14 @@ function fillInfoBoxes(plan, keep) {
       for (const x of r.songs.slice(0, 10)) putNamed(list.appendChild(document.createElement("li")), `${x.label}: ${x.times} times${repeats.length > 1 ? ` in ${named(r.name)}` : ""}`);
       if (r.songs.length > 10) putNamed(list.appendChild(document.createElement("li")), `and ${r.songs.length - 10} more${repeats.length > 1 ? ` in ${named(r.name)}` : ""}`);
     }
-    const text = repeats.length === 1
+    notes.push(["Songs listed more than once", repeats.length === 1
       ? `${named(repeats[0].name)} lists ${plural(repeats[0].songs.length, "song")} more than once. Each is used once.`
-      : `${repeats.length} playlists list songs more than once. Each song is used once.`;
-    infoBox("copy", sentence(text, detailsLink(list)), list);
+      : `${repeats.length} playlists list songs more than once. Each song is used once.`, list]);
   }
   const shared = Math.max(0, ...plan.built.map((b) => b.shared || 0));
-  if (shared) infoBox("shared", `${plural(shared, "song")} ${shared === 1 ? "is" : "are"} in more than one of these playlists. Each is used once.`);
+  if (shared) notes.push(["Songs in more than one playlist", `${plural(shared, "song")} ${shared === 1 ? "is" : "are"} in more than one of these playlists. Each is used once.`]);
   const suspects = plan.suspects || [];
   if (suspects.length) {
-    const more = document.createElement("div");
-    more.appendChild(Object.assign(document.createElement("p"), { textContent: "Each recording (for example live and studio) counts as its own song, so more than one can be used." }));
     const list = document.createElement("ul");
     for (const x of suspects.slice(0, 10)) {
       const li = Object.assign(document.createElement("li"), { textContent: `${x.label}: ` });
@@ -3015,9 +2994,9 @@ function fillInfoBoxes(plan, keep) {
       list.appendChild(li);
     }
     if (suspects.length > 10) list.appendChild(Object.assign(document.createElement("li"), { textContent: `and ${suspects.length - 10} more` }));
-    more.appendChild(list);
-    infoBox("music", sentence(`${plural(suspects.length, "song")} ${suspects.length === 1 ? "has" : "have"} more than one recording.`, detailsLink(more)), more);
+    notes.push(["Songs in more than one recording", `${plural(suspects.length, "song")} ${suspects.length === 1 ? "has" : "have"} more than one recording. Each recording (for example live and studio) counts as its own song, so more than one can be used.`, list]);
   }
+  if (notes.length) infoBox("music", notes.length === 1 ? notes[0][0] : `${notes.length} notes on songs`, ...notes.flatMap(([, line, ...more]) => [line, ...more]));
 }
 
 function askToCreate(plan) {
@@ -3028,28 +3007,23 @@ function askToCreate(plan) {
     const keep = Object.assign(document.createElement("input"), { type: "checkbox", id: "confirmKeepEarlier" });
     const whyLabel = plan.many ? "Why these numbers?" : `Why ${plan.total}?`;
     const why = Object.assign(document.createElement("button"), { type: "button", className: "linklike", id: "planToggle", textContent: whyLabel });
-    // One recipe that can make more than one: the person chooses how many, by a tile per playlist with its number above. None is chosen at first, so
-    // Build does nothing until one is.
+    // One recipe that can make more than one: "How many playlists?", and Arc's icon per playlist with its number above, 8 to a row. None is chosen at first,
+    // so Build does nothing until one is (decided by Ron, 2026-11-04; the popup was simplified by Ron, 2026-11-10, mockups/build-a-states.html).
     const pick = !plan.many && plan.total > 1;
     let chosen = pick ? 0 : plan.total;
     // the person's own playlists in the way: only the ones whose names the chosen playlists use
     const inWayFor = (n) => { const names = new Set(plan.built[0].playlists.slice(0, n).map((p) => normName(p.name))); return plan.others.filter((p) => names.has(normName(p.name))); };
     let shownOthers = pick ? inWayFor(0).length : plan.others.length;
-    for (const id of ["bdPickWhy", "bdPickHead", "bdPick"]) $(id).hidden = !pick;
+    $("bdRead").hidden = true;
+    $("bdPick").hidden = !pick;
+    $("bdPickHead").hidden = false;
+    $("bdPickHead").textContent = pick ? "How many playlists?" : `Ready to build ${plural(plan.total, "playlist")}`;
+    summary.textContent = "";
     if (pick) {
-      summary.textContent = plan.built[0].ranOut ? "The playlists you chose for this recipe have enough songs to build up to " : "You can build up to ";
-      summary.appendChild(Object.assign(document.createElement("b"), { textContent: plural(plan.total, "playlist") }));
-      summary.appendChild(document.createTextNode(plan.built[0].ranOut ? ". " : " from this recipe. "));
-      summary.appendChild(why);
+      summary.append("Up to ", Object.assign(document.createElement("b"), { textContent: String(plan.total) }), ", with no song repeated across them. ", why);
       const tiles = $("bdPickTiles");
       tiles.textContent = "";
-      tiles.style.setProperty("--cols", String(Math.min(plan.total, 8)));
-      $("bdPickGuide").onclick = () => openGuide("gdSeveral");
       const show = () => {
-        // the line on what several means follows the choice (the most possible while none is chosen; 2 when only 1 is)
-        const many = chosen > 1 ? chosen : plan.total;
-        $("bdPickWhyN").textContent = plural(many, "playlist");
-        $("bdPickWhyC").textContent = `${many} ceremonies`;
         Array.from(tiles.children).forEach((t, i) => {
           t.classList.toggle("bd-on", i < chosen);
           t.setAttribute("aria-checked", String(i + 1 === chosen));
@@ -3065,10 +3039,10 @@ function askToCreate(plan) {
         const opt = Object.assign(document.createElement("button"), { type: "button", className: "bd-pick-opt" });
         opt.setAttribute("role", "radio");
         opt.setAttribute("aria-label", plural(n, "playlist"));
-        opt.append(Object.assign(document.createElement("span"), { textContent: String(n) }), Object.assign(document.createElement("span"), { className: "bd-pick-tile", innerHTML: "<i></i><i></i><i></i>" }));
+        opt.append(Object.assign(document.createElement("span"), { textContent: String(n) }), Object.assign(document.createElement("span"), { className: "bd-arc" }));
         opt.onclick = () => choose(n);
         opt.onkeydown = (event) => {
-          const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+          const step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 8, ArrowUp: -8 }[event.key];   // up and down move a row of 8
           if (!step) return;
           event.preventDefault();
           choose(Math.max(1, Math.min(plan.total, n + step)), true);
@@ -3077,10 +3051,8 @@ function askToCreate(plan) {
       }
       show();
     } else {
-      summary.textContent = "Ready to build ";
-      summary.appendChild(Object.assign(document.createElement("b"), { textContent: plural(plan.total, "playlist") }));
-      summary.appendChild(document.createTextNode(plan.many ? ` for ${plural(plan.built.length, "recipe")}. ` : ". "));
-      summary.appendChild(why);
+      if (plan.many) summary.append(`For ${plural(plan.built.length, "recipe")}. `);
+      summary.append(why);
       $("bdPickTiles").textContent = "";
       $("confirmYes").disabled = false;
     }
@@ -3096,7 +3068,6 @@ function askToCreate(plan) {
     }
     fillInfoBoxes(pick ? { ...plan, others: inWayFor(chosen) } : plan, keep);
     if (!pick) setLabel($("confirmYes"), `Build ${plural(plan.total, "playlist")}`);
-    setLabel($("confirmNo"), "Cancel");
     clearResults();   // the plan says how many; the playlists are listed only once they are being built
     fillWhyTable(plan);
     $("planText").hidden = true;
@@ -3113,13 +3084,12 @@ function askToCreate(plan) {
       $("planText").hidden = true;
       $("planText").textContent = "";
       $("bdInfo").textContent = "";
-      for (const id of ["confirmYes", "confirmNo"]) $(id).onclick = null;
+      $("confirmYes").onclick = null;
       if (answer === "create") setCreateStage("creating");   // from this moment it cannot be dismissed
       resolve(answer);
     };
     openQuestion = finish;
     $("confirmYes").onclick = () => finish("create");
-    $("confirmNo").onclick = () => finish("cancel");
     why.onclick = () => {
       revealSmoothly($("planText"), $("planText").hidden);
       why.textContent = $("planText").hidden ? whyLabel : "Hide";
@@ -3149,6 +3119,7 @@ async function startCreate(keys = null) {
   const wanted = selectedKeys();
   openCreateDialog(wanted);
   setBuildSteps("read");
+  $("bdRead").hidden = false;
   logStep("plan started");
   invalidatePlan(false);
   const startedWith = planSignature();
@@ -3234,15 +3205,16 @@ async function createFromPlan(plan) {
     rows.push(row);
     $("results").appendChild(row);
   }
-  // The count stays at the top while the list scrolls, and the list keeps the row being built in view, until the person scrolls it themselves.
-  const body = $("createDialog").querySelector(".bd-body");
+  // The count and the icons stay above while only the list scrolls (and, when done, the finale above it), and the list keeps the row being built in view,
+  // until the person scrolls it themselves.
+  $("createDialog").classList.add("bd-listing");
+  const body = $("results");
   let follow = true;
   const stopFollowing = () => { follow = false; };
   for (const type of ["wheel", "touchmove", "keydown"]) body.addEventListener(type, stopFollowing, { passive: true });
   const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const show = (row) => {
     if (!follow || !row.scrollIntoView) return;
-    body.style.scrollPaddingTop = `${$("bdTally").offsetHeight}px`;   // so the row is not hidden behind the count
     row.scrollIntoView({ block: "nearest", behavior: still ? "auto" : "smooth" });
   };
   let created = 0;
@@ -3321,7 +3293,7 @@ async function createFromPlan(plan) {
     else if (coverUnloaded) notes.push("The cover art could not be loaded, so the playlists have Spotify's default cover.");
     else if (coverFailed) notes.push(`Spotify would not accept the cover art for ${plural(coverFailed, "playlist")}.`);
     if (created > 0) countEvent("playlists-created", String(created));
-    await glideToTop(body);   // the finale plays at the top, so it starts once the list is back there
+    await glideToTop(body);   // the list starts again from its first playlist under the finale
     showFinale(created, planned.slice(0, created).reduce((n, p) => n + (p.minutes || 0), 0));
     // The first new playlist, at its ordinary Spotify address: on a phone it opens the Spotify app when it is installed, on a computer the web player, which offers the app.
     if (createdIds.length) $("createOpenLink").href = `https://open.spotify.com/playlist/${createdIds[0]}`;
@@ -3351,7 +3323,7 @@ async function createFromPlan(plan) {
     try { await loadMyPlaylists(); } catch (ignore) { /* keep the original error showing */ }
   } finally {
     for (const type of ["wheel", "touchmove", "keydown"]) body.removeEventListener(type, stopFollowing);
-    body.scrollTop = 0;   // the result, or what went wrong, is at the top
+    body.scrollTop = 0;   // the list from its first playlist, under the result or what went wrong
   }
 }
 
@@ -3647,6 +3619,7 @@ async function main() {
     });
   }
   on("createClose", "click", closeCreateDialog);
+  on("bdClose", "click", closeCreateDialog);   // the X: cancels the question, or closes the popup once the build is done
   initMotion();
   smoothResize($("createDialog"), document.querySelector("#createDialog .bd-body"));
   smoothResize($("infoDialog"), $("infoSlot"));
