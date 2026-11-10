@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-09y";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-10a";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -599,6 +599,7 @@ function renderSharingTabs() {
     const tab = (value, icon, name) => feEl("div", { class: "ms-tab", "data-tab": value },
       feEl("button", { type: "button", role: "tab", class: "ms-tab-name", onClick: () => switchTab(value) }, feIcon(icon), name));
     bar.append(feEl("span", { class: "ms-tabpill", "aria-hidden": "true" }), tab("find", "people", "By others"), tab("share", "upload", "By you"));
+    dragTabs(bar);
   }
   bar.classList.toggle("ms-tabs-right", sharing.tab === "share");
   for (const t of bar.querySelectorAll(".ms-tab")) {
@@ -606,6 +607,58 @@ function renderSharingTabs() {
     t.classList.toggle("ms-on", on);
     t.querySelector("button").setAttribute("aria-selected", String(on));
   }
+}
+// The switch can also be dragged (Ron, 2026-11-10): the capsule follows the finger and the two names change color with it, the tap's
+// animation scrubbed by hand. Let go, it finishes the move to the half it is nearer, and that tab opens if it is the other one.
+function dragTabs(bar) {
+  const pill = bar.querySelector(".ms-tabpill");
+  const names = () => [...bar.querySelectorAll(".ms-tab")].map(t => t.querySelector(".ms-tab-name"));
+  let drag = null, swallowClick = false, clearTimer = 0;
+  const paint = p => {
+    pill.style.transform = `translateX(${p * 100}%)`;
+    names().forEach((b, i) => {
+      const w = i ? p : 1 - p;
+      b.style.color = `color-mix(in srgb, var(--accent) ${Math.round(w * 100)}%, var(--fg))`;
+      b.style.opacity = String(0.6 + 0.4 * w);
+    });
+  };
+  const clear = () => { pill.style.transform = ""; names().forEach(b => { b.style.color = ""; b.style.opacity = ""; }); };
+  bar.addEventListener("pointerdown", e => {
+    if (e.button !== 0 || !e.isPrimary) return;
+    clearTimeout(clearTimer);
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, from: sharing.tab === "share" ? 1 : 0, p: null };
+  });
+  bar.addEventListener("pointermove", e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x;
+    if (drag.p === null) {
+      if (Math.abs(dx) < 6 || Math.abs(dx) < Math.abs(e.clientY - drag.y)) return;
+      drag.p = drag.from;
+      bar.classList.add("ms-tabs-dragging");
+      try { bar.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+    drag.p = Math.min(1, Math.max(0, drag.from + dx / (pill.offsetWidth || 1)));
+    paint(drag.p);
+  });
+  const end = e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag;
+    drag = null;
+    if (d.p === null) return;   // a tap: the button's own click handles it
+    swallowClick = true;
+    setTimeout(() => { swallowClick = false; }, 0);
+    const to = e.type === "pointercancel" ? d.from : d.p >= 0.5 ? 1 : 0;
+    void pill.offsetWidth;   // the drawn position is the start of the finishing move
+    bar.classList.remove("ms-tabs-dragging");
+    void pill.offsetWidth;
+    paint(to);
+    clearTimer = setTimeout(clear, 360);   // after the move the classes say the same
+    const tab = to ? "share" : "find";
+    if (tab !== sharing.tab) switchTab(tab);
+  };
+  bar.addEventListener("pointerup", end);
+  bar.addEventListener("pointercancel", end);
+  bar.addEventListener("click", e => { if (swallowClick) { e.stopPropagation(); e.preventDefault(); } }, true);
 }
 // the bottom row: Back (grey) and the main button; Back alone fills the row. In the wizard and the edit page (wizard: true) Back is pink
 // and as wide as the main button, with a gap between, and alone it keeps that size and place.
