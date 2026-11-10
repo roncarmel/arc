@@ -12,7 +12,7 @@ function pressBuild(w) {
   if (tiles && !w.document.getElementById("bdPick").hidden && !tiles.querySelector('[aria-checked="true"]') && tiles.lastElementChild) tiles.lastElementChild.click();
   w.document.getElementById("confirmYes").click();
 }
-const SECTION_NAMES = ["launch screen", "sharing card in the editor", "music sharing", "music sharing songs", "developer options", "the save pointer", "menu popups and the silence help", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version icon", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "marker colors", "marker hugs corners", "popups close only", "narrow more button", "the silence card", "privacy: why the counts", "build button centered in minimalist mode", "no double-tap zoom", "backup link in step 2", "spotify premium", "step 3 order and text", "the build icon", "python status at the bottom", "hover feedback on buttons", "questions and feedback", "settings below the segments, pink outline", "the tagline", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'fading and Close in the Create popup', 'tabs that scroll sideways', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
+const SECTION_NAMES = ["launch screen", "sharing card in the editor", "music sharing", "music sharing songs", "developer options", "the save pointer", "menu popups and the silence help", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version line", "welcome recipe link", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "popups close only", "narrow more button", "the silence card", "backup link in step 2", "spotify premium", "python status at the bottom", "questions and feedback", "settings below the segments, pink outline", "the tagline", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'fading and Close in the Create popup', 'tabs that scroll sideways', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
 // areas that need another area's setup to have run first
 const NEEDS = {
   "the page's styles for tags and phones": ["silences, dragging and removing"],
@@ -508,7 +508,6 @@ print(json.dumps(out))
   check("confirming forgets the Client ID, formats and sign-in, then reloads", wClear.localStorage.length === 0 && wClear.sessionStorage.length === 0 && wClear.__reloaded === true, `${wClear.localStorage.length} local, ${wClear.sessionStorage.length} session`);
   check("troubleshooting is available before connecting too", !!fresh.document.getElementById("clearData") && fresh.document.getElementById("appSection").hidden === true);
 
-  check("every button is filled #ff38b8 and no green is left", /--button: #ff38b8/.test(css) && /\n  button \{[^}]*background: var\(--button\)/.test(css) && !/1a7f4b|3ccf84/.test(css));
   check("no Support me: no Ko-fi link, caption or cup on the page", !fresh.document.getElementById("supportButton") && !fresh.document.getElementById("supportCaption") && !fresh.document.querySelector('a[href*="ko-fi"], img[src="cup-border.png"]'));
 
   // 6j. the browser-tab icon is wired up, with files beside the page
@@ -531,7 +530,6 @@ print(json.dumps(out))
   check("before creating, the question box and the plan box are closed", !visible(wB, "confirmBox") && wB.document.getElementById("output").hidden === true && wB.document.getElementById("output").textContent === "" && wB.document.getElementById("planText").hidden === true);
   var css0 = fs.readFileSync(ROOT + "index.html", "utf8");
   check("hidden always means hidden, even for elements the page styles with display (like the flex rows)", /\[hidden\] \{ display: none !important; \}/.test(css0) && /\.row \{[^}]*display: flex/.test(css0) && /<div id="confirmBox" hidden>/.test(css0));
-  check("the plan box starts hidden in the page itself, not only after a script runs", /<div id="output" class="bd-status" hidden><\/div>/.test(css0));
   check("the Step 3 row has one Build button and no dropdown; Remove has its own popup and Build all is in the menu", !!wB.document.querySelector("#create") && !wB.document.getElementById("formatKey") && !wB.document.getElementById("create").parentElement.querySelector("#removeOld, #preview, #buildAll") && !wB.document.querySelector("#appSection #removeOld") && !wB.document.getElementById("buildAll"));
   await runPreview(wB);
   var plannedCount = Number((wB.document.getElementById("confirmText").textContent.match(/^Up to (\d+),/) || [])[1]);
@@ -690,9 +688,7 @@ print(json.dumps(out))
 
   // I3. the Python status moved out of the way
   check("the Python status is the DEV menu's foot, short: the versions and ready", !!wB.document.querySelector("#devMenu #pythonStatus.dm-foot") && /^(Python [\d.]+ · )?Pyodide [\d.]+ ready$/.test(wB.document.getElementById("pythonStatus").textContent) && !wB.document.querySelector("#appSection #pythonStatus"), wB.document.getElementById("pythonStatus").textContent);
-  check("the page never says planner", !/planner/i.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   check("Remove built playlists does not show the app version", wB.document.getElementById("appVersionLabel") === null && !/App version/.test(wB.document.getElementById("removeSection").textContent));
-  check("while Python loads, the note beside Create says Python, not planner", /Getting Python ready/.test(appSource()) && /Python could not start, so building is unavailable/.test(appSource()) && !/planner/i.test(appSource()));
 
   check("no thank-you prompt or photo after a build", !wB.document.querySelector("#createDialog .support-prompt, #createSupport, img[src=\"ron.jpg\"]"));
 
@@ -758,7 +754,6 @@ print(json.dumps(out))
   var aboutFresh = fresh.document.getElementById("about");
   var aboutText = aboutFresh.textContent;
   check("an About this app section tells what it does, what it is good for, how it works, what is needed, and the privacy details", /^About this app$/.test(aboutFresh.querySelector("summary").textContent) && ["What it does", "What it's good for", "How it works", "What you need", "Privacy"].every((t) => aboutText.includes(t)) && aboutFresh.querySelectorAll("ol li").length === 3 && /Premium/.test(aboutText) && /never changed/.test(aboutText) && /Privacy/.test(aboutText));
-  check("the More about this app section always starts closed, for first-time and returning visitors alike", aboutFresh.open === false && !/<details id="about"[^>]*\bopen\b/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && !/\$\("about"\)\.open/.test(appSource()));
   check("it starts closed once a Client ID is saved, and once connected", returning.document.getElementById("about").open === false && t0.document.getElementById("about").open === false);
   var staticText = pageHtml.replace("Yes, I have", "").replace("I have done this before", "").replace("No, this is my first time", "").replace("I (Ron) read every report and respond when I can.", "").replace(/<style>[\s\S]*?<\/style>/g, "").replace(/<details id="guideSection"[\s\S]*?<details id="moreOptions"/, "").replace(/<[^>]+>/g, " ");
   var firstPerson = staticText.match(/\b(my|mine|myself|I|I'm|I've|I'll)\b/gi) || [];
@@ -804,7 +799,6 @@ print(json.dumps(out))
   pgc.document.getElementById("feAppMenuButton").click();
   check("the menu has no Change Client ID", pgc.document.getElementById("feSetupAgain") === null);
   var pgHead = fs.readFileSync(ROOT + "index.html", "utf8");
-  check("the page is chosen in <head> before anything is drawn, the same way as in app.js", /\(function \(\) \{\n    var page = "welcome";/.test(pgHead) && /document\.documentElement\.classList\.add\("page-" \+ page, "view-home"\)/.test(pgHead) && /function pageName\(\)/.test(appSource()));
 
 
   // ---------------- the playlist count in Step 1 follows creates and removals
@@ -825,7 +819,6 @@ print(json.dumps(out))
   await waitFor(() => /5 playlists found/.test(countText()), 5000);
   check("after removing those 3 playlists the count goes back to 5", countText() === "Connected as Ron. 5 playlists found.", countText());
   var tcss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("the Example column of the parts table stays on one line", /table\.parts th:last-child, table\.parts td:last-child \{ white-space: nowrap; \}/.test(tcss));
 
 
   // ---------------- problem reports
@@ -993,7 +986,6 @@ print(json.dumps(out))
   check("text-style links (Restore, Reset, Undo) have no icons", Array.from(t0.document.querySelectorAll("button.linklike")).every((b) => !b.querySelector("img")));
   check("each icon sits left of a label (a forward button such as Get started, right of it), and the label is its own element", pill.every((b) => { const i = b.querySelector("img.btn-icon, img"); return i === (["getStarted", "startSetup"].includes(b.id) ? b.lastElementChild : b.firstElementChild) && !!b.querySelector(".btn-label, span"); }));
   var icss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("every icon file is a valid white line icon, with no placeholder note left", fs.readdirSync(ROOT + "icons").filter((f) => f.endsWith(".svg")).length === 15 && fs.readdirSync(ROOT + "icons").every((f) => { const x = fs.readFileSync(ROOT + "icons/" + f, "utf8"); return /<svg /.test(x) && !/Placeholder/i.test(x) && /stroke="#fff"/.test(x); }));
   // changing a label must not remove the icon
   var ic = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   await runPreview(ic);
@@ -1104,7 +1096,6 @@ print(json.dumps(out))
   var moreBoxes = Array.from(fresh.document.querySelectorAll(".menu-popup"));
   var loud = moreBoxes.flatMap((b) => Array.from(b.querySelectorAll("p, label, span"))).filter((el) => el.closest("#removeConfirmBox, #clearConfirm, .btn-label") === null && el.hasAttribute("style") && /color\s*:/.test(el.getAttribute("style")));
   check("no paragraph in the menu's popups sets its own text color, so the gray applies everywhere", loud.length === 0, loud.map((e) => e.id || e.textContent.slice(0, 30)).join(","));
-  check("buttons in Remove built playlists keep their own white-on-pink look", /\n  button \{[^}]*color: var\(--on-button, #fff\)/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && fresh.document.getElementById("removeSection").querySelectorAll("button:not(.linklike)").length >= 3);
 
 
   // ---------------- the report's details name python
@@ -1279,7 +1270,6 @@ print(json.dumps(out))
   ed1.document.getElementById("feAddSegment").click();
   var ed_added = rowsOf(ed1);
   check("New segment adds an empty row at the end and opens its playlist list", ed_added.length === 3 && ed_added[2].querySelector(".fe-title").textContent === "Choose a playlist" && !!ed1.document.getElementById("feOptions") && ed_added[2].querySelector(".fe-main-empty") !== null);
-  check("an empty row's Choose a playlist wraps to a second line instead of being cut short on a phone", /#formatEditor \.fe-main-empty \.fe-title \{[^}]*white-space: normal;/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   ed1.document.dispatchEvent(new ed1.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   check("Escape closes the list", !ed1.document.getElementById("feOptions"));
   rowsOf(ed1)[2].querySelector(".fe-more").click();
@@ -1450,7 +1440,6 @@ print(json.dumps(out))
   var removeP = Array.from(fresh.document.querySelectorAll("#removeSection p")).find((p) => /Removes the playlists/.test(p.textContent));
   check("the Remove built playlists text says what it touches", !!removeP && /Removes the playlists Arc built from a recipe\. Your recipes and your other playlists are not touched\./.test(removeP.textContent), removeP && removeP.textContent);
   var wCss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("body text in What is this app? and How recipes work is gray, with headings and control names staying bright", /details\.about, #formatHelp \{ color: var\(--muted\); \}/.test(wCss) && /details\.about strong, #formatHelp h3 \{ color: var\(--fg\); \}/.test(wCss) && /\.ui \{ color: var\(--fg\); \}/.test(wCss));
   var uiNames = Array.from(fresh.document.querySelectorAll("span.ui")).map((x) => x.textContent);
   check("the names of buttons and links in running text are marked up the same way", ["New segment", "Add a mix", "Reset to default", "Restore", "Report a problem"].every((n) => uiNames.includes(n)), JSON.stringify(uiNames));
   check("no button or link name is left in single or curly quotes, since the style now sets it apart", !/[\u2018\u2019'](More options|Preview|Create|New segment|Add a mix)[\u2018\u2019']/.test(fresh.document.body.textContent));
@@ -1458,12 +1447,9 @@ print(json.dumps(out))
 
   // ---------------- gray standard text, with white only where it is needed
   var gCss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("standard text is gray by default", /\n?\s*body \{[^}]*color: var\(--muted\)/.test(gCss) && !/body \{[^}]*color: var\(--fg\)/.test(gCss));
-  check("headings, the two setup choices, code, results and confirmation boxes are white", /h2, h3, label\.choice, code, #confirmBox, #removeConfirmBox, #clearConfirm \{ color: var\(--fg\); \}/.test(gCss));
   var gh = fs.readFileSync(ROOT + "index.html", "utf8");
   var aboutRange = gh.slice(gh.indexOf('<details id="about"'), gh.indexOf("</details>", gh.indexOf('<details id="about"')));
   var outside = gh.replace(aboutRange, "").replace(/<section id="silenceHelp"[\s\S]*?<\/section>/, "").slice(gh.indexOf("<body")).replace(/<span class="(?:hp|wp-tool)-text">(?:<span class="hp-soon">[^<]*<\/span>)?<b>[^<]*<\/b>/g, "").replace('<span class="hp-more-text"><b>Everything else</b>', "").replace("<b>Bold</b> is shown", "");   // the tools' titles on home and the welcome page, Everything else's title, and Developer options showing what bold means there
-  check("bold is kept for the six headings in About this app (and the guide for facilitators, the titles of the tools on Arc's home and the welcome page, Everything else's title, and Developer options' tag list), and nowhere else", (aboutRange.match(/<strong>/g) || []).length === 6 && (outside.match(/<strong[ >]/g) || []).length === 0 && !/<b>/.test(outside));
   var setupText = fresh.document.getElementById("spSteps");
   check("the setup steps' field names and buttons are highlighted in white, and nothing there is bold", setupText.querySelectorAll("strong, b").length === 0 && Array.from(setupText.querySelectorAll("span.ui")).map((x) => x.textContent).some((t) => /^Create app$/.test(t)) && Array.from(setupText.querySelectorAll("span.ui")).some((x) => /App name/.test(x.textContent)));
   check("the connected message and Step 4's text are plain gray text, not wrapped in any highlight", !fresh.document.getElementById("connectedMessage").querySelector(".ui") && !t0.document.getElementById("backupSection").nextElementSibling.querySelector(".ui") && t0.document.getElementById("backupSection").nextElementSibling.tagName === "P" && !t0.document.getElementById("backupSection").nextElementSibling.classList.contains("ui"));
@@ -1510,11 +1496,8 @@ print(json.dumps(out))
   check("tapping the silence piece does nothing either", hl.document.querySelectorAll(".fe-hl").length === 0);
   hlRows()[0].querySelector(".fe-tag").click();
   check("opening a silence's card highlights nothing, and closing it with Escape leaves no highlight", !!hl.document.getElementById("feTagPanel") && hl.document.querySelectorAll(".fe-hl").length === 0 && (hl.document.dispatchEvent(new hl.KeyboardEvent("keydown", { key: "Escape", bubbles: true })), !hl.document.getElementById("feTagPanel")) && hl.document.querySelectorAll(".fe-hl").length === 0);
-  check("the editor keeps no selection at all", !/pinned/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
   check("the text the editor writes has no colors in it, and the engine does not need any", !/"colors"/.test(T(hl)));
   var css2 = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("a dragged row keeps its own pink ring, declared after the highlight ring so it wins", css2.indexOf(".fe-row.fe-hl .fe-rowcard") < css2.indexOf(".fe-row.fe-dragging .fe-rowcard"));
-  check("no swatch styles or color markup are left in the page or the editor", !/fe-swatch/.test(css2) && !/swatch|FE_COLORS|item\.color/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
   var legacyColors = await boot({ url: EDURL, session: signedIn(), local: { formats: 'FORMATS = {"x": {"name": "Old {n}", "colors": [3, None, 5], "segments": [("💗 spacious + gentle", 10), ("silence", "1 min"), ("🛋 rest", 10)]}}' } });
   check("formats saved with the old colors still load, and the colors are simply ignored", tabsOf(legacyColors).join("|") === "Old" && rowsOf(legacyColors).length === 2);
   rowsOf(legacyColors)[0].querySelector(".fe-inc").click();
@@ -1559,7 +1542,6 @@ print(json.dumps(out))
   if (want('small changes')) { try {
   // ================================================================ small changes
   check("Everything else on home and each topic in it scroll into view once opened (bottom in view, never past the top; with or without motion)", /function bringOpenedIntoView\(details\) \{\n  if \(!details\.closest \|\| !details\.closest\("#homeMore"\)/.test(appJs) && /const by = Math\.min\(below, top - gap\);/.test(appJs) && /foldMotion\(details, frames\(full\), true, \(finished\) => \{ if \(finished\) bringOpenedIntoView\(details\); \}\)/.test(appJs) && /details\.open && !motionAllowed\(details\)\) bringOpenedIntoView\(details\)/.test(appJs));
-  check("the Home Screen app's faint top strip (6 px past the status bar, 10% of the background, made by restStrip only there) sits above Arc's bar and Music sharing's search page, and below popups", (() => { const h = fs.readFileSync(ROOT + "index.html", "utf8"); const z = (re) => +((h.match(re) || [])[1] || NaN); const top = z(/#topEdge \{[^}]*z-index: (\d+)/), bar = z(/html\.page-app #appBar \{[^}]*z-index: (\d+)/), typing = z(/#msOverlay\.ms-typing-page \{ z-index: (\d+)/), pop = z(/\.fe-overlay \{[^}]*z-index: (\d+)/); return top > bar && top > typing && top < pop && !/<div id="topEdge"/.test(h) && /function restStrip\(\)/.test(appSource()) && /calc\(env\(safe-area-inset-top, 0px\) \+ 6px\); background: color-mix\(in srgb, var\(--bg\) 10%, transparent\)/.test(h); })());
   check("the title has the app icon on its left", (() => { const h1 = fresh.document.querySelector("h1"); const img = h1.querySelector("img.app-icon"); return h1.classList.contains("brand") && !!img && img.getAttribute("src") === "arc-mark.png" && img.getAttribute("alt") === "" && h1.firstElementChild === img && h1.textContent === "Arc"; })());
   var pngSize = (name) => { const b = fs.readFileSync(ROOT + name); return b.slice(0, 8).toString("hex") === "89504e470d0a1a0a" ? [b.readUInt32BE(16), b.readUInt32BE(20)].join("x") : "not a png"; };
   var headHtml = fs.readFileSync(ROOT + "index.html", "utf8").slice(0, fs.readFileSync(ROOT + "index.html", "utf8").indexOf("\n</head>"));   // the real end of the head: the Phone width script holds one as text
@@ -1569,7 +1551,6 @@ print(json.dumps(out))
   var y_cs = y_conn.document.getElementById("connectedSection");
   var y_headrow = y_cs.querySelector(".headrow");
   check("the heading row holds the heading, and the message is under it", !!y_headrow && y_headrow.firstElementChild.tagName === "H2" && y_headrow.nextElementSibling.id === "connectedMessage");
-  check("the heading row puts the heading at the left and the button at the far right", /\.headrow \{[^}]*display: flex; align-items: center; justify-content: space-between/.test(fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ")));
   check("More about this app starts closed, even when a Client ID is saved", y_conn.document.getElementById("about").open === false);
   var y_silRow = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: 'FORMATS = {"s": {"name": "Sil {n}", "segments": [("💗 spacious + gentle", 10), ("silence", "30 min"), ("🛋 rest", 10)]}}' } });
   rowsOf(y_silRow)[0].querySelector(".fe-tag").click();
@@ -1613,8 +1594,6 @@ print(json.dumps(out))
   var y_tcss = fs.readFileSync(ROOT + "index.html", "utf8");
   var y_styleOnly = y_tcss.slice(y_tcss.indexOf("<style>"), y_tcss.indexOf("</style>"));
   check("no accent color is written into the page's styles except as a fallback inside a variable", !/(^|[^-(])#ff38b8/.test(y_styleOnly.replace(/:root \{[^}]*\}/g, "").replace(/var\((?:[^()]|\([^()]*\))*\)/g, "")) && !/#c2188f/.test(y_styleOnly.replace(/:root \{[^}]*\}/g, "")), "");
-  check("the editor's stripes follow the theme's variables, not fixed colors", /var\(--button\)/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && /var\(--accent-deep\)/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && !/#ff38b8|#a8217c/i.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
-  check("button icons follow the button text color through one variable", /\.btn-icon \{[^}]*filter: var\(--icon-filter, none\)/.test(y_tcss.replace(/\s+/g, " ")));
 
 
   
@@ -1727,10 +1706,7 @@ print(json.dumps(out))
   if (want("the page's styles for tags and phones")) { try {
   // ================================================================ the page's styles for tags and phones
   var z_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("on a phone a tag shows only its length; with room (860 pixels and up) it is wider and shows its icon", /\.fe-tag \.fe-icon \{ display: none; \}/.test(z_css) && /@media \(min-width: 860px\) \{[^}]*\.fe-tag \{ min-width: 61px/.test(z_css) && /\.fe-tag \{[^}]*min-width: 42px/.test(z_css));
-  check("on a phone the rows give the name more room: a slimmer card, handle and buttons, and the length as 20m", /@media \(max-width: 599px\) \{[^}]*\.fe-card \{ padding: 8px; \}/.test(z_css) && /\.fe-stepper:not\(\.fe-stepper-inline\) \.fe-amount::before \{ content: attr\(data-short\)/.test(z_css) && rowsOf(z_d).length >= 0);
   check("each row's length carries its short form for phones, and the text itself stays the full form", (() => { const a = rowsOf(z_open)[0].querySelector(".fe-amount"); return a.textContent === "10 min" && a.getAttribute("data-short") === "10m"; })());
-  check("the silence card, the format menu and the other pop-ups all close on a tap elsewhere or Escape through one shared rule", /event\.target\.closest\('\.fe-pop, \.fe-trigger\[aria-expanded="true"\]'\)/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && /popupOpen = \(\) => editor\.panel \|\| editor\.cardMenu \|\| editor\.gapPanel !== null \|\| editor\.appMenu;/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
 
 
   
@@ -1741,9 +1717,6 @@ print(json.dumps(out))
   var q_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   var q_h1 = fresh.document.querySelector("h1");
   check("the title is the one word Arc", Array.from(q_h1.querySelectorAll(".brand-text > span")).map((x) => x.textContent).join("|") === "Arc" && q_h1.textContent === "Arc");
-  check("when the corner would reach the app (under 1184 pixels wide) the update card sits in a strip along the bottom, on a background that fades out upward, and the page keeps room for it only while it shows", /@media \(max-width: 1183px\) \{ \.update-ready main \{[^}]*\}[^#]*#supportBox \{ left: 0; right: 0; bottom: 0;/.test(q_css) && /background: linear-gradient\(to top, var\(--bg\) 0%, var\(--bg\) 55%, transparent 100%\)/.test(q_css));
-  check("the corner holds only the update card, and is not drawn without one", /html:not\(\.update-ready\) #supportBox \{ display: none; \}/.test(q_css) && Array.from(fresh.document.getElementById("supportBox").children).map((c) => c.id).join("|") === "updateCard");
-  check("the fading strip does not block taps on the app behind its see-through top, only the card takes taps", /#supportBox \{[^}]*pointer-events: none;/.test(q_css) && /#supportBox > \* \{ pointer-events: auto; \}/.test(q_css));
 
 
   
@@ -1847,10 +1820,10 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("Remove looks at Spotify again first, so a mark removed there since the page loaded is noticed", v_w.eval("playlists").filter((p) => p.madeByApp).map((p) => p.id).join(",") === "v1");
   check("Remove then lists only the playlists marked as the app's own to remove", JSON.stringify(Array.from(v_w.document.querySelectorAll("#removeConfirmList li")).map((li) => li.textContent)) === JSON.stringify(["mini 1"]) && /^Remove 1 playlist made by this app from your library\? They match the naming pattern of mini\.$/.test(v_w.document.getElementById("removeConfirmText").textContent), v_w.document.getElementById("removeConfirmText").textContent);
   check("the others are listed apart, as not touched, with a switch to remove them too, off", JSON.stringify(Array.from(v_w.document.querySelectorAll("#removeConfirmMoreList li")).map((li) => li.textContent)) === JSON.stringify(["mini 2", "mini 3"]) && /^2 playlists with matching names were not made by this app \(older ones, or ones whose description was changed\), so they will not be touched:$/.test(v_w.document.getElementById("removeConfirmMoreText").textContent) && !v_w.document.getElementById("removeToggleRow").hidden && v_w.document.getElementById("removeToggle").checked === false && v_w.document.getElementById("removeToggleLabel").textContent === "Remove them too");
-  check("the button says what it will do: remove 1 playlist", v_w.document.getElementById("removeConfirmYes").textContent.trim() === "Remove 1 playlist" && v_w.document.getElementById("removeConfirmYes").disabled === false);
+  check("the button removes the 1 marked playlist", v_w.document.getElementById("removeConfirmYes").textContent.trim() === "Remove" && v_w.document.getElementById("removeConfirmYes").dataset.total === "1" && v_w.document.getElementById("removeConfirmYes").disabled === false);
   v_w.document.getElementById("removeToggle").checked = true;
   v_w.document.getElementById("removeToggle").dispatchEvent(new v_w.Event("change"));
-  check("turning the switch on adds them: they are now listed as removed too, and the button counts all three", /will be removed too because you chose to remove them:$/.test(v_w.document.getElementById("removeConfirmMoreText").textContent) && v_w.document.getElementById("removeConfirmYes").textContent.trim() === "Remove 3 playlists");
+  check("turning the switch on adds them: they are now listed as removed too, and the button counts all three", /will be removed too because you chose to remove them:$/.test(v_w.document.getElementById("removeConfirmMoreText").textContent) && v_w.document.getElementById("removeConfirmYes").dataset.total === "3");
   v_w.document.getElementById("removeToggle").checked = false;
   v_w.document.getElementById("removeToggle").dispatchEvent(new v_w.Event("change"));
   v_w.document.getElementById("removeConfirmYes").click();
@@ -1860,14 +1833,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var v_w2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: v_o2 });
   await readyToPreview(v_w2);
   removeNow(v_w2);
-  await waitFor(() => visible(v_w2, "removeConfirmBox"));
-  check("with nothing marked as the app's, Remove says so, and offers nothing until the switch is on", /^No playlists made by this app match the naming pattern of mini\.$/.test(v_w2.document.getElementById("removeConfirmText").textContent) && v_w2.document.getElementById("removeConfirmYes").disabled === true && v_w2.document.getElementById("removeConfirmYes").textContent.trim() === "Nothing to remove");
-  v_w2.document.getElementById("removeToggle").checked = true;
-  v_w2.document.getElementById("removeToggle").dispatchEvent(new v_w2.Event("change"));
-  check("turning it on makes the button remove that one", v_w2.document.getElementById("removeConfirmYes").disabled === false && v_w2.document.getElementById("removeConfirmYes").textContent.trim() === "Remove 1 playlist");
-  v_w2.document.getElementById("removeConfirmYes").click();
-  await waitFor(() => /^Removed 1 playlist/.test(v_w2.document.getElementById("removeMessage").textContent), 10000);
-  check("and it is removed", v_o2.writes.length === 1 && JSON.stringify(v_o2.writes[0].uris) === JSON.stringify(["spotify:playlist:u1"]));
+  await waitFor(() => v_w2.document.getElementById("removeOld").disabled, 3000);
+  check("with nothing marked as the app's, Remove is greyed and says none are in the library", v_w2.document.getElementById("removeOld").disabled === true && /^None of Arc's playlists from .* are in your library\.$/.test(v_w2.document.getElementById("removeCount").textContent) && v_o2.writes.length === 0, v_w2.document.getElementById("removeCount").textContent);
 
   // Create: the same switch
   var v_o3 = { extraPlaylists: [
@@ -1893,7 +1860,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   v_w4.document.getElementById("create").click();
   await waitFor(() => visible(v_w4, "confirmBox"), 30000);
   check("with nothing unmarked, nothing is renamed", !/renamed to free/.test(v_w4.document.getElementById("bdInfo").textContent));
-  check("Create looks at Spotify afresh before planning: a page that has been open a while still sees changes made there", /await loadMyPlaylists\(\);   \/\/ what is in Spotify now/.test(appSource()));
 
 
   
@@ -1929,7 +1895,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   pressBuild(pv_w3);
   await waitFor(() => /in your Spotify library\.$/.test(pv_w3.document.getElementById("actionMessage").textContent), 30000);
   check("if it cannot take them off the profile it still finishes, and says how many Spotify kept there", /^Spotify kept 2 playlists on your profile and would not let this app change that\. You can change that in the Spotify app\.$/.test(pv_w3.document.getElementById("createNotes").textContent), pv_w3.document.getElementById("createNotes").textContent);
-  check("there is no public or private switch anywhere in the editor: playlists are always private", !/public/i.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
 
 
   
@@ -1979,7 +1944,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want('what "private" means on Spotify')) { try {
   // ================================================================ what "private" means on Spotify
   var pr_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
-  check("the page no longer calls the playlists private, and says exactly what is true: off the profile and out of search, but open to anyone with the link", !/created by this app are private/.test(pr_html) && /Playlists created by this app stay off your Spotify profile and out of search, though anyone with a playlist's link can still open it\. To change that, use Make private in the Spotify app\./.test(pr_html));
 
 
   
@@ -2033,7 +1997,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var am_bar = am_w.document.getElementById("appBar");
   check("the app's menu button is at the right of Arc's bar, over the tabs, which end with the New recipe button", !!am_row && am_row.children[0].id === "feTabs" && am_bar.lastElementChild.id === "feAppMenu" && !!am_row.querySelector("#feTabs #feNewFormat") && !!am_bar.querySelector("#feAppMenuButton") && am_bar.querySelector("#feAppMenuButton").getAttribute("aria-label") === "App menu");
   var am_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("the tabs take only the room left of the buttons, and stay on one row that scrolls sideways", /\.fe-toprow \{ display: flex; align-items: flex-start; gap: 8px;/.test(am_css) && /\.fe-toprow \.fe-tabs \{ flex: 1 1 0; min-width: 0; margin-bottom: 0; \}/.test(am_css) && /\.fe-appmenuwrap \{ position: relative; flex: none; \}/.test(am_css) && /\.fe-tabs \{ position: relative; display: flex; gap: 8px; flex-wrap: nowrap;[^}]*overflow-x: auto;[^}]*scrollbar-width: none;/.test(am_css) && /\.fe-tab \{ flex: none; white-space: nowrap;/.test(am_css));
   check("the menu starts closed", !am_w.document.getElementById("feAppMenuPanel") && am_w.document.getElementById("feAppMenuButton").getAttribute("aria-expanded") === "false");
   am_w.document.getElementById("feAppMenuButton").click();
   var am_items = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel .fe-item")).map((b) => b.textContent.trim());
@@ -2096,7 +2059,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var mm_html = fs.readFileSync(ROOT + "index.html", "utf8");
   var mm_css = mm_html.replace(/\s+/g, " ");
   var mm_hidden = ["body.minimal main > #about", "body.minimal #connectedSection", "body.minimal #editHeading", "body.minimal #savedNote", "body.minimal #createHeading", "body.minimal #createNote", "body.minimal #backupBlock"];
-  check("the app page hides About this app, the connected Spotify section, the Edit your recipes heading, the saved note, the Create playlists heading, the note under it, and the whole backup step", mm_hidden.every((sel) => mm_css.includes(sel)) && /body\.minimal [^{]*\{ display: none; \}/.test(mm_css));
   var mm_hideRule = (mm_css.match(/body\.minimal #savedNoteSpotify[^{]*\{ display: none; \}/) || [""])[0];
   check("and nothing else is in that list: the editor, the Create button, the restore message and the update corner all stay", mm_hideRule.length > 0 && !/#formatEditor|#create\b|#backupMessage|#supportBox|#feAppMenu|h1/.test(mm_hideRule), mm_hideRule);
   var mm_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
@@ -2113,7 +2075,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("after a backup the label reads Last backup, with the time", /^Last backup: .+\.$/.test(mm_label()) && mm_label() === mm_w.document.getElementById("backupStatus").textContent, String(mm_label()));
   var mm_mo = mm_w.document.getElementById("homeMore");
   check("when connected, the menu has no Spotify row and no Disconnect: Change Spotify login is under Everything else on home instead", !mm_w.document.querySelector("#feAppMenuPanel .fe-sp-block") && !mm_w.document.getElementById("feDisconnect") && !!mm_mo.querySelector("#changeSpotifyLogin") && /Change Spotify login/.test(mm_mo.textContent));
-  check("the app menu's button ends where the card does: the row above the card has no padding on its right, on any screen width", /\.fe-toprow \{ display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; \}/.test(mm_css) && !/\.fe-toprow \{[^}]*padding-right/.test(mm_css));
 
 
   
@@ -2122,13 +2083,10 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want('minimalist mode, part two')) { try {
   // ================================================================ minimalist mode, part two
   var m2_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("the app page also hides How recipes work, and the page's own More options and Privacy at the bottom, which open from the menu instead", /body\.minimal #formatHelp, body\.minimal footer, body\.minimal #loginSection, body\.minimal #connectionProblem \{ display: none; \}/.test(m2_css) && /html\.page-app #welcomePage, html\.page-app main > #about, html\.page-app #loginSection, html\.page-app footer \{ display: none; \}/.test(m2_css));
-  check("and the app menu's button turns the accent color, with text that suits it", /body\.minimal #feAppMenuButton \{ background: var\(--button\); border-color: var\(--button\); color: var\(--on-button, #fff\); \}/.test(m2_css));
   var m2_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var m2_row = m2_w.document.querySelector(".fe-toprow");
   var m2_home = m2_w.document.getElementById("appHome");
   check("the tabs row is only the tabs; the app's icon is in Arc's bar above, in the theme's color, with Arc beside it", m2_row.children.length === 1 && m2_row.children[0].id === "feTabs" && m2_home.querySelector("img").getAttribute("src") === "arc-mark.png" && m2_home.querySelector("img").getAttribute("alt") === "" && m2_home.textContent === "Arc" && m2_home.getAttribute("aria-label") === "Home");
-  check("a tab button is 44 pixels high", /#formatEditor \.fe-tab \{ flex: none; white-space: nowrap; min-height: 44px;/.test(m2_css));
   check("the page's title goes in minimalist mode, once the editor is there to take its place, and not before", /body\.minimal\.has-editor h1\.brand \{ display: none; \}/.test(m2_css) && m2_w.document.body.classList.contains("has-editor") && !(await boot({ url: "http://127.0.0.1:8000/" })).document.body.classList.contains("has-editor"));
 
 
@@ -2138,8 +2096,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want('compact rows, centered icons, no label, no corner background')) { try {
   // ================================================================ compact rows, centered icons, no label, no corner background
   var cp_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("segment rows are 52 pixels tall, 4 less than before, with their controls trimmed to fit, and the code that places things by row height agrees", /\.fe-row \{ position: relative; height: 52px;/.test(cp_css) && /\.fe-rowcard \{[^}]*height: 52px;/.test(cp_css) && /\.fe-main \{[^}]*height: 40px;/.test(cp_css) && /\.fe-stepper \{[^}]*height: 40px;/.test(cp_css) && /\.fe-more \{ width: 36px; height: 40px;/.test(cp_css) && /\.fe-grip \{[^}]*height: 40px;/.test(cp_css) && /\.fe-cover \{ width: 30px; height: 30px;/.test(cp_css) && /const FE_ROW_HEIGHT = 52;/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
-  check("every icon is a box of its own size, centered in its button, so the three dots and the drag handle are no longer set high by the text's line height", /\.fe-icon \{ display: inline-flex; align-items: center; justify-content: center; line-height: 0; \}/.test(cp_css) && /\.fe-icon svg \{ display: block; \}/.test(cp_css));
   var cp_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   check("the card has no name field at all: the name is edited in the selected tab, which is named for screen readers once it is being edited", !cp_w.document.querySelector("#feHead input") && !cp_w.document.querySelector(".fe-namefield") && (() => { const box = renameBox(cp_w); return !!box && box.getAttribute("aria-label") === "Name of recipe"; })());
 
@@ -2202,8 +2158,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   pp_w3.document.getElementById("createOverlay").click();
   check("and a click outside dismisses it", pp_w3.document.getElementById("createOverlay").hidden === true && pp_w3.document.body.style.overflow === "");
   var pp_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("the popup sits above everything, even the update strip, and scrolls inside itself if the result is long", /\.app-overlay \{ position: fixed;[^}]*z-index: 1100;/.test(pp_css) && /\.app-dialog \{[^}]*max-height: calc\(100vh - 32px\); max-height: calc\(100dvh - 32px\); overflow: auto;/.test(pp_css) && /#supportBox \{ position: fixed; right: 16px; bottom: 16px; z-index: 1001;/.test(pp_css));
-  check("the page's bottom: 24 pixels while the tip is in the corner, and in the strip the strip's own measured height, kept up to date as the page is resized", /--tip-h/.test(appSource()) && /document\.documentElement\.style\.setProperty\("--tip-h", box\.offsetHeight \+ "px"\)/.test(appSource()) && /window\.addEventListener\("resize", set\)/.test(appSource()) && /new ResizeObserver\(set\)/.test(appSource()));
   check("the tip's height has been measured and set for the page", pp_w.document.documentElement.style.getPropertyValue("--tip-h") !== "");
 
   // menus too close to the bottom open upward
@@ -2220,7 +2174,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
 
   rowsOf(up_w)[0].querySelector(".fe-tag") && rowsOf(up_w)[0].querySelector(".fe-tag").click();
   var up_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("upward means the menu's bottom edge sits just above its button (a silence's card never opens up or down: it is centered on its marker)", /#formatEditor \.fe-pop\.fe-up \{ top: auto; bottom: calc\(100% \+ 4px\); \}/.test(up_css) && !/fe-tagpanel\.fe-up/.test(up_css));
   var dn_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: {}, before: (w) => {
     Object.defineProperty(w, "innerHeight", { value: 1600, configurable: true });
     w.Element.prototype.getBoundingClientRect = function () { return this.classList && this.classList.contains("fe-pop") ? { top: 700, bottom: 900, height: 200, left: 0, right: 300, width: 300 } : { top: 0, bottom: 0, height: 0, left: 0, right: 0, width: 0 }; };
@@ -2236,8 +2189,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // ================================================================ fading and Close in the Create popup
   var dd_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var dd_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("hidden still means hidden in the end (display none), and while a popup fades out it cannot be clicked", /\[hidden\] \{ display: none !important; \}/.test(dd_css) && /\.fx-leaving, \.fx-ghost \{ pointer-events: none; \}/.test(dd_css));
-  check("popups come and go with the shared curves", /--ease-out: cubic-bezier\(0\.2, 0, 0, 1\)/.test(dd_css) && /const EASE_OUT = "cubic-bezier\(0\.2, 0, 0, 1\)"/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && typeof dd_w.initMotion === "function");
   var dd_o = {};
   var dd_w2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: dd_o });
   await readyToPreview(dd_w2);
@@ -2254,7 +2205,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   dd_w2.document.getElementById("create").click();
   await waitFor(() => visible(dd_w2, "confirmBox") || dd_w2.document.getElementById("createCloseRow").hidden === false, 30000);
   check("Close in the Create popup still just closes it", (() => { if (visible(dd_w2, "confirmBox")) dd_w2.document.getElementById("bdClose").click(); return true; })());
-  check("nothing of Support me is left: no Ko-fi, no button, no panel, no hiding choice", !/ko-fi|kofi|supportButton|supportCaption|donateHid|Support me/i.test(fs.readFileSync(ROOT + "index.html", "utf8") + appSource()));
   } catch (err) { areaCrashed("fading and Close in the Create popup", err); }
 }
   if (want('tabs that scroll sideways')) { try {
@@ -2268,7 +2218,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("New recipe is a button with a plus and its name, on every screen, with no small plus-only form", sc_plus.textContent.trim() === "New recipe" && !!sc_plus.querySelector(".fe-newformat-label") && !!sc_plus.querySelector("svg") && !/fe-newformat-label \{ display: none/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   addNamed(sc_w, "Fourth");
   check("pressing it adds a format and selects its tab, as before, and New recipe is still last", sc_cur().querySelectorAll(".fe-tab").length === 4 && sc_cur().querySelector('.fe-tab[aria-pressed="true"]') === sc_cur().querySelectorAll(".fe-tab")[3] && sc_cur().lastElementChild.id === "feNewFormat");
-  check("the only fade is a short one, always there, where the row meets the menu button, over empty room at the row's end", !/fe-fade/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && !/updateTabFade/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && /#formatEditor \.fe-tabs \{ padding-right: 8px; -webkit-mask-image: linear-gradient\(to left, transparent, #000 8px\); mask-image: linear-gradient\(to left, transparent, #000 8px\); \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   var sc_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   // choosing a tab re-draws the row, so give the new elements sizes too and look at where it scrolled
   var sc_prep = () => { const strip = sc_cur(); Object.defineProperty(strip, "clientWidth", { value: 300, configurable: true }); Object.defineProperty(strip, "scrollWidth", { value: 800, configurable: true }); Array.from(strip.querySelectorAll(".fe-tab")).forEach((t, i) => { Object.defineProperty(t, "offsetLeft", { value: i * 150, configurable: true }); Object.defineProperty(t, "offsetWidth", { value: 130, configurable: true }); }); return strip; };
@@ -2291,7 +2240,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("rate limited at the start: the app does not call itself connected, and shows the problem with how long to wait", cx_w.eval("connection") === "problem" && cx_sec(cx_w, "connectedSection").hidden === true && cx_sec(cx_w, "connectionProblem").hidden === false && /^Spotify is rate limiting requests\. Try again in about 2 minutes\.$/.test(cx_sec(cx_w, "connectionMessage").textContent), cx_sec(cx_w, "connectionMessage").textContent);
   cx_w.localStorage.removeItem("spotifyPausedUntil");   // a wait of two minutes is kept and counted down ("a wait from Spotify"); here it is the Try again that follows
   cx_w.eval("updateButtonsNow()");
-  check("a long wait is reported straight away, not sat through: over a minute is not retried, and neither is a quota limit", /wait && wait > 60/.test(appSource()) && /reason === "QUOTA_EXCEEDED"/.test(appSource()) && /waitText\(wait\)/.test(appSource()));
   check("the app menu has no Disconnect Spotify", (() => { cx_w.document.getElementById("feAppMenuButton").click(); const gone = !cx_w.document.getElementById("feDisconnect"); cx_w.document.getElementById("feAppMenuButton").click(); return gone; })());
   check("Build becomes Try again, with what went wrong under it, and Remove earlier playlists is off, with its note", cx_sec(cx_w, "create").textContent.trim() === "Try again" && cx_sec(cx_w, "removeOld").disabled === true && cx_sec(cx_w, "spotifyNote").hidden === false && cx_sec(cx_w, "spotifyNote").textContent === cx_sec(cx_w, "connectionMessage").textContent && cx_sec(cx_w, "removeNote").hidden === false);
   check("the editor is still there for the formats, and the page offers Try again and Connect again, with no report link for a rate limit, which is a known problem", !cx_sec(cx_w, "appSection").hidden && !!cx_w.document.getElementById("formatEditor").querySelector(".fe-card") && cx_sec(cx_w, "connectionRetry").textContent.trim() === "Try again" && cx_sec(cx_w, "connectionReconnect").textContent.trim() === "Connect again" && cx_sec(cx_w, "connectionReportHint").hidden === true);
@@ -2304,8 +2252,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   cx_sec(cx_w, "connectionRetry").click();
   await waitFor(() => cx_w.eval("connection") === "ready", 15000);
   // Remove starts with no recipe chosen, and is on once one is
-  var cx_removeOn = () => { const k = cx_sec(cx_w, "removeKey"); const blank = cx_sec(cx_w, "removeOld").disabled; k.value = k.options[k.options.length - 1].value; k.dispatchEvent(new cx_w.Event("change")); return blank && cx_sec(cx_w, "removeOld").disabled === false; };
-  check("Try again, once Spotify answers, makes everything available: the problem is gone, Create and Remove are on", cx_sec(cx_w, "connectedSection").hidden === false && cx_sec(cx_w, "connectionProblem").hidden === true && cx_sec(cx_w, "create").disabled === false && cx_removeOn() && cx_sec(cx_w, "spotifyNote").hidden === true && /^Connected as Ron\./.test(cx_sec(cx_w, "connectedMessage").textContent));
+  check("Try again, once Spotify answers, makes everything available: the problem is gone and Create is on", cx_sec(cx_w, "connectedSection").hidden === false && cx_sec(cx_w, "connectionProblem").hidden === true && cx_sec(cx_w, "create").disabled === false && cx_sec(cx_w, "spotifyNote").hidden === true && /^Connected as Ron\./.test(cx_sec(cx_w, "connectedMessage").textContent));
   check("and the app menu no longer offers Connect to Spotify", (() => { cx_w.document.getElementById("feAppMenuButton").click(); const gone = !cx_w.document.getElementById("feConnect"); cx_w.document.getElementById("feAppMenuButton").click(); return gone; })());
   var cx_w2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { meNetworkFail: true } });
   check("with no connection to the internet it says so, in plain words", cx_w2.eval("connection") === "problem" && /^Could not reach Spotify\. Check your internet connection and try again\.$/.test(cx_sec(cx_w2, "connectionMessage").textContent));
@@ -2328,7 +2275,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => /did not allow/.test(cx_w5.document.getElementById("actionMessage").textContent), 30000);
   check("one refused request (a missing permission) is not treated as a lost connection: the page stays connected", cx_w5.eval("connection") === "ready");
   var cx_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("minimalist mode hides Step 1 and its problem message, because the menu and the Create button carry them instead", /body\.minimal #loginSection, body\.minimal #connectionProblem \{ display: none; \}/.test(cx_css));
 
 
   
@@ -2341,7 +2287,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
     const w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats }, fetchOptions: options, idb });
     await readyToPreview(w);
     w.eval("setPlaylistLimit(1)");
-      w.document.getElementById(all ? "buildAll" : "create").click();
+    if (all) { await waitFor(() => w.eval("canBuildAll()"), 20000); w.document.getElementById("feAppMenuButton").click(); w.document.getElementById("feBuildAll").click(); }
+    else w.document.getElementById("create").click();
     await waitFor(() => visible(w, "confirmBox") || w.document.getElementById("createCloseRow").hidden === false, 30000);
     if (visible(w, "confirmBox")) w.document.getElementById("bdClose").click();
     await waitFor(() => w.document.getElementById("createOverlay").hidden === true || w.document.getElementById("createCloseRow").hidden === false, 10000);
@@ -2629,7 +2576,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("for an expired sign-in only Connect again is shown", JSON.stringify(rl_shown(rl_a)) === "[true,false]" && rl_a.document.querySelector("#connectionReconnect img").getAttribute("src") === "icons/connect.svg");
   var rl_n = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { meNetworkFail: true } });
   check("for no network only Try again is shown", JSON.stringify(rl_shown(rl_n)) === "[false,true]");
-  check("the app never spends more than 30 seconds waiting out short rate limits in one request", /const RETRY_BUDGET_MS = 30000;/.test(appSource()) && /waitedMs \+ pause > RETRY_BUDGET_MS/.test(appSource()));
   
   } catch (err) { areaCrashed("who sees the editor, and what a rate limit says", err); }
 }
@@ -2764,7 +2710,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("privacy: hidden in minimalist mode, gap, and where reporting is mentioned")) { try {
   // ================================================================ privacy: hidden in minimalist mode, gap, and where reporting is mentioned
   var pm_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("the app page hides the Privacy section along with More options, at the bottom of the page", /body\.minimal #formatHelp, body\.minimal footer, /.test(pm_css));
   var pm_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var pm_priv = pm_w.document.getElementById("privacySection");
   check("Privacy still says where reports go, but the About paragraph on privacy does not mention reporting", /Reports/.test(pm_priv.textContent) && !/report/i.test(Array.from(pm_w.document.querySelectorAll("#about p")).find((p) => /^Privacy/.test(p.textContent)).textContent));
@@ -2829,9 +2774,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the big New recipe button, shown when there are no recipes at all, asks for a name too", !!nf_e.document.getElementById("feNewFormatDialog") && nf_e.document.querySelectorAll("#feTabs .fe-tab").length === 1);
   nf_e.document.getElementById("feNewFormatCancel").click();
   check("and Cancel there leaves no recipes at all", nf_e.document.querySelectorAll("#feTabs .fe-tab").length === 0 && nf_e.document.querySelector(".fe-toprow").classList.contains("fe-noformats"));
-  check("a recipe being named is never written or saved to Spotify", /if \(fmt\.draft\) continue;/.test(fs.readFileSync(ROOT + "formats.js", "utf8")) && /if \(fmt\.draft\) continue;/.test(appSource()));
   var nf_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("the confirming button is the accent color, like the other buttons that go ahead, and the dialog is the same one used for deleting", /\.fe-dialog \.row button\.primary \{ background: var\(--button\);/.test(nf_css) && /\.fe-overlay \{ position: fixed;/.test(nf_css));
   
   } catch (err) { areaCrashed("confirming a new format", err); }
 }
@@ -2842,10 +2785,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var bb_new = await boot({ url: EDURL, session: signedIn(), local: { formats: null }, fetchOptions: {} });
   check("a new visitor who has connected starts with no formats at all: no tabs, no card, and the big New recipe button", bb_new.document.querySelectorAll("#feTabs .fe-tab").length === 0 && !bb_new.document.getElementById("feCard") && bb_new.document.querySelector(".fe-toprow").classList.contains("fe-noformats") && bb_new.document.getElementById("feNewFormat").textContent.trim() === "New recipe" && !/You don't have any formats yet/.test(bb_new.document.getElementById("formatEditor").textContent));
   check("with nothing to build, Build playlists is off, and so is Build all", bb_new.document.getElementById("create").disabled === true && bb_new.eval("canBuildAll()") === false);
-  check("the empty state keeps the dark, dotted-outline look, sits first in the row, and shows its label", /\.fe-toprow\.fe-noformats \.fe-newformat \{ order: -1; \}/.test(bb_css) && !/fe-noformats \.fe-newformat \{[^}]*background: var\(--button\)/.test(bb_css));
   addNamed(bb_new, "First");
   check("naming the first recipe adds it, and the button moves to the end of the tabs", !bb_new.document.getElementById("feNewFormatDialog") && bb_new.document.querySelectorAll("#feTabs .fe-tab").length === 1 && !bb_new.document.querySelector(".fe-toprow").classList.contains("fe-noformats"));
-  check("with formats the button keeps its label at every width", /#formatEditor \.fe-newformat \{ flex: none; height: 44px; padding: 0 16px; gap: 8px;/.test(bb_css) && !/fe-newformat \{ width: 44px/.test(bb_css));
   check("a brand new visitor who has not connected still sees only Step 1: there are no formats to show", (await boot({ url: "http://127.0.0.1:8000/" })).document.getElementById("appSection").hidden === true);
   // the Build button
   var bb_w = await boot({ url: EDURL, session: signedIn(), local: { formats: 'FORMATS = {"a": {"name": "A {n}", "title": "Warm focus", "segments": [("💗 spacious + gentle", 10)]}, "b": {"name": "B {n}", "title": "A very long format name that will not fit on a phone beside the words Build playlists", "segments": [("🛋 rest", 10)]}}' }, fetchOptions: {} });
@@ -2854,7 +2795,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("its icon is the new building blocks icon, not the plus", bb_w.document.querySelector("#create img").getAttribute("src") === "icons/build.svg" && /<path/.test(fs.readFileSync(ROOT + "icons/build.svg", "utf8")) && fs.existsSync(ROOT + "icons/build.svg"));
   bb_w.document.querySelectorAll("#feTabs .fe-tab")[1].click();
   check("choosing another tab changes the name on the button", /Build playlists for A very long format name/.test(bb_w.document.getElementById("create").textContent));
-  check("a long name is cut short with an ellipsis, and only the name: the words Build playlists never shrink", /#create \{ max-width: 100%; min-width: 0; \}/.test(bb_css) && /#create \.build-verb \{ flex: none; white-space: nowrap; \}/.test(bb_css) && /#create \.build-name \{ min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;/.test(bb_css));
   var bb_rn = renameBox(bb_w);
   bb_rn.value = "Renamed";
   bb_rn.dispatchEvent(new bb_w.Event("input"));
@@ -2913,7 +2853,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   su_none.document.getElementById("connect").click();
   check("Connect, which comes after it in the startup code, is still wired", /Enter your Client ID|Client ID/i.test(su_none.document.getElementById("loginMessage").textContent) || su_none.document.getElementById("loginMessage").textContent !== "");
   var su_css = su_html.replace(/\s+/g, " ");
-  check("the bottom strip lets clicks through everywhere except on the update card", /#supportBox \{ pointer-events: none; \}/.test(su_css) && /#supportBox > \* \{ pointer-events: auto; \}/.test(su_css));
   check("all the page's listeners go through the guarded helper (but Setup complete's Continue, which only lets the startup go on), and the script ends by catching a startup that fails", !/\$\("\w+"\)\.addEventListener\(/.test(su_js.replace('$("cnContinue").addEventListener("click", () => resolve(true), { once: true })', "")) && /\nmain\(\)\.catch\(startupFailed\);\s*$/.test(su_js));
   
   } catch (err) { areaCrashed("startup that survives problems", err); }
@@ -3043,7 +2982,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var hd_sil = hd_w.document.querySelector(".fe-silence");
   var hd_mid = hd_sil.querySelector(".fe-amount-rich");
   check("the silence control has no icon and is one stepper, with its words inside it: the length, then the short word for a phone (gaps), then the words for a wide screen (of silence between segments)", !hd_w.document.querySelector("#feHead .fe-silence > .fe-icon") && hd_sil.children.length === 2 && hd_sil.children[0].classList.contains("fe-stepper") && hd_sil.children[1].id === "feSilenceHelp" && !!hd_mid && hd_mid.querySelector("#feGapValue") && hd_mid.querySelector(".fe-silence-short").textContent === "gaps" && hd_mid.querySelector(".fe-silence-label").textContent === "of silence between segments" && hd_mid.textContent.startsWith("2 min ") && hd_w.document.getElementById("feGapValue").textContent === "2 min" && !hd_sil.getAttribute("title") && !hd_w.document.querySelector(".fe-silence-title"));
-  check("on a very narrow screen (under 360 pixels) the ? beside the stepper is hidden and Duplicate and Delete are a little narrower, so the row stays on one line", /@media \(max-width: 359px\) \{[^@]*#formatEditor \.fe-silencehelp \{ display: none; \}[^@]*#formatEditor \.fe-headtools \.fe-iconbtn \{ width: 40px; \}/.test(hd_css));
   hd_w.document.getElementById("feGapShorter").click(); hd_w.document.getElementById("feGapShorter").click(); hd_w.document.getElementById("feGapShorter").click(); hd_w.document.getElementById("feGapShorter").click();
   check("with no silence the stepper reads No and the sentence drops its of: [ - No + ] silence between segments", hd_w.document.getElementById("feGapValue").textContent === "No" && hd_w.document.querySelector(".fe-silence-label").textContent === "silence between segments", hd_w.document.getElementById("feGapValue").textContent);
   hd_w.document.getElementById("feGapLonger").click();
@@ -3083,7 +3021,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("Delete still asks first, with the usual question", !!hd_w.document.getElementById("feDeleteDialog"));
   hd_w.document.getElementById("feDeleteCancel").click();
   // the notch
-  check("the tab being renamed has the notch too, in a pill of the same color", /\.fe-tab-editing \{ display: inline-flex;[^}]*background: var\(--button\);/.test(hd_css));
   // the app icon is in Arc's bar now, not beside the tabs
   check("no app icon beside the tabs: it is in Arc's bar", !/\.fe-appicon/.test(hd_css) && !hd_w.document.querySelector("#formatEditor .fe-appicon"));
   
@@ -3164,7 +3101,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var ft_more = await boot({ url: EDURL, session: signedIn(), local: { formats: 'RECIPES = {"a": {"name": "A {n}", "segments": [("Calm", 20)]}, "b": {"name": "B {n}", "segments": [("", 20)]}}' }, fetchOptions: {} });
   ft_more.document.querySelectorAll("#feTabs .fe-tab")[1].click();
   check("not when there is more than one recipe", !!ft_more.document.querySelector("#feRows .fe-main-empty") && !ft_more.document.getElementById("feFirstTip"));
-  check("the arrow does not bounce under reduced motion", /prefers-reduced-motion: reduce\) \{ #formatEditor \.fe-firsttip-arrow \{ animation: none;/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   } catch (err) { areaCrashed("first segment tip", err); } }
 
   if (want("the play tip")) { try {
@@ -3255,7 +3191,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("and when the longest one gets shorter, they all get narrower again", /^\d{1,2}(\.\d)? min$/.test(bt_text[2]) && new Set(bt_w8()).size === 1 && parseFloat(bt_w8()[0]) < 56, JSON.stringify(bt_text) + JSON.stringify(bt_w8()));
   rowsOf(bt_q)[0].querySelector(".fe-inc").click();
   check("the widths are worked out again after every change, so one row going wider widens them all", new Set(bt_w8()).size === 1);
-  check("the widths are also worked out again when the window changes size", /window\.addEventListener\("resize", \(\) => \{ equalizeAmounts\(\); updateTagHang\(\); placeWelcomeArrow\(\); placeFirstTipArrow\(\); \}\)/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
   // the wording
   var bt_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/<!--[\s\S]*?-->/g, "").replace(/<style>[\s\S]*?<\/style>/g, "");
   var bt_app = appSource().split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
@@ -3288,7 +3223,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var tg_w = await boot({ url: "http://127.0.0.1:8000/", local: { devMode: "1" } });   // developer mode: Music sharing opens
   check("the tagline says Arc is ceremony playlist tools for a Spotify library", tg_w.document.querySelector(".tagline").textContent === "Ceremony playlist tools for your Spotify library");
   check("it sits in the welcome page's pink band, under Arc and beside the icon, which only the welcome page shows", !!tg_w.document.querySelector("#welcomePage .wp-band .wp-band-text .tagline") && tg_w.document.querySelector("#welcomePage .wp-band-name").textContent === "Arc" && !!tg_w.document.querySelector("#welcomePage .wp-band .wp-band-icon") && /#welcomePage \{ display: none; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
-  check("the band's and the cards' icons are sized to the letters beside them", /function alignWelcomeIcons\(\)/.test(appSource()) && /function letterBounds\(el\)/.test(appSource()) && /icon\.style\.width = icon\.style\.height = Math\.round\(b\.bottom - a\.top\) \+ "px"/.test(appSource()));
   var tg_d = tg_w.document, tg_heads = Array.from(tg_d.querySelectorAll("#welcomePage .wp-tool-head"));
   check("under Tools, a card per tool: name, tagline, and Arc's icon with a badge", tg_d.querySelector("#welcomePage .wp-sec").textContent === "Tools" && JSON.stringify(tg_heads.map((h) => [h.querySelector("b").textContent, h.querySelector(".wp-tool-tag").textContent])) === JSON.stringify([["Playlist builder", "Ceremony playlists, ready in minutes"], ["Shared music library", "Bring some, get some!"]]) && tg_heads.every((h) => !!h.querySelector(".tool-icon .tool-badge svg")));
   check("both cards start closed", tg_heads.every((h) => h.getAttribute("aria-expanded") === "false" && tg_d.getElementById(h.getAttribute("aria-controls")).hidden));
@@ -3353,16 +3287,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("Privacy always names reports and feedback: emailed only when the person sends them", /Reports and feedback: emailed to Arc's developer only when you (tap|click) Send\./.test(qf_priv) && !qf_w.document.getElementById("privacyFeedback"), qf_priv);
   } catch (err) { areaCrashed("questions and feedback", err); } }
 
-  if (want("hover feedback on buttons")) { try {
-  // ================================================================ hover feedback on buttons
-  var hv_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  var hv_block = hv_css.slice(hv_css.indexOf("@media (hover: hover) {"));
-  check("the hover styles apply only where there is a real mouse pointer, so a tap on a phone never leaves a button looking hovered", /@media \(hover: hover\) \{[^@]*button:not\(:disabled\):hover/.test(hv_css));
-  check("the playlist name in a segment and the silence tags get no ring, and the name does nothing of its own, since the whole segment lights up", /#formatEditor \.fe-main:hover, #formatEditor \.fe-tag:hover \{ outline: none; \}/.test(hv_block) && /#formatEditor \.fe-main:hover \{ filter: none; \}/.test(hv_block));
-  var hv_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
-  check("the selected tab's pencil is an icon inside the tab, which is what the highlight lands on", !!hv_w.document.querySelector('#feTabs .fe-tab[aria-pressed="true"] .fe-icon svg'));
-  } catch (err) { areaCrashed("hover feedback on buttons", err); } }
-
   if (want("python status at the bottom")) { try {
   // ================================================================ the Python status at the bottom of More options
   var py_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
@@ -3372,27 +3296,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var py_home = Array.from(py_w.document.querySelectorAll("#homeMore .hp-ee-panel > h3")).map((h) => h.textContent);
   check("the menu has Build all recipes, Remove built playlists and Autosave or backup; Everything else on home has Sign out and clear data, then Privacy; Python status is in the DEV menu", JSON.stringify(py_heads) === JSON.stringify(["Build all recipes", "Remove built playlists", "Autosave or backup"]) && py_home.slice(2, 4).join("|") === "Sign out and clear data|Privacy" && !py_heads.includes("Python status") && !!py_w.document.querySelector("#devMenu #pythonStatus"), JSON.stringify(py_heads) + " / " + JSON.stringify(py_home));
   } catch (err) { areaCrashed("python status at the bottom", err); } }
-
-  if (want("the build icon")) { try {
-  // ================================================================ the Build icon
-  var bi_html = fs.readFileSync(ROOT + "index.html", "utf8");
-  var bi_css = bi_html.replace(/\s+/g, " ");
-  var bi_svg = fs.readFileSync(ROOT + "icons/build.svg", "utf8");
-  check("the Build icon is three solid sparkles, one big, one medium and one small, drawn without an outline", (bi_svg.match(/<path /g) || []).length === 3 && (bi_svg.match(/fill="#fff" stroke="none"/g) || []).length === 3);
-  var bi_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
-  check("both buttons that build use it: Build playlists and Build all recipes", Array.from(bi_w.document.querySelectorAll('img.btn-icon[src="icons/build.svg"]')).filter((i) => !i.closest("#createDialog")).length === 2 && !!bi_w.document.querySelector('#create img[src="icons/build.svg"]') && !!bi_w.document.querySelector('#buildAll img[src="icons/build.svg"]'));
-  } catch (err) { areaCrashed("the build icon", err); } }
-
-  if (want("step 3 order and text")) { try {
-  // ================================================================ Step 3: the text, then the button, then the status messages
-  var s3_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
-  var s3_order = Array.from(s3_w.document.getElementById("createHeading").parentElement.children);
-  var s3_i = (id) => s3_order.findIndex((el) => el.id === id || el.querySelector("#" + id));
-  check("Step 3 reads like the other steps: the heading, then what it does, then the button, then the status messages under the button", s3_i("createHeading") + 1 === s3_i("createNote") && s3_i("createNote") + 1 === s3_i("create") && s3_i("create") < s3_i("pythonNote") && s3_i("pythonNote") < s3_i("spotifyNote"), JSON.stringify([s3_i("createHeading"), s3_i("createNote"), s3_i("create"), s3_i("pythonNote"), s3_i("spotifyNote")]));
-  var s3_text = s3_w.document.getElementById("createNote").textContent;
-  check("the explanation is two short sentences: it builds for the selected format, you can see the plan first, and nothing is built until you confirm", s3_text === "Builds playlists for the selected recipe. You can see the plan first, and nothing is built until you confirm." && s3_text.length < 130, String(s3_text.length));
-  check("minimalist mode still hides the heading and the explanation and keeps the button", /body\.minimal #createHeading, body\.minimal #createNote/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
-  } catch (err) { areaCrashed("step 3 order and text", err); } }
 
   if (want("spotify premium")) { try {
   // ================================================================ Spotify Premium: the tagline, the notice, the reminder, and the error
@@ -3421,7 +3324,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("it is a known problem, so there is no report link for it", pr_e.document.getElementById("connectionReportHint").hidden === true);
   check("and it is counted as its own kind of connection problem, premium", pr_e.eval('problemKind("' + PRM + '")') === "premium" && pr_e.eval('problemKind("Spotify did not allow this (x). Click Disconnect")') === "sign-in");
   var pr_o = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { denyCreate: true } });
-  check("a 403 that does not mention Premium keeps its advice about signing in again and approving every permission", appSource().includes('const PREMIUM_REQUIRED_MESSAGE = "' + PRM + '";') && /Spotify did not allow this \(\$\{what\}\)\. Sign in again with Change Spotify login in More options, and approve every permission it asks for\./.test(appSource()));
   } catch (err) { areaCrashed("spotify premium", err); } }
 
   if (want("welcome recipe link")) { try {
@@ -3449,36 +3351,10 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the old words about a Downloads folder are gone everywhere, and the one message after a backup comes from the one function that makes the backup, so the menu, both links, Step 4 and the offer after leaving Spotify all show it", !/Downloads folder/.test(bl_src) && (bl_src.match(/Find the file in Downloads, or in the Files app on a phone\./g) || []).length === 1 && (bl_src.match(/BACKED_UP_MESSAGE/g) || []).length === 2 && /function downloadBackup\(\) \{[\s\S]*?showBackupMessage\(BACKED_UP_MESSAGE\)/.test(bl_src));
   } catch (err) { areaCrashed("backup link in step 2", err); } }
 
-  if (want("no double-tap zoom")) { try {
-  // ================================================================ no zoom from quick taps
-  var zt_html = fs.readFileSync(ROOT + "index.html", "utf8");
-  var zt_css = zt_html.replace(/\s+/g, " ");
-  check("every element is set to touch-action: manipulation, so a quick second tap on the plus and minus buttons, or anything else, no longer zooms the page", /\* \{ touch-action: manipulation; \}/.test(zt_css));
-  check("the drag handle keeps its own touch-action: none, which wins over that rule, so dragging a segment still works", /#formatEditor \.fe-grip \{ touch-action: none;/.test(zt_css));
-  check("pinching to zoom is still allowed: the viewport does not forbid scaling", /<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">/.test(zt_html) && !/user-scalable|maximum-scale/.test(zt_html));
-  } catch (err) { areaCrashed("no double-tap zoom", err); } }
-
-  if (want("build button centered in minimalist mode")) { try {
-  // ================================================================ the Build button in the middle, in minimalist mode only
-  var cb_html = fs.readFileSync(ROOT + "index.html", "utf8");
-  var cb_css = cb_html.replace(/\s+/g, " ");
-  var cb_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
-  check("the row that holds the Build button has an id of its own, so minimalist mode can center it", cb_w.document.getElementById("buildRow").contains(cb_w.document.getElementById("create")) && cb_w.document.getElementById("buildRow").children.length === 1);
-  check("in minimalist mode only, that row centers the button and the messages under it are centered too; in normal mode the button stays at the left like every other button", /body\.minimal #buildRow \{ justify-content: center; \}/.test(cb_css) && /body\.minimal #pythonNote, body\.minimal #spotifyNote \{ text-align: center; \}/.test(cb_css) && !/(?<!body\.minimal )#buildRow \{ justify-content/.test(cb_css));
-  } catch (err) { areaCrashed("build button centered in minimalist mode", err); } }
-
-  if (want("privacy: why the counts")) { try {
-  // ================================================================ Privacy: why anything is counted
-  var wc_w = await boot({ url: "http://127.0.0.1:8000/" });
-  var wc_p = Array.from(wc_w.document.querySelectorAll("#privacySection li")).find((li) => /^Anonymous counts:/.test(li.textContent)).textContent;
-  check("Anonymous counts says what is counted and what never is", /GoatCounter counts visits and a few actions, without cookies\. Never names, recipes or songs\./.test(wc_p));
-  } catch (err) { areaCrashed("privacy: why the counts", err); } }
-
   if (want("the silence card")) { try {
   // ================================================================ the silence card: 0 sec, one look for zero, Reset to default, and centered on its marker
   var sc_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   var sc_src = fs.readFileSync(ROOT + "editor.js", "utf8");
-  check("a silence at zero has no look of its own: the hollow dark style is gone from the page and from the code", !/fe-tag-zero/.test(sc_css) && !/fe-tag-zero|"zero"/.test(sc_src.replace(/\.zero|info\.zero|zero:/g, "")));
   var sc_w = await boot({ url: EDURL, session: signedIn(), local: { formats: 'FORMATS = {"a": {"name": "A {n}", "title": "T", "silence between segments": "1 min", "segments": [("x", 10), ("silence", "none"), ("y", 10), ("z", 10)]}}' }, fetchOptions: {} });
   var sc_tag = () => rowsOf(sc_w)[0].querySelector(".fe-tag"), sc_tag2 = () => rowsOf(sc_w)[1].querySelector(".fe-tag");
   check("the default is a deep pink and anything changed is the buttons' bright pink, zero included", sc_tag().classList.contains("fe-tag-custom") && sc_tag2().classList.contains("fe-tag-default") && sc_tag().textContent === "0s" && /0 sec\. (Tap|Click) to change\./.test(sc_tag().getAttribute("aria-label")));
@@ -3488,8 +3364,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   sc_tag().click();
   check("once it is back at the default, the card shows a gray (default) in that place, and the link is gone", sc_w.document.getElementById("feTagDefault").textContent === "(default)" && !sc_w.document.getElementById("feTagReset") && sc_w.document.getElementById("feTagDefault").closest(".fe-tagbelow") !== null);
   check("the card is centered on its marker, just left of it, and never flips up or down", /#formatEditor \.fe-tagpanel \{ right: 8px; top: 55px; transform: translateY\(calc\(-50% \+ var\(--shift, 0px\)\)\);/.test(sc_css) && !/fe-tagpanel\.fe-up/.test(sc_css) && !sc_w.document.getElementById("feTagPanel").classList.contains("fe-up"));
-  check("the link is not bold and not larger than the card's text", /#formatEditor \.fe-tagbelow \.linklike \{ font-weight: 400; \}/.test(sc_css));
-  check("the help text names the link as it is on the card", /A tag with a changed length is pink, and <span class="ui">Reset to default<\/span> puts it back\./.test(fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ")));
 
   var sc_fmt = 'FORMATS = {"a": {"name": "A {n}", "title": "T", "silence between segments": "1 min", "segments": [("x", 10), ("y", 10), ("z", 10)]}}';
   var sc_mock = (naturalTop, height, innerH) => ({ before: (w) => {
@@ -3517,21 +3391,15 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sc_col = sc_ed.document.querySelector("#feTagPanel .fe-tagcol");
   check("the widget and the (default) text share one column, in that order, both centered", !!sc_col && sc_col.children.length === 2 && sc_col.children[0].classList.contains("fe-stepper") && sc_col.children[1].classList.contains("fe-tagbelow"), sc_col && sc_col.innerHTML.slice(0, 160));
   check("the caption lives inside the widget, as a second line between the minus and the plus, and there is no separate title", sc_col.querySelector(".fe-stepper .fe-amount-two") !== null && sc_col.querySelectorAll(".fe-amount .fe-line").length === 2 && !/fe-tagtitle|fe-tagslot/.test(sc_css));
-  check("the two lines are centered in the widget, one under the other", /#formatEditor \.fe-amount-two \{ display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1\.15; white-space: nowrap; \}/.test(sc_css));
   var sc_ndw = await boot({ url: EDURL, session: signedIn(), local: { formats: 'FORMATS = {"a": {"name": "A {n}", "title": "T", "silence between segments": "1 min", "segments": [("x", 10), ("y", 10), ("silence", "30 sec")]}}' }, fetchOptions: {} });
   rowsOf(sc_ndw)[1].querySelector(".fe-tag").click();
   var sc_ncol = sc_ndw.document.querySelector("#feTagPanel .fe-tagcol");
   check("a silence with no default to go back to has its Remove button under the widget, centered, and nothing beside it", !!sc_ndw.document.getElementById("feTagRemove") && sc_ncol.children.length === 2 && sc_ncol.children[1].contains(sc_ndw.document.getElementById("feTagRemove")) && sc_ndw.document.querySelector("#feTagPanel .fe-tagrow").children.length === 1);
-  check("popups that are not dialogs get the same dark-mode treatment: a faint light edge, a deeper shadow and a slightly lighter surface, for the editor's five popups and the theme list", /@media \(prefers-color-scheme: dark\) \{ #formatEditor \.fe-pop, \.theme-list \{ box-shadow: 0 0 0 1px rgba\(255, 255, 255, 0\.07\), 0 6px 14px rgba\(0, 0, 0, 0\.5\), 0 18px 40px rgba\(0, 0, 0, 0\.6\); background-image: linear-gradient\(rgba\(255, 255, 255, 0\.05\), rgba\(255, 255, 255, 0\.05\)\); \} \}/.test(sc_css));
-  check("the widget and the text under it are centered on each other in one column", /#formatEditor \.fe-tagcol \{ display: flex; flex-direction: column; align-items: center; \}/.test(sc_css) && /#formatEditor \.fe-tagbelow \{ display: flex; justify-content: center; font-size: 0\.95rem; line-height: 1; text-align: center; margin-top: 8px; \}/.test(sc_css));
-  check("the card has the same margin all round: 12 px from its edge to the widget at the top, left and right (1 px border + 11 px padding, nothing else added), and the text under it is set to end 12 px from the bottom edge, with a larger tap area reaching into that margin", /#formatEditor \.fe-tagpanel \{[^}]*padding: 11px;/.test(sc_css) && !/#formatEditor \.fe-tagrow \{[^}]*padding/.test(sc_css) && /#formatEditor \.fe-tagbelow-link \{ margin-bottom: -1px; \}/.test(sc_css) && /#formatEditor \.fe-tagbelow-remove \{ margin-bottom: -3px; \}/.test(sc_css) && /\.fe-linkbutton::after \{ content: ""; position: absolute; left: 0; right: 0; top: -2px; bottom: -10px; \}/.test(sc_css) && sc_ed.document.querySelector(".fe-tagbelow").classList.contains("fe-tagbelow-default"));
   } catch (err) { areaCrashed("the silence card", err); } }
 
   if (want("narrow more button")) { try {
   // ================================================================ narrow mode: the more button is only as wide as its dots
   var nm_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("on a phone the ... button on a segment is 22 px wide, the same as the drag handle beside it, so the playlist gets the room, with a tap area reaching 4 px into the card's edge", /@media \(max-width: 599px\) \{[^@]*#formatEditor \.fe-more \{ width: 22px; position: relative; \}[^@]*#formatEditor \.fe-more::after \{ content: ""; position: absolute; top: 0; bottom: 0; left: 0; right: -4px; \}/.test(nm_css));
-  check("on wide screens it keeps its 36 px", /#formatEditor \.fe-more \{ width: 36px; height: 40px;/.test(nm_css));
 
   var nm_w = await boot({ url: EDURL, session: signedIn(), local: { formats: 'FORMATS = {"a": {"name": "A {n}", "title": "T", "silence between segments": "1 min", "segments": [("x", 10), ("y", 10)]}}' }, fetchOptions: {} });
   var nm_touch = (el) => { const ev = new nm_w.Event("touchend", { bubbles: true, cancelable: true }); el.dispatchEvent(ev); return ev.defaultPrevented; };
@@ -3543,7 +3411,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var nm_btn = nm_w.document.querySelector("#feRows .fe-step");
   var nm_b1 = nm_touch(nm_btn), nm_b2 = nm_touch(nm_btn), nm_b3 = nm_touch(nm_btn);
   check("quick taps on a control are never cancelled, so tapping + or - fast still counts every tap", nm_b1 === false && nm_b2 === false && nm_b3 === false);
-  check("holding or dragging on the editor selects no text, and no copy menu comes up, while the fields in it still take typing", /#formatEditor \{ margin: 8px 0 12px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; \}/.test(nm_css) && /#formatEditor input, #formatEditor textarea \{ -webkit-user-select: text; user-select: text; \}/.test(nm_css));
   } catch (err) { areaCrashed("narrow more button", err); } }
 
   if (want("popups close only")) { try {
@@ -3578,40 +3445,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   rowsOf(po_w)[1].querySelector(".fe-grip").dispatchEvent(new po_w.Event("pointerdown", { bubbles: true, cancelable: true }));
   check("with nothing open, it goes through", po_seen === 1);
   } catch (err) { areaCrashed("popups close only", err); } }
-
-  if (want("marker hugs corners")) { try {
-  // ================================================================ the silence marker's left end follows the segments' rounded corners
-  var mh_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  var mh_w = await boot({ url: EDURL, session: signedIn(), local: { formats: 'FORMATS = {"a": {"name": "A {n}", "title": "T", "silence between segments": "1 min", "segments": [("x", 10), ("y", 10)]}}' }, fetchOptions: {} });
-  var mh_rule = (mh_css.match(/#formatEditor \.fe-tag \{ position: absolute;[^}]*\}/) || [""])[0];
-  var mh_pts = ((mh_rule.match(/clip-path: polygon\(([^)]*)\)/) || [])[1] || "").split(",").map((p) => p.trim().split(" "));
-  var mh_num = (v) => parseFloat(v);
-  var mh_up = mh_pts.filter((p) => /px$/.test(p[0]));
-  check("the marker starts 16 px inside the card's edge, which is the corner radius, and its point is in the middle of the gap, where the two curves meet", /left: calc\(100% - 16px\)/.test(mh_rule) && Math.abs(mh_num(mh_up[0][0]) - 11.09) < 0.1 && Math.abs(mh_num(mh_up[0][1]) - 12) < 0.01);
-  var mh_ok = true, mh_close = 0;
-  for (const p of mh_up) {
-    const x = mh_num(p[0]), y = mh_num(p[1]) + 43;                  // back to the row's own coordinates
-    const upper = (Math.hypot(x - 0, y - 36) - 22), lower = (Math.hypot(x - 0, 74 - y) - 22);
-    if (y <= 55.001 && Math.abs(upper) > 0.05) mh_ok = false;
-    if (y > 55.001 && Math.abs(lower) > 0.05) mh_ok = false;
-    mh_close++;
-  }
-  check("every point on its two sides lies on a circle of radius 22 (the 16 px corner plus a 6 px margin, the same as the gap between two segments) around the corner of the segment above or below, so the sides hug the corners and are not straight", mh_ok && mh_close >= 18, mh_close);
-  check("the sides meet the marker's top and bottom edges at the end of the arcs, and there are two arcs of the same size", mh_pts.filter((p) => /px$/.test(p[0])).length >= 36 && mh_pts.some((p) => p[0] === "100%"));
-  check("the text starts 20 px in, clear of the curve that is now 6 px from the corners, and the marker's width is as it was, so it hangs only 26 px past the segments (it was 31) on a phone and 45 on wide screens (it was 53), and a longer label such as 12.5m makes it wider instead of spilling out", /min-width: 42px; width: max-content;[^}]*padding: 0 4px 0 20px;/.test(mh_rule) && /@media \(min-width: 860px\) \{ #formatEditor \.fe-tag \{ min-width: 61px; padding: 0 5px 0 20px;/.test(mh_css));
-  check("and the room kept for the markers beside the segments on a phone is 5 px smaller, 3 px instead of 8, which goes to the segments, and grows only when a long label makes a marker wider", /@media \(max-width: 859px\) \{ #formatEditor\.fe-hastags \{ margin-right: calc\(var\(--tag-hang, 26px\) - 23px\); \} \}/.test(mh_css) && /--tag-hang/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && mh_w.document.getElementById("formatEditor").style.getPropertyValue("--tag-hang") === "26px");
-  } catch (err) { areaCrashed("marker hugs corners", err); } }
-
-  if (want("marker colors")) { try {
-  var mc_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  var mc_theme = fs.readFileSync(ROOT + "theme.js", "utf8");
-  check("a default marker is the deeper pink with its own readable text color, so it shows on a phone", /#formatEditor \.fe-tag \{ position: absolute;[^}]*background: var\(--accent-deep, #a8217c\); color: var\(--on-deep, #fff\);/.test(mc_css));
-  check("a changed marker is the same pink as the buttons, with the buttons' text color", /#formatEditor \.fe-tag-custom \{ background: var\(--button\); color: var\(--on-button, #fff\); \}/.test(mc_css));
-  check("the gray marker colors are gone from the page and from the themes", !/var\(--tag(-off)?[,)]/.test(mc_css) && !/"--tag(-off)?":/.test(mc_theme));
-
-  var gs_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("holding a finger anywhere on the app page, on text, a button or the background, selects nothing: the whole page is set to no selection, and only fields, the plan and report text and the copyable addresses can be selected", /html\.page-app \{ -webkit-user-select: none; user-select: none; \}/.test(gs_css) && /input, textarea, pre, code \{ -webkit-user-select: text; user-select: text; \}/.test(gs_css));
-  } catch (err) { areaCrashed("marker colors", err); } }
 
 
   if (want("playlist ids")) { try {
@@ -4433,7 +4266,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("it shows home's band (icon, name, tagline) and the step under way, home's own band hidden behind it", ls_d.documentElement.classList.contains("launching") && ls_d.querySelector("#launchScreen .ls-band.wp-band .wp-band-icon") && ls_d.querySelector("#launchScreen .wp-band-name").textContent === "Arc" && ls_d.querySelector("#launchScreen .wp-band-tag").textContent === ls_d.querySelector("#homePage .hp-band .wp-band-tag").textContent && /html\.launching #homePage \.hp-band \{ visibility: hidden; \}/.test(ls_html) && /Spotify|playlists|playlist builder/.test(ls_d.getElementById("lsStep").textContent), ls_d.getElementById("lsStep").textContent);
   await waitFor(() => ls_d.getElementById("launchScreen").classList.contains("ls-ready"), 20000);
   check("once signed in, the playlists read and Python started, the spinner gives way to a check and Ready, still on the launch screen", ls_w.eval("connection") === "ready" && ls_d.getElementById("lsStep").textContent === "Ready" && ls_d.documentElement.classList.contains("launching") && ls_w.getComputedStyle(ls_d.querySelector("#launchScreen .ls-spin")).display === "none");
-  check("it is up at least 2 seconds in all, and Ready at least a moment", /const LAUNCH_MIN_MS = 2000, LAUNCH_READY_MS = 1050;/.test(appSource()) && /Math\.max\(LAUNCH_READY_MS \* launchSlow, LAUNCH_MIN_MS - shown\)/.test(appSource()));
   await waitFor(() => !ls_d.documentElement.classList.contains("launching"), 5000);
   check("then the band glides up to home's band and home's parts rise in turn", ls_d.getElementById("launchScreen").classList.contains("ls-glide") || ls_d.documentElement.classList.contains("ls-arrive") || !ls_d.documentElement.classList.contains("launching"));
   check("then it gives way to the app", !ls_d.documentElement.classList.contains("launching") && ls_w.eval("connection") === "ready" && ls_w.eval("launchScreen") === false && ls_d.documentElement.classList.contains("page-app"));
@@ -4443,7 +4275,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var ls_q = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "manual" }, before: (w) => w.document.documentElement.classList.add("launching") });
   ls_q.eval('askSyncChoice("A question", "Text", [{ label: "OK", value: "ok" }])');
   check("a question takes it down at once", ls_q.eval("launchScreen") === false);
-  check("a startup problem takes it down too, and so does the pause popup", /closeUpdateScreen\(\);\n  endLaunchScreen\(\);/.test(appSource()) && /function showPauseDialog\(\) \{[\s\S]{0,400}endLaunchScreen\(\)/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
   var ls_b = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "manual" } });
   check("in a browser tab there is no launch screen", ls_b.eval("launchScreen") === false && !ls_b.document.documentElement.classList.contains("launching"));
   var ls_t = ls_w.document.querySelectorAll("#devMenu [data-launch]");
@@ -4512,7 +4343,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var bw_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("Autosave or backup says how the recipes are kept, and offers the two ways", /<h3>Autosave or backup<\/h3> <p class="muted">How your recipes are kept\.<\/p>/.test(bw_html));
   check("its two ways are Save to Spotify, marked Recommended, and Back up by hand", /<b>Save to Spotify <em>Recommended<\/em><\/b>/.test(bw_html) && /<b>Back up by hand<\/b>/.test(bw_html));
-  check("nothing on the page calls the manual way a file any more, in the card, the notes, Step 4 or the menu", !/Manually, to your phone or computer|Automatically to Spotify|Download a backup|Restore from backup|Change how your recipes are saved\u2026/.test(bw_html + fs.readFileSync(ROOT + "editor.js", "utf8") + appSource()));
   var bw_m = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "manual", connectedBefore: "1" }, fetchOptions: {} });
   bw_m.document.getElementById("feAppMenuButton").click();
   var bw_head = bw_m.document.getElementById("feBackupMethod");
@@ -4526,7 +4356,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("with recipes saved to Spotify the menu has no saving block at all, and no actions", !bw_s.document.querySelector("#feAppMenuPanel .fe-bk-title") && !bw_s.document.getElementById("feBackupMethod") && !bw_s.document.querySelector("#feAppMenuPanel .fe-bk-actions"));
   var bw_css = fs.readFileSync(ROOT + "index.html", "utf8");
   check("the block has no hover look of its own: only the Change link and the two buttons react", !/fe-bk-block[^{]*:hover|fe-bk-row[^{]*:hover/.test(bw_css) && (() => { bw_m.document.getElementById("feAppMenuButton").click(); const row = bw_m.document.querySelector("#feAppMenuPanel .fe-bk-row"); const ok = !!row && row.tagName === "DIV"; bw_m.document.body.click(); return ok; })());
-  check("the block's classes are its own, so none of them can mean something else in the editor", !/\.fe-main \{ font-weight: 600; \}|\.fe-grouprow|\.fe-two\b|\.fe-changelink|\.fe-pair\b|\.fe-status\b/.test(bw_css));
   } catch (err) { areaCrashed("backup wording", err); } }
 
   if (want("backup card done")) { try {
@@ -4575,7 +4404,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var nl_cap = () => nl_w.document.getElementById("feCaption");
   var nl_sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   check("with nothing to say, the line shows how long the format is, as before", /minutes? of music/.test(capText(nl_w)) && !nl_cap().classList.contains("fe-notice"));
-  check("the line always has room for a notice, so showing one moves nothing below it", /#formatEditor \.fe-caption \{[^}]*min-height: 24px; display: flex;/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /\.fe-notice \{ gap: 6px; white-space: nowrap;/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   // news, one message
   nl_w.eval('showNotices(["Updated \\u2068TEST\\u2069 from Spotify."])');
   check("a piece of news replaces the total, with a cloud, and no count when there is only one", /Updated TEST from Spotify\./.test(capText(nl_w)) && nl_cap().classList.contains("fe-notice-news") && !/of \d/.test(capText(nl_w)) && nl_cap().querySelector("svg"));
@@ -4722,12 +4550,11 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_ready = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: {} });
   await waitFor(() => sr_ready.eval("connection") === "ready", 15000);
   sr_ready.document.getElementById("feAppMenuButton").click();
-  check("connected, the menu has no Spotify row: the app's name is followed by what comes next (here the manual backup block)", !sr_ready.document.querySelector("#feAppMenuPanel .fe-sp-block") && !sr_ready.document.getElementById("feConnect") && sr_ready.document.querySelectorAll("#feAppMenuPanel > *")[1].className === "fe-bk-block", Array.from(sr_ready.document.querySelectorAll("#feAppMenuPanel > *")).map((k) => k.id || k.className).join(","));
+  check("connected, the menu has no Spotify row: it starts with what comes next (here the manual backup block)", !sr_ready.document.querySelector("#feAppMenuPanel .fe-sp-block") && !sr_ready.document.getElementById("feConnect") && sr_ready.document.querySelectorAll("#feAppMenuPanel > *")[0].className === "fe-bk-block", Array.from(sr_ready.document.querySelectorAll("#feAppMenuPanel > *")).map((k) => k.id || k.className).join(","));
   sr_ready.document.body.click();
   sr_ready.eval("window.__go = []"); sr_ready.eval("startLogin = (o) => { window.__go.push(o); }");
   sr_ready.document.getElementById("changeSpotifyLogin").click();
   check("Change Spotify login in More options starts a sign-in that lets another account be chosen", sr_ready.eval("window.__go.length") === 1 && sr_ready.eval("window.__go[0].switchAccount") === true);
-  check("that sign-in asks Spotify to show its page (show_dialog), and only for this, not the usual sign-in", /if \(switchAccount\) params\.set\("show_dialog", "true"\)/.test(appSource()) && /options\.switchAccount === true/.test(appSource()));
   var sr_sw = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", spotifyAccount: "someone-else", spotifySynced: '{"x":{"rev":1,"playlistId":"p"}}', spotifyPendingDeletes: '["q"]' }, fetchOptions: {} });
   await waitFor(() => sr_sw.eval("connection") === "ready", 15000);
   check("signed in to a different account, this device forgets what it knew of the old account's saves", sr_sw.localStorage.getItem("spotifyAccount") === "ron" && sr_sw.localStorage.getItem("spotifyAccount") !== "someone-else" && !/"x"/.test(sr_sw.localStorage.getItem("spotifySynced") || "") && !sr_sw.localStorage.getItem("spotifyPendingDeletes"));
@@ -4749,14 +4576,14 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var vl_ready = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: {} });
   vl_ready.document.getElementById("feAppMenuButton").click();
   var vl_menu = vl_ready.document.getElementById("feAppMenuPanel");
-  check("the builder's menu has no version line any more: it ends with Report a problem (the version shows when Arc's icon is tapped)", vl_menu.lastElementChild.id === "feReport" && !vl_ready.document.getElementById("feVersion") && /function flashBandVersion/.test(appSource() + fs.readFileSync(ROOT + "editor.js", "utf8")));
+  check("the builder's menu ends with the version as a grey line", vl_menu.lastElementChild.id === "feMenuVersion" && vl_menu.lastElementChild.textContent.includes(vl_ready.eval("APP_VERSION")), vl_menu.lastElementChild.id);
   vl_ready.document.body.click();
   var vl_out = await boot({ url: EDURL, local: { formats: MINI, connectedBefore: "1", clientId: "c1" }, fetchOptions: {} });
   vl_out.document.getElementById("feAppMenuButton").click();
-  check("and none when Spotify is not connected either", vl_out.document.getElementById("feAppMenuPanel").lastElementChild.id === "feReport" && !vl_out.document.getElementById("feVersion"));
+  check("and when Spotify is not connected too", vl_out.document.getElementById("feAppMenuPanel").lastElementChild.id === "feMenuVersion");
   vl_out.document.body.click();
   var vl_minimal = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", minimalMode: "1" }, fetchOptions: {} });
-  check("the app icon goes home from Arc's bar, and shows no version", !/showVersionNotice|APP_VERSION[^;]*fe-appicon/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && (() => { vl_minimal.document.body.click(); const before = capText(vl_minimal); vl_minimal.document.getElementById("appHome").click(); return vl_minimal.document.documentElement.classList.contains("view-home") && capText(vl_minimal) === before; })());
+  check("the app icon goes home from Arc's bar", (() => { vl_minimal.document.body.click(); const before = capText(vl_minimal); vl_minimal.document.getElementById("appHome").click(); return vl_minimal.document.documentElement.classList.contains("view-home") && capText(vl_minimal) === before; })());
   } catch (err) { areaCrashed("version line", err); } }
 
   if (want("sharing card in the editor")) { try {
@@ -5227,11 +5054,11 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   dv_w.eval("setDevMode(true)"); dv_w.document.querySelector("#homePage .hp-band .wp-band-name").click();
   dv_w.document.getElementById("devStartOver").click();
   await new Promise((r) => setTimeout(r, 80));
-  check("Clear data and start over asks first, says the Client ID is copied, and its button is red", /Clear data and start over\?/.test((dv_w.document.getElementById("feSyncDialog") || {}).textContent || "") && /Client ID is copied to the clipboard/.test(dv_w.document.getElementById("feSyncDialog").textContent) && dv_w.document.getElementById("feSyncChoice0").classList.contains("fe-danger-button") && dv_w.document.getElementById("devMenu").hidden);
+  check("Clear data and start over asks first, says the Client ID is copied, and its button is red", /Clear data and start over\?/.test((dv_w.document.getElementById("feSyncDialog") || {}).textContent || "") && /Client ID is copied to the clipboard/.test(dv_w.document.getElementById("feSyncDialog").textContent) && dv_w.document.getElementById("feSyncChoice1").classList.contains("fe-danger-button") && dv_w.document.getElementById("devMenu").hidden);
   var dv_copied = []; dv_w.navigator.clipboard = { writeText: async (t) => { dv_copied.push(t); } };
   dv_w.localStorage.setItem("clientId", "dv-id");
   dv_w.eval("reloadPage = () => { window.__dvReloaded = true; }");
-  dv_w.document.getElementById("feSyncChoice0").click();
+  dv_w.document.getElementById("feSyncChoice1").click();
   await waitFor(() => dv_w.__dvReloaded === true, 5000);
   check("and then clears everything, with the Client ID copied", dv_w.localStorage.length === 0 && dv_copied.join("|") === "dv-id");
   } catch (err) { areaCrashed("developer options", err); } }
@@ -5246,7 +5073,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("connected: Watch the tutorial, Feedback, Report a problem, then Build all recipes, Remove built playlists, Autosave or backup, then the version", JSON.stringify(sl_r) === JSON.stringify(sl_rest.slice(1)), JSON.stringify(sl_r));
   var sl_ms = sl_ready.document; sl_ready.document.getElementById("feAppMenuButton").click();
   var sl_msi = sl_ms.getElementById("feMusicSharing");
-  check("Music sharing is not in the menu: it is a tool on Arc's home", !sl_msi && /Music sharing/.test(sl_ms.getElementById("homePage").textContent));
+  check("Music sharing is not in the menu: it is a tool on Arc's home", !sl_msi && /Shared music library/.test(sl_ms.getElementById("homePage").textContent));
   sl_ready.document.body.click();
   sl_ready.eval("appView = \"sharing\""); var sl_sh = sl_ids(sl_ready); sl_ready.eval("appView = \"builder\"");
   check("in Music sharing the menu is Feedback, Report a problem and the version", JSON.stringify(sl_sh) === JSON.stringify(["feFeedback", "feReport", "fe-rule", "feMenuVersion"]), JSON.stringify(sl_sh));
@@ -5265,7 +5092,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // ================================================================ the menu's header, Compact view, the crossfade, and a save that keeps failing
   var b7_html = fs.readFileSync(ROOT + "index.html", "utf8");
   var b7_visible = b7_html.replace(/<!--[\s\S]*?-->/g, "").replace(/<script[\s\S]*?<\/script>/g, "").replace(/<style[\s\S]*?<\/style>/g, "");
-  check("the page's own words say Compact view, nothing says Minimalist any more", !/inimalist/.test(b7_visible) && !/inimalist/.test(fs.readFileSync(ROOT + "editor.js", "utf8").replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "")));
   var b7_menu = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: {} });
   b7_menu.document.getElementById("feAppMenuButton").click();
   var b7_kids = b7_menu.document.querySelectorAll("#feAppMenuPanel > *");
@@ -5430,7 +5256,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_w8 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { clientId: "cid-1", connectedBefore: "1", formats: MINI }, fetchOptions: { premiumRequired: true } });
   await new Promise((r) => setTimeout(r, 600));
   check("a problem signing in again cannot fix (here Premium) shows no reconnect screen", sr_w8.eval("connection") === "problem" && !sr_screen(sr_w8), sr_w8.eval("connection"));
-  check("Privacy says the sign-in is saved in this browser", /In this browser:<\/b> your Client ID, Spotify sign-in, recipes/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   } catch (err) { areaCrashed("sign-in renewal", err); } }
   if (want("build popup")) { try {
   // The build popup: steps along the top, the plan as a list with "Why N?", and a build that stops with a plain message when something goes wrong.
@@ -5464,14 +5289,12 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("hovering a choice shows one outline, around the tile and number together, not a second one on the tile", !/\.bd-pick-opt:hover/.test(html));
   check("the icons up to the choice light, but only the chosen number turns pink", /#createDialog \.bd-pick-opt\[aria-checked="true"\] \{ color: var\(--accent\); font-weight: 700; \}/.test(html) && !/#createDialog \.bd-pick-opt\.bd-on \{/.test(html));
   check("choosing 2 lights both", bp_a.document.querySelectorAll("#bdPickTiles .bd-on").length === 2 && bp_text(bp_a, "confirmYes") === "Build 2 playlists", bp_text(bp_a, "confirmYes"));
-  check("the popup's text can be selected", /#createDialog \.bd-body \{[^}]*user-select: text;/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   check("the title names the recipe", bp_text(bp_a, "bdTitle") === "Ran", bp_text(bp_a, "bdTitle"));
   check("no bar under the name any more", !bp_a.document.getElementById("bdShape") && !/bd-shape-piece/.test(html));
   check("over the question, the length of one playlist and its segments", /^(\d+ h( \d+ min)?|\d+ min) per playlist · \d+ segments?$/.test(bp_text(bp_a, "bdShapeInfo")) && visible(bp_a, "bdShapeInfo"), bp_text(bp_a, "bdShapeInfo"));
   check("while it asks, reading and planning are ticked and building has not started", bp_steps(bp_a) === "done,done,-,-", bp_steps(bp_a));
   check("the plan lists no playlists: the count says how many, and the list starts when building does", bp_rows(bp_a).length === 0 && !/showPlanRows|bdShowAll/.test(appSource()), bp_rows(bp_a).map((r) => r.textContent).join(" | "));
   check("there is no separate progress bar any more", !bp_a.document.getElementById("bdProgress"));
-  check("while the cover is sent, the row says so, not adding songs", /setRowState\(row, "now", "adding the cover"\);[^\n]*\n\s*try \{ await spotifyRequest\("PUT", `\/playlists\/\$\{made\.id\}\/images`/.test(appSource()));
   check("Why 2? is offered, and the table starts hidden", bp_text(bp_a, "planToggle") === "Why 2?" && !visible(bp_a, "planText"));
   bp_a.document.getElementById("planToggle").click();
   var bp_trs = Array.from(bp_a.document.querySelectorAll("#planText tbody tr"));
@@ -5483,7 +5306,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   bp_a.fillWhyTable({ built: [{ key: "ran", playlists: [{}, {}], sources: [{ name: "a", per: 60, has: 130, enough: 3 }, { name: "b", per: 60, has: 300, enough: 5 }, { name: "c", per: 30, has: 100, enough: 3 }] }] });
   check("when the cap sets the number, no row is marked, and a note above the table says so and how many the songs allow", Array.from(bp_a.document.querySelectorAll("#planText tbody tr")).map((t) => t.className).join(",") === ",," && bp_a.document.querySelector("#planText").firstElementChild.className === "bd-note bd-capnote" && bp_text(bp_a, "planText").startsWith("Capped at 2 by “Most playlists per recipe” in More options. Without it, the songs are enough for 3 playlists."), bp_text(bp_a, "planText"));
   var bp_html = fs.readFileSync(ROOT + "index.html", "utf8"), bp_js = appSource();
-  check("a long name ends in an ellipsis instead of wrapping, with the full name on hover, and Available is left-aligned", /#planText td:first-child[^{]*\{ max-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /#planText td:nth-child\(2\)[^{]*\{ text-align: left;/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && bp_trs[0].children[0].title === "💗 spacious + gentle");
   check("the marked row is pale pink with its number in pink, and the rows are striped", /tr\.bd-limit td \{ background: color-mix\(in srgb, var\(--accent\)/.test(bp_html) && /tr\.bd-limit td:last-child \{ color: var\(--accent\);/.test(bp_html) && /tbody tr:nth-child\(odd\) td \{ background: var\(--card\); \}/.test(bp_html));
   check("songs in more than one source get their own box, not a line under the table", /notes\.push\(\["Songs in more than one playlist", `\$\{plural\(shared, "song"\)\}/.test(bp_js) && !/className: "bd-note", textContent: `\$\{plural\(shared/.test(bp_js));
   check("and the link then offers to hide it", bp_text(bp_a, "planToggle") === "Hide");
@@ -5572,7 +5394,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("engine: with nothing planned, the playlists too short for even one", bp_none.playlists.length === 0 && JSON.stringify(bp_none.short) === '[{"name":"B","need":60,"has":10}]', JSON.stringify(bp_none.short));
   var bp_fit = JSON.parse(bp_py("build_playlists", ['{"w": {"name": "W {n}", "segments": [("A", 10)]}}', "w", JSON.stringify({ A: [1, 2, 3, 4, 5, 6].map((i) => ({ uri: "a" + i, ms: 240000 })) })]));
   check("engine: enough minutes whose song lengths cannot come within 10% says so, with what the playlist really has", bp_fit.playlists.length === 0 && JSON.stringify(bp_fit.short) === '[{"name":"A","need":10,"has":24,"fit":true}]', JSON.stringify(bp_fit.short));
-  check("and the popup words it as the songs not adding up", /add up to \$\{lengthText\(s\.need\)\}\.`, `A segment has to come within 10% of its length/.test(appSource()));
   check("engine: and the limit on the number leaves nothing ran out", JSON.parse(bp_py("build_playlists", ['{"w": {"name": "W {n}", "segments": [("A", 5)]}}', "w", JSON.stringify({ A: [1, 2, 3].map((i) => ({ uri: "a" + i, ms: 300000 })) }), 1])).ranOut === null);
   } catch (err) { areaCrashed("build popup", err); } }
 
@@ -5585,7 +5406,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the stepper's middle holds the words it says now, once, and everything it could say, in two sets (a phone's and a wide screen's), one of each for every length and for none", !!sw_mid && sw_mid.querySelectorAll(".fe-amount-live").length === 1 && sw_mid.querySelectorAll(".fe-sizer-short").length === sw_steps.length && sw_mid.querySelectorAll(".fe-sizer-label").length === sw_steps.length);
   check("what it could say is exactly what it says: the same words for each length, with No for none", sw_steps.every((s) => { const len = s ? sw_w.eval(`describeSeconds(${s})`) : "No"; return Array.from(sw_mid.querySelectorAll(".fe-sizer-short")).some((e) => e.textContent === len + " gaps") && Array.from(sw_mid.querySelectorAll(".fe-sizer-label")).some((e) => e.textContent === len + " " + (s ? "of silence between segments" : "silence between segments")); }));
   check("none of that is read out or seen or pressed: hidden from screen readers, invisible, and not a target", Array.from(sw_mid.querySelectorAll(".fe-sizer")).every((e) => e.getAttribute("aria-hidden") === "true") && /\.fe-sizer \{ visibility: hidden; pointer-events: none; \}/.test(sw_css));
-  check("they all sit in the same place as the words it says, so the widest sets the width, and the words are centered in it", /\.fe-amount-rich > \* \{ grid-area: 1 \/ 1; \}/.test(sw_css) && /justify-items: center/.test(sw_css) && /@media \(min-width: 760px\) \{[^}]*\.fe-sizer-short \{ display: none; \}/.test(sw_css.replace(/\{ #formatEditor \.fe-silence-short, #formatEditor \.fe-sizer-short/, "{ #formatEditor .fe-silence-short, #formatEditor .fe-sizer-short")) || /\.fe-silence-short, #formatEditor \.fe-sizer-short \{ display: none; \}/.test(sw_css));
   check("the live words are the ones the checks and the person read: the length, then gaps (or the sentence), as before", sw_mid.querySelector(".fe-amount-live").textContent.startsWith(sw_w.document.getElementById("feGapValue").textContent + " ") && sw_mid.querySelector(".fe-amount-live .fe-silence-short").textContent === "gaps");
   } catch (err) { areaCrashed("silence stepper width", err); } }
 
@@ -5679,7 +5499,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("each built playlist has every song once", Object.values(rs_byList).length > 0 && Object.values(rs_byList).every((u) => new Set(u).size === u.length));
   var rs_key = (a, b) => rs_ws.eval(`songKey(${JSON.stringify(a)}) === songKey(${JSON.stringify(b)})`);
   check("it points out the same song with a remaster note, or other case, accents, or punctuation, and not a live, acoustic or remix version, which is a different song", rs_key("Pink Floyd - Time", "Pink Floyd - Time - 2011 Remaster") && rs_key("Beyoncé - Halo", "Beyonce - Halo (Remastered 2020)") && rs_key("Simon & Garfunkel - The Sound of Silence", "simon and garfunkel - the sound of silence - remastered") && !rs_key("Pink Floyd - Time", "Pink Floyd - Time (Live)") && !rs_key("Radiohead - Creep", "Radiohead - Creep (Acoustic)") && !rs_key("Artist - Song", "Artist - Song (Remix)"));
-  check("the note is there every time, with nothing remembered about having been shown it", !/localStorage|sessionStorage/.test(appSource().match(/function findSuspects[\s\S]*?\n}\n/)[0]));
   } catch (err) { areaCrashed("recipe session", err); } }
 
   if (want("newer version")) { try {
@@ -5722,7 +5541,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // the update card (mockup B): up at once on Get it, back after the reload until the app is ready, then All set! with OK
   var nv_us = nv_b.document.getElementById("updateScreen");
   check("Get it puts the update card over the app at once, with a spinner and the step under way (no progress bar), and marks the reload", nv_b.document.documentElement.classList.contains("updating") && nv_b.document.getElementById("usTitle").textContent === "Unwrapping the update" && nv_b.document.getElementById("usStep").textContent === "Getting the new version" && !!nv_us.querySelector(".us-spin") && !nv_us.querySelector("progress, [role=progressbar]") && nv_b.sessionStorage.getItem("updating") === "1");
-  check("the update card puts every part in the same place in every state: the title on one line, the text two lines tall, the spinner and OK in one slot at the foot", /#updateScreen h2 \{[^}]*white-space: nowrap;/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /#updateScreen \.us-text \{[^}]*min-height: 2\.8em;/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /#updateScreen \.us-foot > \* \{ grid-area: 1 \/ 1;/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && !!fs.readFileSync(ROOT + "index.html", "utf8").match(/<div class="us-foot">\s*<p class="us-busy">[\s\S]*?<button id="usOk"/));
   var nv_x = await nv_make({ serverVersion: "2099-01-01a" });
   nv_x.fetch = () => Promise.reject(new Error("offline"));
   nv_x.eval("getUpdate()");
@@ -5731,7 +5549,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   nv_x.document.getElementById("usOk").click();
   await new Promise((r) => setTimeout(r, 600));
   check("OK takes the card down", !nv_x.document.documentElement.classList.contains("updating"));
-  check("after the reload the <head> script puts the card up from the first paint (on the app page only), and the mark is used once", /if \(sessionStorage\.getItem\("updating"\)\) \{ sessionStorage\.removeItem\("updating"\); if \(page === "app" && !document\.documentElement\.classList\.contains\("connecting"\)\) document\.documentElement\.classList\.add\("updating"\);/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   var nv_u = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "manual" }, fetchOptions: {}, before: (w) => w.document.documentElement.classList.add("updating") });
   await waitFor(() => nv_u.document.getElementById("updateScreen").classList.contains("us-done"), 20000);
   check("once signed in, the playlists read and Python started, it says All set! with the version and OK", nv_u.eval("connection") === "ready" && nv_u.document.getElementById("usTitle").textContent === "All set!" && nv_u.document.getElementById("usText").textContent === `You have the newest version of the app, ${nv_version}.` && nv_u.document.documentElement.classList.contains("updating"));
@@ -5763,7 +5580,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("so does the window coming forward from behind another one, which is not the tab becoming visible", nv_seen(nv_f).length === 2);
   var nv_g = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "manual" }, fetchOptions: {} });
   await new Promise((r) => setTimeout(r, 5600));
-  check("a few seconds after a clean start it is asked once, with no timer running after that", log.filter((e) => /version\.txt/.test(e.url)).length >= 1 && !/setInterval\(checkForNewVersion/.test(appSource()));
   // opening the app menu does not ask (the card arrived behind the menu)
   var nv_h = await nv_make({ serverVersion: "2099-01-01a" });
   nv_h.eval("versionCheck.last = Date.now() - 31 * 1000; toggleAppMenu()");

@@ -1,6 +1,6 @@
 # Tests
 
-About 1,235 checks against the real `index.html`, `app.js`, `shared-spotify.js`, `editor.js`, `formats.js`, `theme.js` and `engine.py`, with no browser and no network:
+About 1,500 checks against the real `index.html`, `app.js`, `shared-spotify.js`, `editor.js`, `formats.js`, `theme.js` and `engine.py`, with no browser and no network:
 the page runs in jsdom, Spotify is a pretend server written in `run.js` (`makeFetch`), and `engine.py` is the real file, run by `bridge.py` in place of Pyodide.
 
     cd tests && npm install
