@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-10j";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-10k";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -23,7 +23,7 @@ const bookName = (i, code) => (i === OTHER_BOOK ? cleanBookCode(code) || "?" : S
 const KINDS = [
   ["ceremony", "Ceremony", "The whole arc of a ceremony, from start to finish.", "Ceremonies"],
   ["phase", "Phase", "Made for part of a ceremony, like the ascent or the ending.", "Phases"],
-  ["mood", "Mood", "Carries a feeling, wherever it falls in a session.", "Moods"],
+  ["mood", "Mood", "Carries a feeling, wherever it falls in a ceremony.", "Moods"],
   ["other", "Other", "Anything else, under a name you choose.", "Others"],
 ];
 const SHARING_COPIES_KEY = "sharingCopies";   // { shared playlist id: the person's copy's Spotify id }
