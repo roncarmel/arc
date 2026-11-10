@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-10a";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-10b";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -501,7 +501,7 @@ function closeSharing() {
   renderSharingCard();   // a Get or a share may change its count and covers
   if (!document.querySelector(".app-overlay:not([hidden])")) document.body.style.overflow = "";
 }
-function switchTab(tab) {
+function switchTab(tab, drift) {
   if (tab === sharing.tab && !sharing.detail && !sharing.flow) return;
   const change = () => {
     sharing.tab = tab;
@@ -512,7 +512,7 @@ function switchTab(tab) {
     $("msBody").scrollTop = 0;
   };
   // By you sits to the right of By others, as the capsule shows
-  if (tab !== sharing.tab && !$("msOverlay").hidden) shiftPage($("msBody"), tab === "share" ? 1 : -1, change);
+  if (tab !== sharing.tab && !$("msOverlay").hidden) shiftPage($("msBody"), tab === "share" ? 1 : -1, change, drift);
   else change();
   if (tab === "share") loadMine();
 }
@@ -614,6 +614,24 @@ function dragTabs(bar) {
   const pill = bar.querySelector(".ms-tabpill");
   const names = () => [...bar.querySelectorAll(".ms-tab")].map(t => t.querySelector(".ms-tab-name"));
   let drag = null, swallowClick = false, clearTimer = 0;
+  // the page under it drifts a little with the drag (at most 30 px, fading to 0.75), the way it will leave; the real swap waits for the release
+  const page = () => $("msBody");
+  const drift = (p, from) => {
+    const t = Math.abs(p - from);
+    return { x: (from - p) * 30, opacity: 1 - 0.25 * t };
+  };
+  const paintPage = d => {
+    const body = page();
+    if (!body || typeof motionAllowed !== "function" || !motionAllowed(body)) return;
+    Object.assign(body.style, { transform: d.x ? `translateX(${d.x}px)` : "", opacity: d.opacity < 1 ? String(d.opacity) : "" });
+  };
+  const settlePage = d => {
+    const body = page();
+    if (!body || (!d.x && d.opacity === 1)) return;
+    Object.assign(body.style, { transform: "", opacity: "" });
+    if (typeof motionAllowed === "function" && motionAllowed(body))
+      body.animate([{ transform: `translateX(${d.x}px)`, opacity: d.opacity }, { transform: "translateX(0)", opacity: 1 }], { duration: 320, easing: EASE_OUT });
+  };
   const paint = p => {
     pill.style.transform = `translateX(${p * 100}%)`;
     names().forEach((b, i) => {
@@ -639,6 +657,7 @@ function dragTabs(bar) {
     }
     drag.p = Math.min(1, Math.max(0, drag.from + dx / (pill.offsetWidth || 1)));
     paint(drag.p);
+    paintPage(drift(drag.p, drag.from));
   });
   const end = e => {
     if (!drag || e.pointerId !== drag.id) return;
@@ -653,8 +672,9 @@ function dragTabs(bar) {
     void pill.offsetWidth;
     paint(to);
     clearTimer = setTimeout(clear, 360);   // after the move the classes say the same
-    const tab = to ? "share" : "find";
-    if (tab !== sharing.tab) switchTab(tab);
+    const tab = to ? "share" : "find", left = drift(d.p, d.from);
+    if (tab !== sharing.tab) switchTab(tab, left);
+    else settlePage(left);
   };
   bar.addEventListener("pointerup", end);
   bar.addEventListener("pointercancel", end);
@@ -897,11 +917,14 @@ function slideBody(dir, change) {
 }
 // another tab or another step of the wizard: the old page moves half its width away and fades as the new one comes from half its width
 // on the other side (Ron, 2026-11-09, mockups/sharing-motion.html B with half a screen)
-function shiftPage(body, dir, change) {
-  if (!body || typeof motionAllowed !== "function" || !motionAllowed(body)) { change(); return; }
+// drift: where a drag of the tab switch left the page ({x, opacity}), so the leaving copy goes on from there
+function shiftPage(body, dir, change, drift) {
+  if (!body || typeof motionAllowed !== "function" || !motionAllowed(body)) { if (body) Object.assign(body.style, { transform: "", opacity: "" }); change(); return; }
   const ghost = pageGhost(body);
+  Object.assign(ghost.style, { transform: "", opacity: "" });
+  Object.assign(body.style, { transform: "", opacity: "" });
   change();
-  ghost.animate([{ transform: "translateX(0)", opacity: 1 }, { transform: `translateX(${-dir * 50}%)`, opacity: 0 }], { duration: 140, easing: EASE_IN, fill: "forwards" }).onfinish = () => ghost.remove();
+  ghost.animate([{ transform: `translateX(${drift ? drift.x : 0}px)`, opacity: drift ? drift.opacity : 1 }, { transform: `translateX(${-dir * 50}%)`, opacity: 0 }], { duration: 140, easing: EASE_IN, fill: "forwards" }).onfinish = () => ghost.remove();
   body.animate([{ transform: `translateX(${dir * 50}%)`, opacity: 0 }, { transform: "translateX(0)", opacity: 1 }], { duration: 240, delay: 60, easing: EASE_OUT, fill: "backwards" });
 }
 // a menu grows out of its button (the app's menu motion, editor.js) and shrinks back into it, kept drawn in #msDialog where it was
