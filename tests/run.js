@@ -667,6 +667,45 @@ print(json.dumps(out))
   await waitFor(() => /^Removed/.test(wG.document.getElementById("removeMessage").textContent));
   check("remove deletes just the chosen format's playlists and reports inside the section", oG.writes.length === 1 && oG.writes[0].type === "remove" && oG.writes[0].uris.length === 2 && /Removed 2 playlists/.test(wG.document.getElementById("removeMessage").textContent) && (wG.document.getElementById("output").hidden && outText(wG) === ""), JSON.stringify(oG.writes));
 
+  // H2. Arc's playlists whose recipe no longer exists: listed under No longer a recipe, asked about apart, and Delete recipe can take its playlists along
+  var oG2 = { extraPlaylists: [{ id: "a1", name: "alpha 1", owner: { id: "ron" }, description: MADE }, { id: "a2", name: "alpha 2", owner: { id: "ron" }, description: MADE }, { id: "g1", name: "gamma 1", owner: { id: "ron" }, description: MADE }, { id: "g2", name: "gamma 2 (version a)", owner: { id: "ron" }, description: MADE }, { id: "x1", name: "delta 1", owner: { id: "someone" }, description: MADE }] };
+  var wG2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: TWO }, fetchOptions: oG2 });
+  await readyToPreview(wG2);
+  wG2.eval('openInfo("removeSection")');
+  var sel2 = wG2.document.getElementById("removeKey");
+  var groups2 = Array.from(sel2.querySelectorAll("optgroup")).map((g) => g.label + ": " + Array.from(g.children).map((o) => o.value + "=" + o.textContent).join(","));
+  check("gone recipes are listed under No longer a recipe, one entry per name, not someone else's", JSON.stringify(groups2) === JSON.stringify(["No longer a recipe: gone:gamma=gamma (no recipe)"]) && Array.from(sel2.options).map((o) => o.value).slice(0, 4).join() === ",a,b,__all__", JSON.stringify(groups2));
+  sel2.value = "__all__"; sel2.dispatchEvent(new wG2.Event("change"));
+  check("All recipes counts the gone ones and leaves the number to the question", wG2.document.getElementById("removeCount").textContent === "4 playlists are in your library, 2 of them from recipes that no longer exist." && wG2.document.getElementById("removeOld").textContent.trim() === "Remove\u2026", wG2.document.getElementById("removeCount").textContent);
+  removeNow(wG2);
+  await waitFor(() => visible(wG2, "removeConfirmBox"));
+  check("with gone ones, the question offers only those with a recipe (chosen) or all, and warns they can't be built again", visible(wG2, "removeGoneChoice") && wG2.document.getElementById("removeGoneNo").checked && wG2.document.getElementById("infoTitle").textContent === "Remove playlists?" && /2 are from recipes that no longer exist, so once removed they can't be built again\./.test(wG2.document.getElementById("removeConfirmText").textContent) && wG2.document.getElementById("removeConfirmYes").textContent.trim() === "Remove 2" && wG2.document.getElementById("removeGoneYesTitle").textContent === "All 4", wG2.document.getElementById("removeConfirmText").textContent);
+  wG2.document.getElementById("removeGoneYes").click();
+  check("choosing All says so on the button", wG2.document.getElementById("removeConfirmYes").textContent.trim() === "Remove 4");
+  wG2.document.getElementById("removeGoneNo").click();
+  wG2.document.getElementById("removeConfirmYes").click();
+  await waitFor(() => /^Removed/.test(wG2.document.getElementById("removeMessage").textContent));
+  check("Only those with a recipe leaves the gone ones", oG2.writes.length === 1 && JSON.stringify(oG2.writes[0].uris) === JSON.stringify(["spotify:playlist:a1", "spotify:playlist:a2"]), JSON.stringify(oG2.writes));
+  wG2.eval('removeStage("choose")');
+  sel2.value = "gone:gamma"; sel2.dispatchEvent(new wG2.Event("change"));
+  removeNow(wG2);
+  await waitFor(() => visible(wG2, "removeConfirmBox"));
+  check("one gone recipe: its playlists, the warning, no choice", visible(wG2, "removeGoneWarn") && !visible(wG2, "removeGoneChoice") && wG2.document.getElementById("infoTitle").textContent === "Remove 2 playlists?" && JSON.stringify(Array.from(wG2.document.querySelectorAll("#removeConfirmList li")).map((li) => li.textContent)) === JSON.stringify(["gamma 1", "gamma 2 (version a)"]));
+  wG2.document.getElementById("removeConfirmNo").click();
+  wG2.eval("closeInfo()");
+  oG2.extraPlaylists.push({ id: "b1", name: "beta 1", owner: { id: "ron" }, description: MADE });
+  await wG2.eval("loadMyPlaylists()");
+  wG2.eval('showView("builder")');
+  wG2.eval("editor.activeId = 'b'; renderEditor(); askDeleteFormat()");
+  var del2 = wG2.document.getElementById("feDeleteDialog");
+  var box2 = wG2.document.getElementById("feDeleteBuilt");
+  check("Delete recipe offers to remove its built playlists too, not ticked", !!box2 && box2.checked === false && /Also remove its playlist from Spotify/.test(del2.textContent) && /Left unticked, it stays/.test(del2.textContent) && !/Playlists already in Spotify are not affected/.test(del2.textContent), del2 && del2.textContent);
+  box2.click();
+  check("ticked, the button says Delete and remove", wG2.document.getElementById("feDeleteConfirm").textContent === "Delete and remove 1");
+  wG2.document.getElementById("feDeleteConfirm").click();
+  await waitFor(() => oG2.writes.length === 2);
+  check("deleting removes the recipe's playlists", JSON.stringify(oG2.writes[1].uris) === JSON.stringify(["spotify:playlist:b1"]), JSON.stringify(oG2.writes));
+
   // I. many playlists to remove are sent in batches of 40
   var many = Array.from({ length: 95 }, (_, i) => ({ id: "m" + i, name: "mini " + (i + 1), owner: { id: "ron" }, description: MADE }));
   var oH = { extraPlaylists: many };
@@ -832,10 +871,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-10s" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-10t" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-10s/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-10t/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2879,7 +2918,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-10s", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-10t", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -5175,7 +5214,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-10s"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-10t"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

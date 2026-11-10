@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-10s";
+const APP_VERSION = "2026-11-10t";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -359,7 +359,7 @@ function initHomeMore() {
     });
   }
   on("eeClose", "click", closeHomeTab);
-  $("homeMore").addEventListener("keydown", (event) => {
+  on("homeMore", "keydown", (event) => {
     if (event.key !== "Escape" || event.defaultPrevented || $("eeClose").hidden) return;
     if (event.target.closest && event.target.closest("#clearConfirm")) return;   // an Escape inside the question is for it
     event.preventDefault();
@@ -413,7 +413,7 @@ function chooseTool(view) {
 
 function initToolMenu() {
   on("appTool", "click", (event) => { event.stopPropagation(); openToolMenu(); });
-  $("appToolMenu").addEventListener("click", (event) => {
+  on("appToolMenu", "click", (event) => {
     const item = event.target.closest && event.target.closest(".ab-mi");
     if (item && !item.disabled) chooseTool(item.dataset.view);
   });
@@ -1894,7 +1894,7 @@ function updateButtonsNow() {
     setIcon($("create"), "build");
     $("create").disabled = !ready;
   }
-  $("removeOld").disabled = !ready || !$("removeKey").value || removeNone;
+  $("removeOld").disabled = !(!!token && connection === "ready" && !!py && !busy) || !$("removeKey").value || removeNone;
   // The notes appear when Create cannot work because there is no connection, not while the app is still connecting.
   const noConnection = !$("appSection").hidden && (connection === "problem" || connection === "none");
   if (noConnection && minimalActive()) {
@@ -2661,17 +2661,16 @@ function refreshFormatKeys() {
     const model = textToModel($("formats").value, true);
     currentFormats = model.formats.map((f) => ({ id: f.id, title: f.title.trim() || "Untitled" }));
     if (!currentFormats.length) {
-      $("removeKey").innerHTML = "";
       formatsValid = false;
       invalidatePlan();
     } else {
-      fillFormatDropdown($("removeKey"), currentFormats, true);
       formatsValid = true;
     }
+    fillRemoveKey();
   } catch (err) {
     currentFormats = [];
     recordError(cleanError(err));
-    $("removeKey").innerHTML = "";
+    fillRemoveKey();
     formatsValid = false;
     invalidatePlan();
   }
@@ -2698,7 +2697,58 @@ function selectedKeys() {
 
 function removeKeys() {
   const choice = $("removeKey").value;
+  if (choice.startsWith(GONE_PREFIX)) return [];
   return choice === ALL_FORMATS ? currentFormats.map((f) => f.id) : [choice];
+}
+
+// Playlists Arc built for recipes that no longer exist (deleted or renamed; Ron, 2026-11-10, mockups/remove-gone.html): Arc's own (its marker in the description),
+// the person's, not a recipe save, and matching no recipe's names now. Grouped by the name without its number or (version x), sorted by that name.
+// Empty until Python, the sign-in and the playlist list are there. Remove built playlists lists each group as <name> (no recipe).
+const GONE_PREFIX = "gone:";
+function goneStem(name) { return String(name).replace(/\s*\(version [a-z]+\)$/i, "").replace(/\s+\d+$/, "").trim() || String(name); }
+function goneGroups() {
+  if (!py || !me || !playlists) return [];
+  let current = new Set();
+  try {
+    if (currentFormats.length) current = new Set(JSON.parse(py.existingMatches($("formats").value, JSON.stringify(currentFormats.map((f) => f.id)), JSON.stringify(playlists), me.id)).map((p) => p.id));
+  } catch (err) { return []; }
+  const groups = new Map();
+  for (const p of playlists) {
+    if (!p.madeByApp || p.isSave || p.owner !== me.id || current.has(p.id)) continue;
+    const stem = goneStem(p.name);
+    if (!groups.has(stem)) groups.set(stem, []);
+    groups.get(stem).push({ id: p.id, name: p.name });
+  }
+  return [...groups.entries()].map(([stem, list]) => ({ stem, playlists: list })).sort((a, b) => a.stem.localeCompare(b.stem));
+}
+// The Built from list: the recipes, All recipes, then under No longer a recipe each gone one. What was chosen stays chosen while it is still there.
+function fillRemoveKey() {
+  const select = $("removeKey");
+  if (!select) return;
+  const previous = select.value;
+  fillFormatDropdown(select, currentFormats, true);
+  if (!currentFormats.length) select.remove(select.options.length - 1);   // no All recipes with no recipes
+  const gone = goneGroups();
+  if (gone.length) {
+    const group = document.createElement("optgroup");
+    group.label = "No longer a recipe";
+    for (const g of gone) group.appendChild(new Option(`${g.stem} (no recipe)`, GONE_PREFIX + g.stem));
+    select.appendChild(group);
+  }
+  if ([...select.options].some((o) => o.value === previous)) select.value = previous;
+}
+// What the chosen entry stands for now: Arc's playlists of the chosen recipes, and those of gone recipes (all of them for All recipes, one group for a gone one)
+function removeTargets() {
+  const key = $("removeKey").value;
+  const made = new Set((playlists || []).filter((p) => p.madeByApp).map((p) => p.id));
+  const gone = goneGroups();
+  if (key.startsWith(GONE_PREFIX)) {
+    const g = gone.find((x) => x.stem === key.slice(GONE_PREFIX.length));
+    return { current: [], others: [], gone: g ? g.playlists : [] };
+  }
+  const keys = removeKeys();
+  const existing = keys.length ? JSON.parse(py.existingMatches($("formats").value, JSON.stringify(keys), JSON.stringify(playlists), me.id)) : [];
+  return { current: existing.filter((p) => made.has(p.id)), others: existing.filter((p) => !made.has(p.id)), gone: key === ALL_FORMATS ? gone.flatMap((g) => g.playlists) : [] };
 }
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -3323,39 +3373,62 @@ function removeStage(stage) {
   $("removeChoose").hidden = stage !== "choose";
   $("removeConfirmBox").hidden = stage !== "ask";
   $("removeDone").hidden = stage !== "done";
-  if (stage === "choose") { setRemoveMessage(""); clearReportHints("removeReportHint"); refreshRemoveCount(); }
+  if (stage === "choose") { setRemoveMessage(""); clearReportHints("removeReportHint"); fillRemoveKey(); refreshRemoveCount(); }
   if (info.node && info.node.id === "removeSection") {
     const total = stage === "ask" ? Number($("removeConfirmYes").dataset.total || 0) : 0;
-    $("infoTitle").textContent = total ? `Remove ${plural(total, "playlist")}?` : "Remove built playlists";
+    $("infoTitle").textContent = total ? `Remove ${plural(total, "playlist")}?` : stage === "ask" ? "Remove playlists?" : "Remove built playlists";
   }
 }
 
 // While choosing, how many of Arc's playlists from the chosen recipe are in the library now, from the list already read (the button says the number)
-let removeNone = false;   // the list already read shows none of Arc's playlists from the chosen recipe
+let removeNone = false;   // the list already read shows none of Arc's playlists from the chosen entry
 function refreshRemoveCount() {
-  let count = null;
-  try {
-    if (py && me && playlists && $("removeKey").value) {
-      const made = new Set(playlists.filter((p) => p.madeByApp).map((p) => p.id));
-      count = JSON.parse(py.existingMatches($("formats").value, JSON.stringify(removeKeys()), JSON.stringify(playlists), me.id)).filter((p) => made.has(p.id)).length;
-    }
-  } catch (err) { count = null; }
-  const key = $("removeKey").value, label = key === ALL_FORMATS ? "all recipes" : formatLabel(key);
-  putNamed($("removeCount"), count === null ? "" : count ? `${plural(count, "playlist")} from ${key === ALL_FORMATS ? label : named(label)} ${count === 1 ? "is" : "are"} in your library.` : `None of Arc's playlists from ${key === ALL_FORMATS ? label : named(label)} are in your library.`);
-  setLabel($("removeOld"), count ? `Remove ${count}` : "Remove playlists");
+  let t = null;
+  try { if (py && me && playlists && $("removeKey").value) t = removeTargets(); } catch (err) { t = null; }
+  const key = $("removeKey").value, line = $("removeCount");
+  const gone = key.startsWith(GONE_PREFIX), all = key === ALL_FORMATS;
+  const label = all ? "all recipes" : named(gone ? key.slice(GONE_PREFIX.length) : formatLabel(key));
+  const count = t ? t.current.length + t.gone.length : null;
+  const are = (n) => (n === 1 ? "is" : "are");
+  line.textContent = "";   // putNamed adds to what is there
+  if (count === null) { /* nothing known yet */ }
+  else if (!count) putNamed(line, gone ? `None of these playlists are in your library now.` : `None of Arc's playlists from ${label} are in your library.`);
+  else if (all && t.gone.length) putNamed(line, `${plural(count, "playlist")} ${are(count)} in your library, ${t.gone.length} of them from ${t.gone.length === 1 ? "a recipe that no longer exists" : "recipes that no longer exist"}.`);
+  else putNamed(line, `${plural(count, "playlist")} from ${label} ${are(count)} in your library.`);
+  // with gone ones in All recipes the question decides how many, so the button does not say
+  setLabel($("removeOld"), !count ? "Remove playlists" : all && t.gone.length && t.current.length ? "Remove\u2026" : `Remove ${count}`);
   if (removeNone !== (count === 0)) { removeNone = count === 0; updateButtons(); }
 }
 
-function askToRemove(marked, others, label) {
-  // Resolves with the playlists to remove, or null when cancelled.
+// The question before removing. Resolves with the playlists to remove, or null for Back. gone: playlists of recipes that no longer exist, which cannot be built again:
+// alongside the recipes' own (All recipes), two choices, only those with a recipe (chosen at first) or all; alone (one gone recipe), a note above the list.
+function askToRemove(marked, others, label, gone = []) {
   return new Promise((resolve) => {
-    let include = false;
+    let include = false, withGone = false;
     const many = others.length !== 1;
+    const choose = gone.length > 0 && marked.length > 0;
+    const goneOnly = gone.length > 0 && !marked.length;
+    const names = (list) => (list.length <= 4 ? list.map((p) => p.name).join(", ") : `${list.slice(0, 3).map((p) => p.name).join(", ")}, and ${list.length - 3} more`);
     const draw = () => {
-      const total = marked.length + (include ? others.length : 0);
-      fillConfirmList("removeConfirmList", "removeConfirmText",
-        marked.length ? `Remove ${plural(marked.length, "playlist")} made by this app from your library? They match the naming pattern of ${label}.` : `No playlists made by this app match the naming pattern of ${label}.`,
-        marked.map((p) => p.name));
+      const total = marked.length + (include ? others.length : 0) + (goneOnly || withGone ? gone.length : 0);
+      if (choose) {
+        fillConfirmList("removeConfirmList", "removeConfirmText",
+          `${marked.length} ${marked.length === 1 ? "is" : "are"} from your recipes and can be built again any time. ${gone.length} ${gone.length === 1 ? "is from a recipe that no longer exists, so once removed it" : "are from recipes that no longer exist, so once removed they"} can't be built again.`, []);
+        $("removeGoneNoTitle").textContent = `Only the ${marked.length} with a recipe`;
+        $("removeGoneNoNote").textContent = names(marked);
+        $("removeGoneYesTitle").textContent = `All ${marked.length + gone.length}`;
+        $("removeGoneYesNote").textContent = `Also ${names(gone)}, which can't be built again`;
+        $("removeGoneNo").checked = !withGone;
+        $("removeGoneYes").checked = withGone;
+      } else if (goneOnly) {
+        fillConfirmList("removeConfirmList", "removeConfirmText", "", gone.map((p) => p.name));
+      } else {
+        fillConfirmList("removeConfirmList", "removeConfirmText",
+          marked.length ? `Remove ${plural(marked.length, "playlist")} made by this app from your library? They match the naming pattern of ${label}.` : `No playlists made by this app match the naming pattern of ${label}.`,
+          marked.map((p) => p.name));
+      }
+      $("removeGoneChoice").hidden = !choose;
+      $("removeGoneWarn").hidden = !goneOnly;
       fillConfirmList("removeConfirmMoreList", "removeConfirmMoreText",
         !others.length ? ""
           : include ? `${plural(others.length, "playlist")} with matching names ${many ? "were" : "was"} not made by this app, and will be removed too because you chose to remove ${many ? "them" : "it"}:`
@@ -3364,9 +3437,9 @@ function askToRemove(marked, others, label) {
       $("removeToggleRow").hidden = others.length === 0;
       $("removeToggle").checked = include;
       $("removeToggleLabel").textContent = `Remove ${many ? "them" : "it"} too`;
-      setLabel($("removeConfirmYes"), total ? "Remove" : "Nothing to remove");
+      setLabel($("removeConfirmYes"), !total ? "Nothing to remove" : choose ? `Remove ${total}` : "Remove");
       $("removeConfirmYes").disabled = total === 0;
-      $("removeConfirmYes").dataset.total = String(total);
+      $("removeConfirmYes").dataset.total = choose ? "" : String(total);   // with a choice to make, the title does not give a number
       setLabel($("removeConfirmNo"), "Back");
       removeStage("ask");
     };
@@ -3374,13 +3447,40 @@ function askToRemove(marked, others, label) {
       $("removeConfirmYes").onclick = null;
       $("removeConfirmNo").onclick = null;
       $("removeToggle").onchange = null;
+      $("removeGoneNo").onchange = $("removeGoneYes").onchange = null;
       resolve(value);
     };
     draw();
-    $("removeConfirmYes").onclick = () => finish(include ? marked.concat(others) : marked);
+    $("removeConfirmYes").onclick = () => finish(marked.concat(include ? others : [], goneOnly || withGone ? gone : []));
     $("removeConfirmNo").onclick = () => finish(null);
     $("removeToggle").onchange = () => { include = $("removeToggle").checked; draw(); };
+    $("removeGoneNo").onchange = $("removeGoneYes").onchange = () => { withGone = $("removeGoneYes").checked; draw(); };
   });
+}
+
+// Delete recipe offers to remove the recipe's own built playlists too (Ron, 2026-11-10): Arc's playlists in the library that match its names now, from the list
+// already read. null when that cannot be known now (not connected, Python not ready, a build or a removal running, or a Spotify pause).
+function builtPlaylistsOf(id) {
+  if (!token || connection !== "ready" || !py || !me || !playlists || busy || pausedSecondsLeft() > 0) return null;
+  try {
+    const made = new Set(playlists.filter((p) => p.madeByApp && !p.isSave).map((p) => p.id));
+    return JSON.parse(py.existingMatches($("formats").value, JSON.stringify([id]), JSON.stringify(playlists), me.id)).filter((p) => made.has(p.id));
+  } catch (err) { return null; }
+}
+// After Delete recipe with the box ticked: removes them, then says how it went on the line under the bar
+async function removeBuiltOfDeleted(list, title) {
+  if (!list || !list.length) return;
+  setBusy(true);
+  try {
+    await removePlaylists(list.map((p) => p.id));
+    logStep(`remove after delete (${plural(list.length, "playlist")})`);
+    showNotices([{ text: `Removed ${plural(list.length, "playlist")} built from ${named(title)}.`, transient: true }]);
+    await loadMyPlaylists();
+  } catch (err) {
+    showNotices([{ text: `The playlists built from ${named(title)} could not be removed: ${cleanError(err)} Remove built playlists in the menu can try again.`, transient: true }]);
+  } finally {
+    setBusy(false);
+  }
 }
 
 async function removeEarlier() {
@@ -3392,15 +3492,13 @@ async function removeEarlier() {
   const done = (text, ok = false) => { setRemoveMessage(text); $("removeOk").hidden = !ok; removeStage("done"); };
   try {
     await loadMyPlaylists();   // what is in Spotify now, including anything changed there since this page loaded
-    const formatsText = $("formats").value;
-    const keys = removeKeys();
-    const existing = JSON.parse(py.existingMatches(formatsText, JSON.stringify(keys), JSON.stringify(playlists), me.id));
-    if (!existing.length) {
+    fillRemoveKey();   // what is gone may have changed with the list
+    const t = removeTargets();
+    if (!t.current.length && !t.others.length && !t.gone.length) {
       done("No playlists matching these recipes' names were found.");
       return;
     }
-    const madeByApp = new Set(playlists.filter((p) => p.madeByApp).map((p) => p.id));
-    const chosen = await askToRemove(existing.filter((p) => madeByApp.has(p.id)), existing.filter((p) => !madeByApp.has(p.id)), keys.map(formatLabel).join(", "));
+    const chosen = await askToRemove(t.current, t.others, removeKeys().map(formatLabel).join(", "), t.gone);
     if (!chosen) {
       removeStage("choose");   // Back: nothing was changed
       return;
