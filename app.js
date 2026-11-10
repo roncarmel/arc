@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-10o";
+const APP_VERSION = "2026-11-10p";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -577,11 +577,14 @@ function alignIconToText(icon, text, first, last) {
     text.style.marginBottom = -below + "px";
   }
 }
-// A tap on the icon in a pink band (welcome, setup, connecting, home) shows the version at the band's top right for a second, then fades it out over another second.
+// A tap on the icon in a pink band (welcome, setup, connecting, home) shows the version at the band's top right for a second, then fades it out over another second,
+// and asks at once whether a newer version is out (Ron, 2026-11-10): a card shows if so, as with any check.
 document.addEventListener("click", (event) => {
   const icon = event.target.closest && event.target.closest(".wp-band-icon");
   const band = icon && icon.closest(".wp-band");
-  if (band) flashBandVersion(band);
+  if (!band) return;
+  flashBandVersion(band);
+  if (startupDone) checkForNewVersion();
 });
 function flashBandVersion(band) {
   let ver = band.querySelector(".wp-band-ver");
