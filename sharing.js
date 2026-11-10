@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-09t";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-09u";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -1246,7 +1246,7 @@ async function reportShare(s) {
 
 // ---------------------------------------------------------------- Shared by you
 // The person's shares, each opening its edit page; one changed in Spotify since it was shared gets a strip joined under it with Update.
-// The shares, with Share another playlist as the list's first row (Share a playlist, alone, before the first share): a row like a share's,
+// The shares, with Share another playlist as the list's first row (Share your first playlist, alone, before the first share): a row like a share's,
 // a dashed square with a + where a cover would be, and the words in pink.
 function sharedFor(p) { return sharing.mine ? sharing.mine.find((s) => s.playlist === p.id) || null : null; }
 const playlistFor = (m) => playlists.find((p) => p.id === m.playlist) || null;
@@ -1256,7 +1256,7 @@ function renderShareYours(body, foot) {
   if (sharing.mineError) body.appendChild(problemBox("Your shares didn\u2019t load", sharing.mineError, [{ label: "Try again", run: () => loadMine() }]));
   if (!sharing.mine && !sharing.mineError) { body.appendChild(feEl("p", { class: "ms-note" }, "Loading...")); return; }
   const mine = sharing.mine || [];
-  const list = feEl("div", { class: "ms-yours-list" }, addShareRow(mine.length ? "Share another playlist" : "Share a playlist"));
+  const list = feEl("div", { class: "ms-yours-list" }, addShareRow(mine.length ? "Share another playlist" : "Share your first playlist"));
   for (const m of mine) list.appendChild(yourRow(m));
   body.appendChild(list);
 }
