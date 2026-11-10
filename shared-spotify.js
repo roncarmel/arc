@@ -1,7 +1,7 @@
 // shared-spotify.js: talking to Spotify, shared by this repository's apps (the playlist builder, and later the tagger). Sign-in (PKCE in the browser,
 // no secret, no server), the refresh token, requests with their limits and waits, and the record of those limits. It shows nothing itself: each page
 // fills spotifyHooks with what to do and say, so this file names no element of any page. Loaded before the page's own script.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["shared-spotify.js"] = "2026-11-10p";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["shared-spotify.js"] = "2026-11-10q";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const spotifyHooks = {
   scopes: "",                  // the permissions the sign-in asks for, space separated
