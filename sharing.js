@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-10u";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-10v";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -709,17 +709,25 @@ function setType(type) {
   sharing.phases.clear();
   sharing.moods.clear();
   renderSharing();
+  if ($("msBody")) $("msBody").scrollTop = 0;   // another type's list starts from its first playlist
 }
 const SEARCH_HINTS = { all: "Search", ceremony: "Search ceremonies", phase: "Search phases", mood: "Search moods", other: "Search others" };
 function renderFind(body) {
   if (!sortChoices().some(([v]) => v === sharing.sort)) sharing.sort = "newest";
   const has = sharing.library && sharing.library.shares.length;
-  body.appendChild(kindTiles(sharing.type, setType, { filter: true }));
+  // the type tiles and the row of Search and Sort stay at the top while the list scrolls; the type's own filter scrolls with it (Ron, 2026-11-10, mockups/sticky-filters-*.png)
+  const head = feEl("div", { id: "msFindHead", class: "ms-findhead" }, kindTiles(sharing.type, setType, { filter: true }));
+  body.appendChild(head);
+  if (!body.dataset.findScroll) {
+    body.dataset.findScroll = "1";
+    body.addEventListener("scroll", () => { const h = $("msFindHead"); if (h) h.classList.toggle("ms-findhead-under", body.scrollTop > 0); }, { passive: true });
+  }
+  requestAnimationFrame(() => head.classList.toggle("ms-findhead-under", body.scrollTop > 0));
   const tools = feEl("div", { id: "msTools", class: "ms-tools" });
   if (has) {
     const t = sharing.type;
     const label = (sortChoices().find(([v]) => v === sharing.sort) || SORTS[0])[1];
-    tools.appendChild(feEl("div", { class: "ms-searchrow" }, searchField(SEARCH_HINTS[t]),
+    head.appendChild(feEl("div", { class: "ms-searchrow" }, searchField(SEARCH_HINTS[t]),
       feEl("button", { type: "button", id: "msSortButton", class: "ms-tbtn ms-sortbtn", "aria-haspopup": "menu", "aria-expanded": "false", "aria-label": "Sort: " + label, onClick: openSortMenu }, feEl("b", {}, label), feIcon("chevron"))));
     if (t === "ceremony") {
       tools.appendChild(feEl("p", { class: "ms-flabel2" }, "Which book"));
@@ -735,6 +743,7 @@ function renderFind(body) {
       tools.appendChild(feEl("div", { id: "msMoods", class: "ms-chips" }));
     }
   }
+  tools.hidden = !tools.children.length;
   body.appendChild(tools);
   body.appendChild(feEl("div", { id: "msResults" }));
   renderResults();
