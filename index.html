@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-09u">
-<script src="theme.js?v=2026-11-09u"></script>
+<meta name="app-version" content="2026-11-09v">
+<script src="theme.js?v=2026-11-09v"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -1354,17 +1354,20 @@
   .ms-slide-ghost { position: absolute; margin: 0; overflow: hidden; pointer-events: none; box-sizing: border-box; }
   #msBody { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 14px 18px 24px; }
   #msFoot { flex: none; border-top: 1px solid var(--line); padding: 12px 18px 16px; background: var(--bg); }
-  /* the top row: the two tabs as words with a pink line under the chosen one, then Close; in Share a playlist and Edit share, a title (and steps) */
-  #msTabsBar { flex: none; display: flex; align-items: center; gap: 2px; padding: 6px 6px 0 16px; border-bottom: 1px solid var(--line); background: var(--bg); }
-  .ms-tabs { flex: 1; min-width: 0; display: flex; gap: 14px; margin: 0; padding: 0; }
-  .ms-tab { flex: none; display: flex; align-items: center; gap: 0; margin: 0 0 -1px; border-bottom: 3px solid transparent; }
-  .ms-tab.ms-on { border-bottom-color: var(--accent); }
-  .ms-tabs .ms-tab-name { flex: none; margin: 0; min-height: 0; padding: 12px 2px 10px; border: 0; border-radius: 0; background: none; box-shadow: none; font-weight: 600; color: var(--fg); opacity: 0.6; white-space: nowrap; }
+  /* the top row: a switch of two halves on a grey track; a capsule behind the chosen half (pink edge on pale pink) slides between them; Close is hidden on the app page */
+  #msTabsBar { flex: none; display: flex; align-items: center; gap: 6px; padding: 10px 16px 6px; background: var(--bg); }
+  .ms-tabs { position: relative; flex: 1; min-width: 0; display: flex; gap: 0; margin: 0; padding: 4px; border-radius: 999px; background: color-mix(in srgb, var(--fg) 7%, var(--bg)); }
+  .ms-tabpill { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); box-sizing: border-box; border-radius: 999px; border: 1.5px solid var(--accent); background: color-mix(in srgb, var(--accent) 13%, var(--bg)); transition: transform 0.32s var(--ease-out); pointer-events: none; }
+  .ms-tabs-right .ms-tabpill { transform: translateX(100%); }
+  .ms-tab { position: relative; flex: 1 1 0; min-width: 0; display: flex; margin: 0; }
+  .ms-tabs .ms-tab-name { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; margin: 0; min-height: 0; padding: 9px 6px; border: 0; border-radius: 999px; background: none; box-shadow: none; font-weight: 600; font-size: 0.95rem; color: var(--fg); opacity: 0.6; white-space: nowrap; transition: color 0.32s var(--ease-out), opacity 0.32s var(--ease-out); }
   .ms-tabs .ms-on .ms-tab-name { opacity: 1; color: var(--accent); }
+  .ms-tabs .ms-tab-name:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { .ms-tabpill, .ms-tabs .ms-tab-name { transition: none; } }
   #msClose { flex: none; margin: 0; width: 40px; height: 40px; min-height: 0; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: none; border: 0; color: var(--fg); opacity: 0.75; box-shadow: none; }
   .ms-tabs button:focus:not(:focus-visible), #msClose:focus:not(:focus-visible) { outline: none; }
   @media (hover: hover) { .ms-tabs button:not(:disabled):hover { outline: none; filter: none; opacity: 1; } #msClose:hover { outline: none; filter: none; opacity: 1; background: color-mix(in srgb, var(--fg) 8%, transparent); } }
-  @media (max-width: 359px) { #msTabsBar { padding-left: 12px; } .ms-tabs { gap: 8px; } .ms-tabs .ms-tab-name { font-size: 0.9rem; } #msClose { width: 34px; } }
+  @media (max-width: 359px) { #msTabsBar { padding-left: 12px; padding-right: 12px; } .ms-tabs .ms-tab-name { font-size: 0.9rem; } #msClose { width: 34px; } }
   .ms-search { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--muted); box-sizing: border-box; }
   .ms-search .fe-icon { display: flex; }
   .ms-search-input { flex: 1; min-width: 0; border: 0; background: none; color: var(--fg); font: inherit; outline: none; padding: 0; height: 40px; }
@@ -2331,10 +2334,10 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-09u"></script>
-<script src="editor.js?v=2026-11-09u"></script>
-<script src="shared-spotify.js?v=2026-11-09u"></script>
-<script src="app.js?v=2026-11-09u"></script>
-<script src="sharing.js?v=2026-11-09u"></script>
+<script src="formats.js?v=2026-11-09v"></script>
+<script src="editor.js?v=2026-11-09v"></script>
+<script src="shared-spotify.js?v=2026-11-09v"></script>
+<script src="app.js?v=2026-11-09v"></script>
+<script src="sharing.js?v=2026-11-09v"></script>
 </body>
 </html>

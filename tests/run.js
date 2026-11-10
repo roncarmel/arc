@@ -839,10 +839,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-09u" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-09v" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-09u/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-09v/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkboxes in More options are the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2938,7 +2938,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-09u", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-09v", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4854,7 +4854,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var ms_labels = () => Array.from(ms_d.querySelectorAll("#msResults .ms-row .ms-klabel")).map((e) => e.textContent);
   var ms_tile = (k) => ms_d.querySelector(`#msBody .ms-ktile[data-kind="${k}"]`);
   await waitFor(() => ms_names().length === 5 && ms_w.eval("sortChoices().length") === 5, 5000);
-  check("the tabs are Shared by others and Shared by you, with no ? and no pink card", Array.from(ms_d.querySelectorAll("#msTabs .ms-tab-name")).map((b) => b.textContent).join("|") === "Shared by others|Shared by you" && !ms_d.querySelector(".ms-tab-info") && !ms_d.getElementById("msIntroCard"));
+  check("the tabs are By others and By you, each with its icon, a capsule behind the chosen one, with no ? and no pink card", Array.from(ms_d.querySelectorAll("#msTabs .ms-tab-name")).map((b) => b.textContent + (b.querySelector("svg") ? "+icon" : "")).join("|") === "By others+icon|By you+icon" && !!ms_d.querySelector("#msTabs .ms-tabpill") && !ms_d.getElementById("msTabs").classList.contains("ms-tabs-right") && !ms_d.querySelector(".ms-tab-info") && !ms_d.getElementById("msIntroCard"));
   check("Shared by others starts with tiles for the four types, none lit, and no line about Get", Array.from(ms_d.querySelectorAll("#msBody .ms-ktile")).map((b) => b.textContent).join("|") === "Ceremonies|Phases|Moods|Others" && !ms_d.querySelector("#msBody .ms-ktile.ms-on") && !/Get puts/.test(ms_d.getElementById("msBody").textContent));
   check("All lists every share, newest first, each with its type's line above its name", JSON.stringify(ms_names()) === JSON.stringify(["Deep water", "Forest floor", "Night sky", "Bowls and gongs", "Soft rain"]) && ms_labels().join("|") === "Ceremony · Book 2|Phase · Beginning, Ending|Mood · grief, tender|Sound bath|Mood · tender, awe", ms_labels().join("|"));
   check("an anonymous share says Anonymous, and each row has Get", /^Anonymous · 1 h 30 min$/.test(ms_d.querySelectorAll("#msResults .ms-row .ms-sub")[1].textContent) && ms_d.querySelectorAll("#msResults .ms-add").length === 5);
@@ -4947,12 +4947,13 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // ---------------- Shared by you
   ms_d.querySelectorAll(".ms-tab-name")[1].click();
   await waitFor(() => ms_d.querySelectorAll("#msBody .ms-yours-list > *").length === 1, 5000);
+  check("choosing By you slides the capsule to it and keeps the same switch (so it can slide)", ms_d.getElementById("msTabs").classList.contains("ms-tabs-right") && ms_d.querySelectorAll("#msTabs .ms-tabpill").length === 1 && ms_d.querySelectorAll("#msTabs .ms-tab")[1].classList.contains("ms-on") && ms_d.querySelectorAll("#msTabs .ms-tab-name")[1].getAttribute("aria-selected") === "true");
   check("with nothing shared, Shared by you is only Share your first playlist, where Share another playlist will be, and no bottom row", ms_d.getElementById("msBody").children.length === 1 && ms_d.querySelector("#msBody .ms-yours-list > #msShareRow:only-child").textContent === "Share your first playlist" && ms_d.getElementById("msFoot").hidden);
   ms_d.getElementById("msShareRow").click();
   var ms_pick = () => Array.from(ms_d.querySelectorAll("#msFlowBody .ms-pickrow")).map((r) => r.id.slice(7));
   var ms_ftile = (k) => ms_d.querySelector(`#msFlowBody .ms-ktile[data-kind="${k}"]`);
   check("Share a playlist: a popup over the tabs, its title and three steps, Playlist first, and Back alone at the bottom", ms_d.querySelector(".ms-flowtitle").textContent === "Share a playlist" && Array.from(ms_d.querySelectorAll(".ms-steps li")).map((l) => l.textContent + (l.classList.contains("ms-now") ? "*" : "")).join("|") === "Playlist*|Type|Details" && ms_d.querySelectorAll("#msFlowFoot button").length === 1 && ms_d.getElementById("msFlowBack").textContent === "Back");
-  check("the wizard is a popup over the page: the tabs stay under it, Shared by you chosen, and the page is inert meanwhile", !ms_d.getElementById("msFlowWrap").hidden && ms_d.getElementById("msFlowWrap").parentElement === ms_d.getElementById("msDialog") && ms_d.querySelector("#msTabs .ms-tab.ms-on").textContent === "Shared by you" && ms_d.getElementById("msBody").inert && ms_d.getElementById("msTabsBar").inert);
+  check("the wizard is a popup over the page: the tabs stay under it, Shared by you chosen, and the page is inert meanwhile", !ms_d.getElementById("msFlowWrap").hidden && ms_d.getElementById("msFlowWrap").parentElement === ms_d.getElementById("msDialog") && ms_d.querySelector("#msTabs .ms-tab.ms-on").textContent === "By you" && ms_d.getElementById("msBody").inert && ms_d.getElementById("msTabsBar").inert);
   check("its Close ends it, and Share a playlist opens it again", (ms_d.getElementById("msFlowClose").click(), ms_d.getElementById("msFlowWrap").hidden && !ms_w.eval("sharing.flow") && !ms_d.getElementById("msBody").inert) && (ms_d.getElementById("msShareRow").click(), !ms_d.getElementById("msFlowWrap").hidden));
   check("Back alone is in the wizard's row, which keeps its size and place", ms_d.querySelector("#msFlowFoot .ms-footrow").classList.contains("ms-wizrow") && !ms_d.getElementById("msFlowMain"));
   check("it lists the person's own playlists: not others', not the copy just gotten", ms_pick().join() === "p1,p2,p3,p4" && /Which playlist would you like to share\?/.test(ms_d.getElementById("msFlowBody").textContent), ms_pick().join());
@@ -5342,7 +5343,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-09u"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-09v"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

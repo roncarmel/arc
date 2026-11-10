@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-09u";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-09v";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -571,14 +571,23 @@ function closeFlow() {
   sharing.backTo = null;
   renderSharing();
 }
-// the top row: the two tabs as words with a pink line under the chosen one, and Close
+// the top row: a switch of two halves, By others and By you, each with its icon; a capsule (pink edge on pale pink) sits behind the chosen one and
+// slides to the other when it is chosen (Ron, 2026-11-09). The switch is made once and kept, so the capsule can slide.
 function renderSharingTabs() {
   const bar = $("msTabs");
-  bar.textContent = "";
   bar.setAttribute("role", "tablist");
-  const tab = (value, name) => feEl("div", { class: "ms-tab" + (sharing.tab === value ? " ms-on" : "") },
-    feEl("button", { type: "button", role: "tab", "aria-selected": String(sharing.tab === value), class: "ms-tab-name", onClick: () => switchTab(value) }, name));
-  bar.append(tab("find", "Shared by others"), tab("share", "Shared by you"));
+  if (!bar.querySelector(".ms-tabpill")) {
+    bar.textContent = "";
+    const tab = (value, icon, name) => feEl("div", { class: "ms-tab", "data-tab": value },
+      feEl("button", { type: "button", role: "tab", class: "ms-tab-name", onClick: () => switchTab(value) }, feIcon(icon), name));
+    bar.append(feEl("span", { class: "ms-tabpill", "aria-hidden": "true" }), tab("find", "people", "By others"), tab("share", "upload", "By you"));
+  }
+  bar.classList.toggle("ms-tabs-right", sharing.tab === "share");
+  for (const t of bar.querySelectorAll(".ms-tab")) {
+    const on = t.dataset.tab === sharing.tab;
+    t.classList.toggle("ms-on", on);
+    t.querySelector("button").setAttribute("aria-selected", String(on));
+  }
 }
 // the bottom row: Back (grey) and the main button; Back alone fills the row. In the wizard and the edit page (wizard: true) Back is pink
 // and as wide as the main button, with a gap between, and alone it keeps that size and place.
