@@ -1,12 +1,12 @@
 // sharing.js: Music sharing. People share their own playlists and copy each other's into their own Spotify. Opened from the app menu and the card under Build.
 // Two tabs (redesigned by Ron, 2026-11-08, after user testing): Shared by others (a list by type, each playlist's page, Get) and Shared by you
-// (the person's shares, and Share a playlist: a wizard of three steps, Playlist, Type, Details). Each share has a type: Ceremony (with the books
+// (the person's shares, and Share a playlist: one form, the playlist, its type, then that type's questions). Each share has a type: Ceremony (with the books
 // it is for), Phase (the phases of a session), Mood (words), or Other (a name), and a description.
 // The library lives in a Cloudflare Worker with a D1 database (cloudflare/music-sharing). It keeps only what people write, the songs as Spotify IDs
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-10c";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-10e";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -241,7 +241,7 @@ function kindLabel(s) {
   else if (s.kind === "mood" && list.length) part = list.slice(0, 3).join(", ") + (list.length > 3 ? ", ..." : "");
   return kindName(s.kind) + (part ? " · " + part : "");
 }
-// type tiles: the four types in a row, each name under its tile (the edit page), the same as a filter (Shared by others: none lit shows every type, a tap lights one, a tap on the lit one shows every type again), or the four as big tiles with a line each (the wizard)
+// type tiles: the four types in a row, each name under its tile (the edit page), the same as a filter (Shared by others: none lit shows every type, a tap lights one, a tap on the lit one shows every type again), or the four as big tiles with a line each
 function kindTiles(on, choose, { filter = false, big = false } = {}) {
   const box = feEl("div", { class: "ms-ktiles" + (big ? " ms-ktiles-big" : ""), role: filter ? "group" : "radiogroup", "aria-label": filter ? "Type" : "What type of playlist is this?" });
   const tile = (value, name, line, icon) => feEl("button", { type: "button", role: filter ? null : "radio", class: "ms-ktile" + (on === value ? " ms-on" : ""),
@@ -471,7 +471,7 @@ async function markOldCopies() {
 }
 
 // ---------------------------------------------------------------- the popup
-// tab "find" is Shared by others, "share" Shared by you. sharing.detail is a playlist's page; sharing.flow is Share a playlist (the wizard),
+// tab "find" is Shared by others, "share" Shared by you. sharing.detail is a playlist's page; sharing.flow is Share a playlist,
 // the edit page of one of the person's shares, or the page that says a share went through: a popup over the page (#msFlowWrap), so the tabs
 // and the page stay where they are under it (Ron, 2026-11-09).
 function openSharing(tab = "find") {
@@ -535,8 +535,7 @@ function renderSharing() {
   body.scrollTop = keepScroll;
   renderFlowPopup();
 }
-// the popup that holds Share a playlist, Edit details and the page after a share: its title (and the wizard's steps) with Close, then the
-// step, then its buttons. The page under it is inert meanwhile.
+// the popup that holds Share a playlist, Edit details and the page after a share: its title with Close, then the form, then its buttons. The page under it is inert meanwhile.
 function renderFlowPopup() {
   const wrap = $("msFlowWrap"), f = sharing.flow;
   if (!wrap) return;
@@ -552,10 +551,6 @@ function renderFlowPopup() {
   foot.textContent = "";
   foot.hidden = true;
   head.appendChild(feEl("h2", { class: "ms-flowtitle", id: "msFlowTitle" }, f.mode === "edit" ? "Edit details" : f.mode === "done" ? "Shared" : "Share a playlist"));
-  if (f.mode === "new") {
-    head.appendChild(feEl("ol", { class: "ms-steps", "aria-label": "Steps" }, ...["Playlist", "Type", "Details"].map((name, i) =>
-      feEl("li", { class: i < f.step ? "ms-done" : i === f.step ? "ms-now" : "", "aria-current": i === f.step ? "step" : null }, name))));
-  }
   head.appendChild(feEl("button", { type: "button", id: "msFlowClose", class: "ms-flowclose", "aria-label": "Close", onClick: closeFlow }, feIcon("close")));
   renderFlow(body, foot);
   if (sharing.flow !== f) return;   // it ended itself (its playlist is gone) and drew again
@@ -570,19 +565,6 @@ function renderFlowPopup() {
   }
 }
 function flowTop() { if ($("msFlowBody")) $("msFlowBody").scrollTop = 0; }
-// to the next step of the wizard (dir 1) or back (-1): the step moves aside (shiftPage) and the bar's part fills or empties
-function stepFlow(dir, change) {
-  const from = sharing.flow && sharing.flow.step;
-  shiftPage($("msFlowBody"), dir, () => { change(); renderSharing(); flowTop(); });
-  const f = sharing.flow, steps = $("msFlowHead") && $("msFlowHead").querySelectorAll(".ms-steps li");
-  if (!f || !steps || !steps.length || typeof motionAllowed !== "function" || !motionAllowed(steps[0])) return;
-  const css = getComputedStyle(steps[0]), line = css.getPropertyValue("--line").trim(), accent = css.getPropertyValue("--accent").trim();
-  const fill = (li, colors) => { try { li.animate(colors.map((c) => ({ backgroundColor: c })), { duration: 300, easing: EASE_OUT, pseudoElement: "::before" }); } catch (err) {} };
-  if (line && accent && steps[f.step] && steps[from]) {
-    if (dir > 0) fill(steps[f.step], [line, accent]);
-    else fill(steps[from], [accent, line]);
-  }
-}
 function closeFlow() {
   endTyping();
   sharing.flow = null;
@@ -915,7 +897,7 @@ function slideBody(dir, change) {
   ghost.animate([{ transform: "translateX(0)", opacity: 1 }, { transform: `translateX(${-dir * 40}%)`, opacity: 0 }], opts).onfinish = () => ghost.remove();
   body.animate([{ transform: `translateX(${dir * 100}%)` }, { transform: "translateX(0)" }], opts);
 }
-// another tab or another step of the wizard: the old page moves half its width away and fades as the new one comes from half its width
+// another tab: the old page moves half its width away and fades as the new one comes from half its width
 // on the other side (Ron, 2026-11-09, mockups/sharing-motion.html B with half a screen)
 // drift: where a drag of the tab switch left the page ({x, opacity}), so the leaving copy goes on from there
 function shiftPage(body, dir, change, drift) {
@@ -1483,25 +1465,32 @@ function shareCandidates() {
   const copies = new Set(Object.values(sharingCopies()));
   return playlists.filter((p) => p.owner === me.id && !p.isSave && !p.madeByApp && !copies.has(p.id) && !copyShareId(p) && !sharedFor(p) && !knownBlock(p));
 }
+// Share a playlist and Edit details are one form (Ron, 2026-11-10, mockups/share-one-dialog.html): the playlist's card at the top (a tap opens
+// the list of the person's playlists; it shows the playlist as others will see it, with Share anonymously), then What type of playlist is this?,
+// then that type's questions and the description. Share stays grey until everything needed is there.
+// sharing.flow: { mode: "new" | "edit" | "done", draft (null until a playlist is chosen), picking (the list is open), query, reading, readError, share, start }
 function startShare() {
   sharing.tab = "share";
   sharing.detail = null;
-  sharing.flow = { mode: "new", step: 0, draft: null, reading: null };
+  sharing.flow = { mode: "new", draft: null, picking: false, query: "", reading: null, readError: null };
+  loadBlockedWords().then((l) => { blockedNow = l; refreshFoot(); });
   renderSharing();
   flowTop();
 }
 function editShare(m) {   // the page under it stays (the playlist's page, or Shared by you)
-  const p = playlistFor(m);
-  sharing.flow = { mode: "edit", share: m, draft: draftFromShare(m, p) };
-  loadBlockedWords().then((l) => { blockedNow = l; });
+  const p = playlistFor(m), draft = draftFromShare(m, p);
+  sharing.flow = { mode: "edit", share: m, draft, start: draftKey(draft) };
+  loadBlockedWords().then((l) => { blockedNow = l; refreshFoot(); });
   renderSharing();
   flowTop();
 }
-function flowBack() {
+// what the person can change, to know whether Edit details changed anything
+const draftKey = (d) => JSON.stringify([d.kind, [...d.books].sort(), d.bookOther, [...d.phases].sort(), d.moods, d.other, d.desc, d.descSource, d.anon]);
+function flowBack() {   // Escape: closes the list of playlists first, then the popup
   const f = sharing.flow;
   if (!f) return;
   endTyping();
-  if (f.mode === "new" && f.step > 0 && f.step < 3) { stepFlow(-1, () => { f.step--; f.draft.errors = null; }); return; }
+  if (f.picking) { f.picking = false; f.readError = null; renderSharing(); return; }
   if (f.mode === "edit" && backToDetail()) return;
   sharing.flow = null;
   renderSharing();
@@ -1520,94 +1509,158 @@ function backToDetail() {
 function renderFlow(body, foot) {
   const f = sharing.flow;
   if (f.mode === "done") return renderShared(body, foot);
-  if (f.mode === "new" && f.step === 0) return renderPickPlaylist(body, foot);
-  const p = playlists.find((x) => x.id === f.draft.playlist);
-  if (!p) { sharing.flow = null; renderSharing(); return; }
-  body.appendChild(othersWillSee(p, f.draft));
-  if (f.draft.refused) body.appendChild(flowProblem(f.draft.refused, "msRefused"));
-  else if (f.draft.problem) body.appendChild(flowProblem(f.draft.problem, "msProblem"));
-  if (f.mode === "new" && f.step === 1) {
-    body.appendChild(feEl("h3", { class: "ms-q" }, "What type of playlist is this?"));
-    body.appendChild(field("kind", null, kindTiles(f.draft.kind, (k) => { f.draft.kind = k; draftChanged(); renderSharing(); }, { big: true })));
-    body.appendChild(anonBox(f.draft));
-    footButtons(foot, { onClick: flowBack, wizard: true }, mainButton("Next", () => {
-      if (!f.draft.kind) { f.draft.errors = { kind: "Choose a type." }; renderSharing(); return; }
-      stepFlow(1, () => { f.draft.errors = null; f.step = 2; });
-    }, { iconAfter: "next" }));
-    return;
+  const d = f.draft, p = d && playlists.find((x) => x.id === d.playlist);
+  if (d && !p) { sharing.flow = null; renderSharing(); return; }
+  if (d && d.refused) body.appendChild(flowProblem(d.refused, "msRefused"));
+  else if (d && d.problem) body.appendChild(flowProblem(d.problem, "msProblem"));
+  body.appendChild(playlistCard(p, d));
+  if (f.picking) body.appendChild(pickList());
+  if (d) {
+    body.appendChild(field("kind", "What type of playlist is this?", feEl("div", {},
+      kindTiles(d.kind, (k) => { if (d.kind === k) return; d.kind = k; draftChanged(); renderSharing(); }), d.kind ? kindLine(d.kind) : null)));
+    for (const part of detailFields(p, d)) body.appendChild(part);
   }
-  if (f.mode === "edit") {
-    body.appendChild(field("kind", "What type of playlist is this?", kindTiles(f.draft.kind, (k) => { f.draft.kind = k; draftChanged(); renderSharing(); })));
-  }
-  for (const part of detailFields(p, f.draft)) body.appendChild(part);
-  if (f.mode === "edit") {
-    body.appendChild(anonBox(f.draft));
-    body.appendChild(feEl("button", { type: "button", class: "ms-stopbtn", id: "msStop", onClick: () => stopSharing(f.share) }, feIcon("ban"), "Stop sharing"));
-  }
-  const label = f.draft.sending ? (f.mode === "edit" ? "Updating..." : "Sharing...") : f.mode === "edit" ? "Update" : "Share now";
-  footButtons(foot, { onClick: flowBack, wizard: true }, mainButton(label, () => submitDraft(p), { grey: !!f.draft.refused, disabled: !!f.draft.refused || f.draft.sending, icon: f.mode === "edit" ? "check" : "upload" }));
+  flowFoot(foot, p, d);
 }
-// Step 1: tapping a playlist reads its songs, then goes on to Type
-function renderPickPlaylist(body, foot) {
+// under the type tiles, what the chosen type is
+function kindLine(kind) {
+  const k = KINDS.find((x) => x[0] === kind);
+  return feEl("p", { class: "ms-kline", id: "msKindLine" }, feEl("b", {}, kindName(kind) + ":"), " " + k[2]);
+}
+// The playlist's card: empty, a dashed button that opens the list; chosen, the row as others will see it (type line, name, who and length)
+// with Share anonymously at its foot. A tap on it opens the list again to choose another; in Edit details the playlist is fixed.
+function playlistCard(p, d) {
+  const f = sharing.flow, fixed = f.mode === "edit";
+  const chev = () => feEl("span", { class: "ms-pcard-chev" }, feIcon("chevron"));
+  if (!p) {
+    return feEl("button", { type: "button", class: "ms-pcard ms-pcard-pick ms-pcard-empty" + (f.picking ? " ms-open" : ""), id: "msPickCard", "aria-expanded": String(!!f.picking), onClick: togglePickList },
+      feEl("span", { class: "ms-cover ms-nocover" }, feIcon("notes")),
+      feEl("span", { class: "ms-text" }, feEl("span", { class: "ms-name" }, "Choose a playlist"), feEl("span", { class: "ms-sub" }, `${actWord(true)} to pick one of yours`)), chev());
+  }
+  const tracks = trackCache.get(p.id);
+  const ms = tracks ? tracks.reduce((n, t) => n + (t.ms || 0), 0) : (f.share && f.share.ms) || 0;
+  const look = { kind: d.kind, books: [...d.books], bookOther: d.bookOther, phases: [...d.phases], moods: d.moods, other: cleanWord(d.other, SHARE_OTHER_MAX) };
+  const by = d.anon ? "Anonymous" : (me && (me.display_name || me.id)) || "";
+  const label = kindLabel(look);
+  const inner = [
+    p.image ? feEl("img", { class: "ms-cover", src: p.image, alt: "" }) : feEl("span", { class: "ms-cover ms-nocover" }, feIcon("notes")),
+    feEl("span", { class: "ms-text" },
+      label ? feEl("span", { class: "ms-klabel" }, label) : null,
+      feEl("span", { class: "ms-name", text: p.name }),
+      feEl("span", { class: "ms-sub" }, [by, ms ? lengthText(ms / 60000) : ""].filter(Boolean).join(" · "))),
+    fixed ? null : chev()];
+  const anon = feEl("input", { type: "checkbox", role: "switch", class: "ms-switch", id: "msAnon", checked: d.anon });
+  anon.addEventListener("change", () => { d.anon = anon.checked; draftChanged(); });
+  return feEl("div", { class: "ms-pcard" + (f.picking ? " ms-open" : ""), id: "msCardPreview" },
+    fixed ? feEl("div", { class: "ms-pcard-pick" }, ...inner)
+      : feEl("button", { type: "button", class: "ms-pcard-pick", id: "msPickCard", "aria-expanded": String(!!f.picking), "aria-label": `${p.name}, ${actWord()} to choose another playlist`, onClick: togglePickList }, ...inner),
+    feEl("div", { class: "ms-pcard-line" }, label ? label + " · " : "", feEl("b", { text: p.name })),
+    feEl("label", { class: "ms-anonrow" }, feEl("span", {}, "Share anonymously"), anon));
+}
+function togglePickList() {
   const f = sharing.flow;
-  footButtons(foot, { onClick: flowBack, wizard: true });
-  const list = shareCandidates();
-  if (!list.length) {
-    body.appendChild(emptyState("notes", "No playlists of your own to share", "Make a playlist in Spotify, then come back. Playlists you got from Music sharing and ones this app built can't be shared."));
-    return;
-  }
-  body.appendChild(feEl("h3", { class: "ms-q" }, "Which playlist would you like to share?"));
-  if (f.readError) body.appendChild(problemBox(f.readError.title, f.readError.text, [{ label: "Try again", run: () => pickPlaylist(f.readError.p) }]));
-  const box = feEl("div", { class: "ms-pick-list" });
-  for (const p of list) {
-    const reading = f.reading === p.id;
-    const row = feEl("button", { type: "button", class: "ms-row ms-pickrow", id: "msPick-" + p.id, disabled: !!f.reading, onClick: () => pickPlaylist(p) },
-      p.image ? feEl("img", { class: "ms-cover", src: p.image, alt: "" }) : feEl("span", { class: "ms-cover ms-nocover" }, feIcon("notes")),
-      feEl("span", { class: "ms-text" }, feEl("span", { class: "ms-name", text: p.name }), feEl("span", { class: "ms-sub" }, reading ? "Reading its songs..." : p.count != null ? songCountText(p.count) : "")),
-      reading ? feEl("span", { class: "ms-play-spin" }) : feEl("span", { class: "ms-chev" }, feIcon("chevron")));
-    box.appendChild(row);
-  }
-  body.appendChild(box);
+  if (!f || f.reading) return;
+  f.picking = !f.picking;
+  f.readError = null;
+  renderSharing();
+  let touch = false;
+  try { touch = window.matchMedia("(pointer: coarse)").matches; } catch (err) { /* no media queries: a mouse */ }
+  if (f.picking && $("msPickSearch") && !touch) $("msPickSearch").focus();   // not on a phone, where the keyboard would cover the list
 }
+// the list under the card: a search, the playlists that can be shared, then the person's others greyed with why they can't be
+function pickList() {
+  const f = sharing.flow;
+  const box = feEl("div", { class: "ms-picklist", id: "msPickList" });
+  if (f.readError) box.appendChild(problemBox(f.readError.title, f.readError.text, [{ label: "Try again", run: () => pickPlaylist(f.readError.p) }]));
+  const ok = shareCandidates();
+  const copies = new Set(Object.values(sharingCopies()));
+  const why = (p) => sharedFor(p) ? "Already shared" : copies.has(p.id) || copyShareId(p) ? "A copy from Music sharing" : knownBlock(p) ? "Mostly songs another facilitator shares" : "";
+  const off = me ? playlists.filter((p) => p.owner === me.id && !p.isSave && !p.madeByApp && !ok.includes(p) && p.id !== (f.draft && f.draft.playlist) && why(p)) : [];
+  if (!ok.length && !off.length) {
+    box.appendChild(emptyState("notes", "No playlists of your own to share", "Make a playlist in Spotify, then come back. Playlists you got from Music sharing and ones this app built can't be shared."));
+    return box;
+  }
+  const search = feEl("input", { type: "search", class: "ms-input ms-picksearch", id: "msPickSearch", placeholder: "Search your playlists", "aria-label": "Search your playlists",
+    value: f.query, enterkeyhint: "search", autocomplete: "off", spellcheck: "false" });
+  const rows = feEl("div", { class: "ms-pick-list" });
+  const draw = () => {
+    rows.textContent = "";
+    const q = f.query.trim().toLowerCase();
+    const fits = (p) => !q || p.name.toLowerCase().includes(q);
+    for (const p of ok.filter(fits)) {
+      const reading = f.reading === p.id, chosen = f.draft && f.draft.playlist === p.id;
+      rows.appendChild(feEl("button", { type: "button", class: "ms-row ms-pickrow" + (chosen ? " ms-on" : ""), id: "msPick-" + p.id, disabled: !!f.reading, "aria-current": chosen ? "true" : null,
+        onClick: () => (chosen ? togglePickList() : pickPlaylist(p)) },
+        p.image ? feEl("img", { class: "ms-cover", src: p.image, alt: "" }) : feEl("span", { class: "ms-cover ms-nocover" }, feIcon("notes")),
+        feEl("span", { class: "ms-text" }, feEl("span", { class: "ms-name", text: p.name }), feEl("span", { class: "ms-sub" }, reading ? "Reading its songs..." : p.count != null ? songCountText(p.count) : "")),
+        reading ? feEl("span", { class: "ms-play-spin" }) : chosen ? feEl("span", { class: "ms-pick-on" }, feIcon("check")) : null));
+    }
+    for (const p of off.filter(fits)) {
+      rows.appendChild(feEl("div", { class: "ms-row ms-pickrow ms-pickrow-off", id: "msPickOff-" + p.id },
+        p.image ? feEl("img", { class: "ms-cover", src: p.image, alt: "" }) : feEl("span", { class: "ms-cover ms-nocover" }, feIcon("notes")),
+        feEl("span", { class: "ms-text" }, feEl("span", { class: "ms-name", text: p.name }), feEl("span", { class: "ms-sub" }, why(p)))));
+    }
+    if (!rows.children.length) rows.appendChild(feEl("p", { class: "ms-sub ms-pick-none" }, "None of your playlists match."));
+  };
+  search.addEventListener("input", () => { f.query = search.value; draw(); });
+  draw();
+  box.append(search, rows);
+  return box;
+}
+// choosing a playlist reads its songs first (for its length, and the copy check when it is shared); what was filled in stays
 async function pickPlaylist(p) {
   const f = sharing.flow;
   f.reading = p.id;
-  f.readError = "";
+  f.readError = null;
   renderSharing();
   try {
     const tracks = await loadTracks(p.id);
     if (sharing.flow !== f) return;
     if (!tracks.length) throw new Error("It has no songs");
-    stepFlow(1, () => { f.draft = newDraft(p); f.step = 1; f.reading = null; });
+    if (f.draft) Object.assign(f.draft, { playlist: p.id, refused: "", problem: "", errors: null });
+    else f.draft = newDraft(p);
+    f.picking = false;
+    f.query = "";
+    f.reading = null;
+    renderSharing();
     return;
-  } catch (err) { f.readError = { p, title: `The songs of ${named(p.name)} couldn\u2019t be read`, text: String(err.message || err).replace(/\.?$/, ".") }; }
+  } catch (err) { f.readError = { p, title: `The songs of ${named(p.name)} couldn’t be read`, text: String(err.message || err).replace(/\.?$/, ".") }; }
   f.reading = null;
   renderSharing();
-  flowTop();
 }
-// "Others will see": the row as it will be in Shared by others, following each choice; parts not chosen yet are blank.
-// While typing on a phone it shrinks to one line (CSS, .ms-typing).
-function othersWillSee(p, d) {
-  const tracks = trackCache.get(p.id);
-  const ms = tracks ? tracks.reduce((n, t) => n + (t.ms || 0), 0) : (sharing.flow.share && sharing.flow.share.ms) || 0;
-  const look = { kind: d.kind, books: [...d.books], bookOther: d.bookOther, phases: [...d.phases], moods: d.moods, other: cleanWord(d.other, SHARE_OTHER_MAX) };
-  const by = d.anon ? "Anonymous" : (me && (me.display_name || me.id)) || "";
-  return feEl("div", { class: "ms-pcard", id: "msCardPreview" },
-    feEl("div", { class: "ms-pcard-cap" }, "Others will see"),
-    feEl("div", { class: "ms-pcard-line" }, "Others will see: ", feEl("b", { text: p.name })),
-    feEl("div", { class: "ms-row ms-prow" },
-      p.image ? feEl("img", { class: "ms-cover", src: p.image, alt: "" }) : feEl("span", { class: "ms-cover ms-nocover" }, feIcon("notes")),
-      feEl("div", { class: "ms-text" },
-        feEl("div", { class: "ms-klabel" + (kindLabel(look) ? "" : " ms-blank") }, kindLabel(look) || " "),
-        feEl("div", { class: "ms-name", text: p.name }),
-        feEl("div", { class: "ms-sub" }, [by, ms ? lengthText(ms / 60000) : ""].filter(Boolean).join(" · ")))));
+// whether Share (or Update) can be pressed: everything needed is there (and in Edit details, something changed)
+function flowReady(p, d) {
+  const f = sharing.flow;
+  if (!d || d.refused || d.sending || f.reading) return false;
+  const typed = d.kind === "mood" && !d.moods.length && $("msMoodInput") ? cleanMood($("msMoodInput").value) : "";   // a mood still in the box counts, as Share takes it
+  if (Object.keys(draftErrors(typed.length >= 2 && !blockedWord(typed) ? { ...d, moods: [typed] } : d, p)).length) return false;
+  return !(f.mode === "edit" && draftKey(d) === f.start);
+}
+function flowFoot(foot, p, d) {
+  const f = sharing.flow, edit = f.mode === "edit";
+  const ready = flowReady(p, d);
+  foot.hidden = false;
+  const label = d && d.sending ? (edit ? "Updating..." : "Sharing...") : edit ? "Update" : "Share";
+  const row = feEl("div", { class: "ms-footrow ms-sharerow" },
+    edit ? feEl("button", { type: "button", class: "ms-stopbtn", id: "msStop", onClick: () => stopSharing(f.share) }, feIcon("ban"), "Stop sharing") : null,
+    mainButton(label, () => submitDraft(p), { id: "msFlowMain", disabled: !ready, icon: edit ? "check" : "upload" }));
+  foot.appendChild(row);
+}
+function refreshFoot() {
+  const f = sharing.flow, foot = $("msFlowFoot");
+  if (!f || !foot || f.mode === "done") return;
+  const d = f.draft;
+  foot.textContent = "";
+  flowFoot(foot, d && playlists.find((x) => x.id === d.playlist), d);
 }
 function refreshCard() {
   const f = sharing.flow, old = $("msCardPreview");
   if (!f || !old || !f.draft) return;
-  old.replaceWith(othersWillSee(playlists.find((x) => x.id === f.draft.playlist), f.draft));
+  const hadFocus = document.activeElement && document.activeElement.id;
+  old.replaceWith(playlistCard(playlists.find((x) => x.id === f.draft.playlist), f.draft));
+  if (hadFocus === "msAnon" || hadFocus === "msPickCard") $(hadFocus).focus();
 }
-// after any change: the card follows, and errors already shown are worked out again (a fixed field loses its red)
+// after any change: the card and Share follow, and errors already shown are worked out again (a fixed field loses its error)
 function draftChanged() {
   const d = sharing.flow && sharing.flow.draft;
   if (!d) return;
@@ -1618,6 +1671,7 @@ function draftChanged() {
     for (const k of Object.keys(before)) if (!d.errors[k]) clearFieldError(k);
   }
   refreshCard();
+  refreshFoot();
 }
 function clearFieldError(key) {
   const box = document.querySelector(`#msFlowBody [data-field="${key}"]`);
@@ -1626,7 +1680,7 @@ function clearFieldError(key) {
   const err = box.querySelector(".ms-ferr");
   if (err) err.remove();
 }
-// a field: its label (with a note at the right), what it holds, and an error under it once Share now found it missing
+// a field: its label (with a note at the right), what it holds, and an error under it when the worker refused it
 function field(key, label, content, note = null) {
   const d = sharing.flow && sharing.flow.draft, err = d && d.errors && d.errors[key];
   return feEl("div", { class: "ms-field" + (err ? " ms-bad" : ""), "data-field": key },
@@ -1648,20 +1702,12 @@ function flowProblem(text, id) {
   return box;
 }
 const fieldNote = (text) => feEl("span", { class: "ms-fnote" }, text);
-function anonBox(d) {
-  const box = feEl("input", { type: "checkbox", class: "ms-cb", id: "msAnon", checked: d.anon });
-  const name = (me && (me.display_name || me.id)) || "";
-  const say = () => (d.anon ? "Others see Anonymous instead of your Spotify name." : name ? `Others see your Spotify name, ${name}.` : "Others see your Spotify name.");
-  const sub = feEl("span", { class: "ms-sub", id: "msAnonSay" }, say());
-  box.addEventListener("change", () => { d.anon = box.checked; sub.textContent = say(); draftChanged(); });
-  return feEl("label", { class: "ms-cbrow ms-anon" }, box, feEl("span", {}, feEl("b", {}, "Share anonymously"), sub));
-}
 function detailFields(p, d) {
   const out = [];
-  if (d.kind === "ceremony") out.push(field("books", "For use with which books?", booksContent(d), fieldNote("all that apply")));
-  if (d.kind === "phase") out.push(field("phases", "Which phases?", phaseCurve(d.phases, draftChanged, "Which phases?"), fieldNote("all that apply")));
-  if (d.kind === "mood") out.push(field("moods", "Which moods?", moodField(d), fieldNote("at least 1")));
-  if (d.kind === "other") out.push(field("other", "What kind of playlist is this?", otherField(d), fieldNote("a word or two")));
+  if (d.kind === "ceremony") out.push(field("books", "Which books is it for?", booksContent(d)));
+  if (d.kind === "phase") out.push(field("phases", "Which phases does it fit?", phaseCurve(d.phases, draftChanged, "Which phases does it fit?")));
+  if (d.kind === "mood") out.push(field("moods", "What moods does it carry?", moodField(d)));
+  if (d.kind === "other") out.push(field("other", "What would you call it?", otherField(d), fieldNote(`Up to ${SHARE_OTHER_MAX} letters`)));
   if (d.kind) out.push(descriptionField(p, d));
   return out;
 }
@@ -1691,7 +1737,7 @@ function refreshBooks(d, focusCode = false) {
   if (focusCode && $("msBookCode")) $("msBookCode").focus();
 }
 function otherField(d) {
-  const input = feEl("input", { type: "text", class: "ms-input", id: "msOther", maxlength: String(SHARE_OTHER_MAX), value: d.other, placeholder: "e.g. Sound bath", enterkeyhint: "next", "aria-label": "What kind of playlist is this?" });
+  const input = feEl("input", { type: "text", class: "ms-input", id: "msOther", maxlength: String(SHARE_OTHER_MAX), value: d.other, placeholder: "e.g. Sound bath", enterkeyhint: "next", "aria-label": "What would you call it?" });
   input.addEventListener("input", () => { d.other = input.value; draftChanged(); });
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); const next = $("msDesc"); if (next && !next.readOnly) next.focus(); else input.blur(); } });
   return input;
@@ -1743,7 +1789,7 @@ function moodField(d) {
     blockedMsg.hidden = true;
     box.classList.remove("ms-bad-box");
     if (input.value.includes(",")) { take(); draw(); draftChanged(); input.focus(); }
-    else showSuggestions();
+    else { showSuggestions(); refreshFoot(); }   // a word still in the box counts for Share
   });
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") { e.preventDefault(); if (input.value.trim()) { if (add(input.value)) input.value = ""; draw(); draftChanged(); input.focus(); } else input.blur(); }
@@ -1753,6 +1799,13 @@ function moodField(d) {
   draw();
   return feEl("div", {}, box, blockedMsg, suggest);
 }
+// the description box's placeholder, by type (Ron, 2026-11-10)
+const DESC_HINTS = {
+  ceremony: "Describe the music and when you\u2019d use it, like the kind of intention or setting.",
+  phase: "What is the music like, and what does it leave out? e.g. slow, soft, expansive, no percussion",
+  mood: "Anything to add beyond the moods above?",
+  other: "What\u2019s the music like, and what is it for? e.g. a sound bath, integration circles",
+};
 // The description: the person's own (the default), or with the small switch at the right of its label, the playlist's Spotify description,
 // shown locked and kept in step with Spotify when the share is updated (C2, decided by Ron, 2026-11-08). No switch when Spotify has none.
 function descriptionField(p, d) {
@@ -1760,16 +1813,16 @@ function descriptionField(p, d) {
   if (!theirs && d.descSource === "spotify") d.descSource = "mine";
   const required = d.kind === "ceremony" || d.kind === "phase" || d.kind === "other";
   const spotify = d.descSource === "spotify";
-  const area = feEl("textarea", { class: "ms-ta" + (spotify ? " ms-locked" : ""), id: "msDesc", rows: "3", maxlength: String(SHARE_DESC_MAX), placeholder: "A sentence or two",
-    "aria-label": "Description", readonly: spotify || null }, spotify ? theirs : d.desc);
+  const area = feEl("textarea", { class: "ms-ta" + (spotify ? " ms-locked" : ""), id: "msDesc", rows: "3", maxlength: String(SHARE_DESC_MAX), placeholder: DESC_HINTS[d.kind] || "",
+    "aria-label": "How would you describe it?", readonly: spotify || null }, spotify ? theirs : d.desc);
   area.addEventListener("input", () => { if (!spotify) { d.desc = area.value; draftChanged(); } });
   const sw = theirs ? feEl("span", { class: "ms-mseg", role: "radiogroup", "aria-label": "Whose description" },
     ...[["mine", "Mine"], ["spotify", "Spotify's"]].map(([v, label]) => feEl("button", { type: "button", role: "radio", "aria-checked": String(d.descSource === v), class: d.descSource === v ? "ms-on" : "",
       id: v === "mine" ? "msDescMine" : "msDescSpotify", onClick: () => { if (d.descSource !== v) { d.descSource = v; draftChanged(); const old = document.querySelector('#msFlowBody [data-field="description"]'); if (old) old.replaceWith(descriptionField(p, d)); } } }, label))) : null;
-  return field("description", "Description", feEl("div", {}, area, spotify ? feEl("p", { class: "ms-fsub ms-keptnote" }, "Kept in step with Spotify when you Update.") : null),
-    sw || fieldNote(required ? "a sentence or two" : "optional"));
+  return field("description", "How would you describe it?", feEl("div", {}, area, spotify ? feEl("p", { class: "ms-fsub ms-keptnote" }, "Kept in step with Spotify when you Update.") : null),
+    sw || (required ? null : fieldNote("Optional")));
 }
-// what is missing, by field (Share now marks these red with a message under each)
+// what is missing, by field (Share stays grey while any is; the worker's refusals show under their fields)
 function draftErrors(d, p) {
   const e = {};
   if (!d.kind) e.kind = "Choose a type.";
@@ -1821,7 +1874,7 @@ async function submitDraft(p) {
   } catch (err) {
     d.sending = false;
     if (err.code === "copy") {
-      // refused as a copy: said at the top with the exact share, Share now grey; remembered until the playlist changes in Spotify
+      // refused as a copy: said at the top with the exact share, Share grey; remembered until the playlist changes in Spotify
       d.refused = err.percent != null && err.of ? `${err.percent}% of its songs are in ${named(err.of)}, which someone else shares, so it can't be shared.` : err.message;
       rememberBlock(p, "copy", err.of || "");
     } else if (["books", "phases", "moods", "other", "description", "kind"].includes(err.code)) {

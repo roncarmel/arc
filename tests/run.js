@@ -839,10 +839,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-10c" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-10e" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-10c/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-10e/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkboxes in More options are the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2938,7 +2938,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-10c", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-10e", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4950,55 +4950,52 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("choosing By you slides the capsule to it and keeps the same switch (so it can slide)", ms_d.getElementById("msTabs").classList.contains("ms-tabs-right") && ms_d.querySelectorAll("#msTabs .ms-tabpill").length === 1 && ms_d.querySelectorAll("#msTabs .ms-tab")[1].classList.contains("ms-on") && ms_d.querySelectorAll("#msTabs .ms-tab-name")[1].getAttribute("aria-selected") === "true");
   check("with nothing shared, Shared by you is only Share your first playlist, where Share another playlist will be, and no bottom row", ms_d.getElementById("msBody").children.length === 1 && ms_d.querySelector("#msBody .ms-yours-list > #msShareRow:only-child").textContent === "Share your first playlist" && ms_d.getElementById("msFoot").hidden);
   ms_d.getElementById("msShareRow").click();
-  var ms_pick = () => Array.from(ms_d.querySelectorAll("#msFlowBody .ms-pickrow")).map((r) => r.id.slice(7));
+  var ms_pick = () => Array.from(ms_d.querySelectorAll("#msFlowBody .ms-pickrow:not(.ms-pickrow-off)")).map((r) => r.id.slice(7));
   var ms_ftile = (k) => ms_d.querySelector(`#msFlowBody .ms-ktile[data-kind="${k}"]`);
-  check("Share a playlist: a popup over the tabs, its title and three steps, Playlist first, and Back alone at the bottom", ms_d.querySelector(".ms-flowtitle").textContent === "Share a playlist" && Array.from(ms_d.querySelectorAll(".ms-steps li")).map((l) => l.textContent + (l.classList.contains("ms-now") ? "*" : "")).join("|") === "Playlist*|Type|Details" && ms_d.querySelectorAll("#msFlowFoot button").length === 1 && ms_d.getElementById("msFlowBack").textContent === "Back");
-  check("the wizard is a popup over the page: the tabs stay under it, Shared by you chosen, and the page is inert meanwhile", !ms_d.getElementById("msFlowWrap").hidden && ms_d.getElementById("msFlowWrap").parentElement === ms_d.getElementById("msDialog") && ms_d.querySelector("#msTabs .ms-tab.ms-on").textContent === "By you" && ms_d.getElementById("msBody").inert && ms_d.getElementById("msTabsBar").inert);
+  var ms_main = () => ms_d.getElementById("msFlowMain");
+  check("Share a playlist: one popup over the tabs, its title, no steps, only the empty playlist card, and Share grey, with nothing under it", ms_d.querySelector(".ms-flowtitle").textContent === "Share a playlist" && !ms_d.querySelector(".ms-steps") && ms_d.getElementById("msPickCard").classList.contains("ms-pcard-empty") && /Choose a playlist/.test(ms_d.getElementById("msPickCard").textContent) && !ms_d.querySelector('#msFlowBody [data-field="kind"]') && ms_main().disabled && ms_main().textContent === "Share" && !!ms_main().querySelector("svg") && !ms_d.getElementById("msFlowBack") && !ms_d.getElementById("msNeed"));
+  check("the form is a popup over the page: the tabs stay under it, Shared by you chosen, and the page is inert meanwhile", !ms_d.getElementById("msFlowWrap").hidden && ms_d.getElementById("msFlowWrap").parentElement === ms_d.getElementById("msDialog") && ms_d.querySelector("#msTabs .ms-tab.ms-on").textContent === "By you" && ms_d.getElementById("msBody").inert && ms_d.getElementById("msTabsBar").inert);
   check("its Close ends it, and Share a playlist opens it again", (ms_d.getElementById("msFlowClose").click(), ms_d.getElementById("msFlowWrap").hidden && !ms_w.eval("sharing.flow") && !ms_d.getElementById("msBody").inert) && (ms_d.getElementById("msShareRow").click(), !ms_d.getElementById("msFlowWrap").hidden));
-  check("Back alone is in the wizard's row, which keeps its size and place", ms_d.querySelector("#msFlowFoot .ms-footrow").classList.contains("ms-wizrow") && !ms_d.getElementById("msFlowMain"));
-  check("it lists the person's own playlists: not others', not the copy just gotten", ms_pick().join() === "p1,p2,p3,p4" && /Which playlist would you like to share\?/.test(ms_d.getElementById("msFlowBody").textContent), ms_pick().join());
+  ms_d.getElementById("msPickCard").click();
+  check("a tap on the card opens the list under it: the person's own playlists, not others', the copy just gotten greyed with why, with a search", ms_pick().join() === "p1,p2,p3,p4" && /A copy from Music sharing/.test(ms_d.getElementById("msPickOff-new1").textContent) && !!ms_d.getElementById("msPickSearch") && ms_d.getElementById("msPickCard").getAttribute("aria-expanded") === "true", ms_pick().join());
+  { const q = ms_d.getElementById("msPickSearch"); q.value = "evoc"; q.dispatchEvent(new ms_w.Event("input")); }
+  check("the search narrows the list", ms_pick().join() === "p3", ms_pick().join());
   ms_d.getElementById("msPick-p3").click();
-  await waitFor(() => ms_w.eval("sharing.flow.step") === 1, 5000);
-  var ms_card = () => ms_d.querySelector("#msCardPreview .ms-row");
-  check("tapping one reads its songs and goes to Type, with Others will see at the top (its type still blank)", /What type of playlist is this\?/.test(ms_d.getElementById("msFlowBody").textContent) && ms_card().querySelector(".ms-name").textContent === "💗💗 evocative" && ms_card().querySelector(".ms-klabel").classList.contains("ms-blank") && /^Ron · /.test(ms_card().querySelector(".ms-sub").textContent));
-  check("the four types are big tiles, each with a line", Array.from(ms_d.querySelectorAll("#msFlowBody .ms-ktile-line")).length === 4 && ms_d.getElementById("msFlowMain").textContent === "Next" && !!ms_d.querySelector("#msFlowMain svg"));
-  check("in the wizard Back and Next share the wizard's row", ms_d.querySelector("#msFlowFoot .ms-footrow").classList.contains("ms-wizrow"));
-  check("not anonymous says the Spotify name others see", /^Others see your Spotify name, /.test(ms_d.getElementById("msAnonSay").textContent) && (ms_d.getElementById("msAnon").click(), ms_d.getElementById("msAnonSay").textContent === "Others see Anonymous instead of your Spotify name.") && (ms_d.getElementById("msAnon").click(), true));
-  ms_d.getElementById("msFlowMain").click();
-  check("Next with no type says so under the tiles", /Choose a type\./.test(ms_d.querySelector('#msFlowBody [data-field="kind"] .ms-ferr').textContent));
-  ms_ftile("ceremony").click();
+  await waitFor(() => !!ms_w.eval("sharing.flow.draft"), 5000);
+  var ms_card = () => ms_d.getElementById("msCardPreview");
+  check("choosing one reads its songs, closes the list, and the card shows it as others will see it (no type line yet)", !ms_d.getElementById("msPickList") && ms_card().querySelector(".ms-name").textContent === "💗💗 evocative" && !ms_card().querySelector(".ms-klabel") && /^Ron · /.test(ms_card().querySelector(".ms-sub").textContent));
+  check("then the type question appears, the four types as tiles with no line under them yet, and Share still grey", ms_d.querySelector('#msFlowBody [data-field="kind"] .ms-flabel b').textContent === "What type of playlist is this?" && ms_d.querySelectorAll("#msFlowBody .ms-ktile").length === 4 && !ms_d.getElementById("msKindLine") && ms_main().disabled);
   ms_d.getElementById("msAnon").click();
-  check("choosing a type and Share anonymously changes the card at once, and the error goes", ms_card().querySelector(".ms-klabel").textContent === "Ceremony" && /^Anonymous · /.test(ms_card().querySelector(".ms-sub").textContent) && !ms_d.querySelector("#msFlowBody .ms-ferr"));
-  ms_d.getElementById("msFlowMain").click();
-  check("Next goes to Details, with the books and a description and Share now", ms_w.eval("sharing.flow.step") === 2 && ms_d.querySelector('#msFlowBody [data-field="books"] .ms-flabel b').textContent === "For use with which books?" && !!ms_d.getElementById("msDesc") && ms_d.getElementById("msFlowMain").textContent === "Share now");
+  check("Share anonymously is a switch in the card, and the card follows it", ms_d.getElementById("msAnon").getAttribute("role") === "switch" && /^Anonymous · /.test(ms_card().querySelector(".ms-sub").textContent));
+  ms_ftile("ceremony").click();
+  check("choosing a type says what it is under the tiles, changes the card, and asks its question with a placeholder of its own", ms_d.getElementById("msKindLine").textContent === "Ceremony: A whole session, start to finish." && ms_card().querySelector(".ms-klabel").textContent === "Ceremony" && ms_d.querySelector('#msFlowBody [data-field="books"] .ms-flabel b').textContent === "Which books is it for?" && ms_d.querySelector('#msFlowBody [data-field="description"] .ms-flabel b').textContent === "How would you describe it?" && /^Describe the music and when you/.test(ms_d.getElementById("msDesc").placeholder));
   check("a playlist with no Spotify description has no Mine | Spotify's switch", !ms_d.getElementById("msDescSpotify"));
-  ms_d.getElementById("msFlowMain").click();
-  await waitFor(() => ms_d.querySelectorAll("#msFlowBody .ms-bad").length === 2, 3000);
-  check("Share now with fields missing marks each red with a message under it, and sends nothing", ms_d.querySelector('[data-field="books"] .ms-ferr').textContent === "Choose at least one book." && ms_d.querySelector('[data-field="description"] .ms-ferr').textContent === "Add a sentence or two." && ms_sh.posts.length === 0);
   ms_d.querySelectorAll('#msFlowBody [data-field="books"] .ms-btile')[2].click();
-  check("a field put right loses its red at once, and the card follows", !ms_d.querySelector('[data-field="books"]').classList.contains("ms-bad") && ms_card().querySelector(".ms-klabel").textContent === "Ceremony · Book 3");
+  check("each answer shows in the card, and Share stays grey until all are there", ms_card().querySelector(".ms-klabel").textContent === "Ceremony · Book 3" && ms_main().disabled);
   ms_d.querySelectorAll('#msFlowBody [data-field="books"] .ms-btile')[0].click();
   check("ceremonies take more than one book", ms_card().querySelector(".ms-klabel").textContent === "Ceremony · Books 1, 3");
   check("no field for the other book until Other is chosen", !ms_d.getElementById("msBookCode"));
   ms_d.querySelectorAll('#msFlowBody [data-field="books"] .ms-btile')[5].click();
   check("Other opens a field for its code under the books, focused", !!ms_d.getElementById("msBookCode") && ms_d.activeElement === ms_d.getElementById("msBookCode") && /Up to 2 letters or numbers/.test(ms_d.querySelector(".ms-bcode-row").textContent));
   { const t = ms_d.getElementById("msDesc"); t.value = "Long and quiet."; t.dispatchEvent(new ms_w.Event("input")); }
-  ms_d.getElementById("msFlowMain").click();
-  await waitFor(() => !!ms_d.querySelector('[data-field="books"] .ms-ferr'), 3000);
-  check("Other with no code says so under the books and sends nothing", ms_d.querySelector('[data-field="books"] .ms-ferr').textContent === "Type the other book, up to 2 letters or numbers." && ms_sh.posts.length === 0);
+  check("Other with no code keeps Share grey", ms_main().disabled && ms_sh.posts.length === 0);
   { const t = ms_d.getElementById("msBookCode"); t.value = "b-w7"; t.dispatchEvent(new ms_w.Event("input")); }
-  check("the code keeps 2 letters or numbers in capitals, shows in its book and in the card, and the error goes", ms_d.getElementById("msBookCode").value === "BW" && ms_d.querySelectorAll('#msFlowBody [data-field="books"] .ms-btile')[5].textContent.includes("BW") && ms_card().querySelector(".ms-klabel").textContent === "Ceremony · Books 1, 3, BW" && !ms_d.querySelector('[data-field="books"] .ms-ferr'));
+  check("the code keeps 2 letters or numbers in capitals, shows in its book and in the card, and Share turns pink", ms_d.getElementById("msBookCode").value === "BW" && ms_d.querySelectorAll('#msFlowBody [data-field="books"] .ms-btile')[5].textContent.includes("BW") && ms_card().querySelector(".ms-klabel").textContent === "Ceremony · Books 1, 3, BW" && !ms_main().disabled);
+  ms_d.getElementById("msPickCard").click();
+  check("the card opens the list again to choose another, the chosen one ticked, and what was filled in stays", ms_d.getElementById("msPick-p3").classList.contains("ms-on") && ms_w.eval("sharing.flow.draft.kind") === "ceremony");
+  ms_d.getElementById("msPick-p3").click();
+  check("tapping the chosen one closes the list", !ms_d.getElementById("msPickList"));
   { const t = ms_d.getElementById("msDesc"); t.value = "Long and quiet."; t.dispatchEvent(new ms_w.Event("input")); }
   ms_d.getElementById("msFlowMain").click();
   await waitFor(() => !!ms_d.querySelector("#msFlowBody .ms-shared"), 5000);
   var ms_post = ms_sh.posts[ms_sh.posts.length - 1];
-  check("Share now sends the type, its books, the description, anonymous, and the songs with their names", ms_post.playlist === "p3" && ms_post.kind === "ceremony" && JSON.stringify(ms_post.books) === "[0,2,5]" && ms_post.bookOther === "BW" && ms_post.description === "Long and quiet." && ms_post.descSource === "mine" && ms_post.by === null && ms_post.songs.length === 130 && ms_post.names.length === 130 && !("tags" in ms_post));
+  check("Share sends the type, its books, the description, anonymous, and the songs with their names", ms_post.playlist === "p3" && ms_post.kind === "ceremony" && JSON.stringify(ms_post.books) === "[0,2,5]" && ms_post.bookOther === "BW" && ms_post.description === "Long and quiet." && ms_post.descSource === "mine" && ms_post.by === null && ms_post.songs.length === 130 && ms_post.names.length === 130 && !("tags" in ms_post));
   check("then a page says it is shared, with Share another playlist and Done", /💗💗 evocative is shared/.test(ms_d.getElementById("msFlowBody").textContent) && /Other facilitators can find it in Shared by others now\./.test(ms_d.getElementById("msFlowBody").textContent) && ms_d.getElementById("msFlowMain").textContent === "Share another playlist" && !!ms_d.getElementById("msDone"));
   ms_d.getElementById("msDone").click();
   await waitFor(() => !!ms_d.querySelector("#msBody .ms-yrow"), 5000);
   var ms_yrow = () => ms_d.querySelector("#msBody .ms-yrow");
   check("Done shows the list of shares: its type, name, Anonymous, and Share another playlist as the list's first row, with no bottom row", ms_yrow().querySelector(".ms-klabel").textContent === "Ceremony · Books 1, 3, BW" && /^Anonymous/.test(ms_yrow().querySelector(".ms-sub").textContent) && ms_d.querySelector(".ms-yours-list > #msShareRow:first-child").textContent === "Share another playlist" && ms_d.getElementById("msFoot").hidden);
-  check("a playlist already shared is not offered again", (ms_d.getElementById("msShareRow").click(), !ms_pick().includes("p3")) && (ms_d.getElementById("msFlowBack").click(), true));
+  check("a playlist already shared is greyed in the list, saying so", (ms_d.getElementById("msShareRow").click(), ms_d.getElementById("msPickCard").click(), !ms_pick().includes("p3") && /Already shared/.test(ms_d.getElementById("msPickOff-p3").textContent)) && (ms_d.getElementById("msFlowClose").click(), true));
   var ms_openEdit = async () => {
     ms_yrow().click();
     await waitFor(() => ms_w.eval("!!sharing.detail"), 3000);
@@ -5007,7 +5004,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
     return ok;
   };
   check("a share in Shared by you opens its playlist's page, its details in a card with Edit details, and no bottom row", await ms_openEdit());
-  check("Edit details opens its edit page: the card, the types as small tiles, its fields filled in, Share anonymously, Stop sharing, Back and Update", ms_d.querySelector(".ms-flowtitle").textContent === "Edit details" && !ms_d.querySelector(".ms-steps") && ms_d.querySelector('#msFlowBody .ms-ktile.ms-on').dataset.kind === "ceremony" && ms_d.getElementById("msDesc").value === "Long and quiet." && ms_d.getElementById("msAnon").checked && !!ms_d.getElementById("msStop") && ms_d.getElementById("msFlowMain").textContent === "Update");
+  check("Edit details is the same form: the card with no way to change the playlist, its fields filled in, Share anonymously on, Stop sharing, and Update grey until something changes", ms_d.querySelector(".ms-flowtitle").textContent === "Edit details" && !ms_d.getElementById("msPickCard") && ms_main().disabled && ms_d.querySelector('#msFlowBody .ms-ktile.ms-on').dataset.kind === "ceremony" && ms_d.getElementById("msDesc").value === "Long and quiet." && ms_d.getElementById("msAnon").checked && !!ms_d.getElementById("msStop") && ms_d.getElementById("msFlowMain").textContent === "Update");
   ms_ftile("mood").click();
   var ms_moodType = (text) => { const i = ms_d.getElementById("msMoodInput"); i.value = text; i.dispatchEvent(new ms_w.Event("input")); };
   ms_moodType("shit,");
@@ -5041,19 +5038,22 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("and stops sharing it", ms_sh.shares.every((s) => s.playlist !== "p3"));
   ms_sh.refuse = { error: "x", code: "copy", percent: 93, of: "Forest floor" };
   ms_d.getElementById("msShareRow").click();
+  ms_d.getElementById("msPickCard").click();
   ms_d.getElementById("msPick-p1").click();
-  await waitFor(() => ms_w.eval("sharing.flow.step") === 1, 5000);
+  await waitFor(() => !!ms_w.eval("sharing.flow.draft"), 5000);
   ms_ftile("phase").click();
-  ms_d.getElementById("msFlowMain").click();
   ms_d.querySelectorAll("#msFlowBody .ms-phase-names button")[1].click();
-  check("a phase share needs a description too", ms_d.querySelector('[data-field="description"] .ms-fnote').textContent === "a sentence or two");
-  ms_d.getElementById("msFlowMain").click();
-  check("without one Share now marks it red", ms_d.querySelector('[data-field="description"] .ms-ferr').textContent === "Add a sentence or two." && !ms_d.getElementById("msRefused"));
+  check("a phase share needs a description too, with a placeholder of its own", ms_main().disabled && /^What is the music like, and what does it leave out\?/.test(ms_d.getElementById("msDesc").placeholder) && !ms_d.querySelector('[data-field="description"] .ms-fnote'));
+  ms_ftile("mood").click();
+  check("a mood's description is optional, and a word still in the box is enough for Share", ms_d.querySelector('[data-field="description"] .ms-fnote').textContent === "Optional" && ms_d.getElementById("msDesc").placeholder === "Anything to add beyond the moods above?" && ms_main().disabled && (ms_moodType("tender"), !ms_main().disabled));
+  ms_ftile("other").click();
+  check("Other asks what to call it, keeps Share grey until named, and has its own placeholder", ms_d.querySelector('[data-field="other"] .ms-flabel b').textContent === "What would you call it?" && ms_main().disabled && /sound bath, integration circles/.test(ms_d.getElementById("msDesc").placeholder));
+  ms_ftile("phase").click();
   { const t = ms_d.getElementById("msDesc"); t.value = "For the climb."; t.dispatchEvent(new ms_w.Event("input")); }
   ms_d.getElementById("msFlowMain").click();
   await waitFor(() => !!ms_d.getElementById("msRefused"), 5000);
-  check("a share the worker finds to be a copy says so at the top with the exact share, and Share now turns grey", ms_d.getElementById("msRefused").textContent === "93% of its songs are in Forest floor, which someone else shares, so it can't be shared." && ms_d.getElementById("msFlowMain").disabled && ms_d.getElementById("msFlowMain").classList.contains("ms-grey"));
-  check("the refusal is remembered, so it is not offered again until it changes in Spotify", JSON.parse(ms_w.localStorage.getItem("sharingBlocked")).p1.why === "copy" && (ms_w.eval("startShare()"), !ms_pick().includes("p1")));
+  check("a share the worker finds to be a copy says so at the top with the exact share, and Share turns grey", ms_d.getElementById("msRefused").textContent === "93% of its songs are in Forest floor, which someone else shares, so it can't be shared." && ms_d.getElementById("msFlowMain").disabled);
+  check("the refusal is remembered, so it is not offered again until it changes in Spotify", JSON.parse(ms_w.localStorage.getItem("sharingBlocked")).p1.why === "copy" && (ms_w.eval("startShare()"), ms_d.getElementById("msPickCard").click(), !ms_pick().includes("p1") && /Mostly songs another facilitator shares/.test(ms_d.getElementById("msPickOff-p1").textContent)));
   ms_sh.refuse = null;
   ms_w.close();
   } catch (err) { areaCrashed("music sharing", err); }
@@ -5343,7 +5343,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-10c"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-10e"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
