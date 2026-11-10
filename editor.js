@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-10n";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-10o";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -58,13 +58,14 @@ const FE_ICONS = {
   clock: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   alert: '<svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="currentColor"/><path d="M10 5.3v5.7" stroke="#fff" stroke-width="2.3" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1.3" fill="#fff"/></svg>',   // every error (pink, by CSS)
   warn: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17.5v.1"/></svg>',
-  // for the headings of the collapsible topics (guide, More options, Privacy, developer options), named by data-icon in the markup
+  // for the headings of the collapsible topics (Privacy, Everything else), named by data-icon in the markup
   ban: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>',
   layers: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>',
   musicplus: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l10-2v7"/><circle cx="6" cy="18" r="3"/><path d="M18 15v6M15 18h6"/></svg>',
   swap: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h11l-3-3M17 17H6l3 3"/></svg>',
   tag: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>',
   search: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>',
+  video: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l5.5-3.5z"/></svg>',
   play: '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>',
   pause: '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="13.5" y="5" width="4" height="14" rx="1" fill="currentColor"/></svg>',
   back: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
@@ -817,31 +818,32 @@ function renderAppMenu() {
         feEl("button", { type: "button", id: "feBackup", role: "menuitem", onClick: choose(() => downloadBackup()) }, feIcon("download"), "Back up now"),
         feEl("button", { type: "button", id: "feRestore", role: "menuitem", onClick: choose(() => $("restoreFile").click()) }, feIcon("restore"), "Restore")));
   }
-  // what the welcome and setup pages have at the bottom, each in a popup
+  // each opens its block alone in the info popup
   const infoItem = (id, target, icon, label) => feEl("button", { type: "button", class: "fe-item", id, role: "menuitem", onClick: choose(() => openInfo(target)) }, feIcon(icon), label);
-  // Spotify is the first thing in the menu under its name, in whatever state it is in (connected, connecting, not connected, a problem), so it is always found in the same place.
-  const spotifyItems = connection === "ready" ? [] : connectItems;   // connected needs nothing here (Change Spotify login is in More options); a problem keeps its Connect
-  // in Music sharing the menu has only what is not the builder's: Connect while not connected, and Report a problem (Ron, 2026-11-08)
+  const rule = () => feEl("div", { class: "fe-rule" });
+  // Help is the same at the foot of both tools' menus: Feedback, Report a problem, then the version as a grey line to read, not a button
+  const help = [infoItem("feFeedback", "feedbackBlock", "chat", "Feedback"), infoItem("feReport", "reportBlock", "flag", "Report a problem")];
+  const version = () => feEl("div", { class: "fe-menuver", id: "feMenuVersion", text: "Arc " + (typeof APP_VERSION === "string" ? APP_VERSION : "") });
+  // Spotify is the first thing in the menu, in whatever state it is in (connecting, not connected, a problem), so it is always found in the same place; connected needs nothing here
+  const spotifyItems = connection === "ready" ? [] : connectItems;
+  const panel = (...items) => slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" }, ...items));
+  // No title row: Arc's icon is in the bar right above the menu (Ron, 2026-11-10).
+  // In Music sharing the menu has only what is not the builder's: Connect while not connected, then help
   if (typeof appView === "string" && appView === "sharing") {
-    slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" },
-      feEl("div", { class: "fe-menuhead", id: "feMenuHead" }, feEl("img", { class: "fe-menuicon", src: "arc-mark.png", alt: "", width: "40", height: "40" }), feEl("span", { class: "fe-menuname", text: "Arc" })),
-      ...spotifyItems,
-      ...(spotifyItems.length ? [feEl("div", { class: "fe-rule" })] : []),
-      infoItem("feReport", "reportBlock", "flag", "Report a problem")));
+    panel(...spotifyItems, ...(spotifyItems.length ? [rule()] : []), ...help, rule(), version());
     return;
   }
-  slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" },
-    feEl("div", { class: "fe-menuhead", id: "feMenuHead" }, feEl("img", { class: "fe-menuicon", src: "arc-mark.png", alt: "", width: "40", height: "40" }), feEl("span", { class: "fe-menuname", text: "Arc" })),
-    ...spotifyItems,
-    ...(backupBlock ? [...(spotifyItems.length ? [feEl("div", { class: "fe-rule" })] : []), backupBlock] : []),
-    ...(spotifyItems.length || backupBlock ? [feEl("div", { class: "fe-rule" })] : []),
-    // A guide for facilitators, with a line under its name that says what it is (the whole row opens it)
-    feEl("button", { type: "button", class: "fe-item fe-gditem", id: "feGuide", role: "menuitem", onClick: choose(() => openGuide()) }, feIcon("help"),
-      feEl("span", { class: "fe-gditem-text" }, feEl("span", { text: "A guide for facilitators" }), feEl("span", { class: "fe-gditem-note", text: "The thinking behind this app and how to use it well" }))),
-    infoItem("feMoreOptions", "moreOptions", "sliders", "More options"),
-    // the builder's own menu (decided by Ron, 2026-11-08): what belongs to the whole app (Privacy, Feedback, Color, the account) is under Everything else on home,
-    // and the version shows from a tap on Arc's icon in a band
-    infoItem("feReport", "reportBlock", "flag", "Report a problem")));
+  // The builder's (decided by Ron, 2026-11-10, mockups/app-menu-A.png, with help moved up under the tutorial): Connect and the manual backup block when they apply,
+  // Watch the tutorial, Feedback and Report a problem, then what More options held, each a row of its own, then the version. A guide for facilitators is gone; the ?
+  // beside the silence stepper has its own popup. What belongs to the whole app (Privacy, Color, the account) is under Everything else on home.
+  const tutorial = feEl("button", { type: "button", class: "fe-item fe-gditem", id: "feTutorial", role: "menuitem", onClick: choose(() => openInfo("tutorialSection")) }, feIcon("video"),
+    feEl("span", { class: "fe-gditem-text" }, feEl("span", { text: "Watch the tutorial" }), feEl("span", { class: "fe-gditem-note", text: "3 minutes, from recipe to playlists" })));
+  const buildAll = feEl("button", { type: "button", class: "fe-item", id: "feBuildAll", role: "menuitem", disabled: typeof canBuildAll === "function" && !canBuildAll(), onClick: choose(() => buildAllRecipes()) }, feIcon("sparkle"), "Build all recipes");
+  const top = [...spotifyItems, ...(backupBlock ? [...(spotifyItems.length ? [rule()] : []), backupBlock] : [])];
+  panel(...top, ...(top.length ? [rule()] : []),
+    tutorial, ...help, rule(),
+    buildAll, infoItem("feRemoveBuilt", "removeSection", "trash", "Remove built playlists"), infoItem("feSaveMethod", "saveMethodSection", "cloud", "Autosave or backup"), rule(),
+    version());
 }
 
 // Developer mode (decided by Ron, 2026-11-08, mockups/dev-mode.html): holding Arc's icon for 3 seconds turns it on, and again off. Nothing shows while holding, on purpose:
@@ -1374,7 +1376,7 @@ function renderHead(rebuild) {
           onShorter: () => { const lower = GAP_STEPS.filter((s) => s < f.gap); f.gap = lower.length ? lower[lower.length - 1] : 0; afterGapChange(); },
           onLonger: () => { const higher = GAP_STEPS.filter((s) => s > f.gap); f.gap = higher.length ? higher[0] : GAP_STEPS[GAP_STEPS.length - 1]; afterGapChange(); },
         }),
-        feEl("button", { type: "button", class: "fe-silencehelp", id: "feSilenceHelp", "aria-label": "Why silence between segments?", title: "Why silence between segments?", onClick: () => openGuide("gdSilence") }, feIcon("help"))),
+        feEl("button", { type: "button", class: "fe-silencehelp", id: "feSilenceHelp", "aria-label": "Why silence between segments?", title: "Why silence between segments?", onClick: () => openInfo("silenceHelp") }, feIcon("help"))),
       // Duplicate and Delete are one block that never breaks, so Delete can never end up alone on the next line
       feEl("div", { class: "fe-headtools" },
         feEl("button", { type: "button", class: "fe-iconbtn", id: "feDuplicate", "aria-label": "Duplicate recipe", title: "Duplicate recipe", onClick: askDuplicateFormat }, feIcon("copy")),

@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-10n";
+const APP_VERSION = "2026-11-10o";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -744,7 +744,7 @@ async function finishLaunchScreen(ready) {
 function getUpdate() {
   try { sessionStorage.setItem("updating", "1"); } catch (err) { /* no storage: the card shows until the reload only */ }
   updateScreen = true;
-  $("updateScreen").classList.remove("us-done", "us-out", "us-failed");
+  $("updateScreen").classList.remove("us-done", "us-out", "us-failed", "us-swap");
   document.documentElement.classList.add("updating", "us-arrive");
   updateStep("Getting the new version");
   reloadForNewVersion(() => {
@@ -763,7 +763,8 @@ function finishUpdateScreen(how) {
   text.textContent = "";
   if (how === "ready") text.append("You have the newest version of the app, ", Object.assign(document.createElement("em"), { textContent: APP_VERSION }), ".");
   else text.textContent = "Check your internet connection and try again.";
-  screen.classList.add("us-done");
+  screen.classList.remove("us-swap"); void screen.offsetWidth;   // the new words fade in, every part where it was
+  screen.classList.add("us-done", "us-swap");
   screen.classList.toggle("us-failed", how === "failed");
   const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (how === "ready" && !still && typeof requestAnimationFrame === "function") throwConfetti(screen.querySelector(".us-fan"));
@@ -777,7 +778,7 @@ function closeUpdateScreen() {
   setTimeout(() => {
     if (updateScreen) return;   // Get it again meanwhile
     document.documentElement.classList.remove("updating", "us-arrive");
-    screen.classList.remove("us-out", "us-done", "us-failed");
+    screen.classList.remove("us-out", "us-done", "us-failed", "us-swap");
   }, 450);
 }
 
@@ -830,8 +831,8 @@ function historyMoved() {
   if (pageName() === "welcome") showWelcomeStep(state && state.page === "welcome" && state.step === 2 ? 2 : 1, false);
 }
 
-// About, Privacy, More options and Report a problem sit at the bottom of the welcome and setup pages. In the app they open from the menu in a
-// popup: the block itself moves into it, and goes back to its place when the popup closes.
+// Blocks that open in a popup (the builder menu's Remove built playlists, Autosave or backup and the tutorial, Feedback, Report a problem, the silence ?, the DEV menu's
+// tools): the block itself moves into it, and goes back to its place when the popup closes.
 const info = { node: null, marker: null, wasOpen: false, wasHidden: false, opener: null };
 
 function openInfo(id) {
@@ -839,7 +840,7 @@ function openInfo(id) {
   const node = $(id);
   if (!node) return;
   info.node = node;
-  info.opener = document.activeElement;   // the guide also opens from inside the build popup, and focus goes back there
+  info.opener = document.activeElement;   // focus goes back there on closing
   info.wasOpen = !!node.open;
   info.marker = document.createComment(id);
   node.before(info.marker);
@@ -850,11 +851,11 @@ function openInfo(id) {
   const title = node.querySelector("summary, h3");
   $("infoDialog").setAttribute("aria-label", title ? title.textContent.trim() : "");
   // the title in the pink band, with the same icon as its item in the app menu
-  const titleIcon = { guideSection: "help", moreOptions: "sliders", reportBlock: "flag", devMoods: "tag", devReports: "flag" }[id];
+  const titleIcon = { reportBlock: "flag", feedbackBlock: "chat", removeSection: "trash", saveMethodSection: "cloud", silenceHelp: "mute", tutorialSection: "video", devMoods: "tag", devReports: "flag" }[id];
   $("infoTitle").textContent = "";
   if (titleIcon && typeof feIcon === "function") $("infoTitle").appendChild(feIcon(titleIcon)).className = "info-ticon";
   $("infoTitle").appendChild(Object.assign(document.createElement("span"), { textContent: title ? title.textContent.trim() : "" }));
-  if (id === "reportBlock" || id === "moreOptions") refreshReportBox();
+  if (id === "reportBlock") refreshReportBox();
   if ((id === "devMoods" || id === "devReports") && typeof sharingDevOpened === "function") sharingDevOpened(id);   // Music sharing's mood words or reports (sharing.js)
   $("infoOverlay").hidden = false;
   document.body.style.overflow = "hidden";
@@ -862,28 +863,9 @@ function openInfo(id) {
   $("infoDialog").focus({ preventScroll: true });
 }
 
-// A guide for facilitators, opened at one topic (or with every topic closed), that topic scrolled to just under the header
-// From inside the guide (a link with data-guide), that topic opens too and the guide glides to it; what was open stays open.
-function openGuide(topicId) {
-  const topic = topicId && $(topicId), slot = $("infoSlot");
-  if (info.node && info.node.id === "guideSection") {
-    if (!topic) return;
-    topic.open = true;
-    const top = Math.max(0, topic.offsetTop - slot.offsetTop);
-    if (slot.scrollTo) slot.scrollTo({ top, behavior: motionOk() ? "smooth" : "auto" }); else slot.scrollTop = top;
-    return;
-  }
-  for (const d of document.querySelectorAll("#guideSection details.gd-topic")) d.open = d.id === topicId;
-  openInfo("guideSection");
-  if (topic) slot.scrollTop = Math.max(0, topic.offsetTop - slot.offsetTop);
-}
 function motionOk() {
   return !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 }
-document.addEventListener("click", (event) => {
-  const link = event.target.closest && event.target.closest("[data-guide]");
-  if (link) openGuide(link.dataset.guide);
-});
 function closeInfo(quiet = false) {
   if (!info.node) return;
   if (info.node.tagName === "DETAILS") info.node.open = info.wasOpen;
@@ -893,7 +875,7 @@ function closeInfo(quiet = false) {
   info.node = null;
   info.marker = null;
   $("infoOverlay").hidden = true;
-  const under = document.querySelector(".app-overlay:not([hidden])");   // the build popup, when the guide opened from it, stays open underneath
+  const under = document.querySelector(".app-overlay:not([hidden])");   // a popup under it (the build popup, from a Report this problem link) stays open
   if (!under) document.body.style.overflow = "";
   const opener = info.opener;
   info.opener = null;
@@ -1074,6 +1056,14 @@ function reportUrl() {
     url = build();
   }
   return url;
+}
+
+// Build all recipes, in the builder's menu: only when a build could start now (the build popup asks first, as it does for one recipe)
+function canBuildAll() {
+  return !!token && connection === "ready" && !!py && formatsValid && !busy && currentFormats.length > 0 && !spotifyPause();
+}
+function buildAllRecipes() {
+  if (canBuildAll()) startCreate(currentFormats.map((f) => f.id));
 }
 
 function refreshReportBox() {
@@ -1845,7 +1835,7 @@ async function restoreFromFile(file) {
 const BACKED_UP_MESSAGE = "Backed up to this device. Find the file in Downloads, or in the Files app on a phone.";   // after a manual backup, wherever it is made from
 let reloadPage = () => location.reload();   // a separate function so tests can replace it
 
-// Sign out and clear data (More options) erases everything and copies nothing: it is for leaving a computer that is not yours. Start over (developer options)
+// Sign out and clear data (Everything else on home) erases everything and copies nothing: it is for leaving a computer that is not yours. Start over (developer options)
 // does the same but puts the Client ID on the clipboard first (while the click still counts), so setting up again is a paste.
 function startOver() { return clearSavedData({ copyClientId: true }); }
 
@@ -1900,8 +1890,6 @@ function updateButtonsNow() {
     setIcon($("create"), "build");
     $("create").disabled = !ready;
   }
-  const buildAll = $("buildAll");   // a page older than this script may not have it, and that must not stop the rest
-  if (buildAll) buildAll.disabled = !(!!token && connection === "ready" && !!py && formatsValid && !busy && currentFormats.length > 0);
   $("removeOld").disabled = !ready || !$("removeKey").value;
   // The notes appear when Create cannot work because there is no connection, not while the app is still connecting.
   const noConnection = !$("appSection").hidden && (connection === "problem" || connection === "none");
@@ -1918,7 +1906,6 @@ function updateButtonsNow() {
   $("create").hidden = paused || (!currentFormats.length && !action && !connectingNow);   // nothing to build yet: the welcome points at New recipe instead
   document.body.classList.toggle("no-recipes", !currentFormats.length);   // and no status lines either
   if (paused) $("spotifyNote").hidden = true;
-  if (buildAll && paused) buildAll.disabled = true;
   if (minimalActive() && (signingIn || connection === "connecting" || signInNote)) {
     $("spotifyNote").textContent = signingIn ? signInNote : connection === "connecting" ? "Connecting to Spotify. On a slow connection this can take a few seconds." : signInNote;
     $("spotifyNote").hidden = false;
@@ -3406,7 +3393,7 @@ function initPageEvents() {
   on("backupOk", "click", () => { const radio = document.querySelector('input[name="backupMode"]:checked'); if (radio) chooseBackupMode(radio.value); else dismissBackupCard(); });
   on("backupCancel", "click", dismissBackupCard);
   on("changeSpotifyLogin", "click", () => changeSpotifyLogin());
-  on("changeSaveMethod", "click", () => { closeInfo(true); openBackupCard(); });   // More options is a popup too, and would cover the card
+  on("changeSaveMethod", "click", () => { closeInfo(true); openBackupCard(); });   // Autosave or backup is a popup too, and would cover the card
   on("backupBackdrop", "click", dismissBackupCard);
   // Back from Spotify's page, a browser may show this page as it was left, with the buttons still waiting
   window.addEventListener("pageshow", (event) => { if (event.persisted && signingIn) { setSigningIn(false); setLoginMessage(""); } });
@@ -3541,7 +3528,6 @@ async function main() {
       setTimeout(() => { setLabel(button, "Copy"); setIcon(button, "copy"); }, 2000);
     });
   }
-  on("moreOptions", "toggle", () => { if ($("moreOptions").open) refreshReportBox(); });
   initMessageForms();
   on("clearData", "click", () => {
     $("clearConfirm").hidden = false;
@@ -3632,7 +3618,6 @@ async function main() {
   guarded("page events", () => initPageEvents());
   on("removeOld", "click", removeEarlier);
   on("removeKey", "change", updateButtons);
-  on("buildAll", "click", () => startCreate(currentFormats.map((f) => f.id)));
   on("backupDownload", "click", downloadBackup);
   on("backupRestore", "click", () => $("restoreFile").click());
   on("backupDownloadLink", "click", () => downloadBackup());   // the same as the menu's Back up now a backup

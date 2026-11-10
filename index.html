@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-10n">
-<script src="theme.js?v=2026-11-10n"></script>
+<meta name="app-version" content="2026-11-10o">
+<script src="theme.js?v=2026-11-10o"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -138,26 +138,30 @@
   #updateScreen { display: none; position: fixed; inset: 0; z-index: 1500; align-items: center; justify-content: center; padding: 16px; background: color-mix(in srgb, var(--bg) 55%, transparent); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); transition: opacity 450ms var(--ease-out); }
   html.updating #updateScreen { display: flex; }
   #updateScreen.us-out { opacity: 0; pointer-events: none; }
-  /* one height in every state (the tallest, The update did not arrive on two lines), the spinner and OK at its foot, so the card never changes size (Ron, 2026-11-10) */
-  #updateScreen .us-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; width: 300px; max-width: 100%; height: 316px; box-sizing: border-box; background: var(--bg); color: var(--fg); border: 1.5px solid var(--button); border-radius: 24px; padding: 30px 24px 24px; box-shadow: 0 20px 50px color-mix(in srgb, var(--button) 30%, rgba(0, 0, 0, 0.2)); }
+  /* every state puts each part in the same place, so the card never changes size (Ron, 2026-11-10): the title on one line, the text two lines tall,
+     and the spinner and OK sharing one slot at the foot (us-foot); on the change the new words fade in, the spinner fades out as OK fades in, the gift's colors ease */
+  #updateScreen .us-card { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; width: 300px; max-width: 100%; box-sizing: border-box; background: var(--bg); color: var(--fg); border: 1.5px solid var(--button); border-radius: 24px; padding: 36px 20px 28px; box-shadow: 0 20px 50px color-mix(in srgb, var(--button) 30%, rgba(0, 0, 0, 0.2)); }
   html.us-arrive #updateScreen { animation: us-fade 300ms var(--ease-out) both; }
   @keyframes us-fade { from { opacity: 0; } }
   html.us-arrive #updateScreen .us-card { animation: cn-rise 450ms var(--ease-out) both; }   /* only on the click: after the reload it is simply there, so it does not seem to come twice */
   #updateScreen .us-fan { position: absolute; left: 0; right: 0; top: 0; height: 0; z-index: 2; pointer-events: none; }
-  #updateScreen .bd-spark { position: absolute; left: 50%; top: 62px; opacity: 0; border-radius: 1px; pointer-events: none; will-change: transform, opacity; backface-visibility: visible; }
+  #updateScreen .bd-spark { position: absolute; left: 50%; top: 68px; opacity: 0; border-radius: 1px; pointer-events: none; will-change: transform, opacity; backface-visibility: visible; }
   #updateScreen .bd-spark.bd-dot { border-radius: 50%; }
-  #updateScreen .us-gift { width: 64px; height: 64px; border-radius: 50%; background: var(--button); color: #fff; display: grid; place-items: center; box-shadow: 0 0 0 10px color-mix(in srgb, var(--button) 16%, transparent), 0 0 40px color-mix(in srgb, var(--button) 45%, transparent); }
-  #updateScreen.us-failed .us-gift { background: var(--accent-tint); color: var(--accent); border: 1px solid var(--accent-tint-border); box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent-tint) 45%, transparent); }   /* a problem: the problem popups' pink circle */
-  #updateScreen h2 { margin: 6px 0 0; font-size: 1.35rem; }
+  #updateScreen .us-gift { width: 64px; height: 64px; box-sizing: border-box; border: 1px solid transparent; border-radius: 50%; background: var(--button); color: #fff; display: grid; place-items: center; transition: background-color 400ms var(--ease-out), color 400ms var(--ease-out), border-color 400ms var(--ease-out), box-shadow 400ms var(--ease-out); box-shadow: 0 0 0 10px color-mix(in srgb, var(--button) 16%, transparent), 0 0 40px color-mix(in srgb, var(--button) 45%, transparent); }
+  #updateScreen.us-failed .us-gift { background: var(--accent-tint); color: var(--accent); border-color: var(--accent-tint-border); box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent-tint) 45%, transparent); }   /* a problem: the problem popups' pink circle */
+  #updateScreen h2 { margin: 22px 0 0; font-size: 1.25rem; white-space: nowrap; }   /* room under the gift's halo; the title and its text close together; a clear step down to the foot */
   #updateScreen p { margin: 0; line-height: 1.4; }
-  #updateScreen .us-text { color: var(--muted); font-size: 0.95rem; }
+  #updateScreen .us-text { margin-top: 8px; color: var(--muted); font-size: 0.95rem; min-height: 2.8em; }
   #updateScreen .us-text em { font-style: normal; font-weight: 700; color: var(--accent); }
-  #updateScreen .us-busy { display: flex; align-items: center; gap: 10px; margin-top: auto; color: var(--muted); font-size: 0.88rem; }
+  #updateScreen .us-foot { display: grid; place-items: center; height: 50px; margin-top: 22px; }
+  #updateScreen .us-foot > * { grid-area: 1 / 1; transition: opacity 300ms var(--ease-out); }
+  #updateScreen .us-busy { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 0.88rem; }
   #updateScreen .us-spin { width: 18px; height: 18px; flex: none; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--button); animation: cn-spin 0.9s linear infinite; }
-  #usOk { display: none; margin-top: auto; padding: 12px 34px; font-size: 1.02rem; border-radius: 999px; }
-  #updateScreen.us-done .us-busy { display: none; }
-  #updateScreen.us-done #usOk { display: block; animation: cn-rise 450ms var(--ease-out) both; }
-  @media (prefers-reduced-motion: reduce) { #updateScreen, #updateScreen .us-card, #usOk { transition: none; animation: none !important; } #updateScreen .us-spin { animation: none; } #updateScreen .bd-spark { display: none; } }
+  #usOk { opacity: 0; visibility: hidden; padding: 12px 34px; font-size: 1.02rem; border-radius: 999px; }
+  #updateScreen.us-done .us-busy { opacity: 0; visibility: hidden; transition: opacity 200ms var(--ease-in), visibility 0s 200ms; }
+  #updateScreen.us-done #usOk { opacity: 1; visibility: visible; transition-delay: 120ms; }
+  #updateScreen.us-swap :is(#usTitle, #usText) { animation: us-fade 350ms var(--ease-out) both; }
+  @media (prefers-reduced-motion: reduce) { #updateScreen, #updateScreen .us-card, #usOk, #updateScreen .us-foot > *, #updateScreen .us-gift { transition: none !important; animation: none !important; } #updateScreen.us-swap :is(#usTitle, #usText) { animation: none; } #updateScreen .us-spin { animation: none; } #updateScreen .bd-spark { display: none; } }
   /* The launch screen: opened from an iPhone's Home Screen, the app starts like an app. Home's pink band in the middle of the screen with the step under way under it,
      until Spotify and Python are ready; then Ready, and the band glides up to where home's own band sits while home's parts rise in under it, one after another
      (launchScreen in app.js). Not in a browser tab, except from the DEV menu's Launch screen. Decided by Ron, 2026-11-07 (mockup C), redone 2026-11-09 (mockups/launch-band.html B). */
@@ -257,15 +261,14 @@
   details.help.card { margin: 8px 0; }
   details.card .card, details.card pre, details.card figure.sample { background: var(--bg); }
   footer.debug h3 { font-size: 1rem; margin: 20px 0 6px; color: var(--fg); }
-  /* More options: body text is gray, so the headings, buttons, links and widgets are what stand out. */
-  #moreOptions, #devMoods, #devReports, #privacySection, #guideSection { color: var(--muted); }
-  #moreOptions input, #moreOptions select { color: var(--fg); }
+  /* The builder menu's popups: body text is gray, so the headings, buttons, links and widgets are what stand out. */
+  .menu-popup, #devMoods, #devReports, #privacySection { color: var(--muted); }
+  #removeSection input, #removeSection select { color: var(--fg); }
   #homeMore input, #homeMore select { color: var(--fg); }
   #homeMore #clearConfirm { color: var(--fg); }
-  #moreOptions #removeConfirmBox { color: var(--fg); }
+  #removeSection #removeConfirmBox { color: var(--fg); }
   #clearConfirm { scroll-margin-bottom: 16px; }   /* a little room under its buttons when it is scrolled into view */
   .plan-links { margin: 8px 0 0; }
-  #moreOptions pre.report-preview { color: var(--muted); }
   /* A quick second tap on a button (the plus and minus, for example) must not zoom the page. Pinching to zoom still works, and scrolling too. */
   * { touch-action: manipulation; }
   /* in minimalist mode the Build button is the main thing on the page, so it sits in the middle, with any message under it */
@@ -331,15 +334,9 @@
   #formatEditor .fe-bk-change { position: relative; padding: 5px 0; margin: 0; font-size: 0.9rem; }
   #formatEditor .fe-bk-change::after { content: ""; position: absolute; left: -8px; right: -14px; top: -4px; bottom: -4px; }   /* a bigger target for a thumb */
   #formatEditor .fe-bk-status { color: var(--muted); font-size: 0.8rem; line-height: 1.3; padding-bottom: 2px; }
-  /* the app's icon and name, as the header of the menu: a band in the deep pink right to the menu's edges, who this menu belongs to and nothing to press */
-  #formatEditor .fe-menuhead { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: none; }   /* held for Developer options: no callout, selection or scrolling gets in the way */
-  #formatEditor .fe-menuhead { display: flex; align-items: center; gap: 12px; margin: -4px -4px 6px; padding: 12px 16px; border-radius: 15px 15px 0 0; background: var(--accent-deep, #a8217c); background: linear-gradient(135deg, var(--accent-deep, #a8217c), color-mix(in srgb, var(--accent-deep, #a8217c) 76%, #fff 24%)); color: var(--on-deep, #fff); }
-  #formatEditor .fe-menuicon { width: 40px; height: 40px; flex: none; border-radius: 22%; display: block; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4); }
-  #formatEditor .fe-menuname { font-weight: 700; font-size: 1.1rem; letter-spacing: 0.01em; }
   #formatEditor .fe-appmenu .fe-item > .fe-icon { width: 20px; flex: none; }
+  #formatEditor .fe-menuver { padding: 8px 14px 6px; font-size: 0.8rem; color: var(--muted); user-select: text; -webkit-user-select: text; }   /* the version at the menu's foot: read, not pressed */
   #formatEditor .fe-appmenu .fe-itemnote { padding-left: 42px; }   /* a line under a plain row starts where that row's words do */   /* the icons of the plain rows take the width of the checkbox, so their words start in line with Compact view */   /* the app's icon and name: who this menu belongs to, and not something to press */
-  #formatEditor .fe-menuicon { width: 32px; height: 32px; flex: none; border-radius: 22%; display: block; }
-  #formatEditor .fe-menuname { font-weight: 700; font-size: 1.02rem; letter-spacing: 0.01em; }
   #formatEditor .fe-bk-actions { display: flex; gap: 6px; padding: 0 6px 6px; }
   #formatEditor .fe-bk-actions button { flex: 1; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; padding: 0 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 10px; font: inherit; font-weight: 600; }
   #formatEditor .fe-itemnote { width: 0; min-width: 100%; box-sizing: border-box; padding: 0 12px 6px 40px; margin-top: -4px; font-size: 0.78rem; color: var(--muted); line-height: 1.3; }   /* the last-backup label, under its item, wrapping inside the menu */
@@ -734,7 +731,7 @@
   @media (hover: hover) { #homeMore .hp-ee-close:hover { outline: none; filter: none; color: var(--fg); } }
   #homeMore .hp-ee-panel { padding: 14px 16px 6px; border-top: 1px solid var(--line); color: var(--muted); line-height: 1.5; }
   #homeMore .hp-ee-panel > h3 { margin: 0 0 8px; font-size: 1rem; color: var(--fg); }
-  #homeMore #reportBlock > h3 { display: none; }
+  #homeMore :is(#reportBlock, #feedbackBlock) > h3 { display: none; }
   /* Report a problem and Feedback, written here and sent by the worker (sendMessageForm in app.js); mockups/report-no-tally.html */
   .mf-form .mf-label { display: block; margin: 0 0 6px; color: var(--fg); font-weight: 600; font-size: 0.9rem; }
   .mf-form .mf-label small { color: var(--muted); font-weight: 400; font-size: inherit; }
@@ -834,14 +831,13 @@
   @media (min-width: 760px) {
     body.minimal #formatEditor .fe-welcome-icon { display: none; }
   }
-  #moreOptions { margin-bottom: 14px; }   /* a little room between More options and Privacy */
   /* Three pages in one: welcome (the first visit), the one-time setup, and the app. The class on <html> says which (see the script in <head> and showPage in app.js). */
   #welcomePage { display: none; }
   html.page-welcome #welcomePage { display: block; }
   html.page-welcome footer, html.page-welcome #about, html.page-welcome #loginSection, html.page-welcome #connectedSection, html.page-welcome #connectionProblem, html.page-welcome #appSection,
-  html.page-welcome #supportBox, html.page-welcome #moreOptions,
+  html.page-welcome #supportBox,
   html.page-setup #about, html.page-setup #connectedSection, html.page-setup #connectionProblem, html.page-setup #appSection,
-  html.page-setup #supportBox, html.page-setup #moreOptions, html.page-setup #privacySection,
+  html.page-setup #supportBox, html.page-setup #privacySection,
   html.page-app #welcomePage, html.page-app main > #about, html.page-app #loginSection, html.page-app footer { display: none; }
   html.page-app main > h1.brand { display: none; }
   html.page-app main { padding-top: 10px; }
@@ -1041,7 +1037,7 @@
   .sp-frame { padding: 8px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3); }
   .sp-frame picture { display: block; }
   .sp-frame img { display: block; width: 100%; height: auto; border-radius: 11px; }
-  /* the popup that shows About, Privacy, More options or Report a problem, opened from the app menu */
+  /* the popup that shows a block from the app menu (Remove built playlists, Feedback, Report a problem...), the silence ? or the DEV menu */
   #infoDialog details > summary { list-style: none; pointer-events: none; font-size: 1.25rem; font-weight: 700; color: var(--fg); margin: 0 0 6px; }
   #infoDialog details > summary::-webkit-details-marker { display: none; }
   #infoDialog details.card, #infoDialog .card { background: none; border: none; padding: 0; margin: 0; }
@@ -1049,7 +1045,7 @@
   #infoDialog { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
   /* the title sits in a band like the app menu's header, without the icon */
   #infoHeader { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; margin-bottom: 6px; background: var(--accent-deep, #a8217c); background: linear-gradient(135deg, var(--accent-deep, #a8217c), color-mix(in srgb, var(--accent-deep, #a8217c) 76%, #fff 24%)); color: var(--on-deep, #fff); }
-  /* below about 350 px the title shrinks with the room beside the Close button (the screen less about 140 px), so A guide for facilitators stays on one line at 320 px */
+  /* below about 350 px the title shrinks with the room beside the Close button (the screen less about 140 px), so a long title stays on one line at 320 px */
   #infoTitle { margin: 0; font-size: min(1.2rem, calc((100vw - 140px) / 11)); font-weight: 700; letter-spacing: 0.01em; line-height: 1.3; color: var(--on-deep, #fff); display: flex; align-items: center; gap: 10px; min-width: 0; }
   #infoTitle .info-ticon { flex: none; display: flex; }
   #infoTitle .info-ticon svg { width: 22px; height: 22px; }
@@ -1062,25 +1058,25 @@
   #infoDialog #infoClose { flex: none; margin: 0; width: 40px; height: 40px; min-height: 0; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.16); border: 1.5px solid rgba(255, 255, 255, 0.55); color: var(--on-deep, #fff); box-shadow: none; }
   #infoDialog #infoClose:hover { background: rgba(255, 255, 255, 0.28); }
   #infoSlot { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 18px 18px; }
-  #infoDialog details > summary, #infoSlot > :is(#reportBlock, #devMoods, #devReports) > h3:first-child { display: none; }
-  /* More options: one rhythm for every section, and everything under a heading indented a little */
+  #infoDialog details > summary, #infoSlot > :is(#reportBlock, #feedbackBlock, .menu-popup, #devMoods, #devReports) > h3:first-child { display: none; }
+  /* the menu's popups: one rhythm, and everything under a heading indented a little */
   #reportBlock > :not(h3) { margin-left: 16px; }
-  /* Privacy: the same rhythm and indent as More options */
-  /* More options, Privacy and A guide for facilitators: one row per topic, each opening in place, the text under a title grey and indented */
-  :is(#guideSection, #privacySection, #moreOptions, #homeMore) details.gd-topic { border-top: 1px solid var(--line); }
-  :is(#guideSection, #privacySection, #moreOptions, #homeMore) details.gd-topic:last-of-type { border-bottom: 1px solid var(--line); }
-  #infoSlot :is(#guideSection, #privacySection, #moreOptions) details.gd-topic:first-of-type { border-top: none; }   /* the band above is line enough */
-  #infoDialog :is(#guideSection, #privacySection, #moreOptions) details.gd-topic > summary, #homeMore details.gd-topic > summary { display: flex; pointer-events: auto; font-size: inherit; margin: 0; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; font-weight: 600; color: var(--fg); cursor: pointer; list-style: none; }
-  :is(#guideSection, #privacySection, #moreOptions, #homeMore) details.gd-topic > summary::-webkit-details-marker { display: none; }
-  :is(#guideSection, #privacySection, #moreOptions, #homeMore) details.gd-topic > summary::after { content: ""; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: translateY(-3px) rotate(45deg); margin-right: 6px; transition: transform 0.2s var(--ease-out); }
-  :is(#guideSection, #privacySection, #moreOptions, #homeMore) details.gd-topic[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
-  @media (prefers-reduced-motion: reduce) { :is(#guideSection, #privacySection, #moreOptions, #homeMore) details.gd-topic > summary::after { transition: none; } }
-  :is(#guideSection, #privacySection, #moreOptions, #homeMore) details.gd-topic > :not(summary) { margin: 0 0 12px 16px; line-height: 1.5; }
-  :is(#guideSection, #privacySection, #moreOptions, #homeMore) details.gd-topic[open] { padding-bottom: 6px; }
-  :is(#guideSection, #privacySection, #moreOptions, #homeMore) details.gd-topic ul, :is(#guideSection, #privacySection, #moreOptions, #homeMore) details.gd-topic ol { padding-left: 1.3em; }
-  :is(#guideSection, #privacySection, #moreOptions, #homeMore) details.gd-topic li { margin-bottom: 6px; }
-  #moreOptions p, #moreOptions .row, #moreOptions select, #homeMore .hp-ee-panel p, #homeMore .hp-ee-panel .row, #homeMore .choice-row, #homeMore .hp-ee-panel .button-link, #devMoods p, #devReports p, #devReports .row, #moreOptions pre.report-preview, #moreOptions .choice-row, #moreOptions .button-link, #reportBlock p, #reportBlock pre.report-preview, #reportBlock .button-link { margin-top: 0; margin-bottom: 10px; }
-  #moreOptions .row select, #moreOptions .row .button-link { margin-bottom: 0; }   /* inside a row, the row supplies the space below, so the items centre on each other */
+  /* Privacy: the same rhythm and indent */
+  /* Privacy and Everything else: one row per topic, each opening in place, the text under a title grey and indented */
+  :is(#privacySection, #homeMore) details.gd-topic { border-top: 1px solid var(--line); }
+  :is(#privacySection, #homeMore) details.gd-topic:last-of-type { border-bottom: 1px solid var(--line); }
+  #infoSlot #privacySection details.gd-topic:first-of-type { border-top: none; }   /* the band above is line enough */
+  #infoDialog #privacySection details.gd-topic > summary, #homeMore details.gd-topic > summary { display: flex; pointer-events: auto; font-size: inherit; margin: 0; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; font-weight: 600; color: var(--fg); cursor: pointer; list-style: none; }
+  :is(#privacySection, #homeMore) details.gd-topic > summary::-webkit-details-marker { display: none; }
+  :is(#privacySection, #homeMore) details.gd-topic > summary::after { content: ""; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: translateY(-3px) rotate(45deg); margin-right: 6px; transition: transform 0.2s var(--ease-out); }
+  :is(#privacySection, #homeMore) details.gd-topic[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
+  @media (prefers-reduced-motion: reduce) { :is(#privacySection, #homeMore) details.gd-topic > summary::after { transition: none; } }
+  :is(#privacySection, #homeMore) details.gd-topic > :not(summary) { margin: 0 0 12px 16px; line-height: 1.5; }
+  :is(#privacySection, #homeMore) details.gd-topic[open] { padding-bottom: 6px; }
+  :is(#privacySection, #homeMore) details.gd-topic ul, :is(#privacySection, #homeMore) details.gd-topic ol { padding-left: 1.3em; }
+  :is(#privacySection, #homeMore) details.gd-topic li { margin-bottom: 6px; }
+  .menu-popup p, .menu-popup .row, .menu-popup select, #homeMore .hp-ee-panel p, #homeMore .hp-ee-panel .row, #homeMore .choice-row, #homeMore .hp-ee-panel .button-link, #devMoods p, #devReports p, #devReports .row, .menu-popup .choice-row, #reportBlock p, #reportBlock pre.report-preview, #reportBlock .button-link { margin-top: 0; margin-bottom: 10px; }
+  .menu-popup .row select { margin-bottom: 0; }   /* inside a row, the row supplies the space below, so the items centre on each other */
   body.minimal #feAppMenuButton { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
   /* the popup that holds everything after a click on Create: the plan, the question, the progress, and the result */
   .app-overlay { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 1100; background: rgba(0, 0, 0, 0.65); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
@@ -1214,22 +1210,22 @@
   #createDialog .bd-cardlink .linklike { text-align: left; }
   #createDialog .bd-note { font-size: 0.85rem; color: var(--muted); margin: 10px 0 0; white-space: pre-line; }
   #createDialog .bd-note .linklike { font-size: inherit; }
-  #createDialog #planText table, #guideSection .gd-why table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 6px 0 4px; color: var(--fg); }
-  #createDialog #planText th, #guideSection .gd-why th { text-align: left; font-weight: 600; color: var(--muted); font-size: 0.78rem; padding: 4px 6px 6px 0; border-bottom: 1px solid var(--line); }
-  #createDialog #planText td, #guideSection .gd-why td { padding: 6px 6px 6px 0; border-bottom: 1px solid var(--line); }
-  #createDialog #planText td:first-child, #guideSection .gd-why td:first-child { max-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #createDialog #planText th:not(:first-child), #createDialog #planText td:not(:first-child), #guideSection .gd-why th:not(:first-child), #guideSection .gd-why td:not(:first-child) { text-align: right; white-space: nowrap; }
-  #createDialog #planText th:nth-child(2), #createDialog #planText td:nth-child(2), #guideSection .gd-why th:nth-child(2), #guideSection .gd-why td:nth-child(2) { text-align: left; padding-left: 12px; }
-  #createDialog #planText tbody tr:nth-child(odd) td, #guideSection .gd-why tbody tr:nth-child(odd) td { background: var(--card); }
-  #createDialog #planText td:first-child, #createDialog #planText th:first-child, #guideSection .gd-why td:first-child, #guideSection .gd-why th:first-child { padding-left: 6px; }
-  #createDialog #planText tr.bd-limit td, #guideSection .gd-why tr.bd-limit td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
-  #createDialog #planText tr.bd-limit td:last-child, #guideSection .gd-why tr.bd-limit td:last-child { color: var(--accent); font-weight: 600; }
-  #createDialog #planText .bd-unit, #guideSection .gd-why .bd-unit { color: var(--muted); font-size: 0.85em; }
-  #createDialog #planText .bd-narrow, #guideSection .gd-why .bd-narrow { display: none; }
-  @media (max-width: 759px) { #createDialog #planText .bd-wide, #guideSection .gd-why .bd-wide { display: none; } #createDialog #planText .bd-narrow, #guideSection .gd-why .bd-narrow { display: inline; } }
+  #createDialog #planText table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 6px 0 4px; color: var(--fg); }
+  #createDialog #planText th { text-align: left; font-weight: 600; color: var(--muted); font-size: 0.78rem; padding: 4px 6px 6px 0; border-bottom: 1px solid var(--line); }
+  #createDialog #planText td { padding: 6px 6px 6px 0; border-bottom: 1px solid var(--line); }
+  #createDialog #planText td:first-child { max-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #createDialog #planText th:not(:first-child), #createDialog #planText td:not(:first-child) { text-align: right; white-space: nowrap; }
+  #createDialog #planText th:nth-child(2), #createDialog #planText td:nth-child(2) { text-align: left; padding-left: 12px; }
+  #createDialog #planText tbody tr:nth-child(odd) td { background: var(--card); }
+  #createDialog #planText td:first-child, #createDialog #planText th:first-child { padding-left: 6px; }
+  #createDialog #planText tr.bd-limit td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  #createDialog #planText tr.bd-limit td:last-child { color: var(--accent); font-weight: 600; }
+  #createDialog #planText .bd-unit { color: var(--muted); font-size: 0.85em; }
+  #createDialog #planText .bd-narrow { display: none; }
+  @media (max-width: 759px) { #createDialog #planText .bd-wide { display: none; } #createDialog #planText .bd-narrow { display: inline; } }
   @media (min-width: 760px) {   /* wide: the name gets half, the other two a quarter each, so the gaps between columns are even */
-    #createDialog #planText td:first-child, #createDialog #planText th:first-child, #guideSection .gd-why td:first-child, #guideSection .gd-why th:first-child { width: 50%; }
-    #createDialog #planText th:not(:first-child), #createDialog #planText td:not(:first-child), #guideSection .gd-why th:not(:first-child), #guideSection .gd-why td:not(:first-child) { width: 25%; }
+    #createDialog #planText td:first-child, #createDialog #planText th:first-child { width: 50%; }
+    #createDialog #planText th:not(:first-child), #createDialog #planText td:not(:first-child) { width: 25%; }
   }
   #createDialog #planText .bd-capnote { margin: 8px 0 0; }
   #createDialog #planText .bd-tablehead { font-weight: 700; margin: 12px 0 0; color: var(--fg); font-size: 0.9rem; }
@@ -1513,7 +1509,6 @@
   .ms-klabel { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ms-klabel.ms-blank { visibility: hidden; }
   .ms-text > .ms-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .ms-chev { flex: none; display: flex; color: var(--muted); transform: rotate(-90deg); }
   /* the type tiles: the four types in a row (a filter in Shared by others, none lit shows all), or the four as big tiles with a line each (the wizard) */
   .ms-ktiles { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
   #msDialog .ms-ktile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; margin: 0; min-height: 52px; padding: 7px 2px 6px; border: 1.5px solid var(--line); border-radius: 12px; background: none; box-shadow: none; color: var(--muted); font: inherit; }
@@ -1620,6 +1615,7 @@
   /* Shared by you */
   /* Share a playlist (or Share another playlist): a row like a share's, a dashed square with a + where its cover would be */
   .ms-addbox { flex: none; width: 48px; height: 48px; border-radius: 6px; box-sizing: border-box; border: 1.5px dashed var(--accent); display: flex; align-items: center; justify-content: center; color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  .ms-addbox .fe-icon { display: flex; }   /* an inline icon sat on the text's baseline, above the middle */
   .ms-addbox svg { width: 22px; height: 22px; }
   .ms-addrow:hover .ms-addbox { background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .ms-addrow .ms-addname { color: var(--accent); font-weight: 600; }
@@ -1856,8 +1852,10 @@
     <span class="us-gift"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg></span>
     <h2 id="usTitle">Unwrapping the update</h2>
     <p id="usText" class="us-text">Your recipes and playlists are on their way back.</p>
-    <p class="us-busy"><span class="us-spin" aria-hidden="true"></span><span id="usStep">Getting the new version</span></p>
-    <button id="usOk" class="primary" type="button">OK</button>
+    <div class="us-foot">
+      <p class="us-busy"><span class="us-spin" aria-hidden="true"></span><span id="usStep">Getting the new version</span></p>
+      <button id="usOk" class="primary" type="button">OK</button>
+    </div>
   </div>
 </div>
 <div id="reconnectScreen" role="dialog" aria-modal="true" aria-labelledby="reconnectText" hidden>
@@ -2150,6 +2148,9 @@
       </div>
       <div id="eeFeedback" class="hp-ee-panel" role="tabpanel" aria-labelledby="eeTabFeedback" hidden>
       <h3>Feedback</h3>
+      <!-- the builder's and Music sharing's menus open this block in the info popup, and it comes back here -->
+      <div id="feedbackBlock">
+      <h3>Feedback</h3>
       <form id="feedbackForm" class="mf-form" data-kind="feedback" novalidate>
         <p class="muted">Ideas, questions, anything else.</p>
         <label class="mf-label" for="feedbackText">Your message</label>
@@ -2160,6 +2161,7 @@
         <button class="mf-send" type="submit" disabled><img class="btn-icon" src="icons/send.svg" alt="" width="20" height="20"><span class="btn-label">Send</span></button>
       </form>
       <div class="mf-done" hidden><span class="mf-ok" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><b>Sent</b><p class="muted">Thank you. If you left your email, a reply comes there.</p><button class="linklike mf-again" type="button">Send another</button></div>
+      </div>
       </div>
     </div>
   </section>
@@ -2278,49 +2280,9 @@
   </div>
 
   <footer class="debug">
-    <!-- A guide for facilitators: opened from the app menu, the ? by the silence stepper, the first-segment tip and the build popup (openGuide in app.js, which opens one topic) -->
-    <details id="guideSection" class="card" hidden>
-      <summary>A guide for facilitators</summary>
-      <details class="gd-topic" id="gdLong" data-icon="clock"><summary>Designed for long playlists</summary>
-        <p>This app draws songs from playlists you already have. It works best with long playlists, each one a mood or a stage of the ceremony: settling, rising, the peak, landing, rest. A recipe puts them in order and says how long each part lasts. With shorter playlists it might be hard to fill a longer segment of a recipe, and the app won’t be able to build as many playlists out of it.</p>
-      </details>
-      <details class="gd-topic" id="gdNot" data-icon="ban"><summary>What it doesn’t do</summary>
-        <p>It doesn’t find new music or sort your library. It only picks from the playlists you have already created, so what plays is always your choice.</p>
-      </details>
-      <details class="gd-topic" id="gdSilence" data-icon="mute"><summary>Silence between segments</summary>
-        <p>A short silence between segments can do two things:</p>
-        <ul>
-          <li><b>Give space.</b> One part settles before the next begins.</li>
-          <li><b>Help you track time.</b> A short silence can signal to you, the facilitator, that the ceremony is moving into its next segment.</li>
-        </ul>
-        <p>You can use the same length of silence between all segments and you can edit each silence to have a different duration.</p>
-      </details>
-      <details class="gd-topic" id="gdSeveral" data-icon="layers"><summary>One recipe, many playlists</summary>
-        <p>One recipe can build more than one playlist if desired, each with its own unique songs. With 3 playlists, a participant can come to 3 ceremonies and never hear the same song twice. Play them in order, one per ceremony.</p>
-        <p>How many you can build depends on how long your playlists are. Because the app doesn’t repeat songs across playlists, with each new playlist it builds it is left with fewer songs to draw from for the next playlist it builds. Eventually, it won’t have enough songs to fill a segment. The playlist that runs out of options first determines the maximum number of playlists the app can build for a recipe. For example, in the table below, the recipe can build a maximum of 4 playlists from the given recipe.</p>
-        <div class="gd-why"><table>
-          <thead><tr><th>Each playlist uses</th><th>Available</th><th>Enough for</th></tr></thead>
-          <tbody>
-            <tr><td>30<span class="bd-unit"> <span class="bd-wide">min</span><span class="bd-narrow">m</span></span> of Settling</td><td>3<span class="bd-unit"> <span class="bd-wide">hr</span><span class="bd-narrow">h</span></span> 10<span class="bd-unit"> <span class="bd-wide">min</span><span class="bd-narrow">m</span></span></td><td>6 playlists</td></tr>
-            <tr class="bd-limit"><td>2<span class="bd-unit"> <span class="bd-wide">hr</span><span class="bd-narrow">h</span></span> of Journey</td><td>8<span class="bd-unit"> <span class="bd-wide">hr</span><span class="bd-narrow">h</span></span> 30<span class="bd-unit"> <span class="bd-wide">min</span><span class="bd-narrow">m</span></span></td><td>4 playlists</td></tr>
-            <tr><td>40<span class="bd-unit"> <span class="bd-wide">min</span><span class="bd-narrow">m</span></span> of Landing</td><td>3<span class="bd-unit"> <span class="bd-wide">hr</span><span class="bd-narrow">h</span></span> 50<span class="bd-unit"> <span class="bd-wide">min</span><span class="bd-narrow">m</span></span></td><td>5 playlists</td></tr>
-          </tbody>
-        </table></div>
-      </details>
-      <details class="gd-topic" id="gdNew" data-icon="musicplus"><summary>Adding new music</summary>
-        <p>If, like me, you add new music to your collection over time, I have good news for you: the app can re-build all the playlists it previously built and integrate all your new music into them. If you’ve added enough new music to your collection, it might even be able to build more playlists from a given recipe than it was able to before. This will replace the ones built before with the new music mixed in. A new build starts fresh, so songs from earlier playlists can come back. If a participant is partway through a series, finish it before building again. The app gives you an option to keep the previously built playlists when you build new ones.</p>
-      </details>
-    </details>
-
-    <details id="moreOptions" class="card">
-      <summary>More options</summary>
-      <details class="gd-topic" data-icon="sparkle"><summary>Build all recipes</summary>
-      <p class="muted">Builds, or rebuilds, the playlists for every recipe at once. It shows what it found and asks first, as it does for one recipe.</p>
-      <div class="row">
-        <button id="buildAll" type="button" disabled><img class="btn-icon" src="icons/build.svg" alt="" width="24" height="24"><span class="btn-label">Build all recipes</span></button>
-      </div>
-      </details>
-      <details class="gd-topic" data-icon="trash"><summary>Remove built playlists</summary>
+    <!-- The builder menu's own popups (renderAppMenu in editor.js): each opens alone in the info popup, its h3 as the title in the pink band (Ron, 2026-11-10, replacing More options and A guide for facilitators) -->
+    <section id="removeSection" class="menu-popup" hidden>
+      <h3>Remove built playlists</h3>
       <p class="muted">Removes the playlists this app built from a recipe from your Spotify library. Your recipes and your other playlists are not touched. It only looks at playlists that match the recipe’s name, and it asks before removing anything.</p>
       <div class="row">
         <label for="removeKey">Built from</label>
@@ -2341,12 +2303,27 @@
       </div>
       <p id="removeMessage" aria-live="polite"></p>
       <p id="removeReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="#" class="report-open">Report this problem</a></p>
-      </details>
-      <details class="gd-topic" data-icon="cloud"><summary>Autosave or backup</summary>
+    </section>
+    <section id="saveMethodSection" class="menu-popup" hidden>
+      <h3>Autosave or backup</h3>
       <p class="muted">Your recipes are saved to Spotify automatically, and a change you make on one device shows up on your others. The other choice is a manual backup: you download a file yourself and restore from it later. Changing this is not recommended. With a manual backup, nothing is saved unless you remember to make a backup, so clearing your browser's data can lose your recipes, and your devices will not stay in step.</p>
       <p><button id="changeSaveMethod" class="linklike" type="button">Change how your recipes are saved</button></p>
-      </details>
-    </details>
+    </section>
+    <!-- the builder menu's Watch the tutorial: the video is not made yet (Ron, 2026-11-10: to be discussed) -->
+    <section id="tutorialSection" class="menu-popup" hidden>
+      <h3>Watch the tutorial</h3>
+      <p>The tutorial video is coming soon.</p>
+    </section>
+    <!-- the ? beside the silence stepper (feSilenceHelp in editor.js) -->
+    <section id="silenceHelp" class="menu-popup" hidden>
+      <h3>Silence between segments</h3>
+      <p>A short silence between segments can do two things:</p>
+      <ul>
+        <li><b>Give space.</b> One part settles before the next begins.</li>
+        <li><b>Help you track time.</b> A short silence can signal to you, the facilitator, that the ceremony is moving into its next segment.</li>
+      </ul>
+      <p>You can use the same length of silence between all segments and you can edit each silence to have a different duration.</p>
+    </section>
 
     <!-- The DEV menu's two Music sharing tools, for the owner only (devMenuMoods, devMenuReports in editor.js); each opens alone in the info popup -->
     <section id="devMoods" hidden>
@@ -2378,10 +2355,10 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-10n"></script>
-<script src="editor.js?v=2026-11-10n"></script>
-<script src="shared-spotify.js?v=2026-11-10n"></script>
-<script src="app.js?v=2026-11-10n"></script>
-<script src="sharing.js?v=2026-11-10n"></script>
+<script src="formats.js?v=2026-11-10o"></script>
+<script src="editor.js?v=2026-11-10o"></script>
+<script src="shared-spotify.js?v=2026-11-10o"></script>
+<script src="app.js?v=2026-11-10o"></script>
+<script src="sharing.js?v=2026-11-10o"></script>
 </body>
 </html>

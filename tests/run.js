@@ -12,7 +12,7 @@ function pressBuild(w) {
   if (tiles && !w.document.getElementById("bdPick").hidden && !tiles.querySelector('[aria-checked="true"]') && tiles.lastElementChild) tiles.lastElementChild.click();
   w.document.getElementById("confirmYes").click();
 }
-const SECTION_NAMES = ["launch screen", "sharing card in the editor", "music sharing", "music sharing songs", "developer options", "the save pointer", "a guide for facilitators", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version icon", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "marker colors", "marker hugs corners", "popups close only", "narrow more button", "the silence card", "privacy: why the counts", "build button centered in minimalist mode", "no double-tap zoom", "backup link in step 2", "spotify premium", "step 3 order and text", "the build icon", "python status at the bottom", "hover feedback on buttons", "questions and feedback", "settings below the segments, pink outline", "the tagline", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'fading and Close in the Create popup', 'tabs that scroll sideways', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
+const SECTION_NAMES = ["launch screen", "sharing card in the editor", "music sharing", "music sharing songs", "developer options", "the save pointer", "menu popups and the silence help", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version icon", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "marker colors", "marker hugs corners", "popups close only", "narrow more button", "the silence card", "privacy: why the counts", "build button centered in minimalist mode", "no double-tap zoom", "backup link in step 2", "spotify premium", "step 3 order and text", "the build icon", "python status at the bottom", "hover feedback on buttons", "questions and feedback", "settings below the segments, pink outline", "the tagline", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'fading and Close in the Create popup', 'tabs that scroll sideways', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
 // areas that need another area's setup to have run first
 const NEEDS = {
   "the page's styles for tags and phones": ["silences, dragging and removing"],
@@ -291,7 +291,7 @@ async function boot({ url, session = {}, local = {}, fetchOptions = {}, before =
   w.document.documentElement.classList.add("view-" + view);   // as the <head> script would (it does not run here)
   if (savedLocal.devMode === "1") w.document.documentElement.classList.add("dev-mode");   // developer mode, as the <head> script would
   w.__scriptsRequested = [];
-  w.eval(appJs.replace("const sharing = {", "var sharing = {").replace("const previewUrls =", "var previewUrls =").replace("let spotifyAnswerMs = 30000;", "var spotifyAnswerMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const BACKED_UP_MESSAGE =", "var BACKED_UP_MESSAGE =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("const saveTip =", "var saveTip =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let busy =", "var busy =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("let launchScreen =", "var launchScreen =").replace("const GAP_STEPS =", "var GAP_STEPS ="));  // test harness only: lets a test replace the reload
+  w.eval(appJs.replace("const sharing = {", "var sharing = {").replace("const previewUrls =", "var previewUrls =").replace("let spotifyAnswerMs = 30000;", "var spotifyAnswerMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const BACKED_UP_MESSAGE =", "var BACKED_UP_MESSAGE =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("const saveTip =", "var saveTip =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let busy =", "var busy =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let appView =", "var appView =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("let launchScreen =", "var launchScreen =").replace("const GAP_STEPS =", "var GAP_STEPS ="));  // test harness only: lets a test replace the reload
   await Promise.race([w.__main, new Promise((r) => setTimeout(r, 1500))]);   // ready as soon as the page has finished starting up
   await new Promise((r) => setTimeout(r, 30));
   global.bootCount += 1; global.bootMs += Date.now() - bootStarted;
@@ -433,9 +433,10 @@ print(json.dumps(out))
   // 6g. "All recipes" previews every format once, with one closing line
   var two = 'FORMATS = {"b1-evocative": {"name": "evo {n}", "segments": [("💗 spacious + gentle", 30), ("🛋 rest", 30)]}, "second": {"name": "second {n}", "silence between segments": "1 min", "segments": [("💗💗 evocative", 20), ("🛋 rest", 20)]}}';
   var w8 = await boot({ url: "http://127.0.0.1:8000/", session: { token: JSON.stringify({ value: "t", expires: Date.now() + 3600000, scope: SCOPE_ALL }) }, local: { formats: two } });
-  check("Build all recipes is in More options, and there is no format dropdown any more", !!w8.document.querySelector("#moreOptions #buildAll") && !w8.document.getElementById("formatKey") && w8.document.getElementById("buildAll").textContent.trim() === "Build all recipes");
-  await waitFor(() => !w8.document.getElementById("buildAll").disabled, 20000);
-  w8.document.getElementById("buildAll").click();
+  check("Build all recipes is a row in the builder menu, and there is no format dropdown any more", !w8.document.getElementById("buildAll") && !w8.document.getElementById("formatKey") && /id: "feBuildAll"[^\n]*"Build all recipes"/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
+  await waitFor(() => w8.eval("canBuildAll()"), 20000);
+  w8.document.getElementById("feAppMenuButton").click();
+  w8.document.getElementById("feBuildAll").click();
   await waitFor(() => visible(w8, "confirmBox"), 30000);
   var out8 = outText(w8);
   console.log("\n--- all-formats output ---\n" + out8.split("\n").slice(0, 40).join("\n") + "\n--------------------------\n");
@@ -529,7 +530,7 @@ print(json.dumps(out))
   var css0 = fs.readFileSync(ROOT + "index.html", "utf8");
   check("hidden always means hidden, even for elements the page styles with display (like the flex rows)", /\[hidden\] \{ display: none !important; \}/.test(css0) && /\.row \{[^}]*display: flex/.test(css0) && /<div id="confirmBox" hidden>/.test(css0));
   check("the plan box starts hidden in the page itself, not only after a script runs", /<div id="output" class="bd-status" hidden><\/div>/.test(css0));
-  check("the Step 3 row has one Build button and no dropdown; Remove and Build all live in More options", !!wB.document.querySelector("#create") && !wB.document.getElementById("formatKey") && !wB.document.getElementById("create").parentElement.querySelector("#removeOld, #preview, #buildAll") && !wB.document.querySelector("#appSection #removeOld") && !!wB.document.querySelector("#moreOptions #buildAll"));
+  check("the Step 3 row has one Build button and no dropdown; Remove has its own popup and Build all is in the menu", !!wB.document.querySelector("#create") && !wB.document.getElementById("formatKey") && !wB.document.getElementById("create").parentElement.querySelector("#removeOld, #preview, #buildAll") && !wB.document.querySelector("#appSection #removeOld") && !wB.document.getElementById("buildAll"));
   await runPreview(wB);
   var plannedCount = Number((wB.document.getElementById("confirmText").textContent.match(/^Up to (\d+),/) || [])[1]);
   var createLabel = wB.document.getElementById("confirmYes").textContent;
@@ -649,12 +650,12 @@ print(json.dumps(out))
   await readyToPreview(wG);
   var removeOpts = Array.from(wG.document.getElementById("removeKey").options).map((o) => o.value);
   check("the removal dropdown lists a blank, the formats, then All recipes", JSON.stringify(removeOpts) === JSON.stringify(["", "a", "b", "__all__"]), JSON.stringify(removeOpts));
-  check("removal is inside More options; Sign out and clear data is under Everything else on home", !!wG.document.querySelector("#moreOptions #removeOld") && !!wG.document.querySelector("#homeMore #clearData") && /More options/.test(wG.document.querySelector("#moreOptions summary").textContent));
+  check("removal has its own popup block; Sign out and clear data is under Everything else on home", !!wG.document.querySelector("#removeSection #removeOld") && !!wG.document.querySelector("#homeMore #clearData") && wG.document.querySelector("#removeSection > h3").textContent === "Remove built playlists" && !wG.document.getElementById("moreOptions"));
   check("the removal dropdown starts blank and Remove waits for a choice", wG.document.getElementById("removeKey").value === "" && wG.document.getElementById("removeOld").disabled === true);
   wG.document.getElementById("removeKey").value = "b";
   removeNow(wG);
   await waitFor(() => visible(wG, "removeConfirmBox"));
-  check("the removal question appears inside the Remove section, below its button, not up in Step 3", !!wG.document.querySelector("#moreOptions #removeConfirmBox") && !visible(wG, "confirmBox") && !!(wG.document.getElementById("removeOld").compareDocumentPosition(wG.document.getElementById("removeConfirmBox")) & 4));
+  check("the removal question appears inside the Remove section, below its button, not up in Step 3", !!wG.document.querySelector("#removeSection #removeConfirmBox") && !visible(wG, "confirmBox") && !!(wG.document.getElementById("removeOld").compareDocumentPosition(wG.document.getElementById("removeConfirmBox")) & 4));
   check("choosing one format removes only its playlists", JSON.stringify(Array.from(wG.document.querySelectorAll("#removeConfirmList li")).map((li) => li.textContent)) === JSON.stringify(["beta 1", "beta 2"]));
   check("the removal question has its own confirm and cancel buttons", /^Remove 2 playlists$/.test(wG.document.getElementById("removeConfirmYes").textContent) && wG.document.getElementById("removeConfirmNo").textContent === "Cancel");
   wG.document.getElementById("removeConfirmNo").click();
@@ -688,7 +689,7 @@ print(json.dumps(out))
   // I3. the Python status moved out of the way
   check("the Python status is the DEV menu's foot, short: the versions and ready", !!wB.document.querySelector("#devMenu #pythonStatus.dm-foot") && /^(Python [\d.]+ · )?Pyodide [\d.]+ ready$/.test(wB.document.getElementById("pythonStatus").textContent) && !wB.document.querySelector("#appSection #pythonStatus"), wB.document.getElementById("pythonStatus").textContent);
   check("the page never says planner", !/planner/i.test(fs.readFileSync(ROOT + "index.html", "utf8")));
-  check("More options does not show the app version", wB.document.getElementById("appVersionLabel") === null && !/App version/.test(wB.document.getElementById("moreOptions").textContent));
+  check("Remove built playlists does not show the app version", wB.document.getElementById("appVersionLabel") === null && !/App version/.test(wB.document.getElementById("removeSection").textContent));
   check("while Python loads, the note beside Create says Python, not planner", /Getting Python ready/.test(appSource()) && /Python could not start, so building is unavailable/.test(appSource()) && !/planner/i.test(appSource()));
 
   check("no thank-you prompt or photo after a build", !wB.document.querySelector("#createDialog .support-prompt, #createSupport, img[src=\"ron.jpg\"]"));
@@ -829,22 +830,19 @@ print(json.dumps(out))
   var REPORT_KEYS = ["appVersion", "browser", "windowSize", "python", "lastError", "recentSteps"];
   var reportParams = (w) => JSON.parse(w.eval("JSON.stringify(reportDetails())"));
   var params = (href) => new URL(href).searchParams;
-  var openMore = (w) => { w.document.getElementById("moreOptions").open = true; w.document.getElementById("moreOptions").dispatchEvent(new w.Event("toggle")); };
 
   var rp = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, clientId: "SECRET-CLIENT-ID-9" } });
   await readyToPreview(rp);
-  openMore(rp);
-  var firstH3 = Array.from(rp.document.querySelectorAll("#moreOptions details.gd-topic > summary")).filter((h) => !h.closest("[hidden]"))[0].textContent;   // the feedback section above it shows only once its form address is set
-  check("Report a problem is not part of More options; it has its own block, opened from the app menu, that explains what happens", firstH3 !== "Report a problem" && !rp.document.getElementById("moreOptions").contains(rp.document.getElementById("reportBlock")) && !!rp.document.getElementById("reportBlock").closest("#homeMore #eeReport") && /Say what happened\. I \(Ron\) read every report and respond when I can\./.test(rp.document.getElementById("reportBlock").textContent), firstH3);
+  check("Report a problem has its own block, opened from the app menu, that explains what happens", !!rp.document.getElementById("reportBlock").closest("#homeMore #eeReport") && /Say what happened\. I \(Ron\) read every report and respond when I can\./.test(rp.document.getElementById("reportBlock").textContent));
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-10n" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-10o" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-10n/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
-  check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
-  check("there is no include-my-formats option, and a report never carries formats (the only checkboxes in More options are the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle)'));
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-10o/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
+  check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -890,11 +888,11 @@ print(json.dumps(out))
   // problems the person can fix themselves are recorded, but do not offer a report
   var rp3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: 'FORMATS = {"a": ' } });
   await new Promise((r) => setTimeout(r, 500));
-  openMore(rp3);
+  rp3.eval("refreshReportBox()");
   check("a formats typo is recorded as the last error, with no report link offered", /^Last error: Could not read the formats/m.test(rp3.document.getElementById("reportPreview").textContent) && !visible(rp3, "mainReportHint"), rp3.document.getElementById("reportPreview").textContent);
   var rp4 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn() });
   await runPreview(rp4);
-  openMore(rp4);
+  rp4.eval("refreshReportBox()");
   check("a segment with no playlist chosen is recorded as the last error, without any names", /Last error: Build blocked: 1 problem in the recipe/.test(rp4.document.getElementById("reportPreview").textContent) && !visible(rp4, "mainReportHint"), rp4.document.getElementById("reportPreview").textContent);
 
   // other places a failure can happen
@@ -905,7 +903,7 @@ print(json.dumps(out))
   await waitFor(() => visible(rp5, "removeConfirmBox"));
   rp5.document.getElementById("removeConfirmYes").click();
   await waitFor(() => visible(rp5, "removeReportHint"), 10000);
-  check("a failed removal offers its report link inside the Remove section", visible(rp5, "removeReportHint") && !!rp5.document.querySelector("#moreOptions #removeReportHint") && /Something went wrong/.test(rp5.document.getElementById("removeMessage").textContent));
+  check("a failed removal offers its report link inside the Remove section", visible(rp5, "removeReportHint") && !!rp5.document.querySelector("#removeSection #removeReportHint") && /Something went wrong/.test(rp5.document.getElementById("removeMessage").textContent));
   var rp6 = await boot({ url: "http://127.0.0.1:8000/?code=abc&state=st1", session: { pkceState: "st1", pkceVerifier: "v" }, local: { clientId: "SECRET-CLIENT-ID-9" }, fetchOptions: { failToken: true } });
   check("a refused sign-in offers a report link in Step 1", visible(rp6, "loginReportHint") && /Spotify refused the sign-in/.test(rp6.document.getElementById("loginMessage").textContent) && !/SECRET-CLIENT-ID-9/.test(JSON.stringify(reportParams(rp6))));
   check("Python that cannot load offers a report link", visible(w7, "mainReportHint") && /Could not load Python/.test(reportParams(w7).lastError) && /not loaded/.test(reportParams(w7).python));
@@ -1055,7 +1053,7 @@ print(json.dumps(out))
   cq.document.getElementById("clearYes").click();
   await waitFor(() => cq.__reloadedByClear === true, 5000);
   check("Sign out and clear clears everything and reloads, leaving the button off", cq.localStorage.length === 0 && cq.__reloadedByClear === true && cqBtn.disabled === true);
-  check("and it copies nothing to the clipboard, and says nothing about it: it is for leaving a computer that is not yours", cqCopied.length === 0 && !/clipboard/i.test(cq.document.getElementById("moreOptions").textContent));
+  check("and it copies nothing to the clipboard, and says nothing about it: it is for leaving a computer that is not yours", cqCopied.length === 0 && !/clipboard/i.test(cq.document.getElementById("eeClear").textContent));
   var so = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { clientId: "so-id", formats: MINI } });
   so.eval("reloadPage = () => { window.__reloadedByStartOver = true; }");
   var soCopied = []; so.navigator.clipboard = { writeText: async (t) => { soCopied.push(t); } };
@@ -1096,15 +1094,15 @@ print(json.dumps(out))
 
 
 
-  // ---------------- More options: gray body text, with headings, buttons, links and widgets standing out
+  // ---------------- the menu's popups (Remove built playlists, Autosave or backup, the tutorial, Silence between segments): gray body text, with headings, buttons, links and widgets standing out
   var moCss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("the More options box is gray by default", /#moreOptions(, [#\w-]+)* \{ color: var\(--muted\); \}/.test(moCss));
-  check("its headings stay in the normal text color, and its title stays pink", /footer\.debug h3 \{[^}]*color: var\(--fg\)/.test(moCss) && /details\.card > summary \{[^}]*color: var\(--accent\)/.test(moCss));
-  check("its inputs, dropdowns and confirmation questions keep the normal text color, and the report details are gray like the rest", /#moreOptions input, #moreOptions select \{ color: var\(--fg\); \}/.test(moCss) && /#moreOptions #removeConfirmBox \{ color: var\(--fg\); \}/.test(moCss) && /#homeMore #clearConfirm \{ color: var\(--fg\); \}/.test(moCss) && /#moreOptions pre\.report-preview \{ color: var\(--muted\); \}/.test(moCss) && !/#moreOptions pre, /.test(moCss));
-  var moreBox = fresh.document.getElementById("moreOptions");
-  var loud = Array.from(moreBox.querySelectorAll("p, label, span")).filter((el) => el.closest("#removeConfirmBox, #clearConfirm, .btn-label") === null && el.hasAttribute("style") && /color\s*:/.test(el.getAttribute("style")));
-  check("no paragraph in More options sets its own text color, so the gray applies everywhere", loud.length === 0, loud.map((e) => e.id || e.textContent.slice(0, 30)).join(","));
-  check("buttons in More options keep their own white-on-pink look", /\n  button \{[^}]*color: var\(--on-button, #fff\)/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && moreBox.querySelectorAll("button:not(.linklike)").length >= 4);
+  check("the menu's popups are gray by default", /\.menu-popup(, [#\w-]+)* \{ color: var\(--muted\); \}/.test(moCss) && ["removeSection", "saveMethodSection", "tutorialSection", "silenceHelp"].every((id) => fresh.document.getElementById(id).classList.contains("menu-popup")));
+  check("their headings stay in the normal text color", /footer\.debug h3 \{[^}]*color: var\(--fg\)/.test(moCss));
+  check("its inputs, dropdowns and confirmation questions keep the normal text color", /#removeSection input, #removeSection select \{ color: var\(--fg\); \}/.test(moCss) && /#removeSection #removeConfirmBox \{ color: var\(--fg\); \}/.test(moCss) && /#homeMore #clearConfirm \{ color: var\(--fg\); \}/.test(moCss));
+  var moreBoxes = Array.from(fresh.document.querySelectorAll(".menu-popup"));
+  var loud = moreBoxes.flatMap((b) => Array.from(b.querySelectorAll("p, label, span"))).filter((el) => el.closest("#removeConfirmBox, #clearConfirm, .btn-label") === null && el.hasAttribute("style") && /color\s*:/.test(el.getAttribute("style")));
+  check("no paragraph in the menu's popups sets its own text color, so the gray applies everywhere", loud.length === 0, loud.map((e) => e.id || e.textContent.slice(0, 30)).join(","));
+  check("buttons in Remove built playlists keep their own white-on-pink look", /\n  button \{[^}]*color: var\(--on-button, #fff\)/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && fresh.document.getElementById("removeSection").querySelectorAll("button:not(.linklike)").length >= 3);
 
 
   // ---------------- the report's details name python
@@ -1114,9 +1112,9 @@ print(json.dumps(out))
   // ---------------- gray rounded boxes for the three collapsible sections
   var cardCss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   var sect = (w, id) => w.document.getElementById(id);
-  check("What is this app?, How to edit formats, and More options are all gray rounded boxes", ["about", "formatHelp", "moreOptions"].every((id) => sect(fresh, id).classList.contains("card")) && /\.card \{[^}]*border-radius: 10px/.test(cardCss) && /\.card \{[^}]*background: var\(--card\)/.test(cardCss));
-  check("their titles share one look: bold pink, clickable", /details\.card > summary \{ cursor: pointer; font-weight: 600; color: var\(--accent\); \}/.test(cardCss) && ["about", "formatHelp", "moreOptions"].every((id) => !!sect(fresh, id).querySelector(":scope > summary")));
-  check("More options is titled in the same pink style and sits in the footer", /^More options$/.test(sect(fresh, "moreOptions").querySelector(":scope > summary").textContent) && sect(fresh, "moreOptions").parentElement.tagName === "FOOTER");
+  check("What is this app? and How to edit formats are gray rounded boxes", ["about", "formatHelp"].every((id) => sect(fresh, id).classList.contains("card")) && /\.card \{[^}]*border-radius: 10px/.test(cardCss) && /\.card \{[^}]*background: var\(--card\)/.test(cardCss));
+  check("their titles share one look: bold pink, clickable", /details\.card > summary \{ cursor: pointer; font-weight: 600; color: var\(--accent\); \}/.test(cardCss) && ["about", "formatHelp"].every((id) => !!sect(fresh, id).querySelector(":scope > summary")));
+  check("there is no More options box or guide any more; the menu's popups sit in the footer", !sect(fresh, "moreOptions") && !sect(fresh, "guideSection") && ["removeSection", "saveMethodSection", "tutorialSection", "silenceHelp"].every((id) => sect(fresh, id).parentElement.tagName === "FOOTER"));
   check("things inside the boxes (samples, code, confirmations) stand out from the gray", /details\.card \.card, details\.card pre, details\.card figure\.sample \{ background: var\(--bg\); \}/.test(cardCss));
 
 
@@ -1304,7 +1302,7 @@ print(json.dumps(out))
   ed1.document.getElementById("feDeleteConfirm").click();
   check("Delete recipe removes it and selects another", JSON.stringify(tabsOf(ed1)) === JSON.stringify(["Warm focus", "Cool"]) && !ed1.document.getElementById("feDeleteDialog") && ed1.document.querySelector('#feTabs .fe-tab[aria-pressed="true"]').textContent === "Warm focus");
   for (let i = 0; i < 2; i++) { ed1.document.getElementById("feDelete").click(); ed1.document.getElementById("feDeleteConfirm").click(); }
-  check("every format can be deleted, leaving only the big New recipe button, and nothing to build", tabsOf(ed1).length === 0 && !ed1.document.getElementById("feCreateFirst") && !/You don't have any formats yet/.test(ed1.document.getElementById("formatEditor").textContent) && ed1.document.querySelector(".fe-toprow").classList.contains("fe-noformats") && ed1.document.getElementById("feNewFormat").textContent.trim() === "New recipe" && !ed1.document.getElementById("feCard") && ed1.document.getElementById("create").disabled === true && ed1.document.getElementById("buildAll").disabled === true, ed1.document.getElementById("formatEditor").textContent);
+  check("every format can be deleted, leaving only the big New recipe button, and nothing to build", tabsOf(ed1).length === 0 && !ed1.document.getElementById("feCreateFirst") && !/You don't have any formats yet/.test(ed1.document.getElementById("formatEditor").textContent) && ed1.document.querySelector(".fe-toprow").classList.contains("fe-noformats") && ed1.document.getElementById("feNewFormat").textContent.trim() === "New recipe" && !ed1.document.getElementById("feCard") && ed1.document.getElementById("create").disabled === true && ed1.eval("canBuildAll()") === false, ed1.document.getElementById("formatEditor").textContent);
   addNamed(ed1, "Full moon");
   check("the big New recipe button starts a new one with the name typed, with a segment waiting for a playlist", JSON.stringify(tabsOf(ed1)) === JSON.stringify(["Full moon"]) && rowsOf(ed1).length === 1 && rowsOf(ed1)[0].querySelector(".fe-title").textContent === "Choose a playlist");
   addNamed(ed1, "Full moon");
@@ -1447,12 +1445,12 @@ print(json.dumps(out))
   var steps = Array.from(aboutBox.querySelectorAll("ol li")).map((li) => li.textContent);
   check("How it works has your two reworded steps", steps[0] === "Connect to Spotify through a free developer app. This takes a few minutes to set up, but you\u2019ll only need to do it once." && steps[1] === "Define your recipe(s): which of your playlists to draw from, in what order, and for how long." && steps.length === 3, JSON.stringify(steps));
   check("the About section has a Reporting problems paragraph, then Privacy as its last, which points to the full section and says nothing about reporting", aboutParas[aboutParas.length - 1] === "PrivacyYour existing Spotify playlists are only read, never changed. Everything runs in this browser, and nothing about your music, such as playlist names or songs, goes anywhere except to you and Spotify. For the full details, see Privacy." && aboutParas[aboutParas.length - 2] === "Reporting problemsIf you run into a problem, choose Report a problem in the app menu." && !!aboutBox.querySelector("span.ui") && aboutBox.querySelector("span.ui").textContent === "Report a problem", aboutParas[aboutParas.length - 1]);
-  var removeP = Array.from(fresh.document.querySelectorAll("#moreOptions p")).find((p) => /Removes the playlists/.test(p.textContent));
+  var removeP = Array.from(fresh.document.querySelectorAll("#removeSection p")).find((p) => /Removes the playlists/.test(p.textContent));
   check("the Remove playlists built from a recipe text says what it touches, in your wording", !!removeP && /It only looks at playlists that match the recipe\u2019s name, and it asks before removing anything\./.test(removeP.textContent) && !/whose names match a format's naming pattern/.test(removeP.textContent), removeP && removeP.textContent);
   var wCss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("body text in What is this app? and How recipes work is gray, with headings and control names staying bright", /details\.about, #formatHelp \{ color: var\(--muted\); \}/.test(wCss) && /details\.about strong, #formatHelp h3 \{ color: var\(--fg\); \}/.test(wCss) && /\.ui \{ color: var\(--fg\); \}/.test(wCss));
   var uiNames = Array.from(fresh.document.querySelectorAll("span.ui")).map((x) => x.textContent);
-  check("the names of buttons and links in running text are marked up the same way", ["More options", "New segment", "Add a mix", "Reset to default", "Restore", "Report a problem"].every((n) => uiNames.includes(n)), JSON.stringify(uiNames));
+  check("the names of buttons and links in running text are marked up the same way", ["New segment", "Add a mix", "Reset to default", "Restore", "Report a problem"].every((n) => uiNames.includes(n)), JSON.stringify(uiNames));
   check("no button or link name is left in single or curly quotes, since the style now sets it apart", !/[\u2018\u2019'](More options|Preview|Create|New segment|Add a mix)[\u2018\u2019']/.test(fresh.document.body.textContent));
 
 
@@ -1462,7 +1460,7 @@ print(json.dumps(out))
   check("headings, the two setup choices, code, results and confirmation boxes are white", /h2, h3, label\.choice, code, #confirmBox, #removeConfirmBox, #clearConfirm \{ color: var\(--fg\); \}/.test(gCss));
   var gh = fs.readFileSync(ROOT + "index.html", "utf8");
   var aboutRange = gh.slice(gh.indexOf('<details id="about"'), gh.indexOf("</details>", gh.indexOf('<details id="about"')));
-  var outside = gh.replace(aboutRange, "").replace(/<details id="guideSection"[\s\S]*?<details id="moreOptions"/, "").slice(gh.indexOf("<body")).replace(/<span class="(?:hp|wp-tool)-text">(?:<span class="hp-soon">[^<]*<\/span>)?<b>[^<]*<\/b>/g, "").replace('<span class="hp-more-text"><b>Everything else</b>', "").replace("<b>Bold</b> is shown", "");   // the tools' titles on home and the welcome page, Everything else's title, and Developer options showing what bold means there
+  var outside = gh.replace(aboutRange, "").replace(/<section id="silenceHelp"[\s\S]*?<\/section>/, "").slice(gh.indexOf("<body")).replace(/<span class="(?:hp|wp-tool)-text">(?:<span class="hp-soon">[^<]*<\/span>)?<b>[^<]*<\/b>/g, "").replace('<span class="hp-more-text"><b>Everything else</b>', "").replace("<b>Bold</b> is shown", "");   // the tools' titles on home and the welcome page, Everything else's title, and Developer options showing what bold means there
   check("bold is kept for the six headings in About this app (and the guide for facilitators, the titles of the tools on Arc's home and the welcome page, Everything else's title, and Developer options' tag list), and nowhere else", (aboutRange.match(/<strong>/g) || []).length === 6 && (outside.match(/<strong[ >]/g) || []).length === 0 && !/<b>/.test(outside));
   var setupText = fresh.document.getElementById("spSteps");
   check("the setup steps' field names and buttons are highlighted in white, and nothing there is bold", setupText.querySelectorAll("strong, b").length === 0 && Array.from(setupText.querySelectorAll("span.ui")).map((x) => x.textContent).some((t) => /^Create app$/.test(t)) && Array.from(setupText.querySelectorAll("span.ui")).some((x) => /App name/.test(x.textContent)));
@@ -1656,13 +1654,6 @@ print(json.dumps(out))
   check("the arrow keys move to the next color and choose it, as radio buttons do", z_t.document.activeElement === z_sw("Rose") && z_sw("Rose").getAttribute("aria-checked") === "true" && z_t.localStorage.getItem("theme") === "roses-and-mauves");
   z_sw("Amber").click();
   check("choosing a theme applies it at once and remembers it", z_t.document.documentElement.style.getPropertyValue("--button") === "#ffb020" && z_t.localStorage.getItem("theme") === "ambers-and-umbers" && z_t.document.documentElement.style.getPropertyValue("--on-button") === "#111111");
-  var z_secs = () => Array.from(z_t.document.querySelectorAll("#moreOptions details"));
-  z_t.eval('openInfo("moreOptions")');
-  z_secs().forEach((d) => { d.open = true; });
-  z_t.eval("closeInfo()");
-  z_t.eval('openInfo("moreOptions")');
-  check("More options reopens with every section closed, not as it was left", z_secs().length > 0 && z_secs().every((d) => !d.open));
-  z_t.eval("closeInfo()");
   var z_t2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, theme: "greens-and-sages" } });
   check("a remembered theme is used the next time, and shows as the chosen one, with its swatch", z_t2.document.documentElement.style.getPropertyValue("--button") === "#3ecf8e" && z_t2.document.querySelector("#themeSwatches [aria-checked=true]").getAttribute("aria-label") === "Green");
 
@@ -2044,21 +2035,29 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the menu starts closed", !am_w.document.getElementById("feAppMenuPanel") && am_w.document.getElementById("feAppMenuButton").getAttribute("aria-expanded") === "false");
   am_w.document.getElementById("feAppMenuButton").click();
   var am_items = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel .fe-item")).map((b) => b.textContent.trim());
-  var am_ids = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel [id]")).map((n) => n.id).filter((id) => ["feMoreOptions", "feAbout", "feTips", "fePrivacy", "feReport", "feBackupMethod", "feBackup", "feRestore", "feDisconnect"].includes(id));
-  check("it has no Disconnect, then the backup block (what it is, a Change how your recipes are saved link, how it is going, then Back up now and Restore), then More options and Report a problem, in that order (Privacy is under Everything else on home)", JSON.stringify(am_ids) === JSON.stringify(["feBackupMethod", "feBackup", "feRestore", "feMoreOptions", "feReport"]) && /Manual backup to this device/.test(am_w.document.getElementById("feBackupMethod").closest(".fe-bk-block").textContent), JSON.stringify(am_ids));
+  var am_ids = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel [id]")).map((n) => n.id).filter((id) => ["feTutorial", "feFeedback", "feBuildAll", "feRemoveBuilt", "feSaveMethod", "feMoreOptions", "feGuide", "feAbout", "feTips", "fePrivacy", "feReport", "feBackupMethod", "feBackup", "feRestore", "feDisconnect", "feMenuVersion"].includes(id));
+  check("it has no Disconnect and no title row; the backup block (what it is, a Change how your recipes are saved link, how it is going, then Back up now and Restore), then Watch the tutorial, Feedback, Report a problem, Build all recipes, Remove built playlists, Autosave or backup and the version, in that order", JSON.stringify(am_ids) === JSON.stringify(["feBackupMethod", "feBackup", "feRestore", "feTutorial", "feFeedback", "feReport", "feBuildAll", "feRemoveBuilt", "feSaveMethod", "feMenuVersion"]) && !am_w.document.querySelector("#feAppMenuPanel .fe-menuhead") && /Manual backup to this device/.test(am_w.document.getElementById("feBackupMethod").closest(".fe-bk-block").textContent), JSON.stringify(am_ids));
   check("there is no Compact view item: the app page is always compact", !am_w.document.getElementById("feMinimal") && am_w.document.body.classList.contains("minimal") && !/minimalMode/.test(fs.readFileSync(ROOT + "editor.js", "utf8") + appSource()));
   var am_info = (id) => am_w.document.getElementById("infoSlot").firstElementChild && am_w.document.getElementById("infoSlot").firstElementChild.id === id && am_w.document.getElementById("infoOverlay").hidden === false;
-  am_w.document.getElementById("feMoreOptions").click();
-  check("More options opens in a popup, open, and the menu closes", am_info("moreOptions") && am_w.document.getElementById("moreOptions").open === true && !am_w.document.getElementById("feAppMenuPanel") && am_w.document.getElementById("infoDialog").getAttribute("aria-label") === "More options");
+  am_w.document.getElementById("feRemoveBuilt").click();
+  check("Remove built playlists opens alone in a popup, titled, and the menu closes", am_info("removeSection") && !am_w.document.getElementById("feAppMenuPanel") && am_w.document.getElementById("infoDialog").getAttribute("aria-label") === "Remove built playlists" && am_w.document.getElementById("infoTitle").textContent === "Remove built playlists");
   am_w.document.dispatchEvent(new am_w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-  check("Escape closes it, and More options goes back to its place, closed as it was", am_w.document.getElementById("infoOverlay").hidden === true && !!am_w.document.getElementById("moreOptions").closest("footer") && am_w.document.getElementById("moreOptions").open === false && am_w.document.getElementById("infoSlot").children.length === 0);
+  check("Escape closes it, and its block goes back to its place, hidden", am_w.document.getElementById("infoOverlay").hidden === true && !!am_w.document.getElementById("removeSection").closest("footer") && am_w.document.getElementById("removeSection").hidden === true && am_w.document.getElementById("infoSlot").children.length === 0);
   am_w.document.getElementById("eeTabPrivacy").click();
   check("Privacy opens in place under Everything else on home, not in the popup, and the menu has no About this app", !am_w.document.getElementById("homePrivacy") && !!am_w.document.getElementById("privacySection").closest("#homeMore") && am_w.document.getElementById("infoOverlay").hidden === true && !am_w.document.getElementById("feAbout"));
   am_w.document.getElementById("infoOverlay").dispatchEvent(new am_w.MouseEvent("click", { bubbles: true }));
   check("a tap outside it closes it", am_w.document.getElementById("infoOverlay").hidden === true);
   am_w.document.getElementById("feAppMenuButton").click();
   am_w.document.getElementById("feReport").click();
-  check("Report a problem opens only the report part, with its details filled in, and it goes back to its own place under Everything else after", am_info("reportBlock") && /Version: /.test(am_w.document.getElementById("reportPreview").textContent) && (() => { am_w.document.getElementById("infoClose").click(); return !!am_w.document.getElementById("reportBlock").closest("#eeReport") && !am_w.document.getElementById("moreOptions").contains(am_w.document.getElementById("reportBlock")); })());
+  check("Report a problem opens only the report part, with its details filled in, and it goes back to its own place under Everything else after", am_info("reportBlock") && /Version: /.test(am_w.document.getElementById("reportPreview").textContent) && (() => { am_w.document.getElementById("infoClose").click(); return !!am_w.document.getElementById("reportBlock").closest("#eeReport") ; })());
+  am_w.document.getElementById("feAppMenuButton").click();
+  am_w.document.getElementById("feFeedback").click();
+  check("Feedback opens only the feedback form in the popup, and it goes back to its place under Everything else after", am_info("feedbackBlock") && am_w.document.getElementById("infoTitle").textContent === "Feedback" && !!am_w.document.querySelector("#infoSlot #feedbackForm") && (() => { am_w.document.getElementById("infoClose").click(); return !!am_w.document.getElementById("feedbackBlock").closest("#eeFeedback"); })());
+  am_w.document.getElementById("feAppMenuButton").click();
+  check("the version is a grey line at the menu's foot, not a button", am_w.document.getElementById("feMenuVersion").textContent === "Arc " + am_w.eval("APP_VERSION") && am_w.document.getElementById("feMenuVersion").tagName === "DIV" && am_w.document.querySelector("#feAppMenuPanel").lastElementChild.id === "feMenuVersion");
+  am_w.document.getElementById("feSaveMethod").click();
+  check("Autosave or backup opens alone, with its link to change how recipes are saved", am_info("saveMethodSection") && !!am_w.document.querySelector("#infoSlot #changeSaveMethod"));
+  am_w.document.getElementById("infoClose").click();
   am_w.document.getElementById("feAppMenuButton").click();
   am_w.document.getElementById("feBackup").click();
   check("Back up now saves the formats as a backup file on the device and closes the menu", !!am_w.__saved && /^playlist-recipes-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.txt$/.test(am_w.__saved.name) && am_w.__saved.text === am_w.document.getElementById("formats").value && !am_w.document.getElementById("feAppMenuPanel") && /^Backed up to this device\./.test(capText(am_w)));
@@ -2840,7 +2839,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var bb_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   var bb_new = await boot({ url: EDURL, session: signedIn(), local: { formats: null }, fetchOptions: {} });
   check("a new visitor who has connected starts with no formats at all: no tabs, no card, and the big New recipe button", bb_new.document.querySelectorAll("#feTabs .fe-tab").length === 0 && !bb_new.document.getElementById("feCard") && bb_new.document.querySelector(".fe-toprow").classList.contains("fe-noformats") && bb_new.document.getElementById("feNewFormat").textContent.trim() === "New recipe" && !/You don't have any formats yet/.test(bb_new.document.getElementById("formatEditor").textContent));
-  check("with nothing to build, Build playlists is off, and so is Build all", bb_new.document.getElementById("create").disabled === true && bb_new.document.getElementById("buildAll").disabled === true);
+  check("with nothing to build, Build playlists is off, and so is Build all", bb_new.document.getElementById("create").disabled === true && bb_new.eval("canBuildAll()") === false);
   check("the empty state keeps the dark, dotted-outline look, sits first in the row, and shows its label", /\.fe-toprow\.fe-noformats \.fe-newformat \{ order: -1; \}/.test(bb_css) && !/fe-noformats \.fe-newformat \{[^}]*background: var\(--button\)/.test(bb_css));
   addNamed(bb_new, "First");
   check("naming the first recipe adds it, and the button moves to the end of the tabs", !bb_new.document.getElementById("feNewFormatDialog") && bb_new.document.querySelectorAll("#feTabs .fe-tab").length === 1 && !bb_new.document.querySelector(".fe-toprow").classList.contains("fe-noformats"));
@@ -2867,9 +2866,10 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the question names the format being built, with the count", bb_w.document.getElementById("confirmText").textContent === "Up to 2, with no song repeated across them. Why 2?" && bb_w.document.getElementById("planToggle").textContent === "Why 2?" && bb_w.document.getElementById("bdTitle").textContent === "Renamed" && /^Build playlists$/.test(bb_w.document.getElementById("confirmYes").textContent) && bb_w.document.getElementById("createDialog").getAttribute("aria-labelledby") === "bdTitle");
   bb_w.document.getElementById("bdClose").click();
   // Build all
-  check("Build all recipes is in More options, with its own explanation and the building blocks icon", !!bb_w.document.querySelector("#moreOptions #buildAll") && bb_w.document.querySelector("#buildAll img").getAttribute("src") === "icons/build.svg" && /Builds, or rebuilds, the playlists for every recipe at once/.test(bb_w.document.querySelector("#moreOptions").textContent));
-  await waitFor(() => !bb_w.document.getElementById("buildAll").disabled, 20000);
-  bb_w.document.getElementById("buildAll").click();
+  check("Build all recipes has no button in the page any more: it is the builder menu's row", !bb_w.document.getElementById("buildAll") && !bb_w.document.getElementById("moreOptions"));
+  await waitFor(() => bb_w.eval("canBuildAll()"), 20000);
+  bb_w.document.getElementById("feAppMenuButton").click();
+  bb_w.document.getElementById("feBuildAll").click();
   await waitFor(() => visible(bb_w, "confirmBox"), 30000);
   check("it builds every format, and the question says how many formats", /^Ready to build \d+ playlists$/.test(bb_w.document.getElementById("bdPickHead").textContent) && bb_w.document.getElementById("confirmText").textContent === "For 2 recipes. Why these numbers?", bb_w.document.getElementById("confirmText").textContent);
   bb_w.document.getElementById("bdClose").click();
@@ -2878,7 +2878,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => visible(bb_w, "confirmBox"), 30000);
   check("and the next press of Build playlists goes back to the one format", bb_w.document.getElementById("bdTitle").textContent === "Renamed", bb_w.document.getElementById("bdTitle").textContent);
   bb_w.document.getElementById("bdClose").click();
-  check("the format dropdown is gone from Step 3, and the format picker in Remove earlier playlists stays", !bb_w.document.getElementById("formatKey") && !!bb_w.document.querySelector("#moreOptions #removeKey"));
+  check("the format dropdown is gone from Step 3, and the format picker in Remove earlier playlists stays", !bb_w.document.getElementById("formatKey") && !!bb_w.document.querySelector("#removeSection #removeKey"));
   
   } catch (err) { areaCrashed("build button, big new format button and empty start", err); }
 }
@@ -2938,7 +2938,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-10n", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-10o", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3088,33 +3088,28 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   } catch (err) { areaCrashed("card header, pencil and notch", err); }
 }
 
-  if (want("a guide for facilitators")) { try {
-  // ================================================================ A guide for facilitators: one popup of topics, opened from the menu, the ? by the silence stepper, the first tip and the build popup
+  if (want("menu popups and the silence help")) { try {
+  // ================================================================ the builder menu's popups and the ? by the silence stepper (A guide for facilitators was removed by Ron, 2026-11-10)
   var gf_w = await boot({ url: EDURL, session: signedIn(), local: { formats: 'RECIPES = {"a": {"name": "A {n}", "segments": [("", 20)]}}' }, fetchOptions: {} });
-  var gf_d = gf_w.document, gf_open = () => gf_d.querySelectorAll("#guideSection details.gd-topic[open]");
-  check("the guide has five topics and is hidden until opened", gf_d.getElementById("guideSection").hidden && gf_d.querySelectorAll("#guideSection details.gd-topic").length === 5 && !gf_d.getElementById("gdStart"));
+  var gf_d = gf_w.document;
+  check("there is no guide any more, and nothing opens one", !gf_d.getElementById("guideSection") && !gf_d.querySelector("[data-guide]") && !/openGuide/.test(fs.readFileSync(ROOT + "editor.js", "utf8") + appSource()));
   check("the first tip has no link to playlists to start from", !!gf_d.getElementById("feFirstTip") && !gf_d.getElementById("feFirstTipGuide") && !/Ron/.test(gf_d.getElementById("feFirstTip").textContent));
-  gf_w.eval("openGuide('gdLong')");
-  check("Designed for long playlists no longer offers Ron's playlists", !gf_d.querySelector("#gdLong [data-guide]") && !/public playlists/.test(gf_d.getElementById("gdLong").textContent));
-  gf_d.getElementById("infoClose").click();
-  check("closing puts the guide back, hidden", gf_d.getElementById("guideSection").hidden);
   check("the ? beside the silence stepper says what it opens", gf_d.getElementById("feSilenceHelp").getAttribute("aria-label") === "Why silence between segments?");
   gf_d.getElementById("feSilenceHelp").click();
-  check("the ? opens the guide at Silence between segments, alone", gf_open().length === 1 && gf_open()[0].id === "gdSilence");
+  check("the ? opens Silence between segments in a popup of its own, with the muted-speaker icon", gf_d.getElementById("infoOverlay").hidden === false && gf_d.getElementById("infoSlot").firstElementChild.id === "silenceHelp" && gf_d.getElementById("infoTitle").textContent === "Silence between segments" && /Give space\./.test(gf_d.getElementById("silenceHelp").textContent) && gf_d.querySelector("#infoTitle .info-ticon").innerHTML === gf_w.eval("feIcon(\"mute\").innerHTML"));
   gf_d.getElementById("infoClose").click();
+  check("closing puts it back, hidden", gf_d.getElementById("silenceHelp").hidden && !!gf_d.getElementById("silenceHelp").closest("footer"));
   gf_d.getElementById("feAppMenuButton").click();
-  var gf_item = gf_d.getElementById("feGuide");
-  check("the menu has A guide for facilitators above More options, with a line under it", !!gf_item && gf_item.nextElementSibling.id === "feMoreOptions" && /^A guide for facilitators/.test(gf_item.textContent) && gf_item.querySelector(".fe-gditem-note").textContent === "The thinking behind this app and how to use it well");
+  var gf_item = gf_d.getElementById("feTutorial");
+  check("the menu begins with Watch the tutorial, with a line under it, then Feedback and Report a problem", !!gf_item && gf_item.nextElementSibling.id === "feFeedback" && gf_item.nextElementSibling.nextElementSibling.id === "feReport" && /^Watch the tutorial/.test(gf_item.textContent) && gf_item.querySelector(".fe-gditem-note").textContent === "3 minutes, from recipe to playlists");
   gf_item.click();
-  check("from the menu the guide opens with every topic closed", !gf_d.getElementById("infoOverlay").hidden && gf_open().length === 0);
-  gf_d.querySelector("#gdLong > summary").click();
-  check("Several playlists shows an example table like Why N?, with the playlist that sets the most marked", gf_d.querySelectorAll("#gdSeveral .gd-why tbody tr").length === 3 && gf_d.querySelector("#gdSeveral tr.bd-limit").lastElementChild.textContent === "4 playlists");
-  // icons: every topic heading has one (grey, pink while open in the CSS), and each popup title has its menu item's icon
+  check("for now the tutorial says the video is coming soon", gf_d.getElementById("infoSlot").firstElementChild.id === "tutorialSection" && /coming soon/.test(gf_d.getElementById("tutorialSection").textContent));
+  gf_d.getElementById("infoClose").click();
   var gf_html = fs.readFileSync(ROOT + "index.html", "utf8");
-  check("every topic heading in the guide and More options has an icon, ahead of its text", ["guideSection", "moreOptions"].every(id => [...gf_d.querySelectorAll("#" + id + " details.gd-topic > summary")].every(s => s.querySelector(".gd-thead > .gd-ticon svg") && s.querySelector(".gd-thead > .gd-ttext").textContent.trim() && !s.querySelector(".gd-ticon").textContent)));
+  check("every topic heading in Privacy has an icon, ahead of its text", [...gf_d.querySelectorAll("#privacySection details.gd-topic > summary")].every(s => s.querySelector(".gd-thead > .gd-ticon svg") && s.querySelector(".gd-thead > .gd-ttext").textContent.trim() && !s.querySelector(".gd-ticon").textContent));
   check("a heading's icon is grey, and pink while its topic is open", /details\.gd-topic > summary \.gd-ticon \{[^}]*color: var\(--muted\)/.test(gf_html) && /details\.gd-topic\[open\] > summary \.gd-ticon \{ color: var\(--accent\)/.test(gf_html));
   check("Everything else on home is a bar of icon tabs, in order, each drawn from FE_ICONS, Sign out and clear data with the sign-out arrow", JSON.stringify([...gf_d.querySelectorAll("#homeMore .hp-ee-tab")].map(t => t.getAttribute("aria-label"))) === JSON.stringify(["Color", "Change Spotify login", "Sign out and clear data", "Privacy", "Report a problem", "Feedback"]) && gf_d.getElementById("eeTabClear").querySelector(".hp-ee-icon").innerHTML === gf_w.eval("feIcon(\"logout\").innerHTML") && [...gf_d.querySelectorAll("#homeMore .hp-ee-tab")].every(t => t.getAttribute("role") === "tab" && t.querySelector(".hp-ee-icon svg") && !t.textContent.trim()));
-  gf_w.eval("closeInfo(true); showView(\"home\", false)");   // the guide's popup was open above
+  gf_w.eval("closeInfo(true); showView(\"home\", false)");
   var ee_tab = gf_d.getElementById("eeTabLogin");
   check("closed at first: no icon lit, every panel hidden, the X kept but hidden", [...gf_d.querySelectorAll("#homeMore .hp-ee-panel")].every(p => p.hidden) && [...gf_d.querySelectorAll("#homeMore .hp-ee-tab")].every(t => t.getAttribute("aria-selected") === "false") && gf_d.getElementById("eeClose").hidden === true);
   ee_tab.click();
@@ -3133,10 +3128,10 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   gf_d.getElementById("eeTabColor").dispatchEvent(new gf_w.KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true }));
   check("the arrow keys move between the icons", gf_d.activeElement === gf_d.getElementById("eeTabLogin"));
   var gf_titles = {};
-  for (const id of ["guideSection", "moreOptions", "reportBlock"]) { gf_w.eval(`openInfo("${id}")`); const t = gf_d.getElementById("infoTitle"); gf_titles[id] = [t.textContent, t.querySelector(".info-ticon") && t.querySelector(".info-ticon").innerHTML]; gf_d.getElementById("infoClose").click(); }
-  check("each popup title has its menu item's icon and the same text as before", JSON.stringify(Object.keys(gf_titles).map(k => gf_titles[k][0])) === JSON.stringify(["A guide for facilitators", "More options", "Report a problem"]) && gf_titles.guideSection[1] === gf_w.eval("feIcon(\"help\").innerHTML") && gf_titles.moreOptions[1] === gf_w.eval("feIcon(\"sliders\").innerHTML") && gf_titles.reportBlock[1] === gf_w.eval("feIcon(\"flag\").innerHTML"), JSON.stringify(gf_titles));
-  check("the popup title shrinks only on narrow screens, so A guide for facilitators fits on one line at 320 px", /#infoTitle \{[^}]*font-size: min\(1\.2rem, calc\(\(100vw - 140px\) \/ 11\)\)/.test(gf_html));
-  } catch (err) { areaCrashed("a guide for facilitators", err); } }
+  for (const id of ["removeSection", "saveMethodSection", "feedbackBlock", "reportBlock"]) { gf_w.eval(`openInfo("${id}")`); const t = gf_d.getElementById("infoTitle"); gf_titles[id] = [t.textContent, t.querySelector(".info-ticon") && t.querySelector(".info-ticon").innerHTML]; gf_d.getElementById("infoClose").click(); }
+  check("each popup title has its menu item's icon and its name", JSON.stringify(Object.keys(gf_titles).map(k => gf_titles[k][0])) === JSON.stringify(["Remove built playlists", "Autosave or backup", "Feedback", "Report a problem"]) && gf_titles.removeSection[1] === gf_w.eval("feIcon(\"trash\").innerHTML") && gf_titles.saveMethodSection[1] === gf_w.eval("feIcon(\"cloud\").innerHTML") && gf_titles.feedbackBlock[1] === gf_w.eval("feIcon(\"chat\").innerHTML") && gf_titles.reportBlock[1] === gf_w.eval("feIcon(\"flag\").innerHTML"), JSON.stringify(gf_titles));
+  check("the popup title shrinks only on narrow screens, so a long title fits on one line at 320 px", /#infoTitle \{[^}]*font-size: min\(1\.2rem, calc\(\(100vw - 140px\) \/ 11\)\)/.test(gf_html));
+  } catch (err) { areaCrashed("menu popups and the silence help", err); } }
 
   if (want("first segment tip")) { try {
   // ================================================================ the tip under a new recipe's only, empty segment
@@ -3357,9 +3352,11 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("python status at the bottom")) { try {
   // ================================================================ the Python status at the bottom of More options
   var py_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
-  var py_heads = Array.from(py_w.document.querySelectorAll("#moreOptions details.gd-topic > summary")).filter((h) => !h.closest("[hidden]")).map((h) => h.textContent);
+  py_w.document.getElementById("feAppMenuButton").click();
+  var py_heads = Array.from(py_w.document.querySelectorAll("#feBuildAll, #feRemoveBuilt, #feSaveMethod")).map((h) => h.textContent.trim());
+  py_w.document.body.click();
   var py_home = Array.from(py_w.document.querySelectorAll("#homeMore .hp-ee-panel > h3")).map((h) => h.textContent);
-  check("More options is Build all recipes, Remove built playlists and Autosave or backup; Everything else on home has Sign out and clear data, then Privacy; Python status is in the DEV menu", JSON.stringify(py_heads) === JSON.stringify(["Build all recipes", "Remove built playlists", "Autosave or backup"]) && py_home.slice(2, 4).join("|") === "Sign out and clear data|Privacy" && !py_heads.includes("Python status") && !!py_w.document.querySelector("#devMenu #pythonStatus"), JSON.stringify(py_heads) + " / " + JSON.stringify(py_home));
+  check("the menu has Build all recipes, Remove built playlists and Autosave or backup; Everything else on home has Sign out and clear data, then Privacy; Python status is in the DEV menu", JSON.stringify(py_heads) === JSON.stringify(["Build all recipes", "Remove built playlists", "Autosave or backup"]) && py_home.slice(2, 4).join("|") === "Sign out and clear data|Privacy" && !py_heads.includes("Python status") && !!py_w.document.querySelector("#devMenu #pythonStatus"), JSON.stringify(py_heads) + " / " + JSON.stringify(py_home));
   } catch (err) { areaCrashed("python status at the bottom", err); } }
 
   if (want("the build icon")) { try {
@@ -3955,9 +3952,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // what is on the page for each way
   var ss_menuTexts = (w) => { w.document.getElementById("feAppMenuButton").click(); const t = Array.from(w.document.querySelectorAll("#feAppMenuPanel .fe-item, #feAppMenuPanel .fe-bk-row, #feAppMenuPanel .fe-bk-actions button")).map((b) => b.textContent.trim()); w.document.body.click(); return t; };
   var ss_spotifyMenu = ss_menuTexts(ss_w1);
-  check("when recipes are saved to Spotify the menu says nothing about saving: no title, no link, no status, no Back up now or Restore", !/backup|saved|Last saved|Change how/i.test(ss_spotifyMenu.join("|").replace(/Ceremony Playlist Builder|App version[^|]*/g, "")) && !ss_spotifyMenu.some((t) => /Back up now|Restore/.test(t)));
+  check("when recipes are saved to Spotify the menu says nothing about saving: no title, no link, no status, no Back up now or Restore", !/backup|saved|Last saved|Change how/i.test(ss_spotifyMenu.join("|").replace("Autosave or backup", "").replace(/Ceremony Playlist Builder|App version[^|]*/g, "")) && !ss_spotifyMenu.some((t) => /Back up now|Restore/.test(t)));
   ss_w1.document.getElementById("feAppMenuButton").click();
-  check("the way to change how recipes are saved is in More options, as a link, since the menu has no saving block to hold it", !ss_w1.document.getElementById("feBackupMethod") && !ss_w1.document.querySelector("#feAppMenuPanel .fe-bk-block") && ss_w1.document.getElementById("changeSaveMethod").textContent === "Change how your recipes are saved" && ss_w1.document.getElementById("changeSaveMethod").classList.contains("linklike") && !!ss_w1.document.querySelector("details#moreOptions #changeSaveMethod, #moreOptions #changeSaveMethod"));
+  check("the way to change how recipes are saved is in Autosave or backup, as a link, since the menu has no saving block to hold it", !ss_w1.document.getElementById("feBackupMethod") && !ss_w1.document.querySelector("#feAppMenuPanel .fe-bk-block") && ss_w1.document.getElementById("changeSaveMethod").textContent === "Change how your recipes are saved" && ss_w1.document.getElementById("changeSaveMethod").classList.contains("linklike") && !!ss_w1.document.querySelector("#saveMethodSection #changeSaveMethod"));
   ss_w1.document.body.click();
   check("for Spotify, the note about the backup file and the step about it are not on the page", ss_w1.document.getElementById("savedNote").hidden === true && ss_w1.document.getElementById("backupBlock").hidden === true && ss_w1.document.body.classList.contains("spotify-backup"));
   var ss_manualMenu = ss_menuTexts(ss_w4);
@@ -5250,23 +5247,25 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("spotify last")) { try {
   // ================================================================ the Spotify item is always first in the menu, under the app's name; then the rest in a fixed order, and the version
   var sl_ids = (w) => { w.document.getElementById("feAppMenuButton").click(); const ids = Array.from(w.document.querySelectorAll("#feAppMenuPanel > *")).map((k) => k.id || k.className); w.document.body.click(); return ids; };
-  var sl_rest = ["fe-rule", "feGuide", "feMoreOptions", "feReport"];   // Feedback, Privacy and the version moved to Everything else on home or were dropped (2026-11-08)
+  var sl_rest = ["fe-rule", "feTutorial", "feFeedback", "feReport", "fe-rule", "feBuildAll", "feRemoveBuilt", "feSaveMethod", "fe-rule", "feMenuVersion"];   // no title row since 2026-11-10
   var sl_ready = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: {} });
   var sl_r = sl_ids(sl_ready);
-  check("connected: the app's name, then A guide for facilitators, More options and Report a problem", JSON.stringify(sl_r) === JSON.stringify(["feMenuHead"].concat(sl_rest.slice(1))), JSON.stringify(sl_r));
+  check("connected: Watch the tutorial, Feedback, Report a problem, then Build all recipes, Remove built playlists, Autosave or backup, then the version", JSON.stringify(sl_r) === JSON.stringify(sl_rest.slice(1)), JSON.stringify(sl_r));
   var sl_ms = sl_ready.document; sl_ready.document.getElementById("feAppMenuButton").click();
   var sl_msi = sl_ms.getElementById("feMusicSharing");
   check("Music sharing is not in the menu: it is a tool on Arc's home", !sl_msi && /Music sharing/.test(sl_ms.getElementById("homePage").textContent));
   sl_ready.document.body.click();
+  sl_ready.eval("appView = \"sharing\""); var sl_sh = sl_ids(sl_ready); sl_ready.eval("appView = \"builder\"");
+  check("in Music sharing the menu is Feedback, Report a problem and the version", JSON.stringify(sl_sh) === JSON.stringify(["feFeedback", "feReport", "fe-rule", "feMenuVersion"]), JSON.stringify(sl_sh));
   var sl_slow = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: { listDelayMs: 4000 } });
   var sl_s = sl_ids(sl_slow);
-  check("connecting: the Connecting item and its note come first, then the same order", sl_slow.eval("connection") === "connecting" && JSON.stringify(sl_s) === JSON.stringify(["feMenuHead", "feConnect", "feConnectionNote"].concat(sl_rest)), JSON.stringify(sl_s));
+  check("connecting: the Connecting item and its note come first, then the same order", sl_slow.eval("connection") === "connecting" && JSON.stringify(sl_s) === JSON.stringify(["feConnect", "feConnectionNote"].concat(sl_rest)), JSON.stringify(sl_s));
   var sl_out = await boot({ url: EDURL, local: { formats: MINI, connectedBefore: "1", clientId: "c1", backupMode: "spotify" }, fetchOptions: {} });
   var sl_o = sl_ids(sl_out);
-  check("not connected: Connect to Spotify comes first, then the same order", JSON.stringify(sl_o) === JSON.stringify(["feMenuHead", "feConnect"].concat(sl_rest)), JSON.stringify(sl_o));
+  check("not connected: Connect to Spotify comes first, then the same order", JSON.stringify(sl_o) === JSON.stringify(["feConnect"].concat(sl_rest)), JSON.stringify(sl_o));
   var sl_man = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "manual" }, fetchOptions: {} });
   var sl_m = sl_ids(sl_man);
-  check("with manual backup, its block comes right after the app's name", JSON.stringify(sl_m) === JSON.stringify(["feMenuHead", "fe-bk-block"].concat(sl_rest)), JSON.stringify(sl_m));
+  check("with manual backup, its block comes first", JSON.stringify(sl_m) === JSON.stringify(["fe-bk-block"].concat(sl_rest)), JSON.stringify(sl_m));
   } catch (err) { areaCrashed("spotify last", err); } }
 
   if (want("batch seven")) { try {
@@ -5277,9 +5276,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var b7_menu = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1" }, fetchOptions: {} });
   b7_menu.document.getElementById("feAppMenuButton").click();
   var b7_kids = b7_menu.document.querySelectorAll("#feAppMenuPanel > *");
-  var b7_more = Array.from(b7_kids).findIndex((k) => k.id === "feMoreOptions");
-  check("the menu begins with the app's icon and name, as a band, then A guide for facilitators as the first item, and More options later", b7_kids[0].id === "feMenuHead" && b7_kids[0].querySelector("img").getAttribute("src") === "arc-mark.png" && b7_kids[0].querySelector(".fe-menuname").textContent === "Arc" && (Array.from(b7_kids).slice(1).find((k) => k.id && k.offsetParent !== undefined && !k.hidden && k.id.startsWith("fe") && !/fe-rule/.test(k.className)) || {}).id === "feGuide" && b7_more > 1 && /^More options$/.test(b7_kids[b7_more].textContent.trim()), Array.from(b7_kids).map((k) => k.id || k.className).join(","));
-  check("the header is only a picture and a name: not a button, not a link, and nothing about it reacts to the mouse", b7_kids[0].tagName === "DIV" && !b7_kids[0].querySelector("button, a") && !/fe-menuhead[^{]*:hover/.test(b7_html) && b7_kids[0].querySelector("img").getAttribute("alt") === "");
+  check("the menu has no title row: after the backup block it begins with Watch the tutorial (Arc's icon is in the bar above it)", Array.from(b7_kids).filter((k) => k.id)[0].id === "feTutorial" && !b7_menu.document.querySelector("#feAppMenuPanel .fe-menuhead, #feMenuHead"), Array.from(b7_kids).map((k) => k.id || k.className).join(","));
   b7_menu.document.body.click();
 
   // the crossfade
@@ -5359,7 +5356,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-10n"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-10o"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5732,7 +5729,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // the update card (mockup B): up at once on Get it, back after the reload until the app is ready, then All set! with OK
   var nv_us = nv_b.document.getElementById("updateScreen");
   check("Get it puts the update card over the app at once, with a spinner and the step under way (no progress bar), and marks the reload", nv_b.document.documentElement.classList.contains("updating") && nv_b.document.getElementById("usTitle").textContent === "Unwrapping the update" && nv_b.document.getElementById("usStep").textContent === "Getting the new version" && !!nv_us.querySelector(".us-spin") && !nv_us.querySelector("progress, [role=progressbar]") && nv_b.sessionStorage.getItem("updating") === "1");
-  check("the update card keeps one height in every state, the spinner and OK at its foot, so it does not change size when done", /#updateScreen \.us-card \{[^}]*height: 316px;/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /#updateScreen \.us-busy \{[^}]*margin-top: auto;/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /#usOk \{[^}]*margin-top: auto;/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  check("the update card puts every part in the same place in every state: the title on one line, the text two lines tall, the spinner and OK in one slot at the foot", /#updateScreen h2 \{[^}]*white-space: nowrap;/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /#updateScreen \.us-text \{[^}]*min-height: 2\.8em;/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /#updateScreen \.us-foot > \* \{ grid-area: 1 \/ 1;/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && !!fs.readFileSync(ROOT + "index.html", "utf8").match(/<div class="us-foot">\s*<p class="us-busy">[\s\S]*?<button id="usOk"/));
   var nv_x = await nv_make({ serverVersion: "2099-01-01a" });
   nv_x.fetch = () => Promise.reject(new Error("offline"));
   nv_x.eval("getUpdate()");
