@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-09r";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-09s";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -1246,7 +1246,8 @@ async function reportShare(s) {
 
 // ---------------------------------------------------------------- Shared by you
 // The person's shares, each opening its edit page; one changed in Spotify since it was shared gets a strip joined under it with Update.
-// With none yet, a short welcome with three steps. At the bottom, Share a playlist (or Share another playlist).
+// With none yet, a short welcome with three steps and Share a playlist under it. Otherwise the shares, with Share another playlist as
+// the list's first row. Both are the same row: a dashed square with a + where a cover would be, and the words in pink.
 function sharedFor(p) { return sharing.mine ? sharing.mine.find((s) => s.playlist === p.id) || null : null; }
 const playlistFor = (m) => playlists.find((p) => p.id === m.playlist) || null;
 const changedInSpotify = (m, p) => !!(p && p.snapshot && m.snapshot && p.snapshot !== m.snapshot);
@@ -1266,14 +1267,20 @@ function renderShareYours(body, foot) {
         feEl("li", {}, feEl("b", {}, "1"), feEl("span", {}, "Choose one of your playlists.")),
         feEl("li", {}, feEl("b", {}, "2"), feEl("span", {}, "Say what type it is: a ceremony, a phase, a mood, or something else.")),
         feEl("li", {}, feEl("b", {}, "3"), feEl("span", {}, "Add a few details, and share it."))),
-      feEl("p", { class: "ms-sub" }, "Others get their own private copy. Yours stays as it is, and you can stop sharing it any time.")));
-    footButtons(foot, null, mainButton("Share a playlist", startShare, { icon: "plus" }));
+      feEl("p", { class: "ms-sub" }, "Others get their own private copy. Yours stays as it is, and you can stop sharing it any time."),
+      feEl("div", { class: "ms-yours-list ms-welcome-add" }, addShareRow("Share a playlist"))));
     return;
   }
-  const list = feEl("div", { class: "ms-yours-list" });
+  const list = feEl("div", { class: "ms-yours-list" }, addShareRow("Share another playlist"));
   for (const m of mine) list.appendChild(yourRow(m));
   body.appendChild(list);
-  footButtons(foot, null, mainButton("Share another playlist", startShare, { icon: "plus" }));
+}
+function addShareRow(label) {
+  const row = feEl("div", { class: "ms-row ms-addrow", id: "msShareRow", role: "button", tabindex: "0", onClick: startShare },
+    feEl("span", { class: "ms-addbox", "aria-hidden": "true" }, feIcon("plus")),
+    feEl("div", { class: "ms-text" }, feEl("div", { class: "ms-name ms-addname" }, label)));
+  row.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === row) { e.preventDefault(); row.click(); } });
+  return row;
 }
 function yourRow(m) {
   const p = playlistFor(m), pub = sharing.library && sharing.library.shares.find((x) => x.id === m.id);
