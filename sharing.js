@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-09o";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-09p";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -38,7 +38,7 @@ const TAG_COMMON = new Set("music musical playlist playlists session sessions ce
 
 const sharing = {
   tab: "find", detail: null, flow: null, library: null, libraryAt: 0, loading: false, error: "",
-  type: "all", search: "", sort: "newest", hideAdded: true, book: null, phases: new Set(), moods: new Set(),
+  type: "all", search: "", sort: "newest", book: null, phases: new Set(), moods: new Set(),
   mine: null, mineError: "", adding: new Set(), addErrors: {},
   overlap: null, overlapShown: null, reading: false, readStop: false, showOverlapSongs: false,
   songNames: new Map(), player: null, previewNote: "",
@@ -562,8 +562,8 @@ const mainButton = (label, onClick, { id = "msMain", grey = false, icon = null, 
   feEl("button", { type: "button", id, class: "ms-mainbtn" + (grey ? " ms-grey" : ""), disabled, onClick }, icon ? feIcon(icon) : null, label, iconAfter ? feIcon(iconAfter) : null);
 
 // ---------------------------------------------------------------- Shared by others
-// Type tiles (the four types; none lit means all), then what each type is found by: none lit, a search, Hide playlists you have and Sort;
-// Ceremony the books (one at a time) and a search of descriptions; Phase the curve (any of the chosen phases); Mood its words; Other a search.
+// Type tiles (the four types; none lit means all), then the same row for every type, Search and Sort, so changing type moves little;
+// under it the type's own filter: Ceremony the books (one at a time), Phase the curve (any of the chosen phases), Mood its words (Ron, 2026-11-09).
 const SORTS = [["newest", "Newest"], ["az", "A to Z"], ["longest", "Longest"], ["most", "Most in your recipes"], ["least", "Least in your recipes"]];
 function sortChoices() {
   const usable = sharing.overlapShown && sharing.overlapShown.usable;
@@ -577,6 +577,7 @@ function setType(type) {
   sharing.moods.clear();
   renderSharing();
 }
+const SEARCH_HINTS = { all: "Search", ceremony: "Search ceremonies", phase: "Search phases", mood: "Search moods", other: "Search others" };
 function renderFind(body) {
   if (!sortChoices().some(([v]) => v === sharing.sort)) sharing.sort = "newest";
   const has = sharing.library && sharing.library.shares.length;
@@ -584,8 +585,11 @@ function renderFind(body) {
   const tools = feEl("div", { id: "msTools", class: "ms-tools" });
   if (has) {
     const t = sharing.type;
+    const label = (sortChoices().find(([v]) => v === sharing.sort) || SORTS[0])[1];
+    tools.appendChild(feEl("div", { class: "ms-searchrow" }, searchField(SEARCH_HINTS[t]),
+      feEl("button", { type: "button", id: "msSortButton", class: "ms-tbtn ms-sortbtn", "aria-haspopup": "menu", "aria-expanded": "false", "aria-label": "Sort: " + label, onClick: openSortMenu }, feEl("b", {}, label), feIcon("chevron"))));
     if (t === "ceremony") {
-      tools.appendChild(feEl("p", { class: "ms-flabel2" }, "For use with (one at a time)"));
+      tools.appendChild(feEl("p", { class: "ms-flabel2" }, "For use with"));
       const on = new Set(sharing.book == null ? [] : [sharing.book]);
       // Other shows every ceremony for another book, whatever its code (Ron, 2026-11-08)
       tools.appendChild(bookTiles(on, () => { sharing.book = on.size ? [...on][0] : null; renderSharing(); }, true));
@@ -595,15 +599,6 @@ function renderFind(body) {
     } else if (t === "mood") {
       tools.appendChild(feEl("p", { class: "ms-flabel2" }, "Which moods"));
       tools.appendChild(feEl("div", { id: "msMoods", class: "ms-chips" }));
-    }
-    tools.appendChild(searchField(t === "ceremony" ? "Search descriptions" : "Search"));
-    if (t === "all") {
-      const hide = feEl("input", { type: "checkbox", id: "msHideAdded", class: "ms-cb", checked: sharing.hideAdded });
-      hide.addEventListener("change", () => { sharing.hideAdded = hide.checked; renderResults(); });
-      const label = (sortChoices().find(([v]) => v === sharing.sort) || SORTS[0])[1];
-      tools.appendChild(feEl("div", { class: "ms-toolrow" },
-        feEl("label", { class: "ms-cbrow" }, hide, feEl("span", {}, "Hide playlists you have")),
-        feEl("button", { type: "button", id: "msSortButton", class: "ms-tbtn ms-sortbtn", "aria-haspopup": "menu", "aria-expanded": "false", onClick: openSortMenu }, feEl("b", {}, label), feIcon("chevron"))));
     }
   }
   body.appendChild(tools);
@@ -670,18 +665,17 @@ function setSort(value) {
 
 function matchesSearch(s, q) {
   if (!q) return true;
-  const hay = (sharing.type === "ceremony" ? `${s.description || ""}` : `${s.name} ${s.by || ""} ${kindLabel(s)} ${(s.moods || []).join(" ")} ${s.description || ""} ${(s.artists || []).join(" ")}`).toLowerCase();
+  const hay = `${s.name} ${s.by || ""} ${kindLabel(s)} ${(s.moods || []).join(" ")} ${s.description || ""} ${(s.artists || []).join(" ")}`.toLowerCase();
   return q.toLowerCase().split(/\s+/).filter(Boolean).every((w) => hay.includes(w));
 }
 function narrowed() { return sharing.book != null || sharing.phases.size > 0 || sharing.moods.size > 0 || !!sharing.search.trim(); }
 function clearNarrowing() { sharing.book = null; sharing.phases.clear(); sharing.moods.clear(); sharing.search = ""; }
-// the playlists of the chosen type that the filters and search leave, before Hide playlists you have (so the empty list can say what hides them)
-function filteredShares(hide = sharing.hideAdded) {
+// the playlists of the chosen type that the filters and search leave
+function filteredShares() {
   return ofType().filter((s) => matchesSearch(s, sharing.search)
     && (sharing.book == null || (s.books || []).includes(sharing.book))
     && (!sharing.phases.size || (s.phases || []).some((i) => sharing.phases.has(i)))
-    && (!sharing.moods.size || (s.moods || []).some((m) => sharing.moods.has(cleanMood(m))))
-    && !(hide && (isAdded(s) || isMine(s))));
+    && (!sharing.moods.size || (s.moods || []).some((m) => sharing.moods.has(cleanMood(m)))));
 }
 function ofType() { return sharing.library.shares.filter((s) => sharing.type === "all" || s.kind === sharing.type); }
 function emptyState(icon, title, text, button) {
@@ -705,10 +699,10 @@ function renderResults() {
     return;
   }
   if (!sharing.library) return;
-  const ov = sharing.overlapShown && sharing.overlapShown.usable && (sharing.sort === "most" || sharing.sort === "least") && sharing.type === "all" ? sharing.overlapShown : null;
+  const ov = sharing.overlapShown && sharing.overlapShown.usable && (sharing.sort === "most" || sharing.sort === "least") ? sharing.overlapShown : null;
   let list = filteredShares();
-  if (sharing.type === "all" && sharing.sort === "longest") list = list.slice().sort((a, b) => b.ms - a.ms);
-  else if (sharing.type === "all" && sharing.sort === "az") list = list.slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true }));
+  if (sharing.sort === "longest") list = list.slice().sort((a, b) => b.ms - a.ms);
+  else if (sharing.sort === "az") list = list.slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true }));
   else if (ov) list = list.slice().sort((a, b) => ((ov.per[b.id] || {}).pct || 0) - ((ov.per[a.id] || {}).pct || 0));
   if (ov && sharing.sort === "least") list.reverse();
   if (!ofType().length) {
@@ -718,18 +712,11 @@ function renderResults() {
     return;
   }
   if (!list.length) {
-    if (sharing.hideAdded && filteredShares(false).length) {
-      // only Hide playlists you have is hiding them
-      const n = filteredShares(false).length;
-      box.appendChild(emptyState("check", n === 1 ? "You have it already" : `You have all ${n} already`, "Playlists you got or shared are hidden.",
-        feEl("button", { type: "button", class: "ms-empty-ghost", onClick: () => { sharing.hideAdded = false; if ($("msHideAdded")) $("msHideAdded").checked = false; renderResults(); } }, "Show them")));
-      return;
-    }
     box.appendChild(emptyState("search", "Nothing matches", "Try other words or fewer choices.",
       feEl("button", { type: "button", class: "ms-empty-ghost", onClick: () => { clearNarrowing(); renderSharing(); } }, "Clear search and filters")));
     return;
   }
-  // how many there are: "3 of 12 playlists" when the filters, search or Hide playlists you have leave fewer
+  // how many there are: "3 of 12 playlists" when the filters or search leave fewer
   const all = ofType().length, word = (n) => n === 1 ? "playlist" : "playlists";
   box.appendChild(feEl("p", { id: "msCount", class: "ms-count", "aria-live": "polite" }, list.length < all ? `${list.length} of ${all} ${word(all)}` : `${all} ${word(all)}`));
   for (const s of list) box.appendChild(shareRow(s, ov));

@@ -839,10 +839,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-09o" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-09p" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-09o/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-09p/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version is not shown in More options", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkboxes in More options are the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#moreOptions input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2938,7 +2938,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-09o", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-09p", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4859,7 +4859,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("All lists every share, newest first, each with its type's line above its name", JSON.stringify(ms_names()) === JSON.stringify(["Deep water", "Forest floor", "Night sky", "Bowls and gongs", "Soft rain"]) && ms_labels().join("|") === "Ceremony · Book 2|Phase · Beginning, Ending|Mood · grief, tender|Sound bath|Mood · tender, awe", ms_labels().join("|"));
   check("an anonymous share says Anonymous, and each row has Get", /^Anonymous · 1 h 30 min$/.test(ms_d.querySelectorAll("#msResults .ms-row .ms-sub")[1].textContent) && ms_d.querySelectorAll("#msResults .ms-add").length === 5);
   ms_d.getElementById("msSortButton").click();
-  check("All has a search, Hide playlists you have (on) and Sort, whose menu has Newest, A to Z, Longest, Most in your recipes and Least in your recipes", !!ms_d.getElementById("msSearch") && ms_d.getElementById("msHideAdded").checked && Array.from(ms_d.querySelectorAll("#msSortMenu button")).map((b) => b.textContent).join("|") === "Newest|A to Z|Longest|Most in your recipes|Least in your recipes");
+  check("All has one row of Search and Sort, no Hide playlists you have, and Sort's menu has Newest, A to Z, Longest, Most in your recipes and Least in your recipes", ms_d.querySelector("#msTools .ms-searchrow #msSearch") && ms_d.querySelector("#msTools .ms-searchrow #msSortButton") && !ms_d.getElementById("msHideAdded") && !/Hide playlists you have/.test(ms_d.getElementById("msBody").textContent) && ms_d.getElementById("msSearch").placeholder === "Search" && Array.from(ms_d.querySelectorAll("#msSortMenu button")).map((b) => b.textContent).join("|") === "Newest|A to Z|Longest|Most in your recipes|Least in your recipes");
   Array.from(ms_d.querySelectorAll("#msSortMenu button")).find((b) => b.textContent === "Most in your recipes").click();
   check("Most in your recipes sorts by the songs already in the recipes, and each row says it", ms_names()[0] === "Deep water" && ms_d.querySelector("#msResults .ms-ov").textContent === "20% already in your recipes");
   ms_w.eval("setSort('newest')");
@@ -4871,7 +4871,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ms_d.querySelector("#msResults .ms-empty-ghost").click();
   check("which clears it, and the count is the whole list", ms_names().length === 5 && ms_d.getElementById("msSearch").value === "" && ms_d.getElementById("msCount").textContent === "5 playlists");
   ms_tile("ceremony").click();
-  check("Ceremony shows only ceremonies, with the five books and Other to choose one at a time and a search of descriptions, and no Sort", JSON.stringify(ms_names()) === '["Deep water"]' && ms_d.querySelectorAll("#msTools .ms-btile").length === 6 && /\?/.test(ms_d.querySelectorAll("#msTools .ms-btile")[5].textContent) && ms_d.getElementById("msSearch").placeholder === "Search descriptions" && !ms_d.getElementById("msSortButton"));
+  check("Ceremony shows only ceremonies, keeping the row of Search ceremonies and Sort, with the five books and Other under For use with", JSON.stringify(ms_names()) === '["Deep water"]' && ms_d.querySelectorAll("#msTools .ms-btile").length === 6 && /\?/.test(ms_d.querySelectorAll("#msTools .ms-btile")[5].textContent) && ms_d.getElementById("msSearch").placeholder === "Search ceremonies" && !!ms_d.querySelector("#msTools .ms-searchrow #msSortButton") && ms_d.querySelector("#msTools .ms-flabel2").textContent === "For use with");
   ms_d.querySelectorAll("#msTools .ms-btile")[0].click();
   check("a book shows the ceremonies for it", ms_names().length === 0 && /Nothing matches/.test(ms_d.getElementById("msResults").textContent));
   ms_d.querySelectorAll("#msTools .ms-btile")[1].click();
@@ -4919,11 +4919,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("once the person shares 1 for every 4 they get, the sheet has no invitation, only OK", ms_w.eval("sharing.mine = [{ id: 'zz', playlist: 'x' }]; offerToShare(sharing.library.shares[0]); const ok = !!document.getElementById('msGotOk') && !document.getElementById('msNotNow') && !/Share one of yours/.test(document.getElementById('msSheet').textContent); closeSheet(true); sharing.mine = []; ok") === true);
   ms_w.eval("closeDetail()");
   await waitFor(() => ms_w.eval("sharing.detail") === null, 3000);
-  check("playlists the person has are hidden", !ms_names().includes("Deep water"));
   ms_tile("ceremony").click();
-  check("with every one of a type already the person's, the list says so with Show them", /You have it already/.test(ms_d.getElementById("msResults").textContent) && ms_d.querySelector("#msResults .ms-empty-ghost").textContent === "Show them");
-  ms_d.querySelector("#msResults .ms-empty-ghost").click();
-  check("Show them shows it, Gotten", ms_names().join() === "Deep water" && /Gotten/.test(ms_d.querySelector("#msResults .ms-add").textContent));
+  check("playlists the person has stay in the list, Gotten", ms_names().join() === "Deep water" && /Gotten/.test(ms_d.querySelector("#msResults .ms-add").textContent));
   ms_d.querySelector("#msBody .ms-ktile.ms-on").click();
   check("another device knows a copy by the [origin: ID] at the end of its description, with no record of its own, and a copy deleted in Spotify can be gotten again", ms_w.eval(`(() => {
     const keep = localStorage.getItem("sharingCopies"); localStorage.removeItem("sharingCopies");
@@ -5338,7 +5335,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-09o"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-09p"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
