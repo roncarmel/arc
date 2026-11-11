@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-11h";
+const APP_VERSION = "2026-11-11i";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -644,6 +644,7 @@ function fillTutorialPlayer() {
     player.appendChild(video);
     player.appendChild(tutorialEndCard(video));
     video.addEventListener("ended", () => {   // out of the browser's fullscreen, so Watch again and Done are seen
+      countTutorialEnd();
       if (document.fullscreenElement === video && document.exitFullscreen) document.exitFullscreen().catch(() => {});
       player.classList.add("tv-ended");
       video.controls = false;
@@ -694,6 +695,7 @@ function tutorialOnPhone() {
 }
 
 function watchTutorial() {
+  if (TUTORIAL_VIDEO) countTutorialStart(tutorialOnPhone() ? "phone" : "computer");
   if (TUTORIAL_VIDEO && tutorialOnPhone()) playTutorialFullscreen();
   else openInfo("tutorialSection");
 }
@@ -720,6 +722,7 @@ function tutorialFullVideo() {
   document.addEventListener("fullscreenchange", () => { if (document.fullscreenElement !== video) done(); });
   video.addEventListener("webkitendfullscreen", done);   // an iPhone's player closed
   video.addEventListener("ended", () => {   // the end returns to the page; an iPhone does this by itself
+    countTutorialEnd();
     if (document.fullscreenElement === video && document.exitFullscreen) document.exitFullscreen().catch(() => {});
     video.currentTime = 0;
   });
@@ -2120,6 +2123,7 @@ async function connectToSpotify() {
     logStep(`connected, ${plural(playlists.length, "playlist")} found`);
     offerLimitRecord();
     if (!localStorage.getItem("counted") && countEvent("first-connection")) localStorage.setItem("counted", "1");   // once per browser
+    countActiveDay();
   } catch (err) {
     const message = String(err.message || err);
     recordError(message);
@@ -2581,6 +2585,27 @@ function countEvent(name, title) {
   } catch (err) { /* counting must never get in the way */ }
   return false;
 }
+
+// Once a day per browser, how long since this browser first connected, so returning people show apart from new ones.
+// Only the span goes out; the dates stay in localStorage.
+function countActiveDay() {
+  try {
+    const now = Date.now(), today = new Date().toDateString();
+    if (localStorage.getItem("countedDay") === today) return;
+    const since = Number(localStorage.getItem("countedSince")) || now;
+    const days = (now - since) / 86400000;
+    const span = days < 7 ? "first-week" : days < 14 ? "second-week" : days < 28 ? "weeks-3-4" : days < 90 ? "months-2-3" : "after-3-months";
+    if (countEvent("active-" + span)) {
+      localStorage.setItem("countedDay", today);
+      if (!localStorage.getItem("countedSince")) localStorage.setItem("countedSince", String(since));
+    }
+  } catch (err) { /* counting must never get in the way */ }
+}
+
+// The tutorial: started each time it is opened, finished at most once for each opening (Watch again does not count twice).
+let tutorialFinishCounted = true;
+function countTutorialStart(where) { tutorialFinishCounted = false; countEvent("tutorial-started", where); }
+function countTutorialEnd() { if (!tutorialFinishCounted) { tutorialFinishCounted = true; countEvent("tutorial-finished"); } }
 
 function problemKind(message) {
   if (/request quota/.test(message)) return "quota";

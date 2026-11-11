@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-11h";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-11i";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2148,7 +2148,7 @@ function askNewFormat() {
     document.removeEventListener("keydown", onKey);
     window.removeEventListener("scroll", holdStill);
     if (vv) { vv.removeEventListener("resize", holdStill); vv.removeEventListener("scroll", holdStill); }
-    if (keep) { delete draft.draft; commit(); }
+    if (keep) { delete draft.draft; commit(); if (typeof countEvent === "function") countEvent("recipe-created"); }
     else {
       editor.model.formats = editor.model.formats.filter((x) => x !== draft);
       editor.activeId = editor.model.formats.some((x) => x.id === before) ? before : (editor.model.formats.length ? editor.model.formats[0].id : null);

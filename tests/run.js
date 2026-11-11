@@ -871,10 +871,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-11h" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-11i" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-11h/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-11i/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2737,9 +2737,22 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => visible(pv_c4, "confirmBox"), 30000);
   pressBuild(pv_c4);
   await waitFor(() => pv_c4.document.getElementById("createCloseRow").hidden === false, 30000);
-  check("a successful create counts how many playlists were made, as a number and nothing else", JSON.stringify(pv_counts(pv_c4).map((e) => [e.path, e.title])) === JSON.stringify([["playlists-created", "2"]]));
+  check("a successful create counts how many playlists were made, as a number and nothing else", JSON.stringify(pv_counts(pv_c4).filter((e) => !/^active-/.test(e.path)).map((e) => [e.path, e.title])) === JSON.stringify([["playlists-created", "2"]]));
   var pv_all = pv_counts(pv_c1).concat(pv_counts(pv_c3), pv_counts(pv_c4));
-  check("nothing sent ever holds a name, a format or an ID: every title is a number or a short word", pv_all.every((e) => /^[a-z]+(-[a-z]+)*$/.test(e.path) && /^(\d+|[a-z]+(-[a-z]+)*)$/.test(e.title)));
+  // a day of use, by how long since this browser first connected
+  check("connecting counts the day once, as the browser's first week, and keeps the dates only here", JSON.stringify(pv_counts(pv_c1).filter((e) => /^active-/.test(e.path)).map((e) => e.path)) === JSON.stringify(["active-first-week"]) && pv_c1.localStorage.getItem("countedDay") === new Date().toDateString() && Number(pv_c1.localStorage.getItem("countedSince")) > 0);
+  var pv_d1 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, counted: "1", countedSince: String(Date.now() - 40 * 86400000), countedDay: new Date().toDateString() }, fetchOptions: {}, before: pv_before });
+  check("the same day is not counted twice", pv_counts(pv_d1).filter((e) => /^active-/.test(e.path)).length === 0);
+  var pv_d2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, counted: "1", countedSince: String(Date.now() - 40 * 86400000), countedDay: "Mon Jan 01 2024" }, fetchOptions: {}, before: pv_before });
+  check("a later day says how long since the first connection, here months 2 to 3", JSON.stringify(pv_counts(pv_d2).filter((e) => /^active-/.test(e.path)).map((e) => e.path)) === JSON.stringify(["active-months-2-3"]));
+  // the tutorial
+  pv_c2.__counts = [];
+  pv_c2.eval("watchTutorial()");
+  var pv_vid = pv_c2.document.querySelector("#tutorialPlayer video");
+  pv_vid.dispatchEvent(new pv_c2.Event("ended")); pv_vid.dispatchEvent(new pv_c2.Event("ended"));
+  check("opening the tutorial counts a start and where, and its end is counted once even when watched again", JSON.stringify(pv_counts(pv_c2).map((e) => [e.path, e.title])) === JSON.stringify([["tutorial-started", "computer"], ["tutorial-finished", "tutorial-finished"]]));
+  pv_all = pv_all.concat(pv_counts(pv_d2), pv_counts(pv_c2));
+  check("nothing sent ever holds a name, a format or an ID: every title is a number or a short word", pv_all.every((e) => /^[a-z0-9]+(-[a-z0-9]+)*$/.test(e.path) && /^(\d+|[a-z]+(-[a-z0-9]+)*)$/.test(e.title)));
   var pv_none = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   check("with the counter blocked or not loaded the app works as usual, and the first connection is not marked as counted", pv_none.eval("connection") === "ready" && pv_none.localStorage.getItem("counted") === null);
   
@@ -2802,7 +2815,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   nf_w.document.querySelector("#feNewFormatDialog .fe-dialog").click();
   check("a click inside the dialog does not close it", !!nf_w.document.getElementById("feNewFormatDialog"));
   typeNewName(nf_w, " Full moon ");
+  nf_w.__counts = []; nf_w.goatcounter = { count: (v) => nf_w.__counts.push(v) };
   nf_ok().click();
+  check("a new recipe is counted, with nothing about it", JSON.stringify(nf_w.__counts.map((e) => [e.path, e.title])) === JSON.stringify([["recipe-created", "recipe-created"]]));
   check("Create recipe closes the dialog, keeps the recipe with the name typed (without the spaces around it), selected, and writes it", !nf_w.document.getElementById("feNewFormatDialog") && nf_count() === 2 && nf_sel().textContent === "Full moon" && /"title": "Full moon"/.test(nf_w.document.getElementById("formats").value) && !nf_w.editor.model.formats.some((f) => f.draft));
   nf_w.document.getElementById("feNewFormat").click();
   typeNewName(nf_w, "New moon");
@@ -2919,7 +2934,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-11h", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-11i", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4827,8 +4842,10 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("Report asks for a reason, with a note that is optional", ms_d.querySelectorAll(".fe-dialog input[type=radio]").length === 4 && !!ms_d.querySelector(".fe-dialog textarea"));
   ms_d.dispatchEvent(new ms_w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   await new Promise((r) => setTimeout(r, 300));
+  ms_w.__counts = []; ms_w.goatcounter = { count: (v) => ms_w.__counts.push(v) };
   ms_d.getElementById("msMain").click();
   await waitFor(() => !!ms_d.getElementById("msSheet"), 5000);
+  check("a Get is counted with the share's type only", JSON.stringify(ms_w.__counts.map((e) => [e.path, e.title])) === JSON.stringify([["playlist-gotten", "ceremony"]]));
   var ms_made = log.filter((e) => e.url.endsWith("/v1/me/playlists") && (e.init.method || "") === "POST").map((e) => JSON.parse(e.init.body)).pop();
   check("Get this playlist makes a private copy with its name and description, and the device remembers it as a copy", ms_made && ms_made.name === "Deep water" && ms_made.public === false && ms_made.description === "Slow and spacious, almost no vocals. [origin: a]" && "a" in ms_w.eval("sharingCopies()"));
   check("after a Get, with nothing shared, a sheet says it is in Spotify, what a private copy is, and invites a share", /Deep water is in your Spotify/.test(ms_d.getElementById("msSheet").textContent) && /It stays as it is if Maya changes theirs\./.test(ms_d.getElementById("msSheet").textContent) && /Maya shared this\. Share one of yours\?/.test(ms_d.getElementById("msSheet").textContent) && !!ms_d.getElementById("msNotNow"));
@@ -4901,8 +4918,10 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ms_d.getElementById("msPick-p3").click();
   check("tapping the chosen one closes the list", !ms_d.getElementById("msPickList"));
   { const t = ms_d.getElementById("msDesc"); t.value = "Long and quiet."; t.dispatchEvent(new ms_w.Event("input")); }
+  ms_w.__counts = []; ms_w.goatcounter = { count: (v) => ms_w.__counts.push(v) };
   ms_d.getElementById("msFlowMain").click();
   await waitFor(() => !!ms_d.querySelector("#msFlowBody .ms-shared"), 5000);
+  check("a share is counted with its type only", JSON.stringify(ms_w.__counts.map((e) => [e.path, e.title])) === JSON.stringify([["playlist-shared", "ceremony"]]));
   var ms_post = ms_sh.posts[ms_sh.posts.length - 1];
   check("Share sends the type, its books, the description, anonymous, and the songs with their names", ms_post.playlist === "p3" && ms_post.kind === "ceremony" && JSON.stringify(ms_post.books) === "[0,2,5]" && ms_post.bookOther === "BW" && ms_post.description === "Long and quiet." && ms_post.descSource === "mine" && ms_post.by === null && ms_post.songs.length === 130 && ms_post.names.length === 130 && !("tags" in ms_post));
   check("then a page says it is shared, with Share another playlist and Done", /💗💗 evocative is shared/.test(ms_d.getElementById("msFlowBody").textContent) && /Other facilitators can find it in Shared by others now\./.test(ms_d.getElementById("msFlowBody").textContent) && ms_d.getElementById("msFlowMain").textContent === "Share another playlist" && !!ms_d.getElementById("msDone"));
@@ -5261,7 +5280,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-11h"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-11i"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
