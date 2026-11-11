@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-11g";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-11h";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -732,6 +732,21 @@ function typeHintLine() {
   line.hidden = !k;
   return line;
 }
+// A line that wraps should wrap evenly, never one word alone below. text-wrap: balance does it; where a browser lacks it (Safari before 17.5),
+// the line gets the narrowest width that keeps it on as many lines.
+function balanceLine(el) {
+  el.style.maxWidth = "";
+  if (el.hidden || (window.CSS && CSS.supports("text-wrap", "balance"))) return;
+  const tall = el.getBoundingClientRect().height, full = el.clientWidth;
+  if (!tall || tall < parseFloat(getComputedStyle(el).lineHeight) * 1.5) return;
+  let lo = 0, hi = full;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    el.style.maxWidth = mid + "px";
+    if (el.getBoundingClientRect().height > tall + 1) lo = mid; else hi = mid;
+  }
+  el.style.maxWidth = hi + "px";
+}
 function showTypeHint(wasShowing, wasHeight) {
   clearTimeout(typeHintTimer);
   const line = $("msTypeHint");
@@ -833,6 +848,7 @@ function renderFind(body) {
   // the type tiles and the row of Search and Sort stay at the top while the list scrolls; the type's own filter scrolls with it (Ron, 2026-11-10, mockups/sticky-filters-*.png)
   const head = feEl("div", { id: "msFindHead", class: "ms-findhead" }, kindTiles(sharing.type, setType, { filter: true }), typeHintLine());
   body.appendChild(head);
+  balanceLine($("msTypeHint"));
   if (!body.dataset.findScroll) {
     body.dataset.findScroll = "1";
     body.addEventListener("scroll", () => { const h = $("msFindHead"); if (h) h.classList.toggle("ms-findhead-under", body.scrollTop > 0); }, { passive: true });
