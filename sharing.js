@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-10y";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-10z";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -771,9 +771,13 @@ function slideFind(id, dir, change) {
   const body = $("msBody"), old = $(id);
   if (!body || !old || !motionAllowed(body)) { change(); return; }
   for (const g of body.querySelectorAll(".ms-find-ghost")) g.remove();
-  const scroll0 = body.scrollTop, top = old.offsetTop, left = old.offsetLeft, width = old.offsetWidth;
+  // where it is in the page, to the fraction of a pixel (offsetTop rounds, and the copy then jumped a little)
+  const r = old.getBoundingClientRect(), b = body.getBoundingClientRect();
+  const scroll0 = body.scrollTop, top = r.top - b.top - body.clientTop + scroll0, left = r.left - b.left - body.clientLeft, width = r.width;
   const copy = old.cloneNode(true);
   for (const el of [copy, ...copy.querySelectorAll("[id]")]) el.removeAttribute("id");
+  copy.style.margin = "0";
+  const first = old.firstElementChild, firstTop = first && first.getBoundingClientRect().top;
   change();
   const now = $(id);
   // the copy stays where it was seen, cut at the foot of what shows (so the page does not grow); the sticky tiles cover its top
@@ -783,6 +787,9 @@ function slideFind(id, dir, change) {
     ghost.inert = true;
     Object.assign(ghost.style, { top: at + "px", left: left + "px", width: width + "px", height: height + "px" });
     body.appendChild(ghost);
+    // a margin that collapsed out of the old part stays inside the copy's box, which would sit it lower: line its first part up with where it was
+    const shift = first ? firstTop - copy.firstElementChild.getBoundingClientRect().top : 0;
+    if (shift) { ghost.style.top = at + shift + "px"; ghost.style.height = height - shift + "px"; }
     ghost.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: `translateX(${-dir * 30}px)` }], { duration: 140, easing: EASE_IN, fill: "forwards" }).onfinish = () => ghost.remove();
   }
   if (now) now.animate([{ opacity: 0, transform: `translateX(${dir * 30}px)` }, { opacity: 1, transform: "none" }], { duration: 240, delay: 60, easing: EASE_OUT, fill: "backwards" });
