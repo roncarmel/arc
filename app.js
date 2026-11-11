@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-11b";
+const APP_VERSION = "2026-11-11c";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -646,7 +646,7 @@ function fillTutorialPlayer() {
     img.alt = "";
     player.appendChild(img);
   }
-  $("tutorialNote").textContent = TUTORIAL_VIDEO ? "From a new recipe to playlists in your Spotify, in 3 minutes." : "The video is coming soon.";
+  $("tutorialNote").textContent = TUTORIAL_VIDEO ? "From a new recipe to playlists in your Spotify, in under 2 minutes." : "The video is coming soon.";
 }
 function emptyTutorialPlayer() {
   const video = document.querySelector("#tutorialPlayer video");

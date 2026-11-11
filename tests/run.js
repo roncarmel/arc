@@ -871,10 +871,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-11b" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-11c" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-11b/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-11c/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2919,7 +2919,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-11b", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-11c", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3080,9 +3080,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("closing puts it back, hidden", gf_d.getElementById("silenceHelp").hidden && !!gf_d.getElementById("silenceHelp").closest("footer"));
   gf_d.getElementById("feAppMenuButton").click();
   var gf_item = gf_d.getElementById("feTutorial");
-  check("the menu begins with Watch the tutorial, with a line under it, then a divider, Feedback and Report a problem", !!gf_item && gf_item.nextElementSibling.classList.contains("fe-rule") && gf_item.nextElementSibling.nextElementSibling.id === "feFeedback" && gf_item.nextElementSibling.nextElementSibling.nextElementSibling.id === "feReport" && /^Watch the tutorial/.test(gf_item.textContent) && gf_item.querySelector(".fe-gditem-note").textContent === "3 minutes, from recipe to playlists");
+  check("the menu begins with Watch the tutorial, with a line under it, then a divider, Feedback and Report a problem", !!gf_item && gf_item.nextElementSibling.classList.contains("fe-rule") && gf_item.nextElementSibling.nextElementSibling.id === "feFeedback" && gf_item.nextElementSibling.nextElementSibling.nextElementSibling.id === "feReport" && /^Watch the tutorial/.test(gf_item.textContent) && gf_item.querySelector(".fe-gditem-note").textContent === "Under 2 minutes, from recipe to playlists");
   gf_item.click();
-  check("the tutorial popup has the browser's own player (controls, plays inline, the frame as its poster), a line under it, and Done", gf_d.getElementById("infoSlot").firstElementChild.id === "tutorialSection" && (() => { const v = gf_d.querySelector("#tutorialPlayer video"); return !!v && v.controls && v.hasAttribute("playsinline") && v.getAttribute("poster") === "tutorial-poster.jpg" && v.getAttribute("src") === "https://arc-media.roncarmel.workers.dev/tutorial.mp4"; })() && gf_d.getElementById("tutorialNote").textContent === "From a new recipe to playlists in your Spotify, in 3 minutes." && gf_d.querySelector("#tutorialSection .dlg-foot .dlg-cancel").textContent === "Done");
+  check("the tutorial popup has the browser's own player (controls, plays inline, the frame as its poster), a line under it, and Done", gf_d.getElementById("infoSlot").firstElementChild.id === "tutorialSection" && (() => { const v = gf_d.querySelector("#tutorialPlayer video"); return !!v && v.controls && v.hasAttribute("playsinline") && v.getAttribute("poster") === "tutorial-poster.jpg" && v.getAttribute("src") === "https://arc-media.roncarmel.workers.dev/tutorial.mp4"; })() && gf_d.getElementById("tutorialNote").textContent === "From a new recipe to playlists in your Spotify, in under 2 minutes." && gf_d.querySelector("#tutorialSection .dlg-foot .dlg-cancel").textContent === "Done");
   check("the menu's item shows a small frame from the video in place of an icon", !!gf_item.querySelector(".tv-frame img[src='tutorial-poster.jpg']") && !gf_item.querySelector(".fe-icon"));
   gf_d.getElementById("infoClose").click();
   var gf_html = fs.readFileSync(ROOT + "index.html", "utf8");
@@ -3263,7 +3263,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // ================================================================ the tutorial video (Ron, 2026-11-11): the menu's frame, the first-recipe card's row, the welcome page's rows
   var tv_w = await boot({ url: "http://127.0.0.1:8000/" }), tv_d = tv_w.document;
   var tv_out = tv_d.getElementById("wpWatch"), tv_in = tv_d.getElementById("wpWatchIn");
-  check("the welcome page has Watch how it works under the builder's card, with a triangle pointing up, and a frame from the video", !!tv_out && tv_out.previousElementSibling.querySelector("#wpBuilderHead") !== null && !!tv_out.querySelector(".tv-tip") && !!tv_out.querySelector(".tv-frame img[src='tutorial-poster.jpg']") && tv_out.querySelector(".tv-row-text b").textContent === "Watch how it works" && tv_out.querySelector(".tv-row-text span").textContent === "3 minutes, from recipe to playlists" && !tv_out.hidden);
+  check("the welcome page has Watch how it works under the builder's card, with a triangle pointing up, and a frame from the video", !!tv_out && tv_out.previousElementSibling.querySelector("#wpBuilderHead") !== null && !!tv_out.querySelector(".tv-tip") && !!tv_out.querySelector(".tv-frame img[src='tutorial-poster.jpg']") && tv_out.querySelector(".tv-row-text b").textContent === "Watch how it works" && tv_out.querySelector(".tv-row-text span").textContent === "Under 2 minutes, from recipe to playlists" && !tv_out.hidden);
   check("both welcome rows play it fullscreen", tv_out.dataset.tutorial === "fullscreen" && tv_in.dataset.tutorial === "fullscreen");
   tv_d.getElementById("wpBuilderHead").click();
   check("opening the builder's card folds the row away; the card has its own under its title", tv_out.hidden && !tv_d.getElementById("wpBuilderMore").hidden && tv_d.getElementById("wpBuilderMore").firstElementChild === tv_in);
@@ -5243,7 +5243,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-11b"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-11c"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
