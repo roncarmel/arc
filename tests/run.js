@@ -871,10 +871,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-10z" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-11b" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-10z/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-11b/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2708,7 +2708,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var pv_sec = pv_w.document.getElementById("privacySection");
   check("Privacy is a panel under Everything else on home, closed at first, behind its lock icon", !!pv_sec && pv_sec.hidden === true && pv_sec.closest("#homeMore") !== null && pv_w.document.getElementById("eeTabPrivacy").dataset.icon === "lock" && pv_w.document.getElementById("eeTabPrivacy").getAttribute("aria-controls") === "privacySection" && pv_sec.querySelector("h3").textContent === "Privacy");
   var pv_text = pv_sec.textContent.replace(/\s+/g, " ");
-  check("it opens with what Arc stands for, then one short line per topic", /^Arc runs in your browser\. What you make here stays between this browser and your own Spotify account, unless you choose to share it\. No accounts, no ads\.$/.test(pv_sec.querySelector(".pv-lead").textContent) && JSON.stringify(Array.from(pv_sec.querySelectorAll("li > b")).map((b) => b.textContent)) === JSON.stringify(["In this browser:", "In your Spotify:", "Shared playlist library:", "Anonymous counts:", "Spotify waits:", "Reports and feedback:"]));
+  check("it opens with what Arc stands for, then one short line per topic", /^Arc runs in your browser\. What you make here stays between this browser and your own Spotify account, unless you choose to share it\. No accounts, no ads\.$/.test(pv_sec.querySelector(".pv-lead").textContent) && JSON.stringify(Array.from(pv_sec.querySelectorAll("li > b")).map((b) => b.textContent)) === JSON.stringify(["In this browser:", "In your Spotify:", "Shared playlist library:", "Tutorial video:", "Anonymous counts:", "Spotify waits:", "Reports and feedback:"]));
   check("it says the app never sees the Spotify password, that the person's playlists are only read, that Sign out and clear data erases what is kept, and what reports never hold", /never sees your password/.test(pv_text) && /Your playlists are only read, never changed/.test(pv_text) && /Sign out and clear data erases it all/.test(pv_text) && /Never your sign-in, Client ID, playlist names or songs/.test(pv_text) && /GoatCounter counts visits and a few actions, without cookies/.test(pv_text));
   var pv_click2 = new pv_w.MouseEvent("click", { bubbles: true, cancelable: true });
   pv_w.document.querySelector("#about a.privacy-link").dispatchEvent(pv_click2);
@@ -2919,7 +2919,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-10z", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-11b", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3082,7 +3082,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var gf_item = gf_d.getElementById("feTutorial");
   check("the menu begins with Watch the tutorial, with a line under it, then a divider, Feedback and Report a problem", !!gf_item && gf_item.nextElementSibling.classList.contains("fe-rule") && gf_item.nextElementSibling.nextElementSibling.id === "feFeedback" && gf_item.nextElementSibling.nextElementSibling.nextElementSibling.id === "feReport" && /^Watch the tutorial/.test(gf_item.textContent) && gf_item.querySelector(".fe-gditem-note").textContent === "3 minutes, from recipe to playlists");
   gf_item.click();
-  check("for now the tutorial says the video is coming soon", gf_d.getElementById("infoSlot").firstElementChild.id === "tutorialSection" && /coming soon/.test(gf_d.getElementById("tutorialSection").textContent));
+  check("the tutorial popup has the browser's own player (controls, plays inline, the frame as its poster), a line under it, and Done", gf_d.getElementById("infoSlot").firstElementChild.id === "tutorialSection" && (() => { const v = gf_d.querySelector("#tutorialPlayer video"); return !!v && v.controls && v.hasAttribute("playsinline") && v.getAttribute("poster") === "tutorial-poster.jpg" && v.getAttribute("src") === "https://arc-media.roncarmel.workers.dev/tutorial.mp4"; })() && gf_d.getElementById("tutorialNote").textContent === "From a new recipe to playlists in your Spotify, in 3 minutes." && gf_d.querySelector("#tutorialSection .dlg-foot .dlg-cancel").textContent === "Done");
+  check("the menu's item shows a small frame from the video in place of an icon", !!gf_item.querySelector(".tv-frame img[src='tutorial-poster.jpg']") && !gf_item.querySelector(".fe-icon"));
   gf_d.getElementById("infoClose").click();
   var gf_html = fs.readFileSync(ROOT + "index.html", "utf8");
   check("every topic heading in Privacy has an icon, ahead of its text", [...gf_d.querySelectorAll("#privacySection details.gd-topic > summary")].every(s => s.querySelector(".gd-thead > .gd-ticon svg") && s.querySelector(".gd-thead > .gd-ttext").textContent.trim() && !s.querySelector(".gd-ticon").textContent));
@@ -3186,7 +3187,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("new recipes get the names typed for them, never a made-up default", JSON.stringify(bt_tabs()) === JSON.stringify(["Warm focus", "Full moon", "New moon"]) && !/Recipe \$\{number\}/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
   var bt_e = await boot({ url: EDURL, session: signedIn(), local: { formats: "FORMATS = {}" }, fetchOptions: {} });
   check("with no recipes a welcome says to make the first one, then what a recipe is", (() => { const c = bt_e.document.getElementById("feWelcome"); return !!c && c.querySelector(".fe-welcome-title").textContent === "Time to make your first recipe!" && c.querySelector(".fe-welcome-lead").textContent === "Click New recipe above to start." && /^A recipe says which of your playlists to play, in what order, and for how long\. The app turns it into as many playlists as your songs allow, with no song used twice\.$/.test(c.querySelector(".fe-welcome-text").textContent) && !bt_e.document.getElementById("feCard"); })());
-  check("the welcome has an arrow pointing at New recipe and no button of its own", !!bt_e.document.getElementById("feWelcomeArrow") && !bt_e.document.querySelector("#feWelcome button"));
+  check("the welcome has an arrow pointing at New recipe; its only button is the tutorial's row", !!bt_e.document.getElementById("feWelcomeArrow") && JSON.stringify([...bt_e.document.querySelectorAll("#feWelcome button")].map((b) => b.id)) === '["feWatch"]');
   check("with no recipes Build playlists is hidden", bt_e.document.getElementById("create").hidden);
   check("with no recipes no status lines show (Python, Spotify, notices)", bt_e.document.body.classList.contains("no-recipes") && /body\.no-recipes #pythonNote, body\.no-recipes #spotifyNote, body\.no-recipes #editorNote, body\.no-recipes #formatEditor \.fe-caption \{ display: none; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   bt_e.document.getElementById("feNewFormat").click();
@@ -3258,6 +3259,31 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the editor scrolls after the menu button is drawn, and again when minimalist mode changes how much room the tabs have", /renderTabs\(\);\n  renderAppMenu\(\);\n[^\n]*\n  scrollSelectedTab\(\);/.test(ns_src) && /if \(typeof scrollSelectedTab === "function"\) scrollSelectedTab\(\);/.test(ns_src));
   } catch (err) { areaCrashed("a new format scrolls into view", err); } }
 
+  if (want("tutorial video")) { try {
+  // ================================================================ the tutorial video (Ron, 2026-11-11): the menu's frame, the first-recipe card's row, the welcome page's rows
+  var tv_w = await boot({ url: "http://127.0.0.1:8000/" }), tv_d = tv_w.document;
+  var tv_out = tv_d.getElementById("wpWatch"), tv_in = tv_d.getElementById("wpWatchIn");
+  check("the welcome page has Watch how it works under the builder's card, with a triangle pointing up, and a frame from the video", !!tv_out && tv_out.previousElementSibling.querySelector("#wpBuilderHead") !== null && !!tv_out.querySelector(".tv-tip") && !!tv_out.querySelector(".tv-frame img[src='tutorial-poster.jpg']") && tv_out.querySelector(".tv-row-text b").textContent === "Watch how it works" && tv_out.querySelector(".tv-row-text span").textContent === "3 minutes, from recipe to playlists" && !tv_out.hidden);
+  check("both welcome rows play it fullscreen", tv_out.dataset.tutorial === "fullscreen" && tv_in.dataset.tutorial === "fullscreen");
+  tv_d.getElementById("wpBuilderHead").click();
+  check("opening the builder's card folds the row away; the card has its own under its title", tv_out.hidden && !tv_d.getElementById("wpBuilderMore").hidden && tv_d.getElementById("wpBuilderMore").firstElementChild === tv_in);
+  tv_d.getElementById("wpBuilderHead").click();
+  check("closing the card brings the row back", !tv_out.hidden);
+  tv_out.click();
+  check("the welcome page readies the fullscreen video as it shows; where fullscreen cannot be had, a row opens the popup instead", !!tv_d.getElementById("tutorialFull") && tv_d.getElementById("tutorialFull").getAttribute("preload") === "metadata" && tv_d.getElementById("infoOverlay").hidden === false && tv_d.getElementById("infoSlot").firstElementChild.id === "tutorialSection");
+  tv_d.getElementById("infoClose").click();
+  var tv_b = await boot({ url: EDURL, session: signedIn(), local: { formats: "FORMATS = {}" }, fetchOptions: {} }), tv_bd = tv_b.document;
+  var tv_watch = tv_bd.getElementById("feWatch");
+  check("the first-recipe card has Watch how it works with a frame, under its lead line", !!tv_watch && tv_watch.previousElementSibling.classList.contains("fe-welcome-lead") && !!tv_watch.querySelector(".tv-frame") && tv_watch.querySelector("b").textContent === "Watch how it works");
+  tv_watch.click();
+  check("it opens the tutorial popup", tv_bd.getElementById("infoOverlay").hidden === false && tv_bd.getElementById("infoSlot").firstElementChild.id === "tutorialSection");
+  tv_bd.getElementById("infoClose").click();
+  check("closing the popup empties its player, so nothing plays on", tv_bd.getElementById("tutorialPlayer").childElementCount === 0);
+  var tv_src = fs.readFileSync(ROOT + "editor.js", "utf8") + appSource();
+  check("the video comes from Arc's media worker, no YouTube or Vimeo, and Privacy says so", !/youtube|vimeo/i.test(tv_src + fs.readFileSync(ROOT + "index.html", "utf8")) && /const TUTORIAL_VIDEO = "https:\/\/arc-media\.roncarmel\.workers\.dev\/tutorial\.mp4"/.test(tv_src) && fs.existsSync(ROOT + "tutorial-poster.jpg") && /Arc's own server, which keeps nothing/.test(tv_d.getElementById("privacyTutorial").textContent) && fs.existsSync(ROOT + "cloudflare/media/worker.js"));
+  check("fullscreen uses the standard call, and Apple's player on an iPhone, falling back to the popup", /requestFullscreen\(\)/.test(tv_src) && /webkitEnterFullscreen\(\)/.test(tv_src) && /webkitendfullscreen/.test(tv_src) && /exitFullscreen\(\)/.test(tv_src));
+  } catch (err) { areaCrashed("tutorial video", err); } }
+
   if (want("the tagline")) { try {
   // ================================================================ the tagline under the title
   var tg_w = await boot({ url: "http://127.0.0.1:8000/", local: { devMode: "1" } });   // developer mode: Music sharing opens
@@ -3268,7 +3294,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("both cards start closed", tg_heads.every((h) => h.getAttribute("aria-expanded") === "false" && tg_d.getElementById(h.getAttribute("aria-controls")).hidden));
   tg_heads[0].click();
   var tg_more0 = tg_d.getElementById("wpBuilderMore"), tg_more1 = tg_d.getElementById("wpSharingMore");
-  check("the builder's card opens to the recipe screenshot, the intro, and Where it helps as plain text with three uses", tg_heads[0].getAttribute("aria-expanded") === "true" && !tg_more0.hidden && !!tg_more0.querySelector("img[src='welcome-recipe-short-light.jpg']") && Array.from(tg_more0.querySelectorAll("source")).map((x) => x.getAttribute("srcset")).join() === "welcome-recipe.jpg,welcome-recipe-light.jpg,welcome-recipe-short.jpg" && ["welcome-recipe.jpg", "welcome-recipe-light.jpg", "welcome-recipe-short.jpg", "welcome-recipe-short-light.jpg"].every((f) => fs.existsSync(ROOT + f)) && tg_more0.querySelector("h3").textContent === "Where it helps" && tg_more0.querySelectorAll(".wp-uses li").length === 3 && !tg_more0.querySelector("details") && /Weave in new music\./.test(tg_more0.textContent));
+  check("the builder's card opens to the tutorial row under its title (no screenshot), the intro, and Where it helps as plain text with three uses", tg_heads[0].getAttribute("aria-expanded") === "true" && !tg_more0.hidden && tg_more0.firstElementChild.id === "wpWatchIn" && !tg_more0.querySelector(".wp-shot") && !/welcome-recipe/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && tg_more0.querySelector("h3").textContent === "Where it helps" && tg_more0.querySelectorAll(".wp-uses li").length === 3 && !tg_more0.querySelector("details") && /Weave in new music\./.test(tg_more0.textContent));
   tg_heads[1].click();
   check("opening Music sharing closes the builder: one card open at a time", tg_more0.hidden && tg_heads[0].getAttribute("aria-expanded") === "false" && !tg_more1.hidden && !!tg_more1.querySelector("img[src='welcome-sharing-light.jpg']") && tg_more1.querySelector("source").getAttribute("srcset") === "welcome-sharing.jpg" && fs.existsSync(ROOT + "welcome-sharing.jpg") && fs.existsSync(ROOT + "welcome-sharing-light.jpg"));
   check("Music sharing has Where it helps too, three uses, and the intro text is grey with the use titles in the main color", tg_more1.querySelector("h3").textContent === "Where it helps" && tg_more1.querySelectorAll(".wp-uses li").length === 3 && /Phase specific playlists\./.test(tg_more1.textContent) && tg_w.getComputedStyle(tg_more1.querySelector("p")).color !== tg_w.getComputedStyle(tg_more1.querySelector(".wp-uses .ui")).color);
@@ -3372,7 +3398,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var rw_word = rw_w.document.getElementById("recipeWhat"), rw_note = rw_w.document.getElementById("recipeWhatText");
   var rw_para = rw_word && rw_word.closest("p");
   check("the intro says Describe this arc in a recipe, with recipe as a link-like button and no bracketed list after it", !!rw_word && rw_word.textContent === "recipe" && rw_word.classList.contains("linklike") && !!rw_para && /Describe this arc in a recipe and the builder makes new ceremony playlists/.test(rw_para.textContent.replace(rw_note.textContent, "")) && !/\(which of your Spotify playlists/.test(rw_para.textContent));
-  check("the note starts closed, and recipe opens it with the agreed text", rw_note.hidden === true && rw_word.getAttribute("aria-expanded") === "false" && (rw_word.click(), rw_note.hidden === false) && rw_word.getAttribute("aria-expanded") === "true" && rw_note.textContent === "A recipe is a plan for one ceremony: which of your Spotify playlists to draw from, in what order, and for how many minutes each. Each row in the picture is one part of the arc. From one recipe, the builder can make as many playlists as your songs allow.");
+  check("the note starts closed, and recipe opens it with the agreed text", rw_note.hidden === true && rw_word.getAttribute("aria-expanded") === "false" && (rw_word.click(), rw_note.hidden === false) && rw_word.getAttribute("aria-expanded") === "true" && rw_note.textContent === "A recipe is a plan for one ceremony: which of your Spotify playlists to draw from, in what order, and for how many minutes each. From one recipe, the builder can make as many playlists as your songs allow.");
   rw_note.click();
   check("a tap on the note leaves it open, a tap elsewhere closes it", rw_note.hidden === false && (rw_w.document.body.click(), rw_note.hidden === true) && rw_word.getAttribute("aria-expanded") === "false");
   check("recipe again closes it, and so does Escape", (rw_word.click(), rw_word.click(), rw_note.hidden === true) && (rw_word.click(), rw_w.document.dispatchEvent(new rw_w.KeyboardEvent("keydown", { key: "Escape" })), rw_note.hidden === true));
@@ -5217,7 +5243,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-10z"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-11b"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

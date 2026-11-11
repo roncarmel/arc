@@ -1,0 +1,12 @@
+# Arc's media worker (the tutorial video). Deploy from this folder with: npx wrangler deploy
+name = "arc-media"
+main = "worker.js"
+compatibility_date = "2026-11-02"
+workers_dev = true
+
+[observability]
+enabled = false
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "arc-media"

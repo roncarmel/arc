@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-10z";
+const APP_VERSION = "2026-11-11b";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -599,6 +599,7 @@ function flashBandVersion(band) {
 function alignWelcomeIcons() {
   for (const band of document.querySelectorAll(".wp-band")) alignIconToText(band.querySelector(".wp-band-icon"), band.querySelector(".wp-band-text"), band.querySelector(".wp-band-name"), band.querySelector(".wp-band-tag"));
   for (const head of document.querySelectorAll("#welcomePage .wp-tool-head")) alignIconToText(head.querySelector(".tool-icon"), head.querySelector(".wp-tool-lines"), head.querySelector(".wp-tool-text b"), head.querySelector(".wp-tool-tag"));
+  placeTutorialTip();
 }
 
 // Each tool's card on the welcome page opens in place to its picture and text; opening one closes the other, so the page stays short.
@@ -612,7 +613,100 @@ function toggleWelcomeTool(head) {
     const more = $(h.getAttribute("aria-controls"));
     if (typeof revealSmoothly === "function") revealSmoothly(more, open); else more.hidden = !open;
   }
+  // the tutorial's row under the builder's card folds away while the card is open, which has the row inside it
+  const watch = $("wpWatch"), builderOpen = $("wpBuilderHead").getAttribute("aria-expanded") === "true";
+  if (watch && watch.hidden !== builderOpen) { if (typeof revealSmoothly === "function") revealSmoothly(watch, !builderOpen); else watch.hidden = builderOpen; }
   if (!opening) showRecipeWhat(false);
+}
+
+// ---------------------------------------------------------------- the tutorial video
+// Decided by Ron, 2026-11-11 (mockups/tutorial-video-2.png M2 and D, mockups/tutorial-welcome-w3c.png). A landscape video, a file served with the site (no third party).
+// The builder's menu (a small frame from it) and its first-recipe card open it in the menu's popup, with the browser's own player and its fullscreen button; the
+// welcome page's rows play it fullscreen at once (on an iPhone, Apple's player: a page cannot turn the screen, so the person turns the phone).
+// Until TUTORIAL_VIDEO is set, every way in opens the popup saying the video is coming soon.
+// TUTORIAL_VIDEO, TUTORIAL_POSTER and tutorialFrame are in editor.js, which loads first and draws the menu and the first-recipe card.
+
+// the popup's player, filled as it opens (openInfo) and emptied as it closes, so nothing plays on behind it
+function fillTutorialPlayer() {
+  const player = $("tutorialPlayer");
+  if (!player) return;
+  player.textContent = "";
+  if (TUTORIAL_VIDEO) {
+    const video = document.createElement("video");
+    video.controls = true;
+    video.playsInline = true;
+    video.setAttribute("playsinline", "");
+    video.preload = "metadata";
+    video.poster = TUTORIAL_POSTER;
+    video.src = TUTORIAL_VIDEO;
+    player.appendChild(video);
+  } else {
+    const img = document.createElement("img");
+    img.src = TUTORIAL_POSTER;
+    img.alt = "";
+    player.appendChild(img);
+  }
+  $("tutorialNote").textContent = TUTORIAL_VIDEO ? "From a new recipe to playlists in your Spotify, in 3 minutes." : "The video is coming soon.";
+}
+function emptyTutorialPlayer() {
+  const video = document.querySelector("#tutorialPlayer video");
+  if (video) { video.pause(); video.removeAttribute("src"); video.load(); }
+  if ($("tutorialPlayer")) $("tutorialPlayer").textContent = "";
+}
+
+// The welcome page's rows: fullscreen at once. The video is made when the page shows (watchTutorialRows), so it knows its size by the tap; an iPhone will not go
+// fullscreen with a video that has not. If going fullscreen fails, the popup opens instead.
+function tutorialFullVideo() {
+  let video = $("tutorialFull");
+  if (video || !TUTORIAL_VIDEO) return video;
+  video = document.createElement("video");
+  video.id = "tutorialFull";
+  video.controls = true;
+  video.playsInline = true;
+  video.setAttribute("playsinline", "");
+  video.preload = "metadata";
+  video.poster = TUTORIAL_POSTER;
+  video.src = TUTORIAL_VIDEO;
+  video.setAttribute("aria-hidden", "true");
+  document.body.appendChild(video);
+  const done = () => { if (!video.paused) video.pause(); };
+  document.addEventListener("fullscreenchange", () => { if (document.fullscreenElement !== video) done(); });
+  video.addEventListener("webkitendfullscreen", done);   // an iPhone's player closed
+  video.addEventListener("ended", () => {   // the end returns to the page; an iPhone does this by itself
+    if (document.fullscreenElement === video && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+    video.currentTime = 0;
+  });
+  return video;
+}
+
+function playTutorialFullscreen() {
+  const video = tutorialFullVideo();
+  if (!video) { openInfo("tutorialSection"); return; }
+  const fallBack = () => { video.pause(); openInfo("tutorialSection"); };
+  try {
+    if (document.fullscreenEnabled && video.requestFullscreen) video.requestFullscreen().catch(fallBack);
+    else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+    else { fallBack(); return; }
+    const playing = video.play();
+    if (playing && playing.catch) playing.catch(() => {});
+  } catch (error) { fallBack(); }
+}
+
+// the triangle on the row under the builder's card points at the middle of the card's icon
+function placeTutorialTip() {
+  const tip = $("wpWatchTip"), icon = document.querySelector("#wpBuilderHead .tool-icon"), row = $("wpWatch");
+  if (!tip || !icon || !row || row.hidden) return;
+  const iconBox = icon.getBoundingClientRect(), rowBox = row.getBoundingClientRect();
+  if (!iconBox.width || !rowBox.width) return;
+  tip.style.left = Math.round(iconBox.left + iconBox.width / 2 - rowBox.left - 1 - 6) + "px";   // less the row's border and half the triangle
+}
+
+function watchTutorialRows() {
+  document.addEventListener("click", (event) => {
+    const row = event.target.closest && event.target.closest("[data-tutorial='fullscreen']");
+    if (row) { event.preventDefault(); playTutorialFullscreen(); }
+  });
+  if (pageName() === "welcome") tutorialFullVideo();
 }
 
 // ---------------------------------------------------------------- the connecting screen
@@ -857,6 +951,7 @@ function openInfo(id) {
   $("infoTitle").textContent = title ? title.textContent.trim() : "";
   if (id === "reportBlock") refreshReportBox();
   if (id === "removeSection") removeStage("choose");
+  if (id === "tutorialSection") fillTutorialPlayer();
   if ((id === "devMoods" || id === "devReports") && typeof sharingDevOpened === "function") sharingDevOpened(id);   // Music sharing's mood words or reports (sharing.js)
   $("infoOverlay").hidden = false;
   document.body.style.overflow = "hidden";
@@ -876,6 +971,7 @@ function motionOk() {
 function closeInfo(quiet = false) {
   if (!info.node) return;
   if (info.node.id === "saveMethodSection") backupCardOpen = false;
+  if (info.node.id === "tutorialSection") emptyTutorialPlayer();
   if (info.node.tagName === "DETAILS") info.node.open = info.wasOpen;
   for (const d of info.node.querySelectorAll("details")) d.open = false;   // reopened, every section starts closed again
   info.node.hidden = info.wasHidden;
@@ -3698,6 +3794,7 @@ async function main() {
   on("getStarted", "click", () => slideScreens(() => showWelcomeStep(2, true)));
   on("wpSetupBack", "click", welcomeStepBack);
   for (const head of document.querySelectorAll("#welcomePage .wp-tool-head")) head.addEventListener("click", () => toggleWelcomeTool(head));
+  watchTutorialRows();
   alignWelcomeIcons();
   window.addEventListener("resize", () => { alignWelcomeIcons(); drawSetupJoint(); });
   if (connectingScreen) { alignWelcomeIcons(); drawSetupJoint(); }   // the connecting screen has the band and the line too
