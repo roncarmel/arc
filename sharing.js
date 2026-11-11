@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-11f";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-11g";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -709,8 +709,10 @@ function setType(type) {
   const from = sharing.type, order = ["all", ...KINDS.map(([v]) => v)];
   // toward a tile further right the page moves left, the way By others and By you move; clearing moves it back
   const dir = type === "all" ? -1 : from === "all" ? 1 : Math.sign(order.indexOf(type) - order.indexOf(from));
+  const hinting = !!sharing.typeHint, hintWas = hinting && $("msTypeHint") ? $("msTypeHint").getBoundingClientRect().height : 0;
   slideFind("msPanel", dir, () => {
     sharing.type = type;
+    sharing.typeHint = type === "all" ? null : type;
     sharing.book = null;
     sharing.phases.clear();
     sharing.moods.clear();
@@ -718,6 +720,36 @@ function setType(type) {
     if ($("msBody")) $("msBody").scrollTop = 0;   // another type's list starts from its first playlist
   });
   moveTypeCapsule(from, type);
+  showTypeHint(hinting, hintWas);
+}
+// What the chosen type is, the share form's line, under the tiles for 3 s after the last tap (Ron, 2026-11-11): it unfolds once,
+// changes its words in place if another tile is tapped meanwhile, and folds away 3 s after the last one, or at once when the type is cleared.
+const TYPE_HINT_MS = 3000;
+let typeHintTimer = 0;
+function typeHintLine() {
+  const k = KINDS.find(([v]) => v === sharing.typeHint);
+  const line = feEl("p", { id: "msTypeHint", class: "ms-kline ms-typehint", "aria-live": "polite" }, k ? k[2] : "");
+  line.hidden = !k;
+  return line;
+}
+function showTypeHint(wasShowing, wasHeight) {
+  clearTimeout(typeHintTimer);
+  const line = $("msTypeHint");
+  if (!sharing.typeHint) {
+    // cleared: what was showing folds away
+    if (line && wasShowing) { line.hidden = false; revealSmoothly(line, false); }
+    return;
+  }
+  if (line && !wasShowing) { line.hidden = true; revealSmoothly(line, true); }
+  // another type's words may take one line more or less (a phone): it eases to its new height rather than jumping
+  const now = line && line.getBoundingClientRect().height;
+  if (line && wasShowing && wasHeight && Math.abs(now - wasHeight) > 1 && motionAllowed(line))
+    line.animate([{ height: wasHeight + "px", overflow: "clip" }, { height: now + "px", overflow: "clip" }], { duration: 200, easing: EASE_OUT });
+  typeHintTimer = setTimeout(() => {
+    sharing.typeHint = null;
+    const l = $("msTypeHint");
+    if (l) revealSmoothly(l, false);
+  }, TYPE_HINT_MS);
 }
 // Choosing a type (Ron, 2026-11-10, mockups/type-motion.html): the pink capsule glides from the old tile to the new one (grows in when none was lit,
 // shrinks away when the lit one is tapped again), and the chosen tile's icon acts out its type once.
@@ -799,7 +831,7 @@ function renderFind(body) {
   if (!sortChoices().some(([v]) => v === sharing.sort)) sharing.sort = "newest";
   const has = sharing.library && sharing.library.shares.length;
   // the type tiles and the row of Search and Sort stay at the top while the list scrolls; the type's own filter scrolls with it (Ron, 2026-11-10, mockups/sticky-filters-*.png)
-  const head = feEl("div", { id: "msFindHead", class: "ms-findhead" }, kindTiles(sharing.type, setType, { filter: true }));
+  const head = feEl("div", { id: "msFindHead", class: "ms-findhead" }, kindTiles(sharing.type, setType, { filter: true }), typeHintLine());
   body.appendChild(head);
   if (!body.dataset.findScroll) {
     body.dataset.findScroll = "1";
