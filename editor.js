@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-11d";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-11e";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -704,7 +704,7 @@ function renderEditor() {
         feEl("h2", { class: "fe-welcome-title", text: "Time to make your first recipe!" }),
         feEl("p", { class: "fe-welcome-lead", text: `${actWord(true)} New recipe above to start.` }),
         // the tutorial, where a new person first needs it; it opens in the menu's popup (Ron, 2026-11-11, mockups/tutorial-video-2.png D)
-        feEl("button", { type: "button", class: "tv-row", id: "feWatch", onClick: () => openInfo("tutorialSection") }, tutorialFrame(),
+        feEl("button", { type: "button", class: "tv-row", id: "feWatch", onClick: () => watchTutorial() }, tutorialFrame(),
           feEl("span", { class: "tv-row-text" }, feEl("b", { text: "Watch how it works" }), feEl("span", { text: "Recipe to playlists in under 2 min" }))),
         feEl("p", { class: "muted fe-welcome-text", text: "A recipe says which of your playlists to play, in what order, and for how long. The app turns it into as many playlists as your songs allow, with no song used twice." }))));
     placeWelcomeArrow();
@@ -839,7 +839,7 @@ function renderAppMenu() {
   // The builder's (decided by Ron, 2026-11-10, mockups/app-menu-A.png, with help moved up under the tutorial): Connect and the manual backup block when they apply,
   // Watch the tutorial, Feedback and Report a problem, then what More options held, each a row of its own, then the version. A guide for facilitators is gone; the ?
   // beside the silence stepper has its own popup. What belongs to the whole app (Privacy, Color, the account) is under Everything else on home.
-  const tutorial = feEl("button", { type: "button", class: "fe-item fe-gditem", id: "feTutorial", role: "menuitem", onClick: choose(() => openInfo("tutorialSection")) }, tutorialFrame(),
+  const tutorial = feEl("button", { type: "button", class: "fe-item fe-gditem", id: "feTutorial", role: "menuitem", onClick: choose(() => watchTutorial()) }, tutorialFrame(),
     feEl("span", { class: "fe-gditem-text" }, feEl("span", { text: "Watch the tutorial" }), feEl("span", { class: "fe-gditem-note", text: "Recipe to playlists in under 2 min" })));
   const buildAll = feEl("button", { type: "button", class: "fe-item", id: "feBuildAll", role: "menuitem", disabled: typeof canBuildAll === "function" && !canBuildAll(), onClick: choose(() => buildAllRecipes()) }, feIcon("sparkle"), "Build all recipes");
   const top = [...spotifyItems, ...(backupBlock ? [...(spotifyItems.length ? [rule()] : []), backupBlock] : [])];

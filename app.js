@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-11d";
+const APP_VERSION = "2026-11-11e";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -621,8 +621,10 @@ function toggleWelcomeTool(head) {
 
 // ---------------------------------------------------------------- the tutorial video
 // Decided by Ron, 2026-11-11 (mockups/tutorial-video-2.png M2 and D, mockups/tutorial-welcome-w3c.png). A landscape video, a file served with the site (no third party).
-// The builder's menu (a small frame from it) and its first-recipe card open it in the menu's popup, with the browser's own player and its fullscreen button; the
-// welcome page's rows play it fullscreen at once (on an iPhone, Apple's player: a page cannot turn the screen, so the person turns the phone).
+// Every way in (the builder's menu, its first-recipe card, the welcome page's rows) calls watchTutorial. On a computer it opens the menu's popup, made large (most of
+// the tab), playing at once, with the browser's own player and its fullscreen button; at the end, Watch again and Done over the video. On a phone it goes fullscreen at
+// once and, where the browser allows (Android), turns to landscape; on an iPhone, Apple's player, and the person turns the phone (a page cannot). The end returns to
+// the page. Decided by Ron, 2026-11-11.
 // Until TUTORIAL_VIDEO is set, every way in opens the popup saying the video is coming soon.
 // TUTORIAL_VIDEO, TUTORIAL_POSTER and tutorialFrame are in editor.js, which loads first and draws the menu and the first-recipe card.
 
@@ -640,6 +642,14 @@ function fillTutorialPlayer() {
     video.poster = TUTORIAL_POSTER;
     video.src = TUTORIAL_VIDEO;
     player.appendChild(video);
+    player.appendChild(tutorialEndCard(video));
+    video.addEventListener("ended", () => {   // out of the browser's fullscreen, so Watch again and Done are seen
+      if (document.fullscreenElement === video && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+      player.classList.add("tv-ended");
+      video.controls = false;
+    });
+    const playing = video.play();   // opened by a click or tap, so it may play with sound
+    if (playing && playing.catch) playing.catch(() => {});
   } else {
     const img = document.createElement("img");
     img.src = TUTORIAL_POSTER;
@@ -648,13 +658,47 @@ function fillTutorialPlayer() {
   }
   $("tutorialNote").textContent = TUTORIAL_VIDEO ? "From a new recipe to playlists in your Spotify, in under 2 minutes." : "The video is coming soon.";
 }
+// over the video once it ends: Watch again, and Done (which closes the popup, like the Done under it)
+function tutorialEndCard(video) {
+  const card = document.createElement("div");
+  card.className = "tv-end";
+  const again = document.createElement("button");
+  again.type = "button";
+  again.className = "tv-again";
+  again.textContent = "Watch again";
+  again.addEventListener("click", () => {
+    $("tutorialPlayer").classList.remove("tv-ended");
+    video.controls = true;
+    video.currentTime = 0;
+    const playing = video.play();
+    if (playing && playing.catch) playing.catch(() => {});
+  });
+  const done = document.createElement("button");
+  done.type = "button";
+  done.className = "primary tv-done";
+  done.textContent = "Done";
+  done.addEventListener("click", () => closeInfo());
+  card.append(again, done);
+  return card;
+}
 function emptyTutorialPlayer() {
   const video = document.querySelector("#tutorialPlayer video");
   if (video) { video.pause(); video.removeAttribute("src"); video.load(); }
-  if ($("tutorialPlayer")) $("tutorialPlayer").textContent = "";
+  if ($("tutorialPlayer")) { $("tutorialPlayer").textContent = ""; $("tutorialPlayer").classList.remove("tv-ended"); }
 }
 
-// The welcome page's rows: fullscreen at once. The video is made when the page shows (watchTutorialRows), so it knows its size by the tap; an iPhone will not go
+// a phone: a touch screen whose short side is a phone's (an iPad gets the popup, like a computer)
+function tutorialOnPhone() {
+  const coarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+  return coarse && Math.min(screen.width, screen.height) <= 500;
+}
+
+function watchTutorial() {
+  if (TUTORIAL_VIDEO && tutorialOnPhone()) playTutorialFullscreen();
+  else openInfo("tutorialSection");
+}
+
+// A phone: fullscreen at once. The video is made as the page starts (watchTutorialRows), so it knows its size by the tap; an iPhone will not go
 // fullscreen with a video that has not. If going fullscreen fails, the popup opens instead.
 function tutorialFullVideo() {
   let video = $("tutorialFull");
@@ -669,7 +713,10 @@ function tutorialFullVideo() {
   video.src = TUTORIAL_VIDEO;
   video.setAttribute("aria-hidden", "true");
   document.body.appendChild(video);
-  const done = () => { if (!video.paused) video.pause(); };
+  const done = () => {
+    if (!video.paused) video.pause();
+    try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (error) {}
+  };
   document.addEventListener("fullscreenchange", () => { if (document.fullscreenElement !== video) done(); });
   video.addEventListener("webkitendfullscreen", done);   // an iPhone's player closed
   video.addEventListener("ended", () => {   // the end returns to the page; an iPhone does this by itself
@@ -684,7 +731,11 @@ function playTutorialFullscreen() {
   if (!video) { openInfo("tutorialSection"); return; }
   const fallBack = () => { video.pause(); openInfo("tutorialSection"); };
   try {
-    if (document.fullscreenEnabled && video.requestFullscreen) video.requestFullscreen().catch(fallBack);
+    if (document.fullscreenEnabled && video.requestFullscreen) {
+      video.requestFullscreen()
+        .then(() => { if (screen.orientation && screen.orientation.lock) return screen.orientation.lock("landscape").catch(() => {}); })   // Android; an iPhone has no lock
+        .catch(fallBack);
+    }
     else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
     else { fallBack(); return; }
     const playing = video.play();
@@ -703,10 +754,10 @@ function placeTutorialTip() {
 
 function watchTutorialRows() {
   document.addEventListener("click", (event) => {
-    const row = event.target.closest && event.target.closest("[data-tutorial='fullscreen']");
-    if (row) { event.preventDefault(); playTutorialFullscreen(); }
+    const row = event.target.closest && event.target.closest("[data-tutorial]");
+    if (row) { event.preventDefault(); watchTutorial(); }
   });
-  if (pageName() === "welcome") tutorialFullVideo();
+  if (tutorialOnPhone()) tutorialFullVideo();
 }
 
 // ---------------------------------------------------------------- the connecting screen

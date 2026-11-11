@@ -871,10 +871,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-11d" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-11e" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-11d/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-11e/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2919,7 +2919,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-11d", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-11e", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3264,23 +3264,34 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var tv_w = await boot({ url: "http://127.0.0.1:8000/" }), tv_d = tv_w.document;
   var tv_out = tv_d.getElementById("wpWatch"), tv_in = tv_d.getElementById("wpWatchIn");
   check("the welcome page has Watch how it works under the builder's card, with a triangle pointing up, and a frame from the video", !!tv_out && tv_out.previousElementSibling.querySelector("#wpBuilderHead") !== null && !!tv_out.querySelector(".tv-tip") && !!tv_out.querySelector(".tv-frame img[src='tutorial-poster.jpg']") && tv_out.querySelector(".tv-row-text b").textContent === "Watch how it works" && tv_out.querySelector(".tv-row-text span").textContent === "Recipe to playlists in under 2 min" && !tv_out.hidden);
-  check("both welcome rows play it fullscreen", tv_out.dataset.tutorial === "fullscreen" && tv_in.dataset.tutorial === "fullscreen");
+  check("both welcome rows open the tutorial the same way as the menu (watchTutorial)", "tutorial" in tv_out.dataset && "tutorial" in tv_in.dataset);
   tv_d.getElementById("wpBuilderHead").click();
   check("opening the builder's card folds the row away; the card has its own under its title", tv_out.hidden && !tv_d.getElementById("wpBuilderMore").hidden && tv_d.getElementById("wpBuilderMore").firstElementChild === tv_in);
   tv_d.getElementById("wpBuilderHead").click();
   check("closing the card brings the row back", !tv_out.hidden);
   tv_out.click();
-  check("the welcome page readies the fullscreen video as it shows; where fullscreen cannot be had, a row opens the popup instead", !!tv_d.getElementById("tutorialFull") && tv_d.getElementById("tutorialFull").getAttribute("preload") === "metadata" && tv_d.getElementById("infoOverlay").hidden === false && tv_d.getElementById("infoSlot").firstElementChild.id === "tutorialSection");
+  check("on a computer a welcome row opens the popup (no hidden fullscreen video is made)", !tv_d.getElementById("tutorialFull") && tv_d.getElementById("infoOverlay").hidden === false && tv_d.getElementById("infoSlot").firstElementChild.id === "tutorialSection");
   tv_d.getElementById("infoClose").click();
   var tv_b = await boot({ url: EDURL, session: signedIn(), local: { formats: "FORMATS = {}" }, fetchOptions: {} }), tv_bd = tv_b.document;
   var tv_watch = tv_bd.getElementById("feWatch");
   check("the first-recipe card has Watch how it works with a frame, under its lead line", !!tv_watch && tv_watch.previousElementSibling.classList.contains("fe-welcome-lead") && !!tv_watch.querySelector(".tv-frame") && tv_watch.querySelector("b").textContent === "Watch how it works");
   tv_watch.click();
   check("it opens the tutorial popup", tv_bd.getElementById("infoOverlay").hidden === false && tv_bd.getElementById("infoSlot").firstElementChild.id === "tutorialSection");
+  var tv_v = tv_bd.querySelector("#tutorialPlayer video");
+  check("the popup's player has Watch again and Done over it, hidden until the end", !!tv_bd.querySelector("#tutorialPlayer .tv-end .tv-again") && !!tv_bd.querySelector("#tutorialPlayer .tv-end .tv-done") && !tv_bd.getElementById("tutorialPlayer").classList.contains("tv-ended"));
+  tv_v.dispatchEvent(new tv_b.Event("ended"));
+  check("at the end, Watch again and Done show and the player's controls go", tv_bd.getElementById("tutorialPlayer").classList.contains("tv-ended") && !tv_v.controls);
+  tv_bd.querySelector("#tutorialPlayer .tv-again").click();
+  check("Watch again starts over with the controls back", !tv_bd.getElementById("tutorialPlayer").classList.contains("tv-ended") && tv_v.controls);
+  tv_v.dispatchEvent(new tv_b.Event("ended"));
+  tv_bd.querySelector("#tutorialPlayer .tv-done").click();
+  check("Done over the video closes the popup", tv_bd.getElementById("infoOverlay").hidden === true);
+  tv_watch.click();
   tv_bd.getElementById("infoClose").click();
   check("closing the popup empties its player, so nothing plays on", tv_bd.getElementById("tutorialPlayer").childElementCount === 0);
   var tv_src = fs.readFileSync(ROOT + "editor.js", "utf8") + appSource();
   check("the video comes from Arc's media worker, no YouTube or Vimeo, and Privacy says so", !/youtube|vimeo/i.test(tv_src + fs.readFileSync(ROOT + "index.html", "utf8")) && /const TUTORIAL_VIDEO = "https:\/\/arc-media\.roncarmel\.workers\.dev\/tutorial\.mp4"/.test(tv_src) && fs.existsSync(ROOT + "tutorial-poster.jpg") && /Arc's own server, which keeps nothing/.test(tv_d.getElementById("privacyTutorial").textContent) && fs.existsSync(ROOT + "cloudflare/media/worker.js"));
+  check("on a computer the popup is most of the tab; a phone goes fullscreen and locks to landscape where it can, unlocking after", /#infoDialog:has\(#tutorialSection\) \{ width: calc\(min\(92vw/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /screen\.orientation\.lock\("landscape"\)/.test(tv_src) && /screen\.orientation\.unlock\(\)/.test(tv_src) && /function tutorialOnPhone\(\)/.test(tv_src));
   check("fullscreen uses the standard call, and Apple's player on an iPhone, falling back to the popup", /requestFullscreen\(\)/.test(tv_src) && /webkitEnterFullscreen\(\)/.test(tv_src) && /webkitendfullscreen/.test(tv_src) && /exitFullscreen\(\)/.test(tv_src));
   } catch (err) { areaCrashed("tutorial video", err); } }
 
@@ -5243,7 +5254,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-11d"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-11e"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
