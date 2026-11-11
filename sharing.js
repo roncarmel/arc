@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-10x";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-10y";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -220,11 +220,11 @@ function kindIcon(kind) {
   svg.setAttribute("viewBox", "0 0 58 30");
   svg.setAttribute("class", "ms-kicon");
   svg.setAttribute("aria-hidden", "true");
-  const path = (d, cls) => { const p = document.createElementNS(NS, "path"); p.setAttribute("d", d); if (cls) p.setAttribute("class", cls); svg.appendChild(p); };
+  const path = (d, cls) => { const p = document.createElementNS(NS, "path"); p.setAttribute("d", d); p.setAttribute("pathLength", "1"); if (cls) p.setAttribute("class", cls); svg.appendChild(p); };   // pathLength: actOutKind draws them
   const curve = ["M4 23 H15", "M15 23 C20 23 20 7 25 7", "M25 7 H33", "M33 7 C38 7 38 23 43 23", "M43 23 H54"];
   if (kind === "ceremony") curve.forEach((d) => path(d));
   else if (kind === "phase") curve.forEach((d, i) => path(d, i === 1 ? "" : "ms-kicon-dim"));
-  else if (kind === "mood") path("M4 18 C14 6, 22 26, 30 15 S 46 8, 54 14");
+  else if (kind === "mood") path("M4 18 C14 6, 22 26, 30 15 S 46 8, 54 14", "ms-kicon-wave");
   else for (const x of [17, 29, 41]) { const c = document.createElementNS(NS, "circle"); c.setAttribute("cx", x); c.setAttribute("cy", 15); c.setAttribute("r", 3); c.setAttribute("class", "ms-kicon-dot"); svg.appendChild(c); }
   return svg;
 }
@@ -243,7 +243,9 @@ function kindLabel(s) {
 }
 // type tiles: the four types in a row, each name under its tile (the edit page), the same as a filter (Shared by others: none lit shows every type, a tap lights one, a tap on the lit one shows every type again), or the four as big tiles with a line each
 function kindTiles(on, choose, { filter = false, big = false } = {}) {
-  const box = feEl("div", { class: "ms-ktiles" + (big ? " ms-ktiles-big" : ""), role: filter ? "group" : "radiogroup", "aria-label": filter ? "Type" : "What type of playlist is this?" });
+  const box = feEl("div", { class: "ms-ktiles" + (big ? " ms-ktiles-big" : "") + (filter ? " ms-ktiles-filter" : ""), role: filter ? "group" : "radiogroup", "aria-label": filter ? "Type" : "What type of playlist is this?" });
+  const lit = KINDS.findIndex(([v]) => v === on);
+  if (filter) box.appendChild(feEl("span", { class: "ms-kcap" + (lit < 0 ? " ms-kcap-off" : ""), style: `--i: ${Math.max(lit, 0)}`, "aria-hidden": "true" }));
   const tile = (value, name, line, icon) => feEl("button", { type: "button", role: filter ? null : "radio", class: "ms-ktile" + (on === value ? " ms-on" : ""),
     [filter ? "aria-pressed" : "aria-checked"]: String(on === value),
     "data-kind": value, onClick: () => choose(filter && on === value ? "all" : value) },
@@ -704,12 +706,86 @@ function sortChoices() {
 }
 function setType(type) {
   if (type === sharing.type) return;
-  sharing.type = type;
-  sharing.book = null;
-  sharing.phases.clear();
-  sharing.moods.clear();
-  renderSharing();
-  if ($("msBody")) $("msBody").scrollTop = 0;   // another type's list starts from its first playlist
+  const from = sharing.type, order = ["all", ...KINDS.map(([v]) => v)];
+  // toward a tile further right the page moves left, the way By others and By you move; clearing moves it back
+  const dir = type === "all" ? -1 : from === "all" ? 1 : Math.sign(order.indexOf(type) - order.indexOf(from));
+  slideFind("msPanel", dir, () => {
+    sharing.type = type;
+    sharing.book = null;
+    sharing.phases.clear();
+    sharing.moods.clear();
+    renderSharing();
+    if ($("msBody")) $("msBody").scrollTop = 0;   // another type's list starts from its first playlist
+  });
+  moveTypeCapsule(from, type);
+}
+// Choosing a type (Ron, 2026-11-10, mockups/type-motion.html): the pink capsule glides from the old tile to the new one (grows in when none was lit,
+// shrinks away when the lit one is tapped again), and the chosen tile's icon acts out its type once.
+function moveTypeCapsule(from, to) {
+  const box = document.querySelector("#msFindHead .ms-ktiles-filter"), cap = box && box.querySelector(".ms-kcap");
+  if (!cap || !motionAllowed(cap)) return;
+  const index = (v) => KINDS.findIndex(([k]) => k === v);
+  const tiles = box.querySelectorAll(".ms-ktile");
+  const at = (i) => `translateX(calc((100% + 6px) * ${i}))`;
+  if (to === "all") {
+    cap.style.setProperty("--i", index(from));
+    cap.animate([{ opacity: 1, transform: at(index(from)) }, { opacity: 0, transform: at(index(from)) + " scale(0.82)" }], { duration: 180, easing: EASE_IN });
+  } else if (from === "all") {
+    cap.animate([{ opacity: 0, transform: at(index(to)) + " scale(0.82)" }, { opacity: 1, transform: at(index(to)) }], { duration: 240, easing: EASE_OUT });
+  } else {
+    cap.animate([{ transform: at(index(from)) }, { transform: at(index(to)) }], { duration: 340, easing: EASE_OUT });
+  }
+  // the names' colors ease too (the tiles are new, so CSS transitions would not run)
+  const muted = from === "all" ? null : getComputedStyle(tiles[index(from)]).color;
+  const pink = to === "all" ? null : getComputedStyle(tiles[index(to)]).color;
+  if (muted && pink) {
+    tiles[index(from)].animate([{ color: pink }, { color: muted }], { duration: 240, easing: EASE_OUT });
+    tiles[index(to)].animate([{ color: muted }, { color: pink }], { duration: 240, easing: EASE_OUT });
+  }
+  if (to !== "all") actOutKind(to, tiles[index(to)].querySelector(".ms-kicon"));
+}
+function actOutKind(kind, svg) {
+  if (!svg) return;
+  const draw = [{ strokeDasharray: 1, strokeDashoffset: 1 }, { strokeDasharray: 1, strokeDashoffset: 0 }];
+  if (kind === "ceremony") {
+    // the curve draws itself from left to right
+    svg.querySelectorAll("path").forEach((p, i) => p.animate(draw, { duration: 150, delay: i * 95, easing: "linear", fill: "backwards" }));
+  } else if (kind === "phase") {
+    // Ascent draws itself and swells for a moment
+    const lit = svg.querySelector("path:not(.ms-kicon-dim)");
+    if (!lit) return;
+    lit.animate(draw, { duration: 380, easing: EASE_OUT, fill: "backwards" });
+    lit.animate([{ strokeWidth: 2.5 }, { strokeWidth: 4, offset: 0.6 }, { strokeWidth: 2.5 }], { duration: 600, easing: EASE_OUT });
+  } else if (kind === "mood") {
+    // the wave ripples
+    const wave = svg.querySelector(".ms-kicon-wave");
+    if (wave) wave.animate([{ transform: "scaleY(1)" }, { transform: "scaleY(1.6)" }, { transform: "scaleY(0.55)" }, { transform: "scaleY(1.2)" }, { transform: "scaleY(1)" }], { duration: 650, easing: "ease-in-out" });
+  } else {
+    // the three dots hop in turn
+    svg.querySelectorAll(".ms-kicon-dot").forEach((c, i) => c.animate([{ transform: "translateY(0)" }, { transform: "translateY(-6px)" }, { transform: "translateY(0)" }], { duration: 300, delay: i * 85, easing: "ease-in-out" }));
+  }
+}
+// Moves part of Shared by others sideways while it changes, the tab switch's motion (shiftPage) over 30 px: the old part, a copy, fades as it moves
+// 30 px away, the new one comes from 30 px on the other side. dir 0 only fades. id is msPanel (the type's filter and the list) or msResults (the list).
+function slideFind(id, dir, change) {
+  const body = $("msBody"), old = $(id);
+  if (!body || !old || !motionAllowed(body)) { change(); return; }
+  for (const g of body.querySelectorAll(".ms-find-ghost")) g.remove();
+  const scroll0 = body.scrollTop, top = old.offsetTop, left = old.offsetLeft, width = old.offsetWidth;
+  const copy = old.cloneNode(true);
+  for (const el of [copy, ...copy.querySelectorAll("[id]")]) el.removeAttribute("id");
+  change();
+  const now = $(id);
+  // the copy stays where it was seen, cut at the foot of what shows (so the page does not grow); the sticky tiles cover its top
+  const at = top - scroll0 + body.scrollTop, height = body.scrollTop + body.clientHeight - at;
+  if (height > 0) {
+    const ghost = feEl("div", { class: "ms-find-ghost", "aria-hidden": "true" }, copy);
+    ghost.inert = true;
+    Object.assign(ghost.style, { top: at + "px", left: left + "px", width: width + "px", height: height + "px" });
+    body.appendChild(ghost);
+    ghost.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: `translateX(${-dir * 30}px)` }], { duration: 140, easing: EASE_IN, fill: "forwards" }).onfinish = () => ghost.remove();
+  }
+  if (now) now.animate([{ opacity: 0, transform: `translateX(${dir * 30}px)` }, { opacity: 1, transform: "none" }], { duration: 240, delay: 60, easing: EASE_OUT, fill: "backwards" });
 }
 const SEARCH_HINTS = { all: "Search", ceremony: "Search ceremonies", phase: "Search phases", mood: "Search moods", other: "Search others" };
 function renderFind(body) {
@@ -733,19 +809,26 @@ function renderFind(body) {
       tools.appendChild(feEl("p", { class: "ms-flabel2" }, "Which book"));
       const on = new Set(sharing.book == null ? [] : [sharing.book]);
       // Other shows every ceremony for another book, whatever its code (Ron, 2026-11-08)
-      tools.appendChild(bookTiles(on, () => { sharing.book = on.size ? [...on][0] : null; renderSharing(); }, true));
+      tools.appendChild(bookTiles(on, () => {
+        const was = sharing.book, next = on.size ? [...on][0] : null;
+        slideFind("msResults", next == null ? -1 : was == null ? 1 : Math.sign(next - was), () => { sharing.book = next; renderSharing(); });
+      }, true));
     } else if (t === "phase") {
       // one phase at a time: what several would mean was unclear (Ron, 2026-11-10)
       tools.appendChild(feEl("p", { class: "ms-flabel2" }, "Which phase"));
-      tools.appendChild(phaseCurve(sharing.phases, () => renderResults(), "Which phase", true));
+      let was = [...sharing.phases][0];
+      tools.appendChild(phaseCurve(sharing.phases, () => {
+        const next = [...sharing.phases][0];
+        slideFind("msResults", next == null ? -1 : was == null ? 1 : Math.sign(next - was), renderResults);
+        was = next;
+      }, "Which phase", true));
     } else if (t === "mood") {
       tools.appendChild(feEl("p", { class: "ms-flabel2" }, "Which moods"));
       tools.appendChild(feEl("div", { id: "msMoods", class: "ms-chips" }));
     }
   }
   tools.hidden = !tools.children.length;
-  body.appendChild(tools);
-  body.appendChild(feEl("div", { id: "msResults" }));
+  body.appendChild(feEl("div", { id: "msPanel", class: "ms-panel" }, tools, feEl("div", { id: "msResults", class: "ms-results" })));
   renderResults();
 }
 function searchField(placeholder) {
@@ -771,7 +854,7 @@ function renderMoodChips() {
   for (const t of words) {
     const on = sharing.moods.has(t.word);
     box.appendChild(feEl("button", { type: "button", class: "ms-chip" + (on ? " ms-on" : ""), "aria-pressed": String(on),
-      onClick: () => { if (on) sharing.moods.delete(t.word); else sharing.moods.add(t.word); renderMoodChips(); renderResults(); } }, t.word));
+      onClick: () => { if (on) sharing.moods.delete(t.word); else sharing.moods.add(t.word); renderMoodChips(); slideFind("msResults", 0, renderResults); } }, t.word));
   }
 }
 
