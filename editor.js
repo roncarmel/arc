@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12s";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12t";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2534,8 +2534,7 @@ function buildRecipe(id) {
   if (!devMode()) { startCreate([id]); return; }
   askWhoFor(id).then((answer) => {
     if (answer === null) return;
-    buildFor = answer;
-    startCreate([id]);
+    buildForParticipant(id, answer);   // built in the participant's popup (app.js)
   });
 }
 
@@ -2818,14 +2817,20 @@ function paintPersonPanel() {
   const meta = feEl("span", { class: "rp-meta", id: "ppMeta", text: personLine(person) });
   const body = feEl("div", { class: "pp-body" },
     feEl("button", { type: "button", class: "primary bh-wide", id: "bhNext", onClick: () => pickRecipeFor(code) }, bhSvg(BH_SPARK), `Build ${code}'s next playlist`));
-  if (n) {
+  const mine = personBuild.code === code ? personBuild : null;
+  if (mine && (mine.state === "blocked" || mine.state === "fail")) body.appendChild(personBuildProblem(mine));
+  const building = mine && mine.state === "now";
+  if (n || building) {
     body.appendChild(feEl("div", { class: "bh-sec", text: "Playlists" }));
     const list = feEl("div", { class: "bh-list" });
+    if (building) list.appendChild(personBuildRow(mine));
     for (const p of person.playlists) {
-      list.appendChild(feEl("a", { class: "bh-row", href: `https://open.spotify.com/playlist/${p.id}`, target: "_blank", rel: "noopener" },
+      const isNew = mine && mine.state === "done" && mine.id === p.id;
+      const sub = isNew ? `${lengthText(mine.minutes)} · ${mine.fresh ? mine.fresh.fresh : mine.songs} new to ${code}` : p.count === null || p.count === undefined ? "" : `${p.count} songs`;
+      list.appendChild(feEl("a", { class: "bh-row" + (isNew ? " pp-new" : ""), href: `https://open.spotify.com/playlist/${p.id}`, target: "_blank", rel: "noopener" },
         feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }),
-        feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: p.name }), feEl("span", { class: "bh-sub", text: p.count === null || p.count === undefined ? "" : `${p.count} songs` })),
-        bhSvg(BH_OPEN)));
+        feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: p.name }), feEl("span", { class: "bh-sub", text: sub })),
+        isNew ? feEl("span", { class: "pp-open", text: "Open" }) : bhSvg(BH_OPEN)));
     }
     body.appendChild(list);
   }
@@ -2846,9 +2851,78 @@ function paintPersonPanel() {
   refreshBuildButtons();
 }
 
+// Opens a participant's popup, with Participants behind it (a build started from a recipe moves the landing there, where the playlist will live)
+function openPersonPanel(code) {
+  builderHome.tab = "people";
+  builderHome.person = code;
+  renderBuilderHome();
+}
+
+// The playlist being built for a participant, as a row at the top of their playlists: its cover dimmed, its name, the step in pink and a bar that fills
+function personBuildRow(b) {
+  const share = b.total ? Math.round((b.done / b.total) * 100) : 0;
+  return feEl("div", { class: "bh-row pp-live", id: "ppBuild", "aria-live": "polite" },
+    feEl("span", { class: "bh-cover pp-cover-wait", style: 'background-image:url("playlist-cover.jpg")' }),
+    feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: b.name }),
+      feEl("span", { class: "bh-sub pp-step", text: b.step }),
+      feEl("span", { class: "pp-bar", "aria-hidden": "true" }, feEl("i", { style: `width:${share}%` })),
+      feEl("span", { class: "pp-keep", text: "Keep this tab open." })));
+}
+// What stopped it: the recipe's problems (nothing was made), or a failure while building (perhaps after the playlist was made)
+function personBuildProblem(b) {
+  if (b.state === "blocked") {
+    const box = problemBox("This playlist can't be built");
+    const list = feEl("ul", {});
+    for (const [bold, rest] of b.problems || []) {
+      const li = feEl("li", {});
+      putNamed(li.appendChild(feEl("b", {})), bold);
+      putNamed(li, " " + rest);
+      list.appendChild(li);
+    }
+    box.lastChild.appendChild(list);
+    return box;
+  }
+  return problemBox("The playlist was not finished", b.id
+    ? `${b.error} ${b.name} is in Spotify with only some of its songs. Delete it there, then build again.`
+    : `${b.error} Nothing was made. Build again when you are ready.`);
+}
+// Called as the build moves on: only the row changes while it is under way (focus and scroll stay); a new state paints the popup again
+let paintedBuildState = null;
+function paintPersonBuild(force) {
+  if (builderHome.person !== personBuild.code || !$("personPanel")) return;
+  const row = $("ppBuild");
+  if (!force && personBuild.state === "now" && paintedBuildState === "now" && row) { row.replaceWith(personBuildRow(personBuild)); return; }
+  paintedBuildState = personBuild.state;
+  paintPersonPanel();
+}
+// Built: a short message, wherever the person is
+let builtToastTimer = null;
+function personBuilt(code, fresh) {
+  let toast = $("builtToast");
+  if (!toast) {
+    toast = feEl("div", { id: "builtToast", role: "status", "aria-live": "polite", hidden: true },
+      feEl("span", { class: "dm-toast-mark", html: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' }),
+      feEl("span", { id: "builtToastText" }));
+    document.body.appendChild(toast);
+  }
+  const text = $("builtToastText");
+  text.textContent = "";
+  text.append(`Built for ${code}.`);
+  if (fresh) text.append(" ", feEl("b", { text: `${fresh.fresh} of ${fresh.fresh + fresh.again}` }), " songs new to them.");
+  clearTimeout(builtToastTimer);
+  toast.hidden = false;
+  void toast.offsetWidth;
+  toast.classList.add("bt-in");
+  builtToastTimer = setTimeout(() => {
+    toast.classList.remove("bt-in");
+    builtToastTimer = setTimeout(() => { toast.hidden = true; }, 300);
+  }, 4000);
+}
+
 function closePersonPanel(quiet) {
   const wrap = $("personPanelWrap");
   builderHome.person = null;
+  if (personBuild.state !== "now") personBuild.code = null;   // a finished build, its problem or its new playlist's mark go with the popup
   if (!wrap) return;
   document.removeEventListener("keydown", personEscape);
   if (!$("recipePanelWrap") || $("recipePanelWrap").hidden) document.documentElement.classList.remove("rp-open");
@@ -2941,8 +3015,7 @@ function pickRecipeFor(code) {
     if (!id) return;
     const action = connectionAction();
     if (action) { action(); return; }
-    buildFor = code;
-    startCreate([id]);
+    buildForParticipant(id, code);
   });
 }
 

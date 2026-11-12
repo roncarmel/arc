@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-12s";
+const APP_VERSION = "2026-11-12t";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2992,10 +2992,11 @@ function removeTargets() {
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 // ---------------------------------------------------------------- actions: create, remove
-async function gatherInputs() {
-  // Works out which source playlists the chosen formats need and reads their songs. Returns null after showing why it cannot.
+async function gatherInputs(opts = {}) {
+  // Works out which source playlists the chosen formats need and reads their songs. Returns null after showing why it cannot; quiet (a participant's build, outside
+  // the build popup) shows nothing and returns { problems } instead.
   const formatsText = $("formats").value;
-  const wanted = selectedKeys();
+  const wanted = opts.keys || selectedKeys();
   const many = wanted.length > 1;
   const problems = [];
   for (const b of blankSegmentReport(wanted)) {
@@ -3017,15 +3018,16 @@ async function gatherInputs() {
   // Each source playlist in the reading list: waiting, then a spinner while it is read, then ticked with its songs.
   const tracks = {};
   const reading = names.filter((name) => match.found[name]).map((name) => {
+    if (opts.quiet) return { bd: { p: { name } } };
     const row = playlistRow({ name }, "wait");
     $("bdReadList").appendChild(row);
     return row;
   });
   for (const row of reading) {
     const name = row.bd.p.name;
-    setRowState(row, "now");
+    if (!opts.quiet) setRowState(row, "now");
     tracks[name] = await loadTracks(match.found[name]);
-    setRowState(row, "done", plural(tracks[name].length, "song"));
+    if (!opts.quiet) setRowState(row, "done", plural(tracks[name].length, "song"));
   }
   if (problems.length) {
     // The recipe cannot be planned as it is. Playlists that are too short are found from their minutes alone, so they are listed too, all at once.
@@ -3039,6 +3041,7 @@ async function gatherInputs() {
     }
     recordError(`Build blocked: ${plural(problems.length, "problem")} in the recipe`);
     logStep("plan blocked: recipe problems");
+    if (opts.quiet) return { problems: problems.concat(failedNotes) };
     showPlanProblems(problems.concat(failedNotes), wanted.length);
     return null;
   }
@@ -3055,14 +3058,16 @@ function shortProblems(plan, many) {
     : [`${where}${named(s.name)} is too short.`, `This recipe uses ${lengthText(s.need)} of it, and it has ${lengthText(s.has)} of songs. Add ${lengthText(Math.max(1, Math.ceil(s.need - s.has)))} of songs to it, or shorten its segments.`]);
 }
 
-async function planSelected(startedWith) {
-  // Works out the playlists for the chosen formats. Returns the plan, or null after saying why there isn't one.
-  const inputs = await gatherInputs();
+async function planSelected(startedWith, opts = {}) {
+  // Works out the playlists for the chosen formats. Returns the plan, or null after saying why there isn't one. With opts (keys, forWhom, quiet), for a participant's
+  // build outside the build popup: shows nothing and returns { problems } when there is no playlist.
+  const inputs = await gatherInputs(opts);
   if (!inputs) return null;
-  setBuildSteps("plan");
+  if (inputs.problems) return inputs;
+  if (!opts.quiet) setBuildSteps("plan");
   // Earlier playlists with names this plan uses: the ones this app made get replaced (or renamed, if the person keeps them), and the person's own get renamed
   // to "… (version a)" so the new playlists can have their names.
-  const forWhom = buildFor;
+  const forWhom = opts.forWhom || buildFor;
   const heard = forWhom ? (await heardBy(forWhom)).songs : null;
   const matching = forWhom ? [] : recipeMatches(inputs.formatsText, inputs.keys);   // a participant's playlist replaces nothing
   const madeByApp = new Set(playlists.filter((p) => p.madeByApp).map((p) => p.id));
@@ -3096,7 +3101,7 @@ async function planSelected(startedWith) {
       problems.push([`${named(formatLabel(key))} could not be planned.`, cleanError(err)]);
     }
   }
-  if (planSignature() !== startedWith) {   // the user edited something while this was planning
+  if (!opts.quiet && planSignature() !== startedWith) {   // the user edited something while this was planning
     setOutput("");
     closeCreateDialog();
     return null;
@@ -3104,10 +3109,11 @@ async function planSelected(startedWith) {
   const total = built.reduce((n, plan) => n + plan.playlists.length, 0);
   logStep(total ? `plan: ${plural(total, "playlist")} planned` : "plan: nothing can be created");
   if (!total) {
+    if (opts.quiet) return { problems };
     showPlanProblems(problems, selectedKeys().length);
     return null;
   }
-  setOutput("");
+  if (!opts.quiet) setOutput("");
   const newNames = new Set(built.flatMap((b) => b.playlists.map((p) => normName(p.name))));
   const others = matching.filter((p) => !madeByApp.has(p.id) && newNames.has(normName(p.name)));   // only the ones in the way
   const fresh = built.length && built[0].fresh ? built[0].fresh : null;
@@ -3449,6 +3455,70 @@ async function startCreate(keys = null) {
     buildFor = "";
     setBusy(false);
     if (!$("createOverlay").hidden) setCreateStage("done");
+  }
+}
+
+// One playlist for a participant, built where it will live (Ron, 2026-11-12, mockups/build-one C): no build popup. The participant's popup opens and the new
+// playlist fills in at the top of their playlists (personBuild, painted by paintPersonPanel in editor.js); when it is in Spotify a short message says so. Problems
+// in the recipe and a failure show in the popup in their place. Nothing is replaced, renamed or removed. The popup can be closed meanwhile; the build goes on.
+const personBuild = { code: null };   // code, state (now, done, blocked, fail), name, step, done, total, minutes, fresh, id, problems, error
+function setPersonBuild(change) {
+  Object.assign(personBuild, change);
+  if (typeof paintPersonBuild === "function") paintPersonBuild();
+}
+async function buildForParticipant(id, code) {
+  if (busy || !code) return;
+  const f = currentFormats.find((x) => x.id === id);
+  if (!f) return;
+  setBusy(true);
+  for (const k of Object.keys(personBuild)) delete personBuild[k];
+  setPersonBuild({ code, state: "now", name: participantPlaylistName(f.title, code), step: "Reading your playlists", done: 0, total: 0 });
+  if (typeof openPersonPanel === "function") openPersonPanel(code);
+  logStep("participant build started");
+  let made = null;
+  try {
+    await loadMyPlaylists();
+    const plan = await planSelected(null, { keys: [id], forWhom: code, quiet: true });
+    if (!plan || !plan.built) { setPersonBuild({ state: "blocked", problems: (plan && plan.problems) || [] }); return; }
+    const p = plan.built[0].playlists[0];
+    const songs = p.uris.filter((u) => !SILENCE_URIS.has(u)).length;
+    setPersonBuild({ name: p.name, minutes: p.minutes || 0, fresh: plan.fresh, songs, step: "Making the playlist" });
+    if (typeof markPlayTipDone === "function") markPlayTipDone();
+    let cover = null;
+    if (hasScope("ugc-image-upload")) { try { cover = await loadCover(); } catch (err) { logStep("participant build: cover image not loaded"); } }
+    made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: builtDescription(p, 1, 1, new Date(), code) } });
+    if (made.public !== false) {
+      try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); } catch (err) { logStep("participant build: could not make it private"); }
+    }
+    const total = p.uris.length;
+    for (let k = 0; k < total;) {
+      setPersonBuild({ step: `Adding songs · ${Math.min(k, total)} of ${total}`, done: k, total });
+      const n = addChunk;
+      try { await spotifyRequest("POST", `/playlists/${made.id}/items`, { json: { uris: p.uris.slice(k, k + n) } }); }
+      catch (err) {
+        if (n > ADD_CHUNK_SMALL && /returned 400/.test(err.message)) { addChunk = ADD_CHUNK_SMALL; recordNote(`${n} songs per add refused (400)`); continue; }
+        throw err;
+      }
+      k += n;
+    }
+    if (cover) {
+      setPersonBuild({ step: "Adding the cover", done: total, total });
+      try { await spotifyRequest("PUT", `/playlists/${made.id}/images`, { body: cover, contentType: "image/jpeg" }); } catch (err) { logStep("participant build: cover not accepted"); }
+    }
+    countEvent("playlists-created", "1");
+    logStep("participant build finished");
+    try { await loadMyPlaylists(); } catch (err) { /* the playlist is made; the list catches up later */ }
+    setPersonBuild({ state: "done", id: made.id });
+    if (typeof personBuilt === "function") personBuilt(code, plan.fresh);
+  } catch (err) {
+    recordError(cleanError(err));
+    logStep("participant build failed");
+    setPersonBuild({ state: "fail", error: cleanError(err), id: made ? made.id : null });
+    try { await loadMyPlaylists(); } catch (ignore) { /* keep the error showing */ }
+  } finally {
+    invalidatePlan(true);
+    setBusy(false);
+    if (typeof paintPersonBuild === "function") paintPersonBuild(true);
   }
 }
 
