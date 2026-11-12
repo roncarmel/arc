@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12j";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12k";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2764,16 +2764,20 @@ function shortDate(time) { const d = new Date(time); return `${d.getDate()} ${MO
 function renderParticipantList() {
   const box = $("bhPeople");
   box.textContent = "";
-  box.appendChild(bhAddRow("bhNewPerson", "New participant", "Just a code, no identifying info", () => askParticipantCode().then((code) => { if (code) { addParticipant(code); renderBuilderHome(); } })));
-  for (const person of participantList()) {
-    const sub = feEl("span", { class: "bh-sub", text: person.playlists.length ? `Last built ${shortDate(person.last)}` : "Nothing built yet" });
+  // A participant exists only once a playlist is built for them, so every device sees the same list (Ron, 2026-11-12): New participant goes on to choose a recipe and build
+  box.appendChild(bhAddRow("bhNewPerson", "New participant", "Just a code, no identifying info", () => askParticipantCode().then((code) => { if (code) pickRecipeFor(code); })));
+  const people = participantList();
+  if (!people.length) box.appendChild(feEl("div", { class: "bh-empty bh-people-empty" }, feEl("b", { text: "No participants yet" }),
+    feEl("p", { text: "A participant shows up here once their first playlist is built. Arc then remembers every song they have heard, on any device." })));
+  for (const person of people) {
+    const sub = feEl("span", { class: "bh-sub", text: `Last built ${shortDate(person.last)}` });
     box.appendChild(feEl("button", { type: "button", class: "bh-row", "data-code": person.code, onClick: () => { builderHome.person = person.code; paintPersonPanel(); } },
       codeBadge(person.code),
       feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: person.playlists.length === 1 ? "1 playlist" : `${person.playlists.length} playlists` }), sub),
       bhSvg(BH_GO)));
     if (person.playlists.length) heardCount(person).then((n) => { if (n !== null) sub.textContent = `${n} ${n === 1 ? "song" : "songs"} heard · last ${shortDate(person.last)}`; });
   }
-  box.appendChild(feEl("p", { class: "bh-note", text: "Arc knows which songs each participant has heard from the playlists it built for them in your Spotify." }));
+  if (people.length) box.appendChild(feEl("p", { class: "bh-note", text: "A participant shows up here once their first playlist is built. What they have heard comes from the playlists built for them, so it is the same on any device." }));
 }
 
 // How many songs a participant has heard, worked out once for the playlists they have now
@@ -2921,7 +2925,7 @@ function codeEntry(onChange) {
 function askParticipantCode() {
   let code = "";
   const entry = codeEntry((c) => { code = c; bhDialog.next.disabled = !c; });
-  const p = bhDialog("New participant", entry.box, "Add", () => code || null);
+  const p = bhDialog("New participant", entry.box, "Next", () => code || null);
   bhDialog.next.disabled = true;
   return p;
 }

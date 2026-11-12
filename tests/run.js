@@ -876,10 +876,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-12j" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-12k" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-12j/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-12k/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2940,7 +2940,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-12j", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-12k", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -5256,7 +5256,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-12j"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-12k"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5658,8 +5658,12 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   (() => { const f = bd3.document.getElementById("bhCode"); f.value = "zq9"; f.dispatchEvent(new bd3.window.Event("input")); })();
   check("typing a code fills its square beside the field, a place per character", Array.from(bd3.document.querySelectorAll("#bhDialog .bh-code i")).map((i) => i.textContent).join("|") === "Z|Q|9|");
   bd3.document.getElementById("bhDialogNext").click();
-  await waitFor(() => bd3.document.querySelector('#bhPeople [data-code="ZQ9"]'), 5000);
-  check("New participant only adds the code: the list stays, with them in it and nothing built", !bd3.document.getElementById("bhDialog") && !bd3.document.getElementById("bhNext") && /Nothing built yet/.test(bd3.document.querySelector('#bhPeople [data-code="ZQ9"]').textContent) && /"ZQ9"/.test(bd3.window.localStorage.getItem("participantsAdded")));
+  await waitFor(() => /ZQ9's next playlist/.test((bd3.document.getElementById("bhDialog") || {}).textContent || ""), 5000);
+  check("New participant goes on to choose a recipe for their first playlist", /Which recipe\?/.test(bd3.document.getElementById("bhDialog").textContent));
+  bd3.document.getElementById("bhDialogCancel").click();
+  check("cancelled before a build, the participant does not exist: only a built playlist makes one, so every device sees the same list", !bd3.document.querySelector('#bhPeople [data-code="ZQ9"]') && bd3.window.localStorage.getItem("participantsAdded") === null);
+  check("with participants, a note says a participant shows up once their first playlist is built", /shows up here once their first playlist is built/.test(bd3.document.querySelector("#bhPeople .bh-note").textContent) && !bd3.document.querySelector(".bh-people-empty"));
+  check("with none, the list says No participants yet and how one appears", /No participants yet.*shows up here once their first playlist is built/.test(bd3.eval("(() => { const keep = playlists; playlists = []; renderParticipantList(); const t = document.getElementById('bhPeople').textContent; playlists = keep; renderParticipantList(); return t; })()")));
   bd3.document.querySelector('#bhPeople [data-code="MC"]').click();
   check("a participant opens in a popup over the list: PARTICIPANT, the code, Build MC's next playlist and their playlists", !!bd3.document.getElementById("personPanelWrap") && bd3.document.getElementById("ppTitle").textContent === "MC" && /Build MC's next playlist/.test(bd3.document.getElementById("bhNext").textContent) && bd3.document.querySelectorAll("#personPanel a.bh-row").length === 1 && !!bd3.document.querySelector('#bhPeople [data-code="MC"]'));
   bd3.document.dispatchEvent(new bd3.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));

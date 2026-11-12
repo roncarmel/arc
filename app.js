@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-12j";
+const APP_VERSION = "2026-11-12k";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2890,20 +2890,7 @@ function participantList() {
     list.sort((a, b) => builtAtOf(b.description) - builtAtOf(a.description));
     return { code, playlists: list, last: builtAtOf(list[0].description) };
   });
-  // added with New participant and nothing built for them yet: kept in this browser only (participantsAdded), listed by when they were added
-  for (const { code, added } of addedParticipants()) if (!by.has(code)) people.push({ code, playlists: [], last: 0, added });
-  const when = (p) => p.last || p.added || 0;
-  return people.sort((a, b) => when(b) - when(a) || a.code.localeCompare(b.code));
-}
-function addedParticipants() {
-  try { const list = JSON.parse(localStorage.getItem("participantsAdded") || "[]"); return Array.isArray(list) ? list.filter((p) => p && typeof p.code === "string") : []; } catch (err) { return []; }
-}
-// New participant: just the code, no recipe yet (Ron, 2026-11-12). Once Arc builds for them, their playlists say who they are and this entry is no longer needed.
-function addParticipant(code) {
-  const built = new Set((playlists || []).filter((p) => p.participant && (!me || p.owner === me.id)).map((p) => p.participant));
-  const list = addedParticipants().filter((p) => p.code !== code && !built.has(p.code));
-  if (!built.has(code)) list.push({ code, added: Date.now() });
-  try { localStorage.setItem("participantsAdded", JSON.stringify(list)); } catch (err) {}
+  return people.sort((a, b) => b.last - a.last || a.code.localeCompare(b.code));
 }
 // What a participant has heard: every song in the playlists built for them, by the song's id as engine.py knows it (song_id), with when the playlist was built.
 // Reads their playlists' songs (kept in this browser after the first time). { songs: {id: time}, count }
