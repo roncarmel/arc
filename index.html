@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-12c">
-<script src="theme.js?v=2026-11-12c"></script>
+<meta name="app-version" content="2026-11-12d">
+<script src="theme.js?v=2026-11-12d"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -701,14 +701,9 @@
   .bh-tab { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 0; margin: 0; padding: 9px 4px; border: 0; border-radius: 999px; background: none; box-shadow: none; color: var(--muted); font: inherit; font-weight: 600; cursor: pointer; }
   .bh-tab svg { width: 18px; height: 18px; flex: none; }
   .bh-tab[aria-selected="true"] { color: var(--fg); }
-  .bh-tab:disabled { cursor: default; opacity: 0.55; }
+  .bh-tab:disabled { cursor: default; opacity: 0.4; }
   .bh-tab { min-width: 0; }
-  .bh-tab > span:not(.bh-soon) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .bh-soon { flex: none; }
-  /* Participants with Soon does not fit half a phone: its icon steps aside (Ron, 2026-11-12) */
-  @media (max-width: 480px) { .bh-tab:disabled svg { display: none; } .bh-tab:disabled { gap: 6px; } }
-  .bh-soon { display: none; padding: 1px 7px; border-radius: 999px; border: 1px dashed var(--line); font-size: 0.72rem; font-weight: 700; color: var(--muted); }
-  .bh-tab:disabled .bh-soon { display: inline; }
+  .bh-tab > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   @media (prefers-reduced-motion: reduce) { .bh-pill { transition: none; } }
   .bh-list { display: flex; flex-direction: column; gap: 10px; }
   .bh-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 0; margin: 0; padding: 13px 12px 13px 14px; box-sizing: border-box; border-radius: 18px; background: var(--card); border: 1px solid var(--line); box-shadow: none; color: var(--fg); font: inherit; font-weight: 400; text-align: left; cursor: pointer; }
@@ -748,7 +743,11 @@
   /* The heading (Ron, 2026-11-12, mockups/panel-head D with icon E1, no line under it): the recipe icon, as tall as the text beside it from the top of RECIPE's capitals
      to the foot of the length (sizePanelIcon), the name with its pencil, the length, and the X. Renaming (N2) swaps it for RENAME RECIPE, the name in a pink field,
      and Cancel and Rename, the heading easing to its new height while the editor dims (startPanelRename). */
-  .rp-head { position: relative; padding: 20px 16px 8px; overflow: hidden; }
+  .rp-head { position: relative; box-sizing: border-box; padding: 20px 16px 8px; overflow: hidden; }
+  /* while the heading turns, both parts share one cell so they crossfade in place */
+  .rp-head.rp-swapping { display: grid; align-items: start; }
+  .rp-head.rp-swapping > * { grid-area: 1 / 1; }
+  .rp-head .rp-leaving { pointer-events: none; }
   .rp-show { display: flex; align-items: flex-start; gap: 14px; }
   .rp-icon { flex: none; width: 64px; height: 64px; border-radius: 12px; background: #0d0d0f; color: var(--accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent), 0 8px 22px color-mix(in srgb, var(--accent) 28%, transparent); }
   .rp-icon svg { display: block; width: 100%; height: 100%; }
@@ -769,7 +768,7 @@
   .rp-name-btns .rp-name-cancel { background: color-mix(in srgb, var(--fg) 10%, var(--bg)); border-color: transparent; color: var(--fg); }
   .rp-name-btns .rp-name-ok { flex: 1.6; }
   .rp-name-btns .rp-name-ok:disabled { opacity: 0.45; }
-  #recipePanel .rp-body { transition: opacity 0.25s var(--ease-out); }
+  #recipePanel .rp-body { transition: opacity 0.34s var(--ease-out); }
   #recipePanel.rp-renaming .rp-body { opacity: 0.35; pointer-events: none; }
   @media (prefers-reduced-motion: reduce) { #recipePanel .rp-body { transition: none; } }
   /* the X and the pencil look like every popup's X (bd-x, infoClose): a 32 px grey circle, the X 14 px; the pencil gets the circle only on hover */
@@ -2403,7 +2402,7 @@
     <div id="bhSwitch" class="bh-switch" role="tablist" aria-label="Recipes or participants">
       <span class="bh-pill" aria-hidden="true"></span>
       <button id="bhTabRecipes" class="bh-tab" type="button" role="tab" aria-selected="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="4.5" width="18" height="4" rx="2"/><rect x="3" y="10" width="12" height="4" rx="2"/><rect x="3" y="15.5" width="15" height="4" rx="2"/></svg><span>Recipes</span></button>
-      <button id="bhTabPeople" class="bh-tab" type="button" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M17 14.5c2.4 0 4.1 1.5 4.6 4.5"/></svg><span>Participants</span><span class="bh-soon">Soon</span></button>
+      <button id="bhTabPeople" class="bh-tab" type="button" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M17 14.5c2.4 0 4.1 1.5 4.6 4.5"/></svg><span>Participants</span></button>
     </div>
     <div id="bhRecipes" class="bh-list" role="tabpanel" aria-labelledby="bhTabRecipes"></div>
     <div id="bhPeople" class="bh-list" role="tabpanel" aria-labelledby="bhTabPeople" hidden></div>
@@ -2610,10 +2609,10 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-12c"></script>
-<script src="editor.js?v=2026-11-12c"></script>
-<script src="shared-spotify.js?v=2026-11-12c"></script>
-<script src="app.js?v=2026-11-12c"></script>
-<script src="sharing.js?v=2026-11-12c"></script>
+<script src="formats.js?v=2026-11-12d"></script>
+<script src="editor.js?v=2026-11-12d"></script>
+<script src="shared-spotify.js?v=2026-11-12d"></script>
+<script src="app.js?v=2026-11-12d"></script>
+<script src="sharing.js?v=2026-11-12d"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12c";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12d";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2561,28 +2561,43 @@ function finishPanelRename(accept, quiet) {
   if (!quiet) { try { $("rpRename").focus({ preventScroll: true }); } catch (err) { /* old browsers */ } }
 }
 
-// The heading goes between showing the recipe and renaming it: it eases to its new height while one crossfades into the other and the editor dims or comes back
+// The heading goes between showing the recipe and renaming it: both parts share one grid cell while it eases to its new height, the old fading out as
+// the new fades in and settles, and the editor dims or comes back with it. A second turn before the first ends takes over from where it is.
 function swapPanelHead(naming, quiet) {
   const head = $("rpHead"), show = $("rpShow"), form = $("rpNaming");
-  const from = head.offsetHeight;
   const leaving = naming ? show : form, coming = naming ? form : show;
+  const from = head.getBoundingClientRect().height;
+  if (editor.headSwap) editor.headSwap.forEach((a) => a.cancel());
+  editor.headSwap = null;
+  head.classList.remove("rp-swapping");
+  show.classList.remove("rp-leaving"); form.classList.remove("rp-leaving");
+  head.style.height = "";
   $("recipePanel").classList.toggle("rp-renaming", naming);
   $("rpBody").inert = naming;
   leaving.hidden = true;
   coming.hidden = false;
   if (quiet || !motionAllowed(head)) return;
-  const to = head.offsetHeight;
-  head.animate([{ height: from + "px" }, { height: to + "px" }], { duration: 280, easing: EASE_OUT });
-  coming.animate([{ opacity: 0, transform: "translateY(4px)" }, { opacity: 1, transform: "none" }], { duration: 240, delay: 60, easing: EASE_OUT, fill: "backwards" });
-  // the part leaving fades as a copy laid over where it was
-  const ghost = leaving.cloneNode(true);
-  ghost.hidden = false;
-  ghost.removeAttribute("id");
-  ghost.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
-  ghost.setAttribute("aria-hidden", "true");
-  Object.assign(ghost.style, { position: "absolute", left: "16px", right: "16px", top: "20px", pointerEvents: "none" });
-  head.appendChild(ghost);
-  ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: EASE_IN, fill: "forwards" }).onfinish = () => ghost.remove();
+  const to = head.getBoundingClientRect().height;
+  leaving.hidden = false;
+  leaving.classList.add("rp-leaving");
+  leaving.setAttribute("aria-hidden", "true");
+  head.classList.add("rp-swapping");
+  const ms = 380;
+  const runs = [
+    head.animate([{ height: from + "px" }, { height: to + "px" }], { duration: ms, easing: EASE_OUT }),
+    leaving.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: `translateY(${naming ? -6 : 6}px)` }], { duration: 170, easing: EASE_IN, fill: "forwards" }),
+    coming.animate([{ opacity: 0, transform: `translateY(${naming ? 8 : -8}px)` }, { opacity: 1, transform: "none" }], { duration: 300, delay: 110, easing: EASE_OUT, fill: "backwards" }),
+  ];
+  editor.headSwap = runs;
+  runs[0].onfinish = () => {
+    if (editor.headSwap !== runs) return;
+    editor.headSwap = null;
+    runs[1].cancel();
+    head.classList.remove("rp-swapping");
+    leaving.classList.remove("rp-leaving");
+    leaving.removeAttribute("aria-hidden");
+    leaving.hidden = true;
+  };
 }
 
 // Escape closes the panel, unless something inside or over it is open: that closes first
