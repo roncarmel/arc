@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12p";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12q";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2297,7 +2297,7 @@ function blankSegmentReport(keys) {
 // ---------------------------------------------------------------- the builder's landing (decided by Ron, 2026-11-12, mockups/client-builder.html A1)
 // The builder opens on a list of recipes, each with its shape and a Build button, and New recipe first. A recipe opens in a panel over it (below). Beside Recipes,
 // Participants: one playlist at a time for one person, with the songs they have not heard first. Outside developer mode that half is greyed with Soon.
-const builderHome = { tab: "recipes", person: null, heard: new Map() };   // heard: a participant's code -> { sig, count } once worked out
+const builderHome = { tab: "recipes", person: null };
 
 const BH_SPARK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 2l1.8 5.6L17.5 9.5l-5.7 1.9L10 17l-1.8-5.6L2.5 9.5l5.7-1.9z"/><path d="M18 13l.9 2.6 2.6.9-2.6.9L18 20l-.9-2.6-2.6-.9 2.6-.9z"/></svg>';
 const BH_INFO = '<svg class="bh-go bh-info" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>';
@@ -2782,18 +2782,6 @@ function renderParticipantList() {
   if (people.length) box.appendChild(feEl("p", { class: "bh-note", text: PEOPLE_HOW }));
 }
 
-// How many songs a participant has heard, worked out once for the playlists they have now
-async function heardCount(person) {
-  const sig = person.playlists.map((p) => p.id + ":" + (p.snapshot || p.count)).join(",");
-  const known = builderHome.heard.get(person.code);
-  if (known && known.sig === sig) return known.count;
-  try {
-    const { count } = await heardBy(person.code);
-    builderHome.heard.set(person.code, { sig, count });
-    return count;
-  } catch (err) { return null; }
-}
-
 // A participant's code in a square (Ron, 2026-11-12, mockups/participants V4): four fixed places in a 2x2, each marked by a faint box, filled in order
 function codeBadge(code, big) {
   const badge = feEl("span", { class: "bh-code" + (big ? " bh-big" : ""), "aria-hidden": "true" }, [0, 1, 2, 3].map(() => feEl("i", {})));
@@ -2806,7 +2794,7 @@ function paintBadge(badge, code) {
 }
 
 // A participant opens in a popup over the list, like a recipe (Ron, 2026-11-12, mockups/participants PM-2): the code's square, PARTICIPANT, the code,
-// what was built and heard, the X; then Build <code>'s next playlist and their playlists. Painted again whenever the landing is (after a build).
+// what was built, the X; then Build <code>'s next playlist and their playlists. Painted again whenever the landing is (after a build).
 function paintPersonPanel() {
   const code = builderHome.person;
   if (!code) return;
@@ -2836,10 +2824,6 @@ function paintPersonPanel() {
         bhSvg(BH_OPEN)));
     }
     body.appendChild(list);
-    const note = feEl("p", { class: "bh-note", text: `Every song in these playlists counts as heard by ${code}. Delete one in Spotify and its songs can play for ${code} again.` });
-    body.appendChild(note);
-    // the heading keeps the same line as the list's row; how many songs were heard goes with the note about hearing
-    heardCount(person).then((count) => { if (count !== null && note.isConnected) note.textContent = `${code} has heard ${count} ${count === 1 ? "song" : "songs"}: every song in these playlists. Delete one in Spotify and its songs can play for ${code} again.`; });
   }
   sheet.replaceChildren(
     // like the participant's row in the list: the code, then the same line on one line; the X level with the code, near the corner (Ron, 2026-11-12)
@@ -2972,11 +2956,12 @@ async function newShare(f, code) {
   return Math.round((fresh / ids.size) * 100);
 }
 
-// Build in developer mode is always for a participant. Who is it for? is a sheet (Ron, 2026-11-12, mockups/who-for look B): Build a playlist, For one participant,
-// the recipe as a card with its shape, then Choose a participant, a drop-down whose panel is a grid of code squares, four to a row, the most recently built
+// Build in developer mode is always for a participant. Who is it for? is a sheet (Ron, 2026-11-12, mockups/who-for look B): Build a playlist and the X (no For one
+// participant: it is the only kind), the recipe as a card with its shape, then Choose a participant, a drop-down whose panel is a grid of code squares, four to a row, the most recently built
 // first (participantList's order), each with the day of its latest playlist (D1). Find a code at its top is only a search; + New stays the first square and
 // turns the drop-down into a code entry. Choosing one reads how much of the recipe is new to them. Resolves with the code, or null.
 const CODE_HOW = "Just a code of your choosing, no identifying info. 1 to 4 letters or numbers.";
+const WF_CANCEL = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 const BH_CARET = '<svg class="bh-dd-caret" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
 function askWhoFor(id) {
   const f = editor.model.formats.find((x) => x.id === id);
@@ -3008,8 +2993,8 @@ function askWhoFor(id) {
     feEl("div", { class: "bh-dd-newline" }, newBadge, newInput, feEl("button", { type: "button", class: "bh-dd-back", id: "bhWhoNewCancel", onClick: () => stopAdding() }, "Back")),
     feEl("p", { class: "bh-hint bh-dd-hint", text: CODE_HOW }));
   const info = feEl("div", { class: "bh-dd-info", hidden: true });
-  const cancel = feEl("button", { type: "button", class: "wf-cancel", id: "bhDialogCancel", onClick: () => close(null) }, "Cancel");
-  const next = feEl("button", { type: "button", class: "wf-build", id: "bhDialogNext", disabled: true, onClick: () => { if (code) close(code); } }, "Build playlist");
+  const cancel = feEl("button", { type: "button", class: "wf-cancel", id: "bhDialogCancel", onClick: () => close(null) }, bhSvg(WF_CANCEL), "Cancel");
+  const next = feEl("button", { type: "button", class: "wf-build", id: "bhDialogNext", disabled: true, onClick: () => { if (code) close(code); } }, bhSvg(BH_SPARK), "Build playlist");
 
   const tile = (person) => feEl("button", { type: "button", class: "bh-tile" + (person.code === code ? " bh-on" : ""), role: "option", "aria-selected": String(person.code === code), "data-code": person.code, onClick: () => choose(person.code) },
     codeBadge(person.code), feEl("small", { text: shortDate(person.last) }));
@@ -3101,7 +3086,7 @@ function askWhoFor(id) {
   const sheet = feEl("div", { class: "rp-sheet wf-sheet", id: "whoFor", role: "dialog", "aria-modal": "true", "aria-labelledby": "wfTitle",
     onClick: (event) => { if (open && !dd.contains(event.target)) setOpen(false); } },
     feEl("div", { class: "wf-head" },
-      feEl("div", { class: "wf-col" }, feEl("span", { class: "rp-kick", text: "Build a playlist" }), feEl("h2", { class: "wf-title", id: "wfTitle", text: "For one participant" })),
+      feEl("h2", { class: "wf-title", id: "wfTitle", text: "Build a playlist" }),
       feEl("button", { type: "button", class: "rp-x", id: "wfClose", "aria-label": "Close", onClick: () => close(null), html: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>' })),
     feEl("div", { class: "wf-body" }, card, feEl("p", { class: "wf-label", text: "Who is it for?" }), dd, adder, info),
     feEl("div", { class: "wf-foot" }, cancel, next));
