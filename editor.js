@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12r";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12s";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2492,7 +2492,8 @@ function renderRecipeList() {
 function recipeRow(f) {
   const shape = recipeShape(f);
   const unsaved = recipeEdit.dirty && recipeEdit.id === f.id;
-  const length = lengthText(shape.music + shape.quiet / 60);   // the segments show in the bar under it (Ron, 2026-11-12: room for Build playlist on a phone)
+  // in developer mode only the length: the segments show in the bar under it, and Build playlist needs the room on a phone (Ron, 2026-11-12)
+  const length = lengthText(shape.music + shape.quiet / 60) + (devMode() ? "" : ` · ${f.items.length === 1 ? "1 segment" : f.items.length + " segments"}`);
   const bar = feEl("span", { class: "bh-shape", "aria-hidden": "true" },
     ...shape.pieces.map((p) => feEl("span", { class: p.silence ? "bh-quiet" : undefined, style: p.style })));
   const build = feEl("button", { type: "button", class: "bh-build", "data-id": f.id, onClick: (event) => { event.stopPropagation(); buildRecipe(f.id); } },
