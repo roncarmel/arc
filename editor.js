@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12m";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12n";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2300,7 +2300,7 @@ function blankSegmentReport(keys) {
 const builderHome = { tab: "recipes", person: null, heard: new Map() };   // heard: a participant's code -> { sig, count } once worked out
 
 const BH_SPARK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 2l1.8 5.6L17.5 9.5l-5.7 1.9L10 17l-1.8-5.6L2.5 9.5l5.7-1.9z"/><path d="M18 13l.9 2.6 2.6.9-2.6.9L18 20l-.9-2.6-2.6-.9 2.6-.9z"/></svg>';
-const BH_GO = '<svg class="bh-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+const BH_INFO = '<svg class="bh-go bh-info" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>';
 const BH_OPEN = '<svg class="bh-go" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
 const BH_BACK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
 function bhSvg(markup) { const s = document.createElement("span"); s.style.display = "contents"; s.innerHTML = markup; return s; }
@@ -2760,6 +2760,10 @@ function panelEscape(event) {
 // A participant is a code of up to 4 letters or numbers. What they have heard is every song in the playlists Arc built for them (participantList and heardBy in app.js).
 function cleanCode(text) { return String(text || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4); }
 function shortDate(time) { const d = new Date(time); return `${d.getDate()} ${MONTHS[d.getMonth()]}`; }
+// When a participant's latest playlist was built: the day this year, else only the year, so someone not seen for a while stands out (Ron, 2026-11-12)
+function builtWhen(time) { const d = new Date(time); return d.getFullYear() === new Date().getFullYear() ? shortDate(time) : String(d.getFullYear()); }
+// The line under a participant's code, the same in the list and at the top of their popup
+function personLine(person) { const n = person.playlists.length; return n ? `${n === 1 ? "1 playlist" : n + " playlists"} \u00b7 ${`most recent ${builtWhen(person.last)}`.replace(/ /g, "\u00a0")}` : "Nothing built yet"; }
 
 const PEOPLE_HOW = "A participant appears here once you build a playlist for them.";
 function renderParticipantList() {
@@ -2769,12 +2773,11 @@ function renderParticipantList() {
   const people = participantList();
   if (!people.length) box.appendChild(feEl("div", { class: "bh-empty bh-people-empty" }, feEl("b", { text: "No participants yet" }), feEl("p", { text: PEOPLE_HOW })));
   for (const person of people) {
-    const sub = feEl("span", { class: "bh-sub", text: `Last built ${shortDate(person.last)}` });
-    box.appendChild(feEl("button", { type: "button", class: "bh-row", "data-code": person.code, onClick: () => { builderHome.person = person.code; paintPersonPanel(); } },
+    // Like the top of the participant's popup: the code as the title, then playlists and the most recent; the i only hints that the row opens more (Ron, 2026-11-12)
+    box.appendChild(feEl("button", { type: "button", class: "bh-row", "data-code": person.code, "aria-label": `${person.code}, ${personLine(person)}`, onClick: () => { builderHome.person = person.code; paintPersonPanel(); } },
       codeBadge(person.code),
-      feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: person.playlists.length === 1 ? "1 playlist" : `${person.playlists.length} playlists` }), sub),
-      bhSvg(BH_GO)));
-    if (person.playlists.length) heardCount(person).then((n) => { if (n !== null) sub.textContent = `${n} ${n === 1 ? "song" : "songs"} heard · last ${shortDate(person.last)}`; });
+      feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: person.code }), feEl("span", { class: "bh-sub", text: personLine(person) })),
+      bhSvg(BH_INFO)));
   }
   if (people.length) box.appendChild(feEl("p", { class: "bh-note", text: PEOPLE_HOW }));
 }
@@ -2820,7 +2823,7 @@ function paintPersonPanel() {
   const sheet = $("personPanel");
   const person = participantList().find((p) => p.code === code) || { code, playlists: [], last: 0 };
   const n = person.playlists.length;
-  const meta = feEl("span", { class: "rp-meta", id: "ppMeta", text: n ? `${n === 1 ? "1 playlist" : n + " playlists"} \u00b7 last ${shortDate(person.last)}` : "Nothing built yet" });
+  const meta = feEl("span", { class: "rp-meta", id: "ppMeta", text: personLine(person) });
   const body = feEl("div", { class: "pp-body" },
     feEl("button", { type: "button", class: "primary bh-wide", id: "bhNext", onClick: () => pickRecipeFor(code) }, bhSvg(BH_SPARK), `Build ${code}'s next playlist`));
   if (n) {
@@ -2833,8 +2836,10 @@ function paintPersonPanel() {
         bhSvg(BH_OPEN)));
     }
     body.appendChild(list);
-    body.appendChild(feEl("p", { class: "bh-note", text: `Every song in these playlists counts as heard by ${code}. Delete one in Spotify and its songs can play for ${code} again.` }));
-    heardCount(person).then((count) => { if (count !== null && meta.isConnected) meta.textContent = `${n === 1 ? "1 playlist" : n + " playlists"} \u00b7 ${count} ${count === 1 ? "song" : "songs"} heard`; });
+    const note = feEl("p", { class: "bh-note", text: `Every song in these playlists counts as heard by ${code}. Delete one in Spotify and its songs can play for ${code} again.` });
+    body.appendChild(note);
+    // the heading keeps the same line as the list's row; how many songs were heard goes with the note about hearing
+    heardCount(person).then((count) => { if (count !== null && note.isConnected) note.textContent = `${code} has heard ${count} ${count === 1 ? "song" : "songs"}: every song in these playlists. Delete one in Spotify and its songs can play for ${code} again.`; });
   }
   sheet.replaceChildren(
     feEl("div", { class: "rp-head" }, feEl("div", { class: "rp-show" }, codeBadge(code, true),
