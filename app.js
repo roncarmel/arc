@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-12a";
+const APP_VERSION = "2026-11-12b";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1553,7 +1553,6 @@ async function runSpotifySave() {
   saveState.running = true;
   saveState.error = "";
   renderSaveStatus();
-  let wroteRecipe = false;
   try {
     await mergeFromSpotify();
     const synced = readSynced();
@@ -1592,7 +1591,6 @@ async function runSpotifySave() {
         if (have.save.format.rev > (fmt.rev || 0)) { newer.push(fmt.title); continue; }
         if (have.description === description && have.name === name) { synced[fmt.id] = { rev: fmt.rev || 0, playlistId: have.id }; putCover(have); continue; }   // already as it should be
         await spotifyRequest("PUT", `/playlists/${have.id}`, { json: { name, description } });
-        wroteRecipe = true;
         oldCover(have);
         have.name = name;
         have.description = description;
@@ -1601,7 +1599,6 @@ async function runSpotifySave() {
         putCover(have);
       } else if (unreadOfIt) {
         await spotifyRequest("PUT", `/playlists/${unreadOfIt.id}`, { json: { name, description } });
-        wroteRecipe = true;
         markCoverDue(unreadOfIt.id, true);
         unreadOfIt.description = description;
         unreadOfIt.save = unpackFormat(description);
@@ -1609,7 +1606,6 @@ async function runSpotifySave() {
         putCover(unreadOfIt);
       } else {
         const made = await spotifyRequest("POST", "/me/playlists", { json: { name, public: false, description } });
-        wroteRecipe = true;
         if (made.public !== false) { try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); } catch (err) { logStep("save: could not make a recipe playlist private"); } }
         const entry = { id: made.id, name, owner: me.id, collaborative: false, image: null, count: 0, description, snapshot: null, madeByApp: false };
         entry.save = unpackFormat(description);
@@ -1640,7 +1636,6 @@ async function runSpotifySave() {
     askSaveFailure(saveState.error);
   }
   if (!saveState.error) uploadCovers();   // not waited for: the save is already done
-  if (!saveState.error && wroteRecipe && typeof offerSaveTip === "function") offerSaveTip();   // the first time, a pointer says recipes save by themselves
   if (saveState.again) { saveState.again = false; scheduleSpotifySave(300); }
 }
 
@@ -2891,10 +2886,24 @@ function participantList() {
     if (!by.has(p.participant)) by.set(p.participant, []);
     by.get(p.participant).push(p);
   }
-  return [...by.entries()].map(([code, list]) => {
+  const people = [...by.entries()].map(([code, list]) => {
     list.sort((a, b) => builtAtOf(b.description) - builtAtOf(a.description));
     return { code, playlists: list, last: builtAtOf(list[0].description) };
-  }).sort((a, b) => b.last - a.last || a.code.localeCompare(b.code));
+  });
+  // added with New participant and nothing built for them yet: kept in this browser only (participantsAdded), listed by when they were added
+  for (const { code, added } of addedParticipants()) if (!by.has(code)) people.push({ code, playlists: [], last: 0, added });
+  const when = (p) => p.last || p.added || 0;
+  return people.sort((a, b) => when(b) - when(a) || a.code.localeCompare(b.code));
+}
+function addedParticipants() {
+  try { const list = JSON.parse(localStorage.getItem("participantsAdded") || "[]"); return Array.isArray(list) ? list.filter((p) => p && typeof p.code === "string") : []; } catch (err) { return []; }
+}
+// New participant: just the code, no recipe yet (Ron, 2026-11-12). Once Arc builds for them, their playlists say who they are and this entry is no longer needed.
+function addParticipant(code) {
+  const built = new Set((playlists || []).filter((p) => p.participant && (!me || p.owner === me.id)).map((p) => p.participant));
+  const list = addedParticipants().filter((p) => p.code !== code && !built.has(p.code));
+  if (!built.has(code)) list.push({ code, added: Date.now() });
+  try { localStorage.setItem("participantsAdded", JSON.stringify(list)); } catch (err) {}
 }
 // What a participant has heard: every song in the playlists built for them, by the song's id as engine.py knows it (song_id), with when the playlist was built.
 // Reads their playlists' songs (kept in this browser after the first time). { songs: {id: time}, count }

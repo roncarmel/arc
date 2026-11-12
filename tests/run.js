@@ -12,7 +12,7 @@ function pressBuild(w) {
   if (tiles && !w.document.getElementById("bdPick").hidden && !tiles.querySelector('[aria-checked="true"]') && tiles.lastElementChild) tiles.lastElementChild.click();
   w.document.getElementById("confirmYes").click();
 }
-const SECTION_NAMES = ["builder landing and participants", "launch screen", "sharing card in the editor", "music sharing", "music sharing songs", "developer options", "the save pointer", "menu popups and the silence help", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version line", "welcome recipe link", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "popups close only", "narrow more button", "the silence card", "backup link in step 2", "spotify premium", "python status at the bottom", "questions and feedback", "settings below the segments, pink outline", "the tagline", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'fading and Close in the Create popup', 'tabs that scroll sideways', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
+const SECTION_NAMES = ["builder landing and participants", "launch screen", "sharing card in the editor", "music sharing", "music sharing songs", "developer options", "menu popups and the silence help", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version line", "welcome recipe link", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "popups close only", "narrow more button", "the silence card", "backup link in step 2", "spotify premium", "python status at the bottom", "questions and feedback", "settings below the segments, pink outline", "the tagline", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'fading and Close in the Create popup', 'tabs that scroll sideways', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
 // areas that need another area's setup to have run first
 const NEEDS = {
   "the page's styles for tags and phones": ["silences, dragging and removing"],
@@ -291,7 +291,7 @@ async function boot({ url, session = {}, local = {}, fetchOptions = {}, before =
   w.document.documentElement.classList.add("view-" + view);   // as the <head> script would (it does not run here)
   if (savedLocal.devMode === "1") w.document.documentElement.classList.add("dev-mode");   // developer mode, as the <head> script would
   w.__scriptsRequested = [];
-  w.eval(appJs.replace("const sharing = {", "var sharing = {").replace("const previewUrls =", "var previewUrls =").replace("let spotifyAnswerMs = 30000;", "var spotifyAnswerMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const recipeEdit =", "var recipeEdit =").replace("const builderHome =", "var builderHome =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const BACKED_UP_MESSAGE =", "var BACKED_UP_MESSAGE =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("const saveTip =", "var saveTip =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let busy =", "var busy =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let appView =", "var appView =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("let launchScreen =", "var launchScreen =").replace("const GAP_STEPS =", "var GAP_STEPS =").replace("let startupDone =", "var startupDone ="));  // test harness only: lets a test replace the reload
+  w.eval(appJs.replace("const sharing = {", "var sharing = {").replace("const previewUrls =", "var previewUrls =").replace("let spotifyAnswerMs = 30000;", "var spotifyAnswerMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const recipeEdit =", "var recipeEdit =").replace("const builderHome =", "var builderHome =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const BACKED_UP_MESSAGE =", "var BACKED_UP_MESSAGE =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let busy =", "var busy =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let appView =", "var appView =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("let launchScreen =", "var launchScreen =").replace("const GAP_STEPS =", "var GAP_STEPS =").replace("let startupDone =", "var startupDone ="));  // test harness only: lets a test replace the reload
   await Promise.race([w.__main, new Promise((r) => setTimeout(r, 1500))]);   // ready as soon as the page has finished starting up
   await new Promise((r) => setTimeout(r, 30));
   // Most tests were written when the editor was always on the page: the recipe being edited opens in its panel, as a tap on it would (panel: false leaves the landing)
@@ -876,10 +876,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-12a" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-12b" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-12a/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-12b/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2940,7 +2940,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-12a", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-12b", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3760,46 +3760,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("and it can be made shorter, one segment at a time, until it fits", rowsOf(sl_b).length === sl_fit + 5);
   } catch (err) { areaCrashed("size limit", err); } }
 
-  if (want("the save pointer")) { try {
-  // ================================================================ the first save to Spotify: a pointer under the menu button, once
-  var sp_fmt = 'FORMATS = {"f1": {"title": "Alpha", "name": "Alpha {n}", "silence between segments": "30 sec", "segments": [("rest", 30)]}}';
-  var sp_o = { descStore: {}, nameStore: {} };
-  var sp_w = await boot({ url: EDURL, session: signedIn(), local: { formats: sp_fmt, backupMode: "spotify" }, fetchOptions: sp_o });
-  sp_w.eval("spotifySaveDelayMs = 30; saveTip.quietMs = 50");
-  await waitFor(() => sp_w.eval("saveTip.open"), 8000);
-  var sp_tip = sp_w.document.querySelector(".fe-st-tip");
-  check("after the first save a pointer opens with the wording, a Got it button and the blur", sp_w.eval("saveTip.open") && sp_tip && sp_tip.textContent.includes("Saved recipes go to Spotify. You\u2019ll see this cloud while saving.") && /Got it/.test(sp_tip.querySelector(".fe-st-ok").textContent) && !!sp_w.document.querySelector(".fe-st-blur"));
-  check("it is remembered at once, so it never comes back", sp_w.localStorage.getItem("saveTipShown") === "1");
-  check("the menu button shows the cloud while the pointer is open", sp_w.document.getElementById("feAppMenuButton").classList.contains("fe-saving"));
-  check("the blur leaves a hole around the button", /evenodd/.test(sp_w.document.querySelector(".fe-st-blur").style.clipPath || ""));
-  sp_tip.querySelector(".fe-st-ok").click();
-  await new Promise((r) => setTimeout(r, 1200));
-  check("Got it closes it, the blur goes, and the dots come back", !sp_w.eval("saveTip.open") && !sp_w.document.querySelector(".fe-st-tip, .fe-st-blur") && !sp_w.document.getElementById("feAppMenuButton").classList.contains("fe-saving"));
-  // a click anywhere closes it too
-  sp_w.eval("localStorage.removeItem('saveTipShown'); showSaveTip()");
-  sp_w.document.body.dispatchEvent(new sp_w.MouseEvent("pointerdown", { bubbles: true }));
-  check("a click or tap anywhere closes it", !sp_w.eval("saveTip.open") && !sp_w.document.querySelector(".fe-st-tip"));
-  // not again on a later visit
-  var sp_o2 = { descStore: {}, nameStore: {} };
-  var sp_w2 = await boot({ url: EDURL, session: signedIn(), local: { formats: sp_fmt, backupMode: "spotify", saveTipShown: "1" }, fetchOptions: sp_o2 });
-  sp_w2.eval("spotifySaveDelayMs = 30; saveTip.quietMs = 50");
-  await waitFor(() => sp_w2.eval("saveState.savedAt"), 8000);
-  await new Promise((r) => setTimeout(r, 400));
-  check("once seen, a later save shows no pointer", !sp_w2.eval("saveTip.open") && !sp_w2.document.querySelector(".fe-st-tip"));
-  // never with the manual backup
-  var sp_w3 = await boot({ url: EDURL, session: signedIn(), local: { formats: sp_fmt, backupMode: "manual" }, fetchOptions: {} });
-  sp_w3.eval("saveTip.quietMs = 50; offerSaveTip()");
-  await new Promise((r) => setTimeout(r, 300));
-  check("with the manual backup it never shows", !sp_w3.eval("saveTip.open") && sp_w3.localStorage.getItem("saveTipShown") === null);
-  // it waits while a popup is open
-  var sp_w4 = await boot({ url: EDURL, session: signedIn(), local: { formats: sp_fmt, backupMode: "manual" }, fetchOptions: {} });
-  sp_w4.eval("saveTip.quietMs = 50; localStorage.setItem('backupMode', 'spotify'); editor.appMenu = true; renderAppMenu(); offerSaveTip()");
-  await new Promise((r) => setTimeout(r, 300));
-  var sp_waited = !sp_w4.eval("saveTip.open") && sp_w4.eval("saveTip.waiting");
-  sp_w4.eval("editor.appMenu = false; renderAppMenu()");
-  await waitFor(() => sp_w4.eval("saveTip.open"), 3000);
-  check("while the menu is open it waits, and shows once the menu closes", sp_waited && sp_w4.eval("saveTip.open"));
-  } catch (err) { areaCrashed("the save pointer", err); } }
 
   if (want("spotify saves")) { try {
   // ================================================================ automatic backup to Spotify: writing the saves
@@ -5296,7 +5256,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-12a"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-12b"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5633,6 +5593,25 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("outside developer mode Participants is greyed with Soon, and the recipe panel is closed", bd.getElementById("bhTabPeople").disabled && bd.getElementById("recipePanelWrap").hidden);
   bl_rows()[0].click();
   check("a recipe opens in the panel, its name as the title, with Done only", !bd.getElementById("recipePanelWrap").hidden && bd.getElementById("rpTitle").textContent === "Alpha" && bd.getElementById("rpFoot").classList.contains("rp-clean"));
+  check("the heading says RECIPE over the name, and its length and segments under it", bd.querySelector("#rpShow .rp-kick").textContent === "Recipe" && bd.getElementById("rpMeta").textContent === "31 min · 2 segments", bd.getElementById("rpMeta").textContent);
+  var bl_key = (key) => bd.getElementById("rpName").dispatchEvent(new bl.KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+  var bl_type = (text) => { bd.getElementById("rpName").value = text; bd.getElementById("rpName").dispatchEvent(new bl.Event("input", { bubbles: true })); };
+  bd.getElementById("rpRename").click();
+  check("the pencil turns the heading into Rename recipe, the name in a field with the focus, Cancel and Rename, and the editor waits", bd.getElementById("rpShow").hidden && !bd.getElementById("rpNaming").hidden && bd.activeElement === bd.getElementById("rpName") && bd.getElementById("rpName").value === "Alpha" && bd.getElementById("rpBody").inert && bd.getElementById("recipePanel").classList.contains("rp-renaming"));
+  bl_type("beta ");
+  check("another recipe's name is not taken: Rename greys and says so", bd.getElementById("rpNameOk").disabled && !bd.getElementById("rpNameClash").hidden);
+  bl_type("Alpine");
+  check("typing changes nothing until Rename: the title and the foot stay as they were", bl.eval("editor.model.formats[0].title") === "Alpha" && bd.getElementById("rpFoot").classList.contains("rp-clean") && !bd.getElementById("rpNameOk").disabled);
+  bl_key("Escape");
+  check("Escape cancels only the rename: the name stays and the panel stays open", !bd.getElementById("recipePanelWrap").hidden && bd.getElementById("rpTitle").textContent === "Alpha" && !bd.getElementById("rpShow").hidden && !bd.getElementById("rpBody").inert);
+  bd.getElementById("rpTitle").click();
+  bl_type("Alpine");
+  bl_key("Enter");
+  check("Rename (or Enter) renames it, and the panel then has a change to save", bd.getElementById("rpTitle").textContent === "Alpine" && bl.eval("editor.model.formats[0].title") === "Alpine" && !bd.getElementById("rpFoot").classList.contains("rp-clean"));
+  bd.getElementById("rpRename").click();
+  bl_type("Alpha");
+  bd.getElementById("rpNameOk").click();
+  check("renaming back is no change: Done again", bd.getElementById("rpFoot").classList.contains("rp-clean") && bd.getElementById("rpTitle").textContent === "Alpha");
   rowsOf(bl)[0].querySelector(".fe-inc").click();
   check("an edit shows Cancel and Save changes, and is kept in this browser as unsaved", !bd.getElementById("rpFoot").classList.contains("rp-clean") && /"dirty":true/.test(bl.localStorage.getItem("recipeEditing")) && bl.eval("heldRecipeId()") === "f1");
   rowsOf(bl)[0].querySelector(".fe-dec").click();
@@ -5667,6 +5646,10 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("their playlist is named recipe, code and day, and its description says who it is for", bl.eval("participantPlaylistName('Alpha', 'MC', new Date(2026, 10, 14))") === "Alpha · MC · 14 Nov" && /For participant MC\. Built 14 Nov 2026\.$/.test(bl.eval("builtDescription({}, 1, 1, new Date(2026, 10, 14), 'MC')")));
   var bd3 = await boot({ url: EDURL, session: signedIn(), local: { formats: bl_two, devMode: "1" }, fetchOptions: { extraPlaylists: bl_people }, panel: false });
   check("in developer mode Participants opens a list: New participant, then each code", !bd3.document.getElementById("bhTabPeople").disabled && (() => { bd3.document.getElementById("bhTabPeople").click(); return Array.from(bd3.document.querySelectorAll("#bhPeople .bh-code")).map((c) => c.textContent).join() === "T7,MC" && /Just a code, no identifying info/.test(bd3.document.getElementById("bhNewPerson").textContent); })());
+  bd3.document.getElementById("bhNewPerson").click();
+  (() => { const f = bd3.document.getElementById("bhCode"); f.value = "zq9"; f.dispatchEvent(new bd3.window.Event("input")); bd3.document.getElementById("bhDialogNext").click(); })();
+  await waitFor(() => bd3.document.getElementById("bhNext"), 5000);
+  check("New participant only adds the code: their page opens with nothing built, no recipe asked, and the list keeps them", !bd3.document.getElementById("bhDialog") && /Build ZQ9's next playlist/.test(bd3.document.getElementById("bhNext").textContent) && /No playlists yet/.test(bd3.document.getElementById("bhPeople").textContent) && /"ZQ9"/.test(bd3.window.localStorage.getItem("participantsAdded")) && (() => { bd3.document.getElementById("bhBack").click(); return /Nothing built yet/.test(bd3.document.querySelector('#bhPeople [data-code="ZQ9"]').textContent); })());
   bd3.document.querySelector('#bhPeople [data-code="MC"]').click();
   check("a participant's page builds their next playlist and lists theirs", /Build MC's next playlist/.test(bd3.document.getElementById("bhNext").textContent) && bd3.document.querySelectorAll("#bhPeople a.bh-row").length === 1);
   bd3.document.getElementById("bhTabRecipes").click();

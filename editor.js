@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12a";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12b";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -961,98 +961,7 @@ function placeDevMenu(anchor) {
 const savingIcon = { on: false, since: 0, timer: null };
 function applySavingIcon() {
   const button = $("feAppMenuButton");
-  if (button) button.classList.toggle("fe-saving", savingIcon.on || saveTip.open);   // the pointer below talks about the cloud, so it shows while the pointer is open
-  if (saveTip.open) placeSaveTip();
-}
-
-// The first time recipes are saved to Spotify, a small pointer under the menu button says so, once, and the rest of the page is blurred by a pixel so the
-// button stands out. Nothing is blocked: a click or tap anywhere, a key, or Got it closes it, and it never comes back (saveTipShown). It waits until
-// nothing else is going on and the person has stopped editing for a moment.
-const saveTip = { open: false, waiting: false, timer: null, tip: null, blur: null, quietMs: 3000 };
-function saveTipSeen() { try { return localStorage.getItem("saveTipShown") === "1"; } catch (err) { return false; } }
-function offerSaveTip() {
-  if (saveTip.open || saveTip.waiting || saveTipSeen()) return;
-  saveTip.waiting = true;
-  trySaveTip();
-}
-function saveTipQuiet() {
-  const button = $("feAppMenuButton");
-  if (!button || !document.documentElement.classList.contains("page-app") || !document.documentElement.classList.contains("view-builder") || button.closest("[hidden]") || document.visibilityState === "hidden") return false;
-  if (typeof backupMode === "function" && backupMode() !== "spotify") return false;
-  if (typeof busy !== "undefined" && busy) return false;
-  if (typeof connectingScreen !== "undefined" && connectingScreen) return false;
-  if (typeof updateScreen !== "undefined" && updateScreen) return false;
-  if (typeof launchScreen !== "undefined" && launchScreen) return false;
-  if (editor.appMenu) return false;
-  const active = document.activeElement;
-  if (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return false;
-  if (document.querySelector(".fe-overlay:not(.fx-ghost):not([hidden]), .fe-pop:not(.fx-ghost), #createOverlay:not([hidden]), #infoOverlay:not([hidden]), #reconnectScreen:not([hidden])")) return false;
-  return Date.now() - notices.lastEditAt >= saveTip.quietMs;
-}
-function trySaveTip() {
-  clearTimeout(saveTip.timer);
-  saveTip.timer = null;
-  if (!saveTip.waiting) return;
-  if (saveTipSeen() || (typeof backupMode === "function" && backupMode() !== "spotify")) { saveTip.waiting = false; return; }
-  if (!saveTipQuiet()) { saveTip.timer = setTimeout(trySaveTip, 1000); return; }
-  saveTip.waiting = false;
-  showSaveTip();
-}
-function showSaveTip() {
-  try { localStorage.setItem("saveTipShown", "1"); } catch (err) { /* private browsing: it may show again on a later visit */ }
-  saveTip.open = true;
-  saveTip.blur = feEl("div", { class: "fe-st-blur", "aria-hidden": "true" });
-  const ok = feEl("button", { type: "button", class: "fe-st-ok", text: "Got it", onClick: () => closeSaveTip() });
-  saveTip.tip = feEl("div", { class: "fe-st-tip", role: "status" },
-    feEl("p", { class: "fe-st-text", text: "Saved recipes go to Spotify. You’ll see this cloud while saving." }),
-    feEl("div", { class: "fe-st-row" }, ok));
-  document.body.append(saveTip.blur, saveTip.tip);
-  applySavingIcon();
-  if (motionAllowed(saveTip.tip)) {
-    playMotion(saveTip.blur, "dim", true);
-    saveTip.tip._fxAim = { dx: 0, dy: -4 };
-    playMotion(saveTip.tip, "menu", true);
-  }
-  document.addEventListener("pointerdown", saveTipOutside, true);
-  document.addEventListener("keydown", saveTipKey, true);
-  addEventListener("resize", placeSaveTip);
-  addEventListener("scroll", placeSaveTip, true);
-}
-function saveTipOutside(event) { if (!saveTip.tip || !saveTip.tip.contains(event.target)) closeSaveTip(); }   // the click itself still goes where it was aimed
-function saveTipKey(event) { if (event.key !== "Tab" && event.key !== "Shift") closeSaveTip(); }
-// The pointer hangs under the menu button, its arrow on the button's middle, kept on the screen with a 16 px edge. The blur has a hole a little larger than the
-// button: blurring right up to the button's edge would smear its pink outward.
-function placeSaveTip() {
-  const button = $("feAppMenuButton"), tip = saveTip.tip, blur = saveTip.blur;
-  if (!button || !tip || !blur) return;
-  const r = button.getBoundingClientRect();
-  const width = tip.offsetWidth, edge = 16;
-  const left = Math.max(edge, Math.min(r.right + 8 - width, innerWidth - edge - width));
-  tip.style.left = left + "px";
-  tip.style.top = (r.bottom + 14) + "px";
-  tip.style.setProperty("--st-arrow", Math.round(r.left + r.width / 2 - left - 7) + "px");
-  tip.style.transformOrigin = `${Math.round(r.left + r.width / 2 - left)}px 0`;
-  const m = 6, rad = (parseFloat(getComputedStyle(button).borderRadius) || 0) + m;
-  const x = r.left - m, y = r.top - m, w = r.width + 2 * m, h = r.height + 2 * m;
-  const hole = `M${x + rad} ${y} H${x + w - rad} A${rad} ${rad} 0 0 1 ${x + w} ${y + rad} V${y + h - rad} A${rad} ${rad} 0 0 1 ${x + w - rad} ${y + h} H${x + rad} A${rad} ${rad} 0 0 1 ${x} ${y + h - rad} V${y + rad} A${rad} ${rad} 0 0 1 ${x + rad} ${y} Z`;
-  blur.style.clipPath = `path(evenodd, "M0 0 H${innerWidth} V${innerHeight} H0 Z ${hole}")`;
-}
-function closeSaveTip() {
-  if (!saveTip.open) return;
-  saveTip.open = false;
-  document.removeEventListener("pointerdown", saveTipOutside, true);
-  document.removeEventListener("keydown", saveTipKey, true);
-  removeEventListener("resize", placeSaveTip);
-  removeEventListener("scroll", placeSaveTip, true);
-  const tip = saveTip.tip, blur = saveTip.blur;
-  saveTip.tip = saveTip.blur = null;
-  for (const [el, kind] of [[tip, "menu"], [blur, "dim"]]) {
-    if (!el) continue;
-    if (!motionAllowed(el)) { el.remove(); continue; }
-    el.style.pointerEvents = "none";
-    playMotion(el, kind, false).onfinish = () => el.remove();
-  }
-  applySavingIcon();
+  if (button) button.classList.toggle("fe-saving", savingIcon.on);   // the pointer below talks about the cloud, so it shows while the pointer is open
 }
 function setSavingIcon(flag) {
   if (flag) {
@@ -2226,7 +2135,7 @@ function duplicateFormat() {
   if (recipeEdit.open) Object.assign(recipeEdit, { id: copy.id, before: null, dirty: true });   // the panel goes on with the copy, new until saved
   commit();
   renderEditor();
-  if (recipeEdit.open) { paintPanelHead(); refreshPanelFoot(); $("rpBody").scrollTop = 0; }
+  if (recipeEdit.open) { paintPanelHead(); refreshPanelFoot(); $("recipePanel").scrollTop = 0; }
 }
 
 
@@ -2369,13 +2278,21 @@ function initBuilderHome() {
   $("bhTabRecipes").addEventListener("click", () => { builderHome.tab = "recipes"; renderBuilderHome(); });
   $("bhTabPeople").addEventListener("click", () => { if (!devMode()) return; builderHome.tab = "people"; renderBuilderHome(); });
   $("rpClose").addEventListener("click", () => closeRecipePanel("x"));
-  $("rpDim").addEventListener("click", () => closeRecipePanel("x"));
+  $("rpDim").addEventListener("click", () => { if (editor.renamingPanel) finishPanelRename(false); else closeRecipePanel("x"); });
   $("rpCancel").addEventListener("click", () => closeRecipePanel("cancel"));
   $("rpSave").addEventListener("click", () => closeRecipePanel("save"));
   $("rpDone").addEventListener("click", () => closeRecipePanel("done"));
   $("rpRename").appendChild(feIcon("pencil"));
   $("rpRename").addEventListener("click", startPanelRename);
   $("rpTitle").addEventListener("click", startPanelRename);
+  $("rpNameCancel").addEventListener("click", () => finishPanelRename(false));
+  $("rpNameOk").addEventListener("click", () => finishPanelRename(true));
+  $("rpName").addEventListener("input", checkPanelName);
+  $("rpName").addEventListener("keydown", (event) => {
+    if (event.key === "Enter") { event.preventDefault(); finishPanelRename(true); }
+    else if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); finishPanelRename(false); }
+  });
+  if (window.ResizeObserver) new ResizeObserver(() => sizePanelIcon()).observe($("rpShow"));
   loadRecipeEditing();
 }
 
@@ -2513,6 +2430,23 @@ function refreshPanelFoot() {
 function paintPanelHead() {
   const f = activeFormat();
   $("rpTitle").textContent = f ? (f.title.trim() || "Untitled") : "";
+  if (f) {
+    const shape = recipeShape(f);
+    $("rpMeta").textContent = `${lengthText(shape.music + shape.quiet / 60)} \u00b7 ${f.items.length === 1 ? "1 segment" : f.items.length + " segments"}`;
+  }
+  sizePanelIcon();
+}
+
+// The icon is as tall as the text beside it: from the top of RECIPE's capitals to the foot of the length's letters (a line's box is taller than its ink)
+function sizePanelIcon() {
+  const icon = $("rpIcon"), kick = document.querySelector("#rpShow .rp-kick"), meta = $("rpMeta");
+  if (!icon || !kick || !meta || $("recipePanelWrap").hidden || $("rpShow").hidden) return;
+  const k = kick.getBoundingClientRect(), m = meta.getBoundingClientRect();
+  const kickInk = parseFloat(getComputedStyle(kick).fontSize) * 0.15, metaInk = parseFloat(getComputedStyle(meta).fontSize) * 0.2;
+  const size = Math.round(m.bottom - metaInk - (k.top + kickInk));
+  if (!(size > 20)) return;
+  icon.style.width = icon.style.height = size + "px";
+  icon.style.marginTop = Math.round(kickInk) + "px";
 }
 
 async function openRecipePanel(id, options = {}) {
@@ -2543,7 +2477,7 @@ async function openRecipePanel(id, options = {}) {
   refreshPanelFoot();
   notices.paintedKey = undefined;
   refreshNoticeLine();
-  $("rpBody").scrollTop = 0;
+  $("recipePanel").scrollTop = 0;
   if (motionAllowed(wrap)) {
     $("rpDim").animate(MOTION.dim.frames, { duration: 200, easing: EASE_OUT });
     $("recipePanel").animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: EASE_OUT });
@@ -2561,7 +2495,7 @@ function closeRecipePanel(how, quiet) {
       .then((answer) => { if (answer === "discard") closeRecipePanel("cancel"); });
     return;
   }
-  if (editor.renamingPanel) finishPanelRename(how === "cancel");
+  if (editor.renamingPanel) finishPanelRename(false, true);
   const saved = how === "save" && recipeEdit.dirty;
   if (how === "cancel" && recipeEdit.dirty) {
     if (recipeEdit.before === null) removeLocalFormat(recipeEdit.id);
@@ -2592,42 +2526,63 @@ function closeRecipePanel(how, quiet) {
   refreshNoticeLine();
 }
 
+// Renaming is one action of its own (Ron, 2026-11-12, mockups/panel-head N2): the heading becomes RENAME RECIPE, the name in a pink field, Cancel and Rename; the
+// editor dims and waits. Only Rename changes the name (then the panel has a change to save); Cancel, Escape or a tap outside leave it as it was.
 function startPanelRename() {
   const f = activeFormat();
   if (!f || editor.renamingPanel) return;
-  editor.renamingPanel = { from: f.title };
-  const input = feEl("input", { type: "text", id: "rpName", class: "rp-title-input", autocomplete: "off", "aria-label": "Name of recipe", enterkeyhint: "done" });
+  editor.renamingPanel = true;
+  const input = $("rpName");
   input.value = f.title;
-  input.addEventListener("input", () => {
-    const cleaned = cleanTitle(input.value);
-    if (cleaned !== input.value) input.value = cleaned;
-    f.title = cleaned;
-    commit();
-    renderClash();
-  });
-  input.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") { event.preventDefault(); finishPanelRename(false); }
-    else if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); finishPanelRename(true); }
-  });
-  input.addEventListener("blur", () => finishPanelRename(false));
-  $("rpTitle").hidden = true;
-  $("rpRename").hidden = true;
-  $("rpTitle").after(input);
-  input.focus();
+  swapPanelHead(true);
+  checkPanelName();
+  try { input.focus({ preventScroll: true }); } catch (err) { input.focus(); }
   input.select();
 }
 
-function finishPanelRename(cancel) {
-  const state = editor.renamingPanel;
-  if (!state) return;
-  editor.renamingPanel = null;
-  const f = activeFormat();
-  if (f && cancel) { f.title = state.from; commit(); renderClash(); }
-  const input = $("rpName");
-  if (input) input.remove();
-  $("rpTitle").hidden = false;
-  $("rpRename").hidden = false;
+function checkPanelName() {
+  const input = $("rpName"), f = activeFormat();
+  const cleaned = cleanTitle(input.value);
+  if (cleaned !== input.value) input.value = cleaned;
+  const name = cleaned.trim();
+  const taken = !!name && !!f && editor.model.formats.some((x) => x.id !== f.id && !x.draft && normName(x.title) === normName(name));
+  $("rpNameClash").hidden = !taken;
+  $("rpNameOk").disabled = !name || taken;
+}
+
+function finishPanelRename(accept, quiet) {
+  if (!editor.renamingPanel) return;
+  if (accept && $("rpNameOk").disabled) return;
+  editor.renamingPanel = false;
+  const f = activeFormat(), name = $("rpName").value.trim();
+  if (accept && f && name !== f.title) { f.title = name; commit(); renderClash(); }
+  swapPanelHead(false, quiet);
   paintPanelHead();
+  if (!quiet) { try { $("rpRename").focus({ preventScroll: true }); } catch (err) { /* old browsers */ } }
+}
+
+// The heading goes between showing the recipe and renaming it: it eases to its new height while one crossfades into the other and the editor dims or comes back
+function swapPanelHead(naming, quiet) {
+  const head = $("rpHead"), show = $("rpShow"), form = $("rpNaming");
+  const from = head.offsetHeight;
+  const leaving = naming ? show : form, coming = naming ? form : show;
+  $("recipePanel").classList.toggle("rp-renaming", naming);
+  $("rpBody").inert = naming;
+  leaving.hidden = true;
+  coming.hidden = false;
+  if (quiet || !motionAllowed(head)) return;
+  const to = head.offsetHeight;
+  head.animate([{ height: from + "px" }, { height: to + "px" }], { duration: 280, easing: EASE_OUT });
+  coming.animate([{ opacity: 0, transform: "translateY(4px)" }, { opacity: 1, transform: "none" }], { duration: 240, delay: 60, easing: EASE_OUT, fill: "backwards" });
+  // the part leaving fades as a copy laid over where it was
+  const ghost = leaving.cloneNode(true);
+  ghost.hidden = false;
+  ghost.removeAttribute("id");
+  ghost.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+  ghost.setAttribute("aria-hidden", "true");
+  Object.assign(ghost.style, { position: "absolute", left: "16px", right: "16px", top: "20px", pointerEvents: "none" });
+  head.appendChild(ghost);
+  ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: EASE_IN, fill: "forwards" }).onfinish = () => ghost.remove();
 }
 
 // Escape closes the panel, unless something inside or over it is open: that closes first
@@ -2647,14 +2602,14 @@ function shortDate(time) { const d = new Date(time); return `${d.getDate()} ${MO
 function renderParticipantList() {
   const box = $("bhPeople");
   box.textContent = "";
-  box.appendChild(bhAddRow("bhNewPerson", "New participant", "Just a code, no identifying info", () => askParticipantCode().then((code) => { if (code) pickRecipeFor(code); })));
+  box.appendChild(bhAddRow("bhNewPerson", "New participant", "Just a code, no identifying info", () => askParticipantCode().then((code) => { if (code) { addParticipant(code); builderHome.person = code; renderBuilderHome(); window.scrollTo(0, 0); } })));
   for (const person of participantList()) {
-    const sub = feEl("span", { class: "bh-sub", text: `Last built ${shortDate(person.last)}` });
+    const sub = feEl("span", { class: "bh-sub", text: person.playlists.length ? `Last built ${shortDate(person.last)}` : "Nothing built yet" });
     box.appendChild(feEl("button", { type: "button", class: "bh-row", "data-code": person.code, onClick: () => { builderHome.person = person.code; renderBuilderHome(); window.scrollTo(0, 0); } },
       feEl("span", { class: "bh-code", text: person.code }),
       feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: person.playlists.length === 1 ? "1 playlist" : `${person.playlists.length} playlists` }), sub),
       bhSvg(BH_GO)));
-    heardCount(person).then((n) => { if (n !== null) sub.textContent = `${n} ${n === 1 ? "song" : "songs"} heard · last ${shortDate(person.last)}`; });
+    if (person.playlists.length) heardCount(person).then((n) => { if (n !== null) sub.textContent = `${n} ${n === 1 ? "song" : "songs"} heard · last ${shortDate(person.last)}`; });
   }
   box.appendChild(feEl("p", { class: "bh-note", text: "Arc knows which songs each participant has heard from the playlists it built for them in your Spotify." }));
 }
@@ -2724,7 +2679,7 @@ function codeField(onChange) {
 function askParticipantCode() {
   let code = "";
   const input = codeField((c) => { code = c; bhDialog.next.disabled = !c; });
-  const p = bhDialog("New participant", feEl("div", { class: "bh-codein" }, input, feEl("span", { class: "bh-hint", text: "Just a code, no identifying info. Up to 4 letters or numbers." })), "Next", () => code || null);
+  const p = bhDialog("New participant", feEl("div", { class: "bh-codein" }, input, feEl("span", { class: "bh-hint", text: "Just a code, no identifying info. Up to 4 letters or numbers." })), "Add", () => code || null);
   bhDialog.next.disabled = true;
   return p;
 }
