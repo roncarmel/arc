@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12q";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12r";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2492,11 +2492,11 @@ function renderRecipeList() {
 function recipeRow(f) {
   const shape = recipeShape(f);
   const unsaved = recipeEdit.dirty && recipeEdit.id === f.id;
-  const length = `${lengthText(shape.music + shape.quiet / 60)} · ${f.items.length === 1 ? "1 segment" : f.items.length + " segments"}`;
+  const length = lengthText(shape.music + shape.quiet / 60);   // the segments show in the bar under it (Ron, 2026-11-12: room for Build playlist on a phone)
   const bar = feEl("span", { class: "bh-shape", "aria-hidden": "true" },
     ...shape.pieces.map((p) => feEl("span", { class: p.silence ? "bh-quiet" : undefined, style: p.style })));
   const build = feEl("button", { type: "button", class: "bh-build", "data-id": f.id, onClick: (event) => { event.stopPropagation(); buildRecipe(f.id); } },
-    bhSvg(BH_SPARK), feEl("span", { text: "Build" }));
+    bhSvg(BH_SPARK), feEl("span", { text: buildWord() }));
   const row = feEl("div", { class: "bh-row bh-recipe", role: "button", tabindex: "0", "data-id": f.id, "aria-label": `Edit ${f.title.trim() || "Untitled"}`,
     onClick: () => openRecipePanel(f.id),
     onKeyDown: (event) => { if ((event.key === "Enter" || event.key === " ") && event.target === row) { event.preventDefault(); openRecipePanel(f.id); } } },
@@ -2508,13 +2508,16 @@ function recipeRow(f) {
   return row;
 }
 
+// A recipe's Build button: Build playlist in developer mode (one playlist for a participant), Build otherwise.
+function buildWord() { return devMode() ? "Build playlist" : "Build"; }
+
 // The Build buttons on the landing say what a build needs right now, as the old Build button did: Connect while not connected, nothing while Spotify is paused.
 function refreshBuildButtons() {
   if (typeof connectionAction !== "function") return;
   const action = connectionAction();
   const paused = typeof spotifyPause === "function" && !!spotifyPause();
   const ready = !!token && connection === "ready" && !!py && formatsValid && !busy && !paused;
-  const word = action ? (connection === "problem" && connectionKind !== "reconnect" ? "Try again" : "Connect") : "Build";
+  const word = action ? (connection === "problem" && connectionKind !== "reconnect" ? "Try again" : "Connect") : buildWord();
   for (const b of document.querySelectorAll("#builderHome .bh-build")) {
     b.lastChild.textContent = word;
     b.disabled = action ? busy : !ready;
@@ -2959,7 +2962,7 @@ async function newShare(f, code) {
 // Build in developer mode is always for a participant. Who is it for? is a sheet (Ron, 2026-11-12, mockups/who-for look B): Build a playlist and the X (no For one
 // participant: it is the only kind), the recipe as a card with its shape, then Choose a participant, a drop-down whose panel is a grid of code squares, four to a row, the most recently built
 // first (participantList's order), each with the day of its latest playlist (D1). Find a code at its top is only a search; + New stays the first square and
-// turns the drop-down into a code entry. Choosing one reads how much of the recipe is new to them. Resolves with the code, or null.
+// turns the drop-down into a code entry. (no line on how much is new to them: it confused, Ron, 2026-11-12). Resolves with the code, or null.
 const CODE_HOW = "Just a code of your choosing, no identifying info. 1 to 4 letters or numbers.";
 const WF_CANCEL = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 const BH_CARET = '<svg class="bh-dd-caret" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
@@ -2967,7 +2970,7 @@ function askWhoFor(id) {
   const f = editor.model.formats.find((x) => x.id === id);
   const title = f ? f.title.trim() || "Untitled" : "";
   const people = participantList();
-  let code = "", open = false, adding = false, reading = 0, finish = null;
+  let code = "", open = false, adding = false, finish = null;
 
   // the recipe being built, as its row on the landing shows it
   let card = null;
@@ -2992,7 +2995,6 @@ function askWhoFor(id) {
   const adder = feEl("div", { class: "bh-dd-add", hidden: true },
     feEl("div", { class: "bh-dd-newline" }, newBadge, newInput, feEl("button", { type: "button", class: "bh-dd-back", id: "bhWhoNewCancel", onClick: () => stopAdding() }, "Back")),
     feEl("p", { class: "bh-hint bh-dd-hint", text: CODE_HOW }));
-  const info = feEl("div", { class: "bh-dd-info", hidden: true });
   const cancel = feEl("button", { type: "button", class: "wf-cancel", id: "bhDialogCancel", onClick: () => close(null) }, bhSvg(WF_CANCEL), "Cancel");
   const next = feEl("button", { type: "button", class: "wf-build", id: "bhDialogNext", disabled: true, onClick: () => { if (code) close(code); } }, bhSvg(BH_SPARK), "Build playlist");
 
@@ -3036,7 +3038,6 @@ function askWhoFor(id) {
     adding = true;
     dd.hidden = true;
     adder.hidden = false;
-    info.hidden = true;
     newInput.value = "";
     paintBadge(newBadge, "");
     code = "";
@@ -3053,21 +3054,12 @@ function askWhoFor(id) {
     field.focus();
   }
 
-  async function choose(value) {
+  function choose(value) {
     code = value;
     setOpen(false);
     paintField();
     next.disabled = false;
     try { field.focus({ preventScroll: true }); } catch (err) { /* old browsers */ }
-    info.hidden = !f;
-    if (!f) return;
-    const mine = ++reading;
-    const pct = feEl("b", {}, feEl("span", { class: "bh-dots", "aria-label": "Reading songs" }, feEl("i"), feEl("i"), feEl("i")));
-    info.replaceChildren(feEl("span", { text: `New to ${code} in ${named(title)}` }), pct);
-    try {
-      const share = await newShare(f, code);
-      if (mine === reading) pct.textContent = share === null ? "?" : `${share}%`;
-    } catch (err) { if (mine === reading) pct.textContent = "?"; }
   }
 
   search.addEventListener("input", paintTiles);
@@ -3088,7 +3080,7 @@ function askWhoFor(id) {
     feEl("div", { class: "wf-head" },
       feEl("h2", { class: "wf-title", id: "wfTitle", text: "Build a playlist" }),
       feEl("button", { type: "button", class: "rp-x", id: "wfClose", "aria-label": "Close", onClick: () => close(null), html: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>' })),
-    feEl("div", { class: "wf-body" }, card, feEl("p", { class: "wf-label", text: "Who is it for?" }), dd, adder, info),
+    feEl("div", { class: "wf-body" }, card && feEl("p", { class: "wf-label wf-label-first", text: "Recipe" }), card, feEl("p", { class: "wf-label", text: "Who is it for?" }), dd, adder),
     feEl("div", { class: "wf-foot" }, cancel, next));
   const wrap = feEl("div", { class: "rp-wrap", id: "whoForWrap" }, feEl("div", { class: "rp-dim", onClick: () => close(null) }), sheet);
 
