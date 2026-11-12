@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12f";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12g";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2274,9 +2274,124 @@ const BH_OPEN = '<svg class="bh-go" width="18" height="18" viewBox="0 0 24 24" f
 const BH_BACK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
 function bhSvg(markup) { const s = document.createElement("span"); s.style.display = "contents"; s.innerHTML = markup; return s; }
 
+// A switch of two halves (Music sharing's By others | By you, the builder's Recipes | Participants) can be dragged (Ron, 2026-11-10): the capsule follows the
+// finger and the two names change color with it, the tap's animation scrubbed by hand, while the page under it (page()) drifts the way it will leave.
+// Let go, it finishes the move to the half it is nearer; choose(side, drift) opens that half and says true, or false when it is the one already open.
+function dragSwitch(bar, o) {
+  const { pill, names, side, page, choose, draggingClass, enabled = () => true } = o;
+  let drag = null, swallowClick = false, clearTimer = 0;
+  // the page under it drifts a little with the drag (at most 30 px, fading to 0.75), the way it will leave; the real swap waits for the release
+  const drift = (p, from) => {
+    const t = Math.abs(p - from);
+    return { x: (from - p) * 30, opacity: 1 - 0.25 * t };
+  };
+  const paintPage = d => {
+    const body = page();
+    if (!body || typeof motionAllowed !== "function" || !motionAllowed(body)) return;
+    Object.assign(body.style, { transform: d.x ? `translateX(${d.x}px)` : "", opacity: d.opacity < 1 ? String(d.opacity) : "" });
+  };
+  const settlePage = d => {
+    const body = page();
+    if (!body || (!d.x && d.opacity === 1)) return;
+    Object.assign(body.style, { transform: "", opacity: "" });
+    if (typeof motionAllowed === "function" && motionAllowed(body))
+      body.animate([{ transform: `translateX(${d.x}px)`, opacity: d.opacity }, { transform: "translateX(0)", opacity: 1 }], { duration: 320, easing: EASE_OUT });
+  };
+  const paint = p => {
+    pill.style.transform = `translateX(${p * 100}%)`;
+    names().forEach((b, i) => {
+      const w = i ? p : 1 - p;
+      b.style.color = `color-mix(in srgb, var(--accent) ${Math.round(w * 100)}%, var(--fg))`;
+      b.style.opacity = String(0.6 + 0.4 * w);
+    });
+  };
+  const clear = () => { pill.style.transform = ""; names().forEach(b => { b.style.color = ""; b.style.opacity = ""; }); };
+  bar.addEventListener("pointerdown", e => {
+    if (e.button !== 0 || !e.isPrimary || !enabled()) return;
+    clearTimeout(clearTimer);
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, from: side(), p: null };
+  });
+  bar.addEventListener("pointermove", e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x;
+    if (drag.p === null) {
+      if (Math.abs(dx) < 6 || Math.abs(dx) < Math.abs(e.clientY - drag.y)) return;
+      drag.p = drag.from;
+      bar.classList.add(draggingClass);
+      try { bar.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+    drag.p = Math.min(1, Math.max(0, drag.from + dx / (pill.offsetWidth || 1)));
+    paint(drag.p);
+    paintPage(drift(drag.p, drag.from));
+  });
+  const end = e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag;
+    drag = null;
+    if (d.p === null) return;   // a tap: the button's own click handles it
+    swallowClick = true;
+    setTimeout(() => { swallowClick = false; }, 0);
+    const to = e.type === "pointercancel" ? d.from : d.p >= 0.5 ? 1 : 0;
+    void pill.offsetWidth;   // the drawn position is the start of the finishing move
+    bar.classList.remove(draggingClass);
+    void pill.offsetWidth;
+    paint(to);
+    clearTimer = setTimeout(clear, 360);   // after the move the classes say the same
+    const left = drift(d.p, d.from);
+    if (!choose(to, left)) settlePage(left);
+  };
+  bar.addEventListener("pointerup", end);
+  bar.addEventListener("pointercancel", end);
+  bar.addEventListener("click", e => { if (swallowClick) { e.stopPropagation(); e.preventDefault(); } }, true);
+}
+// the old page stays drawn as an untouchable copy while it leaves
+function pageGhost(body) {
+  const ghost = body.cloneNode(true);
+  ghost.removeAttribute("id");
+  for (const el of ghost.querySelectorAll("[id]")) el.removeAttribute("id");
+  ghost.classList.add("ms-slide-ghost");
+  ghost.setAttribute("aria-hidden", "true");
+  ghost.inert = true;
+  // without its id it would lose the page's padding (its rules are by id), and sit higher than the page it copies
+  Object.assign(ghost.style, { top: body.offsetTop + "px", left: body.offsetLeft + "px", width: body.offsetWidth + "px", height: body.offsetHeight + "px", padding: getComputedStyle(body).padding });
+  const top = body.scrollTop;
+  body.after(ghost);
+  ghost.scrollTop = top;
+  return ghost;
+}
+// The builder's Recipes | Participants: the same switch and motion as Music sharing's tabs (shiftPage there): the old half moves half its width away
+// and fades as the new one comes from half its width on the other side; Participants sits to the right.
+function chooseBuilderTab(tab, drift) {
+  if (tab === "people" && !devMode()) return false;
+  if (tab === builderHome.tab) return false;
+  const home = $("builderHome"), old = $(builderHome.tab === "people" ? "bhPeople" : "bhRecipes");
+  const change = () => { builderHome.tab = tab; renderBuilderHome(); };
+  if (!motionAllowed(old)) { Object.assign(old.style, { transform: "", opacity: "" }); change(); return true; }
+  const dir = tab === "people" ? 1 : -1;
+  const ghost = pageGhost(old);
+  Object.assign(ghost.style, { transform: "", opacity: "" });
+  Object.assign(old.style, { transform: "", opacity: "" });
+  change();
+  const now = $(tab === "people" ? "bhPeople" : "bhRecipes");
+  home.classList.add("bh-sliding");   // nothing reaches past the page's sides meanwhile
+  ghost.animate([{ transform: `translateX(${drift ? drift.x : 0}px)`, opacity: drift ? drift.opacity : 1 }, { transform: `translateX(${-dir * 50}%)`, opacity: 0 }], { duration: 140, easing: EASE_IN, fill: "forwards" }).onfinish = () => ghost.remove();
+  now.animate([{ transform: `translateX(${dir * 50}%)`, opacity: 0 }, { transform: "translateX(0)", opacity: 1 }], { duration: 240, delay: 60, easing: EASE_OUT, fill: "backwards" }).onfinish = () => home.classList.remove("bh-sliding");
+  return true;
+}
+
 function initBuilderHome() {
-  $("bhTabRecipes").addEventListener("click", () => { builderHome.tab = "recipes"; renderBuilderHome(); });
-  $("bhTabPeople").addEventListener("click", () => { if (!devMode()) return; builderHome.tab = "people"; renderBuilderHome(); });
+  $("bhTabRecipes").addEventListener("click", () => chooseBuilderTab("recipes"));
+  $("bhTabPeople").addEventListener("click", () => chooseBuilderTab("people"));
+  const bar = $("bhSwitch");
+  dragSwitch(bar, {
+    pill: bar.querySelector(".bh-pill"),
+    names: () => [$("bhTabRecipes"), $("bhTabPeople")],
+    side: () => (builderHome.tab === "people" ? 1 : 0),
+    page: () => $(builderHome.tab === "people" ? "bhPeople" : "bhRecipes"),
+    choose: (side, drift) => chooseBuilderTab(side ? "people" : "recipes", drift),
+    draggingClass: "bh-dragging",
+    enabled: () => devMode(),
+  });
   $("rpClose").addEventListener("click", () => closeRecipePanel("x"));
   $("rpDim").addEventListener("click", () => { if (editor.renamingPanel) finishPanelRename(false); else closeRecipePanel("x"); });
   $("rpCancel").addEventListener("click", () => closeRecipePanel("cancel"));

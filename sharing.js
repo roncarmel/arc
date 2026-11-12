@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-12f";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-12g";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -613,77 +613,16 @@ function renderSharingTabs() {
     t.querySelector("button").setAttribute("aria-selected", String(on));
   }
 }
-// The switch can also be dragged (Ron, 2026-11-10): the capsule follows the finger and the two names change color with it, the tap's
-// animation scrubbed by hand. Let go, it finishes the move to the half it is nearer, and that tab opens if it is the other one.
+// The switch can also be dragged (Ron, 2026-11-10): dragSwitch in editor.js, shared with the builder's Recipes | Participants.
 function dragTabs(bar) {
-  const pill = bar.querySelector(".ms-tabpill");
-  const names = () => [...bar.querySelectorAll(".ms-tab")].map(t => t.querySelector(".ms-tab-name"));
-  let drag = null, swallowClick = false, clearTimer = 0;
-  // the page under it drifts a little with the drag (at most 30 px, fading to 0.75), the way it will leave; the real swap waits for the release
-  const page = () => $("msBody");
-  const drift = (p, from) => {
-    const t = Math.abs(p - from);
-    return { x: (from - p) * 30, opacity: 1 - 0.25 * t };
-  };
-  const paintPage = d => {
-    const body = page();
-    if (!body || typeof motionAllowed !== "function" || !motionAllowed(body)) return;
-    Object.assign(body.style, { transform: d.x ? `translateX(${d.x}px)` : "", opacity: d.opacity < 1 ? String(d.opacity) : "" });
-  };
-  const settlePage = d => {
-    const body = page();
-    if (!body || (!d.x && d.opacity === 1)) return;
-    Object.assign(body.style, { transform: "", opacity: "" });
-    if (typeof motionAllowed === "function" && motionAllowed(body))
-      body.animate([{ transform: `translateX(${d.x}px)`, opacity: d.opacity }, { transform: "translateX(0)", opacity: 1 }], { duration: 320, easing: EASE_OUT });
-  };
-  const paint = p => {
-    pill.style.transform = `translateX(${p * 100}%)`;
-    names().forEach((b, i) => {
-      const w = i ? p : 1 - p;
-      b.style.color = `color-mix(in srgb, var(--accent) ${Math.round(w * 100)}%, var(--fg))`;
-      b.style.opacity = String(0.6 + 0.4 * w);
-    });
-  };
-  const clear = () => { pill.style.transform = ""; names().forEach(b => { b.style.color = ""; b.style.opacity = ""; }); };
-  bar.addEventListener("pointerdown", e => {
-    if (e.button !== 0 || !e.isPrimary) return;
-    clearTimeout(clearTimer);
-    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, from: sharing.tab === "share" ? 1 : 0, p: null };
+  dragSwitch(bar, {
+    pill: bar.querySelector(".ms-tabpill"),
+    names: () => [...bar.querySelectorAll(".ms-tab")].map(t => t.querySelector(".ms-tab-name")),
+    side: () => (sharing.tab === "share" ? 1 : 0),
+    page: () => $("msBody"),
+    choose: (side, drift) => { const tab = side ? "share" : "find"; if (tab !== sharing.tab) { switchTab(tab, drift); return true; } return false; },
+    draggingClass: "ms-tabs-dragging",
   });
-  bar.addEventListener("pointermove", e => {
-    if (!drag || e.pointerId !== drag.id) return;
-    const dx = e.clientX - drag.x;
-    if (drag.p === null) {
-      if (Math.abs(dx) < 6 || Math.abs(dx) < Math.abs(e.clientY - drag.y)) return;
-      drag.p = drag.from;
-      bar.classList.add("ms-tabs-dragging");
-      try { bar.setPointerCapture(e.pointerId); } catch (err) {}
-    }
-    drag.p = Math.min(1, Math.max(0, drag.from + dx / (pill.offsetWidth || 1)));
-    paint(drag.p);
-    paintPage(drift(drag.p, drag.from));
-  });
-  const end = e => {
-    if (!drag || e.pointerId !== drag.id) return;
-    const d = drag;
-    drag = null;
-    if (d.p === null) return;   // a tap: the button's own click handles it
-    swallowClick = true;
-    setTimeout(() => { swallowClick = false; }, 0);
-    const to = e.type === "pointercancel" ? d.from : d.p >= 0.5 ? 1 : 0;
-    void pill.offsetWidth;   // the drawn position is the start of the finishing move
-    bar.classList.remove("ms-tabs-dragging");
-    void pill.offsetWidth;
-    paint(to);
-    clearTimer = setTimeout(clear, 360);   // after the move the classes say the same
-    const tab = to ? "share" : "find", left = drift(d.p, d.from);
-    if (tab !== sharing.tab) switchTab(tab, left);
-    else settlePage(left);
-  };
-  bar.addEventListener("pointerup", end);
-  bar.addEventListener("pointercancel", end);
-  bar.addEventListener("click", e => { if (swallowClick) { e.stopPropagation(); e.preventDefault(); } }, true);
 }
 // the bottom row: Back (grey) and the main button; Back alone fills the row. In the wizard and the edit page (wizard: true) Back is pink
 // and as wide as the main button, with a gap between, and alone it keeps that size and place.
@@ -1043,21 +982,6 @@ function openDetail(id) {
 function closeDetail() {
   sharing.detail = null;
   renderSharing();
-}
-// the old page stays drawn as an untouchable copy while it leaves
-function pageGhost(body) {
-  const ghost = body.cloneNode(true);
-  ghost.removeAttribute("id");
-  for (const el of ghost.querySelectorAll("[id]")) el.removeAttribute("id");
-  ghost.classList.add("ms-slide-ghost");
-  ghost.setAttribute("aria-hidden", "true");
-  ghost.inert = true;
-  // without its id it would lose the page's padding (its rules are by id), and sit higher than the page it copies
-  Object.assign(ghost.style, { top: body.offsetTop + "px", left: body.offsetLeft + "px", width: body.offsetWidth + "px", height: body.offsetHeight + "px", padding: getComputedStyle(body).padding });
-  const top = body.scrollTop;
-  body.after(ghost);
-  ghost.scrollTop = top;
-  return ghost;
 }
 // another tab: the old page moves half its width away and fades as the new one comes from half its width
 // on the other side (Ron, 2026-11-09, mockups/sharing-motion.html B with half a screen)
