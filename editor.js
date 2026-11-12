@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12o";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12p";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2972,46 +2972,64 @@ async function newShare(f, code) {
   return Math.round((fresh / ids.size) * 100);
 }
 
-// Build in developer mode is always for a participant (Ron, 2026-11-12, mockups/who-for D1). Who is it for? is a drop-down whose panel is a grid of code
-// squares, four to a row, the most recently built first (participantList's order), each with the day of its latest playlist; Find a code at the top narrows
-// them, and + New comes first. A typed code no one has is offered as New <code>. Choosing one closes it to that participant and reads how much of the recipe
-// is new to them. Resolves with the code, or null.
+// Build in developer mode is always for a participant. Who is it for? is a sheet (Ron, 2026-11-12, mockups/who-for look B): Build a playlist, For one participant,
+// the recipe as a card with its shape, then Choose a participant, a drop-down whose panel is a grid of code squares, four to a row, the most recently built
+// first (participantList's order), each with the day of its latest playlist (D1). Find a code at its top is only a search; + New stays the first square and
+// turns the drop-down into a code entry. Choosing one reads how much of the recipe is new to them. Resolves with the code, or null.
 const CODE_HOW = "Just a code of your choosing, no identifying info. 1 to 4 letters or numbers.";
 const BH_CARET = '<svg class="bh-dd-caret" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
 function askWhoFor(id) {
   const f = editor.model.formats.find((x) => x.id === id);
+  const title = f ? f.title.trim() || "Untitled" : "";
   const people = participantList();
-  let code = "", open = false, reading = 0;
+  let code = "", open = false, adding = false, reading = 0, finish = null;
+
+  // the recipe being built, as its row on the landing shows it
+  let card = null;
+  if (f) {
+    const shape = recipeShape(f);
+    card = feEl("div", { class: "wf-recipe" },
+      feEl("span", { class: "bh-name", text: title }),
+      feEl("span", { class: "bh-sub", text: `${lengthText(shape.music + shape.quiet / 60)} · ${f.items.length === 1 ? "1 segment" : f.items.length + " segments"}` }),
+      feEl("span", { class: "bh-shape", "aria-hidden": "true" }, ...shape.pieces.map((p) => feEl("span", { class: p.silence ? "bh-quiet" : undefined, style: p.style }))));
+  }
+
   const field = feEl("button", { type: "button", class: "bh-dd-field", id: "bhWho", "aria-haspopup": "listbox", "aria-expanded": "false", onClick: () => setOpen(!open) });
-  const search = feEl("input", { type: "text", class: "bh-dd-search", id: "bhWhoFind", placeholder: "Find a code", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", maxlength: "4", "aria-label": "Find a code, or type a new one", enterkeyhint: "done" });
-  const hint = feEl("p", { class: "bh-hint bh-dd-hint", text: CODE_HOW, hidden: true });
+  const search = feEl("input", { type: "text", class: "bh-dd-search", id: "bhWhoFind", placeholder: "Find a code", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", maxlength: "4", "aria-label": "Find a code", enterkeyhint: "search" });
   const tiles = feEl("div", { class: "bh-dd-tiles", role: "listbox", "aria-label": "Participants" });
-  const panel = feEl("div", { class: "bh-dd-panel", id: "bhWhoPanel", hidden: true }, feEl("label", { class: "bh-dd-find" }, feIcon("search"), search), hint, tiles);
-  const info = feEl("div", { class: "bh-dd-info", hidden: true });
+  const empty = feEl("p", { class: "bh-dd-none", text: "No code matches.", hidden: true });
+  const panel = feEl("div", { class: "bh-dd-panel", id: "bhWhoPanel", hidden: true }, feEl("label", { class: "bh-dd-find" }, feIcon("search"), search), tiles, empty);
   const dd = feEl("div", { class: "bh-dd" }, field, panel);
 
-  const tile = (value, label, extra, isNew) => feEl("button", { type: "button", class: "bh-tile" + (extra || ""), role: "option", "aria-selected": String(!isNew && value === code), "data-code": value, onClick: () => isNew && !value ? search.focus() : choose(value) },
-    isNew ? newBadge(value) : codeBadge(value), feEl("small", { text: label }));
-  const newBadge = (value) => { const b = codeBadge(value || "+"); b.classList.add("bh-code-new"); return b; };
+  // + New: the drop-down gives way to a code entry, its square filled as it is typed
+  const newBadge = codeBadge("");
+  const newInput = feEl("input", { type: "text", class: "bh-dd-newin", id: "bhWhoNew", placeholder: "Type a code", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", maxlength: "4", "aria-label": "New participant's code", enterkeyhint: "done" });
+  const adder = feEl("div", { class: "bh-dd-add", hidden: true },
+    feEl("div", { class: "bh-dd-newline" }, newBadge, newInput, feEl("button", { type: "button", class: "bh-dd-back", id: "bhWhoNewCancel", onClick: () => stopAdding() }, "Back")),
+    feEl("p", { class: "bh-hint bh-dd-hint", text: CODE_HOW }));
+  const info = feEl("div", { class: "bh-dd-info", hidden: true });
+  const cancel = feEl("button", { type: "button", class: "wf-cancel", id: "bhDialogCancel", onClick: () => close(null) }, "Cancel");
+  const next = feEl("button", { type: "button", class: "wf-build", id: "bhDialogNext", disabled: true, onClick: () => { if (code) close(code); } }, "Build playlist");
 
+  const tile = (person) => feEl("button", { type: "button", class: "bh-tile" + (person.code === code ? " bh-on" : ""), role: "option", "aria-selected": String(person.code === code), "data-code": person.code, onClick: () => choose(person.code) },
+    codeBadge(person.code), feEl("small", { text: shortDate(person.last) }));
+  const newTile = () => { const b = codeBadge("+"); b.classList.add("bh-code-new"); return feEl("button", { type: "button", class: "bh-tile bh-tile-new", id: "bhWhoAdd", "aria-label": "New participant", onClick: () => startAdding() }, b, feEl("small", { text: "New" })); };
+
+  // Search is only a search; + New stays first whatever is typed (Ron, 2026-11-12)
   function paintTiles() {
     const typed = cleanCode(search.value);
     if (typed !== search.value) search.value = typed;
     const shown = people.filter((p) => p.code.includes(typed));
     shown.sort((a, b) => Number(!b.code.startsWith(typed)) - Number(!a.code.startsWith(typed)));   // codes that start with it first, each group still most recent first
-    const known = people.some((p) => p.code === typed);
-    tiles.replaceChildren(
-      ...(typed ? [] : [tile("", "New", " bh-tile-new", true)]),
-      ...shown.map((p) => tile(p.code, shortDate(p.last), p.code === code ? " bh-on" : "")),
-      ...(typed && !known ? [tile(typed, `New ${typed}`, " bh-tile-new", true)] : []));
-    hint.hidden = !(typed && !known);
+    tiles.replaceChildren(newTile(), ...shown.map(tile));
+    empty.hidden = !(typed && !shown.length);
   }
 
   function paintField() {
     const person = people.find((p) => p.code === code);
     field.classList.toggle("bh-dd-picked", !!code);
-    field.replaceChildren(code ? codeBadge(code) : codeBadge(""),
-      code ? feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: code }), feEl("span", { class: "bh-sub", text: person ? `${person.playlists.length === 1 ? "1 playlist" : person.playlists.length + " playlists"} · last ${shortDate(person.last)}` : "New participant" }))
+    field.replaceChildren(codeBadge(code),
+      code ? feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: code }), feEl("span", { class: "bh-sub", text: person ? `${person.playlists.length === 1 ? "1 playlist" : person.playlists.length + " playlists"} · last ${shortDate(person.last)}` : "" }))
         : feEl("span", { class: "bh-dd-ph", text: "Choose a participant" }),
       bhSvg(BH_CARET));
   }
@@ -3021,26 +3039,43 @@ function askWhoFor(id) {
     panel.hidden = !want;
     field.classList.toggle("bh-dd-open", want);
     field.setAttribute("aria-expanded", String(want));
-    if (want) {
-      search.value = "";
-      paintTiles();
-      const on = tiles.querySelector(".bh-on");
-      if (on) on.scrollIntoView({ block: "nearest" });
-      if (!people.length) search.focus();
-    }
+    if (!want) return;
+    search.value = "";
+    paintTiles();
+    const on = tiles.querySelector(".bh-on");
+    if (on) on.scrollIntoView({ block: "nearest" });
+  }
+
+  function startAdding() {
+    setOpen(false);
+    adding = true;
+    dd.hidden = true;
+    adder.hidden = false;
+    info.hidden = true;
+    newInput.value = "";
+    paintBadge(newBadge, "");
+    code = "";
+    next.disabled = true;
+    newInput.focus();
+  }
+  function stopAdding() {
+    adding = false;
+    adder.hidden = true;
+    dd.hidden = false;
+    code = "";
+    next.disabled = true;
+    paintField();
+    field.focus();
   }
 
   async function choose(value) {
     code = value;
     setOpen(false);
     paintField();
-    bhDialog.next.disabled = false;
-    bhDialog.next.textContent = `Build for ${code}`;
+    next.disabled = false;
     try { field.focus({ preventScroll: true }); } catch (err) { /* old browsers */ }
-    const title = f ? f.title.trim() || "Untitled" : "";
     info.hidden = !f;
     if (!f) return;
-    if (!people.some((p) => p.code === code)) { info.replaceChildren(feEl("span", { text: `Every song in ${named(title)} is new to ${code}.` })); return; }
     const mine = ++reading;
     const pct = feEl("b", {}, feEl("span", { class: "bh-dots", "aria-label": "Reading songs" }, feEl("i"), feEl("i"), feEl("i")));
     info.replaceChildren(feEl("span", { text: `New to ${code} in ${named(title)}` }), pct);
@@ -3051,23 +3086,66 @@ function askWhoFor(id) {
   }
 
   search.addEventListener("input", paintTiles);
-  // Escape and Enter belong to the drop-down while it is open: Escape closes it (not the popup), Enter takes the only tile or the code typed
-  panel.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setOpen(false); field.focus(); return; }
-    if (event.key === "Enter" && event.target === search) {
-      event.preventDefault();
-      const typed = cleanCode(search.value);
-      const options = tiles.querySelectorAll(".bh-tile:not(.bh-tile-new)");
-      if (typed) choose(people.some((p) => p.code === typed) || options.length !== 1 ? typed : options[0].dataset.code);
-    }
+  search.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    const typed = cleanCode(search.value);
+    const options = tiles.querySelectorAll(".bh-tile:not(.bh-tile-new)");
+    const exact = people.find((p) => p.code === typed);
+    if (exact) choose(exact.code);
+    else if (options.length === 1) choose(options[0].dataset.code);
   });
-  field.addEventListener("keydown", (event) => { if (event.key === "Escape" && open) { event.preventDefault(); event.stopPropagation(); setOpen(false); } });
+  newInput.addEventListener("input", () => { const c = cleanCode(newInput.value); if (c !== newInput.value) newInput.value = c; paintBadge(newBadge, c); code = c; next.disabled = !c; });
+  newInput.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); if (code) close(code); } });
+
+  const sheet = feEl("div", { class: "rp-sheet wf-sheet", id: "whoFor", role: "dialog", "aria-modal": "true", "aria-labelledby": "wfTitle",
+    onClick: (event) => { if (open && !dd.contains(event.target)) setOpen(false); } },
+    feEl("div", { class: "wf-head" },
+      feEl("div", { class: "wf-col" }, feEl("span", { class: "rp-kick", text: "Build a playlist" }), feEl("h2", { class: "wf-title", id: "wfTitle", text: "For one participant" })),
+      feEl("button", { type: "button", class: "rp-x", id: "wfClose", "aria-label": "Close", onClick: () => close(null), html: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>' })),
+    feEl("div", { class: "wf-body" }, card, feEl("p", { class: "wf-label", text: "Who is it for?" }), dd, adder, info),
+    feEl("div", { class: "wf-foot" }, cancel, next));
+  const wrap = feEl("div", { class: "rp-wrap", id: "whoForWrap" }, feEl("div", { class: "rp-dim", onClick: () => close(null) }), sheet);
+
+  // Escape closes the drop-down first, then a new code's entry, then the popup
+  const onKey = (event) => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (open) { setOpen(false); field.focus(); } else if (adding) stopAdding(); else close(null);
+  };
+  let unfit = () => {};
+  function close(value) {
+    if (!finish) return;
+    const done = finish;
+    finish = null;
+    document.removeEventListener("keydown", onKey, true);
+    unfit();
+    if (!document.querySelector(".rp-wrap:not([hidden]):not(#whoForWrap)")) document.documentElement.classList.remove("rp-open");
+    wrap.id = "";
+    wrap.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+    if (!motionAllowed(wrap)) wrap.remove();
+    else {
+      wrap.setAttribute("aria-hidden", "true");
+      wrap.style.pointerEvents = "none";
+      wrap.firstChild.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: EASE_IN, fill: "forwards" });
+      panelMotion(sheet, false).onfinish = () => wrap.remove();
+    }
+    done(value);
+  }
 
   paintField();
-  const body = feEl("div", { onClick: (event) => { if (open && !dd.contains(event.target)) setOpen(false); } },
-    feEl("p", { class: "bh-q", text: "Who is it for?" }), dd, info);
-  const p = bhDialog(f ? f.title.trim() || "Untitled" : "Build", body, "Build", () => code || null);
-  bhDialog.next.disabled = true;
-  if (!people.length) setOpen(true);
-  return p;
+  return new Promise((resolve) => {
+    finish = resolve;
+    document.body.appendChild(wrap);
+    document.documentElement.classList.add("rp-open");
+    document.addEventListener("keydown", onKey, true);
+    unfit = keepAboveKeyboard(wrap);
+    if (motionAllowed(wrap)) {
+      wrap.firstChild.animate(MOTION.dim.frames, { duration: 200, easing: EASE_OUT });
+      panelMotion(sheet, true);
+    }
+    if (!people.length) startAdding();
+    else try { field.focus({ preventScroll: true }); } catch (err) { /* old browsers */ }
+  });
 }
