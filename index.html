@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-12d">
-<script src="theme.js?v=2026-11-12d"></script>
+<meta name="app-version" content="2026-11-12e">
+<script src="theme.js?v=2026-11-12e"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -824,7 +824,8 @@
   .bh-chip-new { border-style: dashed; color: var(--accent); font-weight: 600; border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
   .bh-codein { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin: 10px 0 0 32px; }
   .bh-dialog > .bh-codein { margin-left: 0; }
-  .bh-codefield { width: 110px; margin: 0; padding: 9px 12px; border-radius: 10px; border: 1.5px solid var(--accent); background: var(--bg); color: var(--fg); font: inherit; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+  .bh-codein input.bh-codefield { width: 110px; box-shadow: none; outline: none; margin: 0; padding: 9px 12px; border-radius: 10px; border: 1.5px solid var(--accent); background: var(--bg); color: var(--fg); font: inherit; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+  .bh-codein input.bh-codefield:focus { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
   .bh-hint { color: var(--muted); font-size: 0.84rem; }
   html.page-app.view-home #homePage { display: block; }
   #homePage { max-width: 560px; margin: 0 auto; }
@@ -2609,10 +2610,10 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-12d"></script>
-<script src="editor.js?v=2026-11-12d"></script>
-<script src="shared-spotify.js?v=2026-11-12d"></script>
-<script src="app.js?v=2026-11-12d"></script>
-<script src="sharing.js?v=2026-11-12d"></script>
+<script src="formats.js?v=2026-11-12e"></script>
+<script src="editor.js?v=2026-11-12e"></script>
+<script src="shared-spotify.js?v=2026-11-12e"></script>
+<script src="app.js?v=2026-11-12e"></script>
+<script src="sharing.js?v=2026-11-12e"></script>
 </body>
 </html>

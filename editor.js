@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12d";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12e";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2669,7 +2669,7 @@ function renderParticipantPage(code) {
 // A dialog in the editor's look, with a body and two buttons: resolves with what done() is given, or null on Cancel, Escape or a tap outside
 function bhDialog(title, body, nextLabel, onNext) {
   return new Promise((resolve) => {
-    const close = (value) => { overlay.remove(); document.removeEventListener("keydown", onKey); resolve(value); };
+    const close = (value) => { unfit(); overlay.remove(); document.removeEventListener("keydown", onKey); resolve(value); };
     const onKey = (event) => { if (event.key === "Escape") close(null); };
     const next = feEl("button", { type: "button", class: "primary", id: "bhDialogNext", onClick: () => { const v = onNext(); if (v !== undefined && v !== null) close(v); } }, nextLabel);
     const overlay = feEl("div", { class: "fe-overlay", id: "bhDialog", onClick: () => close(null) },
@@ -2677,11 +2677,29 @@ function bhDialog(title, body, nextLabel, onNext) {
         feEl("h3", { text: title }), body,
         feEl("div", { class: "row" }, feEl("button", { type: "button", id: "bhDialogCancel", onClick: () => close(null) }, "Cancel"), next)));
     document.body.appendChild(overlay);
+    const unfit = keepAboveKeyboard(overlay);
     document.addEventListener("keydown", onKey);
     bhDialog.next = next;
     const field = overlay.querySelector("input");
     (field && field.offsetParent ? field : next).focus();
   });
+}
+
+// A popup with a field stays in what the on-screen keyboard leaves: its backdrop covers only the visible part of the page, so the popup centers there
+// and its buttons are not hidden behind the keyboard (iPhone, Ron, 2026-11-12). Returns what undoes it.
+function keepAboveKeyboard(overlay) {
+  const vv = window.visualViewport;
+  if (!vv) return () => {};
+  const fit = () => {
+    const keyboard = window.innerHeight - vv.height > 120;
+    overlay.style.top = keyboard ? vv.offsetTop + "px" : "";
+    overlay.style.bottom = keyboard ? "auto" : "";
+    overlay.style.height = keyboard ? vv.height + "px" : "";
+  };
+  vv.addEventListener("resize", fit);
+  vv.addEventListener("scroll", fit);
+  fit();
+  return () => { vv.removeEventListener("resize", fit); vv.removeEventListener("scroll", fit); };
 }
 
 function codeField(onChange) {
