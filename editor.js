@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12h";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12i";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -328,6 +328,9 @@ function plainText(text) { return String(text).replace(/[\u2068\u2069]/g, ""); }
 // Two curves for all motion: things arriving slow down as they settle, things leaving speed up as they go. The same two are --ease-out and
 // --ease-in in index.html's CSS. (Spinners turn at an even speed: eased, they look like they stutter.)
 const EASE_OUT = "cubic-bezier(0.2, 0, 0, 1)", EASE_IN = "cubic-bezier(0.4, 0, 1, 1)";
+// A popup pinned to the bottom of the screen (a sheet on a phone) rises a little past its place and settles back (Ron, 2026-11-12,
+// mockups/sheet-bounce.html: A a fifth of the way to B, 420 ms). Every sheet uses this one rise; leaving, it drops straight down with EASE_IN.
+const EASE_SHEET = "cubic-bezier(0.27, 1.25, 0.53, 1)", SHEET_IN_MS = 420, SHEET_OUT_MS = 240;
 function motionAllowed(el) { return !!(el && el.animate) && typeof matchMedia === "function" && !matchMedia("(prefers-reduced-motion: reduce)").matches; }
 
 // How each kind of thing comes and goes: a dim backdrop fades; a popup's box fades while it rises a little and grows to full size;
@@ -338,10 +341,38 @@ const MOTION = {
   menu: { in: 140, out: 100 },   // its frames depend on where it is: menuFrames
 };
 function playMotion(el, kind, coming) {
+  if (kind === "box" && pinnedToBottom(el)) return sheetMotion(el, coming);
   const m = MOTION[kind];
   const frames = m.frames || menuFrames(el);
   return el.animate(coming ? frames : [frames[1], frames[0]], { duration: coming ? m.in : m.out, easing: coming ? EASE_OUT : EASE_IN, fill: coming ? "none" : "forwards" });   // nothing is left behind once it has arrived
 }
+// A popup's box whose foot is on the screen's foot is a sheet: it rises from below instead of growing in place.
+function pinnedToBottom(el) {
+  const r = el.getBoundingClientRect();
+  return r.height > 0 && r.top > 0 && Math.abs(r.bottom - window.innerHeight) < 2;
+}
+// The sheet's rise and drop. While it rises, a shadow of its own color reaches below it, so its overshoot never shows a gap at the foot.
+function sheetMotion(el, coming) {
+  const own = getComputedStyle(el).transform;
+  const frames = [{ transform: (own === "none" ? "" : own + " ") + "translateY(100%)" }, { transform: own }];
+  if (!coming) return el.animate(frames.reverse(), { duration: SHEET_OUT_MS, easing: EASE_IN, fill: "forwards" });
+  if (el._sheetShadow === undefined) el._sheetShadow = el.style.boxShadow;
+  const css = getComputedStyle(el);
+  el.style.boxShadow = (css.boxShadow && css.boxShadow !== "none" ? css.boxShadow + ", " : "") + `0 48px 0 ${css.backgroundColor}`;
+  const anim = el._sheetAnim = el.animate(frames, { duration: SHEET_IN_MS, easing: EASE_SHEET });
+  const settle = () => { if (el._sheetAnim !== anim) return; el.style.boxShadow = el._sheetShadow; el._sheetShadow = undefined; el._sheetAnim = null; };
+  anim.addEventListener("finish", settle);
+  anim.addEventListener("cancel", settle);
+  return anim;
+}
+// The recipe and participant panels: a sheet on a phone, else a plain fade (their centering transform must not be replaced)
+function panelMotion(el, coming) {
+  if (pinnedToBottom(el)) return sheetMotion(el, coming);
+  return el.animate(coming ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 1 }, { opacity: 0 }], { duration: coming ? 200 : 150, easing: coming ? EASE_OUT : EASE_IN, fill: coming ? "none" : "forwards" });
+}
+// Several animations that go together: done when the longest is
+function allFinished(anims, done) { Promise.all(anims.map((a) => a.finished)).then(done, () => {}); }
+
 // A menu grows out of the button that opened it: the point of it nearest that button stays put, and it moves a few pixels away from the button as
 // it comes. Its own transform is kept under the motion (a silence's panel is centered on its marker by one).
 function aimMenu(pop) {
@@ -438,7 +469,7 @@ function fadeWithHidden(el, kind, box, boxKind) {
     if (kind === "menu") aimMenu(el);
     running = [playMotion(el, kind, !hidden)].concat(box ? [playMotion(box, boxKind, !hidden)] : []);
     const mine = running;
-    running[0].onfinish = () => { if (running !== mine) return; running.forEach((a) => a.cancel()); running = []; el.classList.remove("fx-leaving"); };
+    allFinished(running, () => { if (running !== mine) return; running.forEach((a) => a.cancel()); running = []; el.classList.remove("fx-leaving"); });
   }).observe(el, { attributes: true, attributeFilter: ["hidden"] });
   el._fxHidden = el.hidden;
 }
@@ -478,7 +509,7 @@ function initMotion() {
     const parts = [playMotion(node, kind, false)];
     const box = kind === "dim" && node.querySelector(".fe-dialog");
     if (box) parts.push(playMotion(box, "box", false));
-    parts[0].onfinish = () => node.remove();
+    allFinished(parts, () => node.remove());
   };
   // the small question popups (New recipe, Duplicate, Delete, the pause, the save questions)
   new MutationObserver((changes) => {
@@ -2596,7 +2627,7 @@ async function openRecipePanel(id, options = {}) {
   $("recipePanel").scrollTop = 0;
   if (motionAllowed(wrap)) {
     $("rpDim").animate(MOTION.dim.frames, { duration: 200, easing: EASE_OUT });
-    $("recipePanel").animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: EASE_OUT });
+    panelMotion($("recipePanel"), true);
   }
   try { $("rpClose").focus({ preventScroll: true }); } catch (err) { /* old browsers */ }
 }
@@ -2633,7 +2664,7 @@ function closeRecipePanel(how, quiet) {
     const ghost = feEl("div", { class: "rp-wrap rp-leaving", "aria-hidden": "true" }, dim, copy);
     document.body.appendChild(ghost);
     dim.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: EASE_IN, fill: "forwards" });
-    copy.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: EASE_IN, fill: "forwards" }).onfinish = () => ghost.remove();
+    panelMotion(copy, false).onfinish = () => ghost.remove();
   }
   wrap.hidden = true;
   document.documentElement.classList.remove("rp-open");
@@ -2778,7 +2809,7 @@ function paintPersonPanel() {
   if (arriving) {
     wrap = feEl("div", { class: "rp-wrap", id: "personPanelWrap" },
       feEl("div", { class: "rp-dim", onClick: () => closePersonPanel() }),
-      feEl("div", { class: "rp-sheet", id: "personPanel", role: "dialog", "aria-modal": "true", "aria-labelledby": "ppTitle" }));
+      feEl("div", { class: "rp-sheet pp-sheet", id: "personPanel", role: "dialog", "aria-modal": "true", "aria-labelledby": "ppTitle" }));
     document.body.appendChild(wrap);
     document.addEventListener("keydown", personEscape);
     document.documentElement.classList.add("rp-open");
@@ -2811,7 +2842,7 @@ function paintPersonPanel() {
     sheet.scrollTop = 0;
     if (motionAllowed(wrap)) {
       wrap.firstChild.animate(MOTION.dim.frames, { duration: 200, easing: EASE_OUT });
-      sheet.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: EASE_OUT });
+      panelMotion(sheet, true);
     }
     try { $("ppClose").focus({ preventScroll: true }); } catch (err) { /* old browsers */ }
   }
@@ -2829,8 +2860,8 @@ function closePersonPanel(quiet) {
   if (quiet || !motionAllowed(wrap)) { wrap.remove(); return; }
   wrap.setAttribute("aria-hidden", "true");
   wrap.style.pointerEvents = "none";
-  for (const part of wrap.children) part.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: EASE_IN, fill: "forwards" });
-  setTimeout(() => wrap.remove(), 160);
+  wrap.firstChild.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: EASE_IN, fill: "forwards" });
+  panelMotion(wrap.lastChild, false).onfinish = () => wrap.remove();
 }
 
 // Escape closes it, unless a question over it (the recipe chooser) is open: that one closes first
