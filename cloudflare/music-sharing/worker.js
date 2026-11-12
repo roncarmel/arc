@@ -1,4 +1,4 @@
-// Music sharing: a Cloudflare Worker with a D1 database (schema.sql), for Ceremony Playlist Builder.
+// Music sharing: a Cloudflare Worker with a D1 database (schema.sql), for Arc.
 // People share their own playlists (a type: ceremony, phase, mood or other, with its books, phases, mood words or name, a description,
 // the songs as Spotify IDs and ISRCs, a short summary) and copy each other's.
 // Each song's title, artist and length are kept too, but sent only for one playlist at a time (GET /songs/:id, when its page opens), never with the library.

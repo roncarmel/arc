@@ -1,4 +1,4 @@
-// A Cloudflare Worker for Ceremony Playlist Builder.
+// A Cloudflare Worker for Arc.
 // Spotify sends a Retry-After header with a rate limit, but does not let a web page read it. After a rate limit with no readable wait, the page asks this
 // worker to send one GET to Spotify with the person's sign-in, and the worker answers with only the status, Retry-After and the reason.
 // Spotify limits each kind of request on its own (/me can answer while /me/playlists is refused), so the page says which kind, as ?path=, and
