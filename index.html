@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-12k">
-<script src="theme.js?v=2026-11-12k"></script>
+<meta name="app-version" content="2026-11-12l">
+<script src="theme.js?v=2026-11-12l"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -1568,6 +1568,17 @@
     details > summary:hover { filter: brightness(1.2); }
     /* the pencil on the selected tab lights up, since pressing the tab renames the format */
     #formatEditor .fe-tab[aria-pressed="true"]:hover .fe-icon { background: rgba(255, 255, 255, 0.3); box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3); border-radius: 50%; }
+    /* rows in a list, one look each (Ron, 2026-11-12): a row drawn as a card gets home's soft pink edge, as the tool cards do;
+       a flat row between lines gets a faint grey fill a little wider than itself, as the menus' items do; an add row tints its dashed square */
+    .bh-row:not(.bh-add):hover, button.bh-row:not(.bh-add):not(:disabled):hover, .bh-opt:not(.bh-on):hover, button.bh-opt:not(.bh-on):not(:disabled):hover,
+    .dlg-choice:not(:has(input:checked)):hover { outline: none; filter: none; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+    button.bh-row:not(:disabled):hover, button.bh-opt:not(:disabled):hover { outline: none; filter: none; }
+    .bh-add:hover .bh-plus { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+    .ms-row:not(.ms-addrow):not(.ms-pickrow-off), #createDialog .bd-info-row { position: relative; isolation: isolate; }
+    .ms-row:not(.ms-addrow):not(.ms-pickrow-off)::before, #createDialog .bd-info-row::before { content: ""; position: absolute; inset: 0 -8px; z-index: -1; border-radius: 12px; background: transparent; transition: background-color 0.12s var(--ease-out); pointer-events: none; }
+    .ms-joined .ms-row::before, .ms-picklist .ms-row::before { inset: 0; border-radius: 0; }
+    .ms-row:not(.ms-addrow):not(.ms-pickrow-off):not(:disabled):hover::before, #createDialog .bd-info-row:hover::before { background: color-mix(in srgb, var(--fg) 6%, transparent); }
+    button.ms-row:not(:disabled):hover, #createDialog .bd-info-row:hover { outline: none; filter: none; }
   }
   /* a notice that must not be missed: a pink outline, the same weight all around, and a faint pink fill */
   .notice { margin: 0 0 14px; padding: 12px 16px; border: 1px solid var(--accent-tint-border, rgba(255, 56, 184, 0.5)); border-radius: 12px; background: rgba(255, 56, 184, 0.08); color: var(--fg); }
@@ -2629,10 +2640,10 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-12k"></script>
-<script src="editor.js?v=2026-11-12k"></script>
-<script src="shared-spotify.js?v=2026-11-12k"></script>
-<script src="app.js?v=2026-11-12k"></script>
-<script src="sharing.js?v=2026-11-12k"></script>
+<script src="formats.js?v=2026-11-12l"></script>
+<script src="editor.js?v=2026-11-12l"></script>
+<script src="shared-spotify.js?v=2026-11-12l"></script>
+<script src="app.js?v=2026-11-12l"></script>
+<script src="sharing.js?v=2026-11-12l"></script>
 </body>
 </html>

@@ -876,10 +876,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-12k" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-12l" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-12k/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-12l/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2940,7 +2940,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-12k", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-12l", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -5256,7 +5256,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-12k"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-12l"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5645,7 +5645,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("a participant's playlist is never part of a recipe's set (not replaced or removed with it)", bl.eval("recipeMatches(modelToText(editor.model), ['f1']).map((p) => p.id).join()") === "q3");
   check("their playlist is named recipe, code and day, and its description says who it is for", bl.eval("participantPlaylistName('Alpha', 'MC', new Date(2026, 10, 14))") === "Alpha · MC · 14 Nov" && /For participant MC\. Built 14 Nov 2026\.$/.test(bl.eval("builtDescription({}, 1, 1, new Date(2026, 10, 14), 'MC')")));
   var bd3 = await boot({ url: EDURL, session: signedIn(), local: { formats: bl_two, devMode: "1" }, fetchOptions: { extraPlaylists: bl_people }, panel: false });
-  check("in developer mode Participants opens a list: New participant, then each code", !bd3.document.getElementById("bhTabPeople").disabled && (() => { bd3.document.getElementById("bhTabPeople").click(); return Array.from(bd3.document.querySelectorAll("#bhPeople .bh-code")).map((c) => c.textContent).join() === "T7,MC" && bd3.document.querySelector("#bhPeople .bh-code").children.length === 4 && /Just a code, no identifying info/.test(bd3.document.getElementById("bhNewPerson").textContent); })());
+  check("in developer mode Participants opens a list of codes, with no New participant (one way in: Build)", !bd3.document.getElementById("bhTabPeople").disabled && (() => { bd3.document.getElementById("bhTabPeople").click(); return Array.from(bd3.document.querySelectorAll("#bhPeople .bh-code")).map((c) => c.textContent).join() === "T7,MC" && bd3.document.querySelector("#bhPeople .bh-code").children.length === 4 && !bd3.document.getElementById("bhNewPerson"); })());
   (() => {
     const w = bd3.window, bar = bd3.document.getElementById("bhSwitch");
     const ev = (type, x) => { const e = new w.MouseEvent(type, { bubbles: true, clientX: x, clientY: 10, button: 0 }); Object.defineProperty(e, "pointerId", { value: 1 }); Object.defineProperty(e, "isPrimary", { value: true }); bar.dispatchEvent(e); };
@@ -5654,16 +5654,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
     ev("pointerdown", 100); ev("pointermove", 160); ev("pointermove", 220); ev("pointerup", 220);
     check("the Recipes | Participants switch drags like Music sharing's tabs: left to Recipes, right to Participants", back && bd3.window.eval("builderHome.tab") === "people" && !bd3.document.getElementById("bhPeople").hidden);
   })();
-  bd3.document.getElementById("bhNewPerson").click();
-  (() => { const f = bd3.document.getElementById("bhCode"); f.value = "zq9"; f.dispatchEvent(new bd3.window.Event("input")); })();
-  check("typing a code fills its square beside the field, a place per character", Array.from(bd3.document.querySelectorAll("#bhDialog .bh-code i")).map((i) => i.textContent).join("|") === "Z|Q|9|");
-  bd3.document.getElementById("bhDialogNext").click();
-  await waitFor(() => /ZQ9's next playlist/.test((bd3.document.getElementById("bhDialog") || {}).textContent || ""), 5000);
-  check("New participant goes on to choose a recipe for their first playlist", /Which recipe\?/.test(bd3.document.getElementById("bhDialog").textContent));
-  bd3.document.getElementById("bhDialogCancel").click();
-  check("cancelled before a build, the participant does not exist: only a built playlist makes one, so every device sees the same list", !bd3.document.querySelector('#bhPeople [data-code="ZQ9"]') && bd3.window.localStorage.getItem("participantsAdded") === null);
-  check("with participants, a note says a participant shows up once their first playlist is built", /shows up here once their first playlist is built/.test(bd3.document.querySelector("#bhPeople .bh-note").textContent) && !bd3.document.querySelector(".bh-people-empty"));
-  check("with none, the list says No participants yet and how one appears", /No participants yet.*shows up here once their first playlist is built/.test(bd3.eval("(() => { const keep = playlists; playlists = []; renderParticipantList(); const t = document.getElementById('bhPeople').textContent; playlists = keep; renderParticipantList(); return t; })()")));
+  check("with participants, a note says how one appears", /appears here once you build a playlist for them/.test(bd3.document.querySelector("#bhPeople .bh-note").textContent) && !bd3.document.querySelector(".bh-people-empty"));
+  check("with none, the list says No participants yet and how one appears", /No participants yet.*appears here once you build a playlist for them/.test(bd3.eval("(() => { const keep = playlists; playlists = []; renderParticipantList(); const t = document.getElementById('bhPeople').textContent; playlists = keep; renderParticipantList(); return t; })()")));
   bd3.document.querySelector('#bhPeople [data-code="MC"]').click();
   check("a participant opens in a popup over the list: PARTICIPANT, the code, Build MC's next playlist and their playlists", !!bd3.document.getElementById("personPanelWrap") && bd3.document.getElementById("ppTitle").textContent === "MC" && /Build MC's next playlist/.test(bd3.document.getElementById("bhNext").textContent) && bd3.document.querySelectorAll("#personPanel a.bh-row").length === 1 && !!bd3.document.querySelector('#bhPeople [data-code="MC"]'));
   bd3.document.dispatchEvent(new bd3.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
@@ -5676,6 +5668,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   bd3.document.querySelector('#bhRecipes .bh-recipe[data-id="f1"] .bh-build').click();
   var bl_who = bd3.document.getElementById("bhDialog");
   check("in developer mode Build asks Who is it for?, A set of playlists or One playlist for a participant", !!bl_who && /Who is it for\?/.test(bl_who.textContent) && /A set of playlists/.test(bl_who.textContent) && /One playlist for a participant/.test(bl_who.textContent));
+  bl_who.querySelector(".bh-chip-new").click();
+  (() => { const f = bd3.document.getElementById("bhCode"); f.value = "zq9"; f.dispatchEvent(new bd3.window.Event("input")); })();
+  check("+ New participant there takes a code, filling its square beside the field, a place per character", Array.from(bd3.document.querySelectorAll("#bhDialog .bh-codein .bh-code i")).map((i) => i.textContent).join("|") === "Z|Q|9|");
   bd3.document.getElementById("bhDialogCancel").click();
   var bl_src = fs.readFileSync(ROOT + "engine.py", "utf8");
   check("engine.py puts songs not heard first and leaves heard ones out when there are enough", /HEARD = \{\}/.test(bl_src) && /song_id\(t\) in HEARD/.test(bl_src) && /heard_json/.test(bl_src));
