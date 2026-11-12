@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-12g">
-<script src="theme.js?v=2026-11-12g"></script>
+<meta name="app-version" content="2026-11-12h">
+<script src="theme.js?v=2026-11-12h"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -729,8 +729,11 @@
   .bh-add { border-style: dashed; border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: transparent; }
   .bh-plus { width: 44px; height: 44px; flex: none; box-sizing: border-box; border-radius: 12px; border: 1.5px dashed var(--accent); display: grid; place-items: center; color: var(--accent); }
   .bh-add .bh-name { color: var(--accent); }
-  .bh-code { width: 44px; height: 44px; flex: none; box-sizing: border-box; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 0.95rem; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--bg)); border: 1.5px solid color-mix(in srgb, var(--accent) 45%, transparent); }
-  .bh-code.bh-big { width: 64px; height: 64px; font-size: 1.35rem; }
+  /* a participant's code: four fixed places in a 2x2, each a faint box, filled in order (Ron, 2026-11-12, mockups/participants V4) */
+  .bh-code { width: 44px; height: 44px; flex: none; box-sizing: border-box; border-radius: 12px; display: grid; grid-template-columns: 1.02em 1.02em; grid-template-rows: 1.08em 1.08em; gap: 2px; place-content: center; font-size: 13px; font-weight: 800; line-height: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--bg)); border: 1.5px solid color-mix(in srgb, var(--accent) 45%, transparent); }
+  .bh-code i { display: grid; place-items: center; font-style: normal; border-radius: 4px; background: color-mix(in srgb, var(--accent) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .bh-code.bh-big { width: 64px; height: 64px; border-radius: 17px; font-size: 19px; gap: 3px; }
+  .bh-code.bh-big i { border-radius: 6px; }
   .bh-note { color: var(--muted); font-size: 0.86rem; line-height: 1.45; margin: 4px 4px 0; }
   .bh-empty { padding: 4px 4px 0; }
   .bh-empty h2 { margin: 6px 0 6px; font-size: 1.2rem; }
@@ -765,7 +768,12 @@
   .rp-row { display: flex; align-items: center; gap: 4px; min-width: 0; }
   .rp-title { flex: 0 1 auto; min-width: 0; margin: 0; font-size: 1.35rem; line-height: 1.15; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
   .rp-meta { display: block; margin-top: 6px; color: var(--muted); font-size: 0.9rem; line-height: 1; }
-  #recipePanel .rp-show .rp-x { align-self: center; }
+  :is(#recipePanel, #personPanel) .rp-show .rp-x { align-self: center; }
+  #personPanel .pp-title { cursor: default; }
+  #personPanel .rp-col .rp-kick { margin-bottom: 7px; }
+  #personPanel .rp-meta { margin-top: 7px; }
+  .pp-body { padding: 4px 16px calc(22px + env(safe-area-inset-bottom, 0px)); }
+  .pp-body .bh-wide { margin-top: 12px; }
   .rp-naming { display: flex; flex-direction: column; gap: 14px; }
   .rp-naming[hidden] { display: none; }
   #recipePanel .rp-name-input { box-sizing: border-box; width: 100%; margin: 0; padding: 10px 18px; font: inherit; font-size: 1.2rem; font-weight: 800; color: var(--fg); background: color-mix(in srgb, var(--accent) 12%, var(--bg)); border: 2px solid var(--accent); border-radius: 999px; }
@@ -780,17 +788,17 @@
   #recipePanel.rp-renaming .rp-body { opacity: 0.35; pointer-events: none; }
   @media (prefers-reduced-motion: reduce) { #recipePanel .rp-body { transition: none; } }
   /* the X and the pencil look like every popup's X (bd-x, infoClose): a 32 px grey circle, the X 14 px; the pencil gets the circle only on hover */
-  #recipePanel .rp-pen, #recipePanel .rp-x { flex: none; width: 32px; height: 32px; min-height: 0; margin: 0; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: 0; box-shadow: none; color: var(--muted); cursor: pointer; }
+  :is(#recipePanel, #personPanel) .rp-pen, :is(#recipePanel, #personPanel) .rp-x { flex: none; width: 32px; height: 32px; min-height: 0; margin: 0; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: 0; box-shadow: none; color: var(--muted); cursor: pointer; }
   #recipePanel .rp-pen { background: none; }
   #recipePanel .rp-pen svg { width: 16px; height: 16px; }
   #recipePanel .rp-pen .fe-icon { display: flex; }
-  #recipePanel .rp-x { margin-left: auto; background: color-mix(in srgb, var(--muted) 14%, transparent); }
-  #recipePanel .rp-x svg { width: 14px; height: 14px; }
+  :is(#recipePanel, #personPanel) .rp-x { margin-left: auto; background: color-mix(in srgb, var(--muted) 14%, transparent); }
+  :is(#recipePanel, #personPanel) .rp-x svg { width: 14px; height: 14px; }
   @media (hover: hover) {
-    #recipePanel .rp-x:hover { filter: none; outline: none; background: color-mix(in srgb, var(--muted) 22%, transparent); }
+    :is(#recipePanel, #personPanel) .rp-x:hover { filter: none; outline: none; background: color-mix(in srgb, var(--muted) 22%, transparent); }
     #recipePanel .rp-pen:hover { filter: none; outline: none; background: color-mix(in srgb, var(--muted) 14%, transparent); color: var(--fg); }
   }
-  #recipePanel .rp-pen:focus:not(:focus-visible), #recipePanel .rp-x:focus:not(:focus-visible) { outline: none; }
+  #recipePanel .rp-pen:focus:not(:focus-visible), :is(#recipePanel, #personPanel) .rp-x:focus:not(:focus-visible) { outline: none; }
   .rp-body { padding: 14px 22px 0 16px; }
   @media (min-width: 501px) { .rp-body { padding-right: 40px; } }
   #recipePanel #formatEditor .fe-toprow { display: none; }   /* the name is the panel's title; recipes are chosen from the landing */
@@ -832,7 +840,8 @@
   .bh-chip-new { border-style: dashed; color: var(--accent); font-weight: 600; border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
   .bh-codein { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin: 10px 0 0 32px; }
   .bh-dialog > .bh-codein { margin-left: 0; }
-  .bh-codein input.bh-codefield { width: 110px; box-shadow: none; outline: none; margin: 0; padding: 9px 12px; border-radius: 10px; border: 1.5px solid var(--accent); background: var(--bg); color: var(--fg); font: inherit; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+  .bh-codeline { display: flex; align-items: center; gap: 12px; align-self: stretch; }
+  .bh-codein input.bh-codefield { flex: 1; min-width: 0; width: auto; padding: 14px; font-size: 1.3rem; letter-spacing: 0.04em; box-shadow: none; outline: none; margin: 0; padding: 9px 12px; border-radius: 10px; border: 1.5px solid var(--accent); background: var(--bg); color: var(--fg); font: inherit; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
   .bh-codein input.bh-codefield:focus { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
   .bh-hint { color: var(--muted); font-size: 0.84rem; }
   html.page-app.view-home #homePage { display: block; }
@@ -2618,10 +2627,10 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-12g"></script>
-<script src="editor.js?v=2026-11-12g"></script>
-<script src="shared-spotify.js?v=2026-11-12g"></script>
-<script src="app.js?v=2026-11-12g"></script>
-<script src="sharing.js?v=2026-11-12g"></script>
+<script src="formats.js?v=2026-11-12h"></script>
+<script src="editor.js?v=2026-11-12h"></script>
+<script src="shared-spotify.js?v=2026-11-12h"></script>
+<script src="app.js?v=2026-11-12h"></script>
+<script src="sharing.js?v=2026-11-12h"></script>
 </body>
 </html>
