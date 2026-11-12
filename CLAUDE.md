@@ -144,6 +144,8 @@ Naming: the person sees "recipe". The code still says "format" in identifiers (`
 
 ## Writing and working style (Ron's preferences)
 
+- Dev artifacts stay out of git (`.gitignore`): new mockups go in `mockups/` (ignored); everything older (mockups, tutorial drafts, applied D1 migrations, unused icons) was moved to `/Users/roncarmel/Desktop/arc-archive/` on 2026-11-12 and purged from git history. A `mockups/...` name in this file is in the archive.
+
 - Never use em dashes or en dashes in any text, including page text, comments and docs.
 - Page text: no first person except where already approved; plain, brief, specific; no hedging.
 - Recipe and playlist names are never in quotes. Inside a sentence a name is italic: write it as `named(name)` (editor.js; invisible Unicode isolate marks) and show the text with `putNamed` or `feEl`'s `text`. A name on its own (a title, the old → new rename list) is plain. The description on built playlists in Spotify has no quotes either. Decided by Ron, 2026-11-03.

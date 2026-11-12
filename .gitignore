@@ -4,3 +4,6 @@ __pycache__/
 claude-code-handoff/
 .dev.vars
 .wrangler/
+mockups/
+.claude/
+blur-test*.html
