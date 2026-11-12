@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-11j";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12a";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -246,6 +246,7 @@ function commit() {
   $("formats").dispatchEvent(new Event("input", { bubbles: true }));
   editor.internal = false;
   snapshotFormats(editor.model);
+  recipeEdited();   // the open recipe has changes to save, or none any more
   if (typeof scheduleSpotifySave === "function") scheduleSpotifySave();
 }
 
@@ -613,7 +614,7 @@ function copyEditorStylesToBar() {
     let text = "";
     for (const rule of Array.from(rules)) {
       if (rule.selectorText && rule.selectorText.includes("#formatEditor")) {
-        text += rule.cssText.replace(/#formatEditor(?=[ .:\[>])/g, "#appBar") + "\n";
+        for (const to of ["#appBar", "#builderHome"]) text += rule.cssText.replace(/#formatEditor(?=[ .:\[>])/g, to) + "\n";   // the bar's menu, and the landing's notices
       } else if (rule.cssRules && rule.media) {
         const inner = copy(rule.cssRules);
         if (inner) text += `@media ${rule.media.mediaText} {\n${inner}}\n`;
@@ -641,9 +642,11 @@ function initEditor() {
     event.preventDefault();
     closePanels();
   }, true);
+  document.addEventListener("keydown", panelEscape);   // before the next one, so a menu open in the panel closes first and the panel stays
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && (editor.panel || editor.cardMenu || editor.gapPanel !== null || editor.appMenu)) closePanels(); });
   window.addEventListener("resize", () => { equalizeAmounts(); updateTagHang(); placeWelcomeArrow(); placeFirstTipArrow(); });   // the widget changes size when the page goes between phone and wide layouts
   applyMinimalMode();
+  initBuilderHome();
   syncEditorFromText();
 }
 
@@ -670,12 +673,14 @@ function editorPlaylistsChanged() {
   if (!editor.model) return;
   if (typeof scheduleSpotifySave === "function") scheduleSpotifySave(800);
   if (syncPlaylistRefs()) { commitHealed(); renderEditor(); return; }
+  renderBuilderHome();   // participants come from the playlist list
   renderRows();
 }
 
 // ---------------------------------------------------------------- drawing
 function renderEditor() {
   if (tabHeld()) { tabDrag.redraw = true; return; }   // not under a held tab: it is drawn again when the tab is let go
+  renderBuilderHome();
   const root = $("formatEditor");
   if (!root) return;
   root.innerHTML = "";
@@ -695,19 +700,7 @@ function renderEditor() {
   renderAppMenu();
   // the menu button was not there yet when the tabs were drawn, so the tabs have less room than they were scrolled for
   scrollSelectedTab();
-  if (!format) {   // no formats: the New format button, and what to do with it
-    // a welcome with an arrow bobbing under New recipe; it goes as soon as there is a recipe (a draft counts), so a first visit needs no record of its own
-    root.appendChild(feEl("div", { class: "fe-welcome", id: "feWelcome" },
-      feEl("span", { class: "fe-welcome-arrow", id: "feWelcomeArrow", "aria-hidden": "true" }),
-      feEl("div", { class: "fe-welcome-card" },
-        feEl("img", { class: "fe-welcome-icon", src: "arc-mark.png", alt: "", width: "56", height: "56" }),   // phones only: wide, the icon is already in the row above
-        feEl("h2", { class: "fe-welcome-title", text: "Time to make your first recipe!" }),
-        feEl("p", { class: "fe-welcome-lead", text: `${actWord(true)} New recipe above to start.` }),
-        // the tutorial, where a new person first needs it; it opens in the menu's popup (Ron, 2026-11-11, mockups/tutorial-video-2.png D)
-        feEl("button", { type: "button", class: "tv-row", id: "feWatch", onClick: () => watchTutorial() }, tutorialFrame(),
-          feEl("span", { class: "tv-row-text" }, feEl("b", { text: "Watch how it works" }), feEl("span", { text: "Recipe to playlists in under 2 min" }))),
-        feEl("p", { class: "muted fe-welcome-text", text: "A recipe says which of your playlists to play, in what order, and for how long. The app turns it into as many playlists as your songs allow, with no song used twice." }))));
-    placeWelcomeArrow();
+  if (!format) {   // no recipe open: the welcome is on the landing (renderRecipeList)
     // the line for notices is here too, so a message about what was just done is never left without a place to show
     root.appendChild(feEl("div", { class: "fe-caption", id: "feCaption", onPointerDown: pauseNotices, onMouseEnter: pauseNotices }));
     root.appendChild(feEl("span", { class: "fe-sr", id: "feNoticeLive", "aria-live": "polite" }));
@@ -1011,7 +1004,7 @@ function showSaveTip() {
   saveTip.blur = feEl("div", { class: "fe-st-blur", "aria-hidden": "true" });
   const ok = feEl("button", { type: "button", class: "fe-st-ok", text: "Got it", onClick: () => closeSaveTip() });
   saveTip.tip = feEl("div", { class: "fe-st-tip", role: "status" },
-    feEl("p", { class: "fe-st-text", text: "Recipes automatically save to Spotify as you edit. You’ll see this cloud while saving." }),
+    feEl("p", { class: "fe-st-text", text: "Saved recipes go to Spotify. You’ll see this cloud while saving." }),
     feEl("div", { class: "fe-st-row" }, ok));
   document.body.append(saveTip.blur, saveTip.tip);
   applySavingIcon();
@@ -1483,6 +1476,7 @@ function paintNoticeNow(caption, view) {
   caption.className = "fe-caption";
   caption.textContent = "";
   const live = $("feNoticeLive");
+  if (caption.id === "bhCaption") caption.hidden = !view;   // the landing has no total to show
   if (!view) {
     caption.appendChild(feEl("span", { class: "fe-total", text: editor.musicText || "" }));
     notices.spoken = "";
@@ -1504,7 +1498,7 @@ function paintNoticeNow(caption, view) {
 function refreshNoticeLine() {
   clearTimeout(notices.timer);
   notices.timer = null;
-  const caption = $("feCaption");
+  const caption = recipeEdit.open ? $("feCaption") : $("bhCaption");   // under the bar while a recipe is open, else at the top of the landing
   if (!caption) return;
   const now = Date.now();
   const attention = attentionNow();
@@ -2148,12 +2142,18 @@ function askNewFormat() {
     document.removeEventListener("keydown", onKey);
     window.removeEventListener("scroll", holdStill);
     if (vv) { vv.removeEventListener("resize", holdStill); vv.removeEventListener("scroll", holdStill); }
-    if (keep) { delete draft.draft; commit(); if (typeof countEvent === "function") countEvent("recipe-created"); }
+    if (keep) {
+      delete draft.draft;
+      Object.assign(recipeEdit, { id: draft.id, before: null, dirty: true, open: false });   // new until saved
+      commit();
+      if (typeof countEvent === "function") countEvent("recipe-created");
+    }
     else {
       editor.model.formats = editor.model.formats.filter((x) => x !== draft);
       editor.activeId = editor.model.formats.some((x) => x.id === before) ? before : (editor.model.formats.length ? editor.model.formats[0].id : null);
     }
     renderEditor();
+    if (keep) openRecipePanel(draft.id, { isNew: true });
   };
   const onKey = (event) => { if (event.key === "Escape") close(false); };
   const input = feEl("input", { type: "text", id: "feNewFormatName", class: "fe-nf-input", placeholder: "Type a name", autocomplete: "off", "aria-label": "Name of the new recipe", enterkeyhint: "done" });
@@ -2223,8 +2223,10 @@ function duplicateFormat() {
   editor.model.formats.push(copy);
   editor.activeId = copy.id;
   editor.cardMenu = false;
+  if (recipeEdit.open) Object.assign(recipeEdit, { id: copy.id, before: null, dirty: true });   // the panel goes on with the copy, new until saved
   commit();
   renderEditor();
+  if (recipeEdit.open) { paintPanelHead(); refreshPanelFoot(); $("rpBody").scrollTop = 0; }
 }
 
 
@@ -2249,6 +2251,7 @@ function askDeleteFormat() {
     close();
     if (typeof noteFormatDeleted === "function") noteFormatDeleted(f.id);
     commit();
+    if (recipeEdit.open) closeRecipePanel("gone");
     renderEditor();
     if (alsoRemove) removeBuiltOfDeleted(alsoRemove, title);
   } }, "Delete recipe");
@@ -2349,4 +2352,467 @@ function blankSegmentReport(keys) {
     if (blanks) report.push({ title: f.title.trim() || "Untitled", count: blanks });
   }
   return report;
+}
+
+// ---------------------------------------------------------------- the builder's landing (decided by Ron, 2026-11-12, mockups/client-builder.html A1)
+// The builder opens on a list of recipes, each with its shape and a Build button, and New recipe first. A recipe opens in a panel over it (below). Beside Recipes,
+// Participants: one playlist at a time for one person, with the songs they have not heard first. Outside developer mode that half is greyed with Soon.
+const builderHome = { tab: "recipes", person: null, heard: new Map() };   // heard: a participant's code -> { sig, count } once worked out
+
+const BH_SPARK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 2l1.8 5.6L17.5 9.5l-5.7 1.9L10 17l-1.8-5.6L2.5 9.5l5.7-1.9z"/><path d="M18 13l.9 2.6 2.6.9-2.6.9L18 20l-.9-2.6-2.6-.9 2.6-.9z"/></svg>';
+const BH_GO = '<svg class="bh-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+const BH_OPEN = '<svg class="bh-go" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
+const BH_BACK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
+function bhSvg(markup) { const s = document.createElement("span"); s.style.display = "contents"; s.innerHTML = markup; return s; }
+
+function initBuilderHome() {
+  $("bhTabRecipes").addEventListener("click", () => { builderHome.tab = "recipes"; renderBuilderHome(); });
+  $("bhTabPeople").addEventListener("click", () => { if (!devMode()) return; builderHome.tab = "people"; renderBuilderHome(); });
+  $("rpClose").addEventListener("click", () => closeRecipePanel("x"));
+  $("rpDim").addEventListener("click", () => closeRecipePanel("x"));
+  $("rpCancel").addEventListener("click", () => closeRecipePanel("cancel"));
+  $("rpSave").addEventListener("click", () => closeRecipePanel("save"));
+  $("rpDone").addEventListener("click", () => closeRecipePanel("done"));
+  $("rpRename").appendChild(feIcon("pencil"));
+  $("rpRename").addEventListener("click", startPanelRename);
+  $("rpTitle").addEventListener("click", startPanelRename);
+  loadRecipeEditing();
+}
+
+function renderBuilderHome() {
+  const home = $("builderHome");
+  if (!home) return;
+  const people = devMode();
+  if (!people) { builderHome.tab = "recipes"; builderHome.person = null; }
+  $("bhTabPeople").disabled = !people;
+  home.classList.toggle("bh-people", builderHome.tab === "people");
+  $("bhTabRecipes").setAttribute("aria-selected", String(builderHome.tab === "recipes"));
+  $("bhTabPeople").setAttribute("aria-selected", String(builderHome.tab === "people"));
+  $("bhRecipes").hidden = builderHome.tab !== "recipes";
+  $("bhPeople").hidden = builderHome.tab !== "people";
+  if (builderHome.tab === "recipes") renderRecipeList();
+  else if (builderHome.person) renderParticipantPage(builderHome.person);
+  else renderParticipantList();
+  refreshBuildButtons();
+}
+
+function bhAddRow(id, title, sub, run) {
+  return feEl("button", { type: "button", class: "bh-row bh-add", id, onClick: run },
+    feEl("span", { class: "bh-plus" }, feIcon("plus")),
+    feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: title }), sub ? feEl("span", { class: "bh-sub", text: sub }) : null));
+}
+
+function renderRecipeList() {
+  const list = $("bhRecipes");
+  list.textContent = "";
+  list.appendChild(feEl("div", { class: "fe-caption", id: "bhCaption", hidden: true }));   // notices, while no recipe is open (refreshNoticeLine)
+  if (editor.broken) { list.appendChild(brokenView()); refreshNoticeLine(); return; }
+  const formats = editor.model ? editor.model.formats.filter((f) => !f.draft) : [];
+  const add = bhAddRow("bhNewRecipe", "New recipe", "", askNewFormat);
+  if (!formats.length) {
+    // a first visit: what a recipe is, the tutorial, and New recipe under it
+    list.appendChild(feEl("div", { class: "fe-welcome-card bh-empty", id: "feWelcome" },
+      feEl("h2", { class: "fe-welcome-title", text: "Time to make your first recipe!" }),
+      feEl("p", { class: "muted fe-welcome-text", text: "A recipe says which of your playlists to play, in what order, and for how long. The app turns it into as many playlists as your songs allow, with no song used twice." }),
+      feEl("button", { type: "button", class: "tv-row", id: "feWatch", onClick: () => watchTutorial() }, tutorialFrame(),
+        feEl("span", { class: "tv-row-text" }, feEl("b", { text: "Watch how it works" }), feEl("span", { text: "Recipe to playlists in under 2 min" })))));
+    list.appendChild(add);
+    refreshNoticeLine();
+    return;
+  }
+  list.appendChild(add);
+  for (const f of formats) list.appendChild(recipeRow(f));
+  refreshNoticeLine();
+}
+
+function recipeRow(f) {
+  const shape = recipeShape(f);
+  const unsaved = recipeEdit.dirty && recipeEdit.id === f.id;
+  const length = `${lengthText(shape.music + shape.quiet / 60)} · ${f.items.length === 1 ? "1 segment" : f.items.length + " segments"}`;
+  const bar = feEl("span", { class: "bh-shape", "aria-hidden": "true" },
+    ...shape.pieces.map((p) => feEl("span", { class: p.silence ? "bh-quiet" : undefined, style: p.style })));
+  const build = feEl("button", { type: "button", class: "bh-build", "data-id": f.id, onClick: (event) => { event.stopPropagation(); buildRecipe(f.id); } },
+    bhSvg(BH_SPARK), feEl("span", { text: "Build" }));
+  const row = feEl("div", { class: "bh-row bh-recipe", role: "button", tabindex: "0", "data-id": f.id, "aria-label": `Edit ${f.title.trim() || "Untitled"}`,
+    onClick: () => openRecipePanel(f.id),
+    onKeyDown: (event) => { if ((event.key === "Enter" || event.key === " ") && event.target === row) { event.preventDefault(); openRecipePanel(f.id); } } },
+    feEl("span", { class: "bh-text" },
+      feEl("span", { class: "bh-name", text: f.title.trim() || "Untitled" }),
+      feEl("span", { class: "bh-sub" + (unsaved ? " bh-unsaved" : ""), text: unsaved ? "Unsaved changes" : length }),
+      bar),
+    build);
+  return row;
+}
+
+// The Build buttons on the landing say what a build needs right now, as the old Build button did: Connect while not connected, nothing while Spotify is paused.
+function refreshBuildButtons() {
+  if (typeof connectionAction !== "function") return;
+  const action = connectionAction();
+  const paused = typeof spotifyPause === "function" && !!spotifyPause();
+  const ready = !!token && connection === "ready" && !!py && formatsValid && !busy && !paused;
+  const word = action ? (connection === "problem" && connectionKind !== "reconnect" ? "Try again" : "Connect") : "Build";
+  for (const b of document.querySelectorAll("#builderHome .bh-build")) {
+    b.lastChild.textContent = word;
+    b.disabled = action ? busy : !ready;
+    b.hidden = paused;
+  }
+  const next = $("bhNext");
+  if (next) { next.disabled = action ? busy : !ready; next.hidden = paused; }
+}
+
+function buildRecipe(id) {
+  const action = connectionAction();
+  if (action) { action(); return; }
+  if (!devMode()) { startCreate([id]); return; }
+  askWhoFor(id).then((answer) => {
+    if (answer === null) return;
+    buildFor = answer;
+    startCreate([id]);
+  });
+}
+
+// ---------------------------------------------------------------- the recipe panel: one recipe in a popup, saved only when the person says so
+// (decided by Ron, 2026-11-12, mockups/editor-head.html C, fitted). Every edit is kept in this browser at once, as before; Save changes sends it to Spotify, and
+// Cancel puts back the recipe as it was when the panel opened. recipeEditing in localStorage holds that copy while there are changes, so a closed tab keeps them
+// as Unsaved changes (and the cloud save and the merge leave that recipe alone: heldRecipeId in app.js).
+const recipeEdit = { id: null, before: null, dirty: false, open: false };   // before: the recipe's text when the panel opened, or null for a new one
+
+function loadRecipeEditing() {
+  try {
+    const o = JSON.parse(localStorage.getItem("recipeEditing") || "null");
+    if (o && o.id && o.dirty) Object.assign(recipeEdit, { id: o.id, before: o.before === undefined ? null : o.before, dirty: true });
+  } catch (err) { /* nothing kept */ }
+}
+function keepRecipeEditing() {
+  try {
+    if (recipeEdit.dirty && recipeEdit.id) localStorage.setItem("recipeEditing", JSON.stringify({ id: recipeEdit.id, before: recipeEdit.before, dirty: true }));
+    else localStorage.removeItem("recipeEditing");
+  } catch (err) { /* private browsing: the changes stay for this visit */ }
+}
+function recipeText(f) { return modelToText({ formats: [f] }); }
+function recipeFromText(text) { try { return textToModel(text, true).formats[0] || null; } catch (err) { return null; } }
+
+// Called by commit(): whether the open recipe now differs from how it was. Undoing a change back to how it was is no change.
+function recipeEdited() {
+  if (editor.healing || !recipeEdit.open || !recipeEdit.id || !editor.model) return;
+  const f = editor.model.formats.find((x) => x.id === recipeEdit.id);
+  if (!f) return;
+  const was = recipeEdit.before === null ? null : recipeFromText(recipeEdit.before);
+  recipeEdit.dirty = !was || contentSignature(was) !== contentSignature(f);
+  keepRecipeEditing();
+  refreshPanelFoot();
+}
+
+function refreshPanelFoot() {
+  const foot = $("rpFoot");
+  if (foot) foot.classList.toggle("rp-clean", !recipeEdit.dirty);
+  const dup = $("feDuplicate");
+  if (dup) { dup.disabled = recipeEdit.dirty; dup.title = recipeEdit.dirty ? "Save your changes first" : "Duplicate recipe"; }
+}
+
+function paintPanelHead() {
+  const f = activeFormat();
+  $("rpTitle").textContent = f ? (f.title.trim() || "Untitled") : "";
+}
+
+async function openRecipePanel(id, options = {}) {
+  if (recipeEdit.dirty && recipeEdit.id && recipeEdit.id !== id) {
+    // another recipe has changes from an earlier visit: settle those first
+    const other = editor.model.formats.find((x) => x.id === recipeEdit.id);
+    if (other) {
+      const answer = await askSyncChoice(`Save changes to ${named(other.title.trim() || "Untitled")}?`, "Its changes were not saved yet.",
+        [{ label: "Discard", value: "discard" }, { label: "Save changes", value: "save" }]);
+      if (answer === null) return;
+      recipeEdit.open = true;
+      editor.activeId = other.id;
+      closeRecipePanel(answer === "save" ? "save" : "cancel", true);
+    } else { recipeEdit.id = null; recipeEdit.dirty = false; keepRecipeEditing(); }
+  }
+  const f = editor.model && editor.model.formats.find((x) => x.id === id);
+  if (!f) return;
+  if (recipeEdit.id !== id) Object.assign(recipeEdit, { id, before: options.isNew ? null : recipeText(f), dirty: !!options.isNew });
+  recipeEdit.open = true;
+  keepRecipeEditing();
+  editor.activeId = id;
+  editor.panel = null; editor.gapPanel = null; editor.cardMenu = false;
+  const wrap = $("recipePanelWrap");
+  wrap.hidden = false;
+  document.documentElement.classList.add("rp-open");
+  renderEditor();
+  paintPanelHead();
+  refreshPanelFoot();
+  notices.paintedKey = undefined;
+  refreshNoticeLine();
+  $("rpBody").scrollTop = 0;
+  if (motionAllowed(wrap)) {
+    $("rpDim").animate(MOTION.dim.frames, { duration: 200, easing: EASE_OUT });
+    $("recipePanel").animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: EASE_OUT });
+  }
+  try { $("rpClose").focus({ preventScroll: true }); } catch (err) { /* old browsers */ }
+}
+
+// how: "save", "cancel" (put it back), "done" (nothing changed), "x" (the X, Escape or a tap outside: asks first when there are changes), "gone" (deleted)
+function closeRecipePanel(how, quiet) {
+  if (!recipeEdit.open) return;
+  if (how === "x" && recipeEdit.dirty) {
+    const f = activeFormat();
+    askSyncChoice("Discard changes?", `Your changes to ${named(f ? f.title.trim() || "Untitled" : "this recipe")} have not been saved.`,
+      [{ label: "Keep editing", value: "keep" }, { label: "Discard", value: "discard", danger: true }])
+      .then((answer) => { if (answer === "discard") closeRecipePanel("cancel"); });
+    return;
+  }
+  if (editor.renamingPanel) finishPanelRename(how === "cancel");
+  const saved = how === "save" && recipeEdit.dirty;
+  if (how === "cancel" && recipeEdit.dirty) {
+    if (recipeEdit.before === null) removeLocalFormat(recipeEdit.id);
+    else { const was = recipeFromText(recipeEdit.before); if (was) adoptFormat(was); }
+    writeAdopted();
+  }
+  Object.assign(recipeEdit, { id: null, before: null, dirty: false, open: false });
+  keepRecipeEditing();
+  if (saved && typeof scheduleSpotifySave === "function") scheduleSpotifySave(0);
+  editor.panel = null; editor.gapPanel = null; editor.cardMenu = false;
+  const wrap = $("recipePanelWrap");
+  if (!quiet && motionAllowed(wrap)) {
+    const copy = $("recipePanel").cloneNode(true);
+    copy.removeAttribute("id");
+    copy.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+    copy.classList.add("fx-ghost");
+    copy.setAttribute("aria-hidden", "true");
+    const dim = feEl("div", { class: "rp-dim" });
+    const ghost = feEl("div", { class: "rp-wrap rp-leaving", "aria-hidden": "true" }, dim, copy);
+    document.body.appendChild(ghost);
+    dim.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: EASE_IN, fill: "forwards" });
+    copy.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: EASE_IN, fill: "forwards" }).onfinish = () => ghost.remove();
+  }
+  wrap.hidden = true;
+  document.documentElement.classList.remove("rp-open");
+  renderEditor();
+  notices.paintedKey = undefined;
+  refreshNoticeLine();
+}
+
+function startPanelRename() {
+  const f = activeFormat();
+  if (!f || editor.renamingPanel) return;
+  editor.renamingPanel = { from: f.title };
+  const input = feEl("input", { type: "text", id: "rpName", class: "rp-title-input", autocomplete: "off", "aria-label": "Name of recipe", enterkeyhint: "done" });
+  input.value = f.title;
+  input.addEventListener("input", () => {
+    const cleaned = cleanTitle(input.value);
+    if (cleaned !== input.value) input.value = cleaned;
+    f.title = cleaned;
+    commit();
+    renderClash();
+  });
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") { event.preventDefault(); finishPanelRename(false); }
+    else if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); finishPanelRename(true); }
+  });
+  input.addEventListener("blur", () => finishPanelRename(false));
+  $("rpTitle").hidden = true;
+  $("rpRename").hidden = true;
+  $("rpTitle").after(input);
+  input.focus();
+  input.select();
+}
+
+function finishPanelRename(cancel) {
+  const state = editor.renamingPanel;
+  if (!state) return;
+  editor.renamingPanel = null;
+  const f = activeFormat();
+  if (f && cancel) { f.title = state.from; commit(); renderClash(); }
+  const input = $("rpName");
+  if (input) input.remove();
+  $("rpTitle").hidden = false;
+  $("rpRename").hidden = false;
+  paintPanelHead();
+}
+
+// Escape closes the panel, unless something inside or over it is open: that closes first
+function panelEscape(event) {
+  if (event.key !== "Escape" || !recipeEdit.open || $("recipePanelWrap").hidden) return;
+  if (editor.panel || editor.cardMenu || editor.gapPanel !== null || editor.appMenu || editor.renamingPanel) return;
+  if (document.querySelector(".fe-overlay:not([hidden])") || !$("infoOverlay").hidden || !$("createOverlay").hidden) return;
+  event.preventDefault();
+  closeRecipePanel(recipeEdit.dirty ? "x" : "done");
+}
+
+// ---------------------------------------------------------------- participants (developer mode for now; Ron, 2026-11-12)
+// A participant is a code of up to 4 letters or numbers. What they have heard is every song in the playlists Arc built for them (participantList and heardBy in app.js).
+function cleanCode(text) { return String(text || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4); }
+function shortDate(time) { const d = new Date(time); return `${d.getDate()} ${MONTHS[d.getMonth()]}`; }
+
+function renderParticipantList() {
+  const box = $("bhPeople");
+  box.textContent = "";
+  box.appendChild(bhAddRow("bhNewPerson", "New participant", "Just a code, no identifying info", () => askParticipantCode().then((code) => { if (code) pickRecipeFor(code); })));
+  for (const person of participantList()) {
+    const sub = feEl("span", { class: "bh-sub", text: `Last built ${shortDate(person.last)}` });
+    box.appendChild(feEl("button", { type: "button", class: "bh-row", "data-code": person.code, onClick: () => { builderHome.person = person.code; renderBuilderHome(); window.scrollTo(0, 0); } },
+      feEl("span", { class: "bh-code", text: person.code }),
+      feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: person.playlists.length === 1 ? "1 playlist" : `${person.playlists.length} playlists` }), sub),
+      bhSvg(BH_GO)));
+    heardCount(person).then((n) => { if (n !== null) sub.textContent = `${n} ${n === 1 ? "song" : "songs"} heard · last ${shortDate(person.last)}`; });
+  }
+  box.appendChild(feEl("p", { class: "bh-note", text: "Arc knows which songs each participant has heard from the playlists it built for them in your Spotify." }));
+}
+
+// How many songs a participant has heard, worked out once for the playlists they have now
+async function heardCount(person) {
+  const sig = person.playlists.map((p) => p.id + ":" + (p.snapshot || p.count)).join(",");
+  const known = builderHome.heard.get(person.code);
+  if (known && known.sig === sig) return known.count;
+  try {
+    const { count } = await heardBy(person.code);
+    builderHome.heard.set(person.code, { sig, count });
+    return count;
+  } catch (err) { return null; }
+}
+
+function renderParticipantPage(code) {
+  const box = $("bhPeople");
+  box.textContent = "";
+  const person = participantList().find((p) => p.code === code) || { code, playlists: [], last: 0 };
+  const facts = feEl("p", { text: person.playlists.length ? `${person.playlists.length === 1 ? "1 playlist" : person.playlists.length + " playlists"}, the last built ${shortDate(person.last)}` : "No playlists yet" });
+  box.append(
+    feEl("button", { type: "button", class: "bh-back", id: "bhBack", onClick: () => { builderHome.person = null; renderBuilderHome(); } }, bhSvg(BH_BACK), "Participants"),
+    feEl("div", { class: "bh-hero" }, feEl("span", { class: "bh-code bh-big", text: code }), feEl("div", {}, feEl("h2", { text: code }), facts)),
+    feEl("button", { type: "button", class: "primary bh-wide", id: "bhNext", onClick: () => pickRecipeFor(code) }, bhSvg(BH_SPARK), `Build ${code}'s next playlist`));
+  if (person.playlists.length) {
+    box.appendChild(feEl("div", { class: "bh-sec", text: "Playlists" }));
+    const list = feEl("div", { class: "bh-list" });
+    for (const p of person.playlists) {
+      list.appendChild(feEl("a", { class: "bh-row", href: `https://open.spotify.com/playlist/${p.id}`, target: "_blank", rel: "noopener" },
+        feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }),
+        feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: p.name }), feEl("span", { class: "bh-sub", text: p.count === null || p.count === undefined ? "" : `${p.count} songs` })),
+        bhSvg(BH_OPEN)));
+    }
+    box.appendChild(list);
+    box.appendChild(feEl("p", { class: "bh-note", text: `Every song in these playlists counts as heard by ${code}. Delete one in Spotify and its songs can play for ${code} again.` }));
+    heardCount(person).then((n) => { if (n !== null) facts.textContent += ` · ${n} ${n === 1 ? "song" : "songs"} heard`; });
+  }
+  refreshBuildButtons();
+}
+
+// A dialog in the editor's look, with a body and two buttons: resolves with what done() is given, or null on Cancel, Escape or a tap outside
+function bhDialog(title, body, nextLabel, onNext) {
+  return new Promise((resolve) => {
+    const close = (value) => { overlay.remove(); document.removeEventListener("keydown", onKey); resolve(value); };
+    const onKey = (event) => { if (event.key === "Escape") close(null); };
+    const next = feEl("button", { type: "button", class: "primary", id: "bhDialogNext", onClick: () => { const v = onNext(); if (v !== undefined && v !== null) close(v); } }, nextLabel);
+    const overlay = feEl("div", { class: "fe-overlay", id: "bhDialog", onClick: () => close(null) },
+      feEl("div", { class: "fe-dialog bh-dialog", role: "dialog", "aria-modal": "true", "aria-label": plainText(title), onClick: (e) => e.stopPropagation() },
+        feEl("h3", { text: title }), body,
+        feEl("div", { class: "row" }, feEl("button", { type: "button", id: "bhDialogCancel", onClick: () => close(null) }, "Cancel"), next)));
+    document.body.appendChild(overlay);
+    document.addEventListener("keydown", onKey);
+    bhDialog.next = next;
+    const field = overlay.querySelector("input");
+    (field && field.offsetParent ? field : next).focus();
+  });
+}
+
+function codeField(onChange) {
+  const input = feEl("input", { type: "text", class: "bh-codefield", id: "bhCode", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", maxlength: "4", "aria-label": "Participant code", enterkeyhint: "next" });
+  input.addEventListener("input", () => { const c = cleanCode(input.value); if (c !== input.value) input.value = c; onChange(c); });
+  input.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); if (bhDialog.next && !bhDialog.next.disabled) bhDialog.next.click(); } });
+  return input;
+}
+
+function askParticipantCode() {
+  let code = "";
+  const input = codeField((c) => { code = c; bhDialog.next.disabled = !c; });
+  const p = bhDialog("New participant", feEl("div", { class: "bh-codein" }, input, feEl("span", { class: "bh-hint", text: "Just a code, no identifying info. Up to 4 letters or numbers." })), "Next", () => code || null);
+  bhDialog.next.disabled = true;
+  return p;
+}
+
+// Which recipe for a participant's next playlist. Choosing one reads its playlists' songs and says how many are new to them.
+function pickRecipeFor(code) {
+  const formats = editor.model ? editor.model.formats.filter((f) => !f.draft) : [];
+  let chosen = null;
+  const list = feEl("div", { class: "bh-opts", role: "radiogroup", "aria-label": "Which recipe?" });
+  const rows = formats.map((f) => {
+    const shape = recipeShape(f);
+    const pct = feEl("span", { class: "bh-pct" });
+    const row = feEl("button", { type: "button", class: "bh-opt", role: "radio", "aria-checked": "false", "data-id": f.id, onClick: () => choose(f, row, pct) },
+      feEl("span", { class: "bh-radio" }),
+      feEl("span", { class: "bh-text" }, feEl("b", { text: f.title.trim() || "Untitled" }),
+        feEl("span", { class: "bh-sub", text: `${lengthText(shape.music + shape.quiet / 60)} · ${f.items.length === 1 ? "1 segment" : f.items.length + " segments"}` })),
+      pct);
+    list.appendChild(row);
+    return row;
+  });
+  const choose = async (f, row, pct) => {
+    chosen = f.id;
+    for (const r of rows) { r.classList.toggle("bh-on", r === row); r.setAttribute("aria-checked", String(r === row)); }
+    bhDialog.next.disabled = false;
+    if (pct.dataset.done) return;
+    pct.textContent = "";
+    pct.append(feEl("span", { class: "bh-dots", "aria-label": "Reading songs" }, feEl("i"), feEl("i"), feEl("i")), feEl("span", { text: `new to ${code}` }));
+    try {
+      const share = await newShare(f, code);
+      pct.dataset.done = "1";
+      pct.textContent = "";
+      pct.append(feEl("b", { text: share === null ? "?" : `${share}%` }), feEl("span", { text: `new to ${code}` }));
+    } catch (err) { pct.textContent = ""; }
+  };
+  const body = feEl("div", {}, feEl("p", { class: "bh-q", text: "Which recipe?" }), formats.length ? list : feEl("p", { class: "muted", text: "There is no recipe yet. Make one under Recipes first." }));
+  const p = bhDialog(`${code}'s next playlist`, body, "Next", () => chosen);
+  bhDialog.next.disabled = true;
+  return p.then((id) => {
+    if (!id) return;
+    const action = connectionAction();
+    if (action) { action(); return; }
+    buildFor = code;
+    startCreate([id]);
+  });
+}
+
+// Of the songs a recipe draws on, the share (0 to 100) the participant has not heard; null when it has no songs
+async function newShare(f, code) {
+  const heard = (await heardBy(code)).songs;
+  const ids = new Set();
+  for (const item of f.items) for (const l of item.lists) {
+    if (!l.id) continue;
+    for (const t of await loadTracks(l.id)) if (!SILENCE_URIS.has(t.uri)) ids.add(t.key || t.uri);
+  }
+  if (!ids.size) return null;
+  let fresh = 0;
+  for (const id of ids) if (!heard[id]) fresh += 1;
+  return Math.round((fresh / ids.size) * 100);
+}
+
+// Build in developer mode: a set of playlists as before, or one for a participant. Resolves with "" for a set, a code, or null.
+function askWhoFor(id) {
+  const f = editor.model.formats.find((x) => x.id === id);
+  const codes = participantList().map((p) => p.code);
+  let mode = "set", code = "";
+  const chips = feEl("div", { class: "bh-chips" });
+  const field = codeField((c) => { code = c; refresh(); });
+  const fieldBox = feEl("div", { class: "bh-codein", hidden: true }, field, feEl("span", { class: "bh-hint", text: "Just a code, no identifying info. Up to 4 letters or numbers." }));
+  let newChip = null;
+  const chip = (text, value, extra) => feEl("button", { type: "button", class: "bh-chip" + (extra || ""), onClick: (event) => { event.stopPropagation(); mode = "one"; if (value === null) { code = cleanCode(field.value); fieldBox.hidden = false; field.focus(); } else { code = value; fieldBox.hidden = true; } newChip.dataset.on = value === null ? "1" : ""; refresh(); } }, text);
+  for (const c of codes) chips.appendChild(chip(c, c));
+  newChip = chip("+ New participant", null, " bh-chip-new");
+  chips.appendChild(newChip);
+  const opt = (value, title, sub, extra) => feEl("div", { class: "bh-opt bh-opt-block", role: "radio", tabindex: "0", "data-mode": value,
+    onClick: () => { mode = value; if (value === "set") { fieldBox.hidden = true; newChip.dataset.on = ""; } refresh(); },
+    onKeyDown: (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); mode = value; refresh(); } } },
+    feEl("div", { class: "bh-opt-top" }, feEl("span", { class: "bh-radio" }), feEl("span", { class: "bh-text" }, feEl("b", { text: title }), feEl("span", { class: "bh-sub bh-wrap", text: sub }))), extra);
+  const set = opt("set", "A set of playlists", "As many as the songs allow, no song repeated across them.");
+  const one = opt("one", "One playlist for a participant", "With the songs they have not heard first.", feEl("div", {}, chips, fieldBox));
+  const refresh = () => {
+    set.classList.toggle("bh-on", mode === "set"); set.setAttribute("aria-checked", String(mode === "set"));
+    one.classList.toggle("bh-on", mode === "one"); one.setAttribute("aria-checked", String(mode === "one"));
+    const isNew = newChip.dataset.on === "1";
+    for (const c of chips.children) c.classList.toggle("bh-on", mode === "one" && (c === newChip ? isNew : !isNew && c.textContent === code));
+    if (bhDialog.next) bhDialog.next.disabled = mode === "one" && !code;
+  };
+  const body = feEl("div", {}, feEl("p", { class: "bh-q", text: "Who is it for?" }), feEl("div", { class: "bh-opts", role: "radiogroup", "aria-label": "Who is it for?" }, set, one));
+  const p = bhDialog(f ? f.title.trim() || "Untitled" : "Build", body, "Next", () => (mode === "set" ? "" : code || null));
+  refresh();
+  return p;
 }

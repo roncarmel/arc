@@ -15,13 +15,24 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-11j";
+const APP_VERSION = "2026-11-12a";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
 const APP_MARKER = "Made by Arc";                    // change this whenever the page is updated
 const OLD_APP_MARKERS = ["Made by Ceremony Playlist Builder"];   // the app's name before Arc (2026-11-08): playlists built then are still its own
 function madeByAppText(text) { return typeof text === "string" && [APP_MARKER, ...OLD_APP_MARKERS].some((m) => text.startsWith(m)); }
+// A playlist Arc built for a participant says so in its description ("For participant MC."). Its songs are what that participant has heard, so building a recipe never
+// replaces or renames it, and Remove built playlists never lists it (decided by Ron, 2026-11-12). Returns the code, or "".
+const PARTICIPANT_RE = /\bFor participant ([A-Z0-9]{1,4})\./;
+function participantOf(text) { const m = typeof text === "string" && madeByAppText(text) ? text.match(PARTICIPANT_RE) : null; return m ? m[1] : ""; }
+// When it was built, from "Built 14 Nov 2026." in its description: a time in ms, or 0
+function builtAtOf(text) {
+  const m = typeof text === "string" ? text.match(/\bBuilt (\d{1,2}) ([A-Z][a-z]{2}) (\d{4})\./) : null;
+  if (!m) return 0;
+  const month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].indexOf(m[2]);
+  return month < 0 ? 0 : new Date(Number(m[3]), month, Number(m[1])).getTime();
+}
 // The word for pressing a button: "tap" on a touch screen, "click" with a mouse. Page text in the markup marks it with <span data-act>, filled in at startup.
 function actWord(capital) {
   let touch = false;
@@ -435,6 +446,7 @@ function devModeChanged(on) {
     if (head && head.getAttribute("aria-expanded") === "true") toggleWelcomeTool(head);
   }
   if (typeof renderSharingCard === "function") renderSharingCard();
+  if (typeof renderBuilderHome === "function") renderBuilderHome();   // Participants, greyed outside developer mode
   if (on && pageName() === "app" && typeof loadLibrary === "function") {
     loadLibrary();
     if (connection === "ready") sharingConnected();
@@ -1432,6 +1444,13 @@ function whenText(seconds) {
   return seconds ? formatBackupTime(new Date(seconds * 1000).toISOString()) : "a time that is not known";
 }
 
+// The recipe open in the editor with changes not saved yet (Save changes in the recipe panel; decided by Ron, 2026-11-12: saving is explicit). Its edits are in this
+// browser already, but nothing of it goes to Spotify, and Spotify's copy is not settled against it, until it is saved. Kept in localStorage so a closed tab
+// does not save it either: it shows as Unsaved changes in the list. editor.js keeps it (recipeEditing).
+function heldRecipeId() {
+  try { const o = JSON.parse(localStorage.getItem("recipeEditing") || "null"); return o && o.dirty && typeof o.id === "string" ? o.id : null; } catch (err) { return null; }
+}
+
 // Reads the account's backups and settles each format against its backup. Where one side changed and the other did not, the changed one wins. Where both changed, or
 // there is no record of a backup and the two differ, the person is asked. Formats found only in Spotify are added; a format whose backup has gone is asked about.
 async function mergeFromSpotify() {
@@ -1448,7 +1467,10 @@ async function mergeFromSpotify() {
   const readRemote = (p) => { const u = unpackFormat(p.description); if (u.kind !== "save") return null; resolveSaveTails(u.format, allIds); return u.format; };
   const asks = [];
   let changedHere = false;
+  const held = heldRecipeId();
+  if (held) saveState.skip.add(held);
   for (const [id, p] of remote) {
+    if (id === held) continue;   // being edited: settled once it is saved or its changes are cancelled
     const r = readRemote(p);
     if (!r) continue;
     const local = model.formats.find((f) => f.id === id);
@@ -1479,7 +1501,7 @@ async function mergeFromSpotify() {
     asks.push({ kind: "conflict", id, title: local.title, local, remote: r, playlist: p });
   }
   for (const f of model.formats) {
-    if (remote.has(f.id) || !synced[f.id]) continue;
+    if (remote.has(f.id) || !synced[f.id] || f.id === held) continue;
     if (unread.some((p) => p.name === saveName(f.title))) continue;   // its backup is there, but cannot be read: it is written again below
     asks.push({ kind: "removed", id: f.id, title: f.title });
   }
@@ -2065,6 +2087,7 @@ function updateButtonsNow() {
     $("spotifyNote").hidden = false;
   }
   refreshReconnectScreen();
+  if (typeof refreshBuildButtons === "function") refreshBuildButtons();   // the landing's Build buttons (editor.js)
 }
 
 // On the app page with no working sign-in (it ran out and could not be renewed), nothing that needs Spotify works, so the app dims behind
@@ -2270,12 +2293,12 @@ function lengthText(minutes) {
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-function builtDescription(p, number, count, when = new Date()) {
+function builtDescription(p, number, count, when = new Date(), participant = "") {
   // The description of a built playlist: the marker the app recognizes its playlists by (it must come first), the request
-  // to leave it, then which one of the set and when. No segments (decided by Ron, 2026-11-04).
+  // to leave it, then which one of the set and when. No segments (decided by Ron, 2026-11-04). One built for a participant names their code.
   const date = `${when.getDate()} ${MONTHS[when.getMonth()]} ${when.getFullYear()}`;
   return `${APP_MARKER}. Please do not edit this description. The app uses it to recognize the playlists it made. `
-    + (count > 1 ? `Playlist ${number} of ${count}, built ${date}.` : `Built ${date}.`);
+    + (participant ? `For participant ${participant}. Built ${date}.` : count > 1 ? `Playlist ${number} of ${count}, built ${date}.` : `Built ${date}.`);
 }
 
 function playlistRow(p, icon) {
@@ -2619,7 +2642,7 @@ function problemKind(message) {
 const KEPT_PLAYLISTS_KEY = "spotifyPlaylists";   // {user, list}: the playlist list from the last time Spotify answered, for the menus during a wait
 function keepPlaylists() {
   try {
-    const list = playlists.map((p) => ({ id: p.id, name: p.name, owner: p.owner, collaborative: p.collaborative, image: p.image, count: p.count, madeByApp: p.madeByApp, isSave: p.isSave }));
+    const list = playlists.map((p) => ({ id: p.id, name: p.name, owner: p.owner, collaborative: p.collaborative, image: p.image, count: p.count, madeByApp: p.madeByApp, participant: p.participant || "", isSave: p.isSave }));
     localStorage.setItem(KEPT_PLAYLISTS_KEY, JSON.stringify({ user: me && me.id, list }));
   } catch (err) { /* private browsing, or too big: the menus are empty during a wait */ }
 }
@@ -2717,7 +2740,7 @@ async function loadMyPlaylists() {
     description: typeof p.description === "string" ? p.description : null,
     snapshot: typeof p.snapshot_id === "string" && p.snapshot_id ? p.snapshot_id : null,   // changes whenever the playlist does
   }));
-  for (const p of playlists) p.madeByApp = madeByAppText(p.description);
+  for (const p of playlists) { p.madeByApp = madeByAppText(p.description); p.participant = participantOf(p.description); }
   // A format's backup in Spotify is known by what its description decodes to, whatever the playlist is called.
   for (const p of playlists) { const u = unpackFormat(p.description); p.save = u.kind === "none" ? null : u; p.isSave = !!p.save; }
   keepPlaylists();
@@ -2855,6 +2878,46 @@ function setPlaylistLimit(n) { playlistCap = n > 0 ? n : undefined; invalidatePl
 function playlistLimit() { return playlistCap; }
 
 let buildScope = null;   // the formats a build in progress is for, when it is not just the one being edited
+let buildFor = "";       // a participant's code, when the build is one playlist for them (developer mode for now; Ron, 2026-11-12)
+
+// Silent tracks: the same as engine.py's SILENCE_TRACKS. They are in every playlist and are not songs anyone heard.
+const SILENCE_URIS = new Set(["spotify:track:5kiJ9x6eX37H5J9lyyXkua", "spotify:track:4iOpD4OvwCi6ndxpNYk4HG", "spotify:track:5yM42dAylwB17DomSHGcXM", "spotify:track:7depNAqAh1r9unkIRzibID", "spotify:track:3mkOlbSv5RYadx0JsjTrKq"]);
+
+// The playlists Arc built for each participant, from the playlist list already read: [{ code, playlists (newest first), last }], the most recent first
+function participantList() {
+  const by = new Map();
+  for (const p of playlists || []) {
+    if (!p.participant || (me && p.owner !== me.id)) continue;
+    if (!by.has(p.participant)) by.set(p.participant, []);
+    by.get(p.participant).push(p);
+  }
+  return [...by.entries()].map(([code, list]) => {
+    list.sort((a, b) => builtAtOf(b.description) - builtAtOf(a.description));
+    return { code, playlists: list, last: builtAtOf(list[0].description) };
+  }).sort((a, b) => b.last - a.last || a.code.localeCompare(b.code));
+}
+// What a participant has heard: every song in the playlists built for them, by the song's id as engine.py knows it (song_id), with when the playlist was built.
+// Reads their playlists' songs (kept in this browser after the first time). { songs: {id: time}, count }
+async function heardBy(code) {
+  const songs = {};
+  for (const p of (playlists || []).filter((q) => q.participant === code && (!me || q.owner === me.id))) {
+    const at = builtAtOf(p.description) || 1;
+    for (const t of await loadTracks(p.id)) {
+      if (SILENCE_URIS.has(t.uri)) continue;
+      const id = t.key || t.uri;
+      songs[id] = Math.max(songs[id] || 0, at);
+    }
+  }
+  return { songs, count: Object.keys(songs).length };
+}
+// A playlist for a participant: Deep journey · MC · 14 Nov, then (2), (3) if that is taken
+function participantPlaylistName(title, code, when = new Date()) {
+  const base = `${cleanTitle(title).trim() || "Untitled"} \u00b7 ${code} \u00b7 ${when.getDate()} ${MONTHS[when.getMonth()]}`;
+  const taken = new Set((playlists || []).map((p) => normName(p.name)));
+  let name = base, n = 2;
+  while (taken.has(normName(name))) name = `${base} (${n++})`;
+  return name;
+}
 
 function activeKey() {
   return typeof editor !== "undefined" && editor.activeId && currentFormats.some((f) => f.id === editor.activeId) ? editor.activeId : null;
@@ -2873,6 +2936,13 @@ function removeKeys() {
   return choice === ALL_FORMATS ? currentFormats.map((f) => f.id) : [choice];
 }
 
+// The person's playlists whose names a recipe makes, as engine.py's existing_matches finds them, without the ones built for a participant: those are never replaced,
+// renamed or removed by building or by Remove built playlists.
+function recipeMatches(formatsText, keys) {
+  const ours = new Set((playlists || []).filter((p) => p.participant).map((p) => p.id));
+  return JSON.parse(py.existingMatches(formatsText, JSON.stringify(keys), JSON.stringify(playlists), me.id)).filter((p) => !ours.has(p.id));
+}
+
 // Playlists Arc built for recipes that no longer exist (deleted or renamed; Ron, 2026-11-10, mockups/remove-gone.html): Arc's own (its marker in the description),
 // the person's, not a recipe save, and matching no recipe's names now. Grouped by the name without its number or (version x), sorted by that name.
 // Empty until Python, the sign-in and the playlist list are there. Remove built playlists lists each group as <name> (no recipe).
@@ -2882,11 +2952,11 @@ function goneGroups() {
   if (!py || !me || !playlists) return [];
   let current = new Set();
   try {
-    if (currentFormats.length) current = new Set(JSON.parse(py.existingMatches($("formats").value, JSON.stringify(currentFormats.map((f) => f.id)), JSON.stringify(playlists), me.id)).map((p) => p.id));
+    if (currentFormats.length) current = new Set(recipeMatches($("formats").value, currentFormats.map((f) => f.id)).map((p) => p.id));
   } catch (err) { return []; }
   const groups = new Map();
   for (const p of playlists) {
-    if (!p.madeByApp || p.isSave || p.owner !== me.id || current.has(p.id)) continue;
+    if (!p.madeByApp || p.isSave || p.participant || p.owner !== me.id || current.has(p.id)) continue;
     const stem = goneStem(p.name);
     if (!groups.has(stem)) groups.set(stem, []);
     groups.get(stem).push({ id: p.id, name: p.name });
@@ -2919,7 +2989,7 @@ function removeTargets() {
     return { current: [], others: [], gone: g ? g.playlists : [] };
   }
   const keys = removeKeys();
-  const existing = keys.length ? JSON.parse(py.existingMatches($("formats").value, JSON.stringify(keys), JSON.stringify(playlists), me.id)) : [];
+  const existing = keys.length ? recipeMatches($("formats").value, keys) : [];
   return { current: existing.filter((p) => made.has(p.id)), others: existing.filter((p) => !made.has(p.id)), gone: key === ALL_FORMATS ? gone.flatMap((g) => g.playlists) : [] };
 }
 
@@ -2996,15 +3066,33 @@ async function planSelected(startedWith) {
   setBuildSteps("plan");
   // Earlier playlists with names this plan uses: the ones this app made get replaced (or renamed, if the person keeps them), and the person's own get renamed
   // to "… (version a)" so the new playlists can have their names.
-  const matching = JSON.parse(py.existingMatches(inputs.formatsText, JSON.stringify(inputs.keys), JSON.stringify(playlists), me.id));
+  const forWhom = buildFor;
+  const heard = forWhom ? (await heardBy(forWhom)).songs : null;
+  const matching = forWhom ? [] : recipeMatches(inputs.formatsText, inputs.keys);   // a participant's playlist replaces nothing
   const madeByApp = new Set(playlists.filter((p) => p.madeByApp).map((p) => p.id));
   const marked = matching.filter((p) => madeByApp.has(p.id));
   const built = [];
   const problems = inputs.failedNotes.slice();
   for (const key of inputs.keys) {
     try {
-      const plan = JSON.parse(py.buildPlaylists(inputs.formatsText, key, JSON.stringify(inputs.tracks), playlistLimit(), "[]"));
+      const plan = JSON.parse(heard ? py.buildPlaylists(inputs.formatsText, key, JSON.stringify(inputs.tracks), 1, "[]", JSON.stringify(heard))
+        : py.buildPlaylists(inputs.formatsText, key, JSON.stringify(inputs.tracks), playlistLimit(), "[]"));
       if (!Array.isArray(plan.sources)) throw new Error("engine.py is out of date. Reload the page.");
+      if (heard && plan.playlists.length) {
+        // one playlist, named for the participant, and how many of its songs they have heard
+        const title = (currentFormats.find((f) => f.id === key) || {}).title || "";
+        const p = plan.playlists[0];
+        p.name = participantPlaylistName(title, forWhom);
+        const idOf = new Map();
+        for (const list of Object.values(inputs.tracks)) for (const t of list) idOf.set(t.uri, t.key || t.uri);
+        let fresh = 0, again = 0, latest = 0;
+        for (const uri of p.uris) {
+          if (SILENCE_URIS.has(uri)) continue;
+          const at = heard[idOf.get(uri) || uri];
+          if (at) { again += 1; latest = Math.max(latest, at); } else fresh += 1;
+        }
+        plan.fresh = { fresh, again, latest };
+      }
       if (plan.playlists.length) built.push(plan);
       else problems.push(...shortProblems(plan, inputs.many));
     } catch (err) {
@@ -3026,7 +3114,8 @@ async function planSelected(startedWith) {
   setOutput("");
   const newNames = new Set(built.flatMap((b) => b.playlists.map((p) => normName(p.name))));
   const others = matching.filter((p) => !madeByApp.has(p.id) && newNames.has(normName(p.name)));   // only the ones in the way
-  return { formatsText: inputs.formatsText, keys: inputs.keys, built, total, ours: marked, marked, others,
+  const fresh = built.length && built[0].fresh ? built[0].fresh : null;
+  return { formatsText: inputs.formatsText, keys: inputs.keys, built, total, ours: marked, marked, others, participant: forWhom, fresh,
     suspects: findSuspects(inputs.tracks, inputs.ids), repeats: findRepeats(inputs.tracks), problems, many: built.length > 1 || problems.length > 0 };
 }
 
@@ -3222,7 +3311,7 @@ function askToCreate(plan) {
     const why = Object.assign(document.createElement("button"), { type: "button", className: "linklike", id: "planToggle", textContent: whyLabel });
     // One recipe that can make more than one: "How many playlists?", and Arc's icon per playlist with its number above, 8 to a row. None is chosen at first,
     // so Build does nothing until one is (decided by Ron, 2026-11-04; the popup was simplified by Ron, 2026-11-10, mockups/build-a-states.html).
-    const pick = !plan.many && plan.total > 1;
+    const pick = !plan.many && plan.total > 1 && !plan.participant;
     let chosen = pick ? 0 : plan.total;
     // the person's own playlists in the way: only the ones whose names the chosen playlists use
     const inWayFor = (n) => { const names = new Set(plan.built[0].playlists.slice(0, n).map((p) => normName(p.name))); return plan.others.filter((p) => names.has(normName(p.name))); };
@@ -3263,6 +3352,19 @@ function askToCreate(plan) {
         tiles.appendChild(opt);
       }
       show();
+    } else if (plan.participant) {
+      // one playlist for a participant: how many of its songs are new to them (Ron, 2026-11-12, mockups/client-builder.html C3)
+      const f = plan.fresh || { fresh: 0, again: 0, latest: 0 };
+      $("bdPickHead").textContent = `A playlist for ${plan.participant}`;
+      const b = (n) => Object.assign(document.createElement("b"), { textContent: String(n) });
+      summary.append(b(f.fresh), ` ${f.fresh === 1 ? "song" : "songs"} new to ${plan.participant}`);
+      if (f.again) {
+        const at = new Date(f.latest);
+        summary.append(", ", b(f.again), ` heard before, the latest in ${MONTHS[at.getMonth()]} ${at.getFullYear()}`);
+      }
+      summary.append(".");
+      $("bdPickTiles").textContent = "";
+      $("confirmYes").disabled = false;
     } else {
       if (plan.many) summary.append(`For ${plural(plan.built.length, "recipe")}. `);
       summary.append(why);
@@ -3280,7 +3382,7 @@ function askToCreate(plan) {
       notes.appendChild(li);
     }
     fillInfoBoxes(pick ? { ...plan, others: inWayFor(chosen) } : plan, keep);
-    if (!pick) setLabel($("confirmYes"), `Build ${plural(plan.total, "playlist")}`);
+    if (!pick) setLabel($("confirmYes"), plan.participant ? "Build playlist" : `Build ${plural(plan.total, "playlist")}`);
     clearResults();   // the plan says how many; the playlists are listed only once they are being built
     fillWhyTable(plan);
     $("planText").hidden = true;
@@ -3348,6 +3450,7 @@ async function startCreate(keys = null) {
     showBuildStop(err, null);
   } finally {
     buildScope = null;
+    buildFor = "";
     setBusy(false);
     if (!$("createOverlay").hidden) setCreateStage("done");
   }
@@ -3465,7 +3568,7 @@ async function createFromPlan(plan) {
       progress("Keep this tab open.", true);
       setRowState(row, "now", "starting");
       show(row);
-      const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: builtDescription(p, planned.filter((q, j) => q.key === p.key && j <= i).length, planned.filter((q) => q.key === p.key).length) } });
+      const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: builtDescription(p, planned.filter((q, j) => q.key === p.key && j <= i).length, planned.filter((q) => q.key === p.key).length, new Date(), plan.participant || "") } });
       current = p.name;
       createdIds.push(made.id);
       if (made.public !== false) {   // asked to keep it off the profile; make sure
@@ -3636,7 +3739,7 @@ function builtPlaylistsOf(id) {
   if (!token || connection !== "ready" || !py || !me || !playlists || busy || pausedSecondsLeft() > 0) return null;
   try {
     const made = new Set(playlists.filter((p) => p.madeByApp && !p.isSave).map((p) => p.id));
-    return JSON.parse(py.existingMatches($("formats").value, JSON.stringify([id]), JSON.stringify(playlists), me.id)).filter((p) => made.has(p.id));
+    return recipeMatches($("formats").value, [id]).filter((p) => made.has(p.id));
   } catch (err) { return null; }
 }
 // After Delete recipe with the box ticked: removes them, then says how it went on the line under the bar

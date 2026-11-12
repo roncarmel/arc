@@ -12,7 +12,7 @@ function pressBuild(w) {
   if (tiles && !w.document.getElementById("bdPick").hidden && !tiles.querySelector('[aria-checked="true"]') && tiles.lastElementChild) tiles.lastElementChild.click();
   w.document.getElementById("confirmYes").click();
 }
-const SECTION_NAMES = ["launch screen", "sharing card in the editor", "music sharing", "music sharing songs", "developer options", "the save pointer", "menu popups and the silence help", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version line", "welcome recipe link", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "popups close only", "narrow more button", "the silence card", "backup link in step 2", "spotify premium", "python status at the bottom", "questions and feedback", "settings below the segments, pink outline", "the tagline", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'fading and Close in the Create popup', 'tabs that scroll sideways', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
+const SECTION_NAMES = ["builder landing and participants", "launch screen", "sharing card in the editor", "music sharing", "music sharing songs", "developer options", "the save pointer", "menu popups and the silence help", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version line", "welcome recipe link", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "popups close only", "narrow more button", "the silence card", "backup link in step 2", "spotify premium", "python status at the bottom", "questions and feedback", "settings below the segments, pink outline", "the tagline", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'fading and Close in the Create popup', 'tabs that scroll sideways', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
 // areas that need another area's setup to have run first
 const NEEDS = {
   "the page's styles for tags and phones": ["silences, dragging and removing"],
@@ -253,7 +253,7 @@ function fakePyodideFactory() {
 }
 
 // view: which of Arc's views the app page starts in. Most checks were written before Arc's home, for the builder; pass view: "home" for the page as it opens.
-async function boot({ url, session = {}, local = {}, fetchOptions = {}, before = null, idb = null, instantRetries = false, htmlChange = null, feedbackUrl = "", view = "builder" }) {
+async function boot({ url, session = {}, local = {}, fetchOptions = {}, before = null, idb = null, instantRetries = false, htmlChange = null, feedbackUrl = "", view = "builder", panel = true }) {
   const bootStarted = Date.now();
   const dom = new JSDOM(htmlChange ? htmlChange(html) : html, { url, runScripts: "outside-only", pretendToBeVisual: true });
   const w = dom.window;
@@ -291,17 +291,21 @@ async function boot({ url, session = {}, local = {}, fetchOptions = {}, before =
   w.document.documentElement.classList.add("view-" + view);   // as the <head> script would (it does not run here)
   if (savedLocal.devMode === "1") w.document.documentElement.classList.add("dev-mode");   // developer mode, as the <head> script would
   w.__scriptsRequested = [];
-  w.eval(appJs.replace("const sharing = {", "var sharing = {").replace("const previewUrls =", "var previewUrls =").replace("let spotifyAnswerMs = 30000;", "var spotifyAnswerMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const BACKED_UP_MESSAGE =", "var BACKED_UP_MESSAGE =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("const saveTip =", "var saveTip =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let busy =", "var busy =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let appView =", "var appView =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("let launchScreen =", "var launchScreen =").replace("const GAP_STEPS =", "var GAP_STEPS =").replace("let startupDone =", "var startupDone ="));  // test harness only: lets a test replace the reload
+  w.eval(appJs.replace("const sharing = {", "var sharing = {").replace("const previewUrls =", "var previewUrls =").replace("let spotifyAnswerMs = 30000;", "var spotifyAnswerMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const recipeEdit =", "var recipeEdit =").replace("const builderHome =", "var builderHome =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const BACKED_UP_MESSAGE =", "var BACKED_UP_MESSAGE =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("const saveTip =", "var saveTip =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let busy =", "var busy =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let appView =", "var appView =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("let launchScreen =", "var launchScreen =").replace("const GAP_STEPS =", "var GAP_STEPS =").replace("let startupDone =", "var startupDone ="));  // test harness only: lets a test replace the reload
   await Promise.race([w.__main, new Promise((r) => setTimeout(r, 1500))]);   // ready as soon as the page has finished starting up
   await new Promise((r) => setTimeout(r, 30));
+  // Most tests were written when the editor was always on the page: the recipe being edited opens in its panel, as a tap on it would (panel: false leaves the landing)
+  if (panel && view === "builder" && w.editor && w.editor.activeId && w.openRecipePanel) { await w.openRecipePanel(w.editor.activeId); await new Promise((r) => setTimeout(r, 10)); }
   global.bootCount += 1; global.bootMs += Date.now() - bootStarted;
   return w;
 }
 
 // the record in the app menu, and the line under the editor's bar
 function menuStatus(w) { w.document.getElementById("feAppMenuButton").click(); const n = w.document.getElementById("feSaveStatus"); const t = n ? n.textContent : ""; w.document.body.click(); return t; }
-function capText(w) { const n = w.document.getElementById("feCaption"); return n ? n.textContent : ""; }
-function capLinks(w) { return Array.from(w.document.querySelectorAll("#feCaption .fe-notice-link, #feCaption .fe-notice-ok, #feCaption .fe-notice-count")); }
+// Save changes in the recipe panel, then open the same recipe again so a test can go on editing it (saving is explicit since 2026-11-12)
+async function saveRecipe(w) { const id = w.editor.activeId; w.document.getElementById("rpSave").click(); await w.openRecipePanel(id); }
+function capText(w) { const n = w.document.getElementById(w.eval("recipeEdit.open") ? "feCaption" : "bhCaption"); return n ? n.textContent : ""; }
+function capLinks(w) { const c = w.eval("recipeEdit.open") ? "#feCaption" : "#bhCaption"; return Array.from(w.document.querySelectorAll(`${c} .fe-notice-link, ${c} .fe-notice-ok, ${c} .fe-notice-count`)); }
 // Remove now needs a choice in the dropdown: keep one that is set, otherwise pick All recipes, then press Remove.
 function removeNow(w) {
   const sel = w.document.getElementById("removeKey");
@@ -720,7 +724,8 @@ print(json.dumps(out))
   // I2. how-to help for formats, under the editor
   var fh = wB.document.getElementById("formatHelp");
   var editorBox = wB.document.getElementById("formatEditor");
-  check("the help sits under the editor and its note, ahead of Step 3", editorBox.nextElementSibling.id === "editorNote" && editorBox.nextElementSibling.nextElementSibling.id === "formats" && editorBox.nextElementSibling.nextElementSibling.nextElementSibling === fh && fh.nextElementSibling.tagName === "H2" && fh.open === false && /How recipes work/.test(fh.querySelector("summary").textContent));
+  var rpWrap = wB.document.getElementById("recipePanelWrap");
+  check("the editor sits in the recipe panel above its buttons, and the help under the panel and its note, ahead of Step 3", editorBox.nextElementSibling.id === "rpFoot" && rpWrap.nextElementSibling.id === "editorNote" && rpWrap.nextElementSibling.nextElementSibling.id === "formats" && rpWrap.nextElementSibling.nextElementSibling.nextElementSibling === fh && fh.nextElementSibling.tagName === "H2" && fh.open === false && /How recipes work/.test(fh.querySelector("summary").textContent));
   var helpText = fh.textContent;
   check("the help explains segments, silence, mixes and names, and has no troubleshooting section", ["Segments", "Silence", "Mixes", "Names"].every((t) => Array.from(fh.querySelectorAll("h3")).some((h) => h.textContent === t)) && !/If something goes wrong/.test(fh.textContent) && fh.querySelectorAll("ul").length === 0);
   check("the hidden text is not in the way: it is hidden from sight and from assistive tools", wB.document.getElementById("formats").hidden === true && wB.document.getElementById("formats").getAttribute("aria-hidden") === "true");
@@ -871,10 +876,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-11j" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-12a" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-11j/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-12a/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -978,7 +983,7 @@ print(json.dumps(out))
   var st = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI } });
   st.eval("saveFile = (name, text) => { window.__lastSaved = { name, text }; }");
   var $s = (id) => st.document.getElementById(id);
-  var h2s = Array.from(st.document.querySelectorAll("#appSection h2")).map((h) => h.textContent);
+  var h2s = Array.from(st.document.querySelectorAll("#appSection h2")).filter((h) => !h.closest("#builderHome, #recipePanelWrap")).map((h) => h.textContent);
   check("the steps are 2 Edit your recipes, 3 Build playlists, 4 Back up manually to this device (optional)", JSON.stringify(h2s) === JSON.stringify(["2. Edit your recipes", "3. Build playlists", "4. Back up manually to this device (optional)"]), JSON.stringify(h2s));
   var sentence = $s("backupRestore").parentElement;
   check("Step 2 says formats are saved automatically, then offers two pink links inside the sentence: back up now, and restore from a backup at any time", sentence.tagName === "P" && sentence.textContent.trim() === "You back your recipes up to this device yourself: back up now, and restore from a backup at any time." && $s("backupDownloadLink").textContent === "back up now" && $s("backupRestore").textContent === "restore from a backup" && $s("backupDownloadLink").classList.contains("linklike") && $s("backupRestore").classList.contains("linklike") && sentence.querySelectorAll("button.linklike").length === 2, sentence.textContent);
@@ -1010,7 +1015,7 @@ print(json.dumps(out))
 
   // ---------------- every numbered section title says what the person will do
   var verbs = ["Find", "Connect", "Edit", "Build", "Back up"];
-  var allH2 = Array.from(t0.document.querySelectorAll("h2")).filter((h) => !h.closest("#msOverlay")).map((h) => h.textContent);
+  var allH2 = Array.from(t0.document.querySelectorAll("h2")).filter((h) => !h.closest("#msOverlay, #builderHome, #recipePanelWrap")).map((h) => h.textContent);
   check("the welcome and setup pages have their own headings, and every numbered section title left is an action", JSON.stringify(allH2) === JSON.stringify(["Connecting to Spotify", "Setup complete!", "Unwrapping the update", "Tools", "Coming soon", "Connect your Spotify account", "Have you set up Arc before?", "Find your Client ID", "1. Connect to Spotify", "1. Connect to Spotify", "2. Edit your recipes", "3. Build playlists", "4. Back up manually to this device (optional)"]) && allH2.slice(7).every((t) => verbs.some((v) => t.replace(/^\d\.\s/, "").startsWith(v))), JSON.stringify(allH2));
 
 
@@ -1018,7 +1023,7 @@ print(json.dumps(out))
   var ab = t0.document.getElementById("about");
   var leads = Array.from(ab.querySelectorAll("strong")).map((x) => x.textContent);
   check("the headings in What is this app? stand on their own line, without trailing periods", JSON.stringify(leads) === JSON.stringify(["What it does", "What it's good for", "How it works", "What you need", "Reporting problems", "Privacy"]) && Array.from(ab.querySelectorAll("p")).filter((p) => p.querySelector("strong + br")).length === 5, JSON.stringify(leads));
-  var pill = Array.from(t0.document.querySelectorAll("button:not(.linklike):not(.theme-swatch):not(.mf-sent-toggle):not(#cnContinue):not(#usOk), a.button-link")).filter((b) => !b.closest("#formatEditor") && !b.closest("#startupProblem") && !b.closest("#createDialog") && !b.closest(".dlg-foot") && !b.closest("#devMenu") && b.id !== "infoClose" && b.id !== "msClose" && b.id !== "msCard" && b.id !== "homeBuilder" && !b.classList.contains("wp-tool-head") && !b.closest("#homeMore .hp-ee-bar") && !b.classList.contains("sp-choice") && b.id !== "appHome" && !b.closest("#appBar") && b.id !== "updateGet");   // the Music sharing card (covers, not an icon) and the update card's Get it (its gift is on the card)   // the Setup complete button has words only; the startup popup and the info popup's close draw their icons inline
+  var pill = Array.from(t0.document.querySelectorAll("button:not(.linklike):not(.theme-swatch):not(.mf-sent-toggle):not(#cnContinue):not(#usOk), a.button-link")).filter((b) => !b.closest("#formatEditor") && !b.closest("#startupProblem") && !b.closest("#createDialog") && !b.closest(".dlg-foot") && !b.closest("#devMenu") && b.id !== "infoClose" && b.id !== "msClose" && b.id !== "msCard" && b.id !== "homeBuilder" && !b.classList.contains("wp-tool-head") && !b.closest("#homeMore .hp-ee-bar") && !b.classList.contains("sp-choice") && b.id !== "appHome" && !b.closest("#appBar") && b.id !== "updateGet" && !b.classList.contains("tv-row") && !b.closest("#builderHome") && !b.closest("#recipePanelWrap"));   // the builder's landing and panel draw their icons inline; the tutorial rows have a frame   // the Music sharing card (covers, not an icon) and the update card's Get it (its gift is on the card)   // the Setup complete button has words only; the startup popup and the info popup's close draw their icons inline
   var pillsIn = pill.filter((b) => b.querySelector("img.btn-icon"));
   check("every pink button has an icon in front of its label", pill.length >= 15 && pillsIn.length === pill.length, `${pillsIn.length} of ${pill.length} ` + pill.filter((b) => !b.querySelector("img.btn-icon")).map((b) => b.id || b.outerHTML.slice(0, 60)).join(","));
   check("each icon is a small file, 20 by 20 (the Build sparkles 24 by 24), decorative, and the file exists", pill.every((b) => { const i = b.querySelector("img.btn-icon"); const size = i.getAttribute("src") === "icons/build.svg" ? "24" : "20"; return i.getAttribute("width") === size && i.getAttribute("height") === size && i.getAttribute("alt") === "" && /^icons\/[a-z]+\.svg$/.test(i.getAttribute("src")) && fs.existsSync(ROOT + i.getAttribute("src")); }));
@@ -1318,7 +1323,8 @@ print(json.dumps(out))
   check("a segment with no playlist is marked, and Preview refuses it", true);
 
   // ---- the card's own menu, and deleting
-
+  check("Duplicate is greyed while the recipe has changes not saved", ed1.document.getElementById("feDuplicate").disabled);
+  await saveRecipe(ed1);
   ed1.document.getElementById("feDuplicate").click();
   ed1.document.getElementById("feDuplicateConfirm").click();
   check("Duplicate adds a copy, named so, selected, with its own rows", JSON.stringify(tabsOf(ed1)) === JSON.stringify(["Warm focus", "Cool", "Warm focus copy"]) && ed1.document.querySelector('#feTabs .fe-tab[aria-pressed="true"]').textContent === "Warm focus copy" && rowsOf(ed1).length === 3);
@@ -1551,7 +1557,7 @@ print(json.dumps(out))
   var y_oq = {};
   var y_cq = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: y_oq });
   await readyToPreview(y_cq);
-  check("Step 3 is headed Build playlists and has one button, Build playlists for the format being edited, and no dropdown", /^3\. Build playlists$/.test(Array.from(y_cq.document.querySelectorAll("#appSection h2"))[1].textContent) && /^Build playlists for .+$/.test(y_cq.document.getElementById("create").textContent.trim()) && !y_cq.document.getElementById("preview") && !y_cq.document.getElementById("createRow"));
+  check("Step 3 is headed Build playlists and has one button, Build playlists for the format being edited, and no dropdown", /^3\. Build playlists$/.test(Array.from(y_cq.document.querySelectorAll("#appSection h2")).filter((h) => !h.closest("#builderHome, #recipePanelWrap"))[1].textContent) && /^Build playlists for .+$/.test(y_cq.document.getElementById("create").textContent.trim()) && !y_cq.document.getElementById("preview") && !y_cq.document.getElementById("createRow"));
   y_cq.document.getElementById("create").click();
   await waitFor(() => visible(y_cq, "confirmBox"), 30000);
   check("while the question is open, Create is off, nothing has been written, and the plan box is quiet", y_cq.document.getElementById("create").disabled === true && y_oq.writes.length === 0 && y_cq.document.getElementById("output").hidden === true);
@@ -2181,7 +2187,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => pp_w2.document.getElementById("createCloseRow").hidden === false, 10000);
   check("when it is done the popup shows the result and the playlists made, with a Done button", pp_w2.document.getElementById("createOverlay").hidden === false && pp_w2.document.querySelectorAll("#results .bd-row").length >= 2 && pp_w2.document.getElementById("createClose").textContent.trim() === "Done" && doneSentence(pp_w2) === "2 playlists are in your Spotify library.");
   pp_w2.document.getElementById("createClose").click();
-  check("Close dismisses it and puts the focus back on Create", pp_w2.document.getElementById("createOverlay").hidden === true && pp_w2.document.activeElement === pp_w2.document.getElementById("create"));
+  check("Close dismisses it", pp_w2.document.getElementById("createOverlay").hidden === true);
   pp_w2.document.getElementById("create").click();
   await waitFor(() => pp_w2.document.getElementById("createCloseRow").hidden === false || visible(pp_w2, "confirmBox"), 30000);
   var pp_cnt = pp_o.writes.length;
@@ -2934,7 +2940,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-11j", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-12a", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3049,7 +3055,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("only the selected tab has a pencil, and its title says what pressing it does", !!hd_sel().querySelector("svg") && hd_sel().getAttribute("title") === "Rename recipe" && hd_w.document.querySelectorAll("#feTabs .fe-tab svg").length === 1 && hd_sel().textContent === "Warm focus");
   hd_sel().click();
   var hd_in = hd_w.document.getElementById("feName");
-  check("pressing the selected tab turns its name into a field in place, with the name selected and the focus in it", !!hd_in && hd_in.value === "Warm focus" && hd_w.document.activeElement === hd_in && hd_in.selectionStart === 0 && hd_in.selectionEnd === 10 && hd_in.getAttribute("aria-label") === "Name of recipe" && hd_w.document.querySelector('#feTabs .fe-tab-editing').getAttribute("aria-pressed") === "true");
+  check("pressing the selected tab turns its name into a field in place, with the name selected and the focus in it", !!hd_in && hd_in.value === "Warm focus" && hd_in.selectionStart === 0 && hd_in.selectionEnd === 10 && hd_in.getAttribute("aria-label") === "Name of recipe" && hd_w.document.querySelector('#feTabs .fe-tab-editing').getAttribute("aria-pressed") === "true");
   hd_in.value = "Warm {x} glow {n}";
   hd_in.dispatchEvent(new hd_w.Event("input", { bubbles: true }));
   check("typing updates the text, drops stray braces, and does not rebuild the field under your fingers", hd_w.document.getElementById("feName") === hd_in && hd_in.value === "Warm x glow {n}" && /"title": "Warm x glow \{n\}"/.test(T(hd_w)));
@@ -3201,16 +3207,14 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   addNamed(bt_w, "Full moon"); addNamed(bt_w, "New moon");
   check("new recipes get the names typed for them, never a made-up default", JSON.stringify(bt_tabs()) === JSON.stringify(["Warm focus", "Full moon", "New moon"]) && !/Recipe \$\{number\}/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
   var bt_e = await boot({ url: EDURL, session: signedIn(), local: { formats: "FORMATS = {}" }, fetchOptions: {} });
-  check("with no recipes a welcome says to make the first one, then what a recipe is", (() => { const c = bt_e.document.getElementById("feWelcome"); return !!c && c.querySelector(".fe-welcome-title").textContent === "Time to make your first recipe!" && c.querySelector(".fe-welcome-lead").textContent === "Click New recipe above to start." && /^A recipe says which of your playlists to play, in what order, and for how long\. The app turns it into as many playlists as your songs allow, with no song used twice\.$/.test(c.querySelector(".fe-welcome-text").textContent) && !bt_e.document.getElementById("feCard"); })());
-  check("the welcome has an arrow pointing at New recipe; its only button is the tutorial's row", !!bt_e.document.getElementById("feWelcomeArrow") && JSON.stringify([...bt_e.document.querySelectorAll("#feWelcome button")].map((b) => b.id)) === '["feWatch"]');
+  check("with no recipes the landing has a welcome card: make the first one, what a recipe is, and the tutorial's row, then New recipe", (() => { const c = bt_e.document.getElementById("feWelcome"); return !!c && c.closest("#bhRecipes") && c.querySelector(".fe-welcome-title").textContent === "Time to make your first recipe!" && /^A recipe says which of your playlists to play, in what order, and for how long\./.test(c.querySelector(".fe-welcome-text").textContent) && JSON.stringify([...c.querySelectorAll("button")].map((b) => b.id)) === '["feWatch"]' && c.nextElementSibling.id === "bhNewRecipe"; })());
   check("with no recipes Build playlists is hidden", bt_e.document.getElementById("create").hidden);
-  check("with no recipes no status lines show (Python, Spotify, notices)", bt_e.document.body.classList.contains("no-recipes") && /body\.no-recipes #pythonNote, body\.no-recipes #spotifyNote, body\.no-recipes #editorNote, body\.no-recipes #formatEditor \.fe-caption \{ display: none; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
-  bt_e.document.getElementById("feNewFormat").click();
-  check("the welcome goes as soon as New recipe opens (the draft is a recipe)", !bt_e.document.getElementById("feWelcome"));
+  check("with no recipes no status lines show (Python, Spotify, notices)", bt_e.document.body.classList.contains("no-recipes"));
+  bt_e.document.getElementById("bhNewRecipe").click();
   bt_e.document.getElementById("feNewFormatCancel").click();
-  check("and comes back on Cancel", !!bt_e.document.getElementById("feWelcome") && bt_e.document.getElementById("create").hidden);
+  check("New recipe and Cancel leave the welcome as it was", !!bt_e.document.getElementById("feWelcome") && bt_e.document.getElementById("recipePanelWrap").hidden);
   addNamed(bt_e, "First");
-  check("and goes once there is a recipe, and Build playlists is back", !bt_e.document.getElementById("feWelcome") && !!bt_e.document.getElementById("feCard") && !bt_e.document.getElementById("create").hidden && !bt_e.document.body.classList.contains("no-recipes"));
+  check("a new recipe opens in the panel as new (Cancel and Save changes), and the landing lists it with no welcome", !bt_e.document.getElementById("feWelcome") && !!bt_e.document.getElementById("feCard") && !bt_e.document.getElementById("recipePanelWrap").hidden && !bt_e.document.getElementById("rpFoot").classList.contains("rp-clean") && bt_e.document.querySelector("#bhRecipes .bh-recipe .bh-name").textContent === "First" && !bt_e.document.body.classList.contains("no-recipes"));
   check("with recipes there is no welcome", !bt_w.document.getElementById("feWelcome"));
   // Duplicate asks first
   bt_w.document.querySelectorAll("#feTabs .fe-tab")[0].click();
@@ -3262,6 +3266,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var ns_last = ns_w.__scrollLog[ns_w.__scrollLog.length - 1];
   check("after a recipe is added, the tabs are scrolled to the new one once the menu button is in place, so the room it has is the room it will keep", !!ns_last && ns_last.menuThere === true && ns_last.selected === "Three", JSON.stringify(ns_w.__scrollLog));
   ns_w.__scrollLog.length = 0;
+  ns_w.document.getElementById("rpSave").click();
+  await ns_w.openRecipePanel(ns_w.editor.activeId);
+  ns_w.__scrollLog.length = 0;
   ns_w.document.getElementById("feDuplicate").click();
   ns_w.document.getElementById("feDuplicateConfirm").click();
   var ns_dup = ns_w.__scrollLog[ns_w.__scrollLog.length - 1];
@@ -3289,7 +3296,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   tv_d.getElementById("infoClose").click();
   var tv_b = await boot({ url: EDURL, session: signedIn(), local: { formats: "FORMATS = {}" }, fetchOptions: {} }), tv_bd = tv_b.document;
   var tv_watch = tv_bd.getElementById("feWatch");
-  check("the first-recipe card has Watch how it works with a frame, under its lead line", !!tv_watch && tv_watch.previousElementSibling.classList.contains("fe-welcome-lead") && !!tv_watch.querySelector(".tv-frame") && tv_watch.querySelector("b").textContent === "Watch how it works");
+  check("the first-recipe card has Watch how it works with a frame, under what a recipe is", !!tv_watch && tv_watch.previousElementSibling.classList.contains("fe-welcome-text") && !!tv_watch.querySelector(".tv-frame") && tv_watch.querySelector("b").textContent === "Watch how it works");
   tv_watch.click();
   check("it opens the tutorial popup", tv_bd.getElementById("infoOverlay").hidden === false && tv_bd.getElementById("infoSlot").firstElementChild.id === "tutorialSection");
   var tv_v = tv_bd.querySelector("#tutorialPlayer video");
@@ -3761,7 +3768,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   sp_w.eval("spotifySaveDelayMs = 30; saveTip.quietMs = 50");
   await waitFor(() => sp_w.eval("saveTip.open"), 8000);
   var sp_tip = sp_w.document.querySelector(".fe-st-tip");
-  check("after the first save a pointer opens with the wording, a Got it button and the blur", sp_w.eval("saveTip.open") && sp_tip && sp_tip.textContent.includes("Recipes automatically save to Spotify as you edit. You\u2019ll see this cloud while saving.") && /Got it/.test(sp_tip.querySelector(".fe-st-ok").textContent) && !!sp_w.document.querySelector(".fe-st-blur"));
+  check("after the first save a pointer opens with the wording, a Got it button and the blur", sp_w.eval("saveTip.open") && sp_tip && sp_tip.textContent.includes("Saved recipes go to Spotify. You\u2019ll see this cloud while saving.") && /Got it/.test(sp_tip.querySelector(".fe-st-ok").textContent) && !!sp_w.document.querySelector(".fe-st-blur"));
   check("it is remembered at once, so it never comes back", sp_w.localStorage.getItem("saveTipShown") === "1");
   check("the menu button shows the cloud while the pointer is open", sp_w.document.getElementById("feAppMenuButton").classList.contains("fe-saving"));
   check("the blur leaves a hole around the button", /evenodd/.test(sp_w.document.querySelector(".fe-st-blur").style.clipPath || ""));
@@ -3825,12 +3832,14 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // an edit updates that format's save
   ss_w1.document.body.click();
   rowsOf(ss_w1)[0].querySelector(".fe-inc").click();
+  await saveRecipe(ss_w1);
   await waitFor(() => ss_writes(ss_o1, "update").some((x) => x.description), 5000);
   var ss_u = ss_writes(ss_o1, "update").filter((x) => x.description)[0];
   check("an edit brings the save of that format up to date: its revision is 1 now, and it is the playlist made for it", ss_w0.unpackFormat(ss_u.description).format.rev === 1 && ss_w0.unpackFormat(ss_u.description).format.id === "f1" && ss_u.id === ss_c.find((x) => x.name.startsWith("Alpha")).id);
   check("and the other format's save is not touched", ss_writes(ss_o1, "update").filter((x) => x.description).every((x) => x.id !== ss_c.find((y) => y.name.startsWith("Beta")).id));
   // a rename
   ss_w1.eval('editor.model.formats[0].title = "Alpha 2"; commit();');
+  await saveRecipe(ss_w1);
   await waitFor(() => ss_writes(ss_o1, "update").some((x) => x.name === "Alpha 2 (recipe)"), 5000);
   check("renaming the format renames its save", ss_writes(ss_o1, "update").some((x) => x.name === "Alpha 2 (recipe)" && x.id === ss_u.id));
   // deleting a format removes its save
@@ -3926,18 +3935,17 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   for (let i = 0; i < 5; i++) { rowsOf(sp_w1)[0].querySelector(".fe-inc").click(); await new Promise((r) => setTimeout(r, 30)); }
   await new Promise((r) => setTimeout(r, 20));
   check("a quick run of edits is not saved one by one: nothing is written while they go on", sp_ups(sp_o1).length === sp_base);
+  await new Promise((r) => setTimeout(r, 900));
+  check("edits are not saved to Spotify until Save changes, however long they wait", sp_ups(sp_o1).length === sp_base && /"dirty":true/.test(sp_w1.localStorage.getItem("recipeEditing") || ""));
+  await saveRecipe(sp_w1);
   await waitFor(() => sp_ups(sp_o1).length > sp_base, 4000);
   await new Promise((r) => setTimeout(r, 400));
-  check("and once they stop, it is saved once, with all of them in it", sp_ups(sp_o1).length === sp_base + 1 && sp_w1.unpackFormat(sp_ups(sp_o1)[sp_base].description).format.items[0].minutes === 55);
-  // a long run of edits is saved from time to time
-  var sp_before = sp_ups(sp_o1).length;
-  for (let i = 0; i < 20; i++) { rowsOf(sp_w1)[0].querySelector(".fe-inc").click(); await new Promise((r) => setTimeout(r, 60)); }
-  check("edits that go on and on are still saved along the way, at the latest after the longest wait", sp_ups(sp_o1).length > sp_before);
-  await new Promise((r) => setTimeout(r, 500));
+  check("and once saved, it is saved once, with all of them in it", sp_ups(sp_o1).length === sp_base + 1 && sp_w1.unpackFormat(sp_ups(sp_o1)[sp_base].description).format.items[0].minutes === 55 && !sp_w1.localStorage.getItem("recipeEditing"));
   // not during a build
   var sp_k = sp_ups(sp_o1).length;
   sp_w1.eval("busy = true");
   rowsOf(sp_w1)[0].querySelector(".fe-inc").click();
+  await saveRecipe(sp_w1);
   await new Promise((r) => setTimeout(r, 500));
   check("while a plan or a build is under way, nothing is saved", sp_ups(sp_o1).length === sp_k);
   sp_w1.eval("busy = false");
@@ -3950,11 +3958,16 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   sp_w2.document.body.click();
   rowsOf(sp_w2)[0].querySelector(".fe-inc").click();
   await new Promise((r) => setTimeout(r, 300));
-  check("with a long pause set, nothing has been saved yet", sp_ups(sp_o2).length === 0);
+  check("an edit not saved yet sends nothing", sp_ups(sp_o2).length === 0);
   Object.defineProperty(sp_w2.document, "visibilityState", { value: "hidden", configurable: true });
   sp_w2.document.dispatchEvent(new sp_w2.Event("visibilitychange"));
+  await new Promise((r) => setTimeout(r, 300));
+  check("nor does hiding the page: changes not saved stay in this browser as Unsaved changes", sp_ups(sp_o2).length === 0 && /"dirty":true/.test(sp_w2.localStorage.getItem("recipeEditing") || ""));
+  Object.defineProperty(sp_w2.document, "visibilityState", { value: "visible", configurable: true });
+  sp_w2.eval("spotifySaveDelayMs = 60000");
+  sp_w2.document.getElementById("rpSave").click();
   await waitFor(() => sp_ups(sp_o2).length === 1, 4000);
-  check("but when the page is hidden, because someone left it or switched to another app, whatever is waiting is saved at once", sp_ups(sp_o2).length === 1);
+  check("Save changes sends them at once, whatever the usual pause", sp_ups(sp_o2).length === 1);
   } catch (err) { areaCrashed("save pacing", err); } }
 
   if (want("backup cover")) { try {
@@ -3974,6 +3987,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("and it is not the cover of the playlists the app builds", bc_covers(bc_o1).every((x) => x.base64 !== fs.readFileSync(ROOT + "playlist-cover.jpg").toString("base64")));
   bc_w1.document.body.click();
   rowsOf(bc_w1)[0].querySelector(".fe-inc").click();
+  await saveRecipe(bc_w1);
   await waitFor(() => bc_o1.writes.some((x) => x.type === "update" && x.description), 5000);
   await new Promise((r) => setTimeout(r, 300));
   check("an update does not send the cover again", bc_covers(bc_o1).length === 2);
@@ -4686,7 +4700,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => /4 by others/.test(sc_d.getElementById("msCardText").textContent), 8000);
   check("the shared playlist library's card on Arc's home has three lines: its name, Bring some, get some!, and how many playlists others share, the number set apart", sc_d.querySelector("#msCard .hp-text > b").textContent === "Shared playlist library" && sc_d.querySelector("#msCard .hp-tag").textContent === "Bring some, get some!" && sc_d.getElementById("msCardText").textContent === "0 shares by you, 4 by others" && sc_d.querySelectorAll("#msCardText .hp-num")[1].textContent === "4" && !sc_d.querySelector("#msCard img") && !!sc_d.getElementById("msCard").closest("#homePage"));
   check("reading the library for the card starts no overlap reading while the popup is closed", sc_w.eval("sharing.overlap === null && !sharing.reading"));
-  check("Arc's home, with the card, shows only on the app page's home view, and the builder's parts only in the builder", /html\.page-app\.view-home #homePage \{ display: block; \}/.test(Array.from(sc_d.querySelectorAll("style")).map((x) => x.textContent).join("")) && /html\.page-app:not\(\.view-builder\) #appSection > :is\(#formatEditor, #editorNote, #buildRow/.test(Array.from(sc_d.querySelectorAll("style")).map((x) => x.textContent).join("")));
+  check("Arc's home, with the card, shows only on the app page's home view, and the builder's parts only in the builder", /html\.page-app\.view-home #homePage \{ display: block; \}/.test(Array.from(sc_d.querySelectorAll("style")).map((x) => x.textContent).join("")) && /html\.page-app:not\(\.view-builder\) #appSection > :is\(#builderHome, #recipePanelWrap, #editorNote, #buildRow/.test(Array.from(sc_d.querySelectorAll("style")).map((x) => x.textContent).join("")));
   check("on connecting, a device that never read the person's shares reads them once and keeps the list (none here), so later visits do not ask again", sc_w.localStorage.getItem("sharingMineIds") === "[]" && /let known = !!sharing\.mine;[\s\S]{0,200}if \(!known\) loadMine\(\)/.test(fs.readFileSync(ROOT + "sharing.js", "utf8")));
   var sc_own = { words: {}, posts: [], deletes: [], reports: [], shares: sc_sh.shares.map((x, i) => Object.assign({}, x, i < 2 ? { owner: "ron", playlist: "p" + i } : {})) };
   var sc_o = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", devMode: "1" }, fetchOptions: { sharing: sc_own } });
@@ -5243,6 +5257,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the first failure, for a known reason, is said in the line, with Try again, and does not interrupt with a popup", /Couldn.t save to Spotify\./.test(capText(b7_known.w)) && !b7_known.w.document.getElementById("feSyncDialog") && b7_known.w.eval("saveState.failures") === 1);
   b7_known.w.document.body.click();
   rowsOf(b7_known.w)[0].querySelector(".fe-inc").click();
+  await saveRecipe(b7_known.w);
   await waitFor(() => !!b7_known.w.document.getElementById("feSyncDialog"), 8000);
   var b7_d = b7_known.w.document.getElementById("feSyncDialog");
   check("a second failure in a row opens a popup, once, saying the latest changes haven't been saved yet, that a backup on this device keeps them safe, and what happened", !!b7_d && /Your recipes couldn.t be saved to Spotify/.test(b7_d.textContent) && /latest changes haven.t been saved to Spotify yet/.test(b7_d.textContent) && /backup on this device/.test(b7_d.textContent) && /What happened: /.test(b7_d.textContent));
@@ -5253,7 +5268,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   b7_known.w.document.getElementById("feSyncChoice0").click();
   await new Promise((r) => setTimeout(r, 300));
   check("Back up now backs up to this device, and says so", b7_files.length === 1 && /RECIPES/.test(b7_files[0].text) && /Backed up to this device/.test(capText(b7_known.w)));
-  check("it asks only once while the saves keep failing", (() => { b7_known.w.document.body.click(); rowsOf(b7_known.w)[0].querySelector(".fe-inc").click(); return true; })());
+  b7_known.w.document.body.click(); rowsOf(b7_known.w)[0].querySelector(".fe-inc").click(); await saveRecipe(b7_known.w);
+  check("it asks only once while the saves keep failing", true);
   await new Promise((r) => setTimeout(r, 600));
   check("so a third failure does not open it again", !b7_known.w.document.getElementById("feSyncDialog") && b7_known.w.eval("saveState.failures") >= 3);
   b7_known.o.putFails = false;
@@ -5280,7 +5296,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-11j"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-12a"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5605,6 +5621,63 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var rs_key = (a, b) => rs_ws.eval(`songKey(${JSON.stringify(a)}) === songKey(${JSON.stringify(b)})`);
   check("it points out the same song with a remaster note, or other case, accents, or punctuation, and not a live, acoustic or remix version, which is a different song", rs_key("Pink Floyd - Time", "Pink Floyd - Time - 2011 Remaster") && rs_key("Beyoncé - Halo", "Beyonce - Halo (Remastered 2020)") && rs_key("Simon & Garfunkel - The Sound of Silence", "simon and garfunkel - the sound of silence - remastered") && !rs_key("Pink Floyd - Time", "Pink Floyd - Time (Live)") && !rs_key("Radiohead - Creep", "Radiohead - Creep (Acoustic)") && !rs_key("Artist - Song", "Artist - Song (Remix)"));
   } catch (err) { areaCrashed("recipe session", err); } }
+
+  if (want("builder landing and participants")) { try {
+  // ================================================================ the builder's landing, the recipe panel with explicit saving, and participants (Ron, 2026-11-12)
+  var bl_two = 'FORMATS = {"f1": {"title": "Alpha", "name": "Alpha {n}", "silence between segments": "30 sec", "segments": [("A", 20), ("B", 10)]}, "f2": {"title": "Beta", "name": "Beta {n}", "segments": [("C", 15)]}}';
+  var bl_MADE = "Made by Arc. Please do not edit this description. The app uses it to recognize the playlists it made.";
+  var bl_people = [{ id: "q1", name: "Alpha · MC · 3 Oct", owner: { id: "ron" }, description: bl_MADE + " For participant MC. Built 3 Oct 2026." }, { id: "q2", name: "Beta · T7 · 28 Oct", owner: { id: "ron" }, description: bl_MADE + " For participant T7. Built 28 Oct 2026." }, { id: "q3", name: "Alpha 1", owner: { id: "ron" }, description: bl_MADE + " Playlist 1 of 1, built 1 Oct 2026." }];
+  var bl = await boot({ url: EDURL, session: signedIn(), local: { formats: bl_two }, fetchOptions: { extraPlaylists: bl_people }, panel: false }), bd = bl.document;
+  var bl_rows = () => Array.from(bd.querySelectorAll("#bhRecipes .bh-recipe"));
+  check("the landing lists New recipe first, then each recipe with its length and segments, its shape, and Build", bd.getElementById("bhRecipes").querySelector(".bh-row").id === "bhNewRecipe" && bl_rows().map((r) => r.querySelector(".bh-name").textContent).join() === "Alpha,Beta" && bl_rows()[0].querySelector(".bh-sub").textContent === "31 min · 2 segments" && bl_rows()[0].querySelectorAll(".bh-shape span").length === 3 && bl_rows()[0].querySelector(".bh-build").textContent === "Build", bl_rows().map((r) => r.textContent).join("|"));
+  check("outside developer mode Participants is greyed with Soon, and the recipe panel is closed", bd.getElementById("bhTabPeople").disabled && bd.getElementById("recipePanelWrap").hidden);
+  bl_rows()[0].click();
+  check("a recipe opens in the panel, its name as the title, with Done only", !bd.getElementById("recipePanelWrap").hidden && bd.getElementById("rpTitle").textContent === "Alpha" && bd.getElementById("rpFoot").classList.contains("rp-clean"));
+  rowsOf(bl)[0].querySelector(".fe-inc").click();
+  check("an edit shows Cancel and Save changes, and is kept in this browser as unsaved", !bd.getElementById("rpFoot").classList.contains("rp-clean") && /"dirty":true/.test(bl.localStorage.getItem("recipeEditing")) && bl.eval("heldRecipeId()") === "f1");
+  rowsOf(bl)[0].querySelector(".fe-dec").click();
+  check("undoing it is no change: Done again", bd.getElementById("rpFoot").classList.contains("rp-clean") && !bl.localStorage.getItem("recipeEditing"));
+  rowsOf(bl)[0].querySelector(".fe-inc").click();
+  bd.dispatchEvent(new bl.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  var bl_q = bd.getElementById("feSyncDialog");
+  check("Escape with changes asks Discard changes? with Keep editing and Discard", !!bl_q && bl_q.querySelector("h3").textContent === "Discard changes?" && Array.from(bl_q.querySelectorAll("button")).map((b) => b.textContent).join() === "Keep editing,Discard");
+  bd.getElementById("feSyncChoice1").click();
+  await new Promise((r) => setTimeout(r, 20));
+  check("Discard closes the panel and puts the recipe back", bd.getElementById("recipePanelWrap").hidden && bl.eval("editor.model.formats[0].items[0].minutes") === 20 && /\("A", 20\)|A.*20/.test(bl.localStorage.getItem("formats")) && !bl.localStorage.getItem("recipeEditing"));
+  bl_rows()[1].click();
+  rowsOf(bl)[0].querySelector(".fe-inc").click();
+  bd.getElementById("rpSave").click();
+  check("Save changes closes the panel, keeps the change, and nothing is held", bd.getElementById("recipePanelWrap").hidden && bl.eval("editor.model.formats[1].items[0].minutes") === 20 && !bl.localStorage.getItem("recipeEditing") && bl.eval("heldRecipeId()") === null);
+  bl_rows()[0].click();
+  rowsOf(bl)[0].querySelector(".fe-inc").click();
+  bd.getElementById("rpCancel").click();
+  check("Cancel puts it back too", bl.eval("editor.model.formats[0].items[0].minutes") === 20 && bd.getElementById("recipePanelWrap").hidden);
+  // a closed tab keeps unsaved changes
+  bl_rows()[0].click();
+  rowsOf(bl)[0].querySelector(".fe-inc").click();
+  var bl2 = await boot({ url: EDURL, session: signedIn(), local: { formats: bl.localStorage.getItem("formats"), recipeEditing: bl.localStorage.getItem("recipeEditing") }, fetchOptions: { extraPlaylists: bl_people }, panel: false });
+  check("after a reload the recipe with changes says Unsaved changes on the landing", bl2.document.querySelector('#bhRecipes .bh-recipe[data-id="f1"] .bh-sub').textContent === "Unsaved changes");
+  await bl2.openRecipePanel("f1");
+  bl2.document.getElementById("rpCancel").click();
+  check("and Cancel then still goes back to the recipe as it was before", bl2.eval("editor.model.formats[0].items[0].minutes") === 20);
+  // participants
+  check("a participant's playlists are known by their description, with when they were built", bl.eval("participantOf(" + JSON.stringify(bl_people[0].description) + ")") === "MC" && bl.eval("participantOf('For participant MC. Built 3 Oct 2026.')") === "" && new Date(bl.eval("builtAtOf(" + JSON.stringify(bl_people[0].description) + ")")).getMonth() === 9);
+  check("participantList groups them by code, the latest first", JSON.stringify(bl.eval("participantList().map((p) => p.code + p.playlists.length)")) === '["T71","MC1"]');
+  check("a participant's playlist is never part of a recipe's set (not replaced or removed with it)", bl.eval("recipeMatches(modelToText(editor.model), ['f1']).map((p) => p.id).join()") === "q3");
+  check("their playlist is named recipe, code and day, and its description says who it is for", bl.eval("participantPlaylistName('Alpha', 'MC', new Date(2026, 10, 14))") === "Alpha · MC · 14 Nov" && /For participant MC\. Built 14 Nov 2026\.$/.test(bl.eval("builtDescription({}, 1, 1, new Date(2026, 10, 14), 'MC')")));
+  var bd3 = await boot({ url: EDURL, session: signedIn(), local: { formats: bl_two, devMode: "1" }, fetchOptions: { extraPlaylists: bl_people }, panel: false });
+  check("in developer mode Participants opens a list: New participant, then each code", !bd3.document.getElementById("bhTabPeople").disabled && (() => { bd3.document.getElementById("bhTabPeople").click(); return Array.from(bd3.document.querySelectorAll("#bhPeople .bh-code")).map((c) => c.textContent).join() === "T7,MC" && /Just a code, no identifying info/.test(bd3.document.getElementById("bhNewPerson").textContent); })());
+  bd3.document.querySelector('#bhPeople [data-code="MC"]').click();
+  check("a participant's page builds their next playlist and lists theirs", /Build MC's next playlist/.test(bd3.document.getElementById("bhNext").textContent) && bd3.document.querySelectorAll("#bhPeople a.bh-row").length === 1);
+  bd3.document.getElementById("bhTabRecipes").click();
+  await waitFor(() => !bd3.document.querySelector('#bhRecipes .bh-recipe[data-id="f1"] .bh-build').disabled, 15000);
+  bd3.document.querySelector('#bhRecipes .bh-recipe[data-id="f1"] .bh-build').click();
+  var bl_who = bd3.document.getElementById("bhDialog");
+  check("in developer mode Build asks Who is it for?, A set of playlists or One playlist for a participant", !!bl_who && /Who is it for\?/.test(bl_who.textContent) && /A set of playlists/.test(bl_who.textContent) && /One playlist for a participant/.test(bl_who.textContent));
+  bd3.document.getElementById("bhDialogCancel").click();
+  var bl_src = fs.readFileSync(ROOT + "engine.py", "utf8");
+  check("engine.py puts songs not heard first and leaves heard ones out when there are enough", /HEARD = \{\}/.test(bl_src) && /song_id\(t\) in HEARD/.test(bl_src) && /heard_json/.test(bl_src));
+  } catch (err) { areaCrashed("builder landing and participants", err); } }
 
   if (want("newer version")) { try {
   // ================================================================ a newer version on the site

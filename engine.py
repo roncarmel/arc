@@ -12,6 +12,11 @@ import unicodedata
 
 MIN_FILL = 0.9  # a segment must reach at least this fraction of its target minutes
 
+# Songs a participant has heard, for a playlist built for them: song id -> when it was last in one of their playlists (a number, larger is later).
+# Set by build_playlists for one run. pick() takes songs not in it first, then the ones heard longest ago, so a song comes back only when the
+# fresh ones run out. Empty for an ordinary build.
+HEARD = {}
+
 # Silent tracks, keyed by length in seconds. Longer pauses are built by combining them, so a
 # silence of 2.5 min uses one 30 sec and two 1 min tracks. They may repeat in every playlist
 # and never count toward segment minutes.
@@ -42,6 +47,13 @@ def pick(tracks, minutes, used):
     pool = [t for t in tracks if song_id(t) not in used]
     random.shuffle(pool)
     pool.sort(key=lambda t: bool(t.get("shared")))
+    if HEARD:
+        # for a participant: the songs they have not heard, then the ones heard longest ago (the sort keeps the order above within each)
+        pool.sort(key=lambda t: (song_id(t) in HEARD, HEARD.get(song_id(t), 0)))
+        fresh_ms = sum(t["ms"] for t in pool if song_id(t) not in HEARD)
+        if fresh_ms >= target * MIN_FILL:
+            # enough fresh songs: the heard ones are not used, even to land closer to the minutes
+            pool = [t for t in pool if song_id(t) not in HEARD]
     chosen, rest, total = [], [], 0
     for t in pool:
         if target - total < 30_000:  # within 30 seconds, done
@@ -450,9 +462,12 @@ def shared_count(cache, music):
     return sum(1 for n in count.values() if n > 1)
 
 
-def build_playlists(formats_text, key, tracks_json, max_n=None, reserved_json="[]"):
+def build_playlists(formats_text, key, tracks_json, max_n=None, reserved_json="[]", heard_json="{}"):
     """One planning run that gives both the preview text and everything needed to create the playlists:
-    names and ordered song URIs, silence included. Creating from this result makes exactly what was previewed."""
+    names and ordered song URIs, silence included. Creating from this result makes exactly what was previewed.
+    heard_json, for a playlist built for a participant: {song id: when last heard}, songs to use only when the fresh ones run out."""
+    global HEARD
+    HEARD = json.loads(heard_json or "{}") or {}
     fmt = parse_formats(formats_text)[key]
     cache = _cache_from(tracks_json)
     limit = int(max_n) if max_n else 200
@@ -497,6 +512,7 @@ def build_playlists(formats_text, key, tracks_json, max_n=None, reserved_json="[
             # there are enough minutes, but the song lengths cannot add up to the segment's length closely enough
             has = next((r["has"] for r in sources if r["name"] == stopped[1]), round(stopped[3], 1))
             short = [{"name": stopped[1], "need": stopped[2], "has": has, "fit": True}]
+    HEARD = {}   # only for this run
     return json.dumps({"key": key, "playlists": playlists, "sources": sources, "ranOut": ran_out, "short": short,
                        "shared": shared_count(cache, music),
                        "stopped": _stop_message(stopped) if stopped else None,
