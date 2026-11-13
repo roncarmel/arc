@@ -876,10 +876,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-12zl" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-12zm" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-12zl/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-12zm/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2529,30 +2529,23 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_adds = sr_o.writes.filter((x) => x.type === "add");
   check("when Spotify refuses 100 songs at a time, the build goes on 10 at a time, asking with 100 only once", sr_o.addRefused === 1 && sr_adds.length > 1 && sr_adds.every((a) => a.uris.length <= 10), `${sr_o.addRefused} ${sr_adds.length}`);
   check("and the record notes it", (sr_record(sr_b, "spotifyLimits") || []).some((e) => /100 songs per add refused/.test(e.note || "")));
-  // the owner is offered a copy; nobody else is
-  var sr_id = "OWNER-TEST-ID";
+  // the request log: copied from the DEV menu, never offered
   var sr_limits = JSON.stringify([{ at: Date.now() - 1000, what: "POST /playlists/{id}/items", kind: "add", reason: "", sent30s: 40, sent10m: 90, sent1h: 300, sent24h: 300, refusedAgain: 0, lastRefusedAt: Date.now() - 1000, clearedAt: null }]);
+  var sr_id = "OWNER-TEST-ID";
   var sr_x = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, clientId: "SOMEONE-ELSE", spotifyLimits: sr_limits }, fetchOptions: {} });
   await waitFor(() => sr_x.eval("connection") === "ready");
-  sr_x.localStorage.setItem("sharingOwner", JSON.stringify({ account: sr_x.localStorage.getItem("spotifyAccount"), owner: false }));   // the worker said no
-  await sr_x.eval("offerLimitRecord()");
-  sr_x.eval("editor.appMenu = true; renderAppMenu()");
-  check("someone the worker does not call the owner gets no offer and no menu item", !sr_x.eval("notices.held") && !sr_x.document.getElementById("feCopyRecord"));
   var sr_ow = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, clientId: sr_id, spotifyLimits: sr_limits }, fetchOptions: {} });
   await waitFor(() => sr_ow.eval("connection") === "ready");
   sr_ow.localStorage.setItem("sharingOwner", JSON.stringify({ account: sr_ow.localStorage.getItem("spotifyAccount"), owner: true }));   // the worker said yes
-  await sr_ow.eval("offerLimitRecord()");
-  check("the owner is offered the record when Spotify refused since the last copy", /Spotify refused requests once since the last copy/.test((sr_ow.eval("notices.held") || {}).text || ""), JSON.stringify(sr_ow.eval("notices.held")));
+  check("the owner is not offered the request log after a refusal", !sr_ow.eval("notices.held") && sr_ow.eval("typeof offerLimitRecord") === "undefined");
   sr_ow.eval("editor.appMenu = true; renderAppMenu()");
   check("Copy Spotify request log is not in the builder menu, even for the owner: it is in the DEV menu", !sr_ow.document.getElementById("feCopyRecord") && !!sr_ow.document.querySelector("#devMenu #devCopyRecord") && /Copy Spotify request log/.test(sr_ow.document.getElementById("devCopyRecord").textContent));
   var sr_copied = "";
   sr_ow.navigator.clipboard = { writeText: async (t) => { sr_copied = t; } };
   await sr_ow.eval("copyLimitRecord()");
   var sr_json = JSON.parse(sr_copied || "{}");
-  check("Copy puts the record on the clipboard and marks it copied", sr_json.limits && sr_json.limits.length === 1 && sr_json.callsPerMinute && sr_json.app && Number(sr_ow.localStorage.getItem("spotifyRecordCopiedAt")) > 0 && !sr_ow.eval("notices.held"));
+  check("Copy puts the record on the clipboard and marks it copied", sr_json.limits && sr_json.limits.length === 1 && sr_json.callsPerMinute && sr_json.app && Number(sr_ow.localStorage.getItem("spotifyRecordCopiedAt")) > 0);
   check("the record has no Client ID, token or playlist names", !/OWNER-TEST-ID|TOKEN|mini/.test(sr_copied), sr_copied.slice(0, 200));
-  await sr_ow.eval("offerLimitRecord()");
-  check("right after a copy nothing is offered again", !sr_ow.eval("notices.held"));
   // after a rate limit with no readable wait, any device asks the relay for it
   const sr_relayRun = async (w, { relayUrl = "https://relay.example.workers.dev/", answer = { status: 429, retryAfter: "14689", reason: "QUOTA_EXCEEDED" }, path = "/playlists/0123456789abcdefABCDEF/items", noWait = false, header = null, hang = false } = {}) => {
     const seen = [];
@@ -2957,7 +2950,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-12zl", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-12zm", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -5280,7 +5273,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-12zl"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-12zm"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

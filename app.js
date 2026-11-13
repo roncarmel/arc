@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-12zl";
+const APP_VERSION = "2026-11-12zm";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2149,7 +2149,6 @@ async function connectToSpotify() {
     setConnection("ready");
     endLimitWait();
     logStep(`connected, ${plural(playlists.length, "playlist")} found`);
-    offerLimitRecord();
     if (!localStorage.getItem("counted") && countEvent("first-connection")) localStorage.setItem("counted", "1");   // once per browser
     countActiveDay();
   } catch (err) {
@@ -2746,21 +2745,7 @@ async function copyLimitRecord() {
   try { await navigator.clipboard.writeText(limitRecordText()); }
   catch (err) { showNotices([{ text: "The Spotify request log could not be copied.", transient: true }]); return; }
   try { localStorage.setItem("spotifyRecordCopiedAt", String(Date.now())); } catch (err) { /* private browsing */ }
-  if (typeof clearHeldNotice === "function") clearHeldNotice();
   showNotices([{ text: "Spotify request log copied. Paste it into the chat with Claude.", transient: true }]);
-}
-
-// For the owner: once connected, a held message offers the record when Spotify has refused since the last copy, or a week has passed with requests sent.
-async function offerLimitRecord() {
-  if (!checkOwner()) return;
-  if (typeof renderAppMenu === "function") renderAppMenu();
-  const copiedAt = Number(localStorage.getItem("spotifyRecordCopiedAt")) || 0;
-  const refusals = readRecord(LIMITS_KEY, []).filter((e) => !e.note && e.at > copiedAt).length;
-  const weekOld = Date.now() - copiedAt > 7 * 86400000 && Object.keys(readRecord(CALLS_KEY, {})).some((m) => Number(m) * 60000 > copiedAt);
-  if (!refusals && !weekOld) return;
-  if (typeof notices !== "undefined" && notices.held) return;   // a held message (a newer version) comes first
-  const text = refusals ? `Spotify refused requests ${refusals === 1 ? "once" : refusals + " times"} since the last copy of the request log.` : "A week of Spotify request counts is ready to copy.";
-  showNotices([{ text, icon: "copy", hold: true, actions: [{ label: "Copy", run: () => copyLimitRecord() }] }]);
 }
 
 const coverImages = {};   // each cover file as a JPEG in base64, which is how Spotify takes cover art
