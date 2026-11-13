@@ -876,10 +876,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-13n" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-13o" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-13n/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-13o/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2950,7 +2950,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-13n", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-13o", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -5304,7 +5304,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-13n"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-13o"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5790,6 +5790,51 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   bd4.eval("setPersonOpen(null)");
   bd4.eval("openPersonPanel('ZQ9')");
   check("folded and opened again, the mark is gone", !bd4.document.querySelector("#bhPeople .pp-new") && bd4.document.querySelectorAll('#bhPeople [data-code="ZQ9"] a.bh-pl').length === 1);
+  // Heard before (Ron, 2026-11-13): playlists a participant heard before Arc, carried in their playlists' descriptions, no playlist of its own
+  var hb_id = "4" + "a".repeat(21), hb_ids15 = Array.from({ length: 16 }, (_, i) => "4" + String(i).padStart(2, "0") + "b".repeat(19));
+  check("the Heard before list packs into a description and reads back; 15 fit in the 300 characters Spotify shows, with a 4-letter code", (() => {
+    const d = bd4.eval(`builtDescription({}, 1, 1, new Date(2026, 10, 14), 'ABCD', ${JSON.stringify(hb_ids15)})`);
+    const back = bd4.eval(`heardOf(${JSON.stringify(d)})`);
+    return d.length <= 300 && back.length === 15 && back.every((x, i) => x === hb_ids15[i]) && bd4.eval(`participantOf(${JSON.stringify(d)})`) === "ABCD" && builtOk(d);
+    function builtOk(t) { return new Date(bd4.eval(`builtAtOf(${JSON.stringify(t)})`)).getDate() === 14; }
+  })());
+  check("replacing the list keeps the rest of the description, and an edited list reads as none", (() => {
+    const d = bd4.eval(`withHeard(builtDescription({}, 1, 1, new Date(2026, 10, 14), 'MC', ['${hb_id}']), [])`);
+    const two = bd4.eval(`withHeard(builtDescription({}, 1, 1, new Date(2026, 10, 14), 'MC', ['${hb_id}']), ['${hb_id}', '${hb_ids15[0]}'])`);
+    return /For participant MC\. Built 14 Nov 2026\.$/.test(d) && bd4.eval(`heardOf(${JSON.stringify(two)}).length`) === 2 && bd4.eval(`heardOf(${JSON.stringify(two.slice(0, -3) + "\u4e00\u4e00\u4e00")}).length`) === 0;
+  })());
+  TRACKS[hb_id] = TRACKS.p4.map((it) => (it && it.track && it.track.uri ? { track: { ...it.track, uri: it.track.uri.replace("p4", "hb") } } : it));
+  var hb_fo = { extraPlaylists: bl_people.concat([{ id: hb_id, name: "Old circle", owner: { id: "ron" }, description: "" }]) };
+  var hb = await boot({ url: EDURL, session: signedIn(), local: { formats: bl_g, devMode: "1" }, fetchOptions: hb_fo, panel: false });
+  await waitFor(() => / ready$/.test(hb.document.getElementById("pythonStatus").textContent), 15000);
+  hb.eval("builderHome.tab = 'recipes'; renderBuilderHome()");
+  await waitFor(() => !hb.document.querySelector('#bhRecipes .bh-recipe[data-id="g1"] .bh-build').disabled, 15000);
+  hb.document.querySelector('#bhRecipes .bh-recipe[data-id="g1"] .bh-build').click();
+  if (!hb.document.getElementById("bhWhoNew") || hb.document.querySelector(".bh-dd-add").hidden) { hb.document.getElementById("bhWho").click(); hb.document.getElementById("bhWhoAdd").click(); }
+  (() => { const f = hb.document.getElementById("bhWhoNew"); f.value = "hb"; f.dispatchEvent(new hb.window.Event("input")); })();
+  check("a new participant's code is followed by Heard before · optional, Add previously heard playlists and what it does", (() => { const sec = hb.document.querySelector(".hb-section"); return !!sec && /^Heard before · optional$/.test(sec.querySelector(".wf-label").textContent) && hb.document.getElementById("hbNewAdd").textContent.trim() === "Add previously heard playlists" && sec.querySelector(".hb-hint").textContent === "Arc treats every song in them as heard and prioritizes new music."; })());
+  hb.document.getElementById("hbNewAdd").click();
+  var hb_items = () => Array.from(hb.document.querySelectorAll(".hb-panel .hb-item"));
+  check("it opens a list of the person's own playlists (not Arc's), ticked by a tap, and Add N", hb_items().some((b) => /Old circle/.test(b.textContent)) && !hb_items().some((b) => /·/.test(b.querySelector(".bh-pl-name").textContent)) && hb.document.getElementById("hbNewAddN").disabled && (() => { hb_items().find((b) => /Old circle/.test(b.textContent)).click(); return hb.document.getElementById("hbNewAddN").textContent === "Add 1" && !hb.document.getElementById("hbNewAddN").disabled; })());
+  hb.document.getElementById("hbNewAddN").click();
+  check("added, it is a line with an X, and the button says Add more", hb.document.querySelectorAll(".hb-lines .hb-line").length === 1 && /Old circle/.test(hb.document.querySelector(".hb-lines").textContent) && hb.document.getElementById("hbNewAdd").textContent.trim() === "Add more");
+  hb.document.getElementById("hbNewAdd").click();
+  check("opened again, the ones already in are ticked like the rest, fixed, with Already in where the songs go", (() => { const b = hb_items().find((x) => /Old circle/.test(x.textContent)); return b.classList.contains("hb-on") && b.disabled && b.querySelector(".bh-pl-sub").textContent === "Already in"; })());
+  hb.document.dispatchEvent(new hb.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  check("Escape closes the list first", hb.document.querySelector(".hb-panel").hidden && !!hb.document.getElementById("whoForWrap"));
+  hb.document.getElementById("bhDialogNext").click();
+  await waitFor(() => hb_fo.writes && hb_fo.writes.some((w) => w.type === "create") && !!hb.document.querySelector("#bhPeople .pp-new"), 15000);
+  var hb_made = hb_fo.writes.find((w) => w.type === "create");
+  check("the first playlist carries the list in its description, and nothing waits in the tab any more", !!hb_made && JSON.stringify(hb.eval(`heardOf(${JSON.stringify(hb_made.description)})`)) === JSON.stringify([hb_id]) && /For participant HB\./.test(hb_made.description) && !hb.sessionStorage.getItem("pendingHeard").includes("HB"), hb_made && hb_made.description);
+  check("no extra playlist is made for it", hb_fo.writes.filter((w) => w.type === "create").length === 1);
+  check("the participant's line says 1 playlist + 1 heard, and their open row lists it under Heard before, with Add previously heard playlists by the trash", (() => {
+    const card = hb.document.querySelector('#bhPeople .bh-person[data-code="HB"]');
+    return !!card && card.querySelector(".bh-phead .bh-sub").textContent === "1 playlist + 1 heard" && card.querySelector(".hb-subhead").textContent === "Heard before" && /Old circle/.test(card.querySelector(".hb-row").textContent) && card.querySelector(".hb-foot").firstElementChild.id === "hbAdd" && !!card.querySelector(".hb-foot .bh-pdel");
+  })(), hb.document.getElementById("bhPeople").textContent);
+  check("its songs count as heard, longest ago of all", await hb.eval(`Promise.all([heardBy('HB'), loadTracks('${hb_id}')]).then(([r, t]) => t.length > 0 && t.every((x) => (x.key || x.uri) in r.songs))`) && await hb.eval(`(setPendingHeard('NEW', ['${hb_id}']), Promise.all([heardBy('NEW'), loadTracks('${hb_id}')])).then(([r, t]) => (setPendingHeard('NEW', null), t.every((x) => r.songs[x.key || x.uri] === 0)))`));
+  hb.document.getElementById("hbAdd").click();
+  check("Add previously heard playlists opens Heard before · HB, the one already in ticked with Already in, and Add greyed", hb.document.getElementById("hbTitle").textContent === "Heard before · HB" && (() => { const b = Array.from(hb.document.querySelectorAll("#heardBefore .hb-item")).find((x) => /Old circle/.test(x.textContent)); return b.classList.contains("hb-on") && /Already in/.test(b.textContent); })() && hb.document.getElementById("hbSheetAdd").disabled);
+  hb.document.getElementById("hbSheetCancel").click();
   var bl_src = fs.readFileSync(ROOT + "engine.py", "utf8");
   check("engine.py puts songs not heard first and leaves heard ones out when there are enough", /HEARD = \{\}/.test(bl_src) && /song_id\(t\) in HEARD/.test(bl_src) && /heard_json/.test(bl_src));
   } catch (err) { areaCrashed("builder landing and participants", err); } }

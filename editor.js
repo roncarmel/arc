@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13n";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13o";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2870,7 +2870,7 @@ function shortDate(time) { const d = new Date(time); return `${d.getDate()} ${MO
 function builtWhen(time) { const d = new Date(time); return d.getFullYear() === new Date().getFullYear() ? shortDate(time) : String(d.getFullYear()); }
 // The line under a participant's code, in the list and in Build a playlist's card
 // short: the row, beside Build playlist, has room only for the day (Ron, 2026-11-12)
-function personLine(person, short) { const n = person.playlists.length; if (!n) return "Nothing built yet"; const count = n === 1 ? "1 playlist" : n + " playlists"; return short ? count : `${count} \u00b7 ${`most recent ${builtWhen(person.last)}`.replace(/ /g, "\u00a0")}`; }
+function personLine(person, short) { const n = person.playlists.length; if (!n) return "Nothing built yet"; const heard = person.heard && person.heard.length; const count = (n === 1 ? "1 playlist" : n + " playlists") + (heard ? ` + ${heard} heard` : ""); return short ? count : `${count} \u00b7 ${`most recent ${builtWhen(person.last)}`.replace(/ /g, "\u00a0")}`; }
 
 // How to build, with the sparkle drawn small in the sentence, like the recipes' note (Ron, 2026-11-12)
 function sparkleHow(cls, before, after) { return feEl("p", { class: cls }, before, feEl("span", { class: "bh-mini", "aria-hidden": "true" }, bhSvg(BH_SPARK)), after); }
@@ -2976,11 +2976,25 @@ function personPlaylists(person) {
       // the open mark (or Open) sits under the row's chevron, in one column with the trash (Ron, 2026-11-13)
       feEl("span", { class: "bh-pl-end" }, isNew ? feEl("span", { class: "pp-open" }, bhSvg(BH_OPEN), feEl("span", { text: "Open" })) : bhSvg(BH_OPEN))));
   }
+  // Heard before (Ron, 2026-11-13, mockups/earlier-playlists 4): under a small heading, faded covers and grey names, each linking to Spotify;
+  // one Spotify no longer has says so in place of the mark
+  if (person.heard && person.heard.length) {
+    box.appendChild(feEl("p", { class: "hb-subhead", text: "Heard before" }));
+    for (const id of person.heard) {
+      const info = heardInfo(id);
+      if (info.gone) box.appendChild(feEl("div", { class: "bh-pl hb-row hb-gone" }, feEl("span", { class: "bh-cover" }), feEl("span", { class: "bh-pl-name", text: info.name || "A playlist" }), feEl("span", { class: "hb-gone-note", text: "No longer in Spotify" })));
+      else box.appendChild(feEl("a", { class: "bh-pl hb-row", href: `https://open.spotify.com/playlist/${id}`, target: "_blank", rel: "noopener" },
+        feEl("span", { class: "bh-cover", style: info.image ? `background-image:url("${info.image}")` : "" }),
+        feEl("span", { class: "bh-pl-name", text: info.name || "\u2026" }),
+        feEl("span", { class: "bh-pl-end" }, bhSvg(BH_OPEN))));
+    }
+  }
   // Delete at the foot, a red trash in a small circle at the right: the question that follows has the big button (Ron, 2026-11-12, mockups/participant-delete B);
-  // greyed as refreshBuildButtons says
+  // greyed as refreshBuildButtons says. Add previously heard playlists at its left (Ron, 2026-11-13).
   if (person.playlists.length) {
     const paused = typeof spotifyPause === "function" && !!spotifyPause();
-    box.appendChild(feEl("div", { class: "bh-pdel-foot" },
+    box.appendChild(feEl("div", { class: "bh-pdel-foot hb-foot" },
+      feEl("button", { type: "button", class: "hb-addlink", id: "hbAdd", disabled: busy || paused || person.heard.length >= HEARD_MAX, onClick: () => askHeardBefore(code) }, feIcon("plus"), "Add previously heard playlists"),
       feEl("button", { type: "button", class: "bh-pdel bh-del", "aria-label": `Delete ${code}`, title: `Delete ${code}`, disabled: busy || paused, onClick: () => askDeleteParticipant(code) }, bhSvg(BH_BIN))));
   }
   return box;
@@ -3284,6 +3298,122 @@ function pickRecipeFor(code) {
 // participant: it is the only kind), the recipe as a card with its shape, then Choose a participant, a drop-down whose panel is a grid of code squares, four to a row, the most recently built
 // first (participantList's order), each with the day of its latest playlist (D1). Find a code at its top is only a search; + New stays the first square and
 // turns the drop-down into a code entry. (no line on how much is new to them: it confused, Ron, 2026-11-12). Resolves with the code, or null.
+// ---------------------------------------------------------------- Heard before (Ron, 2026-11-13, mockups/earlier-playlists)
+// Playlists a participant heard before Arc: chosen as they are added (Who is it for?, + New) or later from their row. Every song in them counts as heard
+// (heardBy in app.js), and the list rides in their playlists' descriptions (packHeard). Nothing is copied and no playlist is made for it.
+const HEARD_HOW = "Arc treats every song in them as heard and prioritizes new music.";
+const HB_FIND_FROM = 6;
+// What the row shows for one: from the playlist list, else read once by its ID (a playlist taken out of the library is still in Spotify), else gone
+const heardCache = new Map();
+function heardInfo(id) {
+  const p = (playlists || []).find((q) => q.id === id);
+  if (p) return { name: p.name, image: p.image, count: p.count };
+  if (heardCache.has(id)) return heardCache.get(id);
+  heardCache.set(id, {});
+  spotifyRequest("GET", `/playlists/${id}?fields=name,images`).then((r) => {
+    heardCache.set(id, { name: r.name, image: Array.isArray(r.images) && r.images.length ? r.images[r.images.length - 1].url : null });
+  }, (err) => {
+    heardCache.set(id, /\b404\b|not found/i.test(String(err && err.message)) ? { gone: true } : {});
+  }).then(() => renderParticipantList());
+  return {};
+}
+// The playlists that can be chosen: the person's own (as recipe sources are), not Arc's, saves or participants'. already: chosen before, ticked like the rest with
+// Already in where the song count goes, and fixed. Returns { el, chosen(), clear() }; onChange runs as ticks change.
+function heardPicker(already, onChange) {
+  const picked = new Set();
+  const candidates = readablePlaylists().filter((p) => !p.participant);
+  const room = () => HEARD_MAX - already.length - picked.size;
+  const search = feEl("input", { type: "text", class: "bh-dd-search hb-search", placeholder: "Find a playlist", autocomplete: "off", spellcheck: "false", "aria-label": "Find a playlist", enterkeyhint: "search" });
+  const list = feEl("div", { class: "hb-list", role: "group", "aria-label": "Your playlists" });
+  const note = feEl("p", { class: "hb-note", hidden: true });
+  function item(p) {
+    const had = already.includes(p.id), on = had || picked.has(p.id);
+    return feEl("button", { type: "button", class: "hb-item" + (on ? " hb-on" : ""), role: "checkbox", "aria-checked": String(on), "data-id": p.id,
+      disabled: had || (!on && room() <= 0),
+      onClick: () => { if (picked.has(p.id)) picked.delete(p.id); else if (room() > 0) picked.add(p.id); paint(); onChange(); } },
+      feEl("span", { class: "hb-check", html: on ? HB_TICK : "" }),
+      feEl("span", { class: "bh-cover", style: p.image ? `background-image:url("${p.image}")` : "" }),
+      feEl("span", { class: "bh-pl-name", text: p.name }),
+      feEl("span", { class: "bh-pl-sub", text: had ? "Already in" : p.count === null || p.count === undefined ? "" : p.count === 1 ? "1 song" : `${p.count} songs` }));
+  }
+  function paint() {
+    const typed = search.value.trim().toLowerCase();
+    const shown = candidates.filter((p) => p.name.toLowerCase().includes(typed));
+    list.replaceChildren(...shown.map(item));
+    note.hidden = !(room() <= 0 || !shown.length);
+    note.textContent = !candidates.length ? "You have no playlists of your own to choose from." : !shown.length ? "No playlist matches." : `Up to ${HEARD_MAX} playlists.`;
+  }
+  search.addEventListener("input", paint);
+  paint();
+  const el = feEl("div", { class: "hb-picker" }, candidates.length >= HB_FIND_FROM ? feEl("label", { class: "bh-dd-find hb-find" }, feIcon("search"), search) : null, list, note);
+  return { el, chosen: () => candidates.filter((p) => picked.has(p.id)).map((p) => p.id), clear: () => { picked.clear(); search.value = ""; paint(); } };
+}
+const HB_TICK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>';
+const HB_X = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+const plText = (n) => n === 1 ? "1 playlist" : `${n} playlists`;
+
+// Heard before for a new participant, in Who is it for? under the code (mockups/earlier-playlists 1 to 3): the chosen ones a line each with an X, Add previously
+// heard playlists (Add more once some are chosen) opening the list under it with Add N. Returns { el, ids(), open(), close(), reset() }.
+function heardSection() {
+  let ids = [], picker = null;
+  const lines = feEl("div", { class: "hb-lines" });
+  const add = feEl("button", { type: "button", class: "bh-row bh-add hb-add", id: "hbNewAdd", onClick: () => open() }, feIcon("plus"), feEl("span", {}));
+  const hint = feEl("p", { class: "bh-hint hb-hint", text: HEARD_HOW });
+  const addN = feEl("button", { type: "button", class: "hb-addn", id: "hbNewAddN", disabled: true, onClick: () => { ids = ids.concat(picker.chosen()); close(); } });
+  const panel = feEl("div", { class: "hb-panel", hidden: true });
+  function paint() {
+    lines.replaceChildren(...ids.map((id) => {
+      const p = heardInfo(id);
+      return feEl("div", { class: "hb-line" },
+        feEl("span", { class: "bh-cover", style: p.image ? `background-image:url("${p.image}")` : "" }),
+        feEl("span", { class: "bh-pl-name", text: p.name || "" }),
+        feEl("span", { class: "bh-pl-sub", text: p.count === null || p.count === undefined ? "" : `${p.count} songs` }),
+        feEl("button", { type: "button", class: "hb-x", "aria-label": `Remove ${p.name || "playlist"}`, html: HB_X, onClick: () => { ids = ids.filter((x) => x !== id); paint(); } }));
+    }));
+    add.lastChild.textContent = ids.length ? "Add more" : "Add previously heard playlists";
+    add.hidden = !panel.hidden || ids.length >= HEARD_MAX;
+    hint.hidden = !panel.hidden;
+  }
+  function open() {
+    picker = heardPicker(ids, () => { const n = picker.chosen().length; addN.disabled = !n; addN.textContent = n ? `Add ${n}` : "Add"; });
+    addN.disabled = true;
+    addN.textContent = "Add";
+    panel.replaceChildren(picker.el, feEl("div", { class: "hb-panel-foot" }, addN));
+    panel.hidden = false;
+    paint();
+    try { panel.scrollIntoView({ block: "nearest" }); } catch (err) { /* old browsers */ }
+  }
+  function close() { panel.hidden = true; panel.textContent = ""; paint(); try { add.focus({ preventScroll: true }); } catch (err) { /* old browsers */ } }
+  paint();
+  const el = feEl("div", { class: "hb-section" }, feEl("p", { class: "wf-label" }, "Heard before ", feEl("span", { class: "hb-opt", text: "\u00b7 optional" })), lines, add, panel, hint);
+  return { el, ids: () => ids.slice(), isOpen: () => !panel.hidden, close, reset: () => { ids = []; if (!panel.hidden) close(); else paint(); } };
+}
+
+// Add previously heard playlists, from a participant's row (mockups/earlier-playlists 5): a sheet like Who is it for?, the list with the ones already in ticked
+// and marked Already in, Cancel and Add N playlists. The list is written into their newest playlist's description (addHeardBefore in app.js).
+function askHeardBefore(code) {
+  const action = connectionAction();
+  if (action) { action(); return; }
+  const person = participantList().find((p) => p.code === code);
+  if (!person) return;
+  const problem = feEl("div", { class: "hb-problem" });
+  const go = feEl("button", { type: "button", class: "wf-build", id: "hbSheetAdd", disabled: true, onClick: async () => {
+    const ids = picker.chosen();
+    if (!ids.length) return;
+    go.disabled = true;
+    problem.textContent = "";
+    try { await addHeardBefore(code, ids); popup.close(true); renderParticipantList(); }
+    catch (err) { problem.replaceChildren(problemBox("The playlists were not added", `${cleanError(err)} Try again.`)); go.disabled = false; }
+  } }, feIcon("plus"), feEl("span", { text: "Add" }));
+  const picker = heardPicker(person.heard, () => { const n = picker.chosen().length; go.disabled = !n; go.lastChild.textContent = n ? `Add ${plText(n)}` : "Add"; });
+  const sheet = feEl("div", { class: "rp-sheet wf-sheet", id: "heardBefore", role: "dialog", "aria-modal": "true", "aria-labelledby": "hbTitle" },
+    wfHead("hbTitle", `Heard before \u00b7 ${code}`, (v) => popup.close(v)),
+    feEl("div", { class: "wf-body" }, feEl("p", { class: "bh-hint hb-sheet-hint", text: HEARD_HOW }), picker.el, problem),
+    feEl("div", { class: "wf-foot" }, feEl("button", { type: "button", class: "wf-cancel", id: "hbSheetCancel", onClick: () => popup.close(null) }, "Cancel"), go));
+  const popup = wfPopup("heardBefore", sheet, () => false);
+  return popup.promise;
+}
+
 const CODE_HOW = "Just a code of your choosing, no identifying info. 1 to 4 letters or numbers.";
 const WF_CANCEL = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 const BH_CARET = '<svg class="bh-dd-caret" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
@@ -3308,8 +3438,12 @@ function askWhoFor(id) {
   const adder = feEl("div", { class: "bh-dd-add", hidden: true },
     feEl("div", { class: "bh-dd-newline" }, newBadge, newInput, feEl("button", { type: "button", class: "bh-dd-back", id: "bhWhoNewCancel", onClick: () => stopAdding() }, "Back")),
     feEl("p", { class: "bh-hint bh-dd-hint", text: CODE_HOW }));
+  const heard = heardSection();
+  adder.appendChild(heard.el);
+  // a new participant's Heard before waits in this tab for their first playlist (setPendingHeard in app.js)
+  const finish = () => { if (!code) return; if (adding) setPendingHeard(code, heard.ids()); close(code); };
   const cancel = feEl("button", { type: "button", class: "wf-cancel", id: "bhDialogCancel", onClick: () => close(null) }, bhSvg(WF_CANCEL), "Cancel");
-  const next = feEl("button", { type: "button", class: "wf-build", id: "bhDialogNext", disabled: true, onClick: () => { if (code) close(code); } }, bhSvg(BH_SPARK), "Build playlist");
+  const next = feEl("button", { type: "button", class: "wf-build", id: "bhDialogNext", disabled: true, onClick: finish }, bhSvg(BH_SPARK), "Build playlist");
 
   const tile = (person) => feEl("button", { type: "button", class: "bh-tile" + (person.code === code ? " bh-on" : ""), role: "option", "aria-selected": String(person.code === code), "data-code": person.code, onClick: () => choose(person.code) },
     codeBadge(person.code), feEl("small", { text: shortDate(person.last) }));
@@ -3360,6 +3494,7 @@ function askWhoFor(id) {
   }
   function stopAdding() {
     adding = false;
+    heard.reset();
     adder.hidden = true;
     dd.hidden = false;
     code = "";
@@ -3387,7 +3522,7 @@ function askWhoFor(id) {
     else if (options.length === 1) choose(options[0].dataset.code);
   });
   newInput.addEventListener("input", () => { const c = cleanCode(newInput.value); if (c !== newInput.value) newInput.value = c; paintBadge(newBadge, c); code = c; next.disabled = !c; });
-  newInput.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); if (code) close(code); } });
+  newInput.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); finish(); } });
 
   const sheet = feEl("div", { class: "rp-sheet wf-sheet", id: "whoFor", role: "dialog", "aria-modal": "true", "aria-labelledby": "wfTitle",
     onClick: (event) => { if (open && !dd.contains(event.target)) setOpen(false); } },
@@ -3398,6 +3533,7 @@ function askWhoFor(id) {
   // Escape closes the drop-down first, then a new code's entry, then the popup
   const popup = wfPopup("whoFor", sheet, () => {
     if (open) { setOpen(false); field.focus(); return true; }
+    if (adding && heard.isOpen()) { heard.close(); return true; }
     if (adding) { stopAdding(); return true; }
     return false;
   });
