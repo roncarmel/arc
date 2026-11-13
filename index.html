@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-13r">
-<script src="theme.js?v=2026-11-13r"></script>
+<meta name="app-version" content="2026-11-13s">
+<script src="theme.js?v=2026-11-13s"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -847,6 +847,8 @@
   .hb-addn { min-height: 0; margin: 0; padding: 8px 18px; border: 0; border-radius: 999px; box-shadow: none; background: var(--button); color: var(--on-button, #fff); font: inherit; font-weight: 700; cursor: pointer; }
   .hb-addn:disabled { opacity: 0.4; cursor: default; }
   .hb-sheet-hint { margin: 0 4px 12px; line-height: 1.4; }
+  .hb-sheet-body { padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+  .hb-sheet-body .hb-problem:not(:empty) { margin: 0 0 10px; }
   .hb-problem:not(:empty) { margin-top: 10px; }
   .hb-subhead { margin: 10px 0 2px; font-size: 0.72rem; line-height: 1; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
   .hb-row .bh-cover { opacity: 0.55; }
@@ -2829,10 +2831,10 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-13r"></script>
-<script src="editor.js?v=2026-11-13r"></script>
-<script src="shared-spotify.js?v=2026-11-13r"></script>
-<script src="app.js?v=2026-11-13r"></script>
-<script src="sharing.js?v=2026-11-13r"></script>
+<script src="formats.js?v=2026-11-13s"></script>
+<script src="editor.js?v=2026-11-13s"></script>
+<script src="shared-spotify.js?v=2026-11-13s"></script>
+<script src="app.js?v=2026-11-13s"></script>
+<script src="sharing.js?v=2026-11-13s"></script>
 </body>
 </html>

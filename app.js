@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-13r";
+const APP_VERSION = "2026-11-13s";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -3232,18 +3232,27 @@ function setPendingHeard(code, ids) {
   if (ids && ids.length) all[code] = ids.slice(0, HEARD_MAX); else delete all[code];
   try { sessionStorage.setItem("pendingHeard", JSON.stringify(all)); } catch (err) { /* private browsing */ }
 }
-// Adds Heard before playlists to a participant who has playlists: the list goes into their newest playlist's description (the next build carries it on)
-async function addHeardBefore(code, ids) {
+// Saves a participant's Heard before list (Ron, 2026-11-13: a real edit, once, on Done). Their playlists' lists are joined, so a playlist taken out has to leave
+// every one that carries it: those are rewritten, and the newest is rewritten when it differs, so the joined list is exactly ids. A failure partway leaves the
+// rest as they were; saving again finishes them.
+async function saveHeardBefore(code, ids) {
   const person = participantList().find((p) => p.code === code);
   if (!person || !person.latest) throw new Error("No playlist was found for " + code + ".");
-  const all = [...new Set([...person.heard, ...ids])].slice(0, HEARD_MAX);
-  const description = withHeard(person.latest.description, all);
-  await spotifyRequest("PUT", `/playlists/${person.latest.id}`, { json: { description } });
-  person.latest.description = description;
-  const entry = playlists.find((p) => p.id === person.latest.id);
-  if (entry) entry.description = description;
+  ids = ids.slice(0, HEARD_MAX);
+  const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+  let done = 0;
+  for (const p of person.playlists) {
+    const now = heardOf(p.description);
+    if (p === person.latest ? same(now, ids) : now.every((id) => ids.includes(id))) continue;
+    const description = withHeard(p.description, p === person.latest ? ids : now.filter((id) => ids.includes(id)));
+    await spotifyRequest("PUT", `/playlists/${p.id}`, { json: { description } });
+    p.description = description;
+    const entry = playlists.find((q) => q.id === p.id);
+    if (entry) entry.description = description;
+    done += 1;
+  }
   keepPlaylists();
-  logStep(`heard before: ${ids.length} added`);
+  logStep(`heard before: saved, ${done} rewritten`);
 }
 // A playlist for a participant: Deep journey · MC · 14 Nov, then (2), (3) if that is taken
 function participantPlaylistName(title, code, when = new Date()) {

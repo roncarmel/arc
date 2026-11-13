@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13r";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13s";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2990,11 +2990,11 @@ function personPlaylists(person) {
     }
   }
   // Delete at the foot, a red trash in a small circle at the right: the question that follows has the big button (Ron, 2026-11-12, mockups/participant-delete B);
-  // greyed as refreshBuildButtons says. Add previously heard playlists at its left (Ron, 2026-11-13).
+  // greyed as refreshBuildButtons says. Add previously heard playlists (Edit heard playlists once there are some) at its left (Ron, 2026-11-13).
   if (person.playlists.length) {
     const paused = typeof spotifyPause === "function" && !!spotifyPause();
     box.appendChild(feEl("div", { class: "bh-pdel-foot hb-foot" },
-      feEl("button", { type: "button", class: "hb-addlink", id: "hbAdd", disabled: busy || paused || person.heard.length >= HEARD_MAX, onClick: () => askHeardBefore(code) }, feIcon("plus"), "Add previously heard playlists"),
+      feEl("button", { type: "button", class: "hb-addlink", id: "hbAdd", disabled: busy || paused, onClick: () => askHeardBefore(code) }, feIcon(person.heard.length ? "pencil" : "plus"), person.heard.length ? "Edit heard playlists" : "Add previously heard playlists"),
       feEl("button", { type: "button", class: "bh-pdel bh-del", "aria-label": `Delete ${code}`, title: `Delete ${code}`, disabled: busy || paused, onClick: () => askDeleteParticipant(code) }, bhSvg(BH_BIN))));
   }
   return box;
@@ -3130,9 +3130,10 @@ function keepAboveKeyboard(overlay) {
 
 // The sheets Who is it for? and Which recipe? share (wf-*): the dim and the sheet with their motion, Escape (onEscape answers true when it closed something
 // inside first), the keyboard kept clear. Returns { close(value), promise }, the promise resolving with what close is given.
-function wfPopup(id, sheet, onEscape) {
+function wfPopup(id, sheet, onEscape, onDismiss) {
   let finish = null, unfit = () => {};
-  const wrap = feEl("div", { class: "rp-wrap", id: id + "Wrap" }, feEl("div", { class: "rp-dim", onClick: () => close(null) }), sheet);
+  // onDismiss (optional): a tap outside asks it first, and it answers true when it took care of closing
+  const wrap = feEl("div", { class: "rp-wrap", id: id + "Wrap" }, feEl("div", { class: "rp-dim", onClick: () => { if (!(onDismiss && onDismiss())) close(null); } }), sheet);
   const onKey = (event) => {
     if (event.key !== "Escape") return;
     event.preventDefault();
@@ -3317,28 +3318,32 @@ function heardInfo(id) {
   }).then(() => renderParticipantList());
   return {};
 }
-// The playlists that can be chosen: the person's own (as recipe sources are), not Arc's, saves or participants'. already: chosen before, ticked like the rest with
-// Already in where the song count goes, and fixed. Returns { el, chosen(), clear() }; onChange runs as ticks change.
-function heardPicker(already, onChange) {
-  const picked = new Set();
-  const candidates = readablePlaylists().filter((p) => !p.participant);
-  const room = () => HEARD_MAX - already.length - picked.size;
+// The playlists that can be chosen: the person's own (as recipe sources are), not Arc's, saves or participants'. already: chosen before, ticked like the rest
+// with Already in where the song count goes. They are fixed (Who is it for?, where an X takes one out) unless editing: then they untick too, and one
+// no longer in the library is listed first so it can be taken out. Returns { el, chosen(), changed() }; onChange runs as ticks change.
+function heardPicker(already, onChange, editing) {
+  const picked = new Set(editing ? already : []);
+  const own = readablePlaylists().filter((p) => !p.participant);
+  const extra = editing ? already.filter((id) => !own.some((p) => p.id === id)).map((id) => Object.assign({ id, name: "" }, heardInfo(id))) : [];
+  const candidates = extra.concat(own);
+  const isIn = (id) => picked.has(id) || (!editing && already.includes(id));
+  const room = () => HEARD_MAX - (editing ? 0 : already.length) - picked.size;
   const search = feEl("input", { type: "text", class: "bh-dd-search hb-search", placeholder: "Find a playlist", autocomplete: "off", spellcheck: "false", "aria-label": "Find a playlist", enterkeyhint: "search" });
   const list = feEl("div", { class: "hb-list", role: "group", "aria-label": "Your playlists" });
   const note = feEl("p", { class: "hb-note", hidden: true });
   function item(p) {
-    const had = already.includes(p.id), on = had || picked.has(p.id);
+    const had = already.includes(p.id), on = isIn(p.id), fixed = had && !editing;
     return feEl("button", { type: "button", class: "hb-item" + (on ? " hb-on" : ""), role: "checkbox", "aria-checked": String(on), "data-id": p.id,
-      disabled: had || (!on && room() <= 0),
+      disabled: fixed || (!on && room() <= 0),
       onClick: () => { if (picked.has(p.id)) picked.delete(p.id); else if (room() > 0) picked.add(p.id); paint(); onChange(); } },
       feEl("span", { class: "hb-check", html: on ? HB_TICK : "" }),
       feEl("span", { class: "bh-cover", style: p.image ? `background-image:url("${p.image}")` : "" }),
-      feEl("span", { class: "bh-pl-name", text: p.name }),
-      feEl("span", { class: "bh-pl-sub", text: had ? "Already in" : p.count === null || p.count === undefined ? "" : p.count === 1 ? "1 song" : `${p.count} songs` }));
+      feEl("span", { class: "bh-pl-name", text: p.name || (p.gone ? "A playlist" : "\u2026") }),
+      feEl("span", { class: "bh-pl-sub", text: had && on ? "Already in" : p.gone ? "No longer in Spotify" : p.count === null || p.count === undefined ? "" : p.count === 1 ? "1 song" : `${p.count} songs` }));
   }
   function paint() {
     const typed = search.value.trim().toLowerCase();
-    const shown = candidates.filter((p) => p.name.toLowerCase().includes(typed));
+    const shown = candidates.filter((p) => (p.name || "").toLowerCase().includes(typed));
     list.replaceChildren(...shown.map(item));
     note.hidden = !(room() <= 0 || !shown.length);
     note.textContent = !candidates.length ? "You have no playlists of your own to choose from." : !shown.length ? "No playlist matches." : `Up to ${HEARD_MAX} playlists.`;
@@ -3346,7 +3351,11 @@ function heardPicker(already, onChange) {
   search.addEventListener("input", paint);
   paint();
   const el = feEl("div", { class: "hb-picker" }, candidates.length >= HB_FIND_FROM ? feEl("label", { class: "bh-dd-find hb-find" }, feIcon("search"), search) : null, list, note);
-  return { el, chosen: () => candidates.filter((p) => picked.has(p.id)).map((p) => p.id), clear: () => { picked.clear(); search.value = ""; paint(); } };
+  // in the order of the list (the ones still in first, as they were)
+  const chosen = () => editing ? already.filter((id) => picked.has(id)).concat(candidates.filter((p) => picked.has(p.id) && !already.includes(p.id)).map((p) => p.id))
+    : candidates.filter((p) => picked.has(p.id)).map((p) => p.id);
+  const changed = () => { const c = chosen(); return c.length !== already.length || c.some((id, i) => id !== already[i]); };
+  return { el, chosen, changed };
 }
 const HB_TICK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>';
 const HB_X = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
@@ -3389,28 +3398,40 @@ function heardSection() {
   return { el, ids: () => ids.slice(), isOpen: () => !panel.hidden, close, reset: () => { ids = []; if (!panel.hidden) close(); else paint(); } };
 }
 
-// Add previously heard playlists, from a participant's row (mockups/earlier-playlists 5): a sheet like Who is it for?, the list with the ones already in ticked
-// and marked Already in, Cancel and Add N playlists. The list is written into their newest playlist's description (addHeardBefore in app.js).
+// Heard before from a participant's row (Ron, 2026-11-13): Add previously heard playlists while there are none, then Edit heard playlists. A sheet, Heard before · MC,
+// the list with the ones in ticked (Already in where the songs go) and untickable. No buttons at the foot, since the list can be long: as in the recipe panel, the X at
+// the top turns into a pink Done once something changes, and closing any way then saves (saveHeardBefore in app.js), so nothing closes without saving.
 function askHeardBefore(code) {
   const action = connectionAction();
   if (action) { action(); return; }
   const person = participantList().find((p) => p.code === code);
   if (!person) return;
+  let saving = false;
   const problem = feEl("div", { class: "hb-problem" });
-  const go = feEl("button", { type: "button", class: "wf-build", id: "hbSheetAdd", disabled: true, onClick: async () => {
-    const ids = picker.chosen();
-    if (!ids.length) return;
-    go.disabled = true;
+  const done = feEl("button", { type: "button", class: "primary rp-done", id: "hbDone", onClick: () => save() }, "Done");
+  const x = feEl("button", { type: "button", class: "rp-x", id: "hbClose", "aria-label": "Close", html: WF_X, onClick: () => leave() });
+  const picker = heardPicker(person.heard, () => { sheet.classList.toggle("rp-clean", !picker.changed()); problem.textContent = ""; }, true);
+  const sheet = feEl("div", { class: "rp-sheet wf-sheet rp-clean", id: "heardBefore", role: "dialog", "aria-modal": "true", "aria-labelledby": "hbTitle" },
+    feEl("div", { class: "wf-head" }, feEl("h2", { class: "wf-title", id: "hbTitle", text: `Heard before \u00b7 ${code}` }), done, x),
+    feEl("div", { class: "wf-body hb-sheet-body" }, feEl("p", { class: "bh-hint hb-sheet-hint", text: HEARD_HOW }), problem, picker.el));
+  async function save() {
+    if (saving) return;
+    if (!picker.changed()) { popup.close(null); return; }
+    saving = true;
+    done.disabled = true;
+    done.textContent = "Saving\u2026";
     problem.textContent = "";
-    try { await addHeardBefore(code, ids); popup.close(true); renderParticipantList(); }
-    catch (err) { problem.replaceChildren(problemBox("The playlists were not added", `${cleanError(err)} Try again.`)); go.disabled = false; }
-  } }, feIcon("plus"), feEl("span", { text: "Add" }));
-  const picker = heardPicker(person.heard, () => { const n = picker.chosen().length; go.disabled = !n; go.lastChild.textContent = n ? `Add ${plText(n)}` : "Add"; });
-  const sheet = feEl("div", { class: "rp-sheet wf-sheet", id: "heardBefore", role: "dialog", "aria-modal": "true", "aria-labelledby": "hbTitle" },
-    wfHead("hbTitle", `Heard before \u00b7 ${code}`, (v) => popup.close(v)),
-    feEl("div", { class: "wf-body" }, feEl("p", { class: "bh-hint hb-sheet-hint", text: HEARD_HOW }), picker.el, problem),
-    feEl("div", { class: "wf-foot" }, feEl("button", { type: "button", class: "wf-cancel", id: "hbSheetCancel", onClick: () => popup.close(null) }, "Cancel"), go));
-  const popup = wfPopup("heardBefore", sheet, () => false);
+    try { await saveHeardBefore(code, picker.chosen()); popup.close(true); renderParticipantList(); }
+    catch (err) {
+      problem.replaceChildren(problemBox("The changes were not saved", `${cleanError(err)} Tap Done to try again.`.replace("Tap", actWord(true))));
+      saving = false;
+      done.disabled = false;
+      done.textContent = "Done";
+    }
+  }
+  // Escape and a tap outside: closed when nothing changed, else they save, as Done does
+  function leave() { if (picker.changed()) save(); else popup.close(null); return true; }
+  const popup = wfPopup("heardBefore", sheet, leave, leave);
   return popup.promise;
 }
 
