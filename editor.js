@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zw";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zx";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2859,6 +2859,9 @@ function renderParticipantList() {
   const open = builderHome.person;
   // someone getting their first playlist shows while it is built, before Spotify lists it
   if (open && personBuild.code === open && !people.some((p) => p.code === open)) people.unshift({ code: open, playlists: [], last: 0 });
+  // the one being built (or just built) stays at the top, so the row never moves while it fills in
+  const building = personBuild.code && (personBuild.state === "now" || personBuild.state === "done") ? people.findIndex((p) => p.code === personBuild.code) : -1;
+  if (building > 0) people.unshift(people.splice(building, 1)[0]);
   if (!people.length) box.appendChild(feEl("div", { class: "bh-empty bh-people-empty" }, feEl("b", { text: "No participants yet" }),
     sparkleHow("", `${actWord(true)} a recipe\u2019s `, " button and choose + New to add one.")));
   for (const person of people) box.appendChild(personCard(person, person.code === open));

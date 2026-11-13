@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-12zw";
+const APP_VERSION = "2026-11-12zx";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2928,17 +2928,20 @@ const SILENCE_URIS = new Set(["spotify:track:5kiJ9x6eX37H5J9lyyXkua", "spotify:t
 
 // The playlists Arc built for each participant, from the playlist list already read: [{ code, playlists (newest first), last }], the most recent first
 function participantList() {
-  const by = new Map();
-  for (const p of playlists || []) {
-    if (!p.participant || (me && p.owner !== me.id)) continue;
+  const by = new Map(), place = new Map();
+  (playlists || []).forEach((p, i) => {
+    if (!p.participant || (me && p.owner !== me.id)) return;
     if (!by.has(p.participant)) by.set(p.participant, []);
     by.get(p.participant).push(p);
-  }
-  const people = [...by.entries()].map(([code, list]) => {
-    list.sort((a, b) => builtAtOf(b.description) - builtAtOf(a.description));
-    return { code, playlists: list, last: builtAtOf(list[0].description) };
+    place.set(p, i);
   });
-  return people.sort((a, b) => b.last - a.last || a.code.localeCompare(b.code));
+  // The description has the day only, so playlists built the same day keep Spotify's order (its newest first; a playlist just made is first after the list is read again)
+  const newer = (a, b) => builtAtOf(b.description) - builtAtOf(a.description) || place.get(a) - place.get(b);
+  const people = [...by.entries()].map(([code, list]) => {
+    list.sort(newer);
+    return { code, playlists: list, last: builtAtOf(list[0].description), latest: list[0] };
+  });
+  return people.sort((a, b) => newer(a.latest, b.latest) || a.code.localeCompare(b.code));
 }
 // What a participant has heard: every song in the playlists built for them, by the song's id as engine.py knows it (song_id), with when the playlist was built.
 // Reads their playlists' songs (kept in this browser after the first time). { songs: {id: time}, count }
