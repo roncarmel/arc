@@ -10,7 +10,7 @@
 // To add a theme, add a line to THEMES (the id is only for remembering the choice, so keep it the same once people may have chosen it; the name is what the list shows). To try two colors without changing any file, open the page with
 // ?accent=0a84ff&neutral=8a8a92 on the end of the address (hex colors; ?theme=reset goes back).
 // This file runs first, in the <head>, so the colors are in place before anything is drawn.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["theme.js"] = "2026-11-12zn";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["theme.js"] = "2026-11-12zo";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const THEMES = [   // in the order the swatches show: around the color wheel from Pink, row by row, Silver last (Ron, 2026-11-09)
   { id: "pinks-and-grays", name: "Pink", accent: "#ff38b8", neutral: "#8a8a92" },

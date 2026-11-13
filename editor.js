@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zn";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zo";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2230,7 +2230,8 @@ function askDeleteFormat() {
   const onKey = (event) => { if (event.key === "Escape") close(); };
   const cancel = feEl("button", { type: "button", id: "feDeleteCancel", onClick: close }, "Cancel");
   // with built playlists in the library, a box (not ticked) offers to remove them too
-  const built = typeof builtPlaylistsOf === "function" ? builtPlaylistsOf(f.id) : null;
+  // developer mode shows it as it will be once sets are gone (Ron, 2026-11-12): no box, and participants' playlists stay
+  const built = !devMode() && typeof builtPlaylistsOf === "function" ? builtPlaylistsOf(f.id) : null;
   const offer = built && built.length ? built : null;
   const title = f.title.trim() || "Untitled";
   const box = offer ? feEl("input", { type: "checkbox", id: "feDeleteBuilt" }) : null;
@@ -2251,6 +2252,7 @@ function askDeleteFormat() {
   const overlay = feEl("div", { class: "fe-overlay", id: "feDeleteDialog", onClick: close },
     feEl("div", { class: "fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": "Delete recipe", onClick: (e) => e.stopPropagation() },
       feEl("h3", { text: `Delete ${named(f.title.trim() || "Untitled")}?` }),
+      devMode() ? feEl("p", { class: "muted", text: `This permanently removes the recipe from this list${typeof backupMode === "function" && backupMode() === "spotify" ? " and from Spotify" : ""}. Playlists built from this recipe for participants stay. Are you sure you want to delete it?` }) :
       feEl("p", { text: `This removes the recipe and its ${rows === 1 ? "1 row" : rows + " rows"}.${offer ? "" : " Playlists already in Spotify are not affected."}${typeof backupMode === "function" && backupMode() === "spotify" ? " Its saved copy in Spotify is deleted too." : " Recipes can be restored from a backup file if you have one."}` }),
       offer ? feEl("label", { class: "fe-del-built" }, box, feEl("span", { text: `Also remove its ${offer.length === 1 ? "playlist" : offer.length + " playlists"} from Spotify` })) : null,
       offer ? feEl("p", { class: "fe-del-note", text: `Left unticked, ${offer.length === 1 ? "it stays" : "they stay"}, and you can remove ${offer.length === 1 ? "it" : "them"} later from Remove built playlists.` }) : null,
