@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-13s";
+const APP_VERSION = "2026-11-13t";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -3011,7 +3011,7 @@ async function loadMyPlaylists() {
   recordListRead(by);
   keepPlaylists();
   if (!playlistsComplete) askShortList(raw.filter(Boolean).length, total);
-  else if (pages.some((x) => x[4]) && devMode()) showNotices([{ text: "Spotify sent part of the playlist list short. Arc read it again and got all of it.", transient: true }]);
+  else if (pages.some((x) => x[4]) && devMode()) showNotices([{ text: "Spotify sent a short list. Read again, all there.", transient: true }]);
   // The count shown in Step 1 always matches the list, including after playlists are created or removed.
   playlistsLoadedAt = Date.now();
   $("connectedMessage").textContent = `Connected as ${me.display_name || me.id}. ${plural(playlists.length, "playlist")} found.`;
