@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-12zzc";
+const APP_VERSION = "2026-11-12zzd";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1566,8 +1566,9 @@ async function recordSyncAsk(asks, synced, remote, pendingDeletes, held) {
 
 // The functions that called this one, from the call stack, as "a < b < c" (no addresses or versions), for the record above.
 function callerTrail() {
-  const lines = String(new Error().stack || "").split("\n").map((x) => x.trim()).filter((x) => x && x !== "Error");
-  return lines.slice(2, 6).map((x) => x.replace(/^at /, "").replace(/\s*\(?(https?|file):\/\/\S*/, "").replace(/@.*$/, "") || "?").join(" < ");
+  // Chrome writes "at name (address)" under a line "Error", Safari and Firefox "name@address"; frames of the browser's own code and this function are left out
+  const lines = String(new Error().stack || "").split("\n").map((x) => x.trim()).filter((x) => x && x !== "Error" && !/\[native code\]|^callerTrail\b|^at callerTrail\b/.test(x));
+  return lines.slice(1, 5).map((x) => x.replace(/^at /, "").replace(/\s*\(?(https?|file):\/\/\S*/, "").replace(/@.*$/, "") || "?").join(" < ");
 }
 
 // Each time a save makes a new playlist for a recipe, what it saw is kept, the last 20 times, in the Spotify request log (limitRecordText): Ron found 7 saves
@@ -2871,6 +2872,7 @@ function forgetOtherAccount(id) {
 }
 
 async function loadMyPlaylists() {
+  const by = callerTrail();   // before the first wait: after it Safari's stack no longer shows the caller (the record came out blank, 2026-11-13)
   me = await spotify("/me");
   forgetOtherAccount(me.id);
   playlistLoads += 1;
@@ -2887,7 +2889,7 @@ async function loadMyPlaylists() {
   playlistsTotal = total;
   playlistPages = pages;
   if (total !== null && raw.length !== total) recordNote(`playlist list: ${raw.length} items, Spotify's total ${total}, pages [offset, items, total, next] ${JSON.stringify(pages)}`);
-  playlistsLoadedBy = callerTrail();
+  playlistsLoadedBy = by;
   playlists = raw.filter(Boolean).map((p) => ({
     id: p.id,
     name: p.name,
