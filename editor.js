@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13b";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13c";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2957,7 +2957,8 @@ function personPlaylists(person) {
     box.appendChild(feEl("a", { class: "bh-pl" + (isNew ? " pp-new" : ""), href: `https://open.spotify.com/playlist/${p.id}`, target: "_blank", rel: "noopener" },
       feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }),
       feEl("span", { class: "bh-pl-name", text: p.name.replace(` · ${code} · `, " · ") }),
-      isNew ? feEl("span", { class: "pp-open" }, bhSvg(BH_OPEN), feEl("span", { text: "Open" })) : bhSvg(BH_OPEN)));
+      // the open mark (or Open) sits under the row's chevron, in one column with the trash (Ron, 2026-11-13)
+      feEl("span", { class: "bh-pl-end" }, isNew ? feEl("span", { class: "pp-open" }, bhSvg(BH_OPEN), feEl("span", { text: "Open" })) : bhSvg(BH_OPEN))));
   }
   // Delete at the foot, a red trash in a small circle at the right: the question that follows has the big button (Ron, 2026-11-12, mockups/participant-delete B);
   // greyed as refreshBuildButtons says
