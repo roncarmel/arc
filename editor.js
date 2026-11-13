@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zd";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12ze";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2205,6 +2205,8 @@ function askDeleteFormat() {
     const alsoRemove = box && box.checked ? offer : null;
     editor.model.formats = editor.model.formats.filter((x) => x.id !== f.id);
     editor.activeId = editor.model.formats.length ? editor.model.formats[0].id : null;
+    // deleted from its row while it had unsaved changes: those go with it
+    if (!recipeEdit.open && recipeEdit.id === f.id) { Object.assign(recipeEdit, { id: null, before: null, dirty: false }); keepRecipeEditing(); }
     close();
     if (typeof noteFormatDeleted === "function") noteFormatDeleted(f.id);
     commit();
@@ -2319,6 +2321,8 @@ const builderHome = { tab: "recipes", person: null };
 const BH_SPARK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 2l1.8 5.6L17.5 9.5l-5.7 1.9L10 17l-1.8-5.6L2.5 9.5l5.7-1.9z"/><path d="M18 13l.9 2.6 2.6.9-2.6.9L18 20l-.9-2.6-2.6-.9 2.6-.9z"/></svg>';
 const BH_OPEN = '<svg class="bh-go" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
 const BH_BACK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
+const BH_PEN = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>';
+const BH_BIN = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M9 7V5h6v2M7 7l1 12h8l1-12"/></svg>';
 function bhSvg(markup) { const s = document.createElement("span"); s.style.display = "contents"; s.innerHTML = markup; return s; }
 
 // A switch of two halves (Music sharing's By others | By you, the builder's Recipes | Participants) can be dragged (Ron, 2026-11-10): the capsule follows the
@@ -2510,8 +2514,11 @@ function recipeRow(f) {
   const length = lengthText(shape.music + shape.quiet / 60) + (devMode() ? "" : ` · ${f.items.length === 1 ? "1 segment" : f.items.length + " segments"}`);
   const bar = feEl("span", { class: "bh-shape", "aria-hidden": "true" },
     ...shape.pieces.map((p) => feEl("span", { class: p.silence ? "bh-quiet" : undefined, style: p.style })));
-  const build = feEl("button", { type: "button", class: "bh-build", "data-id": f.id, onClick: (event) => { event.stopPropagation(); buildRecipe(f.id); } },
-    bhSvg(BH_SPARK), feEl("span", { text: buildWord() }));
+  const title = f.title.trim() || "Untitled";
+  const icons = feEl("span", { class: "bh-icons" },
+    rowIcon(BH_PEN, `Edit ${title}`, () => openRecipePanel(f.id)),
+    rowIcon(BH_BIN, `Delete ${title}`, () => deleteRecipeFromRow(f.id), "bh-del"),
+    rowIcon(BH_SPARK, buildWord(), () => buildRecipe(f.id), "bh-build", { "data-id": f.id }));
   const row = feEl("div", { class: "bh-row bh-recipe", role: "button", tabindex: "0", "data-id": f.id, "aria-label": `Edit ${f.title.trim() || "Untitled"}`,
     onClick: () => openRecipePanel(f.id),
     onKeyDown: (event) => { if ((event.key === "Enter" || event.key === " ") && event.target === row) { event.preventDefault(); openRecipePanel(f.id); } } },
@@ -2519,8 +2526,22 @@ function recipeRow(f) {
       feEl("span", { class: "bh-name", text: f.title.trim() || "Untitled" }),
       feEl("span", { class: "bh-sub" + (unsaved ? " bh-unsaved" : ""), text: unsaved ? "Unsaved changes" : length }),
       bar),
-    build);
+    icons);
   return row;
+}
+
+// The landing's row buttons are icons only (Ron, 2026-11-12, mockups/row-icons G): a grey pencil and trash, and Build as a white sparkle on a pink circle.
+// Their words are their labels (and tooltips); the sparkle's label follows what a tap does now (refreshBuildButtons).
+function rowIcon(svg, label, act, cls, attrs) {
+  return feEl("button", Object.assign({ type: "button", class: "bh-ib" + (cls ? " " + cls : ""), "aria-label": label, title: label,
+    onClick: (event) => { event.stopPropagation(); act(); } }, attrs || {}), bhSvg(svg));
+}
+
+// The trash on a recipe's row asks what Delete recipe in the panel asks
+function deleteRecipeFromRow(id) {
+  if (!editor.model || !editor.model.formats.some((f) => f.id === id)) return;
+  editor.activeId = id;
+  askDeleteFormat();
 }
 
 // A recipe's Build button: Build playlist in developer mode (one playlist for a participant), Build otherwise.
@@ -2532,12 +2553,15 @@ function refreshBuildButtons() {
   const action = connectionAction();
   const paused = typeof spotifyPause === "function" && !!spotifyPause();
   const ready = !!token && connection === "ready" && !!py && formatsValid && !busy && !paused;
-  const word = action ? (connection === "problem" && connectionKind !== "reconnect" ? "Try again" : "Connect") : buildWord();
+  const word = action ? (connection === "problem" && connectionKind !== "reconnect" ? "Try again" : "Connect to Spotify") : buildWord();
   for (const b of document.querySelectorAll("#builderHome .bh-build")) {
-    b.lastChild.textContent = word;
+    b.setAttribute("aria-label", word);
+    b.title = word;
     b.disabled = action ? busy : !ready;
     b.hidden = paused;
   }
+  // deleting a participant removes playlists in Spotify: not while something else is writing there or Spotify asked Arc to wait
+  for (const b of document.querySelectorAll("#bhPeople .bh-del")) b.disabled = busy || paused;
 }
 
 function buildRecipe(id) {
@@ -2811,16 +2835,45 @@ function renderParticipantList() {
 function personCard(person, open) {
   const code = person.code;
   const toggle = () => setPersonOpen(builderHome.person === code ? null : code);
-  const build = feEl("button", { type: "button", class: "bh-build", "data-code": code, onClick: (event) => { event.stopPropagation(); buildNextFor(code); } },
-    bhSvg(BH_SPARK), feEl("span", { text: buildWord() }));
+  const icons = feEl("span", { class: "bh-icons" },
+    rowIcon(BH_BIN, `Delete ${code}`, () => askDeleteParticipant(code), "bh-del"),
+    rowIcon(BH_SPARK, buildWord(), () => buildNextFor(code), "bh-build", { "data-code": code }));
   const head = feEl("div", { class: "bh-phead", role: "button", tabindex: "0", "aria-expanded": String(open), "aria-label": `${code}, ${personLine(person)}`, onClick: toggle,
     onKeyDown: (event) => { if ((event.key === "Enter" || event.key === " ") && event.target === head) { event.preventDefault(); toggle(); } } },
     codeBadge(code),
     feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: code }), feEl("span", { class: "bh-sub", text: personLine(person, true) })),
-    build);
+    icons);
   const card = feEl("div", { class: "bh-row bh-person" + (open ? " bh-open" : ""), "data-code": code }, head);
   if (open) card.appendChild(personPlaylists(person));
   return card;
+}
+
+// The trash on a participant's row (Ron, 2026-11-12, mockups/row-icons del): a participant exists only through the playlists Arc built for them, so deleting
+// one removes those playlists from Spotify, and with them what they have heard. The red button names how many, on its own row with Cancel under it.
+function askDeleteParticipant(code) {
+  const action = connectionAction();
+  if (action) { action(); return; }
+  const person = participantList().find((p) => p.code === code);
+  if (!person || !person.playlists.length) return;
+  const n = person.playlists.length;
+  const close = () => { overlay.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = (event) => { if (event.key === "Escape") close(); };
+  const cancel = feEl("button", { type: "button", id: "bhDeleteCancel", onClick: close }, "Cancel");
+  const confirm = feEl("button", { type: "button", class: "fe-danger-button", id: "bhDeleteConfirm", onClick: () => { close(); deleteParticipant(code, person.playlists); } },
+    `Delete ${code} and ${n === 1 ? "1 playlist" : n + " playlists"}`);
+  const list = feEl("div", { class: "bh-plist bh-del-list" }, ...person.playlists.map((p) => feEl("div", { class: "bh-pl" },
+    feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }),
+    feEl("span", { class: "bh-pl-name", text: p.name.replace(` \u00b7 ${code} \u00b7 `, " \u00b7 ") }),
+    feEl("span", { class: "bh-pl-sub", text: p.count === null || p.count === undefined ? "" : `${p.count} songs` }))));
+  const overlay = feEl("div", { class: "fe-overlay", id: "bhDeleteDialog", onClick: close },
+    feEl("div", { class: "fe-dialog bh-del-dialog", role: "dialog", "aria-modal": "true", "aria-label": `Delete ${code}`, onClick: (e) => e.stopPropagation() },
+      feEl("h3", { text: `Delete ${code}?` }),
+      feEl("p", { class: "bh-del-text", text: `${code} is here because of the ${n === 1 ? "playlist" : n + " playlists"} Arc built for them. Deleting ${code} removes ${n === 1 ? "it" : "them"} from your Spotify, and Arc forgets what ${code} has heard.` }),
+      list,
+      feEl("div", { class: "row bh-del-buttons" }, confirm, cancel)));
+  document.body.appendChild(overlay);
+  document.addEventListener("keydown", onKey);
+  cancel.focus();
 }
 
 // Build playlist on a participant's row: Connect first when not connected, else which recipe

@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-12zd">
-<script src="theme.js?v=2026-11-12zd"></script>
+<meta name="app-version" content="2026-11-12ze">
+<script src="theme.js?v=2026-11-12ze"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -681,13 +681,11 @@
   #appBar .ab-mi-text small { display: block; color: var(--muted); font-size: 0.8rem; line-height: 1.3; }
   #appBar .ab-soon { display: none; color: var(--muted); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
   #appBar .ab-mi:disabled .ab-soon { display: block; }
-  #appBar .ab-glyph { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 16%, transparent); }
-  #appBar .ab-glyph svg { width: 18px; height: 18px; fill: var(--accent); stroke: var(--accent); }
+  /* Every icon in the list is lit, like home's tool cards; the chosen row shows by its background and tick (Ron, 2026-11-12) */
+  #appBar .ab-glyph { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); }
+  #appBar .ab-glyph svg { width: 18px; height: 18px; fill: #fff; stroke: #fff; }
   #appBar .ab-glyph svg[fill="none"] { fill: none; }
   #appBar .ab-glyph svg rect { stroke: none; }
-  #appBar .ab-mi[aria-checked="true"] .ab-glyph { background: var(--accent); }
-  #appBar .ab-mi[aria-checked="true"] .ab-glyph svg { fill: #fff; stroke: #fff; }
-  #appBar .ab-mi[aria-checked="true"] .ab-glyph svg[fill="none"] { fill: none; }
   #appBar .ab-mi:disabled .ab-glyph { background: transparent; border: 1px dashed var(--line); box-sizing: border-box; }
   #appBar .ab-mi:disabled .ab-glyph svg { fill: var(--muted); stroke: var(--muted); }
   #appBar .ab-mi:disabled .ab-glyph svg[fill="none"] { fill: none; }
@@ -728,9 +726,6 @@
   .bh-shape { display: flex; gap: 3px; height: 9px; margin-top: 6px; max-width: 220px; }
   .bh-shape span { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
   .bh-shape span.bh-quiet { background: none; }
-  .bh-build { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 0; margin: 0; padding: 9px 15px; border-radius: 999px; border: 0; background: var(--button); color: var(--on-button, #fff); font: inherit; font-weight: 700; font-size: 0.92rem; cursor: pointer; }
-  .bh-build img { width: 18px; height: 18px; }
-  .bh-build:disabled { opacity: 0.45; cursor: default; }
   .bh-go { flex: none; color: var(--muted); }
   .bh-add { border-style: dashed; border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: transparent; }
   .bh-plus { width: 44px; height: 44px; flex: none; box-sizing: border-box; border-radius: 12px; border: 1.5px dashed var(--accent); display: grid; place-items: center; color: var(--accent); }
@@ -780,8 +775,20 @@
   .bh-phead { display: flex; align-items: center; gap: 12px; padding: 13px 12px 13px 14px; border-radius: 18px; cursor: pointer; }
   .bh-phead { gap: 10px; }
   .bh-phead .bh-sub { font-size: 0.86rem; }
-  .bh-phead .bh-build { padding: 9px 13px; gap: 5px; }
-  @media (max-width: 399px) { .bh-phead .bh-build svg { display: none; } .bh-phead .bh-build { padding: 9px 12px; } .bh-phead { gap: 8px; } }   /* the sparkle goes so the line beside it fits at 360 px */
+  /* the row's buttons, icons only (Ron, 2026-11-12, mockups/row-icons G): grey circles for edit and delete, Build a white sparkle on a pink circle */
+  .bh-icons { flex: none; display: inline-flex; align-items: center; gap: 6px; }
+  .bh-row.bh-recipe, .bh-phead { gap: 8px; }
+  .bh-ib { flex: none; width: 34px; height: 34px; min-height: 0; margin: 0; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: 0; box-shadow: none; color: var(--muted); background: color-mix(in srgb, var(--muted) 14%, transparent); cursor: pointer; }
+  .bh-ib.bh-build { background: var(--button); color: var(--on-button, #fff); }
+  .bh-ib.bh-build svg { width: 20px; height: 20px; }
+  .bh-ib:disabled { opacity: 0.45; cursor: default; }
+  .bh-ib:focus:not(:focus-visible) { outline: none; }
+  @media (hover: hover) { .bh-ib:not(.bh-build):not(:disabled):hover { filter: none; outline: none; background: color-mix(in srgb, var(--muted) 22%, transparent); } }
+  /* Delete a participant: grey text, their playlists, then the red button on its own row with Cancel under it */
+  .fe-dialog .bh-del-text { color: var(--muted); }
+  .bh-del-list { margin: 4px 0 18px; padding-top: 0; border-top: 0; }
+  .fe-dialog .row.bh-del-buttons { flex-direction: column; gap: 8px; }
+  .fe-dialog .row.bh-del-buttons button { width: 100%; flex: none; }
   .bh-phead:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
   .bh-plist { margin: 0 12px; padding: 4px 0 8px; border-top: 1px solid var(--line); }
   .bh-plist.bh-plist-gone { display: none; }
@@ -2739,10 +2746,10 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-12zd"></script>
-<script src="editor.js?v=2026-11-12zd"></script>
-<script src="shared-spotify.js?v=2026-11-12zd"></script>
-<script src="app.js?v=2026-11-12zd"></script>
-<script src="sharing.js?v=2026-11-12zd"></script>
+<script src="formats.js?v=2026-11-12ze"></script>
+<script src="editor.js?v=2026-11-12ze"></script>
+<script src="shared-spotify.js?v=2026-11-12ze"></script>
+<script src="app.js?v=2026-11-12ze"></script>
+<script src="sharing.js?v=2026-11-12ze"></script>
 </body>
 </html>

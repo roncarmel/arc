@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-12zd";
+const APP_VERSION = "2026-11-12ze";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -3891,6 +3891,24 @@ async function removeBuiltOfDeleted(list, title) {
     showNotices([{ text: `The playlists built from ${named(title)} could not be removed: ${cleanError(err)} Remove built playlists in the menu can try again.`, transient: true }]);
   } finally {
     setBusy(false);
+  }
+}
+
+// Delete on a participant's row: removes the playlists Arc built for them, which is what makes them a participant, then says how it went
+async function deleteParticipant(code, list) {
+  if (!list || !list.length || busy) return;
+  setBusy(true);
+  try {
+    await removePlaylists(list.map((p) => p.id));
+    logStep(`participant deleted (${plural(list.length, "playlist")})`);
+    if (builderHome.person === code) builderHome.person = null;
+    showNotices([{ text: `Deleted ${code} and ${plural(list.length, "playlist")}.`, transient: true }]);
+  } catch (err) {
+    showNotices([{ text: `${code}'s playlists could not all be removed: ${cleanError(err)}`, transient: true }]);
+  } finally {
+    try { await loadMyPlaylists(); } catch (err) {}
+    setBusy(false);
+    if (typeof renderBuilderHome === "function") renderBuilderHome();
   }
 }
 
