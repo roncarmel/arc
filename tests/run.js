@@ -876,10 +876,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-12zs" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-12zt" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-12zs/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-12zt/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2950,7 +2950,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-12zs", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-12zt", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -5283,7 +5283,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-12zs"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-12zt"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5619,7 +5619,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the landing lists each recipe with its length and segments, its shape, and icons for Edit and Build (no Delete: it is in the panel), then New recipe last", [...bd.getElementById("bhRecipes").querySelectorAll(".bh-row")].pop().id === "bhNewRecipe" && bl_rows().map((r) => r.querySelector(".bh-name").textContent).join() === "Alpha,Beta" && bl_rows()[0].querySelector(".bh-sub").textContent === "31 min · 2 segments" && bl_rows()[0].querySelectorAll(".bh-shape span").length === 3 && bl_rows()[0].querySelector(".bh-build").getAttribute("aria-label") === "Build" && !bl_rows()[0].querySelector(".bh-build").textContent.trim() && JSON.stringify([...bl_rows()[0].querySelectorAll(".bh-ib")].map((x) => x.getAttribute("aria-label"))) === '["Edit Alpha","Build"]', bl_rows().map((r) => r.textContent).join("|"));
   check("the bar runs under the buttons, and a note under New recipe says what the sparkle button does", (() => { const n = bd.getElementById("bhNewRecipe").nextElementSibling; return bl_rows()[0].lastElementChild.classList.contains("bh-shape") && bl_rows()[1].nextElementSibling.id === "bhNewRecipe" && n.classList.contains("bh-build-how") && /^(Click|Tap) a recipe\u2019s +button to build a playlist from it\.$/.test(n.textContent) && !!n.querySelector(".bh-mini svg"); })());
   check("outside developer mode Participants is greyed, and the recipe panel is closed", bd.getElementById("bhTabPeople").disabled && bd.getElementById("recipePanelWrap").hidden);
-  bl_rows()[0].click();
+  bl_rows()[0].querySelector(".bh-ib:not(.bh-build)").click();
   check("a recipe opens in the panel, its name as the title, with Done only", !bd.getElementById("recipePanelWrap").hidden && bd.getElementById("rpTitle").textContent === "Alpha" && bd.getElementById("rpFoot").classList.contains("rp-clean"));
   check("the heading says RECIPE over the name, and its length and segments under it", bd.querySelector("#rpShow .rp-kick").textContent === "Recipe" && bd.getElementById("rpMeta").textContent === "31 min · 2 segments", bd.getElementById("rpMeta").textContent);
   var bl_key = (key) => bd.getElementById("rpName").dispatchEvent(new bl.KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
@@ -5651,16 +5651,16 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   bd.getElementById("feSyncChoice1").click();
   await new Promise((r) => setTimeout(r, 20));
   check("Discard closes the panel and puts the recipe back", bd.getElementById("recipePanelWrap").hidden && bl.eval("editor.model.formats[0].items[0].minutes") === 20 && /\("A", 20\)|A.*20/.test(bl.localStorage.getItem("formats")) && !bl.localStorage.getItem("recipeEditing"));
-  bl_rows()[1].click();
+  bl_rows()[1].querySelector(".bh-ib:not(.bh-build)").click();
   rowsOf(bl)[0].querySelector(".fe-inc").click();
   bd.getElementById("rpSave").click();
   check("Save changes closes the panel, keeps the change, and nothing is held", bd.getElementById("recipePanelWrap").hidden && bl.eval("editor.model.formats[1].items[0].minutes") === 20 && !bl.localStorage.getItem("recipeEditing") && bl.eval("heldRecipeId()") === null);
-  bl_rows()[0].click();
+  bl_rows()[0].querySelector(".bh-ib:not(.bh-build)").click();
   rowsOf(bl)[0].querySelector(".fe-inc").click();
   bd.getElementById("rpCancel").click();
   check("Cancel puts it back too", bl.eval("editor.model.formats[0].items[0].minutes") === 20 && bd.getElementById("recipePanelWrap").hidden);
   // a closed tab keeps unsaved changes
-  bl_rows()[0].click();
+  bl_rows()[0].querySelector(".bh-ib:not(.bh-build)").click();
   rowsOf(bl)[0].querySelector(".fe-inc").click();
   var bl2 = await boot({ url: EDURL, session: signedIn(), local: { formats: bl.localStorage.getItem("formats"), recipeEditing: bl.localStorage.getItem("recipeEditing") }, fetchOptions: { extraPlaylists: bl_people }, panel: false });
   check("after a reload the recipe with changes says Unsaved changes on the landing", bl2.document.querySelector('#bhRecipes .bh-recipe[data-id="f1"] .bh-sub').textContent === "Unsaved changes");
@@ -5682,20 +5682,21 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
     ev("pointerdown", 100); ev("pointermove", 160); ev("pointermove", 220); ev("pointerup", 220);
     check("the Recipes | Participants switch drags like Music sharing's tabs: left to Recipes, right to Participants", back && bd3.window.eval("builderHome.tab") === "people" && !bd3.document.getElementById("bhPeople").hidden);
   })();
-  check("a participant's row has the code as its title, how many playlists (no day), and only Build playlist at its end (Delete is in the open row)", (() => { const r = bd3.document.querySelector('#bhPeople [data-code="T7"]'); return r.querySelector(".bh-name").textContent === "T7" && r.querySelector(".bh-sub").textContent === "1 playlist" && !r.querySelector(".bh-info") && r.querySelector(".bh-build").getAttribute("aria-label") === "Build playlist" && JSON.stringify([...r.querySelectorAll(".bh-ib")].map((x) => x.getAttribute("aria-label"))) === '["Build playlist"]'; })());
+  check("a participant's row has the code as its title, how many playlists (no day), and the chevron and Build playlist at its end (Delete is in the open row)", (() => { const r = bd3.document.querySelector('#bhPeople [data-code="T7"]'); return r.querySelector(".bh-name").textContent === "T7" && r.querySelector(".bh-sub").textContent === "1 playlist" && !r.querySelector(".bh-info") && r.querySelector(".bh-build").getAttribute("aria-label") === "Build playlist" && JSON.stringify([...r.querySelectorAll(".bh-ib")].map((x) => x.getAttribute("aria-label"))) === '["T7\'s playlists","Build playlist"]'; })());
   check("a participant last built in an earlier year shows only the year", bd3.eval("builtWhen(new Date(2024, 4, 3).getTime())") === "2024" && bd3.eval("builtWhen(Date.now())") === bd3.eval("shortDate(Date.now())"));
   check("with participants, a note says how to build their next playlist", /a participant\u2019s +button to build their next playlist/.test(bd3.document.querySelector("#bhPeople .bh-note").textContent) && !bd3.document.querySelector(".bh-people-empty"));
   check("with none, the list says No participants yet and how to add one", /No participants yet.*a recipe\u2019s +button and choose \+ New to add one/.test(bd3.eval("(() => { const keep = playlists; playlists = []; renderParticipantList(); const t = document.getElementById('bhPeople').textContent; playlists = keep; renderParticipantList(); return t; })()")));
-  bd3.document.querySelector('#bhPeople [data-code="MC"] .bh-phead').click();
-  check("a tap on a participant's row opens it in place to their playlists, one line each without their code; no popup", (() => { const c = bd3.document.querySelector('#bhPeople .bh-person[data-code="MC"]'); const pl = c.querySelectorAll(".bh-plist a.bh-pl"); return c.classList.contains("bh-open") && c.querySelector(".bh-phead").getAttribute("aria-expanded") === "true" && pl.length === 1 && !/ MC /.test(pl[0].querySelector(".bh-pl-name").textContent) && !bd3.document.getElementById("personPanelWrap") && !bd3.document.querySelector('#bhPeople .bh-person[data-code="T7"]').classList.contains("bh-open"); })());
-  bd3.document.querySelector('#bhPeople [data-code="T7"] .bh-phead').click();
+  check("a tap on a participant's row or a recipe's row does nothing: only their buttons act (Ron, 2026-11-12)", (bd3.document.querySelector('#bhPeople [data-code="MC"] .bh-phead').click(), bd3.document.querySelector('#bhRecipes .bh-recipe').click(), !bd3.document.querySelector('#bhPeople .bh-person.bh-open') && bd3.document.getElementById("recipePanelWrap").hidden && !bd3.document.querySelector(".bh-recipe[role], .bh-phead[role]")));
+  bd3.document.querySelector('#bhPeople [data-code="MC"] .bh-open-btn').click();
+  check("the chevron on a participant's row opens it in place to their playlists, one line each without their code; no popup", (() => { const c = bd3.document.querySelector('#bhPeople .bh-person[data-code="MC"]'); const pl = c.querySelectorAll(".bh-plist a.bh-pl"); return c.classList.contains("bh-open") && c.querySelector(".bh-open-btn").getAttribute("aria-expanded") === "true" && pl.length === 1 && !/ MC /.test(pl[0].querySelector(".bh-pl-name").textContent) && !bd3.document.getElementById("personPanelWrap") && !bd3.document.querySelector('#bhPeople .bh-person[data-code="T7"]').classList.contains("bh-open"); })());
+  bd3.document.querySelector('#bhPeople [data-code="T7"] .bh-open-btn').click();
   check("opening another participant folds the first: one open at a time", bd3.document.querySelector('#bhPeople .bh-person[data-code="T7"]').classList.contains("bh-open") && !bd3.document.querySelector('#bhPeople .bh-person[data-code="MC"]').classList.contains("bh-open"));
-  bd3.document.querySelector('#bhPeople [data-code="T7"] .bh-phead').click();
-  check("a second tap folds it", !bd3.document.querySelector('#bhPeople .bh-person.bh-open') && bd3.eval("builderHome.person") === null);
+  bd3.document.querySelector('#bhPeople [data-code="T7"] .bh-open-btn').click();
+  check("a second tap on the chevron folds it", !bd3.document.querySelector('#bhPeople .bh-person.bh-open') && bd3.eval("builderHome.person") === null);
   // Delete asks twice: the list and Delete MC and 1 playlist, then Are you sure? starting on Cancel (Ron, 2026-11-12)
   bd3.eval("window.blDeleted = []; window.blKeepDelete = deleteParticipant; deleteParticipant = (code) => { blDeleted.push(code); }");
-  check("a participant's row has only Build; Delete is a red trash at the foot of the open row (Ron, 2026-11-12, mockups/participant-delete B)", (() => { const c = () => bd3.document.querySelector('#bhPeople .bh-person[data-code="MC"]'); const icons = [...c().querySelectorAll(".bh-phead .bh-ib")].map((b) => b.getAttribute("aria-label")); if (!c().classList.contains("bh-open")) c().querySelector(".bh-phead").click(); const del = c().querySelector(".bh-plist .bh-pdel-foot .bh-pdel"); return icons.length === 1 && !c().querySelector(".bh-phead .bh-del") && !!del && !del.textContent.trim() && del.getAttribute("aria-label") === "Delete MC" && !!del.querySelector("svg") && del.parentElement === c().querySelector(".bh-plist").lastElementChild; })());
-  var bl_askDel = async () => { const mc = bd3.document.querySelector('#bhPeople .bh-person[data-code="MC"]'); if (!mc.classList.contains("bh-open")) mc.querySelector(".bh-phead").click(); bd3.document.querySelector('#bhPeople [data-code="MC"] .bh-del').click(); bd3.document.getElementById("bhDeleteConfirm").click(); await new Promise((r) => setTimeout(r, 0)); return bd3.document.getElementById("feSyncDialog"); };
+  check("a participant's row has the chevron and Build; Delete is a red trash at the foot of the open row (Ron, 2026-11-12, mockups/participant-delete B)", (() => { const c = () => bd3.document.querySelector('#bhPeople .bh-person[data-code="MC"]'); const icons = [...c().querySelectorAll(".bh-phead .bh-ib")].map((b) => b.getAttribute("aria-label")); if (!c().classList.contains("bh-open")) c().querySelector(".bh-open-btn").click(); const del = c().querySelector(".bh-plist .bh-pdel-foot .bh-pdel"); return icons.length === 2 && icons[0] === "MC's playlists" && !c().querySelector(".bh-phead .bh-del") && !!del && !del.textContent.trim() && del.getAttribute("aria-label") === "Delete MC" && !!del.querySelector("svg") && del.parentElement === c().querySelector(".bh-plist").lastElementChild; })());
+  var bl_askDel = async () => { const mc = bd3.document.querySelector('#bhPeople .bh-person[data-code="MC"]'); if (!mc.classList.contains("bh-open")) mc.querySelector(".bh-open-btn").click(); bd3.document.querySelector('#bhPeople [data-code="MC"] .bh-del').click(); bd3.document.getElementById("bhDeleteConfirm").click(); await new Promise((r) => setTimeout(r, 0)); return bd3.document.getElementById("feSyncDialog"); };
   var bl_sure = await bl_askDel();
   check("Delete MC and 1 playlist asks Are you sure? next, starting on Cancel, and Cancel deletes nothing", !!bl_sure && /Are you sure\?/.test(bl_sure.textContent) && /1 playlist will be deleted from your Spotify/.test(bl_sure.textContent) && bd3.document.activeElement.textContent === "Cancel" && !bd3.document.getElementById("bhDeleteDialog") && (bd3.document.activeElement.click(), true) && await new Promise((r) => setTimeout(r, 0)).then(() => bd3.eval("blDeleted.length") === 0));
   bl_sure = await bl_askDel();

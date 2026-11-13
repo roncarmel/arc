@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zs";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zt";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2356,6 +2356,7 @@ const builderHome = { tab: "recipes", person: null };
 const BH_SPARK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 2l1.8 5.6L17.5 9.5l-5.7 1.9L10 17l-1.8-5.6L2.5 9.5l5.7-1.9z"/><path d="M18 13l.9 2.6 2.6.9-2.6.9L18 20l-.9-2.6-2.6-.9 2.6-.9z"/></svg>';
 const BH_OPEN = '<svg class="bh-go" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
 const BH_BACK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
+const BH_CHEVRON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
 const BH_PEN = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>';
 const BH_BIN = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M9 7V5h6v2M7 7l1 12h8l1-12"/></svg>';
 function bhSvg(markup) { const s = document.createElement("span"); s.style.display = "contents"; s.innerHTML = markup; return s; }
@@ -2556,9 +2557,8 @@ function recipeRow(f) {
   const icons = feEl("span", { class: "bh-icons" },
     rowIcon(BH_PEN, `Edit ${title}`, () => openRecipePanel(f.id)),
     rowIcon(BH_SPARK, buildWord(), () => buildRecipe(f.id), "bh-build", { "data-id": f.id }));
-  const row = feEl("div", { class: "bh-row bh-recipe", role: "button", tabindex: "0", "data-id": f.id, "aria-label": `Edit ${f.title.trim() || "Untitled"}`,
-    onClick: () => openRecipePanel(f.id),
-    onKeyDown: (event) => { if ((event.key === "Enter" || event.key === " ") && event.target === row) { event.preventDefault(); openRecipePanel(f.id); } } },
+  // only its buttons act: the row itself is not tappable (Ron, 2026-11-12)
+  const row = feEl("div", { class: "bh-row bh-recipe", "data-id": f.id },
     feEl("span", { class: "bh-text" },
       feEl("span", { class: "bh-name", text: f.title.trim() || "Untitled" }),
       (!unsaved && recipeSavedLine(f.id)) || feEl("span", { class: "bh-sub" + (unsaved ? " bh-unsaved" : ""), text: unsaved ? "Unsaved changes" : length })),
@@ -2867,11 +2867,11 @@ function renderParticipantList() {
 function personCard(person, open) {
   const code = person.code;
   const toggle = () => setPersonOpen(builderHome.person === code ? null : code);
-  // only Build on the row: Delete is at the foot of the open row (Ron, 2026-11-12, mockups/participant-delete C)
+  // only its buttons act (Ron, 2026-11-12, mockups/participant-expand B): a chevron in a grey circle opens the row, pink and turned up while open
   const icons = feEl("span", { class: "bh-icons" },
+    rowIcon(BH_CHEVRON, `${code}'s playlists`, toggle, "bh-open-btn", { "aria-expanded": String(open) }),
     rowIcon(BH_SPARK, buildWord(), () => buildNextFor(code), "bh-build", { "data-code": code }));
-  const head = feEl("div", { class: "bh-phead", role: "button", tabindex: "0", "aria-expanded": String(open), "aria-label": `${code}, ${personLine(person)}`, onClick: toggle,
-    onKeyDown: (event) => { if ((event.key === "Enter" || event.key === " ") && event.target === head) { event.preventDefault(); toggle(); } } },
+  const head = feEl("div", { class: "bh-phead" },
     codeBadge(code),
     feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: code }), feEl("span", { class: "bh-sub", text: personLine(person, true) })),
     icons);
@@ -2955,13 +2955,13 @@ function setPersonOpen(code) {
   const old = cardOf(was), next = cardOf(code);
   if (old && was !== code) {
     old.classList.remove("bh-open");
-    old.querySelector(".bh-phead").setAttribute("aria-expanded", "false");
+    old.querySelector(".bh-open-btn").setAttribute("aria-expanded", "false");
     const list = old.querySelector(".bh-plist");
     if (list) { revealSmoothly(list, false); list.classList.add("bh-plist-gone"); }
   }
   if (!next || was === code) return;
   next.classList.add("bh-open");
-  next.querySelector(".bh-phead").setAttribute("aria-expanded", "true");
+  next.querySelector(".bh-open-btn").setAttribute("aria-expanded", "true");
   next.querySelectorAll(".bh-plist").forEach((l) => l.remove());
   const person = participantList().find((p) => p.code === code) || { code, playlists: [], last: 0 };
   const list = personPlaylists(person);

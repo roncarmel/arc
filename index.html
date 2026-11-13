@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-12zs">
-<script src="theme.js?v=2026-11-12zs"></script>
+<meta name="app-version" content="2026-11-12zt">
+<script src="theme.js?v=2026-11-12zt"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -766,7 +766,7 @@
   .rp-sheet .rp-show .rp-x { align-self: center; }
   /* a participant's row (Ron, 2026-11-12): the square, the code, their line and Build playlist; a tap opens it in place to their playlists, one compact line each */
   .bh-row.bh-person { display: block; padding: 0; cursor: default; }
-  .bh-phead { display: flex; align-items: center; gap: 12px; padding: 13px 12px 13px 14px; border-radius: 18px; cursor: pointer; }
+  .bh-phead { display: flex; align-items: center; gap: 12px; padding: 13px 12px 13px 14px; border-radius: 18px; }
   .bh-phead { gap: 10px; }
   .bh-phead .bh-sub { font-size: 0.86rem; }
   /* the row's buttons, icons only (Ron, 2026-11-12, mockups/row-icons G): grey circles for edit and delete, Build a white sparkle on a pink circle */
@@ -789,7 +789,12 @@
   .fe-dialog .bh-del-list { margin: 4px 0 18px; padding-top: 0; border-top: 0; }
   .fe-dialog .row.bh-del-buttons { flex-direction: column; gap: 8px; }
   .fe-dialog .row.bh-del-buttons button { width: 100%; flex: none; }
-  .bh-phead:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  /* a participant's row opens on its chevron only, pink and turned up while open (Ron, 2026-11-12, mockups/participant-expand B) */
+  .bh-ib.bh-open-btn svg { width: 18px; height: 18px; transition: transform 0.25s var(--ease-out); }
+  .bh-open .bh-ib.bh-open-btn { color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  .bh-open .bh-ib.bh-open-btn svg { transform: rotate(180deg); }
+  @media (hover: hover) { .bh-open .bh-ib.bh-open-btn:not(:disabled):hover { background: color-mix(in srgb, var(--accent) 24%, transparent); } }
+  @media (prefers-reduced-motion: reduce) { .bh-ib.bh-open-btn svg { transition: none; } }
   .bh-plist { margin: 0 12px; padding: 4px 0 8px; border-top: 1px solid var(--line); }
   .bh-plist.bh-plist-gone { display: none; }
   .bh-pdel-foot { display: flex; justify-content: flex-end; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
@@ -855,7 +860,6 @@
   html.rp-open.view-builder { overflow: hidden; }
   .bh-build[hidden], .bh-wide[hidden] { display: none; }
   .bh-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .bh-row.bh-recipe { cursor: pointer; }
   #bhCaption { margin: 0 2px 2px; }
   .bh-empty { padding: 18px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); }
   .bh-empty .tv-row { margin-top: 14px; }
@@ -1676,7 +1680,7 @@
     #formatEditor .fe-tab[aria-pressed="true"]:hover .fe-icon { background: rgba(255, 255, 255, 0.3); box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3); border-radius: 50%; }
     /* rows in a list, one look each (Ron, 2026-11-12): a row drawn as a card gets home's soft pink edge, as the tool cards do;
        a flat row between lines gets a faint grey fill a little wider than itself, as the menus' items do; an add row tints its dashed square */
-    .bh-row:not(.bh-add):hover, button.bh-row:not(.bh-add):not(:disabled):hover,
+    .bh-row:not(.bh-add):not(.bh-recipe):not(.bh-person):hover, button.bh-row:not(.bh-add):not(:disabled):hover,
     .dlg-choice:not(:has(input:checked)):hover { outline: none; filter: none; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
     button.bh-row:not(:disabled):hover, button.wf-opt:not(:disabled):hover { outline: none; filter: none; }
     a.bh-pl:not(.pp-new):hover { background: rgba(127, 127, 127, 0.12); }
@@ -2750,10 +2754,10 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-12zs"></script>
-<script src="editor.js?v=2026-11-12zs"></script>
-<script src="shared-spotify.js?v=2026-11-12zs"></script>
-<script src="app.js?v=2026-11-12zs"></script>
-<script src="sharing.js?v=2026-11-12zs"></script>
+<script src="formats.js?v=2026-11-12zt"></script>
+<script src="editor.js?v=2026-11-12zt"></script>
+<script src="shared-spotify.js?v=2026-11-12zt"></script>
+<script src="app.js?v=2026-11-12zt"></script>
+<script src="sharing.js?v=2026-11-12zt"></script>
 </body>
 </html>
