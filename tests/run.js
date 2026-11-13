@@ -5765,6 +5765,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var bl_fo = { extraPlaylists: bl_people };
   var bl_g = 'FORMATS = {"g1": {"title": "Gamma", "name": "Gamma {n}", "segments": [("\u2618\ufe0f intro / outro (soothing, familiar)", 10)]}, "g2": {"title": "Delta", "name": "Delta {n}", "segments": [("Nowhere", 10)]}}';
   var bd4 = await boot({ url: EDURL, session: signedIn(), local: { formats: bl_g, devMode: "1" }, fetchOptions: bl_fo, panel: false });
+  await waitFor(() => / ready$/.test(bd4.document.getElementById("pythonStatus").textContent), 15000);   // Python can still be loading here on a slower disk
   await bd4.eval("buildForParticipant('g2', 'MC')");
   check("a recipe that can't be built for a participant says why in their open row, and nothing is made", !!bd4.document.querySelector('#bhPeople .bh-person.bh-open[data-code="MC"]') && /This playlist can't be built/.test(bd4.document.querySelector('#bhPeople [data-code="MC"]').textContent) && /Nowhere/.test(bd4.document.querySelector('#bhPeople [data-code="MC"] .er-box').textContent) && !bl_fo.writes.some((w) => w.type === "create") && bd4.document.getElementById("createOverlay").hidden);
   bd4.eval("setPersonOpen(null)");
