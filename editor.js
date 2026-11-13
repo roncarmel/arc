@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12y";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12z";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -893,24 +893,27 @@ function tutorialFrame() {
 
 // Developer mode (decided by Ron, 2026-11-08, mockups/dev-mode.html): holding Arc's icon for 3 seconds turns it on, and again off. Nothing shows while holding, on purpose:
 // it is not for people to find. A short message says which way it went. Kept on this device (devMode in localStorage; the <head> script sets html.dev-mode before the
-// first paint). While it is on, a tap on the word Arc (Arc's bar, or home's band on home) opens the developer menu: Turn off developer mode as its pink header, the owner's Music sharing tools, Phone width, Copy Spotify request log, Clear data and start over, and Python's state. Off, Music sharing is Coming soon (devModeChanged in app.js).
+// first paint). While it is on, a tap on Arc's icon in the bar (in a tool) or the word Arc in home's band opens the developer menu: Turn off developer mode as its pink header, the owner's Music sharing tools, Phone width, Copy Spotify request log, Clear data and start over, and Python's state. Off, Music sharing is Coming soon (devModeChanged in app.js).
 // The icon takes no text selection, image callout or browser menu, so a long press on a phone reaches the end.
 const DEV_HOLD_MS = 3000;
+let devHeld = null;   // the icon a hold just turned developer mode on or off with: its release is not a tap that opens the DEV menu (the bar's icon is both)
 function watchDevHold(head) {
   if (!head) return;
   const img = head.querySelector("img");
   if (img) img.draggable = false;
   let timer = null, from = null, held = false;
   const stop = () => { clearTimeout(timer); timer = null; };
-  head.addEventListener("click", (event) => { if (held) { held = false; event.stopImmediatePropagation(); event.preventDefault(); } }, true);   // the release after a hold is not also a tap (the version)
+  head.addEventListener("click", (event) => { if (held) { held = false; devHeld = null; event.stopImmediatePropagation(); event.preventDefault(); } }, true);   // the release after a hold is not also a tap (the version)
   head.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
     held = false;
+    devHeld = null;
     from = { x: event.clientX, y: event.clientY };
     stop();
     timer = setTimeout(() => {
       timer = null;
       held = true;
+      devHeld = head;
       if (editor.appMenu) { editor.appMenu = false; renderAppMenu(); }
       setDevMode(!devMode());
     }, DEV_HOLD_MS);
@@ -943,9 +946,9 @@ function showDevToast(text) {
     devToastTimer = setTimeout(() => { toast.hidden = true; }, 300);
   }, 2000);
 }
-// In developer mode a tap on the word Arc opens the DEV menu under it: in Arc's bar in a tool, in home's band on home (where the bar's is hidden). The word looks the
-// same as ever, and outside developer mode the bar's still goes home (Ron, 2026-11-10; it replaced a floating DEV capsule).
-const DEV_ANCHORS = "#appBar .ab-name, #homePage .hp-band .wp-band-name";
+// In developer mode a tap opens the DEV menu under what was tapped: in a tool, the icon in Arc's bar, which goes home outside developer mode (Ron, 2026-11-12, when
+// the bar lost the word Arc); on home, the word Arc in the band (the bar is hidden there). It replaced a floating DEV capsule (Ron, 2026-11-10).
+const DEV_ANCHORS = "#appBar .ab-home, #homePage .hp-band .wp-band-name";
 let devAnchor = null;
 function showDevMenu(open, anchor) {
   const menu = document.getElementById("devMenu");
@@ -974,7 +977,7 @@ function placeDevMenu(anchor) {
   // capture, so the bar's word does not also go home
   document.addEventListener("click", (event) => {
     const name = event.target.closest && event.target.closest(DEV_ANCHORS);
-    if (name && devMode()) { event.preventDefault(); event.stopPropagation(); showDevMenu($("devMenu").hidden, name); return; }
+    if (name && devMode() && !(devHeld && devHeld.contains(event.target))) { event.preventDefault(); event.stopPropagation(); showDevMenu($("devMenu").hidden, name); return; }
     if (!event.target.closest || !event.target.closest("#devWrap")) showDevMenu(false);
   }, true);
   document.addEventListener("keydown", (event) => {
