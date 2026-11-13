@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-12zza";
+const APP_VERSION = "2026-11-12zzb";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1404,6 +1404,8 @@ let spotifySaveDelayMs = 5000;
 let spotifySaveMaxWaitMs = 30000;
 const saveState = { running: false, again: false, timer: null, since: 0, error: "", tooLong: [], newer: [], savedAt: null, coverBlocked: false, added: [], updated: [], coverProblem: null, coverQueue: [], coverRunning: false, coverGapMs: 400, failures: 0, failureAsked: false, unread: 0, skip: new Set(), dismissed: new Set(), lastNews: null };
 let playlistsLoadedAt = 0;
+let playlistsTotal = null;   // how many playlists Spotify said the list holds the last time it was read (its first page's total), for the records below
+let playlistLoads = 0;   // how many times the list has started being read in this tab, so a record can tell whether it was read again during a save
 let playlistsLoadedBy = "";   // which code last read the playlist list, for the record kept when a save question is asked (recordSyncAsk)
 let playlistRefreshMs = 5 * 60 * 1000;   // coming back to the page after this long, the account's playlists, and so the backups, are read again
 
@@ -1505,7 +1507,7 @@ async function mergeFromSpotify() {
     if (unread.some((p) => p.name === saveName(f.title))) continue;   // its backup is there, but cannot be read: it is written again below
     asks.push({ kind: "removed", id: f.id, title: f.title });
   }
-  const debug = asks.length ? recordSyncAsk(asks, synced, remote, pendingDeletes, held) : "";
+  const debug = asks.length ? await recordSyncAsk(asks, synced, remote, pendingDeletes, held) : "";
   for (const a of asks) {
     const label = a.title.trim() || "Untitled";
     let choice;
@@ -1536,7 +1538,7 @@ async function mergeFromSpotify() {
 // When the merge has to ask about a recipe (no longer in Spotify, or changed in two places), what it saw is kept, the last 10 times, in the Spotify request log
 // (limitRecordText) and behind Copy details on the question in developer mode, so a question that should not have come up can be explained afterwards.
 const SYNC_ASKS_KEY = "syncAsks";
-function recordSyncAsk(asks, synced, remote, pendingDeletes, held) {
+async function recordSyncAsk(asks, synced, remote, pendingDeletes, held) {
   const short = (p) => p ? { name: p.name, id: p.id, kind: p.save ? p.save.kind : "none", recipeId: p.save && p.save.format ? p.save.format.id : null, rev: p.save && p.save.format ? p.save.format.rev || 0 : null, description: String(p.description || "").slice(0, 60) } : null;
   const entry = {
     at: new Date().toISOString(), app: APP_VERSION,
@@ -1549,12 +1551,14 @@ function recordSyncAsk(asks, synced, remote, pendingDeletes, held) {
     }),
     listReadAt: playlistsLoadedAt ? new Date(playlistsLoadedAt).toISOString() : null,
     listReadBy: playlistsLoadedBy,
-    playlistCount: playlists.length,
+    playlistCount: playlists.length, listTotal: playlistsTotal,
     saves: [...remote].map(([id, p]) => [p.name, p.id, id, p.save.format.rev || 0]),
     otherSaveNames: playlists.filter((p) => p.name.endsWith(SAVE_SUFFIX) && !(p.save && p.save.kind === "save")).map(short),
     recipes: editor.model.formats.map((f) => [f.title, f.id, f.rev || 0]),
     synced, held: held || null, pendingDeletes,
   };
+  // a save asked about as gone is read straight from Spotify too (nothing changes): still there means the list left it out
+  for (const a of entry.asks) if (a.kind === "removed" && a.synced && a.synced.playlistId) a.direct = await readSaveDirectly(a.synced.playlistId);
   writeRecord(SYNC_ASKS_KEY, [...readRecord(SYNC_ASKS_KEY, []), entry].slice(-10));
   return JSON.stringify(entry);
 }
@@ -1563,6 +1567,45 @@ function recordSyncAsk(asks, synced, remote, pendingDeletes, held) {
 function callerTrail() {
   const lines = String(new Error().stack || "").split("\n").map((x) => x.trim()).filter((x) => x && x !== "Error");
   return lines.slice(2, 6).map((x) => x.replace(/^at /, "").replace(/\s*\(?(https?|file):\/\/\S*/, "").replace(/@.*$/, "") || "?").join(" < ");
+}
+
+// Each time a save makes a new playlist for a recipe, what it saw is kept, the last 20 times, in the Spotify request log (limitRecordText): Ron found 7 saves
+// of each recipe (2026-11-12), and this is to find out why the existing save was not used. Reporting only: nothing here changes what the save does.
+// It also reads, without changing anything, the playlist this device last saved the recipe to, straight from Spotify, and whether it is in the library,
+// to tell a list that left it out from a save that is really gone or no longer reads as one.
+const SAVE_CREATES_KEY = "saveCreates";
+async function recordSaveCreate(fmt, synced, saveRun) {
+  const short = (p) => p ? { name: p.name, id: p.id, owner: p.owner, kind: p.save ? p.save.kind : "none", recipeId: p.save && p.save.format ? p.save.format.id : null, rev: p.save && p.save.format ? p.save.format.rev || 0 : null, descLength: p.description == null ? null : String(p.description).length, description: p.description == null ? null : String(p.description).slice(0, 60) } : null;
+  const was = synced[fmt.id] || null;
+  const entry = {
+    at: new Date().toISOString(), app: APP_VERSION, caller: callerTrail(),
+    recipe: { id: fmt.id, title: fmt.title, rev: fmt.rev || 0, modified: fmt.modified || 0 }, synced: was,
+    savedPlaylistInList: was && was.playlistId ? short(playlists.find((p) => p.id === was.playlistId)) : null,
+    sameName: playlists.filter((p) => p.name === saveName(fmt.title)).map(short),
+    savesOfThisRecipe: playlists.filter((p) => p.save && p.save.format && p.save.format.id === fmt.id).map(short),
+    saves: [...savesInAccount()].map(([id, p]) => [p.name, p.id, id, p.save.format.rev || 0]),
+    recipes: editor.model.formats.map((f) => [f.title, f.id, f.rev || 0]),
+    listReadAt: playlistsLoadedAt ? new Date(playlistsLoadedAt).toISOString() : null, listReadBy: playlistsLoadedBy,
+    playlistCount: playlists.length, listTotal: playlistsTotal,
+    saveStarted: new Date(saveRun.at).toISOString(), listReadAgainDuringSave: playlistLoads !== saveRun.loads, listReadBeforeSave: saveRun.listReadAt ? new Date(saveRun.listReadAt).toISOString() : null,
+    held: heldRecipeId(), pendingDeletes: pendingSaveDeletes(), account: (() => { try { return localStorage.getItem("spotifyAccount") === (me && me.id); } catch (e) { return null; } })(),
+    direct: null,
+  };
+  if (was && was.playlistId) entry.direct = await readSaveDirectly(was.playlistId);
+  writeRecord(SAVE_CREATES_KEY, [...readRecord(SAVE_CREATES_KEY, []), entry].slice(-20));
+}
+
+// For the records above only: a playlist as Spotify has it when read on its own, and whether it is in the person's library. Changes nothing.
+async function readSaveDirectly(id) {
+  const d = { id };
+  try {
+    const got = await spotify(`/playlists/${id}?fields=id,name,owner(id),description`);
+    const u = unpackFormat(got.description);
+    Object.assign(d, { name: got.name, owner: got.owner && got.owner.id, kind: u.kind, recipeId: u.format ? u.format.id : null, rev: u.format ? u.format.rev || 0 : null, descLength: got.description == null ? null : String(got.description).length });
+  } catch (err) { d.readError = String(err && err.message || err); }
+  try { d.inLibrary = await spotify(`/me/library/contains?uris=${encodeURIComponent("spotify:playlist:" + id)}`); }
+  catch (err) { d.libraryError = String(err && err.message || err); }
+  return d;
 }
 
 function savesInAccount() {
@@ -1587,6 +1630,7 @@ async function runSpotifySave() {
   saveState.error = "";
   renderSaveStatus();
   try {
+    const saveRun = { at: Date.now(), loads: playlistLoads, listReadAt: playlistsLoadedAt };
     await mergeFromSpotify();
     const synced = readSynced();
     const tooLong = [], newer = [];
@@ -1638,6 +1682,7 @@ async function runSpotifySave() {
         synced[fmt.id] = { rev: fmt.rev || 0, playlistId: unreadOfIt.id };
         putCover(unreadOfIt);
       } else {
+        await recordSaveCreate(fmt, synced, saveRun);
         const made = await spotifyRequest("POST", "/me/playlists", { json: { name, public: false, description } });
         if (made.public !== false) { try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); } catch (err) { logStep("save: could not make a recipe playlist private"); } }
         const entry = { id: made.id, name, owner: me.id, collaborative: false, image: null, count: 0, description, snapshot: null, madeByApp: false };
@@ -2769,7 +2814,7 @@ function limitRecordText() {
   return JSON.stringify({
     app: APP_VERSION, copiedAt: new Date().toISOString(), timezoneOffsetMin: new Date().getTimezoneOffset(),
     previousCopy: Number(localStorage.getItem("spotifyRecordCopiedAt")) || null,
-    limits: readRecord(LIMITS_KEY, []), callsPerMinute: readRecord(CALLS_KEY, {}), syncAsks: readRecord(SYNC_ASKS_KEY, []),
+    limits: readRecord(LIMITS_KEY, []), callsPerMinute: readRecord(CALLS_KEY, {}), syncAsks: readRecord(SYNC_ASKS_KEY, []), saveCreates: readRecord(SAVE_CREATES_KEY, []),
   });
 }
 
@@ -2805,7 +2850,13 @@ function forgetOtherAccount(id) {
 async function loadMyPlaylists() {
   me = await spotify("/me");
   forgetOtherAccount(me.id);
-  const raw = await pagedItems("/me/playlists?limit=50");
+  playlistLoads += 1;
+  const raw = [];
+  let page = await spotify("/me/playlists?limit=50");
+  const total = typeof page.total === "number" ? page.total : null;
+  for (;;) { raw.push(...(page.items || [])); if (!page.next) break; page = await spotify(page.next); }
+  playlistsTotal = total;
+  if (total !== null && raw.length !== total) recordNote(`playlist list: ${raw.length} items, Spotify's total ${total}`);
   playlistsLoadedBy = callerTrail();
   playlists = raw.filter(Boolean).map((p) => ({
     id: p.id,
