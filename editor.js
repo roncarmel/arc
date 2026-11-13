@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zq";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zr";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2867,8 +2867,8 @@ function renderParticipantList() {
 function personCard(person, open) {
   const code = person.code;
   const toggle = () => setPersonOpen(builderHome.person === code ? null : code);
+  // only Build on the row: Delete is at the foot of the open row (Ron, 2026-11-12, mockups/participant-delete C)
   const icons = feEl("span", { class: "bh-icons" },
-    rowIcon(BH_BIN, `Delete ${code}`, () => askDeleteParticipant(code), "bh-del"),
     rowIcon(BH_SPARK, buildWord(), () => buildNextFor(code), "bh-build", { "data-code": code }));
   const head = feEl("div", { class: "bh-phead", role: "button", tabindex: "0", "aria-expanded": String(open), "aria-label": `${code}, ${personLine(person)}`, onClick: toggle,
     onKeyDown: (event) => { if ((event.key === "Enter" || event.key === " ") && event.target === head) { event.preventDefault(); toggle(); } } },
@@ -2880,7 +2880,7 @@ function personCard(person, open) {
   return card;
 }
 
-// The trash on a participant's row (Ron, 2026-11-12, mockups/row-icons del): a participant exists only through the playlists Arc built for them, so deleting
+// Delete at the foot of a participant's open row (Ron, 2026-11-12, mockups/row-icons del, mockups/participant-delete C): a participant exists only through the playlists Arc built for them, so deleting
 // one removes those playlists from Spotify, and with them what they have heard. The red button names how many, on its own row with Cancel under it.
 function askDeleteParticipant(code) {
   const action = connectionAction();
@@ -2934,6 +2934,14 @@ function personPlaylists(person) {
       feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }),
       feEl("span", { class: "bh-pl-name", text: p.name.replace(` · ${code} · `, " · ") }),
       isNew ? feEl("span", { class: "pp-open" }, bhSvg(BH_OPEN), feEl("span", { text: "Open" })) : bhSvg(BH_OPEN)));
+  }
+  // Delete at the foot, full width, red outline, naming what goes (Ron, 2026-11-12, mockups/participant-delete C); greyed as refreshBuildButtons says
+  const n = person.playlists.length;
+  if (n) {
+    const paused = typeof spotifyPause === "function" && !!spotifyPause();
+    box.appendChild(feEl("div", { class: "bh-pdel-foot" },
+      feEl("button", { type: "button", class: "bh-pdel bh-del", disabled: busy || paused, onClick: () => askDeleteParticipant(code) },
+        bhSvg(BH_BIN), `Delete ${code} and ${n === 1 ? "1 playlist" : n + " playlists"}`)));
   }
   return box;
 }
