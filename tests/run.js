@@ -291,7 +291,7 @@ async function boot({ url, session = {}, local = {}, fetchOptions = {}, before =
   w.document.documentElement.classList.add("view-" + view);   // as the <head> script would (it does not run here)
   if (savedLocal.devMode === "1") w.document.documentElement.classList.add("dev-mode");   // developer mode, as the <head> script would
   w.__scriptsRequested = [];
-  w.eval(appJs.replace("const sharing = {", "var sharing = {").replace("const previewUrls =", "var previewUrls =").replace("let spotifyAnswerMs = 30000;", "var spotifyAnswerMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const recipeEdit =", "var recipeEdit =").replace("const builderHome =", "var builderHome =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const BACKED_UP_MESSAGE =", "var BACKED_UP_MESSAGE =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let busy =", "var busy =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let appView =", "var appView =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("let launchScreen =", "var launchScreen =").replace("const GAP_STEPS =", "var GAP_STEPS =").replace("let startupDone =", "var startupDone ="));  // test harness only: lets a test replace the reload
+  w.eval(appJs.replace("const sharing = {", "var sharing = {").replace("const previewUrls =", "var previewUrls =").replace("let spotifyAnswerMs = 30000;", "var spotifyAnswerMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const recipeEdit =", "var recipeEdit =").replace("const builderHome =", "var builderHome =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const BACKED_UP_MESSAGE =", "var BACKED_UP_MESSAGE =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let busy =", "var busy =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let appView =", "var appView =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("let launchScreen =", "var launchScreen =").replace("const GAP_STEPS =", "var GAP_STEPS =").replace("let startupDone =", "var startupDone =").replace("const limitWait =", "var limitWait ="));  // test harness only: lets a test replace the reload
   await Promise.race([w.__main, new Promise((r) => setTimeout(r, 1500))]);   // ready as soon as the page has finished starting up
   await new Promise((r) => setTimeout(r, 30));
   // Most tests were written when the editor was always on the page: the recipe being edited opens in its panel, as a tap on it would (panel: false leaves the landing)
@@ -876,10 +876,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-12za" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-12zb" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-12za/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-12zb/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2446,13 +2446,12 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the ring is full at the start of a wait, which is kept with when it began", /^(99\.9\d|100\.00)%$/.test(ws_doc.getElementById("fePauseRing").style.getPropertyValue("--left")) && Math.abs(ws_pause.from - Date.now()) < 10000, ws_doc.getElementById("fePauseRing").style.getPropertyValue("--left"));
   ws_doc.getElementById("fePauseClose").click();
   check("Close closes it", !ws_doc.getElementById("fePauseDialog"));
-  await waitFor(() => /Spotify paused/.test(ws_doc.getElementById("feCaption").textContent), 8000);
-  var ws_cap = ws_doc.getElementById("feCaption");
-  check("the line under the bar counts down in hours, minutes and seconds, in the accent color, with Details", ws_cap.classList.contains("fe-notice-pause") && /^Spotify paused · back in 4:04:\d\d$/.test(ws_cap.querySelector(".fe-notice-text").textContent) && ws_cap.querySelector(".fe-notice-more .fe-more-word").textContent === "Details", ws_cap.textContent);
+  var ws_cap = ws_doc.getElementById("waitStrip");
+  check("the strip under Arc's bar counts down in hours, minutes and seconds, with Details, and the line under the editor's bar says nothing of it", !ws_cap.hidden && /^Spotify asked Arc to wait · 4:04:\d\d$/.test(ws_doc.getElementById("waitStripText").textContent) && /Details/.test(ws_cap.textContent) && !/Spotify paused/.test(ws_doc.getElementById("feCaption").textContent), ws_cap.textContent);
   check("the Build button is hidden, with no note under it", ws_doc.getElementById("create").hidden === true && ws_doc.getElementById("spotifyNote").hidden === true);
   check("the playlist menus use the list kept from the last visit", ws_w.eval("playlists.map((p) => p.name).join()") === "Kept list");
-  ws_cap.querySelector(".fe-notice-more").click();
-  check("Details opens the popup again", !!ws_doc.getElementById("fePauseDialog"));
+  ws_cap.click();
+  check("the strip opens the popup again", !!ws_doc.getElementById("fePauseDialog"));
   ws_doc.dispatchEvent(new ws_w.KeyboardEvent("keydown", { key: "Escape" }));
   check("and Escape closes it", !ws_doc.getElementById("fePauseDialog"));
   var ws_sent = () => ws_w.eval("0") === 0 && log.filter((l) => l.url.startsWith("https://api.spotify.com/")).length;
@@ -2460,16 +2459,16 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var ws_msg = "";
   try { await ws_w.eval("spotifyRequest('GET', '/me')"); } catch (err) { ws_msg = err.message; }
   check("during the wait nothing goes to Spotify: a request fails at once with the time left", ws_sent() === ws_before && /try again in about 4 hours and 5 minutes/.test(ws_msg), ws_msg);
-  var ws_t1 = ws_cap.querySelector(".fe-notice-text").textContent;
+  var ws_t1 = ws_doc.getElementById("waitStripText").textContent;
   await new Promise((r) => setTimeout(r, 1300));
-  check("the countdown moves each second without repainting the line", ws_cap.querySelector(".fe-notice-text").textContent !== ws_t1 && ws_cap.classList.contains("fe-notice-pause"), ws_t1);
+  check("the countdown moves each second", ws_doc.getElementById("waitStripText").textContent !== ws_t1, ws_t1);
   check("clockText writes hours:minutes:seconds", ws_w.eval("[clockText(22564), clockText(59), clockText(3600)].join(' ')") === "6:16:04 0:00:59 1:00:00");
   // a reload during the wait: the line at once, no popup, nothing sent
   var ws_o2 = { meStatus: 429, retryAfter: 14689 };
   var ws_until = Date.now() + 3600000;
   var ws_w3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, clientId: "abc", spotifyPausedUntil: JSON.stringify({ until: ws_until, reason: "", clientId: "abc" }) }, fetchOptions: { meStatus: 429, retryAfter: 14689 } });
   await waitFor(() => !!ws_w3.document.getElementById("fePauseDialog"), 8000);
-  check("a new visit during a wait opens the popup once, over the update card", !!ws_w3.document.getElementById("fePauseDialog") && ws_w3.sessionStorage.getItem("pauseSeen") === String(ws_until) && /#fePauseDialog \{ z-index: 1040; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /#supportBox \{[^}]*z-index: 1001/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  check("a new visit during a wait opens the popup once, over the update card", !!ws_w3.document.getElementById("fePauseDialog") && ws_w3.sessionStorage.getItem("pauseSeen") === String(ws_until) && /#fePauseDialog, #feLimitDialog \{ z-index: 1040; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && /#supportBox \{[^}]*z-index: 1001/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   check("a wait with no list kept shows Choosing playlists as waiting, and one with no start gets one when read, with a full ring", /Choosing playlistsWaits/.test(ws_w3.document.getElementById("fePauseList").textContent) && /^(99\.9\d|100\.00)%$/.test(ws_w3.document.getElementById("fePauseRing").style.getPropertyValue("--left")) && Math.abs(JSON.parse(ws_w3.localStorage.getItem("spotifyPausedUntil")).from - Date.now()) < 15000, ws_w3.localStorage.getItem("spotifyPausedUntil"));
   ws_w3.localStorage.setItem("spotifyPausedUntil", JSON.stringify({ until: ws_until, from: ws_until - 4 * 3600000, reason: "", clientId: "abc" }));
   ws_w3.eval("setPauseRing()");
@@ -2613,6 +2612,24 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("a quota error whose wait the page cannot read is still recognised from the reply, stops at once, and says Spotify did not say how long", rl_q.eval("connection") === "problem" && rl_text(rl_q, "connectionMessage") === "Spotify has reached the request quota for your developer account. Waiting is the only fix, and Spotify did not say how long to wait.", rl_text(rl_q, "connectionMessage"));
   var rl_p = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { meStatus: 429 }, instantRetries: true });
   check("an ordinary rate limit with no readable wait, after retrying, says so plainly instead of the old Wait a minute", rl_text(rl_p, "connectionMessage") === "Spotify is rate limiting requests and did not say how long to wait. Try again in a few minutes.", rl_text(rl_p, "connectionMessage"));
+  // no readable wait: a popup once, the strip under Arc's bar counting down to the next try, every 5 minutes, and Try again now (Ron, 2026-11-12)
+  var rl_pd = rl_p.document;
+  check("connecting refused with no readable wait opens the popup, with Close and Try again now", !!rl_pd.getElementById("feLimitDialog") && rl_pd.getElementById("feLimitTitle").textContent === "Spotify asked Arc to wait" && /every 5 minutes/.test(rl_pd.getElementById("feLimitDialog").textContent) && rl_pd.getElementById("feLimitClose").textContent === "Close" && rl_pd.getElementById("feLimitRetry").textContent === "Try again now");
+  rl_pd.getElementById("feLimitClose").click();
+  check("Close closes it, and the strip stays, counting down to the next try, and hides the grey note under the recipes", !rl_pd.getElementById("feLimitDialog") && !rl_pd.getElementById("waitStrip").hidden && /^Spotify asked Arc to wait · [45]:\d\d$/.test(rl_pd.getElementById("waitStripText").textContent) && rl_pd.documentElement.classList.contains("spotify-waiting"), rl_pd.getElementById("waitStripText").textContent);
+  rl_pd.getElementById("waitStrip").click();
+  check("the strip opens the popup again", !!rl_pd.getElementById("feLimitDialog"));
+  rl_p.eval("limitWait.retryAt = Date.now() - 1; tickLimitWait()");
+  await waitFor(() => rl_p.eval("connection") === "problem" && rl_p.eval("limitWait.retryAt") > Date.now() + 60000, 8000);
+  check("when the 5 minutes are up Arc tries again by itself, and a second refusal says nothing more, leaving the popup as it was", rl_p.eval("limitWait.active") && rl_pd.querySelectorAll("#feLimitDialog").length === 1);
+  rl_p.eval("limitWait.retryAt = 0; tickLimitWait()");
+  check("the code connects again on Try again now and when the time is up", /id: "feLimitRetry", onClick: \(\) => \{ closeLimitDialog\(\); retryAfterLimit\(\); \}/.test(fs.readFileSync(ROOT + "editor.js", "utf8")) && /limitWait\.retryAt && Date\.now\(\) >= limitWait\.retryAt && connection === "problem" && token && !spotifyPause\(\)\) \{ limitWait\.retryAt = 0; retryAfterLimit\(\); \}/.test(appSource()));
+  var rl_ok = { meStatus: 429 };
+  var rl_g = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: rl_ok, instantRetries: true });
+  delete rl_ok.meStatus;
+  rl_g.document.getElementById("feLimitRetry").click();
+  await waitFor(() => rl_g.eval("connection") === "ready", 15000);
+  check("once Spotify answers, the popup and the strip go", !rl_g.document.getElementById("feLimitDialog") && rl_g.document.getElementById("waitStrip").hidden && !rl_g.document.documentElement.classList.contains("spotify-waiting") && !rl_g.eval("limitWait.active"));
   var rl_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { meStatus: 429, retryAfter: 40 } });
   check("a wait it can read that is too long to sit through is reported as it was given, rounded up to the minute", rl_text(rl_w, "connectionMessage") === "Spotify is rate limiting requests. Try again in about 1 minute.", rl_text(rl_w, "connectionMessage"));
   var rl_shown = (w) => [w.document.getElementById("connectionRetry").hidden, w.document.getElementById("connectionReconnect").hidden];
@@ -2940,7 +2957,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-12za", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-12zb", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -5263,7 +5280,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-12za"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-12zb"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
