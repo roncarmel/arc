@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12z";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12za";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -1459,11 +1459,6 @@ function refreshNoticeLine() {
     paintNotice(caption, { warn: !!held.warn, icon: held.icon, text: held.text, actions });
     return;
   }
-  const pauseLeft = typeof pausedSecondsLeft === "function" ? pausedSecondsLeft() : 0;
-  if (pauseLeft && !notices.batch.length) {   // a wait from Spotify: it stays, counting down, after any message that is showing
-    paintNotice(caption, { key: "pause", pause: true, icon: "clock", text: pauseLineText(pauseLeft), actions: [{ label: "Details", more: true, run: () => showPauseDialog() }] });
-    return;
-  }
   if (attention.length && !notices.batch.some((b) => b.transient)) {   // what was said about something the person has just done comes before trouble that is waiting
     notices.attn = Math.min(notices.attn, attention.length - 1);
     const item = attention[notices.attn];
@@ -1492,17 +1487,8 @@ function refreshNoticeLine() {
 }
 
 // ---------------------------------------------------------------- a wait from Spotify (see spotifyPause in app.js)
-function pauseLineText(left) {
-  return `Spotify paused \u00b7 back in ${clockText(left)}`;
-}
-
-// Each second while Spotify is paused: the countdown in the line and in the popup. The line is repainted only when it changes over (from the total, or at the end).
+// Each second while Spotify is paused: the countdown in the popup (the strip under Arc's bar is app.js's paintWaitStrip).
 function refreshPauseViews(left) {
-  const caption = $("feCaption");
-  if (caption && left && notices.paintedKey === "pause") {
-    const text = caption.querySelector(".fe-notice-text");
-    if (text) text.textContent = pauseLineText(left);
-  } else if (caption && (left ? notices.paintedKey === "total" : notices.paintedKey === "pause")) refreshNoticeLine();
   const clock = $("fePauseClock");
   if (clock && left) { clock.textContent = clockText(left); setPauseRing(); }
   if (!left && $("fePauseDialog")) closePauseDialog();
@@ -1534,6 +1520,34 @@ function closePauseDialog() {
   document.removeEventListener("keydown", pauseDialogKey);
 }
 function pauseDialogKey(event) { if (event.key === "Escape") closePauseDialog(); }
+
+// Spotify refused and did not say for how long (app.js startLimitWait): the pause popup's look, with a clock in place of the countdown.
+function closeLimitDialog() {
+  const overlay = $("feLimitDialog");
+  if (!overlay) return;
+  overlay.remove();
+  document.removeEventListener("keydown", limitDialogKey);
+}
+function limitDialogKey(event) { if (event.key === "Escape") closeLimitDialog(); }
+function showLimitDialog() {
+  if ($("feLimitDialog") || $("fePauseDialog")) return;
+  if (typeof endConnectingScreen === "function") endConnectingScreen();   // the popup needs the page in view
+  if (typeof closeUpdateScreen === "function") closeUpdateScreen();
+  if (typeof endLaunchScreen === "function") endLaunchScreen();
+  if (editor.panel || editor.cardMenu || editor.gapPanel !== null || editor.appMenu) closePanels();
+  const overlay = feEl("div", { class: "fe-overlay", id: "feLimitDialog", onClick: () => closeLimitDialog() },
+    feEl("div", { class: "fe-dialog fe-pause-dialog", id: "feLimitBox", tabindex: "-1", role: "dialog", "aria-modal": "true", "aria-labelledby": "feLimitTitle", onClick: (e) => e.stopPropagation() },
+      feEl("h3", { id: "feLimitTitle", text: "Spotify asked Arc to wait" }),
+      feEl("div", { class: "fe-limit-clock", html: '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>' }),
+      feEl("p", { id: "feLimitWhy", class: "fe-limit-text", text: "Spotify limits how often each app may ask it for things. Arc asked too often, so Spotify stopped answering for a while, and did not say how long. It is usually a few minutes." }),
+      feEl("p", { class: "fe-limit-text", text: "Arc tries again by itself every 5 minutes. Recipes can still be edited meanwhile." }),
+      feEl("div", { class: "row" },
+        feEl("button", { type: "button", id: "feLimitClose", onClick: () => closeLimitDialog() }, "Close"),
+        feEl("button", { type: "button", class: "primary", id: "feLimitRetry", onClick: () => { closeLimitDialog(); retryAfterLimit(); } }, "Try again now"))));
+  document.body.appendChild(overlay);
+  document.addEventListener("keydown", limitDialogKey);
+  $("feLimitBox").focus();
+}
 
 function showPauseDialog() {
   const pause = typeof spotifyPause === "function" ? spotifyPause() : null;
@@ -2886,7 +2900,7 @@ function personBuildRow(b) {
   return feEl("div", { class: "bh-pl pp-live", id: "ppBuild", "aria-live": "polite" },
     feEl("span", { class: "bh-cover pp-cover-wait", style: 'background-image:url("playlist-cover.jpg")' }),
     feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-pl-name", text: b.name.replace(` · ${b.code} · `, " · ") }),
-      feEl("span", { class: "pp-step" }, feEl("span", { class: "pp-step-text", text: b.step }), feEl("span", { class: "pp-keep", text: "Keep this tab open." })),
+      feEl("span", { class: "pp-step" }, feEl("span", { class: "pp-step-text", text: b.step })),
       feEl("span", { class: "pp-bar", "aria-hidden": "true" }, feEl("i", { style: `width:${share}%` }))));
 }
 // What stopped it: the recipe's problems (nothing was made), or a failure while building (perhaps after the playlist was made)

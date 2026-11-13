@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-12z";
+const APP_VERSION = "2026-11-12za";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -456,7 +456,7 @@ function devModeChanged(on) {
 // Music sharing is a page under the bar: it starts where the bar ends
 function placeSharingPage() {
   if (appView !== "sharing") return;
-  const bar = $("appBar");
+  const bar = $("waitStrip") && !$("waitStrip").hidden ? $("waitStrip") : $("appBar");   // under the strip while Spotify asks Arc to wait
   $("msOverlay").style.top = Math.max(0, Math.round(bar.getBoundingClientRect().bottom + 4)) + "px";
 }
 
@@ -905,6 +905,7 @@ async function finishLaunchScreen(ready) {
 }
 
 function getUpdate() {
+  if (buildWriting()) return;
   try { sessionStorage.setItem("updating", "1"); } catch (err) { /* no storage: the card shows until the reload only */ }
   updateScreen = true;
   $("updateScreen").classList.remove("us-done", "us-out", "us-failed", "us-swap");
@@ -2011,6 +2012,7 @@ let reloadPage = () => location.reload();   // a separate function so tests can 
 function startOver() { return clearSavedData({ copyClientId: true }); }
 
 async function clearSavedData(options) {
+  if (buildWriting()) return;
   const savedId = options && options.copyClientId === true ? localStorage.getItem("clientId") : null;
   if (savedId) { try { await Promise.race([navigator.clipboard.writeText(savedId), new Promise((r) => setTimeout(r, 1000))]); } catch (err) { /* no clipboard access: the reset goes on */ } }
   // Everything this page saves lives in this browser's storage for this address, so clearing it forgets it all.
@@ -2024,7 +2026,14 @@ function updateButtons() {
   try { updateButtonsNow(); } catch (err) { startupProblems.push(`buttons: ${String((err && err.message) || err)}`); if (startupDone) showStartupProblems(); }
 }
 
+// While a build is making playlists in Spotify, nothing may leave or reload the page or change the account: it would stop the build halfway.
+// Closing or reloading the tab asks first (the browser's own Leave site?), and the buttons that would leave are greyed.
+function buildWriting() { return createStage === "creating" || personBuild.state === "now"; }
+window.addEventListener("beforeunload", (e) => { if (buildWriting()) { e.preventDefault(); e.returnValue = ""; } });
+
 function updateButtonsNow() {
+  const writing = buildWriting();
+  for (const id of ["updateGet", "changeSpotifyLogin", "clearYes"]) { const b = $(id); if (b) b.disabled = writing; }
   const ready = !!token && connection === "ready" && !!py && formatsValid && !busy && !!activeKey();
   const action = connectionAction();
   // Step 1's buttons, while a sign-in is under way
@@ -2138,6 +2147,7 @@ async function connectToSpotify() {
     await loadMyPlaylists();
     localStorage.setItem("connectedBefore", "1");   // from now on minimalist mode is available
     setConnection("ready");
+    endLimitWait();
     logStep(`connected, ${plural(playlists.length, "playlist")} found`);
     offerLimitRecord();
     if (!localStorage.getItem("counted") && countEvent("first-connection")) localStorage.setItem("counted", "1");   // once per browser
@@ -2148,6 +2158,7 @@ async function connectToSpotify() {
     logStep("connection failed");
     if (spotifyPause()) useKeptPlaylists();
     setConnection("problem", message, /sign-in expired|did not allow/.test(message) ? "reconnect" : "retry");
+    if (/rate limiting|request quota/.test(message) && !spotifyPause()) startLimitWait(); else endLimitWait();
     countEvent("connection-problem", problemKind(message));
     // A report link is for something unexpected. A rate limit, a quota, no internet and a lapsed sign-in are known, and nothing here can fix them.
     if (!/rate limiting|request quota|Could not reach Spotify|Spotify did not answer|sign-in expired|did not allow|needs Premium/.test(message)) offerReport("connectionReportHint", message);
@@ -2170,6 +2181,7 @@ function setBusy(flag) {
 let createStage = "closed";   // closed, planning, question, creating or done
 
 function setCreateStage(stage) {
+  if ((stage === "creating") !== (createStage === "creating")) setTimeout(updateButtons);
   createStage = stage;
   $("confirmButtons").hidden = stage !== "question";
   $("bdBusyRow").hidden = stage !== "planning" && stage !== "creating";
@@ -2521,7 +2533,7 @@ function setSigningIn(flag, note = "") {
 
 // Change Spotify login: the usual sign-in, but Spotify shows its page even when it is already signed in, where "Not you?" picks another account.
 // The current sign-in stays until a new one arrives, so going back from Spotify's page changes nothing.
-function changeSpotifyLogin() { startLogin({ switchAccount: true }); }
+function changeSpotifyLogin() { if (buildWriting()) return; startLogin({ switchAccount: true }); }
 
 async function startLogin(options) {
   if (signingIn) return;
@@ -2581,15 +2593,68 @@ Object.assign(spotifyHooks, {
   pauseStarted: (first) => {
     updateButtons();
     // when a wait starts, the popup explains; not over the build popup, which says it already
-    if (first && $("createOverlay").hidden && typeof showPauseDialog === "function") showPauseDialog();
+    if (first && $("createOverlay").hidden && typeof showPauseDialog === "function") { closeLimitDialog(); showPauseDialog(); }
   },
-  pauseChanged: (left) => { if (typeof refreshPauseViews === "function") refreshPauseViews(left); },   // the line under the bar and the popup
+  pauseChanged: (left) => { if (typeof refreshPauseViews === "function") refreshPauseViews(left); paintWaitStrip(); },   // the strip under Arc's bar and the popup
   pauseEnded: () => {   // connect again, and save what waited
     updateButtons();
     if (token && connection !== "ready" && connection !== "connecting") connectToSpotify().then(() => { if (connection === "ready") scheduleSpotifySave(500); });
     else if (connection === "ready") scheduleSpotifySave(500);
   },
 });
+
+// ---------------------------------------------------------------- Spotify asked Arc to wait (Ron, 2026-11-12, mockups/rate-limit B solid)
+// A wait of over a minute is a pause (shared-spotify.js). A refusal with no readable wait, or a short one that outlasted the retries, used to leave only a grey line
+// and Try again on the Build buttons. Now connecting that is refused that way opens a popup once (showLimitDialog in editor.js) and Arc connects again by itself
+// every 5 minutes. Either kind shows the strip under Arc's bar on every view (#waitStrip), with the time to go, until it is over; the strip opens the popup.
+const LIMIT_RETRY_MS = 5 * 60 * 1000;
+const limitWait = { active: false, retryAt: 0, timer: null, shown: false };
+function startLimitWait() {
+  limitWait.active = true;
+  limitWait.retryAt = Date.now() + LIMIT_RETRY_MS;
+  clearInterval(limitWait.timer);
+  limitWait.timer = setInterval(tickLimitWait, 1000);
+  paintWaitStrip();
+  if (!limitWait.shown && typeof showLimitDialog === "function") { limitWait.shown = true; showLimitDialog(); }   // once a wait: the retries say nothing more
+}
+function endLimitWait() {
+  if (!limitWait.active) return;
+  Object.assign(limitWait, { active: false, retryAt: 0, shown: false });
+  clearInterval(limitWait.timer);
+  limitWait.timer = null;
+  if (typeof closeLimitDialog === "function") closeLimitDialog();
+  paintWaitStrip();
+}
+function tickLimitWait() {
+  if (limitWait.retryAt && Date.now() >= limitWait.retryAt && connection === "problem" && token && !spotifyPause()) { limitWait.retryAt = 0; retryAfterLimit(); }
+  paintWaitStrip();
+}
+function retryAfterLimit() {
+  // Try again now, or the 5 minutes are up: connect, and save what waited
+  if (connection === "connecting") return;
+  limitWait.retryAt = 0;
+  paintWaitStrip();
+  connectToSpotify().then(() => { if (connection === "ready") scheduleSpotifySave(500); });
+}
+function waitStripState() {
+  // what the strip shows: { text, open } or null
+  const left = pausedSecondsLeft();
+  if (left) return { text: `Spotify asked Arc to wait \u00b7 ${clockText(left)}`, open: () => showPauseDialog() };
+  if (!limitWait.active) return null;
+  const ms = limitWait.retryAt - Date.now();
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return { text: "Spotify asked Arc to wait \u00b7 " + (connection === "connecting" || ms <= 0 ? "trying again" : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`), open: () => showLimitDialog() };
+}
+function paintWaitStrip() {
+  const strip = $("waitStrip");
+  if (!strip) return;
+  const state = waitStripState();
+  const was = !strip.hidden;
+  strip.hidden = !state;
+  document.documentElement.classList.toggle("spotify-waiting", !!state);
+  if (state) { $("waitStripText").textContent = state.text; strip.onclick = state.open; }
+  if (was !== !!state && typeof placeSharingPage === "function") placeSharingPage();   // Music sharing's page starts under the strip
+}
 
 // ---------------------------------------------------------------- anonymous counts (see Privacy)
 function countEvent(name, title) {
@@ -3463,7 +3528,9 @@ async function startCreate(keys = null) {
 // Problems in the recipe and a failure show in the row in its place. Nothing is replaced, renamed or removed. The row can be folded meanwhile; the build goes on.
 const personBuild = { code: null };   // code, state (now, done, blocked, fail), name, step, progress (0 to 1, every phase moves it), minutes, fresh, id, problems, error
 function setPersonBuild(change) {
+  const was = personBuild.state;
   Object.assign(personBuild, change);
+  if (personBuild.state !== was) updateButtons();
   if (typeof paintPersonBuild === "function") paintPersonBuild();
 }
 async function buildForParticipant(id, code) {
