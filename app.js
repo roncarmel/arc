@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-13u";
+const APP_VERSION = "2026-11-13v";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -3037,7 +3037,8 @@ function askShortList(got, total) {
   shortListShown = true;
   askSyncChoice("Spotify didn\u2019t send all your playlists",
     "This happens now and then. Your recipes are safe, and Arc will try again in a moment.",
-    [{ label: "OK", value: "ok", main: true }], { problem: "cloud" });
+    [{ label: "OK", value: "ok", main: true }, { label: "Report this problem", value: "report", link: true, icon: "flag" }], { problem: "cloud" })
+    .then((choice) => { if (choice === "report") openReport(); });
 }
 
 async function loadTracks(id) {
