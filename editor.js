@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13g";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13h";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2524,10 +2524,9 @@ function renderBuilderHome() {
   refreshBuildButtons();
 }
 
-function bhAddRow(id, title, sub, run) {
-  return feEl("button", { type: "button", class: "bh-row bh-add", id, onClick: run },
-    feEl("span", { class: "bh-plus" }, feIcon("plus")),
-    feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: title }), sub ? feEl("span", { class: "bh-sub", text: sub }) : null));
+// New recipe looks like the editor's New segment: a dashed grey button, + and the words centered (Ron, 2026-11-13)
+function bhAddRow(id, title, run) {
+  return feEl("button", { type: "button", class: "bh-row bh-add", id, onClick: run }, feIcon("plus"), title);
 }
 
 function renderRecipeList() {
@@ -2536,7 +2535,7 @@ function renderRecipeList() {
   list.appendChild(feEl("div", { class: "fe-caption", id: "bhCaption", hidden: true }));   // notices, while no recipe is open (refreshNoticeLine)
   if (editor.broken) { list.appendChild(brokenView()); refreshNoticeLine(); return; }
   const formats = editor.model ? editor.model.formats.filter((f) => !f.draft) : [];
-  const add = bhAddRow("bhNewRecipe", "New recipe", "", askNewFormat);
+  const add = bhAddRow("bhNewRecipe", "New recipe", askNewFormat);
   if (!formats.length) {
     // a first visit: what a recipe is, the tutorial, and New recipe under it
     list.appendChild(feEl("div", { class: "fe-welcome-card bh-empty", id: "feWelcome" },
