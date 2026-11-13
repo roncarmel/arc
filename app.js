@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-12w";
+const APP_VERSION = "2026-11-12x";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -3458,9 +3458,9 @@ async function startCreate(keys = null) {
   }
 }
 
-// One playlist for a participant, built where it will live (Ron, 2026-11-12, mockups/build-one C): no build popup. The participant's popup opens and the new
-// playlist fills in at the top of their playlists (personBuild, painted by paintPersonPanel in editor.js); when it is in Spotify a short message says so. Problems
-// in the recipe and a failure show in the popup in their place. Nothing is replaced, renamed or removed. The popup can be closed meanwhile; the build goes on.
+// One playlist for a participant, built where it will live (Ron, 2026-11-12, mockups/build-one C): no build popup. The participant's row opens on Participants
+// and the new playlist fills in at the top of their playlists (personBuild, painted by paintPersonBuild in editor.js); done, a check and rings play over it.
+// Problems in the recipe and a failure show in the row in its place. Nothing is replaced, renamed or removed. The row can be folded meanwhile; the build goes on.
 const personBuild = { code: null };   // code, state (now, done, blocked, fail), name, step, done, total, minutes, fresh, id, problems, error
 function setPersonBuild(change) {
   Object.assign(personBuild, change);
@@ -3508,7 +3508,7 @@ async function buildForParticipant(id, code) {
     countEvent("playlists-created", "1");
     logStep("participant build finished");
     try { await loadMyPlaylists(); } catch (err) { /* the playlist is made; the list catches up later */ }
-    setPersonBuild({ state: "done", id: made.id, celebrate: true });   // played once by paintPersonPanel
+    setPersonBuild({ state: "done", id: made.id, celebrate: true });   // played once by renderParticipantList
   } catch (err) {
     recordError(cleanError(err));
     logStep("participant build failed");

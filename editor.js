@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12w";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12x";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2300,7 +2300,6 @@ function blankSegmentReport(keys) {
 const builderHome = { tab: "recipes", person: null };
 
 const BH_SPARK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 2l1.8 5.6L17.5 9.5l-5.7 1.9L10 17l-1.8-5.6L2.5 9.5l5.7-1.9z"/><path d="M18 13l.9 2.6 2.6.9-2.6.9L18 20l-.9-2.6-2.6-.9 2.6-.9z"/></svg>';
-const BH_INFO = '<svg class="bh-go bh-info" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>';
 const BH_OPEN = '<svg class="bh-go" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
 const BH_BACK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
 function bhSvg(markup) { const s = document.createElement("span"); s.style.display = "contents"; s.innerHTML = markup; return s; }
@@ -2455,8 +2454,6 @@ function renderBuilderHome() {
   $("bhPeople").hidden = builderHome.tab !== "people";
   if (builderHome.tab === "recipes") renderRecipeList();
   else renderParticipantList();
-  if (builderHome.tab === "people" && builderHome.person) paintPersonPanel();
-  else closePersonPanel(true);
   refreshBuildButtons();
 }
 
@@ -2524,8 +2521,6 @@ function refreshBuildButtons() {
     b.disabled = action ? busy : !ready;
     b.hidden = paused;
   }
-  const next = $("bhNext");
-  if (next) { next.disabled = action ? busy : !ready; next.hidden = paused; }
 }
 
 function buildRecipe(id) {
@@ -2765,24 +2760,101 @@ function cleanCode(text) { return String(text || "").toUpperCase().replace(/[^A-
 function shortDate(time) { const d = new Date(time); return `${d.getDate()} ${MONTHS[d.getMonth()]}`; }
 // When a participant's latest playlist was built: the day this year, else only the year, so someone not seen for a while stands out (Ron, 2026-11-12)
 function builtWhen(time) { const d = new Date(time); return d.getFullYear() === new Date().getFullYear() ? shortDate(time) : String(d.getFullYear()); }
-// The line under a participant's code, the same in the list and at the top of their popup
-function personLine(person) { const n = person.playlists.length; return n ? `${n === 1 ? "1 playlist" : n + " playlists"} \u00b7 ${`most recent ${builtWhen(person.last)}`.replace(/ /g, "\u00a0")}` : "Nothing built yet"; }
+// The line under a participant's code, in the list and in Build a playlist's card
+// short: the row, beside Build playlist, has room only for the day (Ron, 2026-11-12)
+function personLine(person, short) { const n = person.playlists.length; return n ? `${n === 1 ? "1 playlist" : n + " playlists"} \u00b7 ${`${short ? "" : "most recent "}${builtWhen(person.last)}`.replace(/ /g, "\u00a0")}` : "Nothing built yet"; }
 
 const PEOPLE_HOW = "A participant appears here once you build a playlist for them.";
+// A participant's row (Ron, 2026-11-12): their square, the code, their line and Build playlist, which asks which recipe (pickRecipeFor). A tap on the rest of
+// the row opens it in place to their playlists, one compact line each; one participant open at a time (builderHome.person).
+let celebratingUntil = 0, celebrateTimer = 0;
 function renderParticipantList() {
   const box = $("bhPeople");
+  if (!box) return;
+  // the fanfare plays on the row it was drawn on: a repaint meanwhile (the playlist list read again, the build ending) waits until it is over
+  const wait = celebratingUntil - Date.now();
+  if (wait > 0) { clearTimeout(celebrateTimer); celebrateTimer = setTimeout(renderParticipantList, wait + 20); return; }
   box.textContent = "";
   // One way in: Build on a recipe, then Who is it for? A participant exists only once a playlist is built for them, so every device sees the same list (Ron, 2026-11-12)
   const people = participantList();
+  const open = builderHome.person;
+  // someone getting their first playlist shows while it is built, before Spotify lists it
+  if (open && personBuild.code === open && !people.some((p) => p.code === open)) people.unshift({ code: open, playlists: [], last: 0 });
   if (!people.length) box.appendChild(feEl("div", { class: "bh-empty bh-people-empty" }, feEl("b", { text: "No participants yet" }), feEl("p", { text: PEOPLE_HOW })));
-  for (const person of people) {
-    // Like the top of the participant's popup: the code as the title, then playlists and the most recent; the i only hints that the row opens more (Ron, 2026-11-12)
-    box.appendChild(feEl("button", { type: "button", class: "bh-row", "data-code": person.code, "aria-label": `${person.code}, ${personLine(person)}`, onClick: () => { builderHome.person = person.code; paintPersonPanel(); } },
-      codeBadge(person.code),
-      feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: person.code }), feEl("span", { class: "bh-sub", text: personLine(person) })),
-      bhSvg(BH_INFO)));
-  }
+  for (const person of people) box.appendChild(personCard(person, person.code === open));
   if (people.length) box.appendChild(feEl("p", { class: "bh-note", text: PEOPLE_HOW }));
+  if (personBuild.state === "done" && personBuild.celebrate && personBuild.code === open) {
+    personBuild.celebrate = false;
+    const card = box.querySelector(`.bh-person[data-code="${open}"]`);
+    const row = card && card.querySelector(".pp-new");
+    if (row && celebrateBuilt(row, card.querySelector(".bh-phead .bh-sub"))) celebratingUntil = Date.now() + 1700;
+  }
+}
+
+function personCard(person, open) {
+  const code = person.code;
+  const toggle = () => setPersonOpen(builderHome.person === code ? null : code);
+  const build = feEl("button", { type: "button", class: "bh-build", "data-code": code, onClick: (event) => { event.stopPropagation(); buildNextFor(code); } },
+    bhSvg(BH_SPARK), feEl("span", { text: buildWord() }));
+  const head = feEl("div", { class: "bh-phead", role: "button", tabindex: "0", "aria-expanded": String(open), "aria-label": `${code}, ${personLine(person)}`, onClick: toggle,
+    onKeyDown: (event) => { if ((event.key === "Enter" || event.key === " ") && event.target === head) { event.preventDefault(); toggle(); } } },
+    codeBadge(code),
+    feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: code }), feEl("span", { class: "bh-sub", text: personLine(person, true) })),
+    build);
+  const card = feEl("div", { class: "bh-row bh-person" + (open ? " bh-open" : ""), "data-code": code }, head);
+  if (open) card.appendChild(personPlaylists(person));
+  return card;
+}
+
+// Build playlist on a participant's row: Connect first when not connected, else which recipe
+function buildNextFor(code) {
+  const action = connectionAction();
+  if (action) { action(); return; }
+  pickRecipeFor(code);
+}
+
+// Their playlists, one line each: the cover, the name without their code, the songs, and the open mark; the one being built first, or what stopped it
+function personPlaylists(person) {
+  const code = person.code;
+  const mine = personBuild.code === code ? personBuild : null;
+  const box = feEl("div", { class: "bh-plist" });
+  if (mine && (mine.state === "blocked" || mine.state === "fail")) box.appendChild(personBuildProblem(mine));
+  if (mine && mine.state === "now") box.appendChild(personBuildRow(mine));
+  for (const p of person.playlists) {
+    const isNew = mine && mine.state === "done" && mine.id === p.id;
+    const sub = isNew ? `${mine.songs} songs` : p.count === null || p.count === undefined ? "" : `${p.count} songs`;
+    box.appendChild(feEl("a", { class: "bh-pl" + (isNew ? " pp-new" : ""), href: `https://open.spotify.com/playlist/${p.id}`, target: "_blank", rel: "noopener" },
+      feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }),
+      feEl("span", { class: "bh-pl-name", text: p.name.replace(` · ${code} · `, " · ") }),
+      feEl("span", { class: "bh-pl-sub", text: sub }),
+      isNew ? feEl("span", { class: "pp-open", text: "Open" }) : bhSvg(BH_OPEN)));
+  }
+  return box;
+}
+
+// Opens one participant's row and folds the one that was open; a finished build's mark goes when its row folds
+function setPersonOpen(code) {
+  const was = builderHome.person;
+  if (was && was !== code && personBuild.code === was && personBuild.state !== "now") personBuild.code = null;
+  builderHome.person = code;
+  const box = $("bhPeople");
+  const cardOf = (c) => c && box ? box.querySelector(`.bh-person[data-code="${c}"]`) : null;
+  const old = cardOf(was), next = cardOf(code);
+  if (old && was !== code) {
+    old.classList.remove("bh-open");
+    old.querySelector(".bh-phead").setAttribute("aria-expanded", "false");
+    const list = old.querySelector(".bh-plist");
+    if (list) { revealSmoothly(list, false); list.classList.add("bh-plist-gone"); }
+  }
+  if (!next || was === code) return;
+  next.classList.add("bh-open");
+  next.querySelector(".bh-phead").setAttribute("aria-expanded", "true");
+  next.querySelectorAll(".bh-plist").forEach((l) => l.remove());
+  const person = participantList().find((p) => p.code === code) || { code, playlists: [], last: 0 };
+  const list = personPlaylists(person);
+  list.hidden = true;
+  next.appendChild(list);
+  revealSmoothly(list, true);
 }
 
 // A participant's code in a square (Ron, 2026-11-12, mockups/participants V4): four fixed places in a 2x2, each marked by a faint box, filled in order
@@ -2796,82 +2868,23 @@ function paintBadge(badge, code) {
   Array.from(badge.children).forEach((place, i) => { place.textContent = chars[i] || ""; });
 }
 
-// A participant opens in a popup over the list, like a recipe (Ron, 2026-11-12, mockups/participants PM-2): the code's square, PARTICIPANT, the code,
-// what was built, the X; then Build <code>'s next playlist and their playlists. Painted again whenever the landing is (after a build).
-function paintPersonPanel() {
-  const code = builderHome.person;
-  if (!code) return;
-  let wrap = $("personPanelWrap");
-  const arriving = !wrap;
-  if (arriving) {
-    wrap = feEl("div", { class: "rp-wrap", id: "personPanelWrap" },
-      feEl("div", { class: "rp-dim", onClick: () => closePersonPanel() }),
-      feEl("div", { class: "rp-sheet pp-sheet", id: "personPanel", role: "dialog", "aria-modal": "true", "aria-labelledby": "ppTitle" }));
-    document.body.appendChild(wrap);
-    document.addEventListener("keydown", personEscape);
-    document.documentElement.classList.add("rp-open");
-  }
-  const sheet = $("personPanel");
-  const person = participantList().find((p) => p.code === code) || { code, playlists: [], last: 0 };
-  const n = person.playlists.length;
-  const meta = feEl("span", { class: "rp-meta", id: "ppMeta", text: personLine(person) });
-  const body = feEl("div", { class: "pp-body" },
-    feEl("button", { type: "button", class: "primary bh-wide", id: "bhNext", onClick: () => pickRecipeFor(code) }, bhSvg(BH_SPARK), `Build ${code}'s next playlist`));
-  const mine = personBuild.code === code ? personBuild : null;
-  if (mine && (mine.state === "blocked" || mine.state === "fail")) body.appendChild(personBuildProblem(mine));
-  const building = mine && mine.state === "now";
-  if (n || building) {
-    body.appendChild(feEl("div", { class: "bh-sec", text: "Playlists" }));
-    const list = feEl("div", { class: "bh-list" });
-    if (building) list.appendChild(personBuildRow(mine));
-    for (const p of person.playlists) {
-      const isNew = mine && mine.state === "done" && mine.id === p.id;
-      const sub = isNew ? `${lengthText(mine.minutes)} \u00b7 ${mine.songs} songs` : p.count === null || p.count === undefined ? "" : `${p.count} songs`;
-      list.appendChild(feEl("a", { class: "bh-row" + (isNew ? " pp-new" : ""), href: `https://open.spotify.com/playlist/${p.id}`, target: "_blank", rel: "noopener" },
-        feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }),
-        feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: p.name }), feEl("span", { class: "bh-sub", text: sub })),
-        isNew ? feEl("span", { class: "pp-open", text: "Open" }) : bhSvg(BH_OPEN)));
-    }
-    body.appendChild(list);
-  }
-  sheet.replaceChildren(
-    // like the participant's row in the list: the code, then the same line on one line; the X level with the code, near the corner (Ron, 2026-11-12)
-    feEl("div", { class: "rp-head" }, feEl("div", { class: "rp-show" }, codeBadge(code, true),
-      feEl("div", { class: "rp-col" }, feEl("div", { class: "pp-titlerow" }, feEl("h2", { class: "rp-title pp-title", id: "ppTitle", text: code }),
-        feEl("button", { type: "button", class: "rp-x", id: "ppClose", "aria-label": "Close", onClick: () => closePersonPanel(), html: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>' })), meta))),
-    body);
-  if (mine && mine.state === "done" && mine.celebrate) {
-    mine.celebrate = false;
-    const row = sheet.querySelector(".pp-new");
-    if (row && !arriving) celebrateBuilt(row, $("ppMeta"));
-  }
-  if (arriving) {
-    sheet.scrollTop = 0;
-    if (motionAllowed(wrap)) {
-      wrap.firstChild.animate(MOTION.dim.frames, { duration: 200, easing: EASE_OUT });
-      panelMotion(sheet, true);
-    }
-    try { $("ppClose").focus({ preventScroll: true }); } catch (err) { /* old browsers */ }
-  }
-  refreshBuildButtons();
-}
-
-// Opens a participant's popup, with Participants behind it (a build started from a recipe moves the landing there, where the playlist will live)
+// Opens a participant's row on Participants (a build started from a recipe moves the landing there, where the playlist will live)
 function openPersonPanel(code) {
   builderHome.tab = "people";
   builderHome.person = code;
   renderBuilderHome();
+  const card = document.querySelector(`#bhPeople .bh-person[data-code="${code}"]`);
+  if (card) try { card.scrollIntoView({ block: "nearest", behavior: motionAllowed(card) ? "smooth" : "auto" }); } catch (err) { /* old browsers */ }
 }
 
 // The playlist being built for a participant, as a row at the top of their playlists: its cover dimmed, its name, the step in pink and a bar that fills
 function personBuildRow(b) {
   const share = b.total ? Math.round((b.done / b.total) * 100) : 0;
-  return feEl("div", { class: "bh-row pp-live", id: "ppBuild", "aria-live": "polite" },
+  return feEl("div", { class: "bh-pl pp-live", id: "ppBuild", "aria-live": "polite" },
     feEl("span", { class: "bh-cover pp-cover-wait", style: 'background-image:url("playlist-cover.jpg")' }),
-    feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: b.name }),
-      feEl("span", { class: "bh-sub pp-step", text: b.step }),
-      feEl("span", { class: "pp-bar", "aria-hidden": "true" }, feEl("i", { style: `width:${share}%` })),
-      feEl("span", { class: "pp-keep", text: "Keep this tab open." })));
+    feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-pl-name", text: b.name.replace(` · ${b.code} · `, " · ") }),
+      feEl("span", { class: "pp-step" }, feEl("span", { text: b.step }), feEl("span", { class: "pp-keep", text: "Keep this tab open." })),
+      feEl("span", { class: "pp-bar", "aria-hidden": "true" }, feEl("i", { style: `width:${share}%` }))));
 }
 // What stopped it: the recipe's problems (nothing was made), or a failure while building (perhaps after the playlist was made)
 function personBuildProblem(b) {
@@ -2895,7 +2908,7 @@ function personBuildProblem(b) {
 // does after Share; the cover lights up under it, Open pops in, and the participant's line comes in with its new count. Once; under reduced motion only the end shows.
 const PP_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" pathLength="24" stroke-dasharray="24" stroke-dashoffset="24"/></svg>';
 function celebrateBuilt(row, meta) {
-  if (!motionAllowed(row)) return;
+  if (!motionAllowed(row)) return false;
   const cover = row.querySelector(".bh-cover"), open = row.querySelector(".pp-open");
   cover.animate([{ filter: "grayscale(0.6) brightness(0.55)" }, { filter: "none" }], { duration: 400, delay: 300, easing: EASE_OUT, fill: "backwards" });
   if (open) open.animate([{ opacity: 0, transform: "scale(0.8)" }, { opacity: 1, transform: "none" }], { duration: 300, delay: 450, easing: "cubic-bezier(0.27, 1.45, 0.53, 1)", fill: "backwards" });
@@ -2913,38 +2926,17 @@ function celebrateBuilt(row, meta) {
   check.animate([{ opacity: 0, transform: "scale(0.6)" }, { opacity: 1, transform: "scale(1.1)", offset: 0.5 }, { opacity: 1, transform: "none" }], { duration: 400, easing: EASE_OUT, fill: "both" });
   check.querySelector("path").animate([{ strokeDashoffset: 24 }, { strokeDashoffset: 0 }], { duration: 350, delay: 150, easing: EASE_OUT, fill: "forwards" });
   check.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 350, delay: 1300, fill: "forwards" }).onfinish = () => check.remove();
+  return true;
 }
 
-// Called as the build moves on: only the row changes while it is under way (focus and scroll stay); a new state paints the popup again
+// Called as the build moves on: only the row changes while it is under way (focus and scroll stay); a new state draws the list again
 let paintedBuildState = null;
 function paintPersonBuild(force) {
-  if (builderHome.person !== personBuild.code || !$("personPanel")) return;
+  if (builderHome.tab !== "people" || builderHome.person !== personBuild.code) return;
   const row = $("ppBuild");
   if (!force && personBuild.state === "now" && paintedBuildState === "now" && row) { row.replaceWith(personBuildRow(personBuild)); return; }
   paintedBuildState = personBuild.state;
-  paintPersonPanel();
-}
-function closePersonPanel(quiet) {
-  const wrap = $("personPanelWrap");
-  builderHome.person = null;
-  if (personBuild.state !== "now") personBuild.code = null;   // a finished build, its problem or its new playlist's mark go with the popup
-  if (!wrap) return;
-  document.removeEventListener("keydown", personEscape);
-  if (!$("recipePanelWrap") || $("recipePanelWrap").hidden) document.documentElement.classList.remove("rp-open");
-  wrap.id = "";
-  wrap.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
-  if (quiet || !motionAllowed(wrap)) { wrap.remove(); return; }
-  wrap.setAttribute("aria-hidden", "true");
-  wrap.style.pointerEvents = "none";
-  wrap.firstChild.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: EASE_IN, fill: "forwards" });
-  panelMotion(wrap.lastChild, false).onfinish = () => wrap.remove();
-}
-
-// Escape closes it, unless a question over it (the recipe chooser) is open: that one closes first
-function personEscape(event) {
-  if (event.key !== "Escape" || document.querySelector(".fe-overlay:not([hidden])")) return;
-  event.preventDefault();
-  closePersonPanel();
+  renderParticipantList();
 }
 
 // A popup with a field stays in what the on-screen keyboard leaves: its backdrop covers only the visible part of the page, so the popup centers there
