@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-13l";
+const APP_VERSION = "2026-11-13m";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1704,6 +1704,10 @@ async function runSpotifySave() {
     // A save written before the cover said SAVED RECIPE (its description began with the old note) is given the new cover once.
     const putCover = (entry) => { if ((!entry.image || coverDue().includes(entry.id)) && !saveState.coverQueue.includes(entry)) saveState.coverQueue.push(entry); };
     const oldCover = (entry) => { if (String(entry.description || "").startsWith(OLD_SAVE_PREFIX)) markCoverDue(entry.id, true); };
+    // when the cover changes (RECIPE_COVER_LOOK), every save that has a cover is given the new one once (sliders and RECIPE, Ron, 2026-11-13)
+    const newLook = (() => { try { return localStorage.getItem("recipeCoverLook") !== RECIPE_COVER_LOOK; } catch (err) { return false; } })();
+    if (newLook) for (const p of savesInAccount().values()) if (p.image) markCoverDue(p.id, true);
+    try { localStorage.setItem("recipeCoverLook", RECIPE_COVER_LOOK); } catch (err) { /* private browsing */ }
     // formats deleted here: their saves go too, unless a format with that ID is here again
     let pending = pendingSaveDeletes();
     for (const id of pending.slice()) {
@@ -1832,6 +1836,8 @@ function saveFailureDetail(message) {
   return String(message).replace(/\s*\/playlists\/[A-Za-z0-9]+/g, "").trim();
 }
 
+const RECIPE_COVER_LOOK = "sliders";   // change it with recipe-cover.jpg, so saves made before get the new cover
+
 // Saves that still have the old cover (a cloud with a check and no words) and are to get the new one: their IDs, kept until it is sent, so a cover held up by
 // Spotify's limit is sent on a later visit too.
 function coverDue() {
@@ -1843,7 +1849,7 @@ function markCoverDue(id, due) {
   try { if (list.length) localStorage.setItem("recipeCoverDue", JSON.stringify(list)); else localStorage.removeItem("recipeCoverDue"); } catch (err) { /* private browsing */ }
 }
 
-// The cover of a backup playlist is a picture of a cloud with a check above the words SAVED RECIPE, white with a pink glow on black (recipe-cover.jpg). It is sent once, to a playlist that has none, after the save is done, and it never makes a save wait:
+// The cover of a backup playlist is three sliders above the word RECIPE, white with a pink glow on black (recipe-cover.jpg; was a cloud with a check above SAVED RECIPE until 2026-11-13). It is sent once, to a playlist that has none, after the save is done, and it never makes a save wait:
 // Spotify limits image uploads on their own, so one that is turned away for asking too often stops the rest, quietly, and they go with a later save. Anything else that goes
 // wrong with a cover is said in the line under the editor's bar.
 async function uploadCovers() {

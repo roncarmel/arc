@@ -876,10 +876,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-13l" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-13m" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-13l/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-13m/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2950,7 +2950,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-13l", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-13m", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3971,7 +3971,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // an existing backup that has no cover gets one, and one that has a cover does not
   var bc_pack = (id, title) => bc_w0.packFormat(bc_w0.ensureGaps({ id, title, gap: 30, gaps: [], lead: 0, items: [{ id: "a", kind: "seg", lists: [{ name: "", id: "p2", weight: 1 }], minutes: 30 }], rev: 0, modified: 0 }), ["p2"]);
   var bc_o2 = { descStore: {}, nameStore: {}, extraPlaylists: [{ id: "s1", name: "Alpha (recipe)", owner: { id: "ron" }, description: bc_pack("f1", "Alpha") }, { id: "s2", name: "Beta (recipe)", owner: { id: "ron" }, description: bc_pack("f2", "Beta"), images: [{ url: "https://img.example/x.jpg" }] }] };
-  var bc_w2 = await boot({ url: EDURL, session: signedIn(), local: { formats: bc_fmt, backupMode: "spotify", spotifySynced: JSON.stringify({ f1: { rev: 0 }, f2: { rev: 0 } }) }, fetchOptions: bc_o2 });
+  var bc_w2 = await boot({ url: EDURL, session: signedIn(), local: { formats: bc_fmt, backupMode: "spotify", recipeCoverLook: "sliders", spotifySynced: JSON.stringify({ f1: { rev: 0 }, f2: { rev: 0 } }) }, fetchOptions: bc_o2 });
   bc_w2.eval("spotifySaveDelayMs = 30");
   await waitFor(() => bc_o2.writes.some((x) => x.type === "update"), 8000);
   await new Promise((r) => setTimeout(r, 300));
@@ -3979,12 +3979,18 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // a save from before the cover said SAVED RECIPE (its description begins with only Do not edit.) gets the new cover once, even though it has a cover
   var bc_oldPack = (id, title) => bc_pack(id, title).replace("Holds a recipe, not music. ", "");
   var bc_o6 = { descStore: {}, nameStore: {}, extraPlaylists: [{ id: "s1", name: "Alpha (recipe)", owner: { id: "ron" }, description: bc_oldPack("f1", "Alpha"), images: [{ url: "https://img.example/x.jpg" }] }, { id: "s2", name: "Beta (recipe)", owner: { id: "ron" }, description: bc_pack("f2", "Beta"), images: [{ url: "https://img.example/y.jpg" }] }] };
-  var bc_w6 = await boot({ url: EDURL, session: signedIn(), local: { formats: bc_fmt, backupMode: "spotify", spotifySynced: JSON.stringify({ f1: { rev: 0 }, f2: { rev: 0 } }) }, fetchOptions: bc_o6 });
+  var bc_w6 = await boot({ url: EDURL, session: signedIn(), local: { formats: bc_fmt, backupMode: "spotify", recipeCoverLook: "sliders", spotifySynced: JSON.stringify({ f1: { rev: 0 }, f2: { rev: 0 } }) }, fetchOptions: bc_o6 });
   bc_w6.eval("spotifySaveDelayMs = 30");
   await waitFor(() => bc_covers(bc_o6).length >= 1, 8000);
   await new Promise((r) => setTimeout(r, 300));
   check("a save with the old note is rewritten with the new one and gets the new cover; a save already new is left alone", bc_covers(bc_o6).length === 1 && bc_covers(bc_o6)[0].id === "s1" && bc_covers(bc_o6)[0].base64 === bc_file.toString("base64") && bc_o6.writes.some((x) => x.type === "update" && /^Holds a recipe, not music\. /.test(x.description || "")));
   check("once the new cover is sent, nothing is left waiting for one", bc_w6.localStorage.getItem("recipeCoverDue") === null);
+  // when the cover changes (a browser that has not sent this look yet), every save that has a cover gets the new one once
+  var bc_o7 = { descStore: {}, nameStore: {}, extraPlaylists: [{ id: "s1", name: "Alpha (recipe)", owner: { id: "ron" }, description: bc_pack("f1", "Alpha"), images: [{ url: "https://img.example/x.jpg" }] }, { id: "s2", name: "Beta (recipe)", owner: { id: "ron" }, description: bc_pack("f2", "Beta"), images: [{ url: "https://img.example/y.jpg" }] }] };
+  var bc_w7 = await boot({ url: EDURL, session: signedIn(), local: { formats: bc_fmt, backupMode: "spotify", recipeCoverLook: "cloud", spotifySynced: JSON.stringify({ f1: { rev: 0 }, f2: { rev: 0 } }) }, fetchOptions: bc_o7 });
+  bc_w7.eval("spotifySaveDelayMs = 30");
+  await waitFor(() => bc_covers(bc_o7).length >= 2, 8000);
+  check("a new cover look is sent once to every save that has a cover", bc_covers(bc_o7).map((c) => c.id).sort().join() === "s1,s2" && bc_w7.localStorage.getItem("recipeCoverLook") === "sliders" && bc_w7.localStorage.getItem("recipeCoverDue") === null);
   // without permission to upload images, or when the image is refused or missing, the saves still happen
   var bc_o3 = { descStore: {}, nameStore: {} };
   var bc_w3 = await boot({ url: EDURL, session: { token: JSON.stringify({ value: "t", expires: Date.now() + 3600000, scope: SCOPE_ALL.replace(" ugc-image-upload", "") }) }, local: { formats: bc_fmt, backupMode: "spotify" }, fetchOptions: bc_o3 });
@@ -5298,7 +5304,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-13l"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-13m"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
