@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-13h";
+const APP_VERSION = "2026-11-13i";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -122,20 +122,24 @@ function guarded(name, work) {
 // never harmed by an upload: it keeps what it loaded, and the Python engine is read once, at the start.
 const versionCheck = { last: 0, everyMs: 30 * 1000, running: false, latest: "" };
 
+// Says what it found: "new", "same", "failed" (no answer, or not a stamp), or "busy" (a check already under way)
 async function checkForNewVersion() {
-  if (versionCheck.running || navigator.onLine === false) return;
+  if (versionCheck.running) return "busy";
+  if (navigator.onLine === false) return "failed";
   versionCheck.running = true;
   versionCheck.last = Date.now();
   try {
     const response = await fetch("version.txt?t=" + Date.now(), { cache: "no-store" });
-    if (!response.ok) return;
+    if (!response.ok) return "failed";
     const latest = (await response.text()).trim();
-    if (!/^[A-Za-z0-9._-]{4,40}$/.test(latest) || latest === APP_VERSION) return;   // nothing new, or not a stamp at all (an error page)
+    if (!/^[A-Za-z0-9._-]{4,40}$/.test(latest)) return "failed";   // not a stamp at all (an error page)
+    if (latest === APP_VERSION) return "same";
     logStep(`newer version found: ${latest}`);
     versionCheck.latest = latest;
     showUpdateCard(latest);
+    return "new";
   } catch (err) {
-    /* no connection, or the file is not there: the next time */
+    return "failed";   // no connection, or the file is not there: the next time
   } finally {
     versionCheck.running = false;
   }
@@ -236,7 +240,7 @@ function showView(view, push = true) {
   if ((was === "home" || view === "home") && slideHome(view === "home", () => switchView(was, view, push))) return;
   switchView(was, view, push);
 }
-function switchView(was, view, push) {
+function switchView(was, view, push, sharingTab = "find") {
   appView = view;
   if (was === "sharing" && typeof closeSharing === "function") closeSharing();
   if (typeof editor === "object" && editor.appMenu && typeof closePanels === "function") closePanels();
@@ -247,7 +251,7 @@ function switchView(was, view, push) {
   if (push && view !== "home") { try { history.pushState({ view }, ""); } catch (err) { /* the back button just leaves the page */ } }
   window.scrollTo(0, 0);
   if (view === "builder" && typeof renderEditor === "function") renderEditor();   // drawn while hidden, the tabs and the welcome arrow measured nothing
-  if (view === "sharing") { placeSharingPage(); openSharing("find"); }
+  if (view === "sharing") { placeSharingPage(); openSharing(sharingTab); }
   if (view === "home") { renderHomeRecipes(); alignWelcomeIcons(); }   // drawn while hidden, the band's icon measured nothing
   placeDevPill();
 }
@@ -907,14 +911,31 @@ async function finishLaunchScreen(ready) {
 function getUpdate() {
   if (buildWriting()) return;
   try { sessionStorage.setItem("updating", "1"); } catch (err) { /* no storage: the card shows until the reload only */ }
+  // the page comes back where it was: the tool and its tab (Recipes or Participants, By others or By you; Ron, 2026-11-13), restored behind the card (restoreUpdateView)
+  try {
+    sessionStorage.setItem("updateView", JSON.stringify({ view: appView, builder: typeof builderHome === "object" ? builderHome.tab : "", sharing: typeof sharing === "object" ? sharing.tab : "" }));
+  } catch (err) { /* no storage: home, as on any start */ }
   updateScreen = true;
   $("updateScreen").classList.remove("us-done", "us-out", "us-failed", "us-swap");
   document.documentElement.classList.add("updating", "us-arrive");
   updateStep("Getting the new version");
   reloadForNewVersion(() => {
-    try { sessionStorage.removeItem("updating"); } catch (err) { /* nothing was kept */ }
+    try { sessionStorage.removeItem("updating"); sessionStorage.removeItem("updateView"); } catch (err) { /* nothing was kept */ }
     finishUpdateScreen("failed");
   });
+}
+
+// After Get it's reload, the tool and tab that were open come back, without motion, under the card. Only after an update: any other start opens on home.
+function restoreUpdateView() {
+  let kept = null;
+  try { kept = JSON.parse(sessionStorage.getItem("updateView") || "null"); sessionStorage.removeItem("updateView"); } catch (err) { return; }
+  if (!kept || !updateScreen || pageName() !== "app" || appView !== "home") return;
+  if (kept.view === "builder") {
+    if (kept.builder === "people" && devMode()) builderHome.tab = "people";
+    switchView("home", "builder", true);
+  } else if (kept.view === "sharing" && devMode()) {
+    switchView("home", "sharing", true, kept.sharing === "share" ? "share" : "find");
+  }
 }
 
 // how: "ready" (All set!), "failed" (the new version could not be fetched: said, with OK) or anything else (taken down quietly)
@@ -4198,6 +4219,7 @@ async function main() {
   const pageVersion = (document.querySelector('meta[name="app-version"]') || {}).content;
   if (pageVersion !== APP_VERSION) startupProblems.push(`page version ${pageVersion || "unknown"} and script version ${APP_VERSION} differ`);
   whenScriptsLoaded(checkScriptVersions);
+  whenScriptsLoaded(restoreUpdateView);   // sharing.js loads after this file
   guarded("report details", () => refreshReportBox());
   for (const el of document.querySelectorAll(".redirect-address")) el.textContent = redirectUri();
   $("clientId").value = localStorage.getItem("clientId") || "";

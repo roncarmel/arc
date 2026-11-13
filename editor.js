@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13h";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13i";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -814,6 +814,21 @@ function toggleAppMenu() {
   renderRows();
 }
 
+// The version at the menu's foot, tapped: checks for an update at once. A newer one closes the menu so the update card is seen (it would sit behind the menu);
+// otherwise the line says so for 2 s and shows the version again.
+async function checkFromMenu(event) {
+  const line = event.currentTarget, plain = line.textContent;
+  if (line.dataset.checking) return;
+  line.dataset.checking = "1";
+  line.textContent = "Checking for updates…";
+  const found = typeof checkForNewVersion === "function" ? await checkForNewVersion() : "failed";
+  if (found === "new") { delete line.dataset.checking; if (editor.appMenu) { editor.appMenu = false; renderAppMenu(); } return; }
+  line.textContent = found === "failed" ? "Could not check for updates" : `${plain} · Up to date`;
+  await new Promise((r) => setTimeout(r, 2000));
+  line.textContent = plain;
+  delete line.dataset.checking;
+}
+
 function renderAppMenu() {
   const slot = $("feAppMenu");
   if (!slot) return;
@@ -860,7 +875,8 @@ function renderAppMenu() {
   const rule = () => feEl("div", { class: "fe-rule" });
   // Help is the same at the foot of both tools' menus: Feedback, Report a problem, then the version as a grey line to read, not a button
   const help = [infoItem("feFeedback", "feedbackBlock", "chat", "Feedback"), infoItem("feReport", "reportBlock", "flag", "Report a problem")];
-  const version = () => feEl("div", { class: "fe-menuver", id: "feMenuVersion", text: "Arc " + (typeof APP_VERSION === "string" ? APP_VERSION : "") });
+  // A tap on it checks for an update (Ron, 2026-11-13): Checking for updates, then Up to date for a moment, or the menu closes and the update card shows
+  const version = () => feEl("button", { type: "button", class: "fe-menuver", id: "feMenuVersion", text: "Arc " + (typeof APP_VERSION === "string" ? APP_VERSION : ""), onClick: checkFromMenu });
   // Spotify is the first thing in the menu, in whatever state it is in (connecting, not connected, a problem), so it is always found in the same place; connected needs nothing here
   const spotifyItems = connection === "ready" ? [] : connectItems;
   const panel = (...items) => slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" }, ...items));
