@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13j";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13k";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -53,6 +53,7 @@ const FE_ICONS = {
   help: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01"/></svg>',
   info: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
   key: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/></svg>',
+  refresh: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>',
   check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
   reset: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg>',
   clock: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
@@ -814,19 +815,20 @@ function toggleAppMenu() {
   renderRows();
 }
 
-// The version at the menu's foot, tapped: checks for an update at once. A newer one closes the menu so the update card is seen (it would sit behind the menu);
-// otherwise the line says so for 2 s and shows the version again.
+// Check for update at the menu's foot: checks at once. A newer one closes the menu so the update card is seen (it would sit behind the menu); otherwise the button
+// says Up to date (or Could not check) for 2 s, then Check for update again.
 async function checkFromMenu(event) {
-  const line = event.currentTarget, plain = line.textContent;
-  if (line.dataset.checking) return;
-  line.dataset.checking = "1";
-  line.textContent = "Checking for updates…";
+  const button = event.currentTarget, words = button.querySelector("span:last-child"), icon = button.querySelector(".fe-icon");
+  if (button.dataset.checking) return;
+  button.dataset.checking = "1";
+  const show = (name, text) => { icon.innerHTML = name ? FE_ICONS[name] : '<span class="fe-menuver-spin"></span>'; words.textContent = text; };
+  show("", "Checking…");
   const found = typeof checkForNewVersion === "function" ? await checkForNewVersion() : "failed";
-  if (found === "new") { delete line.dataset.checking; if (editor.appMenu) { editor.appMenu = false; renderAppMenu(); } return; }
-  line.textContent = found === "failed" ? "Could not check for updates" : `${plain} · Up to date`;
+  if (found === "new") { delete button.dataset.checking; if (editor.appMenu) { editor.appMenu = false; renderAppMenu(); } return; }
+  show(found === "failed" ? "alert" : "check", found === "failed" ? "Could not check" : "Up to date");
   await new Promise((r) => setTimeout(r, 2000));
-  line.textContent = plain;
-  delete line.dataset.checking;
+  show("refresh", "Check for update");
+  delete button.dataset.checking;
 }
 
 function renderAppMenu() {
@@ -875,8 +877,10 @@ function renderAppMenu() {
   const rule = () => feEl("div", { class: "fe-rule" });
   // Help is the same at the foot of both tools' menus: Feedback, Report a problem, then the version as a grey line to read, not a button
   const help = [infoItem("feFeedback", "feedbackBlock", "chat", "Feedback"), infoItem("feReport", "reportBlock", "flag", "Report a problem")];
-  // A tap on it checks for an update (Ron, 2026-11-13): Checking for updates, then Up to date for a moment, or the menu closes and the update card shows
-  const version = () => feEl("button", { type: "button", class: "fe-menuver", id: "feMenuVersion", text: "Arc " + (typeof APP_VERSION === "string" ? APP_VERSION : ""), onClick: checkFromMenu });
+  // The version, and at its right Check for update in pink with a round arrow (Ron, 2026-11-13, mockups/menu-update B)
+  const version = () => feEl("div", { class: "fe-menuver", id: "feMenuVersion" },
+    feEl("span", { class: "fe-menuver-text", text: "Arc " + (typeof APP_VERSION === "string" ? APP_VERSION : "") }),
+    feEl("button", { type: "button", class: "fe-menuver-check", id: "feCheckUpdate", role: "menuitem", onClick: checkFromMenu }, feIcon("refresh"), feEl("span", { text: "Check for update" })));
   // Spotify is the first thing in the menu, in whatever state it is in (connecting, not connected, a problem), so it is always found in the same place; connected needs nothing here
   const spotifyItems = connection === "ready" ? [] : connectItems;
   const panel = (...items) => slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" }, ...items));

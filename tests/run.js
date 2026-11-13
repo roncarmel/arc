@@ -876,10 +876,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-13j" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-13k" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-13j/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-13k/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2064,7 +2064,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   am_w.document.getElementById("feFeedback").click();
   check("Feedback opens only the feedback form in the popup, and it goes back to its place under Everything else after", am_info("feedbackBlock") && am_w.document.getElementById("infoTitle").textContent === "Feedback" && !!am_w.document.querySelector("#infoSlot #feedbackForm") && (() => { am_w.document.getElementById("infoClose").click(); return !!am_w.document.getElementById("feedbackBlock").closest("#eeFeedback"); })());
   am_w.document.getElementById("feAppMenuButton").click();
-  check("the version is a grey line at the menu's foot, a button that checks for an update", am_w.document.getElementById("feMenuVersion").textContent === "Arc " + am_w.eval("APP_VERSION") && am_w.document.getElementById("feMenuVersion").tagName === "BUTTON" && am_w.document.querySelector("#feAppMenuPanel").lastElementChild.id === "feMenuVersion");
+  check("the version is a grey line at the menu's foot, with Check for update at its right", am_w.document.querySelector("#feMenuVersion .fe-menuver-text").textContent === "Arc " + am_w.eval("APP_VERSION") && am_w.document.getElementById("feCheckUpdate").textContent === "Check for update" && am_w.document.getElementById("feCheckUpdate").parentElement.id === "feMenuVersion" && am_w.document.querySelector("#feAppMenuPanel").lastElementChild.id === "feMenuVersion");
   am_w.document.getElementById("feSaveMethod").click();
   check("Autosave or backup opens alone, with the two ways in it", am_info("saveMethodSection") && am_w.document.querySelectorAll("#infoSlot .dlg-choice").length === 2);
   am_w.document.getElementById("infoClose").click();
@@ -2950,7 +2950,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-13j", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-13k", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -5298,7 +5298,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-13j"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-13k"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5855,16 +5855,16 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var nv_m = await nv_make({ serverVersion: "2099-01-01a" });
   nv_m.eval("showView('builder')");
   nv_m.document.getElementById("feAppMenuButton").click();
-  nv_m.document.getElementById("feMenuVersion").click();
-  check("tapping the menu's version says it is checking", nv_m.document.getElementById("feMenuVersion").textContent === "Checking for updates…");
+  nv_m.document.getElementById("feCheckUpdate").click();
+  check("Check for update in the menu says it is checking, with a spinner", nv_m.document.getElementById("feCheckUpdate").textContent === "Checking…" && !!nv_m.document.querySelector("#feCheckUpdate .fe-menuver-spin"));
   await new Promise((r) => setTimeout(r, 300));
   check("a newer one: the menu closes and the update card shows", !nv_m.document.getElementById("feAppMenuPanel") && !nv_m.document.getElementById("updateCard").hidden);
   var nv_m2 = await nv_make();
   nv_m2.eval("showView('builder')");
   nv_m2.document.getElementById("feAppMenuButton").click();
-  nv_m2.document.getElementById("feMenuVersion").click();
+  nv_m2.document.getElementById("feCheckUpdate").click();
   await new Promise((r) => setTimeout(r, 300));
-  check("the same one: the line says Up to date, and the menu stays", /· Up to date$/.test(nv_m2.document.getElementById("feMenuVersion").textContent) && nv_m2.document.getElementById("updateCard").hidden, nv_m2.document.getElementById("feMenuVersion").textContent);
+  check("the same one: the button says Up to date, and the menu stays", nv_m2.document.getElementById("feCheckUpdate").textContent === "Up to date" && nv_m2.document.getElementById("updateCard").hidden, nv_m2.document.getElementById("feCheckUpdate").textContent);
   var nv_v = await boot({ url: EDURL, session: {}, local: { formats: MINI, connectedBefore: "1", backupMode: "manual" }, fetchOptions: {}, before: (w) => w.document.documentElement.classList.add("updating") });
   await new Promise((r) => setTimeout(r, 3000));
   check("a start that does not end ready (no sign-in) takes the card down quietly, so the problem shows as usual", !nv_v.document.documentElement.classList.contains("updating") || nv_v.document.getElementById("updateScreen").classList.contains("us-out"));
