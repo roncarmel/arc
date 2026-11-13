@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zu";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zv";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -3129,6 +3129,23 @@ function recipeParts(f) {
     feEl("span", { class: "bh-shape", "aria-hidden": "true" }, ...shape.pieces.map((p) => feEl("span", { class: p.silence ? "bh-quiet" : undefined, style: p.style })))];
 }
 
+// An open drop-down in a sheet fits above the sheet's buttons (wf-foot, sticky), so its foot is never hidden under them: its panel is
+// shortened to the room left, at least DD_MIN_ROOM, and the sheet scrolls up when even that does not fit.
+const DD_MIN_ROOM = 180;
+function fitDropPanel(panel) {
+  const sheet = panel.closest(".rp-sheet");
+  if (!sheet || panel.hidden) return;
+  panel.style.maxHeight = "";
+  const foot = sheet.querySelector(".wf-foot");
+  const limit = (foot ? foot.getBoundingClientRect().top : sheet.getBoundingClientRect().bottom) - 12;
+  const top = panel.getBoundingClientRect().top;
+  const room = limit - top;
+  if (panel.getBoundingClientRect().height <= room) return;
+  const height = Math.max(room, DD_MIN_ROOM);
+  panel.style.maxHeight = height + "px";
+  if (top + height > limit) sheet.scrollTop += top + height - limit;
+}
+
 // Which recipe for a participant's next playlist (Ron, 2026-11-12, mockups/recipe-pick C): Who is it for? turned around. Build a playlist and the X, FOR over the
 // participant as a card (their square, the code, their line), WHICH RECIPE? over Choose a recipe, a drop-down of the recipes as the landing shows them, the one their
 // latest playlist was built from first and marked Last time; Find a recipe at its top from RECIPE_FIND_FROM recipes. Cancel and Build playlist.
@@ -3176,6 +3193,7 @@ function pickRecipeFor(code) {
     if (!want) return;
     search.value = "";
     paintList();
+    fitDropPanel(panel);
     const on = list.querySelector(".bh-on");
     if (on) on.scrollIntoView({ block: "nearest" });
   }
@@ -3274,6 +3292,7 @@ function askWhoFor(id) {
     if (!want) return;
     search.value = "";
     paintTiles();
+    fitDropPanel(panel);
     const on = tiles.querySelector(".bh-on");
     if (on) on.scrollIntoView({ block: "nearest" });
   }
