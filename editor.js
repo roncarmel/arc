@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zv";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zw";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -1622,14 +1622,14 @@ function showPauseDialog() {
 function recipeShape(f) {
   const pieces = [];
   let quiet = 0;
-  if (f.lead > 0) { pieces.push({ key: "lead", label: `Silence before the first segment, ${describeSeconds(f.lead)}`, style: `flex:${Math.max(f.lead / 60, 0.7)} 1 0`, silence: true }); quiet += f.lead; }
+  if (f.lead > 0) { pieces.push({ key: "lead", label: `Silence before the first segment, ${describeSeconds(f.lead)}`, size: Math.max(f.lead / 60, 0.7), style: `flex:${Math.max(f.lead / 60, 0.7)} 1 0`, silence: true }); quiet += f.lead; }
   f.items.forEach((item, index) => {
     const mixed = item.lists.length > 1;
     pieces.push({ key: item.id, label: `${item.lists.map((l) => l.name || "No playlist yet").join(" + ")}, ${Math.round(item.minutes * 10) / 10} min`,
-      style: `flex:${item.minutes} 1 0;` + (mixed ? `background-image:${feStripes(mixPercentA(item) / 100, 16)}` : ""), silence: false });
+      size: item.minutes, style: `flex:${item.minutes} 1 0;` + (mixed ? `background-image:${feStripes(mixPercentA(item) / 100, 16)}` : ""), silence: false });
     const info = gapInfo(f, index + 1);
     if (info.show && !info.zero) {
-      pieces.push({ key: `gap${index + 1}`, label: `Silence, ${describeSeconds(info.sec)}`, style: `flex:${Math.max(info.sec / 60, 0.5)} 1 0`, silence: true });
+      pieces.push({ key: `gap${index + 1}`, label: `Silence, ${describeSeconds(info.sec)}`, size: Math.max(info.sec / 60, 0.5), style: `flex:${Math.max(info.sec / 60, 0.5)} 1 0`, silence: true });
       quiet += info.sec;
     }
   });
@@ -2538,7 +2538,9 @@ function renderRecipeList() {
     refreshNoticeLine();
     return;
   }
-  for (const f of formats) list.appendChild(recipeRow(f));
+  // the bars share one scale: the longest recipe fills the row, a recipe half as long half of it (Ron, 2026-11-12)
+  const longest = Math.max(...formats.map(barSize), 1e-9);
+  for (const f of formats) list.appendChild(recipeRow(f, barSize(f) / longest));
   list.appendChild(add);   // New recipe under the recipes, so the list sits right under the switch (Ron, 2026-11-12)
   // under New recipe, what the sparkle does, with the button drawn small in the sentence (Ron, 2026-11-12, mockups/icons-top)
   list.appendChild(feEl("p", { class: "bh-note bh-build-how" }, `${actWord(true)} a recipe\u2019s `, feEl("span", { class: "bh-mini", "aria-hidden": "true" }, bhSvg(BH_SPARK)),
@@ -2546,12 +2548,17 @@ function renderRecipeList() {
   refreshNoticeLine();
 }
 
-function recipeRow(f) {
+// how long a recipe's bar is, in the bar's own units (minutes, with the smallest silences widened as the bar draws them)
+function barSize(f) {
+  return recipeShape(f).pieces.reduce((n, p) => n + p.size, 0);
+}
+
+function recipeRow(f, share) {
   const shape = recipeShape(f);
   const unsaved = recipeEdit.dirty && recipeEdit.id === f.id;
   // in developer mode only the length: the segments show in the bar under it, and Build playlist needs the room on a phone (Ron, 2026-11-12)
   const length = lengthText(shape.music + shape.quiet / 60) + (devMode() ? "" : ` · ${f.items.length === 1 ? "1 segment" : f.items.length + " segments"}`);
-  const bar = feEl("span", { class: "bh-shape", "aria-hidden": "true" },
+  const bar = feEl("span", { class: "bh-shape", "aria-hidden": "true", style: `width:${Math.max(share, 0.02) * 100}%` },
     ...shape.pieces.map((p) => feEl("span", { class: p.silence ? "bh-quiet" : undefined, style: p.style })));
   const title = f.title.trim() || "Untitled";
   const icons = feEl("span", { class: "bh-icons" },
