@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zo";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zp";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2929,7 +2929,7 @@ function buildNextFor(code) {
   pickRecipeFor(code);
 }
 
-// Their playlists, one line each: the cover, the name without their code, the songs, and the open mark; the one being built first, or what stopped it
+// Their playlists, one line each: the cover, the name without their code, and the open mark (no song count: it left the name no room); the one being built first, or what stopped it
 function personPlaylists(person) {
   const code = person.code;
   const mine = personBuild.code === code ? personBuild : null;
@@ -2938,11 +2938,9 @@ function personPlaylists(person) {
   if (mine && mine.state === "now") box.appendChild(personBuildRow(mine));
   for (const p of person.playlists) {
     const isNew = mine && mine.state === "done" && mine.id === p.id;
-    const sub = isNew ? `${mine.songs} songs` : p.count === null || p.count === undefined ? "" : `${p.count} songs`;
     box.appendChild(feEl("a", { class: "bh-pl" + (isNew ? " pp-new" : ""), href: `https://open.spotify.com/playlist/${p.id}`, target: "_blank", rel: "noopener" },
       feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }),
       feEl("span", { class: "bh-pl-name", text: p.name.replace(` · ${code} · `, " · ") }),
-      feEl("span", { class: "bh-pl-sub", text: sub }),
       isNew ? feEl("span", { class: "pp-open" }, bhSvg(BH_OPEN), feEl("span", { text: "Open" })) : bhSvg(BH_OPEN)));
   }
   return box;
