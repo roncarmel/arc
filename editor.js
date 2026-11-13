@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zj";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zl";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2807,7 +2807,8 @@ function builtWhen(time) { const d = new Date(time); return d.getFullYear() === 
 // short: the row, beside Build playlist, has room only for the day (Ron, 2026-11-12)
 function personLine(person, short) { const n = person.playlists.length; if (!n) return "Nothing built yet"; const count = n === 1 ? "1 playlist" : n + " playlists"; return short ? count : `${count} \u00b7 ${`most recent ${builtWhen(person.last)}`.replace(/ /g, "\u00a0")}`; }
 
-const PEOPLE_HOW = "A participant appears here once you build a playlist for them.";
+// How to build, with the sparkle drawn small in the sentence, like the recipes' note (Ron, 2026-11-12)
+function sparkleHow(cls, before, after) { return feEl("p", { class: cls }, before, feEl("span", { class: "bh-mini", "aria-hidden": "true" }, bhSvg(BH_SPARK)), after); }
 // A participant's row (Ron, 2026-11-12): their square, the code, their line and Build playlist, which asks which recipe (pickRecipeFor). A tap on the rest of
 // the row opens it in place to their playlists, one compact line each; one participant open at a time (builderHome.person).
 let celebratingUntil = 0, celebrateTimer = 0;
@@ -2823,9 +2824,10 @@ function renderParticipantList() {
   const open = builderHome.person;
   // someone getting their first playlist shows while it is built, before Spotify lists it
   if (open && personBuild.code === open && !people.some((p) => p.code === open)) people.unshift({ code: open, playlists: [], last: 0 });
-  if (!people.length) box.appendChild(feEl("div", { class: "bh-empty bh-people-empty" }, feEl("b", { text: "No participants yet" }), feEl("p", { text: PEOPLE_HOW })));
+  if (!people.length) box.appendChild(feEl("div", { class: "bh-empty bh-people-empty" }, feEl("b", { text: "No participants yet" }),
+    sparkleHow("", `${actWord(true)} a recipe\u2019s `, " button and choose + New to add one.")));
   for (const person of people) box.appendChild(personCard(person, person.code === open));
-  if (people.length) box.appendChild(feEl("p", { class: "bh-note", text: PEOPLE_HOW }));
+  if (people.length) box.appendChild(sparkleHow("bh-note bh-build-how", `${actWord(true)} a participant\u2019s `, " button to build their next playlist."));
   if (personBuild.state === "done" && personBuild.celebrate && personBuild.code === open) {
     personBuild.celebrate = false;
     const card = box.querySelector(`.bh-person[data-code="${open}"]`);
@@ -2861,7 +2863,13 @@ function askDeleteParticipant(code) {
   const close = () => { overlay.remove(); document.removeEventListener("keydown", onKey); };
   const onKey = (event) => { if (event.key === "Escape") close(); };
   const cancel = feEl("button", { type: "button", id: "bhDeleteCancel", onClick: close }, "Cancel");
-  const confirm = feEl("button", { type: "button", class: "fe-danger-button", id: "bhDeleteConfirm", onClick: () => { close(); deleteParticipant(code, person.playlists); } },
+  const confirm = feEl("button", { type: "button", class: "fe-danger-button", id: "bhDeleteConfirm", onClick: async () => {
+    close();
+    // A second question before anything goes (Ron, 2026-11-12): it starts on Cancel
+    const sure = await askSyncChoice("Are you sure?", `${n === 1 ? "1 playlist" : n + " playlists"} will be deleted from your Spotify, and Arc can't undo it.`,
+      [{ label: "Cancel", value: false }, { label: "Delete", value: true, danger: true }]);
+    if (sure) deleteParticipant(code, person.playlists);
+  } },
     `Delete ${code} and ${n === 1 ? "1 playlist" : n + " playlists"}`);
   const list = feEl("div", { class: "bh-plist bh-del-list" }, ...person.playlists.map((p) => feEl("div", { class: "bh-pl" },
     feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }),
