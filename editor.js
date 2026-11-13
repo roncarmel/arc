@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zm";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zn";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -811,8 +811,7 @@ function renderAppMenu() {
     type: "button", class: "fe-iconbtn fe-trigger", id: "feAppMenuButton",
     "aria-label": "App menu", "aria-haspopup": "menu", "aria-expanded": String(editor.appMenu),
     onClick: toggleAppMenu,
-  }, feIcon("dots"), feEl("img", { class: "fe-saveicon", src: "backup-cover.jpg", alt: "", "aria-hidden": "true", width: "44", height: "44" })));
-  applySavingIcon();
+  }, feIcon("dots")));
   if (!editor.appMenu) return;
   const choose = (action) => () => { editor.appMenu = false; renderAppMenu(); action(); };
   const backupLabel = ($("backupStatus") && $("backupStatus").textContent) || "";   // the same label as in the backup step, which the app page hides
@@ -829,7 +828,7 @@ function renderAppMenu() {
     const why = connecting ? "On a slow connection this can take a few seconds." : connection === "problem" ? $("connectionMessage").textContent : "";
     if (why) connectItems.push(feEl("div", { class: "fe-itemnote", id: "feConnectionNote", text: why }));
   }
-  // When recipes are saved to Spotify there is nothing about saving in this menu: it happens by itself, and the icon on the menu button shows it while it does. For a person
+  // When recipes are saved to Spotify there is nothing about saving in this menu: it happens by itself, and Save changes shows it on the recipe's row. For a person
   // who backs up by hand there is one block: what it is, a link to change it, when the last backup was, and the two actions.
   const auto = typeof backupMode === "function" && backupMode() === "spotify";
   let backupBlock = null;
@@ -990,24 +989,58 @@ function placeDevMenu(anchor) {
   window.addEventListener("resize", () => showDevMenu(false));
 })();
 
-// While recipes are being saved to Spotify the menu button shows the cloud-save picture in place of its dots, with a short cross-fade, and keeps it for at least a second so a
-// quick save can still be seen. It stays up for as long as saves follow each other.
-const savingIcon = { on: false, since: 0, timer: null };
-function applySavingIcon() {
-  const button = $("feAppMenuButton");
-  if (button) button.classList.toggle("fe-saving", savingIcon.on);   // the pointer below talks about the cloud, so it shows while the pointer is open
+// After Save changes the recipe's row says Saving\u2026 in place of its length, then Saved with a check for 2 s (Ron, 2026-11-12: the cloud picture on the menu
+// button looked out of place once the button turned grey). Only for a save that can start now; one that waits (not connected, a pause) says nothing, and a
+// failure is left to the line under the bar. A save already running when Save changes is pressed does not count: the recipe goes in the one after it.
+const recipeSaved = { id: null, state: "", started: false, lastRunning: false, since: 0, timer: null };
+function markRecipeSaving(id) {
+  clearTimeout(recipeSaved.timer);
+  const canSave = typeof backupMode === "function" && backupMode() === "spotify" && typeof connection !== "undefined" && connection === "ready" && !(typeof spotifyPause === "function" && spotifyPause());
+  if (!canSave) { Object.assign(recipeSaved, { id: null, state: "" }); return; }
+  Object.assign(recipeSaved, { id, state: "saving", started: false, lastRunning: !!saveState.running, since: Date.now() });
+  recipeSaved.timer = setTimeout(() => endRecipeSaved(), 20000);   // a save that never starts (a build began, the connection went) lets the row go back
 }
-function setSavingIcon(flag) {
-  if (flag) {
-    clearTimeout(savingIcon.timer);
-    savingIcon.timer = null;
-    if (!savingIcon.on) { savingIcon.on = true; savingIcon.since = Date.now(); }
-  } else if (savingIcon.on && !savingIcon.timer) {
-    const left = 1000 - (Date.now() - savingIcon.since);
-    const off = () => { savingIcon.on = false; savingIcon.timer = null; applySavingIcon(); };
-    if (left > 0) savingIcon.timer = setTimeout(off, left); else off();
-  }
-  applySavingIcon();
+function endRecipeSaved() {
+  clearTimeout(recipeSaved.timer);
+  const id = recipeSaved.id;
+  Object.assign(recipeSaved, { id: null, state: "", timer: null });
+  paintRecipeSaved(id);
+}
+// Called with every change in the saving (renderSaveStatus in app.js)
+function recipeSaveProgress(running, failed) {
+  if (recipeSaved.state !== "saving") { recipeSaved.lastRunning = running; return; }
+  if (running && !recipeSaved.lastRunning) recipeSaved.started = true;
+  const ended = !running && recipeSaved.lastRunning && recipeSaved.started;
+  recipeSaved.lastRunning = running;
+  if (!ended) return;
+  if (failed) { endRecipeSaved(); return; }
+  clearTimeout(recipeSaved.timer);
+  const show = () => {
+    recipeSaved.state = "saved";
+    paintRecipeSaved(recipeSaved.id);
+    recipeSaved.timer = setTimeout(() => endRecipeSaved(), 2000);
+  };
+  const left = 600 - (Date.now() - recipeSaved.since);   // Saving\u2026 stays long enough to be read
+  if (left > 0) recipeSaved.timer = setTimeout(show, left); else show();
+}
+// What the row's second line says, in place of its length
+function recipeSavedLine(id) {
+  if (recipeSaved.id !== id || !recipeSaved.state) return null;
+  return recipeSaved.state === "saved"
+    ? feEl("span", { class: "bh-sub bh-saved" }, feEl("span", { class: "bh-saved-mark", "aria-hidden": "true" }, "\u2713"), "Saved")
+    : feEl("span", { class: "bh-sub bh-saving", text: "Saving\u2026" });
+}
+// Swaps the row's line in place, with a crossfade
+function paintRecipeSaved(id) {
+  if (!id) return;
+  const row = document.querySelector(`#builderHome .bh-recipe[data-id="${CSS.escape(id)}"]`);
+  const old = row && row.querySelector(".bh-sub");
+  if (!old) return;
+  const f = editor.model && editor.model.formats.find((x) => x.id === id);
+  const fresh = recipeSavedLine(id) || (f ? recipeRow(f).querySelector(".bh-sub") : null);
+  if (!fresh) return;
+  old.replaceWith(fresh);
+  if (motionAllowed(fresh)) fresh.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: EASE_OUT });
 }
 
 // A menu, list or card that would run off the bottom of the screen opens upward instead (or, if there is no more room above,
@@ -2527,7 +2560,7 @@ function recipeRow(f) {
     onKeyDown: (event) => { if ((event.key === "Enter" || event.key === " ") && event.target === row) { event.preventDefault(); openRecipePanel(f.id); } } },
     feEl("span", { class: "bh-text" },
       feEl("span", { class: "bh-name", text: f.title.trim() || "Untitled" }),
-      feEl("span", { class: "bh-sub" + (unsaved ? " bh-unsaved" : ""), text: unsaved ? "Unsaved changes" : length })),
+      (!unsaved && recipeSavedLine(f.id)) || feEl("span", { class: "bh-sub" + (unsaved ? " bh-unsaved" : ""), text: unsaved ? "Unsaved changes" : length })),
     icons, bar);   // the buttons at the top right beside the name, the bar the full width under them (Ron, 2026-11-12, mockups/icons-top J1)
   return row;
 }
@@ -2692,6 +2725,7 @@ function closeRecipePanel(how, quiet) {
   }
   Object.assign(recipeEdit, { id: null, before: null, dirty: false, open: false });
   keepRecipeEditing();
+  if (saved) markRecipeSaving(editor.activeId);
   if (saved && typeof scheduleSpotifySave === "function") scheduleSpotifySave(0);
   editor.panel = null; editor.gapPanel = null; editor.cardMenu = false;
   const wrap = $("recipePanelWrap");

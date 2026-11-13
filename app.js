@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-12zm";
+const APP_VERSION = "2026-11-12zn";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -946,14 +946,12 @@ function closeUpdateScreen() {
   }, 450);
 }
 
-// The first save settles the recipes with their saves in Spotify (it may add or change some), so it is done before the screen goes,
-// and so is the menu button's second of the cloud picture.
+// The first save settles the recipes with their saves in Spotify (it may add or change some), so it is done before the screen goes.
 async function settleFirstSave() {
   connectingStep("Recipes", "active");
   await runSpotifySave();
   if (saveState.error) await connectingStepFailed("Recipes");   // the line under the bar says what went wrong
   else connectingStep("Recipes", "done");
-  for (let i = 0; i < 30 && typeof savingIcon !== "undefined" && savingIcon.on; i++) await new Promise((r) => setTimeout(r, 50));
 }
 
 // Going to the setup page adds a step to the browser's history, so the back button (or a phone's back gesture) returns to where the person was.
@@ -1787,7 +1785,7 @@ function renderSaveStatus() {
   if (slot) writeSaveParts(slot, false);
   if (typeof renderAppMenu === "function") renderAppMenu();
   if (typeof refreshNoticeLine === "function") refreshNoticeLine();   // trouble that needs the person is in the line under the editor's bar
-  if (typeof setSavingIcon === "function") setSavingIcon(saveState.running);   // the menu button shows the cloud-save picture while a save is going on
+  if (typeof recipeSaveProgress === "function") recipeSaveProgress(saveState.running, !!saveState.error);   // Saving\u2026 and Saved on the row of a recipe just saved
 }
 
 // ---------------------------------------------------------------- how the formats are backed up
