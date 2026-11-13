@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-12x";
+const APP_VERSION = "2026-11-12y";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -3461,7 +3461,7 @@ async function startCreate(keys = null) {
 // One playlist for a participant, built where it will live (Ron, 2026-11-12, mockups/build-one C): no build popup. The participant's row opens on Participants
 // and the new playlist fills in at the top of their playlists (personBuild, painted by paintPersonBuild in editor.js); done, a check and rings play over it.
 // Problems in the recipe and a failure show in the row in its place. Nothing is replaced, renamed or removed. The row can be folded meanwhile; the build goes on.
-const personBuild = { code: null };   // code, state (now, done, blocked, fail), name, step, done, total, minutes, fresh, id, problems, error
+const personBuild = { code: null };   // code, state (now, done, blocked, fail), name, step, progress (0 to 1, every phase moves it), minutes, fresh, id, problems, error
 function setPersonBuild(change) {
   Object.assign(personBuild, change);
   if (typeof paintPersonBuild === "function") paintPersonBuild();
@@ -3472,17 +3472,18 @@ async function buildForParticipant(id, code) {
   if (!f) return;
   setBusy(true);
   for (const k of Object.keys(personBuild)) delete personBuild[k];
-  setPersonBuild({ code, state: "now", name: participantPlaylistName(f.title, code), step: "Reading your playlists", done: 0, total: 0 });
+  setPersonBuild({ code, state: "now", name: participantPlaylistName(f.title, code), step: "Reading your playlists", progress: 0.03 });
   if (typeof openPersonPanel === "function") openPersonPanel(code);
   logStep("participant build started");
   let made = null;
   try {
     await loadMyPlaylists();
+    setPersonBuild({ step: "Reading the songs", progress: 0.15 });
     const plan = await planSelected(null, { keys: [id], forWhom: code, quiet: true });
     if (!plan || !plan.built) { setPersonBuild({ state: "blocked", problems: (plan && plan.problems) || [] }); return; }
     const p = plan.built[0].playlists[0];
     const songs = p.uris.filter((u) => !SILENCE_URIS.has(u)).length;
-    setPersonBuild({ name: p.name, minutes: p.minutes || 0, fresh: plan.fresh, songs, step: "Making the playlist" });
+    setPersonBuild({ name: p.name, minutes: p.minutes || 0, fresh: plan.fresh, songs, step: "Making the playlist", progress: 0.4 });
     if (typeof markPlayTipDone === "function") markPlayTipDone();
     let cover = null;
     if (hasScope("ugc-image-upload")) { try { cover = await loadCover(); } catch (err) { logStep("participant build: cover image not loaded"); } }
@@ -3491,8 +3492,9 @@ async function buildForParticipant(id, code) {
       try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); } catch (err) { logStep("participant build: could not make it private"); }
     }
     const total = p.uris.length;
+    const songsFrom = 0.5, songsTo = cover ? 0.85 : 0.95;
     for (let k = 0; k < total;) {
-      setPersonBuild({ step: `Adding songs · ${Math.min(k, total)} of ${total}`, done: k, total });
+      setPersonBuild({ step: `Adding songs · ${Math.min(k, total)} of ${total}`, progress: songsFrom + (songsTo - songsFrom) * (k / total) });
       const n = addChunk;
       try { await spotifyRequest("POST", `/playlists/${made.id}/items`, { json: { uris: p.uris.slice(k, k + n) } }); }
       catch (err) {
@@ -3502,12 +3504,14 @@ async function buildForParticipant(id, code) {
       k += n;
     }
     if (cover) {
-      setPersonBuild({ step: "Adding the cover", done: total, total });
+      setPersonBuild({ step: "Adding the cover", progress: songsTo });
       try { await spotifyRequest("PUT", `/playlists/${made.id}/images`, { body: cover, contentType: "image/jpeg" }); } catch (err) { logStep("participant build: cover not accepted"); }
     }
     countEvent("playlists-created", "1");
     logStep("participant build finished");
+    setPersonBuild({ step: "Finishing", progress: 0.95 });
     try { await loadMyPlaylists(); } catch (err) { /* the playlist is made; the list catches up later */ }
+    setPersonBuild({ progress: 1 });
     setPersonBuild({ state: "done", id: made.id, celebrate: true });   // played once by renderParticipantList
   } catch (err) {
     recordError(cleanError(err));

@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12x";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12y";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2879,11 +2879,11 @@ function openPersonPanel(code) {
 
 // The playlist being built for a participant, as a row at the top of their playlists: its cover dimmed, its name, the step in pink and a bar that fills
 function personBuildRow(b) {
-  const share = b.total ? Math.round((b.done / b.total) * 100) : 0;
+  const share = Math.round((b.progress || 0) * 1000) / 10;
   return feEl("div", { class: "bh-pl pp-live", id: "ppBuild", "aria-live": "polite" },
     feEl("span", { class: "bh-cover pp-cover-wait", style: 'background-image:url("playlist-cover.jpg")' }),
     feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-pl-name", text: b.name.replace(` · ${b.code} · `, " · ") }),
-      feEl("span", { class: "pp-step" }, feEl("span", { text: b.step }), feEl("span", { class: "pp-keep", text: "Keep this tab open." })),
+      feEl("span", { class: "pp-step" }, feEl("span", { class: "pp-step-text", text: b.step }), feEl("span", { class: "pp-keep", text: "Keep this tab open." })),
       feEl("span", { class: "pp-bar", "aria-hidden": "true" }, feEl("i", { style: `width:${share}%` }))));
 }
 // What stopped it: the recipe's problems (nothing was made), or a failure while building (perhaps after the playlist was made)
@@ -2929,12 +2929,16 @@ function celebrateBuilt(row, meta) {
   return true;
 }
 
-// Called as the build moves on: only the row changes while it is under way (focus and scroll stay); a new state draws the list again
+// Called as the build moves on: only the row's step and bar change while it is under way (focus and scroll stay, and the bar eases to its new width); a new state draws the list again
 let paintedBuildState = null;
 function paintPersonBuild(force) {
   if (builderHome.tab !== "people" || builderHome.person !== personBuild.code) return;
   const row = $("ppBuild");
-  if (!force && personBuild.state === "now" && paintedBuildState === "now" && row) { row.replaceWith(personBuildRow(personBuild)); return; }
+  if (!force && personBuild.state === "now" && paintedBuildState === "now" && row) {
+    row.querySelector(".pp-step-text").textContent = personBuild.step;
+    row.querySelector(".pp-bar i").style.width = `${Math.round((personBuild.progress || 0) * 1000) / 10}%`;
+    return;
+  }
   paintedBuildState = personBuild.state;
   renderParticipantList();
 }
