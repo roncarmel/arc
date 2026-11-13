@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-12t";
+const APP_VERSION = "2026-11-12u";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -3508,8 +3508,7 @@ async function buildForParticipant(id, code) {
     countEvent("playlists-created", "1");
     logStep("participant build finished");
     try { await loadMyPlaylists(); } catch (err) { /* the playlist is made; the list catches up later */ }
-    setPersonBuild({ state: "done", id: made.id });
-    if (typeof personBuilt === "function") personBuilt(code, plan.fresh);
+    setPersonBuild({ state: "done", id: made.id, celebrate: true });   // played once by paintPersonPanel
   } catch (err) {
     recordError(cleanError(err));
     logStep("participant build failed");

@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12t";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12u";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2826,7 +2826,7 @@ function paintPersonPanel() {
     if (building) list.appendChild(personBuildRow(mine));
     for (const p of person.playlists) {
       const isNew = mine && mine.state === "done" && mine.id === p.id;
-      const sub = isNew ? `${lengthText(mine.minutes)} · ${mine.fresh ? mine.fresh.fresh : mine.songs} new to ${code}` : p.count === null || p.count === undefined ? "" : `${p.count} songs`;
+      const sub = isNew ? `${lengthText(mine.minutes)} \u00b7 ${mine.songs} songs` : p.count === null || p.count === undefined ? "" : `${p.count} songs`;
       list.appendChild(feEl("a", { class: "bh-row" + (isNew ? " pp-new" : ""), href: `https://open.spotify.com/playlist/${p.id}`, target: "_blank", rel: "noopener" },
         feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }),
         feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: p.name }), feEl("span", { class: "bh-sub", text: sub })),
@@ -2840,6 +2840,11 @@ function paintPersonPanel() {
       feEl("div", { class: "rp-col" }, feEl("div", { class: "pp-titlerow" }, feEl("h2", { class: "rp-title pp-title", id: "ppTitle", text: code }),
         feEl("button", { type: "button", class: "rp-x", id: "ppClose", "aria-label": "Close", onClick: () => closePersonPanel(), html: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>' })), meta))),
     body);
+  if (mine && mine.state === "done" && mine.celebrate) {
+    mine.celebrate = false;
+    const row = sheet.querySelector(".pp-new");
+    if (row && !arriving) celebrateBuilt(row, $("ppMeta"));
+  }
   if (arriving) {
     sheet.scrollTop = 0;
     if (motionAllowed(wrap)) {
@@ -2886,6 +2891,30 @@ function personBuildProblem(b) {
     ? `${b.error} ${b.name} is in Spotify with only some of its songs. Delete it there, then build again.`
     : `${b.error} Nothing was made. Build again when you are ready.`);
 }
+// Built (Ron, 2026-11-12, mockups/build-one/fanfare.html C): over the new playlist's cover a pink check draws itself and three rings spread out, as Music sharing
+// does after Share; the cover lights up under it, Open pops in, and the participant's line comes in with its new count. Once; under reduced motion only the end shows.
+const PP_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" pathLength="24" stroke-dasharray="24" stroke-dashoffset="24"/></svg>';
+function celebrateBuilt(row, meta) {
+  if (!motionAllowed(row)) return;
+  const cover = row.querySelector(".bh-cover"), open = row.querySelector(".pp-open");
+  cover.animate([{ filter: "grayscale(0.6) brightness(0.55)" }, { filter: "none" }], { duration: 400, delay: 300, easing: EASE_OUT, fill: "backwards" });
+  if (open) open.animate([{ opacity: 0, transform: "scale(0.8)" }, { opacity: 1, transform: "none" }], { duration: 300, delay: 450, easing: "cubic-bezier(0.27, 1.45, 0.53, 1)", fill: "backwards" });
+  if (meta) meta.animate([{ opacity: 0, transform: "translateY(60%)" }, { opacity: 1, transform: "none" }], { duration: 320, delay: 500, easing: EASE_OUT, fill: "backwards" });
+  const at = { left: cover.offsetLeft + "px", top: cover.offsetTop + "px", width: cover.offsetWidth + "px", height: cover.offsetHeight + "px" };
+  for (let i = 0; i < 3; i++) {
+    const ring = feEl("span", { class: "pp-ring", "aria-hidden": "true" });
+    Object.assign(ring.style, at);
+    row.appendChild(ring);
+    ring.animate([{ transform: "scale(1)", opacity: 0.9, borderWidth: "3px" }, { transform: "scale(5)", opacity: 0, borderWidth: "1px" }], { duration: 1100, delay: i * 180, easing: EASE_OUT, fill: "both" }).onfinish = () => ring.remove();
+  }
+  const check = feEl("span", { class: "pp-check", "aria-hidden": "true", html: PP_CHECK });
+  Object.assign(check.style, at);
+  row.appendChild(check);
+  check.animate([{ opacity: 0, transform: "scale(0.6)" }, { opacity: 1, transform: "scale(1.1)", offset: 0.5 }, { opacity: 1, transform: "none" }], { duration: 400, easing: EASE_OUT, fill: "both" });
+  check.querySelector("path").animate([{ strokeDashoffset: 24 }, { strokeDashoffset: 0 }], { duration: 350, delay: 150, easing: EASE_OUT, fill: "forwards" });
+  check.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 350, delay: 1300, fill: "forwards" }).onfinish = () => check.remove();
+}
+
 // Called as the build moves on: only the row changes while it is under way (focus and scroll stay); a new state paints the popup again
 let paintedBuildState = null;
 function paintPersonBuild(force) {
@@ -2895,30 +2924,6 @@ function paintPersonBuild(force) {
   paintedBuildState = personBuild.state;
   paintPersonPanel();
 }
-// Built: a short message, wherever the person is
-let builtToastTimer = null;
-function personBuilt(code, fresh) {
-  let toast = $("builtToast");
-  if (!toast) {
-    toast = feEl("div", { id: "builtToast", role: "status", "aria-live": "polite", hidden: true },
-      feEl("span", { class: "dm-toast-mark", html: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' }),
-      feEl("span", { id: "builtToastText" }));
-    document.body.appendChild(toast);
-  }
-  const text = $("builtToastText");
-  text.textContent = "";
-  text.append(`Built for ${code}.`);
-  if (fresh) text.append(" ", feEl("b", { text: `${fresh.fresh} of ${fresh.fresh + fresh.again}` }), " songs new to them.");
-  clearTimeout(builtToastTimer);
-  toast.hidden = false;
-  void toast.offsetWidth;
-  toast.classList.add("bt-in");
-  builtToastTimer = setTimeout(() => {
-    toast.classList.remove("bt-in");
-    builtToastTimer = setTimeout(() => { toast.hidden = true; }, 300);
-  }, 4000);
-}
-
 function closePersonPanel(quiet) {
   const wrap = $("personPanelWrap");
   builderHome.person = null;
