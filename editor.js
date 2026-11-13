@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13v";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13w";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2625,7 +2625,9 @@ function refreshBuildButtons() {
   for (const b of document.querySelectorAll("#builderHome .bh-build")) {
     b.setAttribute("aria-label", word);
     b.title = word;
-    b.disabled = action ? busy : !ready;
+    const waiting = typeof limitWait !== "undefined" && limitWait.active && limitWait.reason === "short";   // Spotify sent part of the list: building waits for all of it
+    b.disabled = waiting || (action ? busy : !ready);
+    b.classList.toggle("bh-waiting", waiting);
     b.hidden = paused;
   }
   // deleting a participant removes playlists in Spotify: not while something else is writing there or Spotify asked Arc to wait

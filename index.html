@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-13v">
-<script src="theme.js?v=2026-11-13v"></script>
+<meta name="app-version" content="2026-11-13w">
+<script src="theme.js?v=2026-11-13w"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -798,6 +798,7 @@
   .bh-ib.bh-build { background: var(--button); color: var(--on-button, #fff); }
   .bh-ib.bh-build svg { width: 20px; height: 20px; }
   .bh-ib:disabled { opacity: 0.45; cursor: default; }
+  .bh-build.bh-waiting { opacity: 0.35; filter: grayscale(1); }   /* waiting for all of Spotify's playlist list */
   .bh-ib:focus:not(:focus-visible) { outline: none; }
   @media (hover: hover) { .bh-ib:not(.bh-build):not(:disabled):hover { filter: none; outline: none; background: color-mix(in srgb, var(--muted) 22%, transparent); } }
   /* Desktop (Ron, 2026-11-13, mockups/desktop-width): the tools' column is 600 px (home keeps its 560), the switches 360 px and centered,
@@ -2831,10 +2832,10 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-13v"></script>
-<script src="editor.js?v=2026-11-13v"></script>
-<script src="shared-spotify.js?v=2026-11-13v"></script>
-<script src="app.js?v=2026-11-13v"></script>
-<script src="sharing.js?v=2026-11-13v"></script>
+<script src="formats.js?v=2026-11-13w"></script>
+<script src="editor.js?v=2026-11-13w"></script>
+<script src="shared-spotify.js?v=2026-11-13w"></script>
+<script src="app.js?v=2026-11-13w"></script>
+<script src="sharing.js?v=2026-11-13w"></script>
 </body>
 </html>

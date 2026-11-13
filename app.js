@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-13v";
+const APP_VERSION = "2026-11-13w";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1475,7 +1475,6 @@ function pageState() {
   try { updating = sessionStorage.getItem("updating"); refreshed = sessionStorage.getItem("startupRefreshed"); } catch (e) { /* no storage */ }
   return { app: APP_VERSION, scripts: { ...(globalThis.scriptVersions || {}) }, updating, startupRefreshed: refreshed, updateScreen: typeof updateScreen !== "undefined" ? updateScreen : null, connection, sinceStart: Math.round(performance.now()) };
 }
-let playlistsComplete = true;   // false when the last list read held fewer playlists than Spotify's total even after reading short pages again: missing saves are then not taken as gone
 let playlistPages = [];   // the last list's pages as Spotify sent them: [offset, items, total, whether there was a next], for the records below   // how many times the list has started being read in this tab, so a record can tell whether it was read again during a save
 let playlistsLoadedBy = "";   // which code last read the playlist list, for the record kept when a save question is asked (recordSyncAsk)
 let playlistRefreshMs = 5 * 60 * 1000;   // coming back to the page after this long, the account's playlists, and so the backups, are read again
@@ -1575,7 +1574,6 @@ async function mergeFromSpotify() {
   }
   for (const f of model.formats) {
     if (remote.has(f.id) || !synced[f.id] || f.id === held) continue;
-    if (!playlistsComplete) { saveState.skip.add(f.id); continue; }   // the list came short: its save may be in the part Spotify did not send
     if (unread.some((p) => p.name === saveName(f.title))) continue;   // its backup is there, but cannot be read: it is written again below
     asks.push({ kind: "removed", id: f.id, title: f.title });
   }
@@ -1791,8 +1789,6 @@ async function runSpotifySave() {
         unreadOfIt.save = unpackFormat(description);
         synced[fmt.id] = { rev: fmt.rev || 0, playlistId: unreadOfIt.id };
         putCover(unreadOfIt);
-      } else if (!playlistsComplete && synced[fmt.id]) {
-        continue;   // saved before, but the list came short: its save is likely in the part Spotify did not send, so no second one is made
       } else {
         await recordSaveCreate(fmt, synced, saveRun);
         const made = await spotifyRequest("POST", "/me/playlists", { json: { name, public: false, description } });
@@ -2344,14 +2340,16 @@ async function connectToSpotify() {
     countActiveDay();
   } catch (err) {
     const message = String(err.message || err);
-    recordError(message);
+    const short = message === SHORT_LIST_MESSAGE;
+    if (!short) recordError(message);   // a short list was recorded with its counts
     logStep("connection failed");
     if (spotifyPause()) useKeptPlaylists();
     setConnection("problem", message, /sign-in expired|did not allow/.test(message) ? "reconnect" : "retry");
-    if (/rate limiting|request quota/.test(message) && !spotifyPause()) startLimitWait(); else endLimitWait();
+    if (short) startLimitWait("short");
+    else if (/rate limiting|request quota/.test(message) && !spotifyPause()) startLimitWait(); else endLimitWait();
     countEvent("connection-problem", problemKind(message));
     // A report link is for something unexpected. A rate limit, a quota, no internet and a lapsed sign-in are known, and nothing here can fix them.
-    if (!/rate limiting|request quota|Could not reach Spotify|Spotify did not answer|sign-in expired|did not allow|needs Premium/.test(message)) offerReport("connectionReportHint", message);
+    if (!short && !/rate limiting|request quota|Could not reach Spotify|Spotify did not answer|sign-in expired|did not allow|needs Premium/.test(message)) offerReport("connectionReportHint", message);
   }
 }
 
@@ -2798,18 +2796,28 @@ Object.assign(spotifyHooks, {
 // and Try again on the Build buttons. Now connecting that is refused that way opens a popup once (showLimitDialog in editor.js) and Arc connects again by itself
 // every 5 minutes. Either kind shows the strip under Arc's bar on every view (#waitStrip), with the time to go, until it is over; the strip opens the popup.
 const LIMIT_RETRY_MS = 5 * 60 * 1000;
-const limitWait = { active: false, retryAt: 0, timer: null, shown: false };
-function startLimitWait() {
+const SHORT_LIST_MESSAGE = "Spotify didn\u2019t send all your playlists.";
+let SHORT_LIST_RETRY_MS = [30000, 120000, 600000];   // a short list is read again after these, then every 10 minutes for as long as it takes
+const limitWait = { active: false, retryAt: 0, timer: null, shown: false, reason: "limit", tries: 0 };
+function startLimitWait(reason = "limit") {
+  if (limitWait.active && limitWait.reason !== reason) limitWait.shown = false;
+  if (!limitWait.active || limitWait.reason !== reason) limitWait.tries = 0;
   limitWait.active = true;
-  limitWait.retryAt = Date.now() + LIMIT_RETRY_MS;
+  limitWait.reason = reason;
+  limitWait.retryAt = Date.now() + (reason === "short" ? SHORT_LIST_RETRY_MS[Math.min(limitWait.tries, SHORT_LIST_RETRY_MS.length - 1)] : LIMIT_RETRY_MS);
+  limitWait.tries += 1;
   clearInterval(limitWait.timer);
   limitWait.timer = setInterval(tickLimitWait, 1000);
   paintWaitStrip();
-  if (!limitWait.shown && typeof showLimitDialog === "function") { limitWait.shown = true; showLimitDialog(); }   // once a wait: the retries say nothing more
+  if (!limitWait.shown) { limitWait.shown = true; if (reason === "short") showShortListDialog(); else if (typeof showLimitDialog === "function") showLimitDialog(); }   // once a wait: the retries say nothing more
+  if (typeof refreshBuildButtons === "function") refreshBuildButtons();
 }
 function endLimitWait() {
   if (!limitWait.active) return;
-  Object.assign(limitWait, { active: false, retryAt: 0, shown: false });
+  const wasShort = limitWait.reason === "short";
+  Object.assign(limitWait, { active: false, retryAt: 0, shown: false, reason: "limit", tries: 0 });
+  if (wasShort) showNotices([{ text: "All your playlists arrived.", transient: true }]);
+  if (typeof refreshBuildButtons === "function") refreshBuildButtons();
   clearInterval(limitWait.timer);
   limitWait.timer = null;
   if (typeof closeLimitDialog === "function") closeLimitDialog();
@@ -2833,7 +2841,8 @@ function waitStripState() {
   if (!limitWait.active) return null;
   const ms = limitWait.retryAt - Date.now();
   const s = Math.max(0, Math.ceil(ms / 1000));
-  return { text: "Spotify asked Arc to wait \u00b7 " + (connection === "connecting" || ms <= 0 ? "trying again" : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`), open: () => showLimitDialog() };
+  const short = limitWait.reason === "short";
+  return { text: (short ? "Waiting for all your playlists \u00b7 " : "Spotify asked Arc to wait \u00b7 ") + (connection === "connecting" || ms <= 0 ? "trying again" : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`), open: () => (short ? showShortListDialog() : showLimitDialog()) };
 }
 function paintWaitStrip() {
   const strip = $("waitStrip");
@@ -2990,7 +2999,16 @@ async function loadMyPlaylists() {
   }
   playlistsTotal = total;
   playlistPages = pages;
-  playlistsComplete = total === null || raw.filter(Boolean).length >= total;
+  const got = raw.filter(Boolean).length;
+  if (total !== null && got < total) {
+    // Still short: the list is not used, so nothing works from a half-known state. Arc waits as if not connected (startLimitWait("short")) and keeps
+    // the playlists it already had (or the kept list), and reads it again by itself (Ron, 2026-11-13).
+    recordNote(`playlist list: ${raw.length} items, Spotify's total ${total}, pages [offset, items, total, next] ${JSON.stringify(pages)}`);
+    recordError(`Spotify listed ${got} of ${total} playlists, after reading again`);
+    useKeptPlaylists();
+    if (connection === "ready") { setConnection("problem", SHORT_LIST_MESSAGE); startLimitWait("short"); }
+    throw new Error(SHORT_LIST_MESSAGE);
+  }
   if (total !== null && raw.length !== total) recordNote(`playlist list: ${raw.length} items, Spotify's total ${total}, pages [offset, items, total, next] ${JSON.stringify(pages)}`);
   playlistsLoadedBy = by;
   playlists = raw.filter(Boolean).map((p) => ({
@@ -3010,33 +3028,17 @@ async function loadMyPlaylists() {
   recordSaveDuplicates();
   recordListRead(by);
   keepPlaylists();
-  if (!playlistsComplete) askShortList(raw.filter(Boolean).length, total);
-  else if (pages.some((x) => x[4]) && devMode()) showNotices([{ text: "Spotify sent a short list. Read again, all there.", transient: true }]);
+  if (pages.some((x) => x[4]) && devMode()) showNotices([{ text: "Spotify sent a short list. Read again, all there.", transient: true }]);
   // The count shown in Step 1 always matches the list, including after playlists are created or removed.
   playlistsLoadedAt = Date.now();
   $("connectedMessage").textContent = `Connected as ${me.display_name || me.id}. ${plural(playlists.length, "playlist")} found.`;
   if (typeof editorPlaylistsChanged === "function") editorPlaylistsChanged();
 }
 
-// Spotify listed fewer playlists than its own total, even after reading the short pages again (2026-11-13: the first page came empty). Nothing is taken as gone
-// meanwhile (playlistsComplete), but the person is told, so it is seen and reported rather than passing quietly.
-// Shown once a visit; Arc then reads the list again by itself after 30 s, 2 min and 10 min (SHORT_LIST_RETRY_MS), and on every later connection. Ron, 2026-11-13: plain words, OK only.
-let shortListShown = false, shortListTimer = null, shortListTries = 0;
-let SHORT_LIST_RETRY_MS = [30000, 120000, 600000];
-function askShortList(got, total) {
-  recordError(`Spotify listed ${got} of ${total} playlists, after reading again`);
-  if (!shortListTimer && shortListTries < SHORT_LIST_RETRY_MS.length) {
-    shortListTimer = setTimeout(async () => {
-      shortListTimer = null;
-      shortListTries += 1;
-      if (playlistsComplete || connection !== "ready" || spotifyPause()) return;
-      try { await loadMyPlaylists(); runSpotifySave(); } catch (err) { /* the usual connection messages say why */ }
-    }, SHORT_LIST_RETRY_MS[shortListTries]);
-  }
-  if (shortListShown) return;
-  shortListShown = true;
+// The popup when Spotify's list stays short: once a wait, and again from the strip's Details. Ron, 2026-11-13: plain words, OK and a report link.
+function showShortListDialog() {
   askSyncChoice("Spotify didn\u2019t send all your playlists",
-    "This happens now and then. Your recipes are safe, and Arc will try again in a moment.",
+    "This happens now and then. Arc will keep trying. Until then you can edit your recipes, and building waits.",
     [{ label: "OK", value: "ok", main: true }, { label: "Report this problem", value: "report", link: true, icon: "flag" }], { problem: "cloud" })
     .then((choice) => { if (choice === "report") openReport(); });
 }
