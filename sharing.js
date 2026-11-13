@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-12zzg";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-12zzh";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -785,15 +785,10 @@ const SEARCH_HINTS = { all: "Search", ceremony: "Search ceremonies", phase: "Sea
 function renderFind(body) {
   if (!sortChoices().some(([v]) => v === sharing.sort)) sharing.sort = "newest";
   const has = sharing.library && sharing.library.shares.length;
-  // the type tiles and the row of Search and Sort stay at the top while the list scrolls; the type's own filter scrolls with it (Ron, 2026-11-10, mockups/sticky-filters-*.png)
+  // the type tiles and the row of Search and Sort scroll with the list, as the type's own filter does (Ron, 2026-11-12; they stayed at the top before)
   const head = feEl("div", { id: "msFindHead", class: "ms-findhead" }, kindTiles(sharing.type, setType, { filter: true }), typeHintLine());
   body.appendChild(head);
   balanceLine($("msTypeHint"));
-  if (!body.dataset.findScroll) {
-    body.dataset.findScroll = "1";
-    body.addEventListener("scroll", () => { const h = $("msFindHead"); if (h) h.classList.toggle("ms-findhead-under", body.scrollTop > 0); }, { passive: true });
-  }
-  requestAnimationFrame(() => head.classList.toggle("ms-findhead-under", body.scrollTop > 0));
   const tools = feEl("div", { id: "msTools", class: "ms-tools" });
   if (has) {
     const t = sharing.type;
