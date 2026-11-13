@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-12zzb";
+const APP_VERSION = "2026-11-12zzc";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1405,7 +1405,8 @@ let spotifySaveMaxWaitMs = 30000;
 const saveState = { running: false, again: false, timer: null, since: 0, error: "", tooLong: [], newer: [], savedAt: null, coverBlocked: false, added: [], updated: [], coverProblem: null, coverQueue: [], coverRunning: false, coverGapMs: 400, failures: 0, failureAsked: false, unread: 0, skip: new Set(), dismissed: new Set(), lastNews: null };
 let playlistsLoadedAt = 0;
 let playlistsTotal = null;   // how many playlists Spotify said the list holds the last time it was read (its first page's total), for the records below
-let playlistLoads = 0;   // how many times the list has started being read in this tab, so a record can tell whether it was read again during a save
+let playlistLoads = 0;
+let playlistPages = [];   // the last list's pages as Spotify sent them: [offset, items, total, whether there was a next], for the records below   // how many times the list has started being read in this tab, so a record can tell whether it was read again during a save
 let playlistsLoadedBy = "";   // which code last read the playlist list, for the record kept when a save question is asked (recordSyncAsk)
 let playlistRefreshMs = 5 * 60 * 1000;   // coming back to the page after this long, the account's playlists, and so the backups, are read again
 
@@ -1539,7 +1540,7 @@ async function mergeFromSpotify() {
 // (limitRecordText) and behind Copy details on the question in developer mode, so a question that should not have come up can be explained afterwards.
 const SYNC_ASKS_KEY = "syncAsks";
 async function recordSyncAsk(asks, synced, remote, pendingDeletes, held) {
-  const short = (p) => p ? { name: p.name, id: p.id, kind: p.save ? p.save.kind : "none", recipeId: p.save && p.save.format ? p.save.format.id : null, rev: p.save && p.save.format ? p.save.format.rev || 0 : null, description: String(p.description || "").slice(0, 60) } : null;
+  const short = (p) => p ? { name: p.name, id: p.id, at: playlists.indexOf(p), kind: p.save ? p.save.kind : "none", recipeId: p.save && p.save.format ? p.save.format.id : null, rev: p.save && p.save.format ? p.save.format.rev || 0 : null, description: String(p.description || "").slice(0, 60) } : null;
   const entry = {
     at: new Date().toISOString(), app: APP_VERSION,
     asks: asks.map((a) => {
@@ -1551,7 +1552,7 @@ async function recordSyncAsk(asks, synced, remote, pendingDeletes, held) {
     }),
     listReadAt: playlistsLoadedAt ? new Date(playlistsLoadedAt).toISOString() : null,
     listReadBy: playlistsLoadedBy,
-    playlistCount: playlists.length, listTotal: playlistsTotal,
+    playlistCount: playlists.length, listTotal: playlistsTotal, pages: playlistPages,
     saves: [...remote].map(([id, p]) => [p.name, p.id, id, p.save.format.rev || 0]),
     otherSaveNames: playlists.filter((p) => p.name.endsWith(SAVE_SUFFIX) && !(p.save && p.save.kind === "save")).map(short),
     recipes: editor.model.formats.map((f) => [f.title, f.id, f.rev || 0]),
@@ -1575,7 +1576,7 @@ function callerTrail() {
 // to tell a list that left it out from a save that is really gone or no longer reads as one.
 const SAVE_CREATES_KEY = "saveCreates";
 async function recordSaveCreate(fmt, synced, saveRun) {
-  const short = (p) => p ? { name: p.name, id: p.id, owner: p.owner, kind: p.save ? p.save.kind : "none", recipeId: p.save && p.save.format ? p.save.format.id : null, rev: p.save && p.save.format ? p.save.format.rev || 0 : null, descLength: p.description == null ? null : String(p.description).length, description: p.description == null ? null : String(p.description).slice(0, 60) } : null;
+  const short = (p) => p ? { name: p.name, id: p.id, at: playlists.indexOf(p), owner: p.owner, kind: p.save ? p.save.kind : "none", recipeId: p.save && p.save.format ? p.save.format.id : null, rev: p.save && p.save.format ? p.save.format.rev || 0 : null, descLength: p.description == null ? null : String(p.description).length, description: p.description == null ? null : String(p.description).slice(0, 60) } : null;
   const was = synced[fmt.id] || null;
   const entry = {
     at: new Date().toISOString(), app: APP_VERSION, caller: callerTrail(),
@@ -1586,13 +1587,35 @@ async function recordSaveCreate(fmt, synced, saveRun) {
     saves: [...savesInAccount()].map(([id, p]) => [p.name, p.id, id, p.save.format.rev || 0]),
     recipes: editor.model.formats.map((f) => [f.title, f.id, f.rev || 0]),
     listReadAt: playlistsLoadedAt ? new Date(playlistsLoadedAt).toISOString() : null, listReadBy: playlistsLoadedBy,
-    playlistCount: playlists.length, listTotal: playlistsTotal,
+    playlistCount: playlists.length, listTotal: playlistsTotal, pages: playlistPages,
     saveStarted: new Date(saveRun.at).toISOString(), listReadAgainDuringSave: playlistLoads !== saveRun.loads, listReadBeforeSave: saveRun.listReadAt ? new Date(saveRun.listReadAt).toISOString() : null,
     held: heldRecipeId(), pendingDeletes: pendingSaveDeletes(), account: (() => { try { return localStorage.getItem("spotifyAccount") === (me && me.id); } catch (e) { return null; } })(),
     direct: null,
   };
   if (was && was.playlistId) entry.direct = await readSaveDirectly(was.playlistId);
   writeRecord(SAVE_CREATES_KEY, [...readRecord(SAVE_CREATES_KEY, []), entry].slice(-20));
+}
+
+// Two or more saves of one recipe in the list: the moment the problem shows (Ron found 7 of each, 2026-11-12). Kept once per set of playlists, the last 10, in
+// the Spotify request log, with where each sits in the list and the list's pages. Reporting only: nothing is removed.
+const SAVE_DUPLICATES_KEY = "saveDuplicates";
+function recordSaveDuplicates() {
+  const byRecipe = new Map();
+  playlists.forEach((p, at) => {
+    if (!p.save || p.save.kind !== "save") return;
+    const id = p.save.format.id;
+    byRecipe.set(id, [...(byRecipe.get(id) || []), { id: p.id, name: p.name, at, rev: p.save.format.rev || 0, modified: p.save.format.modified || 0 }]);
+  });
+  const kept = readRecord(SAVE_DUPLICATES_KEY, []);
+  let added = false;
+  for (const [recipeId, list] of byRecipe) {
+    if (list.length < 2) continue;
+    const key = recipeId + ":" + list.map((x) => x.id).sort().join(",");
+    if (kept.some((e) => e.key === key)) continue;
+    kept.push({ key, at: new Date().toISOString(), app: APP_VERSION, recipeId, saves: list, playlistCount: playlists.length, listTotal: playlistsTotal, pages: playlistPages, listReadBy: playlistsLoadedBy });
+    added = true;
+  }
+  if (added) writeRecord(SAVE_DUPLICATES_KEY, kept.slice(-10));
 }
 
 // For the records above only: a playlist as Spotify has it when read on its own, and whether it is in the person's library. Changes nothing.
@@ -2814,7 +2837,7 @@ function limitRecordText() {
   return JSON.stringify({
     app: APP_VERSION, copiedAt: new Date().toISOString(), timezoneOffsetMin: new Date().getTimezoneOffset(),
     previousCopy: Number(localStorage.getItem("spotifyRecordCopiedAt")) || null,
-    limits: readRecord(LIMITS_KEY, []), callsPerMinute: readRecord(CALLS_KEY, {}), syncAsks: readRecord(SYNC_ASKS_KEY, []), saveCreates: readRecord(SAVE_CREATES_KEY, []),
+    limits: readRecord(LIMITS_KEY, []), callsPerMinute: readRecord(CALLS_KEY, {}), syncAsks: readRecord(SYNC_ASKS_KEY, []), saveCreates: readRecord(SAVE_CREATES_KEY, []), saveDuplicates: readRecord(SAVE_DUPLICATES_KEY, []),
   });
 }
 
@@ -2854,9 +2877,16 @@ async function loadMyPlaylists() {
   const raw = [];
   let page = await spotify("/me/playlists?limit=50");
   const total = typeof page.total === "number" ? page.total : null;
-  for (;;) { raw.push(...(page.items || [])); if (!page.next) break; page = await spotify(page.next); }
+  const pages = [];
+  for (;;) {
+    pages.push([page.offset, (page.items || []).length, page.total, !!page.next]);
+    raw.push(...(page.items || []));
+    if (!page.next) break;
+    page = await spotify(page.next);
+  }
   playlistsTotal = total;
-  if (total !== null && raw.length !== total) recordNote(`playlist list: ${raw.length} items, Spotify's total ${total}`);
+  playlistPages = pages;
+  if (total !== null && raw.length !== total) recordNote(`playlist list: ${raw.length} items, Spotify's total ${total}, pages [offset, items, total, next] ${JSON.stringify(pages)}`);
   playlistsLoadedBy = callerTrail();
   playlists = raw.filter(Boolean).map((p) => ({
     id: p.id,
@@ -2872,6 +2902,7 @@ async function loadMyPlaylists() {
   for (const p of playlists) { p.madeByApp = madeByAppText(p.description); p.participant = participantOf(p.description); }
   // A format's backup in Spotify is known by what its description decodes to, whatever the playlist is called.
   for (const p of playlists) { const u = unpackFormat(p.description); p.save = u.kind === "none" ? null : u; p.isSave = !!p.save; }
+  recordSaveDuplicates();
   keepPlaylists();
   // The count shown in Step 1 always matches the list, including after playlists are created or removed.
   playlistsLoadedAt = Date.now();
