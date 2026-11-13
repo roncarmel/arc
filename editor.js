@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13e";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13f";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -839,7 +839,7 @@ function renderAppMenu() {
     const why = connecting ? "On a slow connection this can take a few seconds." : connection === "problem" ? $("connectionMessage").textContent : "";
     if (why) connectItems.push(feEl("div", { class: "fe-itemnote", id: "feConnectionNote", text: why }));
   }
-  // When recipes are saved to Spotify there is nothing about saving in this menu: it happens by itself, and Save changes shows it on the recipe's row. For a person
+  // When recipes are saved to Spotify there is nothing about saving in this menu: it happens by itself, and Done in the recipe panel shows it on the recipe's row. For a person
   // who backs up by hand there is one block: what it is, a link to change it, when the last backup was, and the two actions.
   const auto = typeof backupMode === "function" && backupMode() === "spotify";
   let backupBlock = null;
@@ -1000,9 +1000,9 @@ function placeDevMenu(anchor) {
   window.addEventListener("resize", () => showDevMenu(false));
 })();
 
-// After Save changes the recipe's row says Saving\u2026 in place of its length, then Saved with a check for 2 s (Ron, 2026-11-12: the cloud picture on the menu
+// After Done (with changes) the recipe's row says Saving\u2026 in place of its length, then Saved with a check for 2 s (Ron, 2026-11-12: the cloud picture on the menu
 // button looked out of place once the button turned grey). Only for a save that can start now; one that waits (not connected, a pause) says nothing, and a
-// failure is left to the line under the bar. A save already running when Save changes is pressed does not count: the recipe goes in the one after it.
+// failure is left to the line under the bar. A save already running when Done is pressed does not count: the recipe goes in the one after it.
 const recipeSaved = { id: null, state: "", started: false, lastRunning: false, since: 0, timer: null };
 function markRecipeSaving(id) {
   clearTimeout(recipeSaved.timer);
@@ -2493,9 +2493,7 @@ function initBuilderHome() {
   });
   $("rpClose").addEventListener("click", () => closeRecipePanel("x"));
   $("rpDim").addEventListener("click", () => { if (editor.renamingPanel) finishPanelRename(false); else closeRecipePanel("x"); });
-  $("rpCancel").addEventListener("click", () => closeRecipePanel("cancel"));
   $("rpSave").addEventListener("click", () => closeRecipePanel("save"));
-  $("rpDone").addEventListener("click", () => closeRecipePanel("done"));
   $("rpRename").appendChild(feIcon("pencil"));
   $("rpRename").addEventListener("click", startPanelRename);
   $("rpTitle").addEventListener("click", startPanelRename);
@@ -2625,9 +2623,9 @@ function buildRecipe(id) {
   });
 }
 
-// ---------------------------------------------------------------- the recipe panel: one recipe in a popup, saved only when the person says so
-// (decided by Ron, 2026-11-12, mockups/editor-head.html C, fitted). Every edit is kept in this browser at once, as before; Save changes sends it to Spotify, and
-// Cancel puts back the recipe as it was when the panel opened. recipeEditing in localStorage holds that copy while there are changes, so a closed tab keeps them
+// ---------------------------------------------------------------- the recipe panel: one recipe in a popup, saved when it closes
+// (decided by Ron, 2026-11-12, mockups/editor-head.html C, fitted; Done in place of the X, 2026-11-13). Every edit is kept in this browser at once, as before;
+// Done (or closing the panel any way) sends it to Spotify. recipeEditing in localStorage holds that copy while there are changes, so a closed tab keeps them
 // as Unsaved changes (and the cloud save and the merge leave that recipe alone: heldRecipeId in app.js).
 const recipeEdit = { id: null, before: null, dirty: false, open: false };   // before: the recipe's text when the panel opened, or null for a new one
 
@@ -2658,8 +2656,13 @@ function recipeEdited() {
 }
 
 function refreshPanelFoot() {
-  const foot = $("rpFoot");
-  if (foot) foot.classList.toggle("rp-clean", !recipeEdit.dirty);
+  // the X while nothing changed, Done (which saves) once something has (Ron, 2026-11-13)
+  const panel = $("recipePanel"), wasClean = panel.classList.contains("rp-clean");
+  panel.classList.toggle("rp-clean", !recipeEdit.dirty);
+  const focused = document.activeElement;
+  if (wasClean === recipeEdit.dirty && (focused === $("rpClose") || focused === $("rpSave"))) {
+    try { $(recipeEdit.dirty ? "rpSave" : "rpClose").focus({ preventScroll: true }); } catch (err) { /* old browsers */ }
+  }
   const dup = $("feDuplicate");
   if (dup) { dup.disabled = recipeEdit.dirty; dup.title = recipeEdit.dirty ? "Save your changes first" : "Duplicate recipe"; }
 }
@@ -2691,12 +2694,10 @@ async function openRecipePanel(id, options = {}) {
     // another recipe has changes from an earlier visit: settle those first
     const other = editor.model.formats.find((x) => x.id === recipeEdit.id);
     if (other) {
-      const answer = await askSyncChoice(`Save changes to ${named(other.title.trim() || "Untitled")}?`, "Its changes were not saved yet.",
-        [{ label: "Discard", value: "discard" }, { label: "Save changes", value: "save" }]);
-      if (answer === null) return;
+      // closing always saves, so those are saved too
       recipeEdit.open = true;
       editor.activeId = other.id;
-      closeRecipePanel(answer === "save" ? "save" : "cancel", true);
+      closeRecipePanel("save", true);
     } else { recipeEdit.id = null; recipeEdit.dirty = false; keepRecipeEditing(); }
   }
   const f = editor.model && editor.model.formats.find((x) => x.id === id);
@@ -2722,16 +2723,10 @@ async function openRecipePanel(id, options = {}) {
   try { $("rpClose").focus({ preventScroll: true }); } catch (err) { /* old browsers */ }
 }
 
-// how: "save", "cancel" (put it back), "done" (nothing changed), "x" (the X, Escape or a tap outside: asks first when there are changes), "gone" (deleted)
+// how: "save", "cancel" (put it back), "done" (nothing changed), "x" (the X, Escape or a tap outside: saves when there are changes, Ron, 2026-11-13), "gone" (deleted)
 function closeRecipePanel(how, quiet) {
   if (!recipeEdit.open) return;
-  if (how === "x" && recipeEdit.dirty) {
-    const f = activeFormat();
-    askSyncChoice("Discard changes?", `Your changes to ${named(f ? f.title.trim() || "Untitled" : "this recipe")} have not been saved.`,
-      [{ label: "Keep editing", value: "keep" }, { label: "Discard", value: "discard", danger: true }])
-      .then((answer) => { if (answer === "discard") closeRecipePanel("cancel"); });
-    return;
-  }
+  if (how === "x") how = recipeEdit.dirty ? "save" : "done";
   if (editor.renamingPanel) finishPanelRename(false, true);
   const saved = how === "save" && recipeEdit.dirty;
   if (how === "cancel" && recipeEdit.dirty) {
@@ -2844,7 +2839,7 @@ function panelEscape(event) {
   if (editor.panel || editor.cardMenu || editor.gapPanel !== null || editor.appMenu || editor.renamingPanel) return;
   if (document.querySelector(".fe-overlay:not([hidden])") || !$("infoOverlay").hidden || !$("createOverlay").hidden) return;
   event.preventDefault();
-  closeRecipePanel(recipeEdit.dirty ? "x" : "done");
+  closeRecipePanel("x");
 }
 
 // ---------------------------------------------------------------- participants (developer mode for now; Ron, 2026-11-12)

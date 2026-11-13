@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-13e";
+const APP_VERSION = "2026-11-13f";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1456,7 +1456,7 @@ function whenText(seconds) {
   return seconds ? formatBackupTime(new Date(seconds * 1000).toISOString()) : "a time that is not known";
 }
 
-// The recipe open in the editor with changes not saved yet (Save changes in the recipe panel; decided by Ron, 2026-11-12: saving is explicit). Its edits are in this
+// The recipe open in the editor with changes not saved yet (Done in the recipe panel saves; Ron, 2026-11-12 and 2026-11-13). Its edits are in this
 // browser already, but nothing of it goes to Spotify, and Spotify's copy is not settled against it, until it is saved. Kept in localStorage so a closed tab
 // does not save it either: it shows as Unsaved changes in the list. editor.js keeps it (recipeEditing).
 function heldRecipeId() {
