@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zg";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zh";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2504,6 +2504,9 @@ function renderRecipeList() {
   }
   list.appendChild(add);
   for (const f of formats) list.appendChild(recipeRow(f));
+  // under the last recipe, what the sparkle does, with the button drawn small in the sentence (Ron, 2026-11-12, mockups/icons-top)
+  list.appendChild(feEl("p", { class: "bh-note bh-build-how" }, `${actWord(true)} a recipe\u2019s `, feEl("span", { class: "bh-mini", "aria-hidden": "true" }, bhSvg(BH_SPARK)),
+    " button to build a playlist from it."));
   refreshNoticeLine();
 }
 
@@ -2524,9 +2527,8 @@ function recipeRow(f) {
     onKeyDown: (event) => { if ((event.key === "Enter" || event.key === " ") && event.target === row) { event.preventDefault(); openRecipePanel(f.id); } } },
     feEl("span", { class: "bh-text" },
       feEl("span", { class: "bh-name", text: f.title.trim() || "Untitled" }),
-      feEl("span", { class: "bh-sub" + (unsaved ? " bh-unsaved" : ""), text: unsaved ? "Unsaved changes" : length }),
-      bar),
-    icons);
+      feEl("span", { class: "bh-sub" + (unsaved ? " bh-unsaved" : ""), text: unsaved ? "Unsaved changes" : length })),
+    icons, bar);   // the buttons at the top right beside the name, the bar the full width under them (Ron, 2026-11-12, mockups/icons-top J1)
   return row;
 }
 
