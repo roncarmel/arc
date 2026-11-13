@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-12zz";
+const APP_VERSION = "2026-11-12zza";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1404,6 +1404,7 @@ let spotifySaveDelayMs = 5000;
 let spotifySaveMaxWaitMs = 30000;
 const saveState = { running: false, again: false, timer: null, since: 0, error: "", tooLong: [], newer: [], savedAt: null, coverBlocked: false, added: [], updated: [], coverProblem: null, coverQueue: [], coverRunning: false, coverGapMs: 400, failures: 0, failureAsked: false, unread: 0, skip: new Set(), dismissed: new Set(), lastNews: null };
 let playlistsLoadedAt = 0;
+let playlistsLoadedBy = "";   // which code last read the playlist list, for the record kept when a save question is asked (recordSyncAsk)
 let playlistRefreshMs = 5 * 60 * 1000;   // coming back to the page after this long, the account's playlists, and so the backups, are read again
 
 function saveName(title) {
@@ -1504,15 +1505,16 @@ async function mergeFromSpotify() {
     if (unread.some((p) => p.name === saveName(f.title))) continue;   // its backup is there, but cannot be read: it is written again below
     asks.push({ kind: "removed", id: f.id, title: f.title });
   }
+  const debug = asks.length ? recordSyncAsk(asks, synced, remote, pendingDeletes, held) : "";
   for (const a of asks) {
     const label = a.title.trim() || "Untitled";
     let choice;
     if (a.kind === "conflict") {
       choice = await askSyncChoice(`${named(label)} was changed in two places`, `This device has a version from ${whenText(a.local.modified)}, and Spotify has one from ${whenText(a.remote.modified)}, probably saved from another device. Which one do you want to keep? The other one is replaced.`,
-        [{ label: "Keep this device\u2019s", value: "mine" }, { label: "Use Spotify\u2019s", value: "theirs" }], { required: true });
+        [{ label: "Keep this device\u2019s", value: "mine" }, { label: "Use Spotify\u2019s", value: "theirs" }], { required: true, debug });
     } else {
       choice = await askSyncChoice(`${named(label)} is no longer in Spotify`, "It was removed from your Spotify, maybe on another device. Keep it here, and it will be saved to Spotify again, or remove it from this device too?",
-        [{ label: "Keep it here", value: "keep" }, { label: "Remove it here", value: "remove", danger: true }], { required: true });
+        [{ label: "Keep it here", value: "keep" }, { label: "Remove it here", value: "remove", danger: true }], { required: true, debug });
     }
     if (a.kind === "conflict" && choice === "theirs") { adoptFormat(a.remote); synced[a.id] = { rev: a.remote.rev || 0, playlistId: a.playlist.id }; saveState.updated.push(a.remote.title); }
     else if (a.kind === "conflict") { a.local.rev = Math.max(a.local.rev || 0, a.remote.rev || 0) + 1; a.local.modified = Math.floor(Date.now() / 1000); synced[a.id] = { rev: a.remote.rev || 0, playlistId: a.playlist.id }; }
@@ -1529,6 +1531,38 @@ async function mergeFromSpotify() {
     saveState.lastNews = { text: news.join(" "), at: Date.now() };
     if (typeof showNotices === "function") showNotices(news);
   }
+}
+
+// When the merge has to ask about a recipe (no longer in Spotify, or changed in two places), what it saw is kept, the last 10 times, in the Spotify request log
+// (limitRecordText) and behind Copy details on the question in developer mode, so a question that should not have come up can be explained afterwards.
+const SYNC_ASKS_KEY = "syncAsks";
+function recordSyncAsk(asks, synced, remote, pendingDeletes, held) {
+  const short = (p) => p ? { name: p.name, id: p.id, kind: p.save ? p.save.kind : "none", recipeId: p.save && p.save.format ? p.save.format.id : null, rev: p.save && p.save.format ? p.save.format.rev || 0 : null, description: String(p.description || "").slice(0, 60) } : null;
+  const entry = {
+    at: new Date().toISOString(), app: APP_VERSION,
+    asks: asks.map((a) => {
+      const local = editor.model.formats.find((f) => f.id === a.id);
+      const was = synced[a.id] || null;
+      return { kind: a.kind, id: a.id, title: a.title, rev: local ? local.rev || 0 : null, remoteRev: a.remote ? a.remote.rev || 0 : null, synced: was,
+        savedPlaylistInList: was && was.playlistId ? short(playlists.find((p) => p.id === was.playlistId)) : null,
+        sameName: playlists.filter((p) => p.name === saveName(a.title)).map(short) };
+    }),
+    listReadAt: playlistsLoadedAt ? new Date(playlistsLoadedAt).toISOString() : null,
+    listReadBy: playlistsLoadedBy,
+    playlistCount: playlists.length,
+    saves: [...remote].map(([id, p]) => [p.name, p.id, id, p.save.format.rev || 0]),
+    otherSaveNames: playlists.filter((p) => p.name.endsWith(SAVE_SUFFIX) && !(p.save && p.save.kind === "save")).map(short),
+    recipes: editor.model.formats.map((f) => [f.title, f.id, f.rev || 0]),
+    synced, held: held || null, pendingDeletes,
+  };
+  writeRecord(SYNC_ASKS_KEY, [...readRecord(SYNC_ASKS_KEY, []), entry].slice(-10));
+  return JSON.stringify(entry);
+}
+
+// The functions that called this one, from the call stack, as "a < b < c" (no addresses or versions), for the record above.
+function callerTrail() {
+  const lines = String(new Error().stack || "").split("\n").map((x) => x.trim()).filter((x) => x && x !== "Error");
+  return lines.slice(2, 6).map((x) => x.replace(/^at /, "").replace(/\s*\(?(https?|file):\/\/\S*/, "").replace(/@.*$/, "") || "?").join(" < ");
 }
 
 function savesInAccount() {
@@ -2735,7 +2769,7 @@ function limitRecordText() {
   return JSON.stringify({
     app: APP_VERSION, copiedAt: new Date().toISOString(), timezoneOffsetMin: new Date().getTimezoneOffset(),
     previousCopy: Number(localStorage.getItem("spotifyRecordCopiedAt")) || null,
-    limits: readRecord(LIMITS_KEY, []), callsPerMinute: readRecord(CALLS_KEY, {}),
+    limits: readRecord(LIMITS_KEY, []), callsPerMinute: readRecord(CALLS_KEY, {}), syncAsks: readRecord(SYNC_ASKS_KEY, []),
   });
 }
 
@@ -2772,6 +2806,7 @@ async function loadMyPlaylists() {
   me = await spotify("/me");
   forgetOtherAccount(me.id);
   const raw = await pagedItems("/me/playlists?limit=50");
+  playlistsLoadedBy = callerTrail();
   playlists = raw.filter(Boolean).map((p) => ({
     id: p.id,
     name: p.name,

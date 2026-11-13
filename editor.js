@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zz";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zza";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -608,13 +608,24 @@ function askSyncChoice(title, text, choices, options = {}) {
       : [feEl("h3", { text: title }),
         feEl("p", { text }),
         options.detail ? feEl("p", { class: "muted", id: "feSyncDetail", text: options.detail }) : null,
-        feEl("div", { class: "row" }, ...buttons)];
+        feEl("div", { class: "row" }, ...buttons),
+        options.debug && devMode() ? debugLink(options.debug) : null];
     const overlay = feEl("div", { class: "fe-overlay", id: "feSyncDialog", onClick: () => { if (!required) done(null); } },
       feEl("div", { class: "fe-dialog" + (problem ? " pb-dialog" : ""), role: required ? "alertdialog" : "dialog", "aria-modal": "true", "aria-label": plainText(title), onClick: (e) => e.stopPropagation() }, ...body));
     document.body.appendChild(overlay);
     document.addEventListener("keydown", onKey);
     (options.focusLast ? buttons[buttons.length - 1] : buttons[0]).focus();   // a question about something that cannot be taken back starts on the safe answer
   });
+}
+
+// Developer mode only: a small grey link that copies what the app saw when it asked (options.debug), leaving the question open.
+function debugLink(text) {
+  const link = feEl("button", { type: "button", class: "fe-sync-debug", id: "feSyncDebug", text: "Copy details" });
+  link.addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(text); link.textContent = "Copied. Paste it into the chat with Claude."; }
+    catch (err) { link.textContent = "Could not copy. It is in Copy Spotify request log too."; }
+  });
+  return link;
 }
 
 function syncEditorFromText() {
