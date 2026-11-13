@@ -1023,7 +1023,7 @@ print(json.dumps(out))
   var ab = t0.document.getElementById("about");
   var leads = Array.from(ab.querySelectorAll("strong")).map((x) => x.textContent);
   check("the headings in What is this app? stand on their own line, without trailing periods", JSON.stringify(leads) === JSON.stringify(["What it does", "What it's good for", "How it works", "What you need", "Reporting problems", "Privacy"]) && Array.from(ab.querySelectorAll("p")).filter((p) => p.querySelector("strong + br")).length === 5, JSON.stringify(leads));
-  var pill = Array.from(t0.document.querySelectorAll("button:not(.linklike):not(.theme-swatch):not(.mf-sent-toggle):not(#cnContinue):not(#usOk), a.button-link")).filter((b) => !b.closest("#formatEditor") && !b.closest("#startupProblem") && !b.closest("#createDialog") && !b.closest(".dlg-foot") && !b.closest("#devMenu") && b.id !== "infoClose" && b.id !== "msClose" && b.id !== "msCard" && b.id !== "homeBuilder" && !b.classList.contains("wp-tool-head") && !b.closest("#homeMore .hp-ee-bar") && !b.classList.contains("sp-choice") && b.id !== "appHome" && !b.closest("#appBar") && b.id !== "updateGet" && !b.classList.contains("tv-row") && !b.closest("#builderHome") && !b.closest("#recipePanelWrap"));   // the builder's landing and panel draw their icons inline; the tutorial rows have a frame   // the Music sharing card (covers, not an icon) and the update card's Get it (its gift is on the card)   // the Setup complete button has words only; the startup popup and the info popup's close draw their icons inline
+  var pill = Array.from(t0.document.querySelectorAll("button:not(.linklike):not(.theme-swatch):not(.mf-sent-toggle):not(#cnContinue):not(#usOk), a.button-link")).filter((b) => !b.closest("#formatEditor") && !b.closest("#startupProblem") && !b.closest("#createDialog") && !b.closest(".dlg-foot") && !b.closest("#devMenu") && b.id !== "infoClose" && b.id !== "msClose" && b.id !== "msCard" && b.id !== "homeBuilder" && !b.classList.contains("wp-tool-head") && !b.closest("#homeMore .hp-ee-bar") && !b.classList.contains("sp-choice") && b.id !== "appHome" && b.id !== "waitStrip" && !b.closest("#appBar") && b.id !== "updateGet" && !b.classList.contains("tv-row") && !b.closest("#builderHome") && !b.closest("#recipePanelWrap"));   // the builder's landing and panel draw their icons inline; the tutorial rows have a frame   // the Music sharing card (covers, not an icon) and the update card's Get it (its gift is on the card)   // the Setup complete button has words only; the startup popup and the info popup's close draw their icons inline
   var pillsIn = pill.filter((b) => b.querySelector("img.btn-icon"));
   check("every pink button has an icon in front of its label", pill.length >= 15 && pillsIn.length === pill.length, `${pillsIn.length} of ${pill.length} ` + pill.filter((b) => !b.querySelector("img.btn-icon")).map((b) => b.id || b.outerHTML.slice(0, 60)).join(","));
   check("each icon is a small file, 20 by 20 (the Build sparkles 24 by 24), decorative, and the file exists", pill.every((b) => { const i = b.querySelector("img.btn-icon"); const size = i.getAttribute("src") === "icons/build.svg" ? "24" : "20"; return i.getAttribute("width") === size && i.getAttribute("height") === size && i.getAttribute("alt") === "" && /^icons\/[a-z]+\.svg$/.test(i.getAttribute("src")) && fs.existsSync(ROOT + i.getAttribute("src")); }));
@@ -2131,7 +2131,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var m2_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var m2_row = m2_w.document.querySelector(".fe-toprow");
   var m2_home = m2_w.document.getElementById("appHome");
-  check("the tabs row is only the tabs; the app's icon is in Arc's bar above, in the theme's color, with Arc beside it", m2_row.children.length === 1 && m2_row.children[0].id === "feTabs" && m2_home.querySelector("img").getAttribute("src") === "arc-mark.png" && m2_home.querySelector("img").getAttribute("alt") === "" && m2_home.textContent === "Arc" && m2_home.getAttribute("aria-label") === "Home");
+  check("the tabs row is only the tabs; the app's icon is in Arc's bar above, in the theme's color, with no word beside it", m2_row.children.length === 1 && m2_row.children[0].id === "feTabs" && m2_home.querySelector("img").getAttribute("src") === "arc-mark.png" && m2_home.querySelector("img").getAttribute("alt") === "" && m2_home.textContent.trim() === "" && m2_home.getAttribute("aria-label") === "Home");
   check("the page's title goes in minimalist mode, once the editor is there to take its place, and not before", /body\.minimal\.has-editor h1\.brand \{ display: none; \}/.test(m2_css) && m2_w.document.body.classList.contains("has-editor") && !(await boot({ url: "http://127.0.0.1:8000/" })).document.body.classList.contains("has-editor"));
 
 
@@ -4696,9 +4696,13 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   sc_d.getElementById("msCard").click();
   check("the card opens Music sharing as a page of its own on Shared by others, Arc's bar naming it", sc_d.getElementById("msOverlay").hidden === false && sc_w.eval("sharing.tab") === "find" && sc_d.documentElement.classList.contains("view-sharing") && sc_d.getElementById("appTool").textContent === "Shared playlist library");
   sc_d.getElementById("appHome").click();
+  check("in developer mode Arc's icon in the bar opens the DEV menu and stays in Music sharing", sc_d.getElementById("devMenu").hidden === false && sc_d.documentElement.classList.contains("view-sharing"));
+  sc_d.dispatchEvent(new sc_w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  sc_d.getElementById("appTool").click();
+  sc_d.getElementById("appToolMenu").querySelector('[data-view="home"]').click();
   await new Promise((r) => setTimeout(r, 50));
   check("playlists built before the rename (Made by Ceremony Playlist Builder) are still the app's own, as are new ones (Made by Arc)", sc_w.eval("madeByAppText('Made by Ceremony Playlist Builder. Please do not edit') && madeByAppText('Made by Arc. Please do not edit') && !madeByAppText('Made by me') && !madeByAppText(null)"));
-  check("Arc's icon goes home, and Music sharing closes", sc_d.documentElement.classList.contains("view-home") && sc_d.getElementById("msOverlay").hidden === true);
+  check("Arc home goes home, and Music sharing closes", sc_d.documentElement.classList.contains("view-home") && sc_d.getElementById("msOverlay").hidden === true);
   sc_d.getElementById("homeBuilder").click();
   check("Playlist builder opens the builder, Arc's bar naming it", sc_d.documentElement.classList.contains("view-builder") && sc_d.getElementById("appTool").textContent === "Playlist builder");
   sc_d.getElementById("appTool").click();
@@ -5698,7 +5702,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await new Promise((r) => setTimeout(r, 0));
   check("Delete in Are you sure? deletes the participant", bd3.eval("blDeleted.join()") === "MC");
   bd3.eval("deleteParticipant = blKeepDelete");
-  bd3.eval("deleteRecipeFromRow('f1')");
+  check("a recipe's row has no trash: Delete is in the panel (Ron, 2026-11-12)", !bd3.document.querySelector("#bhList .bh-recipe .bh-del, .bh-recipe .bh-del") && bd3.eval("typeof deleteRecipeFromRow") === "undefined");
+  bd3.eval("editor.activeId = 'f1'; askDeleteFormat()");
   var bl_delR = bd3.document.getElementById("feDeleteDialog");
   check("in developer mode Delete recipe has no box to remove playlists, and says in grey that participants' playlists stay", !!bl_delR && !bd3.document.getElementById("feDeleteBuilt") && bl_delR.querySelector("p.muted") && /permanently removes the recipe from this list.*Playlists built from this recipe for participants stay\. Are you sure you want to delete it\?/.test(bl_delR.textContent));
   bd3.document.getElementById("feDeleteCancel").click();

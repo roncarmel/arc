@@ -2555,7 +2555,6 @@ function recipeRow(f) {
   const title = f.title.trim() || "Untitled";
   const icons = feEl("span", { class: "bh-icons" },
     rowIcon(BH_PEN, `Edit ${title}`, () => openRecipePanel(f.id)),
-    rowIcon(BH_BIN, `Delete ${title}`, () => deleteRecipeFromRow(f.id), "bh-del"),
     rowIcon(BH_SPARK, buildWord(), () => buildRecipe(f.id), "bh-build", { "data-id": f.id }));
   const row = feEl("div", { class: "bh-row bh-recipe", role: "button", tabindex: "0", "data-id": f.id, "aria-label": `Edit ${f.title.trim() || "Untitled"}`,
     onClick: () => openRecipePanel(f.id),
@@ -2567,18 +2566,11 @@ function recipeRow(f) {
   return row;
 }
 
-// The landing's row buttons are icons only (Ron, 2026-11-12, mockups/row-icons G): a grey pencil and trash, and Build as a white sparkle on a pink circle.
-// Their words are their labels (and tooltips); the sparkle's label follows what a tap does now (refreshBuildButtons).
+// The landing's row buttons are icons only (Ron, 2026-11-12, mockups/row-icons G): a grey pencil, and Build as a white sparkle on a pink circle.
+// Their words are their labels (and tooltips). No trash on a recipe's row: Delete is in the panel (Ron, 2026-11-12). The sparkle's label follows what a tap does now (refreshBuildButtons).
 function rowIcon(svg, label, act, cls, attrs) {
   return feEl("button", Object.assign({ type: "button", class: "bh-ib" + (cls ? " " + cls : ""), "aria-label": label, title: label,
     onClick: (event) => { event.stopPropagation(); act(); } }, attrs || {}), bhSvg(svg));
-}
-
-// The trash on a recipe's row asks what Delete recipe in the panel asks
-function deleteRecipeFromRow(id) {
-  if (!editor.model || !editor.model.formats.some((f) => f.id === id)) return;
-  editor.activeId = id;
-  askDeleteFormat();
 }
 
 // A recipe's Build button: Build playlist in developer mode (one playlist for a participant), Build otherwise.
@@ -2914,7 +2906,7 @@ function askDeleteParticipant(code) {
   const overlay = feEl("div", { class: "fe-overlay", id: "bhDeleteDialog", onClick: close },
     feEl("div", { class: "fe-dialog bh-del-dialog", role: "dialog", "aria-modal": "true", "aria-label": `Delete ${code}`, onClick: (e) => e.stopPropagation() },
       feEl("h3", { text: `Delete ${code}?` }),
-      feEl("p", { class: "bh-del-text", text: `${code} is here because of the ${n === 1 ? "playlist" : n + " playlists"} Arc built for them. Deleting ${code} removes ${n === 1 ? "it" : "them"} from your Spotify, and Arc forgets what ${code} has heard.` }),
+      feEl("p", { class: "bh-del-text", text: `${code} is here because of the ${n === 1 ? "playlist" : n + " playlists"} Arc built for them. Deleting ${code} also deletes ${n === 1 ? "that playlist" : "those playlists"} from your Spotify.` }),
       list,
       feEl("div", { class: "row bh-del-buttons" }, confirm, cancel)));
   document.body.appendChild(overlay);
