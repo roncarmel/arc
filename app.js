@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-13o";
+const APP_VERSION = "2026-11-13p";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1475,6 +1475,7 @@ function pageState() {
   try { updating = sessionStorage.getItem("updating"); refreshed = sessionStorage.getItem("startupRefreshed"); } catch (e) { /* no storage */ }
   return { app: APP_VERSION, scripts: { ...(globalThis.scriptVersions || {}) }, updating, startupRefreshed: refreshed, updateScreen: typeof updateScreen !== "undefined" ? updateScreen : null, connection, sinceStart: Math.round(performance.now()) };
 }
+let playlistsComplete = true;   // false when the last list read held fewer playlists than Spotify's total even after reading short pages again: missing saves are then not taken as gone
 let playlistPages = [];   // the last list's pages as Spotify sent them: [offset, items, total, whether there was a next], for the records below   // how many times the list has started being read in this tab, so a record can tell whether it was read again during a save
 let playlistsLoadedBy = "";   // which code last read the playlist list, for the record kept when a save question is asked (recordSyncAsk)
 let playlistRefreshMs = 5 * 60 * 1000;   // coming back to the page after this long, the account's playlists, and so the backups, are read again
@@ -1574,6 +1575,7 @@ async function mergeFromSpotify() {
   }
   for (const f of model.formats) {
     if (remote.has(f.id) || !synced[f.id] || f.id === held) continue;
+    if (!playlistsComplete) { saveState.skip.add(f.id); continue; }   // the list came short: its save may be in the part Spotify did not send
     if (unread.some((p) => p.name === saveName(f.title))) continue;   // its backup is there, but cannot be read: it is written again below
     asks.push({ kind: "removed", id: f.id, title: f.title });
   }
@@ -1789,6 +1791,8 @@ async function runSpotifySave() {
         unreadOfIt.save = unpackFormat(description);
         synced[fmt.id] = { rev: fmt.rev || 0, playlistId: unreadOfIt.id };
         putCover(unreadOfIt);
+      } else if (!playlistsComplete && synced[fmt.id]) {
+        continue;   // saved before, but the list came short: its save is likely in the part Spotify did not send, so no second one is made
       } else {
         await recordSaveCreate(fmt, synced, saveRun);
         const made = await spotifyRequest("POST", "/me/playlists", { json: { name, public: false, description } });
@@ -2963,17 +2967,30 @@ async function loadMyPlaylists() {
   forgetOtherAccount(me.id);
   playlistLoads += 1;
   const raw = [];
-  let page = await spotify("/me/playlists?limit=50");
-  const total = typeof page.total === "number" ? page.total : null;
+  // Spotify sometimes sends a page empty or short though its total says there is more (the first page came with 0 of 98, 2026-11-13, and the merge then asked
+  // about saves that were there). A short page is read again, up to 3 times, a moment apart.
+  const short = (pg) => { const n = (pg.items || []).length; if (typeof pg.total !== "number" || typeof pg.offset !== "number") return false; return n < Math.min(pg.limit || 50, pg.total - pg.offset); };
+  const readPage = async (url) => {
+    let pg = await spotify(url);
+    for (let tries = 0; tries < 3 && short(pg); tries++) {
+      pages.push([pg.offset, (pg.items || []).length, pg.total, !!pg.next, "short, read again"]);
+      await new Promise((r) => setTimeout(r, 700 * (tries + 1)));
+      pg = await spotify(url);
+    }
+    return pg;
+  };
   const pages = [];
+  let page = await readPage("/me/playlists?limit=50");
+  const total = typeof page.total === "number" ? page.total : null;
   for (;;) {
     pages.push([page.offset, (page.items || []).length, page.total, !!page.next]);
     raw.push(...(page.items || []));
     if (!page.next) break;
-    page = await spotify(page.next);
+    page = await readPage(page.next);
   }
   playlistsTotal = total;
   playlistPages = pages;
+  playlistsComplete = total === null || raw.filter(Boolean).length >= total;
   if (total !== null && raw.length !== total) recordNote(`playlist list: ${raw.length} items, Spotify's total ${total}, pages [offset, items, total, next] ${JSON.stringify(pages)}`);
   playlistsLoadedBy = by;
   playlists = raw.filter(Boolean).map((p) => ({
