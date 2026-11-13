@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zf";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zg";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2803,7 +2803,7 @@ function shortDate(time) { const d = new Date(time); return `${d.getDate()} ${MO
 function builtWhen(time) { const d = new Date(time); return d.getFullYear() === new Date().getFullYear() ? shortDate(time) : String(d.getFullYear()); }
 // The line under a participant's code, in the list and in Build a playlist's card
 // short: the row, beside Build playlist, has room only for the day (Ron, 2026-11-12)
-function personLine(person, short) { const n = person.playlists.length; return n ? `${n === 1 ? "1 playlist" : n + " playlists"} \u00b7 ${`${short ? "" : "most recent "}${builtWhen(person.last)}`.replace(/ /g, "\u00a0")}` : "Nothing built yet"; }
+function personLine(person, short) { const n = person.playlists.length; if (!n) return "Nothing built yet"; const count = n === 1 ? "1 playlist" : n + " playlists"; return short ? count : `${count} \u00b7 ${`most recent ${builtWhen(person.last)}`.replace(/ /g, "\u00a0")}`; }
 
 const PEOPLE_HOW = "A participant appears here once you build a playlist for them.";
 // A participant's row (Ron, 2026-11-12): their square, the code, their line and Build playlist, which asks which recipe (pickRecipeFor). A tap on the rest of
