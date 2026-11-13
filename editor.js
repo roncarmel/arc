@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13f";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13g";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2660,7 +2660,8 @@ function refreshPanelFoot() {
   const panel = $("recipePanel"), wasClean = panel.classList.contains("rp-clean");
   panel.classList.toggle("rp-clean", !recipeEdit.dirty);
   const focused = document.activeElement;
-  if (wasClean === recipeEdit.dirty && (focused === $("rpClose") || focused === $("rpSave"))) {
+  // focus follows only for someone using the keyboard (it would otherwise show its ring on Done)
+  if (wasClean === recipeEdit.dirty && (focused === $("rpClose") || focused === $("rpSave")) && focused.matches(":focus-visible")) {
     try { $(recipeEdit.dirty ? "rpSave" : "rpClose").focus({ preventScroll: true }); } catch (err) { /* old browsers */ }
   }
   const dup = $("feDuplicate");
