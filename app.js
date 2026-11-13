@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-12zy";
+const APP_VERSION = "2026-11-12zz";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2926,6 +2926,16 @@ let buildFor = "";       // a participant's code, when the build is one playlist
 // Silent tracks: the same as engine.py's SILENCE_TRACKS. They are in every playlist and are not songs anyone heard.
 const SILENCE_URIS = new Set(["spotify:track:5kiJ9x6eX37H5J9lyyXkua", "spotify:track:4iOpD4OvwCi6ndxpNYk4HG", "spotify:track:5yM42dAylwB17DomSHGcXM", "spotify:track:7depNAqAh1r9unkIRzibID", "spotify:track:3mkOlbSv5RYadx0JsjTrKq"]);
 
+// When each participant playlist was built in this tab (sessionStorage, so a reload keeps it): the description has only the day, so this keeps the order
+// exact through a session. Other tabs and devices sort by the day and Spotify's order. Nothing else reads it.
+function builtThisSession() {
+  try { return JSON.parse(sessionStorage.getItem("participantBuiltAt") || "{}") || {}; } catch (err) { return {}; }
+}
+function noteBuiltNow(id) {
+  const all = builtThisSession();
+  all[id] = Date.now();
+  try { sessionStorage.setItem("participantBuiltAt", JSON.stringify(all)); } catch (err) { /* private browsing */ }
+}
 // The playlists Arc built for each participant, from the playlist list already read: [{ code, playlists (newest first), last }], the most recent first
 function participantList() {
   const by = new Map(), place = new Map();
@@ -2935,8 +2945,9 @@ function participantList() {
     by.get(p.participant).push(p);
     place.set(p, i);
   });
-  // The description has the day only, so playlists built the same day keep Spotify's order (its newest first; a playlist just made is first after the list is read again)
-  const newer = (a, b) => builtAtOf(b.description) - builtAtOf(a.description) || place.get(a) - place.get(b);
+  // The description has the day only: on the same day, ones built in this tab first, by their time, then Spotify's order (its newest first)
+  const at = builtThisSession();
+  const newer = (a, b) => builtAtOf(b.description) - builtAtOf(a.description) || (at[b.id] || 0) - (at[a.id] || 0) || place.get(a) - place.get(b);
   const people = [...by.entries()].map(([code, list]) => {
     list.sort(newer);
     return { code, playlists: list, last: builtAtOf(list[0].description), latest: list[0] };
@@ -3541,6 +3552,7 @@ async function buildForParticipant(id, code) {
     let cover = null;
     if (hasScope("ugc-image-upload")) { try { cover = await loadCover(); } catch (err) { logStep("participant build: cover image not loaded"); } }
     made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: builtDescription(p, 1, 1, new Date(), code) } });
+    noteBuiltNow(made.id);
     if (made.public !== false) {
       try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); } catch (err) { logStep("participant build: could not make it private"); }
     }
