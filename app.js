@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-13m";
+const APP_VERSION = "2026-11-13n";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -26,6 +26,45 @@ function madeByAppText(text) { return typeof text === "string" && [APP_MARKER, .
 // replaces or renames it, and Remove built playlists never lists it (decided by Ron, 2026-11-12). Returns the code, or "".
 const PARTICIPANT_RE = /\bFor participant ([A-Z0-9]{1,4})\./;
 function participantOf(text) { const m = typeof text === "string" && madeByAppText(text) ? text.match(PARTICIPANT_RE) : null; return m ? m[1] : ""; }
+// Heard before (Ron, 2026-11-13): playlists a participant heard before Arc, chosen when they are added or later from their row. No playlist of its own: the list rides in the
+// description of every playlist built for them, after "Heard before: ", packed as recipe saves are (formats.js: 16 bytes an ID, 14 bits a character), so deleting one
+// playlist loses nothing and every device reads the same list. Bytes: "H", version 1, the count, the IDs, CRC-16. HEARD_MAX keeps the description within SAVE_LIMIT.
+const HEARD_LABEL = "Heard before: ";
+const HEARD_MAX = 15;
+function packHeard(ids) {
+  const bytes = [0x48, 1, 0];
+  for (const id of ids) { const b = spotifyIdToBytes(id); if (b && bytes[2] < HEARD_MAX) { bytes.push(...b); bytes[2] += 1; } }
+  if (!bytes[2]) return "";
+  const crc = crc16(bytes);
+  bytes.push(crc >> 8, crc & 0xff);
+  return HEARD_LABEL + denseEncode(bytes);
+}
+function heardOf(text) {
+  const at = typeof text === "string" ? text.indexOf(HEARD_LABEL) : -1;
+  if (at < 0) return [];
+  const bytes = [];
+  let acc = 0, bits = 0;
+  for (const ch of text.slice(at + HEARD_LABEL.length)) {
+    const v = ch.charCodeAt(0) - DENSE_BASE;
+    if (v < 0 || v >= 16384) break;
+    acc = (acc << 14) | v;
+    bits += 14;
+    while (bits >= 8) { bits -= 8; bytes.push((acc >> bits) & 0xff); acc &= (1 << bits) - 1; }
+  }
+  const n = bytes[2] || 0, end = 3 + n * 16;
+  if (bytes[0] !== 0x48 || bytes[1] !== 1 || bytes.length < end + 2) return [];
+  if (crc16(bytes.slice(0, end)) !== ((bytes[end] << 8) | bytes[end + 1])) return [];
+  const ids = [];
+  for (let i = 3; i < end; i += 16) ids.push(bytesToSpotifyId(bytes.slice(i, i + 16)));
+  return ids;
+}
+// A description with its Heard before list replaced (none: taken out)
+function withHeard(text, ids) {
+  const at = String(text || "").indexOf(" " + HEARD_LABEL);
+  const base = at < 0 ? String(text || "") : String(text).slice(0, at);
+  const packed = packHeard(ids);
+  return packed ? `${base} ${packed}` : base;
+}
 // When it was built, from "Built 14 Nov 2026." in its description: a time in ms, or 0
 function builtAtOf(text) {
   const m = typeof text === "string" ? text.match(/\bBuilt (\d{1,2}) ([A-Z][a-z]{2}) (\d{4})\./) : null;
@@ -2447,12 +2486,12 @@ function lengthText(minutes) {
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-function builtDescription(p, number, count, when = new Date(), participant = "") {
+function builtDescription(p, number, count, when = new Date(), participant = "", heard = []) {
   // The description of a built playlist: the marker the app recognizes its playlists by (it must come first), the request
   // to leave it, then which one of the set and when. No segments (decided by Ron, 2026-11-04). One built for a participant names their code.
   const date = `${when.getDate()} ${MONTHS[when.getMonth()]} ${when.getFullYear()}`;
   return `${APP_MARKER}. Please do not edit this description. The app uses it to recognize the playlists it made. `
-    + (participant ? `For participant ${participant}. Built ${date}.` : count > 1 ? `Playlist ${number} of ${count}, built ${date}.` : `Built ${date}.`);
+    + (participant ? withHeard(`For participant ${participant}. Built ${date}.`, heard) : count > 1 ? `Playlist ${number} of ${count}, built ${date}.` : `Built ${date}.`);
 }
 
 function playlistRow(p, icon) {
@@ -3117,7 +3156,10 @@ function participantList() {
   const newer = (a, b) => builtAtOf(b.description) - builtAtOf(a.description) || (at[b.id] || 0) - (at[a.id] || 0) || place.get(a) - place.get(b);
   const people = [...by.entries()].map(([code, list]) => {
     list.sort(newer);
-    return { code, playlists: list, last: builtAtOf(list[0].description), latest: list[0] };
+    // Heard before: every list their playlists carry, joined (a playlist written by an older page, or edited, may carry less)
+    const heard = [];
+    for (const p of list) for (const id of heardOf(p.description)) if (!heard.includes(id)) heard.push(id);
+    return { code, playlists: list, last: builtAtOf(list[0].description), latest: list[0], heard };
   });
   return people.sort((a, b) => newer(a.latest, b.latest) || a.code.localeCompare(b.code));
 }
@@ -3133,7 +3175,40 @@ async function heardBy(code) {
       songs[id] = Math.max(songs[id] || 0, at);
     }
   }
+  // Heard before: heard longest ago of all (0). A playlist no longer in the library is still read by its ID; one Spotify no longer has is skipped.
+  const person = participantList().find((p) => p.code === code);
+  for (const id of [...new Set([...(person ? person.heard : []), ...pendingHeard(code)])]) {
+    let tracks = [];
+    try { tracks = await loadTracks(id); } catch (err) { logStep("heard before: a playlist could not be read"); continue; }
+    for (const t of tracks) {
+      if (SILENCE_URIS.has(t.uri)) continue;
+      const key = t.key || t.uri;
+      if (!(key in songs)) songs[key] = 0;
+    }
+  }
   return { songs, count: Object.keys(songs).length };
+}
+// Heard before chosen for a new participant, kept in this tab until their first playlist is built and carries it (sessionStorage pendingHeard: {code: [ids]})
+function pendingHeard(code) {
+  try { const all = JSON.parse(sessionStorage.getItem("pendingHeard") || "{}") || {}; return code ? all[code] || [] : all; } catch (err) { return code ? [] : {}; }
+}
+function setPendingHeard(code, ids) {
+  const all = pendingHeard();
+  if (ids && ids.length) all[code] = ids.slice(0, HEARD_MAX); else delete all[code];
+  try { sessionStorage.setItem("pendingHeard", JSON.stringify(all)); } catch (err) { /* private browsing */ }
+}
+// Adds Heard before playlists to a participant who has playlists: the list goes into their newest playlist's description (the next build carries it on)
+async function addHeardBefore(code, ids) {
+  const person = participantList().find((p) => p.code === code);
+  if (!person || !person.latest) throw new Error("No playlist was found for " + code + ".");
+  const all = [...new Set([...person.heard, ...ids])].slice(0, HEARD_MAX);
+  const description = withHeard(person.latest.description, all);
+  await spotifyRequest("PUT", `/playlists/${person.latest.id}`, { json: { description } });
+  person.latest.description = description;
+  const entry = playlists.find((p) => p.id === person.latest.id);
+  if (entry) entry.description = description;
+  keepPlaylists();
+  logStep(`heard before: ${ids.length} added`);
 }
 // A playlist for a participant: Deep journey · MC · 14 Nov, then (2), (3) if that is taken
 function participantPlaylistName(title, code, when = new Date()) {
@@ -3718,7 +3793,11 @@ async function buildForParticipant(id, code) {
     if (typeof markPlayTipDone === "function") markPlayTipDone();
     let cover = null;
     if (hasScope("ugc-image-upload")) { try { cover = await loadCover(); } catch (err) { logStep("participant build: cover image not loaded"); } }
-    made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: builtDescription(p, 1, 1, new Date(), code) } });
+    // Heard before rides along: what their playlists carry and what was chosen as they were added
+    const known = participantList().find((x) => x.code === code);
+    const heard = [...new Set([...(known ? known.heard : []), ...pendingHeard(code)])];
+    made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: builtDescription(p, 1, 1, new Date(), code, heard) } });
+    setPendingHeard(code, null);
     noteBuiltNow(made.id);
     if (made.public !== false) {
       try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); } catch (err) { logStep("participant build: could not make it private"); }
@@ -3869,7 +3948,7 @@ async function createFromPlan(plan) {
       progress("Keep this tab open.", true);
       setRowState(row, "now", "starting");
       show(row);
-      const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: builtDescription(p, planned.filter((q, j) => q.key === p.key && j <= i).length, planned.filter((q) => q.key === p.key).length, new Date(), plan.participant || "") } });
+      const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: builtDescription(p, planned.filter((q, j) => q.key === p.key && j <= i).length, planned.filter((q) => q.key === p.key).length, new Date(), plan.participant || "", plan.participant ? [...new Set([...((participantList().find((x) => x.code === plan.participant) || { heard: [] }).heard), ...pendingHeard(plan.participant)])] : []) } });
       current = p.name;
       createdIds.push(made.id);
       if (made.public !== false) {   // asked to keep it off the profile; make sure
