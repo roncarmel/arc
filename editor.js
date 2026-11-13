@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13q";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13r";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2907,11 +2907,11 @@ function renderParticipantList() {
 function personCard(person, open) {
   const code = person.code;
   const toggle = () => setPersonOpen(builderHome.person === code ? null : code);
-  // only its buttons act (Ron, 2026-11-12, mockups/participant-expand B): a chevron in a grey circle opens the row, pink and turned up while open
+  // a chevron in a grey circle opens the row, pink and turned up while open (Ron, 2026-11-12, mockups/participant-expand B); a tap on the row's head toggles it too, with no hover look (Ron, 2026-11-13)
   const icons = feEl("span", { class: "bh-icons" },
     rowIcon(BH_CHEVRON, `${code}'s playlists`, toggle, "bh-open-btn", { "aria-expanded": String(open) }),
     rowIcon(BH_SPARK, buildWord(), () => buildNextFor(code), "bh-build", { "data-code": code }));
-  const head = feEl("div", { class: "bh-phead" },
+  const head = feEl("div", { class: "bh-phead", onClick: toggle },
     codeBadge(code),
     feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: code }), feEl("span", { class: "bh-sub", text: personLine(person, true) })),
     icons);
