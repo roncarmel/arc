@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-12u">
-<script src="theme.js?v=2026-11-12u"></script>
+<meta name="app-version" content="2026-11-12w">
+<script src="theme.js?v=2026-11-12w"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -837,24 +837,6 @@
   .bh-empty .tv-row { margin-top: 14px; }
   .bh-people-empty b { display: block; }
   .bh-people-empty p { margin: 6px 0 0; color: var(--muted); font-size: 0.92rem; line-height: 1.45; }
-  .bh-dialog .bh-q { margin: 4px 0 12px; font-weight: 700; }
-  .bh-opts { display: flex; flex-direction: column; gap: 10px; max-height: min(52vh, 460px); overflow: auto; margin: 0 -2px; padding: 2px; }
-  .bh-opt { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 0; margin: 0; padding: 13px 14px; box-sizing: border-box; border: 1.5px solid var(--line); border-radius: 14px; background: none; box-shadow: none; color: var(--fg); font: inherit; font-weight: 400; text-align: left; cursor: pointer; }
-  .bh-opt.bh-on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); }
-  .bh-opt-block { display: block; }
-  .bh-opt-top { display: flex; align-items: center; gap: 12px; }
-  .bh-opt b { display: block; font-size: 1rem; }
-  .bh-sub.bh-wrap { white-space: normal; }
-  .bh-radio { width: 20px; height: 20px; flex: none; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--muted); }
-  .bh-on .bh-radio { border: 6px solid var(--accent); }
-  .bh-pct { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
-  .bh-pct b { font-size: 1.25rem; color: var(--accent); line-height: 1.1; }
-  .bh-pct > span:last-child { color: var(--muted); font-size: 0.82rem; }
-  .bh-dots { display: flex; gap: 4px; height: 1.38rem; align-items: center; }
-  .bh-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: bh-dot 1s var(--ease-out) infinite; }
-  .bh-dots i:nth-child(2) { animation-delay: 0.15s; } .bh-dots i:nth-child(3) { animation-delay: 0.3s; }
-  @keyframes bh-dot { 0%, 60%, 100% { transform: none; opacity: 0.4; } 30% { transform: translateY(-4px); opacity: 1; } }
-  @media (prefers-reduced-motion: reduce) { .bh-dots i { animation: none; } }
   .bh-hint { color: var(--muted); font-size: 0.84rem; }
   /* Who is it for? (askWhoFor, Ron, 2026-11-12, mockups/who-for D1): a drop-down whose panel is a scrolling grid of code squares, four to a row */
   .bh-dd { position: relative; }
@@ -913,6 +895,22 @@
   .wf-build { flex: 1; background: var(--button); color: var(--on-button, #fff); white-space: nowrap; }
   .wf-build:disabled { opacity: 0.4; cursor: default; }
   @media (hover: hover) { .wf-cancel:hover { background: color-mix(in srgb, var(--muted) 24%, transparent); } }
+  /* Which recipe? (pickRecipeFor, Ron, 2026-11-12, mockups/recipe-pick C): Who is it for? turned around, the participant as a card, the recipes in the drop-down */
+  .wf-recipe.wf-person { flex-direction: row; align-items: center; gap: 12px; }
+  .wf-person .bh-code { width: 40px; height: 40px; font-size: 12px; }
+  .wf-person .bh-name { letter-spacing: 0.04em; }
+  .bh-dd-field.wf-recipe-field { padding: 12px 14px; }
+  .wf-recipe-field .bh-name { letter-spacing: 0; }
+  .bh-dd-find input.wf-find { font-weight: 500; letter-spacing: 0; }
+  .wf-opts { display: flex; flex-direction: column; gap: 2px; padding: 6px; }
+  .bh-dd-find + .wf-opts { padding-top: 0; }
+  .wf-sheet button.wf-opt { display: flex; flex-direction: column; align-items: stretch; gap: 3px; width: 100%; min-width: 0; min-height: 0; margin: 0; padding: 10px; box-sizing: border-box; border-radius: 12px; border: 1.5px solid transparent; background: none; box-shadow: none; color: var(--fg); font: inherit; font-weight: 400; text-align: left; cursor: pointer; }
+  .wf-opt-top { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+  .wf-opt .bh-shape { margin-top: 5px; height: 7px; width: 100%; }
+  .wf-sheet button.wf-opt.bh-on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--bg)); }
+  .wf-opt:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  @media (hover: hover) { .wf-sheet button.wf-opt:not(.bh-on):hover { background: var(--card); } }
+  .wf-last { flex: none; font-size: 0.76rem; font-weight: 700; color: var(--accent); }
   html.page-app.view-home #homePage { display: block; }
   #homePage { max-width: 560px; margin: 0 auto; }
   #homePage .hp-band { margin-top: 0; }
@@ -1637,9 +1635,9 @@
     #formatEditor .fe-tab[aria-pressed="true"]:hover .fe-icon { background: rgba(255, 255, 255, 0.3); box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3); border-radius: 50%; }
     /* rows in a list, one look each (Ron, 2026-11-12): a row drawn as a card gets home's soft pink edge, as the tool cards do;
        a flat row between lines gets a faint grey fill a little wider than itself, as the menus' items do; an add row tints its dashed square */
-    .bh-row:not(.bh-add):hover, button.bh-row:not(.bh-add):not(:disabled):hover, .bh-opt:not(.bh-on):hover, button.bh-opt:not(.bh-on):not(:disabled):hover,
+    .bh-row:not(.bh-add):hover, button.bh-row:not(.bh-add):not(:disabled):hover,
     .dlg-choice:not(:has(input:checked)):hover { outline: none; filter: none; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
-    button.bh-row:not(:disabled):hover, button.bh-opt:not(:disabled):hover { outline: none; filter: none; }
+    button.bh-row:not(:disabled):hover, button.wf-opt:not(:disabled):hover { outline: none; filter: none; }
     .bh-add:hover .bh-plus { background: color-mix(in srgb, var(--accent) 16%, transparent); }
     .ms-row:not(.ms-addrow):not(.ms-pickrow-off), #createDialog .bd-info-row { position: relative; isolation: isolate; }
     .ms-row:not(.ms-addrow):not(.ms-pickrow-off)::before, #createDialog .bd-info-row::before { content: ""; position: absolute; inset: 0 -8px; z-index: -1; border-radius: 12px; background: transparent; transition: background-color 0.12s var(--ease-out); pointer-events: none; }
@@ -2707,10 +2705,10 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-12u"></script>
-<script src="editor.js?v=2026-11-12u"></script>
-<script src="shared-spotify.js?v=2026-11-12u"></script>
-<script src="app.js?v=2026-11-12u"></script>
-<script src="sharing.js?v=2026-11-12u"></script>
+<script src="formats.js?v=2026-11-12w"></script>
+<script src="editor.js?v=2026-11-12w"></script>
+<script src="shared-spotify.js?v=2026-11-12w"></script>
+<script src="app.js?v=2026-11-12w"></script>
+<script src="sharing.js?v=2026-11-12w"></script>
 </body>
 </html>

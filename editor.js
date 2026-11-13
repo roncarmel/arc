@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12u";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12w";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2947,25 +2947,6 @@ function personEscape(event) {
   closePersonPanel();
 }
 
-// A dialog in the editor's look, with a body and two buttons: resolves with what done() is given, or null on Cancel, Escape or a tap outside
-function bhDialog(title, body, nextLabel, onNext) {
-  return new Promise((resolve) => {
-    const close = (value) => { unfit(); overlay.remove(); document.removeEventListener("keydown", onKey); resolve(value); };
-    const onKey = (event) => { if (event.key === "Escape") close(null); };
-    const next = feEl("button", { type: "button", class: "primary", id: "bhDialogNext", onClick: () => { const v = onNext(); if (v !== undefined && v !== null) close(v); } }, nextLabel);
-    const overlay = feEl("div", { class: "fe-overlay", id: "bhDialog", onClick: () => close(null) },
-      feEl("div", { class: "fe-dialog bh-dialog", role: "dialog", "aria-modal": "true", "aria-label": plainText(title), onClick: (e) => e.stopPropagation() },
-        feEl("h3", { text: title }), body,
-        feEl("div", { class: "row" }, feEl("button", { type: "button", id: "bhDialogCancel", onClick: () => close(null) }, "Cancel"), next)));
-    document.body.appendChild(overlay);
-    const unfit = keepAboveKeyboard(overlay);
-    document.addEventListener("keydown", onKey);
-    bhDialog.next = next;
-    const field = overlay.querySelector("input");
-    (field && field.offsetParent ? field : next).focus();
-  });
-}
-
 // A popup with a field stays in what the on-screen keyboard leaves: its backdrop covers only the visible part of the page, so the popup centers there
 // and its buttons are not hidden behind the keyboard (iPhone, Ron, 2026-11-12). Returns what undoes it.
 function keepAboveKeyboard(overlay) {
@@ -2983,59 +2964,143 @@ function keepAboveKeyboard(overlay) {
   return () => { vv.removeEventListener("resize", fit); vv.removeEventListener("scroll", fit); };
 }
 
-// Which recipe for a participant's next playlist. Choosing one reads its playlists' songs and says how many are new to them.
+// The sheets Who is it for? and Which recipe? share (wf-*): the dim and the sheet with their motion, Escape (onEscape answers true when it closed something
+// inside first), the keyboard kept clear. Returns { close(value), promise }, the promise resolving with what close is given.
+function wfPopup(id, sheet, onEscape) {
+  let finish = null, unfit = () => {};
+  const wrap = feEl("div", { class: "rp-wrap", id: id + "Wrap" }, feEl("div", { class: "rp-dim", onClick: () => close(null) }), sheet);
+  const onKey = (event) => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (!onEscape()) close(null);
+  };
+  function close(value) {
+    if (!finish) return;
+    const done = finish;
+    finish = null;
+    document.removeEventListener("keydown", onKey, true);
+    unfit();
+    if (!document.querySelector(`.rp-wrap:not([hidden]):not(#${id}Wrap)`)) document.documentElement.classList.remove("rp-open");
+    wrap.id = "";
+    wrap.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+    if (!motionAllowed(wrap)) wrap.remove();
+    else {
+      wrap.setAttribute("aria-hidden", "true");
+      wrap.style.pointerEvents = "none";
+      wrap.firstChild.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: EASE_IN, fill: "forwards" });
+      panelMotion(sheet, false).onfinish = () => wrap.remove();
+    }
+    done(value);
+  }
+  const promise = new Promise((resolve) => {
+    finish = resolve;
+    document.body.appendChild(wrap);
+    document.documentElement.classList.add("rp-open");
+    document.addEventListener("keydown", onKey, true);
+    unfit = keepAboveKeyboard(wrap);
+    if (motionAllowed(wrap)) {
+      wrap.firstChild.animate(MOTION.dim.frames, { duration: 200, easing: EASE_OUT });
+      panelMotion(sheet, true);
+    }
+  });
+  return { close, promise };
+}
+const WF_X = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+function wfHead(titleId, title, close) {
+  return feEl("div", { class: "wf-head" },
+    feEl("h2", { class: "wf-title", id: titleId, text: title }),
+    feEl("button", { type: "button", class: "rp-x", id: titleId + "Close", "aria-label": "Close", onClick: () => close(null), html: WF_X }));
+}
+// A recipe as the landing shows it: its name, length and segments, and its shape
+function recipeParts(f) {
+  const shape = recipeShape(f);
+  return [feEl("span", { class: "bh-name", text: f.title.trim() || "Untitled" }),
+    feEl("span", { class: "bh-sub", text: `${lengthText(shape.music + shape.quiet / 60)} · ${f.items.length === 1 ? "1 segment" : f.items.length + " segments"}` }),
+    feEl("span", { class: "bh-shape", "aria-hidden": "true" }, ...shape.pieces.map((p) => feEl("span", { class: p.silence ? "bh-quiet" : undefined, style: p.style })))];
+}
+
+// Which recipe for a participant's next playlist (Ron, 2026-11-12, mockups/recipe-pick C): Who is it for? turned around. Build a playlist and the X, FOR over the
+// participant as a card (their square, the code, their line), WHICH RECIPE? over Choose a recipe, a drop-down of the recipes as the landing shows them, the one their
+// latest playlist was built from first and marked Last time; Find a recipe at its top from RECIPE_FIND_FROM recipes. Cancel and Build playlist.
+const RECIPE_FIND_FROM = 6;
 function pickRecipeFor(code) {
   const formats = editor.model ? editor.model.formats.filter((f) => !f.draft) : [];
-  let chosen = null;
-  const list = feEl("div", { class: "bh-opts", role: "radiogroup", "aria-label": "Which recipe?" });
-  const rows = formats.map((f) => {
-    const shape = recipeShape(f);
-    const pct = feEl("span", { class: "bh-pct" });
-    const row = feEl("button", { type: "button", class: "bh-opt", role: "radio", "aria-checked": "false", "data-id": f.id, onClick: () => choose(f, row, pct) },
-      feEl("span", { class: "bh-radio" }),
-      feEl("span", { class: "bh-text" }, feEl("b", { text: f.title.trim() || "Untitled" }),
-        feEl("span", { class: "bh-sub", text: `${lengthText(shape.music + shape.quiet / 60)} · ${f.items.length === 1 ? "1 segment" : f.items.length + " segments"}` })),
-      pct);
-    list.appendChild(row);
-    return row;
+  const person = participantList().find((p) => p.code === code) || { code, playlists: [], last: 0 };
+  const latest = person.playlists[0] ? person.playlists[0].name.split(" · ")[0] : null;
+  const last = latest && formats.find((f) => (cleanTitle(f.title).trim() || "Untitled") === latest);
+  const ordered = last ? [last, ...formats.filter((f) => f !== last)] : formats;
+  let chosen = null, open = false;
+
+  const card = feEl("div", { class: "wf-recipe wf-person" }, codeBadge(code),
+    feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-name", text: code }), feEl("span", { class: "bh-sub", text: personLine(person) })));
+
+  const field = feEl("button", { type: "button", class: "bh-dd-field wf-recipe-field", id: "bhRecipe", "aria-haspopup": "listbox", "aria-expanded": "false", onClick: () => setOpen(!open) });
+  const search = feEl("input", { type: "text", class: "bh-dd-search wf-find", id: "bhRecipeFind", placeholder: "Find a recipe", autocomplete: "off", spellcheck: "false", "aria-label": "Find a recipe", enterkeyhint: "search" });
+  const list = feEl("div", { class: "wf-opts", role: "listbox", "aria-label": "Recipes" });
+  const empty = feEl("p", { class: "bh-dd-none", text: "No recipe matches.", hidden: true });
+  const panel = feEl("div", { class: "bh-dd-panel", id: "bhRecipePanel", hidden: true },
+    ordered.length >= RECIPE_FIND_FROM ? feEl("label", { class: "bh-dd-find" }, feIcon("search"), search) : null, list, empty);
+  const dd = feEl("div", { class: "bh-dd" }, field, panel);
+  const next = feEl("button", { type: "button", class: "wf-build", id: "bhDialogNext", disabled: true, onClick: () => { if (chosen) popup.close(chosen.id); } }, bhSvg(BH_SPARK), "Build playlist");
+
+  function option(f) {
+    const [name, sub, bar] = recipeParts(f);
+    const top = feEl("span", { class: "wf-opt-top" }, name, f === last ? feEl("span", { class: "wf-last", text: "Last time" }) : null);
+    return feEl("button", { type: "button", class: "wf-opt" + (f === chosen ? " bh-on" : ""), role: "option", "aria-selected": String(f === chosen), "data-id": f.id, onClick: () => choose(f) }, top, sub, bar);
+  }
+  function paintList() {
+    const typed = search.value.trim().toLowerCase();
+    const shown = ordered.filter((f) => (f.title.trim() || "Untitled").toLowerCase().includes(typed));
+    list.replaceChildren(...shown.map(option));
+    empty.hidden = shown.length > 0;
+  }
+  function paintField() {
+    field.classList.toggle("bh-dd-picked", !!chosen);
+    field.replaceChildren(chosen ? feEl("span", { class: "bh-text" }, ...recipeParts(chosen).slice(0, 2)) : feEl("span", { class: "bh-dd-ph", text: "Choose a recipe" }), bhSvg(BH_CARET));
+  }
+  function setOpen(want) {
+    open = want;
+    panel.hidden = !want;
+    field.classList.toggle("bh-dd-open", want);
+    field.setAttribute("aria-expanded", String(want));
+    if (!want) return;
+    search.value = "";
+    paintList();
+    const on = list.querySelector(".bh-on");
+    if (on) on.scrollIntoView({ block: "nearest" });
+  }
+  function choose(f) {
+    chosen = f;
+    setOpen(false);
+    paintField();
+    next.disabled = false;
+    try { field.focus({ preventScroll: true }); } catch (err) { /* old browsers */ }
+  }
+  search.addEventListener("input", paintList);
+  search.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    const options = list.querySelectorAll(".wf-opt");
+    if (options.length === 1) options[0].click();
   });
-  const choose = async (f, row, pct) => {
-    chosen = f.id;
-    for (const r of rows) { r.classList.toggle("bh-on", r === row); r.setAttribute("aria-checked", String(r === row)); }
-    bhDialog.next.disabled = false;
-    if (pct.dataset.done) return;
-    pct.textContent = "";
-    pct.append(feEl("span", { class: "bh-dots", "aria-label": "Reading songs" }, feEl("i"), feEl("i"), feEl("i")), feEl("span", { text: `new to ${code}` }));
-    try {
-      const share = await newShare(f, code);
-      pct.dataset.done = "1";
-      pct.textContent = "";
-      pct.append(feEl("b", { text: share === null ? "?" : `${share}%` }), feEl("span", { text: `new to ${code}` }));
-    } catch (err) { pct.textContent = ""; }
-  };
-  const body = feEl("div", {}, feEl("p", { class: "bh-q", text: "Which recipe?" }), formats.length ? list : feEl("p", { class: "muted", text: "There is no recipe yet. Make one under Recipes first." }));
-  const p = bhDialog(`${code}'s next playlist`, body, "Next", () => chosen);
-  bhDialog.next.disabled = true;
-  return p.then((id) => {
+
+  const sheet = feEl("div", { class: "rp-sheet wf-sheet", id: "pickRecipe", role: "dialog", "aria-modal": "true", "aria-labelledby": "prTitle",
+    onClick: (event) => { if (open && !dd.contains(event.target)) setOpen(false); } },
+    wfHead("prTitle", "Build a playlist", (v) => popup.close(v)),
+    feEl("div", { class: "wf-body" }, feEl("p", { class: "wf-label wf-label-first", text: "For" }), card, feEl("p", { class: "wf-label", text: "Which recipe?" }),
+      formats.length ? dd : feEl("p", { class: "bh-hint", text: "There is no recipe yet. Make one under Recipes first." })),
+    feEl("div", { class: "wf-foot" }, feEl("button", { type: "button", class: "wf-cancel", id: "bhDialogCancel", onClick: () => popup.close(null) }, bhSvg(WF_CANCEL), "Cancel"), next));
+  paintField();
+  // Escape closes the drop-down first, then the popup
+  const popup = wfPopup("pickRecipe", sheet, () => { if (!open) return false; setOpen(false); field.focus(); return true; });
+  try { (formats.length ? field : $("prTitleClose")).focus({ preventScroll: true }); } catch (err) { /* old browsers */ }
+  return popup.promise.then((id) => {
     if (!id) return;
     const action = connectionAction();
     if (action) { action(); return; }
     buildForParticipant(id, code);
   });
-}
-
-// Of the songs a recipe draws on, the share (0 to 100) the participant has not heard; null when it has no songs
-async function newShare(f, code) {
-  const heard = (await heardBy(code)).songs;
-  const ids = new Set();
-  for (const item of f.items) for (const l of item.lists) {
-    if (!l.id) continue;
-    for (const t of await loadTracks(l.id)) if (!SILENCE_URIS.has(t.uri)) ids.add(t.key || t.uri);
-  }
-  if (!ids.size) return null;
-  let fresh = 0;
-  for (const id of ids) if (!heard[id]) fresh += 1;
-  return Math.round((fresh / ids.size) * 100);
 }
 
 // Build in developer mode is always for a participant. Who is it for? is a sheet (Ron, 2026-11-12, mockups/who-for look B): Build a playlist and the X (no For one
@@ -3047,19 +3112,11 @@ const WF_CANCEL = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" s
 const BH_CARET = '<svg class="bh-dd-caret" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
 function askWhoFor(id) {
   const f = editor.model.formats.find((x) => x.id === id);
-  const title = f ? f.title.trim() || "Untitled" : "";
   const people = participantList();
-  let code = "", open = false, adding = false, finish = null;
+  let code = "", open = false, adding = false, close = () => {};
 
   // the recipe being built, as its row on the landing shows it
-  let card = null;
-  if (f) {
-    const shape = recipeShape(f);
-    card = feEl("div", { class: "wf-recipe" },
-      feEl("span", { class: "bh-name", text: title }),
-      feEl("span", { class: "bh-sub", text: `${lengthText(shape.music + shape.quiet / 60)} · ${f.items.length === 1 ? "1 segment" : f.items.length + " segments"}` }),
-      feEl("span", { class: "bh-shape", "aria-hidden": "true" }, ...shape.pieces.map((p) => feEl("span", { class: p.silence ? "bh-quiet" : undefined, style: p.style }))));
-  }
+  const card = f ? feEl("div", { class: "wf-recipe" }, ...recipeParts(f)) : null;
 
   const field = feEl("button", { type: "button", class: "bh-dd-field", id: "bhWho", "aria-haspopup": "listbox", "aria-expanded": "false", onClick: () => setOpen(!open) });
   const search = feEl("input", { type: "text", class: "bh-dd-search", id: "bhWhoFind", placeholder: "Find a code", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", maxlength: "4", "aria-label": "Find a code", enterkeyhint: "search" });
@@ -3156,52 +3213,18 @@ function askWhoFor(id) {
 
   const sheet = feEl("div", { class: "rp-sheet wf-sheet", id: "whoFor", role: "dialog", "aria-modal": "true", "aria-labelledby": "wfTitle",
     onClick: (event) => { if (open && !dd.contains(event.target)) setOpen(false); } },
-    feEl("div", { class: "wf-head" },
-      feEl("h2", { class: "wf-title", id: "wfTitle", text: "Build a playlist" }),
-      feEl("button", { type: "button", class: "rp-x", id: "wfClose", "aria-label": "Close", onClick: () => close(null), html: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>' })),
+    wfHead("wfTitle", "Build a playlist", (v) => close(v)),
     feEl("div", { class: "wf-body" }, card && feEl("p", { class: "wf-label wf-label-first", text: "Recipe" }), card, feEl("p", { class: "wf-label", text: "Who is it for?" }), dd, adder),
     feEl("div", { class: "wf-foot" }, cancel, next));
-  const wrap = feEl("div", { class: "rp-wrap", id: "whoForWrap" }, feEl("div", { class: "rp-dim", onClick: () => close(null) }), sheet);
-
-  // Escape closes the drop-down first, then a new code's entry, then the popup
-  const onKey = (event) => {
-    if (event.key !== "Escape") return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (open) { setOpen(false); field.focus(); } else if (adding) stopAdding(); else close(null);
-  };
-  let unfit = () => {};
-  function close(value) {
-    if (!finish) return;
-    const done = finish;
-    finish = null;
-    document.removeEventListener("keydown", onKey, true);
-    unfit();
-    if (!document.querySelector(".rp-wrap:not([hidden]):not(#whoForWrap)")) document.documentElement.classList.remove("rp-open");
-    wrap.id = "";
-    wrap.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
-    if (!motionAllowed(wrap)) wrap.remove();
-    else {
-      wrap.setAttribute("aria-hidden", "true");
-      wrap.style.pointerEvents = "none";
-      wrap.firstChild.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: EASE_IN, fill: "forwards" });
-      panelMotion(sheet, false).onfinish = () => wrap.remove();
-    }
-    done(value);
-  }
-
   paintField();
-  return new Promise((resolve) => {
-    finish = resolve;
-    document.body.appendChild(wrap);
-    document.documentElement.classList.add("rp-open");
-    document.addEventListener("keydown", onKey, true);
-    unfit = keepAboveKeyboard(wrap);
-    if (motionAllowed(wrap)) {
-      wrap.firstChild.animate(MOTION.dim.frames, { duration: 200, easing: EASE_OUT });
-      panelMotion(sheet, true);
-    }
-    if (!people.length) startAdding();
-    else try { field.focus({ preventScroll: true }); } catch (err) { /* old browsers */ }
+  // Escape closes the drop-down first, then a new code's entry, then the popup
+  const popup = wfPopup("whoFor", sheet, () => {
+    if (open) { setOpen(false); field.focus(); return true; }
+    if (adding) { stopAdding(); return true; }
+    return false;
   });
+  close = popup.close;
+  if (!people.length) startAdding();
+  else try { field.focus({ preventScroll: true }); } catch (err) { /* old browsers */ }
+  return popup.promise;
 }

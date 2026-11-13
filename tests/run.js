@@ -876,10 +876,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-12u" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-12w" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-12u/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-12w/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2940,7 +2940,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-12u", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-12w", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -5256,7 +5256,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-12u"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-12w"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5660,6 +5660,25 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("with none, the list says No participants yet and how one appears", /No participants yet.*appears here once you build a playlist for them/.test(bd3.eval("(() => { const keep = playlists; playlists = []; renderParticipantList(); const t = document.getElementById('bhPeople').textContent; playlists = keep; renderParticipantList(); return t; })()")));
   bd3.document.querySelector('#bhPeople [data-code="MC"]').click();
   check("a participant opens in a popup over the list: PARTICIPANT, the code, Build MC's next playlist and their playlists", !!bd3.document.getElementById("personPanelWrap") && bd3.document.getElementById("ppTitle").textContent === "MC" && /Build MC's next playlist/.test(bd3.document.getElementById("bhNext").textContent) && bd3.document.querySelectorAll("#personPanel a.bh-row").length === 1 && !bd3.document.querySelector("#personPanel .bh-note") && !!bd3.document.querySelector('#bhPeople [data-code="MC"]'));
+  // Which recipe? (Ron, 2026-11-12, mockups/recipe-pick C): Who is it for? turned around
+  bd3.document.getElementById("bhNext").click();
+  var bl_pick = bd3.document.getElementById("pickRecipeWrap");
+  check("Build MC's next playlist opens a sheet: Build a playlist, FOR over MC's card, WHICH RECIPE? over Choose a recipe, no radio buttons", !!bl_pick && bd3.document.getElementById("prTitle").textContent === "Build a playlist" && Array.from(bl_pick.querySelectorAll(".wf-label")).map((l) => l.textContent).join() === "For,Which recipe?" && bl_pick.querySelector(".wf-person .bh-name").textContent === "MC" && /Choose a recipe/.test(bd3.document.getElementById("bhRecipe").textContent) && !bl_pick.querySelector(".bh-radio,[role=radio]") && bd3.document.getElementById("bhDialogNext").disabled && bd3.document.getElementById("bhDialogNext").textContent.trim() === "Build playlist");
+  bd3.document.getElementById("bhRecipe").click();
+  check("the drop-down lists the recipes as the landing shows them, the one MC's latest playlist came from first as Last time, and no search with few recipes", Array.from(bd3.document.querySelectorAll("#bhRecipePanel .wf-opt")).map((o) => o.dataset.id).join() === "f1,f2" && /Last time/.test(bd3.document.querySelector("#bhRecipePanel .wf-opt").textContent) && !!bd3.document.querySelector("#bhRecipePanel .wf-opt .bh-shape") && !bd3.document.getElementById("bhRecipeFind"));
+  bd3.document.dispatchEvent(new bd3.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  check("Escape closes the drop-down first, the sheet and MC's popup stay", bd3.document.getElementById("bhRecipePanel").hidden && !!bd3.document.getElementById("pickRecipeWrap") && !!bd3.document.getElementById("personPanelWrap"));
+  bd3.document.getElementById("bhRecipe").click();
+  bd3.document.querySelector('#bhRecipePanel .wf-opt[data-id="f2"]').click();
+  check("choosing a recipe closes the drop-down to it, and Build playlist is ready", bd3.document.getElementById("bhRecipePanel").hidden && /Beta/.test(bd3.document.getElementById("bhRecipe").textContent) && !bd3.document.getElementById("bhDialogNext").disabled);
+  bd3.document.dispatchEvent(new bd3.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  await new Promise((r) => setTimeout(r, 300));
+  check("then Escape closes the sheet, and MC's popup stays", !bd3.document.getElementById("pickRecipeWrap") && !!bd3.document.getElementById("personPanelWrap"));
+  bd3.eval("pickRecipeFor('T7')");
+  bd3.document.getElementById("bhRecipe").click();
+  check("for T7, whose latest playlist is from Beta, Beta comes first", Array.from(bd3.document.querySelectorAll("#bhRecipePanel .wf-opt")).map((o) => o.dataset.id).join() === "f2,f1");
+  bd3.document.getElementById("bhDialogCancel").click();
+  await new Promise((r) => setTimeout(r, 300));
   bd3.document.dispatchEvent(new bd3.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   const leavingX = bd3.document.querySelector(".pp-sheet .rp-x");
   check("the participant's leaving popup keeps its round grey X (its rules name classes, not the ids it loses)", !leavingX || (bd3.window.getComputedStyle(leavingX).borderRadius === "50%" && !/(#personPanel|#recipePanel)[^{]*\.rp-x/.test(fs.readFileSync(ROOT + "index.html", "utf8"))));
