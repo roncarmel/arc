@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-12zzj";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13a";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2554,8 +2554,8 @@ function renderRecipeList() {
   for (const f of formats) list.appendChild(recipeRow(f, barSize(f) / longest));
   list.appendChild(add);   // New recipe under the recipes, so the list sits right under the switch (Ron, 2026-11-12)
   // under New recipe, what the sparkle does, with the button drawn small in the sentence (Ron, 2026-11-12, mockups/icons-top)
-  list.appendChild(feEl("p", { class: "bh-note bh-build-how" }, `${actWord(true)} a recipe\u2019s `, feEl("span", { class: "bh-mini", "aria-hidden": "true" }, bhSvg(BH_SPARK)),
-    " button to build a playlist from it."));
+  list.appendChild(feEl("p", { class: "bh-note bh-build-how" }, `${actWord(true)} `, feEl("span", { class: "bh-mini", "aria-hidden": "true" }, bhSvg(BH_SPARK)),
+    " to build a playlist from a recipe."));
   refreshNoticeLine();
 }
 
