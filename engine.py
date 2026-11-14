@@ -17,6 +17,11 @@ MIN_FILL = 0.9  # a segment must reach at least this fraction of its target minu
 # fresh ones run out. Empty for an ordinary build.
 HEARD = {}
 
+# Repeat songs, for a participant's playlist (Ron, 2026-11-13): about SHARE of the playlist's minutes (within REPEAT_SLACK) from the songs in SONGS (their
+# most recent playlist, or everything they heard), every song still from its own segment's source playlists. Set by build_playlists for one run; share 0 is off.
+REPEAT = {"share": 0, "songs": set()}
+REPEAT_SLACK = 0.05
+
 # Silent tracks, keyed by length in seconds. Longer pauses are built by combining them, so a
 # silence of 2.5 min uses one 30 sec and two 1 min tracks. They may repeat in every playlist
 # and never count toward segment minutes.
@@ -124,6 +129,30 @@ def seg_sources(segments):
     return list(dict.fromkeys(names))
 
 
+def pick_with_repeats(tracks, minutes, used, tally):
+    """pick() for a part of a segment when REPEAT is on: first the repeat songs this part owes, then the rest from the other songs, then, if those
+    run short, more repeat songs to fill it (the share is checked once the playlist is done). `tally` carries [repeat ms, all ms] across parts, so a
+    part that came out over or under is made up by the next."""
+    pool = REPEAT["songs"]
+    again = [t for t in tracks if song_id(t) in pool]
+    other = [t for t in tracks if song_id(t) not in pool]
+    owed = REPEAT["share"] * (tally[1] + minutes * 60_000) - tally[0]
+    chosen, got = pick(again, max(0, owed) / 60_000, used) if owed >= 30_000 else ([], 0)
+    more, total = pick(other, max(0, minutes - got / 60_000), used)
+    chosen += more
+    total += got
+    short = minutes * 60_000 - total
+    if short >= 30_000:
+        extra, add = pick(again, short / 60_000, used)
+        chosen += extra
+        total += add
+        got += add
+    tally[0] += got
+    tally[1] += total
+    random.shuffle(chosen)
+    return chosen, total
+
+
 def build_one(cache, segments, used, order=None):
     """Try to build one playlist. Segments are filled in `order` (the ones with the least to spare first, so they get first pick
     of songs they share with other segments), and come back in their own order.
@@ -131,6 +160,7 @@ def build_one(cache, segments, used, order=None):
     or (None, None, (segment number, source name, minutes wanted, minutes found)) on failure."""
     local = set(used)
     results = [None] * len(segments)
+    tally = [0, 0]   # repeat ms, all ms, when REPEAT is on
     for idx in (order or range(len(segments))):
         spec, minutes = segments[idx]
         i = idx + 1
@@ -140,7 +170,10 @@ def build_one(cache, segments, used, order=None):
             # each playlist gets its share of the time still unfilled, so an overshoot on
             # one playlist is absorbed by the next and the segment total stays on target
             part_min = remaining * w / remaining_w
-            chosen, total = pick(cache[norm(name)], part_min, local)
+            if REPEAT["share"]:
+                chosen, total = pick_with_repeats(cache[norm(name)], part_min, local, tally)
+            else:
+                chosen, total = pick(cache[norm(name)], part_min, local)
             if total < part_min * 60_000 * MIN_FILL:
                 return None, None, (i, name, round(part_min, 1), total / 60_000)
             songs += chosen
@@ -462,17 +495,54 @@ def shared_count(cache, music):
     return sum(1 for n in count.values() if n > 1)
 
 
-def build_playlists(formats_text, key, tracks_json, max_n=None, reserved_json="[]", heard_json="{}"):
+def repeat_most(cache, music):
+    """About the largest share of a playlist's minutes that can come from REPEAT's songs: each part of each segment takes at most its own minutes
+    of them, each song counted once."""
+    seen, can, whole = set(), 0, 0
+    for spec, minutes in music:
+        parts = seg_parts(spec)
+        total_w = sum(w for _, w in parts)
+        for name, w in parts:
+            part = minutes * w / total_w * 60_000
+            whole += part
+            have = 0
+            for t in cache[norm(name)]:
+                if song_id(t) in REPEAT["songs"] and song_id(t) not in seen and have < part:
+                    seen.add(song_id(t))
+                    have += t["ms"]
+            can += min(have, part)
+    return can / whole if whole else 0
+
+
+def repeat_share(results):
+    """The share of a planned playlist's minutes that are REPEAT's songs."""
+    again = sum(t["ms"] for r in results for t in r[2] if song_id(t) in REPEAT["songs"])
+    whole = sum(r[3] for r in results)
+    return again / whole if whole else 0
+
+
+def build_playlists(formats_text, key, tracks_json, max_n=None, reserved_json="[]", heard_json="{}", repeat_json="{}"):
     """One planning run that gives both the preview text and everything needed to create the playlists:
     names and ordered song URIs, silence included. Creating from this result makes exactly what was previewed.
-    heard_json, for a playlist built for a participant: {song id: when last heard}, songs to use only when the fresh ones run out."""
-    global HEARD
+    heard_json, for a playlist built for a participant: {song id: when last heard}, songs to use only when the fresh ones run out.
+    repeat_json, for a participant's playlist too: {"share": 0 to 1, "songs": [song ids]}, about that share of the minutes from those songs (REPEAT).
+    When the songs cannot come within REPEAT_SLACK of it, nothing is planned and "repeat" says how close they come."""
+    global HEARD, REPEAT
     HEARD = json.loads(heard_json or "{}") or {}
+    rep = json.loads(repeat_json or "{}") or {}
+    REPEAT = {"share": float(rep.get("share") or 0), "songs": set(rep.get("songs") or [])}
     fmt = parse_formats(formats_text)[key]
     cache = _cache_from(tracks_json)
     limit = int(max_n) if max_n else 200
     reserved = {norm(name) for name in json.loads(reserved_json or "[]")}
     music, gaps, built, stopped, used = _run_format(fmt, cache, limit, reserved)
+    repeat = None
+    if REPEAT["share"] and built:
+        got = repeat_share(built[0][1])
+        if abs(got - REPEAT["share"]) > REPEAT_SLACK:
+            # too few of their songs in this recipe's playlists (most: about the largest share that can repeat), or too few new ones (got: the least)
+            repeat = {"wanted": round(REPEAT["share"] * 100), "got": round(got * 100), "most": int(repeat_most(cache, music) * 100)}
+            built = []
     playlists = []
     for name, results in built:
         uris = []
@@ -506,14 +576,15 @@ def build_playlists(formats_text, key, tracks_json, max_n=None, reserved_json="[
     # With nothing planned, every source playlist that is too short on its own. Most of the time the minutes alone tell;
     # when they do not (the songs did not fit), it is the one the engine stopped on.
     short = []
-    if not built:
+    if not built and not repeat:
         short = [{"name": r["name"], "need": r["per"], "has": r["has"]} for r in sources if r["has"] < r["per"] * MIN_FILL]
         if not short and stopped:
             # there are enough minutes, but the song lengths cannot add up to the segment's length closely enough
             has = next((r["has"] for r in sources if r["name"] == stopped[1]), round(stopped[3], 1))
             short = [{"name": stopped[1], "need": stopped[2], "has": has, "fit": True}]
     HEARD = {}   # only for this run
-    return json.dumps({"key": key, "playlists": playlists, "sources": sources, "ranOut": ran_out, "short": short,
+    REPEAT = {"share": 0, "songs": set()}
+    return json.dumps({"key": key, "playlists": playlists, "sources": sources, "ranOut": ran_out, "short": short, "repeat": repeat,
                        "shared": shared_count(cache, music),
                        "stopped": _stop_message(stopped) if stopped else None,
                        "text": "\n".join(_plan_lines(key, music, gaps, built, stopped, used, cache, format_label(key, fmt)))})

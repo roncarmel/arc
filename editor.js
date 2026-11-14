@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13z";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13za";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2643,8 +2643,57 @@ function buildRecipe(id) {
   if (!devMode()) { startCreate([id]); return; }
   askWhoFor(id).then((answer) => {
     if (answer === null) return;
-    buildForParticipant(id, answer);   // built in the participant's popup (app.js)
+    buildForParticipant(id, answer, chosenRepeat);   // built in the participant's popup (app.js)
   });
+}
+
+// Repeat songs in Who is it for? and Which recipe? (Ron, 2026-11-13, mockups/repeat-songs F): REPEAT SONGS, one line saying what is chosen (About 30% from the
+// most recent playlist), a slider from 0 to 100% in steps of 10, and once it is let go above 0%, two cards for where from: Most recent (their latest playlist's
+// name and day) and All previous (their playlists and Heard before, counted). Always starts at 0%. Only for a participant with a playlist. The sheet keeps
+// what it was closed with in chosenRepeat, for buildForParticipant.
+let chosenRepeat = null;
+const REPEAT_STEP = 10;
+function repeatSection() {
+  let share = 0, from = "recent", person = null;
+  const line = feEl("p", { class: "rs-line", id: "rsLine", "aria-live": "polite" });
+  const slider = feEl("input", { type: "range", class: "rs-range", id: "rsShare", min: "0", max: "100", step: String(REPEAT_STEP), value: "0", "aria-label": "Share of the music that repeats" });
+  const ticks = feEl("div", { class: "rs-ticks", "aria-hidden": "true" });
+  for (let i = 0; i <= 100; i += REPEAT_STEP) ticks.appendChild(feEl("span"));
+  const card = (value, title) => feEl("button", { type: "button", class: "rs-card", "data-from": value, "aria-pressed": "false", onClick: () => { from = value; paint(); } },
+    feEl("b", { text: title }), feEl("small"));
+  const recent = card("recent", "Most recent"), all = card("all", "All previous");
+  const cards = feEl("div", { class: "rs-cards", id: "rsFrom", hidden: true }, recent, all);
+  const el = feEl("div", { class: "rs-sec", id: "rsSection", hidden: true },
+    feEl("p", { class: "wf-label", text: "Repeat songs" }), line,
+    feEl("div", { class: "rs-slider" }, slider, ticks), feEl("div", { class: "rs-ends", "aria-hidden": "true" }, feEl("span", { text: "0%" }), feEl("span", { text: "50%" }), feEl("span", { text: "100%" })),
+    cards);
+  function paint() {
+    slider.style.setProperty("--rs-fill", share + "%");
+    if (!share) line.textContent = "No repeats. New music comes first.";
+    else line.replaceChildren("About ", feEl("b", { class: "rs-num", text: share + "%" }), from === "all" ? " from all previous playlists" : " from the most recent playlist");
+    for (const c of [recent, all]) { const on = c.dataset.from === from; c.classList.toggle("rs-on", on); c.setAttribute("aria-pressed", String(on)); }
+  }
+  // dragging: the line follows and the cards wait; let go above 0%, the cards show
+  slider.addEventListener("input", () => { share = Number(slider.value) || 0; if (!share) revealSmoothly(cards, false); paint(); });
+  slider.addEventListener("change", () => { share = Number(slider.value) || 0; revealSmoothly(cards, share > 0); paint(); });
+  slider.addEventListener("pointerdown", () => { if (!cards.hidden) revealSmoothly(cards, false); });
+  return {
+    el,
+    // the participant chosen (null hides it all): back to 0% and Most recent each time
+    setPerson(p) {
+      person = p && p.playlists && p.playlists.length ? p : null;
+      el.hidden = !person;
+      share = 0; from = "recent"; slider.value = "0"; cards.hidden = true;
+      if (person) {
+        const latest = person.playlists[0];
+        recent.lastChild.textContent = `${latest.name.split(" \u00b7 ")[0]} \u00b7 ${shortDate(person.last)}`;
+        const n = person.playlists.length + (person.heard ? person.heard.length : 0);
+        all.lastChild.textContent = n === 1 ? "1 playlist" : `${n} playlists`;
+      }
+      paint();
+    },
+    value: () => (person && share ? { share, from } : null),
+  };
 }
 
 // ---------------------------------------------------------------- the recipe panel: one recipe in a popup, saved when it closes
@@ -3238,7 +3287,9 @@ function pickRecipeFor(code) {
   const panel = feEl("div", { class: "bh-dd-panel", id: "bhRecipePanel", hidden: true },
     ordered.length >= RECIPE_FIND_FROM ? feEl("label", { class: "bh-dd-find" }, feIcon("search"), search) : null, list, empty);
   const dd = feEl("div", { class: "bh-dd" }, field, panel);
-  const next = feEl("button", { type: "button", class: "wf-build", id: "bhDialogNext", disabled: true, onClick: () => { if (chosen) popup.close(chosen.id); } }, bhSvg(BH_SPARK), "Build playlist");
+  const repeat = repeatSection();
+  repeat.setPerson(person);
+  const next = feEl("button", { type: "button", class: "wf-build", id: "bhDialogNext", disabled: true, onClick: () => { if (chosen) { chosenRepeat = repeat.value(); popup.close(chosen.id); } } }, bhSvg(BH_SPARK), "Build playlist");
 
   function option(f) {
     const [name, sub, bar] = recipeParts(f);
@@ -3286,7 +3337,7 @@ function pickRecipeFor(code) {
     onClick: (event) => { if (open && !dd.contains(event.target)) setOpen(false); } },
     wfHead("prTitle", "Build a playlist", (v) => popup.close(v)),
     feEl("div", { class: "wf-body" }, feEl("p", { class: "wf-label wf-label-first", text: "For" }), card, feEl("p", { class: "wf-label", text: "Which recipe?" }),
-      formats.length ? dd : feEl("p", { class: "bh-hint", text: "There is no recipe yet. Make one under Recipes first." })),
+      formats.length ? dd : feEl("p", { class: "bh-hint", text: "There is no recipe yet. Make one under Recipes first." }), formats.length ? repeat.el : null),
     feEl("div", { class: "wf-foot" }, feEl("button", { type: "button", class: "wf-cancel", id: "bhDialogCancel", onClick: () => popup.close(null) }, bhSvg(WF_CANCEL), "Cancel"), next));
   paintField();
   // Escape closes the drop-down first, then the popup
@@ -3296,7 +3347,7 @@ function pickRecipeFor(code) {
     if (!id) return;
     const action = connectionAction();
     if (action) { action(); return; }
-    buildForParticipant(id, code);
+    buildForParticipant(id, code, chosenRepeat);
   });
 }
 
@@ -3466,8 +3517,9 @@ function askWhoFor(id) {
     feEl("p", { class: "bh-hint bh-dd-hint", text: CODE_HOW }));
   const heard = heardSection();
   adder.appendChild(heard.el);
+  const repeat = repeatSection();
   // a new participant's Heard before waits in this tab for their first playlist (setPendingHeard in app.js)
-  const finish = () => { if (!code) return; if (adding) setPendingHeard(code, heard.ids()); close(code); };
+  const finish = () => { if (!code) return; if (adding) setPendingHeard(code, heard.ids()); chosenRepeat = adding ? null : repeat.value(); close(code); };
   const cancel = feEl("button", { type: "button", class: "wf-cancel", id: "bhDialogCancel", onClick: () => close(null) }, bhSvg(WF_CANCEL), "Cancel");
   const next = feEl("button", { type: "button", class: "wf-build", id: "bhDialogNext", disabled: true, onClick: finish }, bhSvg(BH_SPARK), "Build playlist");
 
@@ -3512,6 +3564,7 @@ function askWhoFor(id) {
     adding = true;
     dd.hidden = true;
     adder.hidden = false;
+    repeat.setPerson(null);
     newInput.value = "";
     paintBadge(newBadge, "");
     code = "";
@@ -3533,6 +3586,7 @@ function askWhoFor(id) {
     code = value;
     setOpen(false);
     paintField();
+    repeat.setPerson(people.find((p) => p.code === value) || null);
     next.disabled = false;
     try { field.focus({ preventScroll: true }); } catch (err) { /* old browsers */ }
   }
@@ -3553,7 +3607,7 @@ function askWhoFor(id) {
   const sheet = feEl("div", { class: "rp-sheet wf-sheet", id: "whoFor", role: "dialog", "aria-modal": "true", "aria-labelledby": "wfTitle",
     onClick: (event) => { if (open && !dd.contains(event.target)) setOpen(false); } },
     wfHead("wfTitle", "Build a playlist", (v) => close(v)),
-    feEl("div", { class: "wf-body" }, card && feEl("p", { class: "wf-label wf-label-first", text: "Recipe" }), card, feEl("p", { class: "wf-label", text: "Who is it for?" }), dd, adder),
+    feEl("div", { class: "wf-body" }, card && feEl("p", { class: "wf-label wf-label-first", text: "Recipe" }), card, feEl("p", { class: "wf-label", text: "Who is it for?" }), dd, adder, repeat.el),
     feEl("div", { class: "wf-foot" }, cancel, next));
   paintField();
   // Escape closes the drop-down first, then a new code's entry, then the popup

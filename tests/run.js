@@ -232,7 +232,9 @@ function makeFetch(options = {}) {
       (options.trackRequests = options.trackRequests || []).push(m[1]);
       if (options.tracksStatus) return { ok: false, status: options.tracksStatus, headers: { get: (h) => (h === "Retry-After" && options.tracksRetryAfter ? String(options.tracksRetryAfter) : null) }, json: async () => ({}), text: async () => JSON.stringify(options.tracksBody || {}) };
       const u = new URL(url); const offset = Number(u.searchParams.get("offset") || 0);
-      const all = (options.repeatIn === m[1] ? repeatList() : TRACKS[m[1]]) || [];
+      // a playlist made during the test holds the songs added to it, as in Spotify
+      const added = () => (writes || []).filter((w) => w.type === "add" && w.id === m[1]).flatMap((w) => w.uris).map((uri) => { for (const list of Object.values(TRACKS)) { const it = list.find((x) => x.track && x.track.uri === uri); if (it) return it; } return { track: { uri, type: "track", duration_ms: 60000, name: "Silence", artists: [{ name: "Arc" }] } }; });
+      const all = (options.repeatIn === m[1] ? repeatList() : TRACKS[m[1]] || added()) || [];
       const page = all.slice(offset, offset + 50).map((it) => (options.uniqueSongNames && it.track && it.track.name ? { track: { ...it.track, name: `${it.track.name} of ${m[1]}` } } : it));
       const next = offset + 50 < all.length ? `https://api.spotify.com/v1/playlists/${m[1]}/items?limit=50&offset=${offset + 50}` : null;
       return json({ items: page, next });
@@ -881,10 +883,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-13z" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-13za" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-13z/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-13za/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2955,7 +2957,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-13z", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-13za", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -5343,7 +5345,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-13z"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-13za"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5772,7 +5774,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // Which recipe? (Ron, 2026-11-12, mockups/recipe-pick C): Who is it for? turned around
   bd3.document.querySelector('#bhPeople [data-code="MC"] .bh-build').click();
   var bl_pick = bd3.document.getElementById("pickRecipeWrap");
-  check("Build playlist on MC's row opens a sheet: Build a playlist, FOR over MC's card, WHICH RECIPE? over Choose a recipe, no radio buttons", !!bl_pick && bd3.document.getElementById("prTitle").textContent === "Build a playlist" && Array.from(bl_pick.querySelectorAll(".wf-label")).map((l) => l.textContent).join() === "For,Which recipe?" && bl_pick.querySelector(".wf-person .bh-name").textContent === "MC" && /Choose a recipe/.test(bd3.document.getElementById("bhRecipe").textContent) && !bl_pick.querySelector(".bh-radio,[role=radio]") && bd3.document.getElementById("bhDialogNext").disabled && bd3.document.getElementById("bhDialogNext").textContent.trim() === "Build playlist");
+  check("Build playlist on MC's row opens a sheet: Build a playlist, FOR over MC's card, WHICH RECIPE? over Choose a recipe, no radio buttons", !!bl_pick && bd3.document.getElementById("prTitle").textContent === "Build a playlist" && Array.from(bl_pick.querySelectorAll(".wf-label")).map((l) => l.textContent).join() === "For,Which recipe?,Repeat songs" && bl_pick.querySelector(".wf-person .bh-name").textContent === "MC" && /Choose a recipe/.test(bd3.document.getElementById("bhRecipe").textContent) && !bl_pick.querySelector(".bh-radio,[role=radio]") && bd3.document.getElementById("bhDialogNext").disabled && bd3.document.getElementById("bhDialogNext").textContent.trim() === "Build playlist");
   bd3.document.getElementById("bhRecipe").click();
   check("the drop-down lists the recipes as the landing shows them, the one MC's latest playlist came from first as Last time, and no search with few recipes", Array.from(bd3.document.querySelectorAll("#bhRecipePanel .wf-opt")).map((o) => o.dataset.id).join() === "f1,f2" && /Last time/.test(bd3.document.querySelector("#bhRecipePanel .wf-opt").textContent) && !!bd3.document.querySelector("#bhRecipePanel .wf-opt .bh-shape") && !bd3.document.getElementById("bhRecipeFind"));
   bd3.document.dispatchEvent(new bd3.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
@@ -5807,6 +5809,27 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   bd3.document.getElementById("bhWho").click();
   bd3.document.querySelector('#bhWhoPanel .bh-tile[data-code="MC"]').click();
   check("choosing a square closes it to that participant, and Build playlist is ready (no line on how much is new to them)", !/New to /.test(bd3.document.getElementById("whoForWrap").textContent) && bd3.document.getElementById("bhWhoPanel").hidden && /MC/.test(bd3.document.getElementById("bhWho").textContent) && !bd3.document.getElementById("bhDialogNext").disabled);
+  // Repeat songs (Ron, 2026-11-13, mockups/repeat-songs F)
+  var rs_el = (id) => bd3.document.getElementById(id);
+  bd3.window.HTMLElement.prototype.scrollIntoView = bd3.window.HTMLElement.prototype.scrollIntoView || function () {};   // jsdom has none (the drop-down opens again with a square chosen)
+  var rs_set = (v, release) => { const s = rs_el("rsShare"); s.value = String(v); s.dispatchEvent(new bd3.window.Event("input", { bubbles: true })); if (release) s.dispatchEvent(new bd3.window.Event("change", { bubbles: true })); };
+  check("with a participant chosen, REPEAT SONGS shows at 0%: No repeats. New music comes first., a slider from 0 to 100 in steps of 10, and no cards", !rs_el("rsSection").hidden && rs_el("rsLine").textContent === "No repeats. New music comes first." && rs_el("rsShare").min === "0" && rs_el("rsShare").max === "100" && rs_el("rsShare").step === "10" && rs_el("rsFrom").hidden && Array.from(bd3.document.querySelectorAll("#whoFor .wf-label")).map((l) => l.textContent).join() === "Recipe,Who is it for?,Heard before · optional,Repeat songs" && bd3.document.querySelector("#whoFor .bh-dd-add").hidden);
+  rs_set(30, false);
+  check("while dragging the line follows (About 30% from the most recent playlist) and the cards wait", rs_el("rsLine").textContent === "About 30% from the most recent playlist" && rs_el("rsLine").querySelector(".rs-num").textContent === "30%" && rs_el("rsFrom").hidden);
+  rs_set(30, true);
+  check("let go above 0%, the cards show: Most recent (chosen, with their latest playlist and its day) and All previous (their playlists counted)", !rs_el("rsFrom").hidden && (() => { const [a, b] = bd3.document.querySelectorAll("#rsFrom .rs-card"); return a.classList.contains("rs-on") && /^Most recent/.test(a.textContent) && / · /.test(a.querySelector("small").textContent) && !b.classList.contains("rs-on") && /^All previous\d+ playlists?$/.test(b.textContent); })());
+  bd3.document.querySelector('#rsFrom .rs-card[data-from="all"]').click();
+  check("All previous chosen: About 30% from all previous playlists", rs_el("rsLine").textContent === "About 30% from all previous playlists" && bd3.document.querySelector('#rsFrom .rs-card[data-from="all"]').getAttribute("aria-pressed") === "true");
+  rs_set(0, true);
+  check("back at 0% the cards go and the line says no repeats", rs_el("rsFrom").hidden && /^No repeats/.test(rs_el("rsLine").textContent));
+  rs_set(40, true);
+  bd3.document.getElementById("bhWho").click();
+  bd3.document.querySelector('#bhWhoPanel .bh-tile[data-code="T7"]').click();
+  check("choosing another participant starts again at 0% and Most recent", rs_el("rsShare").value === "0" && rs_el("rsFrom").hidden && /^No repeats/.test(rs_el("rsLine").textContent));
+  bd3.document.getElementById("bhWho").click();
+  bd3.document.getElementById("bhWhoAdd").click();
+  check("a new code has nothing to repeat: no Repeat songs", rs_el("rsSection").hidden);
+  bd3.document.getElementById("bhWhoNewCancel").click();
   bd3.document.getElementById("bhDialogCancel").click();
   // building for a participant happens in their popup, not the build popup (Ron, 2026-11-12, mockups/build-one C)
   var bl_fo = { extraPlaylists: bl_people };
@@ -5830,6 +5853,19 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   bd4.eval("setPersonOpen(null)");
   bd4.eval("openPersonPanel('ZQ9')");
   check("folded and opened again, the mark is gone", !bd4.document.querySelector("#bhPeople .pp-new") && bd4.document.querySelectorAll('#bhPeople [data-code="ZQ9"] a.bh-pl').length === 1);
+  // Repeat songs: 100% from the most recent playlist builds one of only its songs, each still from the segment's playlist
+  var rs_before = bl_fo.writes.filter((w) => w.type === "add" && w.id === bl_made.id).flatMap((w) => w.uris);
+  await bd4.eval("buildForParticipant('g1', 'ZQ9', { share: 100, from: 'recent' })");
+  var rs_made = bl_fo.writes.filter((w) => w.type === "create").pop();
+  var rs_uris = bl_fo.writes.filter((w) => w.type === "add" && w.id === rs_made.id).flatMap((w) => w.uris);   // one segment: no silence
+  check("Repeat songs at 100% from the most recent playlist: every song in the new one was in it", rs_made !== bl_made && rs_uris.length > 0 && rs_uris.every((u) => rs_before.includes(u)), JSON.stringify({ same: rs_made === bl_made, row: bd4.document.querySelector('#bhPeople [data-code="ZQ9"]').textContent, people: bd4.eval("participantList().map((p) => p.code + p.playlists.length)") }));
+  // too few of their songs in this recipe's playlists: nothing is made, and the row says how much can repeat
+  var rs_n = bl_fo.writes.filter((w) => w.type === "create").length;
+  bd4.eval("setPersonOpen(null)");
+  await bd4.eval("buildForParticipant('g1', 'MC', { share: 50, from: 'recent' })");
+  check("50% when few of their songs are in the recipe's playlists: nothing is made, and their row says Only about N% can repeat with this recipe", bl_fo.writes.filter((w) => w.type === "create").length === rs_n && /Only about \d+% can repeat with this recipe\./.test(bd4.document.querySelector('#bhPeople [data-code="MC"] .er-box').textContent), bd4.document.querySelector('#bhPeople [data-code="MC"]').textContent);
+  var rs_src = fs.readFileSync(ROOT + "engine.py", "utf8");
+  check("engine.py keeps the repeat share within 5 points (REPEAT_SLACK) and says how close it can come", /REPEAT_SLACK = 0\.05/.test(rs_src) && /def pick_with_repeats/.test(rs_src) && /"most": int\(repeat_most/.test(rs_src));
   // Heard before (Ron, 2026-11-13): playlists a participant heard before Arc, carried in their playlists' descriptions, no playlist of its own
   var hb_id = "4" + "a".repeat(21), hb_ids15 = Array.from({ length: 16 }, (_, i) => "4" + String(i).padStart(2, "0") + "b".repeat(19));
   check("the Heard before list packs into a description and reads back; 15 fit in the 300 characters Spotify shows, with a 4-letter code", (() => {

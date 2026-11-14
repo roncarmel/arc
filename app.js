@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-13z";
+const APP_VERSION = "2026-11-13za";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -3209,19 +3209,20 @@ function participantList() {
   return people.sort((a, b) => newer(a.latest, b.latest) || a.code.localeCompare(b.code));
 }
 // What a participant has heard: every song in the playlists built for them, by the song's id as engine.py knows it (song_id), with when the playlist was built.
-// Reads their playlists' songs (kept in this browser after the first time). { songs: {id: time}, count }
+// Reads their playlists' songs (kept in this browser after the first time). { songs: {id: time}, count, recent: [ids in their most recent playlist] }
 async function heardBy(code) {
-  const songs = {};
+  const songs = {}, recent = [];
+  const person = participantList().find((p) => p.code === code);
   for (const p of (playlists || []).filter((q) => q.participant === code && (!me || q.owner === me.id))) {
     const at = builtAtOf(p.description) || 1;
     for (const t of await loadTracks(p.id)) {
       if (SILENCE_URIS.has(t.uri)) continue;
       const id = t.key || t.uri;
       songs[id] = Math.max(songs[id] || 0, at);
+      if (person && person.latest && p.id === person.latest.id) recent.push(id);
     }
   }
   // Heard before: heard longest ago of all (0). A playlist no longer in the library is still read by its ID; one Spotify no longer has is skipped.
-  const person = participantList().find((p) => p.code === code);
   for (const id of [...new Set([...(person ? person.heard : []), ...pendingHeard(code)])]) {
     let tracks = [];
     try { tracks = await loadTracks(id); } catch (err) { logStep("heard before: a playlist could not be read"); continue; }
@@ -3231,7 +3232,7 @@ async function heardBy(code) {
       if (!(key in songs)) songs[key] = 0;
     }
   }
-  return { songs, count: Object.keys(songs).length };
+  return { songs, count: Object.keys(songs).length, recent };
 }
 // Heard before chosen for a new participant, kept in this tab until their first playlist is built and carries it (sessionStorage pendingHeard: {code: [ids]})
 function pendingHeard(code) {
@@ -3416,6 +3417,13 @@ function shortProblems(plan, many) {
     : [`${where}${named(s.name)} is too short.`, `This recipe uses ${lengthText(s.need)} of it, and it has ${lengthText(s.has)} of songs. Add ${lengthText(Math.max(1, Math.ceil(s.need - s.has)))} of songs to it, or shorten its segments.`]);
 }
 
+// A participant's playlist whose repeat share the songs cannot come within 5 points of: too few of their songs in this recipe's playlists, or too few new ones
+function repeatProblem(r, asked) {
+  const from = asked && asked.from === "all" ? "their previous playlists" : "their most recent playlist";
+  if (r.got < r.wanted) return [`Only about ${r.most}% can repeat with this recipe.`, `Few songs from ${from} are in this recipe’s playlists. ${r.most >= 10 ? `Choose ${Math.floor(r.most / 10) * 10}% or less, or another recipe.` : "Choose another recipe, or no repeats."}`];
+  return [`Too few new songs for ${r.wanted}% repeats.`, `This recipe’s playlists have few songs they have not heard, so about ${r.got}% would repeat. Choose ${Math.min(100, Math.ceil((r.got - 5) / 10) * 10)}% or more, or add songs to them.`];
+}
+
 async function planSelected(startedWith, opts = {}) {
   // Works out the playlists for the chosen formats. Returns the plan, or null after saying why there isn't one. With opts (keys, forWhom, quiet), for a participant's
   // build outside the build popup: shows nothing and returns { problems } when there is no playlist.
@@ -3426,7 +3434,11 @@ async function planSelected(startedWith, opts = {}) {
   // Earlier playlists with names this plan uses: the ones this app made get replaced (or renamed, if the person keeps them), and the person's own get renamed
   // to "… (version a)" so the new playlists can have their names.
   const forWhom = opts.forWhom || buildFor;
-  const heard = forWhom ? (await heardBy(forWhom)).songs : null;
+  const heardAll = forWhom ? await heardBy(forWhom) : null;
+  const heard = heardAll ? heardAll.songs : null;
+  // Repeat songs (Ron, 2026-11-13): opts.repeat { share: 0 to 100, from: "recent" or "all" }, about that share of the minutes from their most recent playlist or everything heard
+  const repeat = heardAll && opts.repeat && opts.repeat.share > 0
+    ? { share: opts.repeat.share / 100, songs: opts.repeat.from === "all" ? Object.keys(heard) : heardAll.recent } : null;
   const matching = forWhom ? [] : recipeMatches(inputs.formatsText, inputs.keys);   // a participant's playlist replaces nothing
   const madeByApp = new Set(playlists.filter((p) => p.madeByApp).map((p) => p.id));
   const marked = matching.filter((p) => madeByApp.has(p.id));
@@ -3434,7 +3446,7 @@ async function planSelected(startedWith, opts = {}) {
   const problems = inputs.failedNotes.slice();
   for (const key of inputs.keys) {
     try {
-      const plan = JSON.parse(heard ? py.buildPlaylists(inputs.formatsText, key, JSON.stringify(inputs.tracks), 1, "[]", JSON.stringify(heard))
+      const plan = JSON.parse(heard ? py.buildPlaylists(inputs.formatsText, key, JSON.stringify(inputs.tracks), 1, "[]", JSON.stringify(heard), JSON.stringify(repeat || {}))
         : py.buildPlaylists(inputs.formatsText, key, JSON.stringify(inputs.tracks), playlistLimit(), "[]"));
       if (!Array.isArray(plan.sources)) throw new Error("engine.py is out of date. Reload the page.");
       if (heard && plan.playlists.length) {
@@ -3453,6 +3465,7 @@ async function planSelected(startedWith, opts = {}) {
         plan.fresh = { fresh, again, latest };
       }
       if (plan.playlists.length) built.push(plan);
+      else if (plan.repeat) problems.push(repeatProblem(plan.repeat, opts.repeat));
       else problems.push(...shortProblems(plan, inputs.many));
     } catch (err) {
       recordError(cleanError(err));
@@ -3826,7 +3839,7 @@ function setPersonBuild(change) {
   if (personBuild.state !== was) updateButtons();
   if (typeof paintPersonBuild === "function") paintPersonBuild();
 }
-async function buildForParticipant(id, code) {
+async function buildForParticipant(id, code, repeat = null) {
   if (busy || !code) return;
   const f = currentFormats.find((x) => x.id === id);
   if (!f) return;
@@ -3839,7 +3852,7 @@ async function buildForParticipant(id, code) {
   try {
     await loadMyPlaylists();
     setPersonBuild({ step: "Reading the songs", progress: 0.15 });
-    const plan = await planSelected(null, { keys: [id], forWhom: code, quiet: true });
+    const plan = await planSelected(null, { keys: [id], forWhom: code, quiet: true, repeat });
     if (!plan || !plan.built) { setPersonBuild({ state: "blocked", problems: (plan && plan.problems) || [] }); return; }
     const p = plan.built[0].playlists[0];
     const songs = p.uris.filter((u) => !SILENCE_URIS.has(u)).length;
