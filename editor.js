@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13za";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13zb";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2673,10 +2673,9 @@ function repeatSection() {
     else line.replaceChildren("About ", feEl("b", { class: "rs-num", text: share + "%" }), from === "all" ? " from all previous playlists" : " from the most recent playlist");
     for (const c of [recent, all]) { const on = c.dataset.from === from; c.classList.toggle("rs-on", on); c.setAttribute("aria-pressed", String(on)); }
   }
-  // dragging: the line follows and the cards wait; let go above 0%, the cards show
-  slider.addEventListener("input", () => { share = Number(slider.value) || 0; if (!share) revealSmoothly(cards, false); paint(); });
+  // dragging: the line follows and the cards stay as they are; let go at 0% they go, anywhere else they show
+  slider.addEventListener("input", () => { share = Number(slider.value) || 0; paint(); });
   slider.addEventListener("change", () => { share = Number(slider.value) || 0; revealSmoothly(cards, share > 0); paint(); });
-  slider.addEventListener("pointerdown", () => { if (!cards.hidden) revealSmoothly(cards, false); });
   return {
     el,
     // the participant chosen (null hides it all): back to 0% and Most recent each time
