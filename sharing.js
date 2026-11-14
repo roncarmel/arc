@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-14e";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-14g";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -1475,16 +1475,15 @@ function renderShareYours(body, foot) {
   if (sharing.mineError) body.appendChild(problemBox("Your shares didn\u2019t load", sharing.mineError, [{ label: "Try again", run: () => loadMine() }]));
   if (!sharing.mine && !sharing.mineError) { body.appendChild(feEl("p", { class: "ms-note" }, "Loading...")); return; }
   const mine = sharing.mine || [];
-  const list = feEl("div", { class: "ms-yours-list" }, addShareRow(mine.length ? "Share another playlist" : "Share your first playlist"));
-  for (const m of mine) list.appendChild(yourRow(m));
+  // oldest first, and Share another playlist under them, where a new share lands, as New recipe is under the recipes (Ron, 2026-11-14)
+  const list = feEl("div", { class: "ms-yours-list" });
+  for (const m of mine.slice().sort((a, b) => (a.sharedAt || 0) - (b.sharedAt || 0))) list.appendChild(yourRow(m));
+  list.appendChild(addShareRow(mine.length ? "Share another playlist" : "Share your first playlist"));
   body.appendChild(list);
 }
+// Share another playlist looks like the builder's New recipe: a dashed grey button, + and the words centered, under the shares (Ron, 2026-11-14)
 function addShareRow(label) {
-  const row = feEl("div", { class: "ms-row ms-addrow", id: "msShareRow", role: "button", tabindex: "0", onClick: startShare },
-    feEl("span", { class: "ms-addbox", "aria-hidden": "true" }, feIcon("plus")),
-    feEl("div", { class: "ms-text" }, feEl("div", { class: "ms-name ms-addname" }, label)));
-  row.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === row) { e.preventDefault(); row.click(); } });
-  return row;
+  return feEl("button", { type: "button", class: "bh-row bh-add ms-addrow", id: "msShareRow", onClick: startShare }, feIcon("plus"), label);
 }
 function yourRow(m) {
   const p = playlistFor(m), pub = sharing.library && sharing.library.shares.find((x) => x.id === m.id);
