@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-14l";
+const APP_VERSION = "2026-11-14m";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -3076,9 +3076,10 @@ function dcSongLink() {
 }
 const DC_GUIDED = [
   { key: "devices", name: "Two devices", what: "Edit a recipe here and on another device", yes: "It asked", no: "It didn't ask", steps: [
+    "Open the Playlist builder here and on your other device.",
     "Here, change the minutes of a recipe's first segment and tap Done.",
-    "On your other device, open Arc and change the same segment to a different number, then tap Done.",
-    "Come back here and reload Arc. It should ask which version to keep."] },
+    "On the other device, without reloading, change the same segment to a different number and tap Done.",
+    "The other device should ask which version to keep."] },
   { key: "back", name: "Back and forward", what: "Leave Arc, then come back with Back", yes: "Looked right", no: "Something was wrong", steps: [
     "Open the Playlist builder.",
     "Leave Arc with the browser's Back (or open another site), then come back with Forward.",
