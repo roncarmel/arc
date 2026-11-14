@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-14j";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-14l";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -28,6 +28,7 @@ const KINDS = [
 ];
 const SHARING_COPIES_KEY = "sharingCopies";   // { shared playlist id: the person's copy's Spotify id }
 const SHARING_BLOCKED_KEY = "sharingBlocked";   // { playlist id: { snap, why: "copy", of } }: refused as a copy of someone else's share; kept until the playlist changes in Spotify
+const SHARING_MINE_PLAYLISTS_KEY = "sharingMinePlaylists";   // {playlist id: share id} of the person's own shares, so the builder marks shared playlists at once (refreshed by loadMine)
 const SHARING_MINE_KEY = "sharingMineIds";    // the ids of the person's own shares, so others' list knows them at once (refreshed by loadMine)
 const OVERLAP_MIN_SONGS = 100, OVERLAP_MIN_PLAYLISTS = 2, OVERLAP_MIN_SHARES = 3;   // when "already in your recipes" is worth showing
 const OVERLAP_READ_GAP_MS = 2000;   // reading recipe playlists the browser does not have yet: one request every 2 seconds
@@ -112,7 +113,8 @@ function sharingConnected() {
   if (devMode() && !ownerKnown()) askOwner();   // the owner's tools in the DEV menu
   let known = !!sharing.mine;
   try { known = known || localStorage.getItem(SHARING_MINE_KEY) !== null; } catch (err) { known = true; }   // no storage: it would be read on every visit
-  if (!known) loadMine().then(renderSharingCard);
+  // in developer mode always, so the builder's playlists show which are shared before any Share is tapped (Ron, 2026-11-14)
+  if (!known || devMode()) loadMine().then(renderSharingCard);
   markOldCopies();
 }
 function startSharingCard() {
@@ -128,9 +130,13 @@ async function loadMine() {
   sharing.mineError = "";
   try {
     sharing.mine = (await sharingFetch("GET", "/mine")).shares;
-    try { localStorage.setItem(SHARING_MINE_KEY, JSON.stringify(sharing.mine.map((s) => s.id))); } catch (err) { /* private browsing */ }
+    try {
+      localStorage.setItem(SHARING_MINE_KEY, JSON.stringify(sharing.mine.map((s) => s.id)));
+      localStorage.setItem(SHARING_MINE_PLAYLISTS_KEY, JSON.stringify(Object.fromEntries(sharing.mine.map((s) => [s.playlist, s.id]))));
+    } catch (err) { /* private browsing */ }
   } catch (err) { sharing.mineError = err.message; }
   renderSharing();
+  if (typeof refreshShareMarks === "function") refreshShareMarks();
 }
 
 // ---------------------------------------------------------------- what this device remembers
@@ -1470,7 +1476,12 @@ async function reportShare(s) {
 // The person's shares, each opening its edit page; one changed in Spotify since it was shared gets a strip joined under it with Update.
 // The shares, with Share another playlist as the list's first row (Share your first playlist, alone, before the first share): a row like a share's,
 // a dashed square with a + where a cover would be, and the words in pink.
-function sharedFor(p) { return sharing.mine ? sharing.mine.find((s) => s.playlist === p.id) || null : null; }
+// The person's share of a playlist; before the list is read this visit, from what this browser kept of it (only its id)
+function sharedFor(p) {
+  if (!p) return null;
+  if (sharing.mine) return sharing.mine.find((s) => s.playlist === p.id) || null;
+  try { const id = (JSON.parse(localStorage.getItem(SHARING_MINE_PLAYLISTS_KEY)) || {})[p.id]; return id ? { id, playlist: p.id } : null; } catch (err) { return null; }
+}
 const playlistFor = (m) => playlists.find((p) => p.id === m.playlist) || null;
 // Changed in Spotify since it was shared: only when its songs changed (Ron, 2026-11-14). A new snapshot alone may be a new name or description (Arc rewrites a
 // participant playlist's description when their Heard before changes), so the songs are read once per snapshot and compared, in order, with the share's.
@@ -1587,8 +1598,20 @@ async function shareFromBuilder(id) {
   const p = playlists.find((x) => x.id === id);
   if (!p) return;
   if (!sharing.mine) await loadMine();
+  if (sharedFor(p)) { openShareOf(p); return; }   // shared since the line was drawn: its page, never nothing
   if (shareBlockReason(p)) { if (typeof renderBuilderHome === "function") renderBuilderHome(); return; }
   showViewThen("sharing", () => { startShare(); pickPlaylist(p); });
+}
+// Shared on a playlist's line in the builder opens that share in Music sharing, on By you, as its row there would (Ron, 2026-11-14)
+async function openShareOf(p) {
+  if (!sharing.mine) await loadMine();
+  const m = sharedFor(p);
+  if (!m) { if (typeof refreshShareMarks === "function") refreshShareMarks(); return; }   // no longer shared: the line gets Share back
+  const pub = sharing.library && sharing.library.shares.find((x) => x.id === m.id);
+  showViewThen("sharing", () => {
+    if (sharing.tab !== "yours") { sharing.tab = "yours"; renderSharing(); }
+    if (pub) openDetail(m.id); else editShare(m);
+  });
 }
 // A playlist Arc built for a participant (its description names them). Shared, it is a Ceremony, under a title of the person's choosing, with nothing of Arc's.
 function arcBuilt(p) { return !!(p && p.madeByApp && typeof participantOf === "function" && participantOf(p.description)); }

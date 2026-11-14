@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14j";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14l";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2642,7 +2642,8 @@ function recipePlaylistsBox(f) {
     const mixed = item.lists.length > 1;
     for (const l of item.lists) {
       const p = (playlists || []).find((x) => (l.id ? x.id === l.id : normName(x.name) === normName(l.name))) || null;
-      const why = !l.name ? "" : typeof shareBlockReason === "function" ? shareBlockReason(p) : "";
+      const shared = !!(p && typeof sharedFor === "function" && sharedFor(p));   // shared keeps its minutes; the check in place of Share says it (Ron, 2026-11-14)
+      const why = !l.name || shared ? "" : typeof shareBlockReason === "function" ? shareBlockReason(p) : "";
       const minutes = `${Math.round(item.minutes * 10) / 10} min${mixed ? ", mixed" : ""}`;
       const text = feEl("span", { class: "bh-pl-text" }, feEl("span", { class: "bh-pl-name", text: l.name || "No playlist yet" }), feEl("span", { class: "bh-pl-under", text: why || minutes }));
       const cover = feEl("span", { class: "bh-cover", style: p && p.image ? `background-image:url("${p.image}")` : "" });
@@ -3072,8 +3073,20 @@ function buildNextFor(code) {
 
 // Share on a playlist's line in the builder (Ron, 2026-11-14): the upload icon in the app's grey circle; one that can't be shared is faded, its label saying why.
 // Only while Music sharing is in developer mode.
+// Which playlists are shared became known (loadMine): the open recipe's lines are drawn again, or the participants (not while a new playlist is celebrated)
+function refreshShareMarks() {
+  if (!devMode() || !$("builderHome")) return;
+  if (builderHome.tab === "recipes") {
+    const f = builderHome.recipe && editor.model && editor.model.formats.find((x) => x.id === builderHome.recipe);
+    const old = f && document.querySelector(`#bhRecipes .bh-recipe[data-id="${f.id}"] .bh-rlist:not(.bh-plist-gone)`);
+    if (old) old.replaceWith(recipePlaylistsBox(f));
+  } else if (Date.now() >= celebratingUntil) renderBuilderHome();
+}
 function shareIconButton(p, why = typeof shareBlockReason === "function" ? shareBlockReason(p) : "") {
   if (!devMode() || typeof shareFromBuilder !== "function") return null;
+  // already shared: a check and Shared in grey in place of Share, opening that share (Ron, 2026-11-14)
+  if (p && p.id && typeof sharedFor === "function" && sharedFor(p)) return feEl("button", { type: "button", class: "bh-shared", "aria-label": "Shared in the playlist library. Open it", title: "Shared in the playlist library",
+    onClick: (e) => { e.preventDefault(); e.stopPropagation(); openShareOf(p); } }, feIcon("check"), feEl("span", { text: "Shared" }));
   return feEl("button", { type: "button", class: "bh-share", disabled: !!why, "aria-label": why ? `Can't be shared: ${why}` : "Share in the playlist library", title: why || "Share in the playlist library",
     onClick: (e) => { e.preventDefault(); e.stopPropagation(); shareFromBuilder(p.id); } }, feIcon("upload"));
 }

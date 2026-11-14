@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-14j";
+const APP_VERSION = "2026-11-14l";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1499,6 +1499,7 @@ function pageState() {
 }
 let playlistPages = [];   // the last list's pages as Spotify sent them: [offset, items, total, whether there was a next], for the records below   // how many times the list has started being read in this tab, so a record can tell whether it was read again during a save
 let playlistsLoadedBy = "";   // which code last read the playlist list, for the record kept when a save question is asked (recordSyncAsk)
+var SAVE_FRESH_MS = 5000;   // a save reads the account's playlists again unless they were read this recently
 let playlistRefreshMs = 5 * 60 * 1000;   // coming back to the page after this long, the account's playlists, and so the backups, are read again
 
 function saveName(title) {
@@ -1756,6 +1757,9 @@ async function runSpotifySave() {
   saveState.error = "";
   renderSaveStatus();
   try {
+    // what is in Spotify now: with Arc open on two devices, a list read before the other one saved would make this save write over it without asking (found by
+    // Device checks, 2026-11-14). Not when the list was just read, nor while the page is being left (the write must go before the page stops).
+    if (document.visibilityState !== "hidden" && (!playlistsLoadedAt || Date.now() - playlistsLoadedAt > SAVE_FRESH_MS)) await loadMyPlaylists();
     const saveRun = { at: Date.now(), loads: playlistLoads, listReadAt: playlistsLoadedAt };
     await mergeFromSpotify();
     const synced = readSynced();
