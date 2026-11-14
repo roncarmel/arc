@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-13y";
+const APP_VERSION = "2026-11-13z";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -680,22 +680,22 @@ function toggleWelcomeTool(head) {
 // the tab), playing at once, with the browser's own player and its fullscreen button; at the end, Watch again and Done over the video. On a phone it goes fullscreen at
 // once and, where the browser allows (Android), turns to landscape; on an iPhone, Apple's player, and the person turns the phone (a page cannot). The end returns to
 // the page. Decided by Ron, 2026-11-11.
-// Until TUTORIAL_VIDEO is set, every way in opens the popup saying the video is coming soon.
-// TUTORIAL_VIDEO, TUTORIAL_POSTER and tutorialFrame are in editor.js, which loads first and draws the menu and the first-recipe card.
+// Until the tutorial's address is set, every way in opens the popup saying the video is coming soon.
+// TUTORIAL_VIDEO, tutorialVideo() (the participants one in developer mode), TUTORIAL_POSTER and tutorialFrame are in editor.js, which loads first and draws the menu and the first-recipe card.
 
 // the popup's player, filled as it opens (openInfo) and emptied as it closes, so nothing plays on behind it
 function fillTutorialPlayer() {
   const player = $("tutorialPlayer");
   if (!player) return;
   player.textContent = "";
-  if (TUTORIAL_VIDEO) {
+  if (tutorialVideo()) {
     const video = document.createElement("video");
     video.controls = true;
     video.playsInline = true;
     video.setAttribute("playsinline", "");
     video.preload = "metadata";
     video.poster = TUTORIAL_POSTER;
-    video.src = TUTORIAL_VIDEO;
+    video.src = tutorialVideo();
     player.appendChild(video);
     player.appendChild(tutorialEndCard(video));
     video.addEventListener("ended", () => {   // out of the browser's fullscreen, so Watch again and Done are seen
@@ -712,7 +712,7 @@ function fillTutorialPlayer() {
     img.alt = "";
     player.appendChild(img);
   }
-  $("tutorialNote").textContent = TUTORIAL_VIDEO ? "From a new recipe to playlists in your Spotify, in under 2 minutes." : "The video is coming soon.";
+  $("tutorialNote").textContent = tutorialVideo() ? "From a new recipe to playlists in your Spotify, in under 2 minutes." : "The video is coming soon.";
 }
 // over the video once it ends: Watch again, and Done (which closes the popup, like the Done under it)
 function tutorialEndCard(video) {
@@ -750,8 +750,8 @@ function tutorialOnPhone() {
 }
 
 function watchTutorial() {
-  if (TUTORIAL_VIDEO) countTutorialStart(tutorialOnPhone() ? "phone" : "computer");
-  if (TUTORIAL_VIDEO && tutorialOnPhone()) playTutorialFullscreen();
+  if (tutorialVideo()) countTutorialStart(tutorialOnPhone() ? "phone" : "computer");
+  if (tutorialVideo() && tutorialOnPhone()) playTutorialFullscreen();
   else openInfo("tutorialSection");
 }
 
@@ -759,7 +759,8 @@ function watchTutorial() {
 // fullscreen with a video that has not. If going fullscreen fails, the popup opens instead.
 function tutorialFullVideo() {
   let video = $("tutorialFull");
-  if (video || !TUTORIAL_VIDEO) return video;
+  if (video && tutorialVideo() && video.src !== tutorialVideo()) video.src = tutorialVideo();   // developer mode was turned on or off since
+  if (video || !tutorialVideo()) return video;
   video = document.createElement("video");
   video.id = "tutorialFull";
   video.controls = true;
@@ -767,7 +768,7 @@ function tutorialFullVideo() {
   video.setAttribute("playsinline", "");
   video.preload = "metadata";
   video.poster = TUTORIAL_POSTER;
-  video.src = TUTORIAL_VIDEO;
+  video.src = tutorialVideo();
   video.setAttribute("aria-hidden", "true");
   document.body.appendChild(video);
   const done = () => {
