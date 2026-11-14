@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-13x";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-13y";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -1822,17 +1822,20 @@ function otherField(d) {
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); const next = $("msDesc"); if (next && !next.readOnly) next.focus(); else input.blur(); } });
   return input;
 }
-// Moods are typed as words (a comma or Return ends one; a word may be two, like "deep calm"); each becomes a chip with an x.
+// Moods (Ron, 2026-11-13, replacing chips inside the box, which confused): the chosen moods as chips with an x above,
+// then a plain text box with Add beside it; Add or Return adds what is typed as one mood, spaces and all ("deep calm").
 // Moods others use are offered under the box. A word on the blocked list stays in the box with the small error box under it.
 function moodField(d) {
-  const input = feEl("input", { type: "text", class: "ms-moodinput", id: "msMoodInput", maxlength: String(SHARE_MOOD_CHARS + 10), "aria-label": "Add a mood", enterkeyhint: "done", autocapitalize: "none", spellcheck: "false" });
-  const box = feEl("div", { class: "ms-moodbox", onClick: (e) => { if (e.target === box) input.focus(); } });
+  const input = feEl("input", { type: "text", class: "ms-input ms-moodinput", id: "msMoodInput", maxlength: String(SHARE_MOOD_CHARS + 10), "aria-label": "Add a mood", placeholder: "e.g. tender", enterkeyhint: "done", autocapitalize: "none", spellcheck: "false" });
+  const addBtn = feEl("button", { type: "button", class: "ms-moodadd", id: "msMoodAdd" }, "Add");
+  const row = feEl("div", { class: "ms-moodrow" }, input, addBtn);
+  const chips = feEl("div", { class: "ms-chips ms-moodchips" });
   const suggest = feEl("div", { class: "ms-chips ms-suggest" });
   const blockedMsg = Object.assign(fieldError("That word can't be used."), { hidden: true });
   const add = (text) => {
     const w = cleanMood(text);
     if (w.length < 2 || d.moods.includes(w) || d.moods.length >= SHARE_MOODS_MAX) return true;
-    if (blockedWord(w)) { blockedMsg.hidden = false; box.classList.add("ms-bad-box"); return false; }
+    if (blockedWord(w)) { blockedMsg.hidden = false; input.classList.add("ms-bad-box"); return false; }
     d.moods.push(w);
     return true;
   };
@@ -1842,42 +1845,36 @@ function moodField(d) {
     const q = cleanMood(input.value);
     knownMoods().filter((t) => !d.moods.includes(t) && (!q || t.startsWith(q) || t.includes(" " + q))).slice(0, 8).forEach((t) => {
       const b = feEl("button", { type: "button", class: "ms-chip ms-chip-add", onClick: () => { add(t); input.value = ""; draw(); draftChanged(); input.focus(); } }, t);
-      b.addEventListener("mousedown", (e) => e.preventDefault());   // keeps the focus in the box, so the half-typed word is not added on the way
+      b.addEventListener("mousedown", (e) => e.preventDefault());   // keeps the keyboard up on a phone
       suggest.appendChild(b);
     });
   };
+  const paintAdd = () => { addBtn.disabled = cleanMood(input.value).length < 2; };
   const draw = () => {
-    box.textContent = "";
+    chips.textContent = "";
     for (const t of d.moods) {
-      box.appendChild(feEl("span", { class: "ms-chip ms-on ms-moodchip" }, t,
-        feEl("button", { type: "button", class: "ms-chipx", "aria-label": "Remove " + t, onClick: () => { d.moods = d.moods.filter((x) => x !== t); draw(); draftChanged(); input.focus(); } }, "×")));
+      chips.appendChild(feEl("span", { class: "ms-chip ms-on ms-moodchip" }, t,
+        feEl("button", { type: "button", class: "ms-chipx", "aria-label": "Remove " + t, onClick: () => { d.moods = d.moods.filter((x) => x !== t); draw(); draftChanged(); } }, "×")));
     }
-    input.placeholder = d.moods.length ? "" : "e.g. tender, grief";
-    input.hidden = d.moods.length >= SHARE_MOODS_MAX;
-    box.appendChild(input);
+    row.hidden = d.moods.length >= SHARE_MOODS_MAX;
+    paintAdd();
     showSuggestions();
   };
-  const take = () => {
-    const parts = input.value.split(",");
-    const rest = parts.pop();
-    let ok = true;
-    for (const part of parts) ok = add(part) && ok;
-    input.value = ok ? rest : parts.join(",") + (rest ? "," + rest : "");
-    return ok;
+  const addTyped = () => {
+    if (!input.value.trim()) return;
+    if (add(input.value)) input.value = "";
+    draw(); draftChanged(); input.focus();
   };
+  addBtn.addEventListener("mousedown", (e) => e.preventDefault());   // keeps the keyboard up on a phone
+  addBtn.addEventListener("click", addTyped);
   input.addEventListener("input", () => {
     blockedMsg.hidden = true;
-    box.classList.remove("ms-bad-box");
-    if (input.value.includes(",")) { take(); draw(); draftChanged(); input.focus(); }
-    else { showSuggestions(); refreshFoot(); }   // a word still in the box counts for Share
+    input.classList.remove("ms-bad-box");
+    paintAdd(); showSuggestions(); refreshFoot();   // a word still in the box counts for Share
   });
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") { e.preventDefault(); if (input.value.trim()) { if (add(input.value)) input.value = ""; draw(); draftChanged(); input.focus(); } else input.blur(); }
-    else if (e.key === "Backspace" && !input.value && d.moods.length) { d.moods.pop(); draw(); draftChanged(); input.focus(); }
-  });
-  input.addEventListener("blur", () => { if (input.value.trim() && add(input.value)) { input.value = ""; draw(); draftChanged(); } });
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); if (input.value.trim()) addTyped(); else input.blur(); } });
   draw();
-  return feEl("div", {}, box, blockedMsg, suggest);
+  return feEl("div", {}, chips, row, blockedMsg, suggest);
 }
 // the description box's placeholder, by type (Ron, 2026-11-10)
 const DESC_HINTS = {
@@ -2050,7 +2047,7 @@ function watchKeyboard() {
   dialog.addEventListener("focusout", () => setTimeout(fit, 50));
   for (const box of [$("msBody"), $("msFlowBody")]) box && box.addEventListener("pointerdown", (e) => {
     const a = document.activeElement;
-    if (a && a.matches("input, textarea") && !e.target.closest("input, textarea, button, label, .ms-moodbox")) a.blur();
+    if (a && a.matches("input, textarea") && !e.target.closest("input, textarea, button, label, .ms-moodrow")) a.blur();
   });
 }
 function endTyping() {

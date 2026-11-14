@@ -881,10 +881,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-13x" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-13y" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-13x/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-13y/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2955,7 +2955,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-13x", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-13y", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4988,10 +4988,17 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("Edit details is the same form: the card with no way to change the playlist, its fields filled in, Share anonymously on, Stop sharing, and Update grey until something changes", ms_d.querySelector(".ms-flowtitle").textContent === "Edit details" && !ms_d.getElementById("msPickCard") && ms_main().disabled && ms_d.querySelector('#msFlowBody .ms-ktile.ms-on').dataset.kind === "ceremony" && ms_d.getElementById("msDesc").value === "Long and quiet." && ms_d.getElementById("msAnon").checked && !!ms_d.getElementById("msStop") && ms_d.getElementById("msFlowMain").textContent === "Update");
   ms_ftile("mood").click();
   var ms_moodType = (text) => { const i = ms_d.getElementById("msMoodInput"); i.value = text; i.dispatchEvent(new ms_w.Event("input")); };
-  ms_moodType("shit,");
-  check("a mood word on the blocked list is not taken, and says so", ms_w.eval("sharing.flow.draft.moods.length") === 0 && !ms_d.querySelector("#msFlowBody .ms-moodbox + .ms-ferr").hidden && /can't be used/.test(ms_d.querySelector("#msFlowBody .ms-moodbox + .ms-ferr").textContent));
-  ms_moodType("Deep calm,");
-  check("other words become chips, lower case, and moods others use are offered", ms_w.eval("sharing.flow.draft.moods.join()") === "deep calm" && Array.from(ms_d.querySelectorAll("#msFlowBody .ms-suggest .ms-chip")).map((c) => c.textContent).includes("tender"));
+  var ms_moodAdd = (text) => { ms_moodType(text); ms_d.getElementById("msMoodAdd").click(); };
+  check("moods have a text box with Add beside it, pale until something is typed", !!ms_d.getElementById("msMoodInput") && ms_d.getElementById("msMoodAdd").textContent === "Add" && ms_d.getElementById("msMoodAdd").disabled);
+  ms_moodAdd("shit");
+  check("a mood word on the blocked list is not taken, and says so", ms_w.eval("sharing.flow.draft.moods.length") === 0 && !ms_d.querySelector("#msFlowBody .ms-moodrow + .ms-ferr").hidden && /can't be used/.test(ms_d.querySelector("#msFlowBody .ms-moodrow + .ms-ferr").textContent));
+  ms_moodAdd("Deep calm");
+  check("Add makes what is typed one mood, spaces and all, lower case, as a chip above the box, and moods others use are offered", ms_w.eval("sharing.flow.draft.moods.join()") === "deep calm" && ms_d.getElementById("msMoodInput").value === "" && ms_d.querySelector("#msFlowBody .ms-moodchips + .ms-moodrow .ms-moodinput") && ms_d.querySelector("#msFlowBody .ms-moodchips .ms-moodchip").firstChild.textContent === "deep calm" && Array.from(ms_d.querySelectorAll("#msFlowBody .ms-suggest .ms-chip")).map((c) => c.textContent).includes("tender"));
+  ms_moodType("calm, open");
+  ms_d.getElementById("msMoodInput").dispatchEvent(new ms_w.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  check("Return adds too, and a comma is not a split", ms_w.eval("sharing.flow.draft.moods.join('|')") === "deep calm|calm open");
+  ms_d.querySelectorAll("#msFlowBody .ms-moodchip .ms-chipx")[1].click();
+  check("a chip's x removes it", ms_w.eval("sharing.flow.draft.moods.join('|')") === "deep calm");
   check("damn, hell and crap are allowed", ["damn", "hell", "crap", "grief"].every((w) => !ms_w.eval(`blockedWord(${JSON.stringify(w)})`)) && ms_w.eval("blockedWord('bugger off')"));
   ms_d.getElementById("msFlowMain").click();
   await waitFor(() => !ms_w.eval("sharing.flow"), 5000);
@@ -5336,7 +5343,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-13x"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-13y"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
