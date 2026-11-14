@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-14m";
+const APP_VERSION = "2026-11-14n";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -510,8 +510,8 @@ function devModeChanged(on) {
   }
   if (typeof renderSharingCard === "function") renderSharingCard();
   if (typeof renderBuilderHome === "function") renderBuilderHome();   // Participants, greyed outside developer mode
-  if (on && pageName() === "app" && typeof loadLibrary === "function") {
-    loadLibrary();
+  if (on && pageName() === "app" && typeof loadCounts === "function") {
+    loadCounts();
     if (connection === "ready") sharingConnected();
   }
 }
@@ -4491,8 +4491,8 @@ async function deleteParticipant(code, list) {
     if (typeof loadMine === "function" && typeof sharedFor === "function" && devMode()) {
       await loadMine();
       if (sharing.mineError) throw new Error(`Arc could not check which of ${code}'s playlists are shared: ${sharing.mineError}`);
-      for (const p of list) { const m = sharedFor(p); if (m) await sharingFetch("DELETE", "/share/" + m.id); }
-      if (list.some((p) => sharedFor(p))) { loadMine(); loadLibrary(true); }
+      for (const p of list) { const m = sharedFor(p); if (m) { await sharingFetch("DELETE", "/share/" + m.id); ownShareChanged(m.id, null); } }
+      if (list.some((p) => sharedFor(p))) loadMine();
     }
     await removePlaylists(list.map((p) => p.id));
     logStep(`participant deleted (${plural(list.length, "playlist")})`);

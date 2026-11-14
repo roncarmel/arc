@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-14m";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-14n";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -78,6 +78,7 @@ function loadLibrary(force = false) {
     try {
       sharing.library = await sharingFetch("GET", "/library");
       sharing.libraryAt = Date.now();
+      applyOwnChanges();
       computeMoodIndex();
     } catch (err) { sharing.error = err.message; }
     sharing.loading = false;
@@ -86,6 +87,43 @@ function loadLibrary(force = false) {
     renderSharingCard();
   })();
   return libraryRead.then(startOverlapIfOpen);
+}
+// The worker keeps the library a minute (each copy of it its own), so a read just after this person shares, updates or stops sharing may not have it yet.
+// Their own change is put in the library here at once, and again over every library read for a little longer than that minute (Ron, 2026-11-14).
+const OWN_CHANGE_KEEP_MS = 75000;
+function ownShareChanged(id, share) {
+  sharing.ownChanges = (sharing.ownChanges || []).filter((c) => c.id !== id && Date.now() - c.at < OWN_CHANGE_KEEP_MS).concat([{ id, share, at: Date.now() }]);
+  applyOwnChanges();
+  computeMoodIndex();
+  renderSharing();
+  renderSharingCard();
+}
+function applyOwnChanges() {
+  const changes = (sharing.ownChanges || []).filter((c) => Date.now() - c.at < OWN_CHANGE_KEEP_MS);
+  sharing.ownChanges = changes;
+  for (const c of changes) {
+    if (sharing.library) {
+      const list = sharing.library.shares, at = list.findIndex((x) => x.id === c.id);
+      if (!c.share) { if (at >= 0) list.splice(at, 1); }
+      else if (at >= 0) list[at] = Object.assign({}, c.share, { sharedAt: list[at].sharedAt });   // an update keeps its place, newest shared first
+      else list.unshift(c.share);
+    }
+    if (sharing.counts) {
+      const ids = sharing.counts.ids.filter((x) => x !== c.id);
+      sharing.counts.ids = c.share ? [c.id].concat(ids) : ids;
+    }
+  }
+}
+// Arc's home card needs only which shares there are, not the library itself: until Music sharing opens, that is all that is read (GET /counts)
+let countsRead = null;
+function loadCounts() {
+  if (sharing.library || countsRead) return countsRead || Promise.resolve();
+  countsRead = (async () => {
+    try { sharing.counts = await sharingFetch("GET", "/counts"); applyOwnChanges(); } catch (err) { /* the card's line stays empty */ }
+    countsRead = null;
+    renderSharingCard();
+  })();
+  return countsRead;
 }
 function startOverlapIfOpen() {
   if (sharing.library && $("msOverlay") && !$("msOverlay").hidden) startOverlap();
@@ -97,12 +135,12 @@ function startOverlapIfOpen() {
 function renderSharingCard() {
   const card = $("msCard");
   if (!card) return;
-  const lib = sharing.library;
+  const ids = sharing.library ? sharing.library.shares.map((x) => x.id) : sharing.counts ? sharing.counts.ids : null;
   card.setAttribute("aria-disabled", String(!devMode()));
   const line = $("msCardText");
-  if (!lib) line.textContent = "";   // before the library arrives (or when it cannot be read) the line stays empty, keeping its height
+  if (!ids) line.textContent = "";   // before the counts arrive (or when they cannot be read) the line stays empty, keeping its height
   else {
-    const mine = lib.shares.filter(isMine).length, others = lib.shares.length - mine;
+    const mine = ids.filter((id) => isMine({ id })).length, others = ids.length - mine;
     putCounts(line, [mine, mine === 1 ? " share by you, " : " shares by you, ", others, " by others"]);   // always both, zeros too; "shares", not playlists, on purpose (decided by Ron, 2026-11-09)
   }
   if (typeof fitHomeLines === "function") fitHomeLines();
@@ -122,7 +160,7 @@ function startSharingCard() {
   if (!card) return;
   card.addEventListener("click", () => showView("sharing"));
   renderSharingCard();
-  if (pageName() === "app" && devMode()) loadLibrary();
+  if (pageName() === "app" && devMode()) loadCounts();
 }
 
 async function loadMine() {
@@ -1548,7 +1586,6 @@ async function updateShare(m) {
     trackCache.delete(p.id);   // the songs changed
     await sendShare(p, draftFromShare(m, p));
     await loadMine();
-    loadLibrary(true);
   } catch (err) { sharing.updateErrors[m.id] = err.message; }
   sharing.updating = null;
   renderSharing();
@@ -2082,7 +2119,6 @@ async function submitDraft(p) {
     d.sending = false;
     rememberBlock(p, null);
     await loadMine();
-    loadLibrary(true);
     if (f.mode === "edit") { if (backToDetail()) return; sharing.flow = null; renderSharing(); return; }
     countEvent("playlist-shared", d.kind);   // the type only
     sharing.flow = { mode: "done", name: shareName(p, d) };
@@ -2110,12 +2146,19 @@ async function sendShare(p, d) {
   const songs = tracks.map((t) => [String(t.uri).replace("spotify:track:", ""), t.key ? t.key.slice(5) : ""]);
   const names = tracks.map(songName);   // for the playlist's page; the worker sends them one playlist at a time
   const kind = d.kind;
-  await sharingFetch("POST", "/share", {
+  const sent = {
     playlist: p.id, snapshot: p.snapshot || null, name: shareName(p, d), by: d.anon ? null : (me && (me.display_name || me.id)) || null,
     kind, books: kind === "ceremony" ? [...d.books].sort((a, b) => a - b) : [], bookOther: kind === "ceremony" && d.books.has(OTHER_BOOK) ? cleanBookCode(d.bookOther) : "", phases: kind === "phase" ? [...d.phases].sort() : [], moods: kind === "mood" ? d.moods.slice() : [],
     other: kind === "other" ? cleanWord(d.other, SHARE_OTHER_MAX) : "", description: draftDescription(d, p), descSource: d.descSource,
     cover: p.cover || null, songs, names, ms, artists: topArtists(tracks.filter((t) => !SILENCE_URIS.has(t.uri))),
-  });
+  };
+  const done = await sharingFetch("POST", "/share", sent);
+  // the share as the library will have it (publicShare in the worker), put in at once (ownShareChanged); a hidden one stays out, as in the library
+  const now = Date.now();
+  const share = { id: done.id, name: sent.name, by: sent.by, kind, books: sent.books, bookOther: sent.bookOther, phases: sent.phases, moods: sent.moods, other: sent.other,
+    description: sent.description || "", cover: sent.cover, songs, count: songs.length, ms, avgMs: songs.length ? Math.round(ms / songs.length) : 0, artists: sent.artists, sharedAt: now, updatedAt: now };
+  ownShareChanged(done.id, done.hidden ? null : share);
+  return done;
 }
 // the page after Share now: a big check, what happened, and Share another playlist or Done
 function renderShared(body, foot) {
@@ -2154,12 +2197,12 @@ async function stopSharing(m) {
   const d = sharing.flow && sharing.flow.draft;
   try {
     await sharingFetch("DELETE", "/share/" + m.id);
+    ownShareChanged(m.id, null);
     sharing.flow = null;
     sharing.backTo = null;
     if (sharing.detail === m.id) sharing.detail = null;   // its page is gone with it
     renderSharing();
     await loadMine();
-    loadLibrary(true);
   } catch (err) { if (d) { d.problem = err.message; renderSharing(); } }
 }
 

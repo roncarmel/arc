@@ -39,6 +39,7 @@ export default {
       const id = url.pathname.split("/").pop();
       switch (route) {
         case "GET /library": return answer(await library(env), 200, cors);
+        case "GET /counts": return answer({ ids: (await library(env)).shares.map((s) => s.id) }, 200, cors);   // Arc's home card: which shares there are, nothing more
         case "GET /songs/:id": return answer(await songNames(env, id), 200, cors);
         case "GET /mine": return answer(await mine(env, await who(request, env)), 200, cors);
         case "POST /share": return answer(await share(env, await who(request, env), await body(request)), 200, cors);
@@ -118,11 +119,19 @@ function publicShare(r) {
     sharedAt: r.shared_at, updatedAt: r.updated_at,
   };
 }
+// The library is kept for a minute in this worker's memory, so many people opening Arc at once read the database once (each copy of the worker keeps its own).
+// A change made through this copy clears it at once; another copy may answer with the old library for up to a minute, which the page covers for its own changes.
+const LIBRARY_KEEP_MS = 60000;
+let kept = null;   // { at, data }
+const forgetLibrary = () => { kept = null; };
 async function library(env) {
+  if (kept && Date.now() - kept.at < LIBRARY_KEEP_MS) return kept.data;
   // the song names stay out: they are read one playlist at a time (songNames)
   const shares = await env.DB.prepare("SELECT id, name, shown_as, kind, books, book_other, phases, moods, other, description, cover, songs, song_count, total_ms, avg_ms, artists, shared_at, updated_at FROM shares WHERE hidden = 0 ORDER BY shared_at DESC").all();
   const words = await env.DB.prepare("SELECT word, hidden FROM words").all();
-  return { shares: shares.results.map(publicShare), words: Object.fromEntries(words.results.map((w) => [w.word, w.hidden])), at: Date.now() };
+  const data = { shares: shares.results.map(publicShare), words: Object.fromEntries(words.results.map((w) => [w.word, w.hidden])), at: Date.now() };
+  kept = { at: Date.now(), data };
+  return data;
 }
 // One playlist's songs as [title, artist, length in ms], in the order of its songs in the library; null for a share made before names were kept.
 async function songNames(env, id) {
@@ -222,6 +231,7 @@ async function share(env, whoId, d) {
         cover = excluded.cover, songs = excluded.songs, song_count = excluded.song_count, total_ms = excluded.total_ms, avg_ms = excluded.avg_ms, artists = excluded.artists, names = excluded.names, updated_at = excluded.updated_at`)
     .bind(id, whoId, playlist, text(d.snapshot, 100) || null, name, shown, kind, books, bookOther, phases, moods ? JSON.stringify(moods) : null, other, description || null, descSource,
       cover, JSON.stringify(songs), songs.length, ms, avg, JSON.stringify(artists), names ? JSON.stringify(names) : null, now, now).run();
+  forgetLibrary();
   return { id, updated: !!existing, hidden: !!(existing && existing.hidden) };
 }
 function newId() {
@@ -232,6 +242,7 @@ async function unshare(env, whoId, id) {
   const done = await env.DB.prepare("DELETE FROM shares WHERE id = ? AND owner = ?").bind(id, whoId).run();
   if (!done.meta.changes) throw new Refusal(404, "That shared playlist is not yours, or is already gone.");
   await env.DB.prepare("DELETE FROM reports WHERE share = ?").bind(id).run();
+  forgetLibrary();
   return { removed: id };
 }
 
@@ -251,6 +262,7 @@ async function report(env, whoId, d, url) {
   if (count >= LIMITS.hideAfterReports && s.hidden === 0) {
     await env.DB.prepare("UPDATE shares SET hidden = 1 WHERE id = ?").bind(id).run();
     hiddenNow = true;
+    forgetLibrary();
   }
   await emailReport(env, url, s, { reason, note, count, hiddenNow });
   return { reported: id };
@@ -315,6 +327,7 @@ async function signedLink(request, env, url) {
   if (request.method !== "POST") return page(`${a === "hide" ? "Hide" : "Keep showing"} ${name}?`, `<form method="post"><button style="font:inherit;padding:10px 18px">${a === "hide" ? "Hide it" : "Keep it shown"}</button></form>`);
   await env.DB.prepare("UPDATE shares SET hidden = ? WHERE id = ?").bind(a === "hide" ? 2 : 0, id).run();
   if (a === "show") await env.DB.prepare("DELETE FROM reports WHERE share = ?").bind(id).run();
+  forgetLibrary();
   return page(a === "hide" ? `${name} is hidden.` : `${name} is shown, and its reports are cleared.`);
 }
 
@@ -334,6 +347,7 @@ async function adminHide(env, _owner, id, d) {
   const done = await env.DB.prepare("UPDATE shares SET hidden = ? WHERE id = ?").bind(hidden, id).run();
   if (!done.meta.changes) throw new Refusal(404, "That shared playlist is gone.");
   if (!hidden) await env.DB.prepare("DELETE FROM reports WHERE share = ?").bind(id).run();
+  forgetLibrary();
   return { id, hidden };
 }
 async function adminWord(env, _owner, d) {
@@ -341,5 +355,6 @@ async function adminWord(env, _owner, d) {
   if (!word) throw new Refusal(400, "No word.");
   if (d.hidden === null) await env.DB.prepare("DELETE FROM words WHERE word = ?").bind(word).run();   // back to the app's own choice
   else await env.DB.prepare("INSERT INTO words (word, hidden) VALUES (?, ?) ON CONFLICT (word) DO UPDATE SET hidden = excluded.hidden").bind(word, d.hidden ? 1 : 0).run();
+  forgetLibrary();
   return { word, hidden: d.hidden === null ? null : !!d.hidden };
 }

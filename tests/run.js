@@ -109,7 +109,8 @@ function makeFetch(options = {}) {
       const path = new URL(url).pathname, body = init.body ? JSON.parse(init.body) : null;
       const kindOf = (s) => ({ kind: s.kind || "phase", books: s.books || [], bookOther: s.bookOther || "", phases: s.phases || [], moods: s.moods || [], other: s.other || "", description: s.description || "" });
       const out = (s) => ({ id: s.id, name: s.name, by: s.by || null, ...kindOf(s), cover: s.cover || null, songs: s.songs, count: s.songs.length, ms: s.ms, avgMs: s.ms / Math.max(1, s.songs.length), artists: s.artists || [], sharedAt: s.sharedAt, updatedAt: s.sharedAt });
-      if (method === "GET" && path === "/library") return json({ shares: sh.shares.filter((s) => !s.hidden).sort((a, b) => b.sharedAt - a.sharedAt).map(out), words: sh.words, at: Date.now() });
+      if (method === "GET" && path === "/counts") { sh.countReads = (sh.countReads || 0) + 1; return json({ ids: sh.shares.filter((s) => !s.hidden).sort((a, b) => b.sharedAt - a.sharedAt).map((s) => s.id) }); }
+      if (method === "GET" && path === "/library") { sh.libraryReads = (sh.libraryReads || 0) + 1; } if (method === "GET" && path === "/library") return json({ shares: sh.shares.filter((s) => !s.hidden).sort((a, b) => b.sharedAt - a.sharedAt).map(out), words: sh.words, at: Date.now() });
       if (method === "GET" && path.startsWith("/songs/")) { const s = sh.shares.find((x) => x.id === path.slice(7) && !x.hidden); sh.songReads = (sh.songReads || []).concat([{ id: path.slice(7), auth: (init.headers || {}).Authorization || null }]); return s ? json({ id: s.id, names: s.names || null }) : json({ error: "That shared playlist is gone." }, 404); }
       if (method === "GET" && path === "/admin/reports") { sh.ownerAsks = (sh.ownerAsks || 0) + 1; return sh.owner ? json({ shares: sh.adminReports || [] }) : json({ error: "Only the owner of the app can do that." }, 403); }
       if (method === "GET" && path === "/mine") return json({ shares: sh.shares.filter((s) => s.owner === "ron").map((s) => ({ id: s.id, playlist: s.playlist, snapshot: s.snapshot || null, name: s.name, by: s.by || null, ...kindOf(s), descSource: s.descSource || "mine", cover: s.cover || null, count: s.songs.length, ms: s.ms, sharedAt: s.sharedAt, updatedAt: s.sharedAt, hidden: !!s.hidden })) });
@@ -892,10 +893,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-14m" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-14n" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-14m/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-14n/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2966,7 +2967,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-14m", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-14n", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4751,17 +4752,18 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => /4 by others/.test(sc_d.getElementById("msCardText").textContent), 8000);
   check("the shared playlist library's card on Arc's home has three lines: its name, Bring some, get some!, and how many playlists others share, the number set apart", sc_d.querySelector("#msCard .hp-text > b").textContent === "Shared playlist library" && sc_d.querySelector("#msCard .hp-tag").textContent === "Bring some, get some!" && sc_d.getElementById("msCardText").textContent === "0 shares by you, 4 by others" && sc_d.querySelectorAll("#msCardText .hp-num")[1].textContent === "4" && !sc_d.querySelector("#msCard img") && !!sc_d.getElementById("msCard").closest("#homePage"));
   check("reading the library for the card starts no overlap reading while the popup is closed", sc_w.eval("sharing.overlap === null && !sharing.reading"));
+  check("home's card reads only which shares there are (/counts), not the library itself", sc_sh.countReads >= 1 && !sc_sh.libraryReads && !sc_w.eval("sharing.library"), JSON.stringify([sc_sh.countReads, sc_sh.libraryReads]));
   check("Arc's home, with the card, shows only on the app page's home view, and the builder's parts only in the builder", /html\.page-app\.view-home #homePage \{ display: block; \}/.test(Array.from(sc_d.querySelectorAll("style")).map((x) => x.textContent).join("")) && /html\.page-app:not\(\.view-builder\) #appSection > :is\(#builderHome, #recipePanelWrap, #editorNote, #buildRow/.test(Array.from(sc_d.querySelectorAll("style")).map((x) => x.textContent).join("")));
   check("on connecting, a device that never read the person's shares reads them once and keeps the list (none here), so later visits do not ask again", sc_w.localStorage.getItem("sharingMineIds") === "[]" && /let known = !!sharing\.mine;[\s\S]{0,400}if \(!known \|\| devMode\(\)\) loadMine\(\)/.test(fs.readFileSync(ROOT + "sharing.js", "utf8")));
   var sc_own = { words: {}, posts: [], deletes: [], reports: [], shares: sc_sh.shares.map((x, i) => Object.assign({}, x, i < 2 ? { owner: "ron", playlist: "p" + i } : {})) };
   var sc_o = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", devMode: "1" }, fetchOptions: { sharing: sc_own } });
   await waitFor(() => /^2 shares by you, 2/.test(sc_o.document.getElementById("msCardText").textContent), 8000);
   check("on a device that has never opened Music sharing, the person's own shares are read once on connecting and counted apart: Y shares by you, Z by others", sc_o.document.getElementById("msCardText").textContent === "2 shares by you, 2 by others" && sc_o.document.querySelectorAll("#msCardText .hp-num").length === 2 && JSON.parse(sc_o.localStorage.getItem("sharingMineIds")).sort().join() === "a,b", sc_o.document.getElementById("msCardText").textContent);
-  sc_w.eval("sharing.library.shares = sharing.library.shares.slice(0, 2); sharing.mine = [{ id: 'a' }, { id: 'b' }]; renderSharingCard()");
+  sc_w.eval("sharing.counts.ids = sharing.counts.ids.slice(0, 2); sharing.mine = [{ id: 'a' }, { id: 'b' }]; renderSharingCard()");
   check("only the person's own: the others' count is still there, at 0", sc_d.getElementById("msCardText").textContent === "2 shares by you, 0 by others");
-  sc_w.eval("sharing.library.shares = []; renderSharingCard()");
+  sc_w.eval("sharing.counts.ids = []; renderSharingCard()");
   check("none at all: both counts, at 0", sc_d.getElementById("msCardText").textContent === "0 shares by you, 0 by others");
-  sc_w.eval("sharing.mine = null; sharing.library = null; renderSharingCard()");
+  sc_w.eval("sharing.mine = null; sharing.library = null; sharing.counts = null; renderSharingCard()");
   check("before the library arrives (or when it cannot be read) the line is empty, keeping its height", sc_d.getElementById("msCardText").textContent === "" && /#homePage \.hp-data \{ min-height: 1\.35em; \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
   check("home is layout C: the welcome page's band, Your tools, and the builder's card of three lines, the last saying how many recipes are ready", !!sc_d.querySelector("#homePage > .wp-band .wp-band-icon") && sc_d.querySelector("#homePage .hp-sec").textContent === "Your tools" && sc_d.getElementById("homeRecipes").textContent === "1 recipe ready to build" && sc_d.querySelector("#homeRecipes .hp-num").textContent === "1" && sc_d.querySelector("#homeBuilder .hp-tag").textContent === "Ceremony playlists, ready in seconds" && sc_d.querySelectorAll("#homePage .hp-tool .hp-line").length === 6, sc_d.getElementById("homeRecipes").textContent);
   sc_d.getElementById("formats").value = "RECIPES = {}"; sc_w.eval("syncEditorFromText()");
@@ -4998,6 +5000,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => !!ms_d.querySelector("#msFlowBody .ms-shared"), 5000);
   check("a share is counted with its type only", JSON.stringify(ms_w.__counts.map((e) => [e.path, e.title])) === JSON.stringify([["playlist-shared", "ceremony"]]));
   var ms_post = ms_sh.posts[ms_sh.posts.length - 1];
+  check("the new share is in the library at once, as the worker will have it, without reading the library again", ms_w.eval("(() => { const s = sharing.library.shares[0]; return s.name === '💗💗 evocative' && s.kind === 'ceremony' && s.count === 130 && s.by === null && s.description === 'Long and quiet.'; })()"), ms_w.eval("JSON.stringify(sharing.library.shares[0]).slice(0, 200)"));
   check("Share sends the type, its books, the description, anonymous, and the songs with their names", ms_post.playlist === "p3" && ms_post.kind === "ceremony" && JSON.stringify(ms_post.books) === "[0,2,5]" && ms_post.bookOther === "BW" && ms_post.description === "Long and quiet." && ms_post.descSource === "mine" && ms_post.by === null && ms_post.songs.length === 130 && ms_post.names.length === 130 && !("tags" in ms_post));
   check("then a page says it is shared, with Share another playlist and Done", /💗💗 evocative is shared/.test(ms_d.getElementById("msFlowBody").textContent) && /Other facilitators can find it in Shared by others now\./.test(ms_d.getElementById("msFlowBody").textContent) && ms_d.getElementById("msFlowMain").textContent === "Share another playlist" && !!ms_d.getElementById("msDone"));
   ms_d.getElementById("msDone").click();
@@ -5053,12 +5056,18 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("when the sign-in has run out, Music sharing renews it and sends again with the new one", ms_w.eval("!!sharing.mine && !sharing.mineError") && ms_opts.renewals >= 1, ms_w.eval("sharing.mineError"));
   ms_sh.staleToken = false;
   await ms_openEdit();
+  var ms_gone = ms_sh.shares.find((s) => s.playlist === "p3"), ms_reads = ms_sh.libraryReads;
   ms_d.getElementById("msStop").click();
   await waitFor(() => !!ms_d.getElementById("feSyncChoice1"), 3000);
   check("Stop sharing asks first, saying copies others got stay theirs", /Copies others already got stay theirs\./.test(ms_d.getElementById("feSyncChoice1").closest(".fe-dialog").textContent) && ms_d.getElementById("feSyncChoice1").textContent === "Stop sharing" && ms_d.getElementById("feSyncChoice1").classList.contains("fe-danger-button"));
   ms_d.getElementById("feSyncChoice1").click();
   await waitFor(() => ms_sh.deletes.length === 1 && ms_d.querySelectorAll("#msBody .ms-yours-list > *").length === 1, 5000);
   check("and stops sharing it", ms_sh.shares.every((s) => s.playlist !== "p3"));
+  check("the library drops it at once, without reading the library again", ms_sh.libraryReads === ms_reads && !ms_w.eval("sharing.library.shares.some((s) => s.id === " + JSON.stringify(ms_gone.id) + ")"));
+  ms_sh.shares.push(ms_gone);   // a copy of the worker that still keeps the library from before
+  await ms_w.eval("loadLibrary(true)");
+  check("a library read within the next minute that still has it does not bring it back", !ms_w.eval("sharing.library.shares.some((s) => s.id === " + JSON.stringify(ms_gone.id) + ")"));
+  ms_sh.shares.splice(ms_sh.shares.indexOf(ms_gone), 1);
   ms_sh.refuse = { error: "x", code: "copy", percent: 93, of: "Forest floor" };
   ms_d.getElementById("msShareRow").click();
   ms_d.getElementById("msPickCard").click();
@@ -5490,7 +5499,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-14m"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-14n"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
