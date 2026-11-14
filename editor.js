@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14n";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14p";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2595,14 +2595,16 @@ function recipeRow(f, share) {
   const title = f.title.trim() || "Untitled";
   // in developer mode the row opens like a participant's (Ron, 2026-11-14, mockups/recipe-open B1): a chevron in place of the pencil, which moves inside
   const opens = devMode(), open = opens && builderHome.recipe === f.id;
+  const toggle = () => setRecipeOpen(builderHome.recipe === f.id ? null : f.id);
   const icons = feEl("span", { class: "bh-icons" },
-    opens ? rowIcon(BH_CHEVRON, `${title}'s playlists`, () => setRecipeOpen(builderHome.recipe === f.id ? null : f.id), "bh-open-btn", { "aria-expanded": String(open) })
+    opens ? rowIcon(BH_CHEVRON, `${title}'s playlists`, toggle, "bh-open-btn", { "aria-expanded": String(open) })
       : rowIcon(BH_PEN, `Edit ${title}`, () => openRecipePanel(f.id)),
     rowIcon(BH_SPARK, buildWord(), () => buildRecipe(f.id), "bh-build", { "data-id": f.id }));
-  // only its buttons act: the row itself is not tappable (Ron, 2026-11-12)
+  // outside developer mode only its buttons act (Ron, 2026-11-12); in developer mode a tap on the row outside its open list toggles it, like a participant's head, with no hover look (Ron, 2026-11-14)
   // the recipe icon (the panel heading's), lined up with the name and length, over the bar (Ron, 2026-11-12)
   const art = $("rpIcon") && $("rpIcon").querySelector("svg");
-  const row = feEl("div", { class: "bh-row bh-recipe" + (open ? " bh-open" : ""), "data-id": f.id },
+  const row = feEl("div", { class: "bh-row bh-recipe" + (opens ? " bh-ropens" : "") + (open ? " bh-open" : ""), "data-id": f.id,
+    onClick: opens ? (event) => { if (!event.target.closest(".bh-plist, button, a, input")) toggle(); } : undefined },
     art ? feEl("span", { class: "bh-ricon", "aria-hidden": "true" }, art.cloneNode(true)) : null,
     feEl("span", { class: "bh-text" },
       feEl("span", { class: "bh-name", text: f.title.trim() || "Untitled" }),
