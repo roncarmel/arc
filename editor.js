@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14g";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14h";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2385,7 +2385,7 @@ function blankSegmentReport(keys) {
 // ---------------------------------------------------------------- the builder's landing (decided by Ron, 2026-11-12, mockups/client-builder.html A1)
 // The builder opens on a list of recipes, each with its shape and a Build button, and New recipe first. A recipe opens in a panel over it (below). Beside Recipes,
 // Participants: one playlist at a time for one person, with the songs they have not heard first. Outside developer mode that half is greyed with Soon.
-const builderHome = { tab: "recipes", person: null };
+const builderHome = { tab: "recipes", person: null, recipe: null };
 
 const BH_SPARK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 2l1.8 5.6L17.5 9.5l-5.7 1.9L10 17l-1.8-5.6L2.5 9.5l5.7-1.9z"/><path d="M18 13l.9 2.6 2.6.9-2.6.9L18 20l-.9-2.6-2.6-.9 2.6-.9z"/></svg>';
 // Spotify's mark in the accent with its bars cut out (evenodd, so no mask id to share), where a participant's playlist opens in Spotify (Ron, 2026-11-13, mockups/spotify-mark D)
@@ -2593,19 +2593,68 @@ function recipeRow(f, share) {
   const bar = feEl("span", { class: "bh-shape", "aria-hidden": "true", style: `width:${Math.max(share, 0.02) * 100}%` },
     ...shape.pieces.map((p) => feEl("span", { class: p.silence ? "bh-quiet" : undefined, style: p.style })));
   const title = f.title.trim() || "Untitled";
+  // in developer mode the row opens like a participant's (Ron, 2026-11-14, mockups/recipe-open B1): a chevron in place of the pencil, which moves inside
+  const opens = devMode(), open = opens && builderHome.recipe === f.id;
   const icons = feEl("span", { class: "bh-icons" },
-    rowIcon(BH_PEN, `Edit ${title}`, () => openRecipePanel(f.id)),
+    opens ? rowIcon(BH_CHEVRON, `${title}'s playlists`, () => setRecipeOpen(builderHome.recipe === f.id ? null : f.id), "bh-open-btn", { "aria-expanded": String(open) })
+      : rowIcon(BH_PEN, `Edit ${title}`, () => openRecipePanel(f.id)),
     rowIcon(BH_SPARK, buildWord(), () => buildRecipe(f.id), "bh-build", { "data-id": f.id }));
   // only its buttons act: the row itself is not tappable (Ron, 2026-11-12)
   // the recipe icon (the panel heading's), lined up with the name and length, over the bar (Ron, 2026-11-12)
   const art = $("rpIcon") && $("rpIcon").querySelector("svg");
-  const row = feEl("div", { class: "bh-row bh-recipe", "data-id": f.id },
+  const row = feEl("div", { class: "bh-row bh-recipe" + (open ? " bh-open" : ""), "data-id": f.id },
     art ? feEl("span", { class: "bh-ricon", "aria-hidden": "true" }, art.cloneNode(true)) : null,
     feEl("span", { class: "bh-text" },
       feEl("span", { class: "bh-name", text: f.title.trim() || "Untitled" }),
       (!unsaved && recipeSavedLine(f.id)) || feEl("span", { class: "bh-sub" + (unsaved ? " bh-unsaved" : ""), text: unsaved ? "Unsaved changes" : length })),
     icons, bar);   // the buttons at the top right beside the name, the bar the full width under them (Ron, 2026-11-12, mockups/icons-top J1)
+  if (open) row.appendChild(recipePlaylistsBox(f));
   return row;
+}
+// One recipe row open at a time; opening unfolds its playlists, and the bar hides while they show (they say the same, in full)
+function setRecipeOpen(id) {
+  const was = builderHome.recipe;
+  builderHome.recipe = id;
+  const rowOf = (x) => (x ? document.querySelector(`#bhRecipes .bh-recipe[data-id="${x}"]`) : null);
+  const old = rowOf(was), next = rowOf(id);
+  if (old && was !== id) {
+    old.classList.remove("bh-open");
+    old.querySelector(".bh-open-btn").setAttribute("aria-expanded", "false");
+    const list = old.querySelector(".bh-plist");
+    if (list) { revealSmoothly(list, false); list.classList.add("bh-plist-gone"); }
+  }
+  if (!next || was === id) return;
+  const f = editor.model && editor.model.formats.find((x) => x.id === id);
+  if (!f) return;
+  next.classList.add("bh-open");
+  next.querySelector(".bh-open-btn").setAttribute("aria-expanded", "true");
+  next.querySelectorAll(".bh-plist").forEach((l) => l.remove());
+  const list = recipePlaylistsBox(f);
+  list.hidden = true;
+  next.appendChild(list);
+  revealSmoothly(list, true);
+}
+// An open recipe: each segment's playlist on a line (Ron, 2026-11-14, B1): a pink bar, its cover, its name with the minutes under it (or why it can't be shared),
+// and Share; then Edit recipe, a pink button at the lower right. Silences are left out.
+function recipePlaylistsBox(f) {
+  const box = feEl("div", { class: "bh-plist bh-rlist" });
+  for (const item of f.items) {
+    const mixed = item.lists.length > 1;
+    for (const l of item.lists) {
+      const p = (playlists || []).find((x) => (l.id ? x.id === l.id : normName(x.name) === normName(l.name))) || null;
+      const why = !l.name ? "" : typeof shareBlockReason === "function" ? shareBlockReason(p) : "";
+      const minutes = `${Math.round(item.minutes * 10) / 10} min${mixed ? ", mixed" : ""}`;
+      const text = feEl("span", { class: "bh-pl-text" }, feEl("span", { class: "bh-pl-name", text: l.name || "No playlist yet" }), feEl("span", { class: "bh-pl-under", text: why || minutes }));
+      const cover = feEl("span", { class: "bh-cover", style: p && p.image ? `background-image:url("${p.image}")` : "" });
+      box.appendChild(feEl("div", { class: "bh-pl bh-pl-split bh-rseg" + (l.name ? "" : " bh-rseg-empty") },
+        feEl("span", { class: "bh-rmark", "aria-hidden": "true" }),
+        p ? feEl("a", { class: "bh-pl-main", href: `https://open.spotify.com/playlist/${p.id}`, target: "_blank", rel: "noopener" }, cover, text) : feEl("span", { class: "bh-pl-main" }, cover, text),
+        l.name ? shareIconButton(p || { id: "", name: l.name }, why) : null));
+    }
+  }
+  box.appendChild(feEl("div", { class: "bh-redit-foot" },
+    feEl("button", { type: "button", class: "bh-redit", id: "bhEditRecipe-" + f.id, onClick: () => openRecipePanel(f.id) }, bhSvg(BH_PEN), feEl("span", { text: "Edit recipe" }))));
+  return box;
 }
 
 // The landing's row buttons are icons only (Ron, 2026-11-12, mockups/row-icons G): a grey pencil, and Build as a white sparkle on a pink circle.
@@ -2985,6 +3034,7 @@ function askDeleteParticipant(code) {
   const person = participantList().find((p) => p.code === code);
   if (!person || !person.playlists.length) return;
   const n = person.playlists.length;
+  const shared = typeof sharedFor === "function" ? person.playlists.filter((p) => sharedFor(p)) : [];
   const close = () => { overlay.remove(); document.removeEventListener("keydown", onKey); };
   const onKey = (event) => { if (event.key === "Escape") close(); };
   const cancel = feEl("button", { type: "button", id: "bhDeleteCancel", onClick: close }, "Cancel");
@@ -2999,12 +3049,14 @@ function askDeleteParticipant(code) {
   const list = feEl("div", { class: "bh-plist bh-del-list" }, ...person.playlists.map((p) => feEl("div", { class: "bh-pl" },
     feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }),
     feEl("span", { class: "bh-pl-name", text: nameWithoutCode(p.name, code) }),
-    feEl("span", { class: "bh-pl-sub", text: p.count === null || p.count === undefined ? "" : `${p.count} songs` }))));
+    feEl("span", { class: "bh-pl-sub", text: shared.includes(p) ? "Shared" : p.count === null || p.count === undefined ? "" : `${p.count} songs` }))));
   const overlay = feEl("div", { class: "fe-overlay", id: "bhDeleteDialog", onClick: close },
     feEl("div", { class: "fe-dialog bh-del-dialog", role: "dialog", "aria-modal": "true", "aria-label": `Delete ${code}`, onClick: (e) => e.stopPropagation() },
       feEl("h3", { text: `Delete ${code}?` }),
       feEl("p", { class: "bh-del-text", text: `${code} is here because of the ${n === 1 ? "playlist" : n + " playlists"} Arc built for them. Deleting ${code} also deletes ${n === 1 ? "that playlist" : "those playlists"} from your Spotify.` }),
       list,
+      // shared ones stop being shared first (Ron, 2026-11-14): the library never points at a playlist that is gone
+      shared.length ? feEl("p", { class: "bh-del-text bh-del-shared", id: "bhDeleteShared", text: `${shared.length === 1 ? "1 of them is" : shared.length + " of them are"} in the shared playlist library and will stop being shared. Copies others got stay theirs.` }) : null,
       feEl("div", { class: "row bh-del-buttons" }, confirm, cancel)));
   document.body.appendChild(overlay);
   document.addEventListener("keydown", onKey);
@@ -3018,6 +3070,14 @@ function buildNextFor(code) {
   pickRecipeFor(code);
 }
 
+// Share on a playlist's line in the builder (Ron, 2026-11-14): the upload icon in the app's grey circle; one that can't be shared is faded, its label saying why.
+// Only while Music sharing is in developer mode.
+function shareIconButton(p, why = typeof shareBlockReason === "function" ? shareBlockReason(p) : "") {
+  if (!devMode() || typeof shareFromBuilder !== "function") return null;
+  return feEl("button", { type: "button", class: "bh-share", disabled: !!why, "aria-label": why ? `Can't be shared: ${why}` : "Share in the playlist library", title: why || "Share in the playlist library",
+    onClick: (e) => { e.preventDefault(); e.stopPropagation(); shareFromBuilder(p.id); } }, feIcon("upload"));
+}
+
 // Their playlists, one line each: the cover, the name without their code, and Spotify's mark (no song count: it left the name no room); the one being built first, or what stopped it
 function personPlaylists(person) {
   const code = person.code;
@@ -3027,11 +3087,21 @@ function personPlaylists(person) {
   if (mine && mine.state === "now") box.appendChild(personBuildRow(mine));
   for (const p of person.playlists) {
     const isNew = mine && mine.state === "done" && mine.id === p.id;
-    box.appendChild(feEl("a", { class: "bh-pl" + (isNew ? " pp-new" : ""), href: `https://open.spotify.com/playlist/${p.id}`, target: "_blank", rel: "noopener" },
+    const href = `https://open.spotify.com/playlist/${p.id}`;
+    // the open mark (or Open) sits under the row's chevron, in one column with the trash (Ron, 2026-11-13)
+    const mark = isNew ? feEl("span", { class: "pp-open" }, bhSvg(BH_OPEN), feEl("span", { text: "Open" })) : bhSvg(BH_OPEN);
+    const share = shareIconButton(p);
+    // with Share (Ron, 2026-11-14) the line is a link, the button, then the mark as a link of its own: a button can't sit inside a link
+    if (share) box.appendChild(feEl("div", { class: "bh-pl bh-pl-split" + (isNew ? " pp-new" : "") },
+      feEl("a", { class: "bh-pl-main", href, target: "_blank", rel: "noopener" },
+        feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }),
+        feEl("span", { class: "bh-pl-name", text: nameWithoutCode(p.name, code) })),
+      share,
+      feEl("a", { class: "bh-pl-end", href, target: "_blank", rel: "noopener", "aria-label": "Open in Spotify" }, mark)));
+    else box.appendChild(feEl("a", { class: "bh-pl" + (isNew ? " pp-new" : ""), href, target: "_blank", rel: "noopener" },
       feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }),
       feEl("span", { class: "bh-pl-name", text: nameWithoutCode(p.name, code) }),
-      // the open mark (or Open) sits under the row's chevron, in one column with the trash (Ron, 2026-11-13)
-      feEl("span", { class: "bh-pl-end" }, isNew ? feEl("span", { class: "pp-open" }, bhSvg(BH_OPEN), feEl("span", { text: "Open" })) : bhSvg(BH_OPEN))));
+      feEl("span", { class: "bh-pl-end" }, mark)));
   }
   // Heard before (Ron, 2026-11-13, mockups/earlier-playlists 4): under a small heading, faded covers and grey names, each linking to Spotify;
   // one Spotify no longer has says so in place of the mark

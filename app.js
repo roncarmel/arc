@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-14g";
+const APP_VERSION = "2026-11-14h";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -290,6 +290,14 @@ function showView(view, push = true) {
   if ((was === "home" || view === "home") && slideHome(view === "home", () => switchView(was, view, push))) return;
   switchView(was, view, push);
 }
+// Runs something once a view is in place: a slide between tools calls switchView later, and opening Music sharing starts it afresh, so what goes on
+// in the new view (Share from the builder opening the form) waits for it
+let afterSwitch = null;
+function showViewThen(view, then) {
+  afterSwitch = then;
+  showView(view);
+  if (appView === view && afterSwitch === then) { afterSwitch = null; then(); }
+}
 function switchView(was, view, push, sharingTab = "find") {
   appView = view;
   if (was === "sharing" && typeof closeSharing === "function") closeSharing();
@@ -304,6 +312,7 @@ function switchView(was, view, push, sharingTab = "find") {
   if (view === "sharing") { placeSharingPage(); openSharing(sharingTab); }
   if (view === "home") { renderHomeRecipes(); alignWelcomeIcons(); }   // drawn while hidden, the band's icon measured nothing
   placeDevPill();
+  if (afterSwitch) { const then = afterSwitch; afterSwitch = null; then(); }
 }
 // Builder and Music sharing as if stacked: to sharing the builder goes up half a screen as it fades and sharing rises half a screen into place; back the other way.
 // View Transitions with Arc's bar named (vt-tools in index.html), so only the tool below it moves. Not under reduced motion or without View Transitions.
@@ -4223,6 +4232,13 @@ async function deleteParticipant(code, list) {
   if (!list || !list.length || busy) return;
   setBusy(true);
   try {
+    // shared ones stop being shared first; if that fails, nothing is deleted, so the library never points at a playlist that is gone (Ron, 2026-11-14)
+    if (typeof loadMine === "function" && typeof sharedFor === "function" && devMode()) {
+      await loadMine();
+      if (sharing.mineError) throw new Error(`Arc could not check which of ${code}'s playlists are shared: ${sharing.mineError}`);
+      for (const p of list) { const m = sharedFor(p); if (m) await sharingFetch("DELETE", "/share/" + m.id); }
+      if (list.some((p) => sharedFor(p))) { loadMine(); loadLibrary(true); }
+    }
     await removePlaylists(list.map((p) => p.id));
     logStep(`participant deleted (${plural(list.length, "playlist")})`);
     if (builderHome.person === code) builderHome.person = null;

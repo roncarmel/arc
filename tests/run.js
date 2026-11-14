@@ -12,7 +12,7 @@ function pressBuild(w) {
   if (tiles && !w.document.getElementById("bdPick").hidden && !tiles.querySelector('[aria-checked="true"]') && tiles.lastElementChild) tiles.lastElementChild.click();
   w.document.getElementById("confirmYes").click();
 }
-const SECTION_NAMES = ["builder landing and participants", "launch screen", "sharing card in the editor", "music sharing", "music sharing songs", "developer options", "menu popups and the silence help", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version line", "welcome recipe link", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "popups close only", "narrow more button", "the silence card", "backup link in step 2", "spotify premium", "python status at the bottom", "questions and feedback", "settings below the segments, pink outline", "the tagline", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'fading and Close in the Create popup', 'tabs that scroll sideways', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
+const SECTION_NAMES = ["builder landing and participants", "launch screen", "sharing card in the editor", "music sharing", "sharing what arc built", "music sharing songs", "developer options", "menu popups and the silence help", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version line", "welcome recipe link", "spotify row", "notice line", "backup popup", "backup card done", "backup wording", "connecting state", "connecting screen", "save retry online", "backup switching", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "backup method", "save packer", "playlist ids", "description test", "popups close only", "narrow more button", "the silence card", "backup link in step 2", "spotify premium", "python status at the bottom", "questions and feedback", "settings below the segments, pink outline", "the tagline", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'fading and Close in the Create popup', 'tabs that scroll sideways', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
 // areas that need another area's setup to have run first
 const NEEDS = {
   "the page's styles for tags and phones": ["silences, dragging and removing"],
@@ -892,10 +892,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-14g" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-14h" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-14g/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-14h/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats (the only checkbox in Remove built playlists is the remove toggle)", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq) && !rp.document.querySelector('#removeSection input[type="checkbox"]:not(#removeToggle)'));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2966,7 +2966,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-14g", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-14h", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -5023,8 +5023,15 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("Update sends the new type and its words, and goes back to the playlist's page", ms_post.kind === "mood" && JSON.stringify(ms_post.moods) === '["deep calm"]' && JSON.stringify(ms_post.books) === "[]" && ms_w.eval("!!sharing.detail && sharing.tab === 'share'"));
   ms_d.getElementById("msPopClose").click();
   await waitFor(() => !!ms_yrow(), 3000);
-  ms_w.eval("playlists.find((p) => p.id === 'p3').snapshot = 'changed'; sharing.mine[0].snapshot = 'before'; renderSharing();");
-  check("a share changed in Spotify since it was shared gets a strip with Update", /Changed in Spotify since you shared it/.test(ms_d.querySelector("#msBody .ms-strip").textContent));
+  // a new snapshot with the same songs (a new name or description) is not a change; new songs are (Ron, 2026-11-14)
+  await ms_w.eval("loadTracks('p3').then((t) => { const s = sharing.library.shares.find((x) => x.id === sharing.mine[0].id); if (s) s.songs = t.map((x) => [String(x.uri).replace('spotify:track:', ''), '']).filter(([id]) => /^[A-Za-z0-9]{10,40}$/.test(id)); })");
+  ms_w.eval("playlists.find((p) => p.id === 'p3').snapshot = 'renamed'; sharing.mine[0].snapshot = 'before'; renderSharing();");
+  await waitFor(() => ms_w.eval("!!(sharing.changeChecks && sharing.changeChecks[sharing.mine[0].id] && 'changed' in sharing.changeChecks[sharing.mine[0].id])"), 3000);
+  await new Promise((r) => setTimeout(r, 200));
+  check("a share whose playlist has a new snapshot but the same songs (a new name or description) gets no strip", ms_w.eval("!!sharing.library.shares.find((x) => x.id === sharing.mine[0].id)") && !ms_d.querySelector("#msBody .ms-strip"));
+  ms_w.eval("playlists.find((p) => p.id === 'p3').snapshot = 'changed'; sharing.library.shares.find((x) => x.id === sharing.mine[0].id).songs = [['zzzzzzzzzzzzzzzzzzzzzz', '']]; renderSharing();");
+  await waitFor(() => !!ms_d.querySelector("#msBody .ms-strip"), 3000);
+  check("a share whose songs changed in Spotify since it was shared gets a strip with Update", /Changed in Spotify since you shared it/.test(ms_d.querySelector("#msBody .ms-strip").textContent));
   ms_d.querySelector("#msBody .ms-stripbtn").click();
   await waitFor(() => ms_sh.posts.length === 3, 5000);
   check("Update there shares it again with the same details", ms_sh.posts[2].kind === "mood" && JSON.stringify(ms_sh.posts[2].moods) === '["deep calm"]' && ms_sh.posts[2].snapshot === "changed");
@@ -5062,6 +5069,77 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ms_sh.refuse = null;
   ms_w.close();
   } catch (err) { areaCrashed("music sharing", err); }
+  }
+
+  if (want("sharing what arc built")) { try {
+  // ================================================================ sharing what Arc built (Ron, 2026-11-14): a participant's playlist as a Ceremony under a title of
+  // its own, a recipe's playlist starting as a Phase, Share in the builder (recipe rows that open, a participant's playlists), silences, and deleting a shared participant
+  var sb_sh = { shares: [], words: {}, posts: [], deletes: [], reports: [] };
+  var sb_silence = { track: { uri: "spotify:track:5kiJ9x6eX37H5J9lyyXkua", type: "track", duration_ms: 60000, name: "Silence", artists: [{ name: "Arc" }] } };
+  TRACKS.q1 = TRACKS.p2.slice(0, 6).concat([sb_silence], TRACKS.p4.slice(0, 6));
+  var sb_opts = { sharing: sb_sh, extraPlaylists: [{ id: "q1", name: "MC · mini · 3 Oct", owner: { id: "ron" }, description: "Made by Arc. Do not edit this description. For participant MC. Built 3 Oct 2026. " + packedFor("mini") }] };
+  var sb = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", devMode: "1" }, fetchOptions: sb_opts });
+  await waitFor(() => sb.eval("connection") === "ready", 15000);
+  var sb_d = sb.document;
+  sb.eval("showView('builder', false)");
+  await waitFor(() => !!sb_d.querySelector('#bhRecipes .bh-recipe[data-id="mini"]'), 5000);
+  var sb_row = () => sb_d.querySelector('#bhRecipes .bh-recipe[data-id="mini"]');
+  check("in developer mode a recipe's row has a chevron in place of the pencil, beside Build", !!sb_row().querySelector(".bh-icons .bh-open-btn") && sb_row().querySelector(".bh-icons .bh-open-btn").getAttribute("aria-expanded") === "false" && !sb_row().querySelectorAll(".bh-icons .bh-ib:not(.bh-open-btn):not(.bh-build)").length);
+  sb_row().querySelector(".bh-open-btn").click();
+  await new Promise((r) => setTimeout(r, 50));
+  check("open, it lists each segment's playlist with a pink mark, its minutes and Share, hides the bar, and ends with Edit recipe", (() => { const r = sb_row(), lines = r.querySelectorAll(".bh-rlist .bh-rseg"); return r.classList.contains("bh-open") && lines.length === 2 && lines[0].querySelector(".bh-rmark") && lines[0].querySelector(".bh-pl-name").textContent === "💗 spacious + gentle" && lines[0].querySelector(".bh-pl-under").textContent === "30 min" && !!lines[0].querySelector(".bh-share:not(:disabled)") && sb.getComputedStyle(r.querySelector(".bh-shape")).display === "none" && !!r.querySelector("#bhEditRecipe-mini"); })());
+  sb_d.getElementById("bhEditRecipe-mini").click();
+  await waitFor(() => !!sb_d.getElementById("recipePanelWrap") && !sb_d.getElementById("recipePanelWrap").hidden, 3000);
+  check("Edit recipe opens the recipe panel", !!sb_d.getElementById("recipePanelWrap") && !sb_d.getElementById("recipePanelWrap").hidden);
+  sb.eval("closeRecipePanel()");
+  sb.eval("chooseBuilderTab('people')");
+  sb.eval("setPersonOpen('MC')");
+  await new Promise((r) => setTimeout(r, 50));
+  check("a participant's open row has Share on each of their playlists, beside Spotify's mark", (() => { const line = sb_d.querySelector('#bhPeople [data-code="MC"] .bh-plist > .bh-pl:not(.hb-row)'); return !!line && !!line.querySelector(".bh-share:not(:disabled)") && !!line.querySelector("a.bh-pl-main") && !!line.querySelector("a.bh-pl-end"); })());
+  sb_d.querySelector('#bhPeople [data-code="MC"] .bh-share').click();
+  await waitFor(() => sb.eval("!!(sharing.flow && sharing.flow.draft && sharing.flow.draft.playlist === 'q1')") && !!sb_d.getElementById("msKindFixed"), 5000);
+  check("Share opens Music sharing's form with that playlist, its type fixed as a Ceremony and said why, with no tiles", sb.eval("appView") === "sharing" && sb.eval("sharing.flow.draft.kind") === "ceremony" && /Arc built this for a participant, so it.s a whole ceremony\./.test(sb_d.getElementById("msKindFixed").textContent) && !sb_d.querySelector("#msFlowBody .ms-ktile"));
+  check("its name starts as its recipe's name, with a pencil, and its Spotify description is never offered", sb_d.querySelector("#msCardPreview .ms-name-text").textContent === "mini" && !!sb_d.getElementById("msTitlePen") && !sb_d.getElementById("msDescSpotify"));
+  sb_d.getElementById("msPickCard").click();
+  check("in the list of playlists, Arc's for participants are under Built for participants, named without the code", !!sb_d.getElementById("msPickBuilt") && sb_d.getElementById("msPickBuilt").textContent === "Built for participants" && sb_d.getElementById("msPick-q1").querySelector(".ms-name").textContent === "mini · 3 Oct");
+  sb_d.getElementById("msPickCard").click();
+  sb_d.getElementById("msTitlePen").click();
+  (() => { const t = sb_d.getElementById("msTitle"); t.value = "Night journey"; t.dispatchEvent(new sb.window.Event("input")); t.dispatchEvent(new sb.window.KeyboardEvent("keydown", { key: "Enter", bubbles: true })); })();
+  check("the pencil turns the name into a field, and Enter keeps what was typed", sb_d.querySelector("#msCardPreview .ms-name-text").textContent === "Night journey" && sb.eval("sharing.flow.draft.title") === "Night journey");
+  sb_d.querySelector('#msFlowBody .ms-btile').click();
+  (() => { const t = sb_d.getElementById("msDesc"); t.value = "A night ceremony."; t.dispatchEvent(new sb.window.Event("input")); })();
+  sb_d.getElementById("msFlowMain").click();
+  await waitFor(() => sb_sh.posts.length === 1, 5000);
+  check("shared, it goes under that name as a Ceremony, the silence kept in its songs", sb_sh.posts[0].name === "Night journey" && sb_sh.posts[0].kind === "ceremony" && sb_sh.posts[0].songs.some(([id]) => id === "5kiJ9x6eX37H5J9lyyXkua") && !sb_sh.posts[0].artists.includes("Arc"));
+  check("a share's song count and list leave out silences", sb.eval("musicCount({ songs: [['5kiJ9x6eX37H5J9lyyXkua', ''], ['abc', '']] })") === 1);
+  // a recipe's playlist starts as a Phase, and changing it asks first
+  sb.eval("sharing.flow = null; showView('builder', false); chooseBuilderTab('recipes')");
+  await new Promise((r) => setTimeout(r, 50));
+  sb.eval("shareFromBuilder('p2')");
+  await waitFor(() => sb.eval("!!(sharing.flow && sharing.flow.draft && sharing.flow.draft.playlist === 'p2')"), 5000);
+  check("a playlist in one of the person's recipes starts as a Phase, with the tiles and nothing under them about why", sb.eval("sharing.flow.draft.kind") === "phase" && !!sb_d.querySelector('#msFlowBody .ms-ktile[data-kind="phase"]') && !/Chosen because/.test(sb_d.getElementById("msFlowBody").textContent));
+  sb_d.querySelector('#msFlowBody .ms-ktile[data-kind="mood"]').click();
+  await waitFor(() => !!sb_d.getElementById("feSyncChoice1"), 3000);
+  check("changing it asks: Change playlist type?, why Arc chose Phase, Keep Phase or Change to Mood", /Change playlist type\?/.test(sb_d.body.textContent) && /is in your recipe .*mini.*, so Arc set its type to Phase\. Change it to Mood\? The type tells others how the playlist is meant to be used\./.test(sb_d.body.textContent) && sb_d.getElementById("feSyncChoice0").textContent === "Keep Phase" && sb_d.getElementById("feSyncChoice1").textContent === "Change to Mood");
+  sb_d.getElementById("feSyncChoice0").click();
+  await new Promise((r) => setTimeout(r, 20));
+  check("Keep Phase leaves it a Phase", sb.eval("sharing.flow.draft.kind") === "phase");
+  sb_d.querySelector('#msFlowBody .ms-ktile[data-kind="mood"]').click();
+  await waitFor(() => !!sb_d.getElementById("feSyncChoice1"), 3000);
+  sb_d.getElementById("feSyncChoice1").click();
+  await new Promise((r) => setTimeout(r, 20));
+  check("Change to Mood changes it", sb.eval("sharing.flow.draft.kind") === "mood");
+  // deleting a participant with a shared playlist: it stops being shared first
+  sb.eval("sharing.flow = null; showView('builder', false); chooseBuilderTab('people')");
+  await sb.eval("loadMine()");
+  sb.eval("askDeleteParticipant('MC')");
+  check("deleting a participant with a shared playlist says it will stop being shared", !!sb_d.getElementById("bhDeleteShared") && /1 of them is in the shared playlist library and will stop being shared\./.test(sb_d.getElementById("bhDeleteShared").textContent));
+  sb_d.getElementById("bhDeleteCancel").click();
+  var sb_share = sb_sh.shares.find((x) => x.playlist === "q1").id;
+  await sb.eval("deleteParticipant('MC', participantList().find((p) => p.code === 'MC').playlists)");
+  check("deleting it stops sharing it, then removes the playlist", sb_sh.deletes.includes(sb_share) && (sb_opts.removedIds ? sb_opts.removedIds.has("q1") : sb_opts.writes.some((w) => JSON.stringify(w).includes("q1"))), JSON.stringify({ deletes: sb_sh.deletes, writes: (sb_opts.writes || []).map((w) => w.type) }));
+  sb.close();
+  } catch (err) { areaCrashed("sharing what arc built", err); }
   }
 
   if (want("music sharing songs")) { try {
@@ -5360,7 +5438,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-14g"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-14h"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -5765,7 +5843,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("a tap on a recipe's row does nothing: only its buttons act (Ron, 2026-11-12)", (bd3.document.querySelector('#bhRecipes .bh-recipe').click(), bd3.document.getElementById("recipePanelWrap").hidden && !bd3.document.querySelector(".bh-recipe[role], .bh-phead[role]")));
   check("a tap on a participant's row head opens it and a second closes it (Ron, 2026-11-13)", (() => { const h = () => bd3.document.querySelector('#bhPeople [data-code="MC"] .bh-phead'); h().click(); const opened = !!bd3.document.querySelector('#bhPeople .bh-person.bh-open[data-code="MC"]'); h().click(); return opened && !bd3.document.querySelector('#bhPeople .bh-person.bh-open'); })());
   bd3.document.querySelector('#bhPeople [data-code="MC"] .bh-open-btn').click();
-  check("the chevron on a participant's row opens it in place to their playlists, one line each without their code; no popup", (() => { const c = bd3.document.querySelector('#bhPeople .bh-person[data-code="MC"]'); const pl = c.querySelectorAll(".bh-plist a.bh-pl"); return c.classList.contains("bh-open") && c.querySelector(".bh-open-btn").getAttribute("aria-expanded") === "true" && pl.length === 1 && !/ MC /.test(pl[0].querySelector(".bh-pl-name").textContent) && !bd3.document.getElementById("personPanelWrap") && !bd3.document.querySelector('#bhPeople .bh-person[data-code="T7"]').classList.contains("bh-open"); })());
+  check("the chevron on a participant's row opens it in place to their playlists, one line each without their code; no popup", (() => { const c = bd3.document.querySelector('#bhPeople .bh-person[data-code="MC"]'); const pl = c.querySelectorAll(".bh-plist > .bh-pl:not(.hb-row)"); return c.classList.contains("bh-open") && c.querySelector(".bh-open-btn").getAttribute("aria-expanded") === "true" && pl.length === 1 && !/ MC /.test(pl[0].querySelector(".bh-pl-name").textContent) && !bd3.document.getElementById("personPanelWrap") && !bd3.document.querySelector('#bhPeople .bh-person[data-code="T7"]').classList.contains("bh-open"); })());
   bd3.document.querySelector('#bhPeople [data-code="T7"] .bh-open-btn').click();
   check("opening another participant folds the first: one open at a time", bd3.document.querySelector('#bhPeople .bh-person[data-code="T7"]').classList.contains("bh-open") && !bd3.document.querySelector('#bhPeople .bh-person[data-code="MC"]').classList.contains("bh-open"));
   bd3.document.querySelector('#bhPeople [data-code="T7"] .bh-open-btn').click();
@@ -5870,7 +5948,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("done, the new playlist is marked with Open, no song count, and no message pops up", (() => { const r = bd4.document.querySelector("#bhPeople .bh-pl.pp-new"); return !!r && /Open/.test(r.textContent) && !/\d+ songs/.test(r.textContent) && !/new to/.test(r.textContent) && !bd4.document.getElementById("ppBuild") && !bd4.document.getElementById("builtToast"); })());
   bd4.eval("setPersonOpen(null)");
   bd4.eval("openPersonPanel('ZQ9')");
-  check("folded and opened again, the mark is gone", !bd4.document.querySelector("#bhPeople .pp-new") && bd4.document.querySelectorAll('#bhPeople [data-code="ZQ9"] a.bh-pl').length === 1);
+  check("folded and opened again, the mark is gone", !bd4.document.querySelector("#bhPeople .pp-new") && bd4.document.querySelectorAll('#bhPeople [data-code="ZQ9"] .bh-plist > .bh-pl:not(.hb-row)').length === 1);
   // Repeat songs: 100% from the most recent playlist builds one of only its songs, each still from the segment's playlist
   var rs_before = bl_fo.writes.filter((w) => w.type === "add" && w.id === bl_made.id).flatMap((w) => w.uris);
   await bd4.eval("buildForParticipant('g1', 'ZQ9', { share: 100, from: 'recent' })");
