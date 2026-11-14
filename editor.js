@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13zc";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-13ze";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2665,8 +2665,7 @@ function repeatSection() {
   const cards = feEl("div", { class: "rs-cards", id: "rsFrom", hidden: true }, recent, all);
   const el = feEl("div", { class: "rs-sec", id: "rsSection", hidden: true },
     feEl("p", { class: "wf-label", text: "Repeat songs" }), line,
-    feEl("div", { class: "rs-slider" }, slider, ticks), feEl("div", { class: "rs-ends", "aria-hidden": "true" }, feEl("span", { text: "0%" }), feEl("span", { text: "50%" }), feEl("span", { text: "100%" })),
-    cards);
+    feEl("div", { class: "rs-slider" }, slider, ticks), cards);
   function paint() {
     slider.style.setProperty("--rs-fill", share + "%");
     if (!share) line.textContent = "No repeats. New music comes first.";
@@ -3499,7 +3498,11 @@ function askWhoFor(id) {
   let code = "", open = false, adding = false, close = () => {};
 
   // the recipe being built, as its row on the landing shows it
-  const card = f ? feEl("div", { class: "wf-recipe" }, ...recipeParts(f)) : null;
+  // the recipe being built: its name and length on one line (no segment count, so the name has the room), its shape under them
+  const card = f ? (() => {
+    const [name, , bar] = recipeParts(f), shape = recipeShape(f);
+    return feEl("div", { class: "wf-recipe" }, feEl("span", { class: "wf-rtop" }, name, feEl("span", { class: "bh-sub", text: lengthText(shape.music + shape.quiet / 60) })), bar);
+  })() : null;
 
   const field = feEl("button", { type: "button", class: "bh-dd-field", id: "bhWho", "aria-haspopup": "listbox", "aria-expanded": "false", onClick: () => setOpen(!open) });
   const search = feEl("input", { type: "text", class: "bh-dd-search", id: "bhWhoFind", placeholder: "Find a code", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", maxlength: "4", "aria-label": "Find a code", enterkeyhint: "search" });
