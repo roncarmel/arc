@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-14h";
+const APP_VERSION = "2026-11-14j";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1098,6 +1098,7 @@ function openInfo(id) {
   if (id === "reportBlock") refreshReportBox();
   if (id === "removeSection") removeStage("choose");
   if (id === "tutorialSection") fillTutorialPlayer();
+  if (id === "deviceChecks") setTimeout(renderDeviceChecks);   // drawn once the popup shows
   if ((id === "devMoods" || id === "devReports") && typeof sharingDevOpened === "function") sharingDevOpened(id);   // Music sharing's mood words or reports (sharing.js)
   $("infoOverlay").hidden = false;
   document.body.style.overflow = "hidden";
@@ -2970,6 +2971,255 @@ async function copyLimitRecord() {
   showNotices([{ text: "Spotify request log copied. Paste it into the chat with Claude.", transient: true }]);
 }
 
+// ---------------------------------------------------------------- Device checks (the DEV menu; Ron, 2026-11-14, mockups/device-checks A)
+// What the tests can't show, checked on a real device and account. Automatic checks write only to playlists named Arc device check and remove them afterwards,
+// even when a check fails; guided checks are steps the person follows and answers, opened in place in the list. Results stay on this device (deviceChecks in
+// localStorage, with which guided check is open and how far its steps went, so leaving Arc and coming back finds it there). Copy results gives them as text.
+const DC_NAME = "Arc device check";
+function dcState() { try { return JSON.parse(localStorage.getItem("deviceChecks") || "{}") || {}; } catch (err) { return {}; } }
+function dcKeep(s) { try { localStorage.setItem("deviceChecks", JSON.stringify(s)); } catch (err) { /* private browsing */ } }
+function dcStandalone() { return navigator.standalone === true || !!(window.matchMedia && window.matchMedia("(display-mode: standalone)").matches); }
+function dcTouch() { try { return window.matchMedia("(pointer: coarse)").matches; } catch (err) { return false; } }
+function dcIOS() { return /iPhone|iPad/.test(navigator.userAgent || "") || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }
+function dcDevice() { return [describeBrowser(), dcStandalone() ? "Home Screen app" : null, APP_VERSION].filter(Boolean).join(" · "); }
+var dcPace = 1;   // the tests make the waits for Spotify short (var: the tests reach it)
+function dcWait(ms) { return new Promise((resolve) => setTimeout(resolve, ms * dcPace)); }
+function dcRandomId() { return bytesToSpotifyId(Array.from({ length: 16 }, () => Math.floor(Math.random() * 256))); }   // a Spotify ID is a 128-bit number
+// the person's own playlists with songs, not Arc's and not saves
+function dcOwnPlaylists() { return (playlists || []).filter((p) => (!me || p.owner === me.id) && !p.isSave && !p.madeByApp && (p.count == null || p.count > 0)); }
+
+const DC_AUTO = [
+  { key: "renew", name: "Sign-in renewal", what: "Renews the sign-in in the background, then uses it", run: async () => {
+    if (!storedRefresh()) return { ok: false, note: "This device keeps no refresh token, so the sign-in can't be renewed." };
+    const started = performance.now();
+    const renewed = await renewSignIn();
+    if (!renewed) return { ok: false, note: "Spotify refused the renewal, or did not answer." };
+    token = renewed;
+    await spotify("/me");
+    return { ok: true, detail: `${((performance.now() - started) / 1000).toFixed(1)} s` };
+  } },
+  { key: "save", name: "Recipe save at full length", what: `Writes ${SAVE_LIMIT} characters to a description, reads them back`, run: async (ctx) => {
+    const id = await ctx.playlist();
+    const bytes = Array.from({ length: 600 }, () => Math.floor(Math.random() * 256));
+    const text = (`${DC_NAME}. ` + denseEncode(bytes)).slice(0, SAVE_LIMIT);
+    await spotifyRequest("PUT", `/playlists/${id}`, { json: { description: text } });
+    await dcWait(1500);
+    const got = String((await spotify(`/playlists/${id}?fields=description`)).description || "");
+    if (got === text) return { ok: true, detail: `${got.length} of ${SAVE_LIMIT}` };
+    let at = 0;
+    while (at < Math.min(got.length, text.length) && got[at] === text[at]) at++;
+    return { ok: false, detail: `${got.length} of ${SAVE_LIMIT}`, note: `Spotify sent back ${got.length} characters, differing from character ${at + 1} on.` };
+  } },
+  { key: "packed", name: "Participant details", what: "A code, a day and Heard before survive in a description", run: async (ctx) => {
+    const id = await ctx.playlist();
+    const heard = Array.from({ length: HEARD_MAX }, dcRandomId);
+    const text = `${DC_NAME}. For participant ZQ9X. Built 14 Nov 2026. ${packData({ recipe: "format-check123", heard })}`;
+    await spotifyRequest("PUT", `/playlists/${id}`, { json: { description: text } });
+    await dcWait(1500);
+    const got = String((await spotify(`/playlists/${id}?fields=description`)).description || "");
+    const data = dataOf(got), code = (got.match(PARTICIPANT_RE) || [])[1], day = new Date(builtAtOf(got));
+    const fine = data && data.recipe === "format-check123" && data.heard.length === heard.length && data.heard.every((x, i) => x === heard[i]) && code === "ZQ9X" && day.getDate() === 14;
+    return fine ? { ok: true, detail: `${text.length} characters` }
+      : { ok: false, note: !data ? "The packed part did not read back." : code !== "ZQ9X" ? "The participant's code did not read back." : "Part of it came back changed." };
+  } },
+  { key: "cover", name: "Cover upload", what: "On an empty test playlist, then one with songs", run: async (ctx) => {
+    if (!hasScope("ugc-image-upload")) return { ok: false, note: "This sign-in has no permission to upload covers." };
+    const cover = await loadCover();
+    const custom = async (id) => {
+      for (let i = 0; i < 4; i++) {
+        await dcWait(2000);
+        const images = await spotify(`/playlists/${id}/images`);
+        if (Array.isArray(images) && images.some((im) => im && im.url && !/mosaic/.test(im.url))) return true;
+      }
+      return false;
+    };
+    const empty = await ctx.playlist();
+    await spotifyRequest("PUT", `/playlists/${empty}/images`, { body: cover, contentType: "image/jpeg" });
+    const emptyOk = await custom(empty);
+    const source = dcOwnPlaylists()[0];
+    if (!source) return { ok: emptyOk, detail: emptyOk ? "empty only" : "", note: emptyOk ? "" : "The empty playlist kept no uploaded cover. No playlist of yours had songs to try a full one." };
+    const songs = (await loadTracks(source.id)).filter((t) => /^spotify:track:/.test(t.uri)).slice(0, 4).map((t) => t.uri);
+    const full = await ctx.playlist();
+    if (songs.length) await spotifyRequest("POST", `/playlists/${full}/items`, { json: { uris: songs } });
+    await spotifyRequest("PUT", `/playlists/${full}/images`, { body: cover, contentType: "image/jpeg" });
+    const fullOk = await custom(full);
+    if (emptyOk && fullOk) return { ok: true, detail: "both" };
+    return { ok: false, note: `${emptyOk ? "The empty playlist took the cover" : "The empty playlist kept Spotify's own cover"}. ${fullOk ? "The one with songs took it." : "The one with songs kept Spotify's own cover."}` };
+  } },
+  { key: "isrc", name: "Song codes", what: "Your playlists' songs carry an ISRC", run: async () => {
+    let all = 0, coded = 0;
+    for (const p of dcOwnPlaylists().slice(0, 3)) {
+      for (const t of await loadTracks(p.id)) { if (!/^spotify:track:/.test(t.uri)) continue; all++; if (String(t.key || "").startsWith("isrc:")) coded++; }
+    }
+    if (!all) return { ok: false, note: "None of your playlists had songs to look at." };
+    const pct = Math.round((coded / all) * 100);
+    return { ok: pct >= 90, detail: `${pct}%`, note: pct >= 90 ? "" : `Only ${coded} of ${all} songs carry an ISRC.` };
+  } },
+  { key: "list", name: "Your playlist list", what: "Every page arrives, none short", run: async () => {
+    await loadMyPlaylists();   // a short page is read again, and a list still short throws
+    return { ok: true, detail: `${playlists.length} playlists` };
+  } },
+];
+
+// a song from one of the person's playlists, for the Song link check
+function dcSongLink() {
+  for (const p of dcOwnPlaylists()) {
+    const kept = trackCache.get(p.id);
+    const t = kept && kept.find((x) => /^spotify:track:/.test(x.uri));
+    if (t) return `https://open.spotify.com/playlist/${p.id}?highlight=${encodeURIComponent(t.uri)}`;
+  }
+  return "";
+}
+const DC_GUIDED = [
+  { key: "devices", name: "Two devices", what: "Edit a recipe here and on another device", yes: "It asked", no: "It didn't ask", steps: [
+    "Here, change the minutes of a recipe's first segment and tap Done.",
+    "On your other device, open Arc and change the same segment to a different number, then tap Done.",
+    "Come back here and reload Arc. It should ask which version to keep."] },
+  { key: "back", name: "Back and forward", what: "Leave Arc, then come back with Back", yes: "Looked right", no: "Something was wrong", steps: [
+    "Open the Playlist builder.",
+    "Leave Arc with the browser's Back (or open another site), then come back with Forward.",
+    "Arc should show the builder as you left it, nothing blank or out of date."] },
+  { key: "touch", name: "Double tap and selecting text", what: "Nothing zooms, text can be selected", applies: dcTouch, yes: "Both right", no: "Something was off", steps: [
+    "Double-tap a recipe's Build button quickly, then close what opens.",
+    "Press and hold a word in a recipe's name until it is selected.",
+    "Nothing should have zoomed in, and the word should be selected."] },
+  { key: "song", name: "Song link", what: "Opens Spotify at the song", yes: "It showed the song", no: "It didn't", link: () => ({ label: "Open the song link", href: dcSongLink() }), steps: [
+    "Tap Open the song link.",
+    "Spotify should open the playlist with that song picked out."] },
+  { key: "dashboard", name: "Dashboard links", what: "Open in Safari, from a Home Screen app", applies: () => dcStandalone() && dcIOS(), yes: "Safari opened", no: "It didn't", link: () => ({ label: "Open the dashboard", href: "x-safari-https://developer.spotify.com/dashboard", same: true }), steps: [
+    "Tap Open the dashboard.",
+    "It should open in Safari, not in a panel over Arc."] },
+];
+function dcApplies(g) { return !g.applies || g.applies(); }
+
+var dcRunning = false;   // var: the tests read it
+async function runDeviceChecks() {
+  if (dcRunning || busy || connection !== "ready" || (typeof spotifyPause === "function" && spotifyPause())) return;
+  dcRunning = true;
+  const state = dcState();
+  state.auto = {};
+  state.autoAt = Date.now();
+  delete state.cleanup;
+  dcKeep(state);
+  const made = [];
+  const ctx = { playlist: async () => {
+    const p = await spotifyRequest("POST", "/me/playlists", { json: { name: DC_NAME, public: false, description: `${DC_NAME}. Removed after the check.` } });
+    made.push(p.id);
+    return p.id;
+  } };
+  logStep("device checks started");
+  try {
+    for (const c of DC_AUTO) {
+      state.auto[c.key] = { running: true };
+      dcKeep(state);
+      renderDeviceChecks();
+      let result;
+      try { result = await c.run(ctx); } catch (err) { result = { ok: false, note: cleanError(err) }; }
+      state.auto[c.key] = { ok: !!result.ok, detail: result.detail || "", note: result.note || "", at: Date.now() };
+      dcKeep(state);
+      renderDeviceChecks();
+    }
+  } finally {
+    // the test playlists go, even when a check failed
+    try { if (made.length) await removePlaylists(made); } catch (err) { state.cleanup = `The test playlists could not all be removed: ${cleanError(err)}`; dcKeep(state); }
+    try { await loadMyPlaylists(); } catch (err) { /* the list is read again on the next connection */ }
+    dcRunning = false;
+    logStep("device checks done");
+    renderDeviceChecks();
+  }
+}
+function setGuided(key, ok) {
+  const state = dcState();
+  state.guided = state.guided || {};
+  state.guided[key] = { ok, at: Date.now() };
+  if (state.open === key) state.open = null;
+  dcKeep(state);
+  renderDeviceChecks();
+}
+function dcResultsText() {
+  const state = dcState(), auto = state.auto || {}, guided = state.guided || {}, steps = state.steps || {};
+  const lines = ["Arc device checks", `Device: ${dcDevice()}`, `Copied: ${new Date().toISOString()}`, "", "Automatic" + (state.autoAt ? ` (run ${new Date(state.autoAt).toISOString()})` : "")];
+  for (const c of DC_AUTO) {
+    const r = auto[c.key];
+    lines.push(`- ${c.name}: ${!r || r.running ? "not run" : r.ok ? "passed" : "FAILED"}${r && r.detail ? ` (${r.detail})` : ""}${r && r.note ? `: ${r.note}` : ""}`);
+  }
+  if (state.cleanup) lines.push(`- Cleanup: ${state.cleanup}`);
+  lines.push("", "With you");
+  for (const g of DC_GUIDED) {
+    const r = guided[g.key];
+    lines.push(`- ${g.name}: ${!dcApplies(g) ? "not here" : !r ? `not done${steps[g.key] ? ` (${steps[g.key]} of ${g.steps.length} steps)` : ""}` : r.ok ? `passed (${g.yes})` : `FAILED (${g.no})`}`);
+  }
+  return lines.join("\n");
+}
+async function copyDeviceChecks(button) {
+  try { await navigator.clipboard.writeText(dcResultsText()); }
+  catch (err) { button.textContent = "Couldn't copy"; setTimeout(renderDeviceChecks, 2000); return; }
+  button.textContent = "Copied";
+  setTimeout(renderDeviceChecks, 2000);
+}
+
+const DC_MARKS = {
+  ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  fail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 7v6"/><path d="M12 17.2v.1"/></svg>',
+  hand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12"/><path d="M11 11.5v-2a1.5 1.5 0 0 1 3 0V12"/><path d="M14 10.5a1.5 1.5 0 0 1 3 0V12"/><path d="M17 11.5a1.5 1.5 0 0 1 3 0V16a6 6 0 0 1-6 6h-2a6 6 0 0 1-5-2.7L4.3 15a1.5 1.5 0 0 1 2.4-1.8L8 15"/></svg>',
+  chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>',
+};
+function dcSvg(name) { const s = document.createElement("span"); s.className = "dc-svg"; s.innerHTML = DC_MARKS[name]; return s; }
+function renderDeviceChecks() {
+  const body = $("dcBody");
+  if (!body || $("deviceChecks").hidden) return;
+  const state = dcState(), auto = state.auto || {}, guided = state.guided || {}, steps = state.steps || {};
+  body.textContent = "";
+  body.appendChild(feEl("p", { class: "dc-device", id: "dcDevice", text: dcDevice() }));
+  // Automatic
+  const done = DC_AUTO.filter((c) => auto[c.key] && !auto[c.key].running);
+  const failed = done.filter((c) => !auto[c.key].ok).length;
+  body.appendChild(feEl("div", { class: "dc-sec" }, feEl("b", { text: "Automatic" }),
+    feEl("span", { id: "dcAutoSum", text: dcRunning ? `${done.length} of ${DC_AUTO.length}` : done.length ? (failed ? `${done.length - failed} passed, ${failed} failed` : `${done.length} passed`) : "Not run on this device" })));
+  const autoList = feEl("div", { class: "dc-list", id: "dcAuto" });
+  for (const c of DC_AUTO) {
+    const r = auto[c.key];
+    const mark = !r ? feEl("span", { class: "dc-mark dc-wait" }) : r.running ? feEl("span", { class: "dc-mark dc-run" }) : feEl("span", { class: "dc-mark " + (r.ok ? "dc-ok" : "dc-fail") }, dcSvg(r.ok ? "ok" : "fail"));
+    autoList.appendChild(feEl("div", { class: "dc-row", "data-check": c.key },
+      mark, feEl("span", { class: "dc-text" }, feEl("span", { class: "dc-name", text: c.name }), feEl("span", { class: "dc-what", text: c.what })),
+      feEl("span", { class: "dc-right" + (r && !r.running && !r.ok ? " dc-bad" : "") }, r && r.running ? "Checking…" : r && !r.ok ? "Failed" : r ? r.detail : ""),
+      r && !r.running && !r.ok && r.note ? feEl("div", { class: "dc-err", text: r.note }) : null));
+  }
+  body.appendChild(autoList);
+  if (state.cleanup) body.appendChild(problemBox(state.cleanup, "", [], true));
+  // With you
+  const here = DC_GUIDED.filter(dcApplies);
+  body.appendChild(feEl("div", { class: "dc-sec" }, feEl("b", { text: "With you" }), feEl("span", { id: "dcGuidedSum", text: `${here.filter((g) => guided[g.key]).length} of ${here.length} done` })));
+  const guidedList = feEl("div", { class: "dc-list", id: "dcGuided" });
+  for (const g of DC_GUIDED) {
+    const r = guided[g.key], applies = dcApplies(g), open = applies && state.open === g.key;
+    const right = !applies ? feEl("span", { class: "dc-right", text: "Not here" }) : r ? feEl("span", { class: "dc-right " + (r.ok ? "dc-pass" : "dc-bad"), text: r.ok ? "Passed" : "Failed" })
+      : feEl("span", { class: "dc-right dc-chev" + (open ? " dc-open" : "") }, dcSvg("chev"));
+    guidedList.appendChild(feEl(applies ? "button" : "div", { class: "dc-row dc-ghead", type: applies ? "button" : undefined, "data-check": g.key, "aria-expanded": applies ? String(open) : undefined,
+      onClick: applies ? () => { const s = dcState(); s.open = s.open === g.key ? null : g.key; dcKeep(s); renderDeviceChecks(); } : undefined },
+      feEl("span", { class: "dc-mark dc-hand" }, dcSvg("hand")), feEl("span", { class: "dc-text" }, feEl("span", { class: "dc-name", text: g.name }), feEl("span", { class: "dc-what", text: g.what })), right));
+    if (!open) continue;
+    // the steps: a tap marks one done (struck through), the next is in bold; then the two answers
+    const n = steps[g.key] || 0;
+    const list = feEl("ol", { class: "dc-steps" }, ...g.steps.map((text, i) => feEl("li", { class: i < n ? "dc-done" : i === n ? "dc-now" : "", onClick: () => {
+      const s = dcState(); s.steps = s.steps || {}; s.steps[g.key] = i < n ? i : i + 1; dcKeep(s); renderDeviceChecks(); } }, text)));
+    const link = g.link ? g.link() : null;
+    guidedList.appendChild(feEl("div", { class: "dc-step", id: "dcStep-" + g.key }, list,
+      link && link.href ? feEl("a", { class: "dc-link", id: "dcLink-" + g.key, href: link.href, target: link.same ? undefined : "_blank", rel: "noopener" }, link.label)
+        : link ? feEl("p", { class: "dc-what", text: "Open one of your recipes in the builder first, so Arc knows a song to link to." }) : null,
+      feEl("div", { class: "dc-btns" },
+        feEl("button", { type: "button", id: "dcNo-" + g.key, onClick: () => setGuided(g.key, false) }, g.no),
+        feEl("button", { type: "button", class: "dc-yes", id: "dcYes-" + g.key, onClick: () => setGuided(g.key, true) }, g.yes))));
+  }
+  body.appendChild(guidedList);
+  body.appendChild(feEl("p", { class: "dc-note", text: `Test playlists are named ${DC_NAME} and are removed after each run, even when a check fails. Results stay on this device.` }));
+  if (connection !== "ready") body.appendChild(feEl("p", { class: "dc-note", text: "Connect to Spotify to run the automatic checks." }));
+  const ready = !dcRunning && !busy && connection === "ready" && !(typeof spotifyPause === "function" && spotifyPause());
+  const copy = feEl("button", { type: "button", class: "dlg-quiet", id: "dcCopy", onClick: () => copyDeviceChecks(copy) }, "Copy results");
+  body.appendChild(feEl("div", { class: "dlg-foot" }, copy,
+    feEl("button", { type: "button", id: "dcRun", disabled: !ready, onClick: runDeviceChecks }, feEl("span", { class: "btn-label", text: dcRunning ? "Running…" : state.autoAt ? "Run again" : "Run checks" }))));
+}
+
 const coverImages = {};   // each cover file as a JPEG in base64, which is how Spotify takes cover art
 async function loadCover(file = "playlist-cover.jpg") {
   if (coverImages[file]) return coverImages[file];
@@ -4448,6 +4698,7 @@ async function main() {
       [{ label: "Cancel", value: "no" }, { label: "Clear data", value: "yes", danger: true }]);
     if (choice === "yes") await startOver();
   });
+  on("devChecks", "click", () => { showDevMenu(false); openInfo("deviceChecks"); });
   on("devCopyRecord", "click", () => { showDevMenu(false); copyLimitRecord(); });
   // Launch screen: the page again with the launch screen, as a Home Screen app starts (Slow: a third of the speed)
   for (const button of document.querySelectorAll("#devMenu [data-launch]")) {
