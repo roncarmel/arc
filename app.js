@@ -14,7 +14,7 @@ const ADD_CHUNK = 100;     // songs added per request (Spotify's documented maxi
 const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
-const APP_VERSION = "2026-11-15b";
+const APP_VERSION = "2026-11-15c";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1567,6 +1567,7 @@ function pageState() {
   return { app: APP_VERSION, scripts: { ...(globalThis.scriptVersions || {}) }, updating, startupRefreshed: refreshed, updateScreen: typeof updateScreen !== "undefined" ? updateScreen : null, connection, sinceStart: Math.round(performance.now()) };
 }
 let playlistPages = [];   // the last list's pages as Spotify sent them: [offset, items, total, whether there was a next], for the records below   // how many times the list has started being read in this tab, so a record can tell whether it was read again during a save
+let playlistsHidden = [];   // where the last list had null items (playlists Spotify will not show this app), for the records
 let playlistsLoadedBy = "";   // which code last read the playlist list, for the record kept when a save question is asked (recordSyncAsk)
 var SAVE_FRESH_MS = 5000;   // a save reads the account's playlists again unless they were read this recently
 let playlistRefreshMs = 5 * 60 * 1000;   // coming back to the page after this long, the account's playlists, and so the backups, are read again
@@ -1789,7 +1790,7 @@ const LIST_READS_KEY = "listReads";
 function recordListRead(by) {
   const saves = playlists.filter((p) => p.save).map((p) => [p.save.kind === "save" ? p.save.format.id : p.save.kind, p.save.format ? p.save.format.rev || 0 : null, playlists.indexOf(p)]);
   const named = playlists.filter((p) => p.name.endsWith(SAVE_SUFFIX)).map((p) => [p.name, p.id, p.save ? p.save.kind : "none", p.description == null ? null : String(p.description).length]);
-  const entry = { at: new Date().toISOString(), tab: TAB_ID, tabStarted: TAB_STARTED, page: pageState(), by, count: playlists.length, total: playlistsTotal, pages: playlistPages, saves, saveNames: named,
+  const entry = { at: new Date().toISOString(), tab: TAB_ID, tabStarted: TAB_STARTED, page: pageState(), by, count: playlists.length, total: playlistsTotal, hidden: playlistsHidden.length, pages: playlistPages, saves, saveNames: named,
     recipes: typeof editor !== "undefined" && editor.model ? editor.model.formats.length : null, visible: document.visibilityState };
   writeRecord(LIST_READS_KEY, [...readRecord(LIST_READS_KEY, []), entry].slice(-30));
 }
@@ -2860,12 +2861,17 @@ async function loadMyPlaylists() {
   }
   playlistsTotal = total;
   playlistPages = pages;
-  const got = raw.filter(Boolean).length;
+  // Spotify sends null in place of a playlist it will not show to an app in development mode (its own, as Discover Weekly or editorial ones, since 2024).
+  // Those count as arrived: Arc can never read them, so leaving them out of the count kept an account that follows some from ever connecting (937 of 941,
+  // a report of 2026-11-15). Where they sat is kept for the records.
+  playlistsHidden = raw.map((p, i) => (p ? null : i)).filter((i) => i !== null);
+  if (playlistsHidden.length) recordNote(`playlist list: ${playlistsHidden.length} hidden by Spotify (null items) at ${JSON.stringify(playlistsHidden.slice(0, 20))}`);
+  const got = raw.length;
   if (total !== null && got < total) {
     // Still short: the list is not used, so nothing works from a half-known state. Arc waits as if not connected (startLimitWait("short")) and keeps
     // the playlists it already had (or the kept list), and reads it again by itself (Ron, 2026-11-13).
     recordNote(`playlist list: ${raw.length} items, Spotify's total ${total}, pages [offset, items, total, next] ${JSON.stringify(pages)}`);
-    recordError(`Spotify listed ${got} of ${total} playlists, after reading again`);
+    recordError(`Spotify listed ${got} of ${total} playlists, after reading again${playlistsHidden.length ? ` (${playlistsHidden.length} of them hidden)` : ""}`);
     useKeptPlaylists();
     if (connection === "ready") { setConnection("problem", SHORT_LIST_MESSAGE); startLimitWait("short"); }
     throw new Error(SHORT_LIST_MESSAGE);

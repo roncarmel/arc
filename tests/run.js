@@ -202,8 +202,8 @@ function makeFetch(options = {}) {
       options.listCalls = (options.listCalls || 0) + 1;
       if (options.listDelayMs) await new Promise((r) => setTimeout(r, options.listDelayMs));
       const u = new URL(url); const offset = Number(u.searchParams.get("offset") || 0);
-      const all = MY_PLAYLISTS.concat(options.extraPlaylists || [], options.createdPlaylists || []).filter((p) => !(options.removedIds && options.removedIds.has(p.id)));
-      const page = all.slice(offset, offset + 2).map((p) => { const q = options.listWithoutDescriptions ? { ...p, description: undefined } : { ...p, description: (options.descStore && options.descStore[p.id] !== undefined) ? options.descStore[p.id] : p.description, name: (options.nameStore && options.nameStore[p.id] !== undefined) ? options.nameStore[p.id] : p.name }; if (!options.noSnapshots) q.snapshot_id = (options.snapshots && options.snapshots[p.id]) || "snap-" + p.id; return q; });   // tiny pages, to exercise paging
+      const all = MY_PLAYLISTS.concat(options.extraPlaylists || [], options.createdPlaylists || []).filter((p) => !p || !(options.removedIds && options.removedIds.has(p.id)));   // null: a playlist Spotify will not show the app
+      const page = all.slice(offset, offset + 2).map((p) => { if (!p) return null; const q = options.listWithoutDescriptions ? { ...p, description: undefined } : { ...p, description: (options.descStore && options.descStore[p.id] !== undefined) ? options.descStore[p.id] : p.description, name: (options.nameStore && options.nameStore[p.id] !== undefined) ? options.nameStore[p.id] : p.name }; if (!options.noSnapshots) q.snapshot_id = (options.snapshots && options.snapshots[p.id]) || "snap-" + p.id; return q; });   // tiny pages, to exercise paging
       const next = offset + 2 < all.length ? `https://api.spotify.com/v1/me/playlists?limit=2&offset=${offset + 2}` : null;
       if (options.emptyFirstPages !== undefined) {   // Spotify's total on every page, and the first page sent empty this many times (as on 2026-11-13)
         const empty = offset === 0 && options.emptyFirstPages > 0;
@@ -625,10 +625,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-15b" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-15c" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-15b/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-15c/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -2070,7 +2070,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-15b", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-15c", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3144,6 +3144,13 @@ print(json.dumps(out))
   await waitFor(() => mg_w14.eval("connection") === "ready", 12000);
   await mg_settled(mg_w14);
   check("when all of it arrives the wait ends, the strip goes, it says so, and saving goes on with no question and no new save", !mg_w14.eval("limitWait.active") && mg_w14.document.getElementById("waitStrip").hidden && !mg_w14.document.getElementById("feSyncDialog") && mg_o14.writes.filter((x) => x.type === "create").length === 0 && /All your playlists arrived/.test(capText(mg_w14)), capText(mg_w14));
+
+  // Spotify sends null for playlists it will not show the app (its own), and its total counts them: the list is whole, Arc connects (937 of 941, 2026-11-15)
+  var mg_o15 = { descStore: {}, nameStore: {}, emptyFirstPages: 0, extraPlaylists: [null, ...mg_o13Saves, null] };
+  var mg_w15 = await mg_go({ formats: mg_text(mg_item("f1", "Alpha", 2, 30), mg_item("f2", "Beta", 1, 40)), spotifySynced: JSON.stringify({ f1: { rev: 2, playlistId: "s1" }, f2: { rev: 1, playlistId: "s2" } }) }, mg_o15);
+  await mg_settled(mg_w15);
+  var mg_lr15 = JSON.parse(mg_w15.localStorage.getItem("listReads") || "[]").pop() || {};
+  check("playlists Spotify sends as null count as arrived: Arc connects with no wait or question, leaves them out of the list, and records how many and where", mg_w15.eval("connection") === "ready" && !mg_w15.eval("limitWait.active") && !mg_w15.document.getElementById("feSyncDialog") && mg_lr15.hidden === 2 && mg_lr15.count === mg_lr15.total - 2 && /2 hidden by Spotify/.test(mg_w15.limitRecordText()), JSON.stringify({ c: mg_w15.eval("connection"), lr: mg_lr15 }));
 
   // a backup that cannot be read, with the format's name, is written over, and is not taken for a removed one
   var mg_o10 = { descStore: {}, nameStore: {}, extraPlaylists: [mg_pl("s1", "Alpha (recipe)", mg_remote("f1", "Alpha", 2, 30)), mg_pl("sx", "Beta (recipe)", mg_remote("f2", "Beta", 1, 40).slice(0, -4))] };
@@ -4299,7 +4306,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-15b"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-15c"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
