@@ -902,7 +902,7 @@ function tutorialFrame() {
 
 // Developer mode (decided by Ron, 2026-11-08, mockups/dev-mode.html): holding Arc's icon for 3 seconds turns it on, and again off. Nothing shows while holding, on purpose:
 // it is not for people to find. A short message says which way it went. Kept on this device (devMode in localStorage; the <head> script sets html.dev-mode before the
-// first paint). While it is on, Developer › in the tools' list in Arc's bar (in a tool) or a tap on the word Arc in home's band opens the developer menu: Turn off developer mode as its pink header, the owner's Music sharing tools, Phone width, Copy Spotify request log, Clear data and start over, and Python's state. Off, Music sharing is Coming soon (devModeChanged in app.js).
+// first paint). While it is on, Developer › in the tools' list in Arc's bar (in a tool) or a tap on the word Arc in home's band opens the developer menu: Turn off developer mode as its pink header, the owner's Music sharing tools, Phone width, Copy Spotify request log, Clear data and start over, and Python's state.
 // The icon takes no text selection, image callout or browser menu, so a long press on a phone reaches the end.
 const DEV_HOLD_MS = 3000;
 let devHeld = null;   // what a hold just turned developer mode on or off with: its release is not a tap (on the bar's tool button, not one that opens the list)

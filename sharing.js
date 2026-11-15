@@ -136,7 +136,6 @@ function renderSharingCard() {
   const card = $("msCard");
   if (!card) return;
   const ids = sharing.library ? sharing.library.shares.map((x) => x.id) : sharing.counts ? sharing.counts.ids : null;
-  card.setAttribute("aria-disabled", String(!devMode()));
   const line = $("msCardText");
   if (!ids) line.textContent = "";   // before the counts arrive (or when they cannot be read) the line stays empty, keeping its height
   else {
@@ -149,10 +148,8 @@ function renderSharingCard() {
 // card's count of playlists shared by other facilitators leaves them out. After that the list is refreshed whenever Music sharing opens (loadMine).
 function sharingConnected() {
   if (devMode() && !ownerKnown()) askOwner();   // the owner's tools in the DEV menu
-  let known = !!sharing.mine;
-  try { known = known || localStorage.getItem(SHARING_MINE_KEY) !== null; } catch (err) { known = true; }   // no storage: it would be read on every visit
-  // in developer mode always, so the builder's playlists show which are shared before any Share is tapped (Ron, 2026-11-14)
-  if (!known || devMode()) loadMine().then(renderSharingCard);
+  // always, so the builder's playlists show which are shared before any Share is tapped (Ron, 2026-11-14)
+  loadMine().then(renderSharingCard);
   markOldCopies();
 }
 function startSharingCard() {
@@ -160,7 +157,7 @@ function startSharingCard() {
   if (!card) return;
   card.addEventListener("click", () => showView("sharing"));
   renderSharingCard();
-  if (pageName() === "app" && devMode()) loadCounts();
+  if (pageName() === "app") loadCounts();
 }
 
 async function loadMine() {

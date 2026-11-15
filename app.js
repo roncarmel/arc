@@ -288,7 +288,6 @@ if (PHONE_BAR && PHONE_BAR.addEventListener) PHONE_BAR.addEventListener("change"
 
 function showView(view, push = true) {
   if (!VIEWS.includes(view)) view = "home";
-  if (view === "sharing" && !devMode()) view = "home";   // Music sharing is Coming soon outside developer mode
   if (view === appView) return;
   const was = appView;
   // from one tool to the other the tool slides half a screen and fades (sharing is below the builder), Arc's bar staying put (Ron, 2026-11-08, mockups/tool-motion.html B)
@@ -483,7 +482,7 @@ function goHome() {
   showView("home", false);
 }
 
-// The tool's name in Arc's bar opens a list: both tools (the one shown ticked; Music sharing Coming soon outside developer mode) and Arc home.
+// The tool's name in Arc's bar opens a list: both tools (the one shown ticked) and Arc home.
 // Decided by Ron, 2026-11-08 (mockups/switch-tools.html A). It closes on a choice, a click or tap anywhere else, or Escape (which returns focus to the name).
 function openToolMenu() {
   const menu = $("appToolMenu"), button = $("appTool");
@@ -492,7 +491,6 @@ function openToolMenu() {
   for (const item of menu.querySelectorAll(".ab-mi[data-view]")) {
     const view = item.dataset.view;
     if (view !== "home") item.setAttribute("aria-checked", String(view === appView));
-    item.disabled = view === "sharing" && !devMode();
   }
   button.setAttribute("aria-expanded", "true");
   menu.hidden = false;
@@ -535,20 +533,9 @@ function initToolMenu() {
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !$("appToolMenu").hidden) { event.preventDefault(); closeToolMenu(true); } });
 }
 
-// Developer mode went on or off (setDevMode in editor.js). Off, Music sharing is Coming soon: its page and its welcome card close, and nothing is read for it.
-// On, the library is read as on a normal start.
+// Developer mode went on or off (setDevMode in editor.js): on, the owner's tools are asked for (sharing.js).
 function devModeChanged(on) {
-  if (!on) {
-    if (appView === "sharing") goHome();
-    const head = $("wpSharingHead");
-    if (head && head.getAttribute("aria-expanded") === "true") toggleWelcomeTool(head);
-  }
-  if (typeof renderSharingCard === "function") renderSharingCard();
-  if (typeof renderBuilderHome === "function") renderBuilderHome();
-  if (on && pageName() === "app" && typeof loadCounts === "function") {
-    loadCounts();
-    if (connection === "ready") sharingConnected();
-  }
+  if (on && connection === "ready" && typeof askOwner === "function") askOwner();
 }
 
 // Music sharing is a page under the bar: it starts where the bar ends
@@ -714,7 +701,6 @@ function alignWelcomeIcons() {
 
 // Each tool's card on the welcome page opens in place to its picture and text; opening one closes the other, so the page stays short.
 function toggleWelcomeTool(head) {
-  if (head.id === "wpSharingHead" && !devMode() && head.getAttribute("aria-expanded") !== "true") return;   // Coming soon: it does not open
   const opening = head.getAttribute("aria-expanded") !== "true";
   for (const h of document.querySelectorAll("#welcomePage .wp-tool-head")) {
     const open = h === head ? opening : false;
@@ -1028,7 +1014,7 @@ function restoreUpdateView() {
   if (kept.view === "builder") {
     if (kept.builder === "people") builderHome.tab = "people";
     switchView("home", "builder", true);
-  } else if (kept.view === "sharing" && devMode()) {
+  } else if (kept.view === "sharing") {
     switchView("home", "sharing", true, kept.sharing === "share" ? "share" : "find");
   }
 }
@@ -2134,7 +2120,7 @@ function setConnection(state, message = "", kind = "retry") {
   if (typeof applyMinimalMode === "function") applyMinimalMode();   // minimalist mode steps aside while Step 1 has a problem to show
   if (typeof renderAppMenu === "function") renderAppMenu();
   if (typeof editorPlaylistsChanged === "function") editorPlaylistsChanged();
-  if (state === "ready" && typeof sharingConnected === "function" && devMode()) sharingConnected();   // Music sharing learns which shares are the person's own (sharing.js)
+  if (state === "ready" && typeof sharingConnected === "function") sharingConnected();   // Music sharing learns which shares are the person's own (sharing.js)
 }
 
 async function connectToSpotify() {
