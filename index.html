@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-14r">
-<script src="theme.js?v=2026-11-14r"></script>
+<meta name="app-version" content="2026-11-14s">
+<script src="theme.js?v=2026-11-14s"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -413,6 +413,7 @@
   #formatEditor .fe-gditem-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   #formatEditor .fe-gditem-note { font-weight: 400; font-size: 0.85rem; line-height: 1.35; color: var(--muted); }
   /* the ? beside the silence stepper, which opens the guide at Silence between segments */
+  @media (hover: hover) { #formatEditor .fe-silencehelp:hover { filter: none; outline: none; color: var(--fg); } }
   #formatEditor .fe-silencehelp { flex: none; width: 28px; min-width: 28px; margin-left: -6px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; background: none; box-shadow: none; color: var(--muted); border-radius: 50%; cursor: pointer; }
   #formatEditor a.fe-item { font-weight: 600; }   /* a link row (Feedback and questions) weighs the same as the button rows */
   #formatEditor .fe-danger { color: var(--danger); }
@@ -862,6 +863,7 @@
   .hb-addlink { display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 0; margin: 0; padding: 4px 0; border: 0; background: none; box-shadow: none; color: var(--accent); font: inherit; font-weight: 600; font-size: 0.92rem; cursor: pointer; }
   .hb-addlink:disabled { opacity: 0.45; cursor: default; }
   .hb-addlink .fe-icon { display: inline-flex; line-height: 0; }
+  @media (hover: hover) { .hb-addlink:not(:disabled):hover { filter: none; outline: none; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; } }
   .fe-dialog .bh-del-text { color: var(--muted); }
   .fe-dialog .bh-del-list { margin: 4px 0 18px; padding-top: 0; border-top: 0; }
   .fe-dialog .row.bh-del-buttons { flex-direction: column; gap: 8px; }
@@ -884,11 +886,14 @@
   .bh-pdel-foot { display: flex; justify-content: flex-end; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
   /* Spotify's marks end flush right, on Build's right edge (Ron, 2026-11-13) */
   .bh-pl-end { flex: none; display: flex; justify-content: flex-end; }
-  .bh-sp { flex: none; display: block; color: var(--accent); }
+  .bh-sp { flex: none; display: block; color: var(--button); }
+  .bh-sp-bars { fill: var(--on-button, #fff); }
+  .pp-open .bh-sp { width: 18px; height: 18px; }
+  @media (hover: hover) { a.bh-pl-end:hover .bh-sp, a.bh-pl:hover .bh-pl-end .bh-sp { filter: brightness(1.12); } }
   /* the trash (32 px) centered under the Spotify marks (18 px, flush right): 7 px past the edge */
   #builderHome .bh-pdel-foot .bh-pdel { margin: 0 -7px 0 0; }
   #builderHome .bh-pdel { width: 32px; height: 32px; display: grid; place-items: center; padding: 0; background: transparent; border: 1px solid var(--line); border-radius: 50%; color: var(--danger); cursor: pointer; }
-  #builderHome .bh-pdel:not(:disabled):hover { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+  #builderHome .bh-pdel:not(:disabled):hover { filter: none; outline: none; border-color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
   #builderHome .bh-pdel:disabled { opacity: 0.45; cursor: default; }
   .bh-plist.bh-plist-gone.fx-collapsing { display: block; }
   .bh-plist .er-box { margin: 8px 0 4px; }
@@ -907,8 +912,8 @@
   #builderHome .bh-shared { flex: none; display: inline-flex; align-items: center; gap: 4px; min-height: 32px; margin: 0; padding: 0 2px; border: 0; background: none; box-shadow: none; color: var(--muted); font: inherit; font-size: 0.86rem; font-weight: 600; cursor: pointer; }
   #builderHome .bh-shared .fe-icon { display: flex; }
   #builderHome .bh-shared svg { width: 13px; height: 13px; }
-  @media (hover: hover) { #builderHome .bh-share:not(:disabled):hover { background: color-mix(in srgb, var(--muted) 22%, transparent); } }
-  @media (hover: hover) { #builderHome .bh-shared:hover { color: var(--fg); } }
+  @media (hover: hover) { #builderHome .bh-share:not(:disabled):hover { filter: none; outline: none; background: color-mix(in srgb, var(--muted) 22%, transparent); } }
+  @media (hover: hover) { #builderHome .bh-shared:hover { filter: none; outline: none; color: var(--fg); } }
   /* a recipe row open (Ron, 2026-11-14, mockups/recipe-open B1): its bar hides, each segment's playlist on a line with a pink mark, Edit recipe a pink button at the lower right */
   .bh-recipe.bh-open .bh-shape { display: none; }
   .bh-recipe .bh-rlist { grid-column: 1 / -1; margin: 10px 0 0; }
@@ -1898,6 +1903,7 @@
   .ms-empty h3 { margin: 0 0 6px; font-size: 1.1rem; }
   .ms-empty p { margin: 0 auto 18px; max-width: 340px; color: var(--muted); font-size: 0.92rem; }
   #msDialog .ms-empty-main { display: inline-flex; width: auto; padding: 10px 24px; }
+  @media (hover: hover) { #msDialog .ms-empty-ghost:hover { filter: none; outline: none; border-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, transparent); } }
   #msDialog .ms-empty-ghost { margin: 0; min-height: 0; padding: 9px 20px; border-radius: 999px; border: 1px solid var(--accent-tint-border); background: none; box-shadow: none; color: var(--accent); font-weight: 700; }
   .ms-row .ms-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ms-cover { flex: none; width: 60px; height: 60px; border-radius: 8px; object-fit: cover; background: var(--card); }
@@ -2172,6 +2178,7 @@
   /* the playlist's card at the top of the share form: the row as others will see it, a tap opens the list of playlists; Share anonymously at its foot */
   .ms-pcard { border: 1.5px solid var(--line); border-radius: 14px; background: var(--card); }
   #msDialog .ms-pcard-pick { display: flex; gap: 12px; align-items: center; width: 100%; box-sizing: border-box; margin: 0; min-height: 0; padding: 10px 12px; border: 0; border-radius: 13px 13px 0 0; background: none; box-shadow: none; color: var(--fg); font: inherit; text-align: left; }
+  @media (hover: hover) { #msDialog button.ms-pcard-pick:hover { filter: none; outline: none; } #msDialog button.ms-pcard-empty:not(.ms-open):hover { border-color: var(--accent); } }
   #msDialog button.ms-pcard-empty { border: 1.5px dashed color-mix(in srgb, var(--accent) 55%, var(--line)); border-radius: 14px; background: var(--card); }
   .ms-pcard-pick > .ms-cover { width: 48px; height: 48px; border-radius: 6px; }
   .ms-pcard-pick .ms-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -2950,10 +2957,10 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-14r"></script>
-<script src="editor.js?v=2026-11-14r"></script>
-<script src="shared-spotify.js?v=2026-11-14r"></script>
-<script src="app.js?v=2026-11-14r"></script>
-<script src="sharing.js?v=2026-11-14r"></script>
+<script src="formats.js?v=2026-11-14s"></script>
+<script src="editor.js?v=2026-11-14s"></script>
+<script src="shared-spotify.js?v=2026-11-14s"></script>
+<script src="app.js?v=2026-11-14s"></script>
+<script src="sharing.js?v=2026-11-14s"></script>
 </body>
 </html>
