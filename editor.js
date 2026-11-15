@@ -3173,7 +3173,8 @@ function personBuildProblem(b) {
   }
   return problemBox("The playlist was not finished", b.id
     ? `${b.error} ${b.name} is in Spotify with only some of its songs. Delete it there, then build again.`
-    : `${b.error} Nothing was made. Build again when you are ready.`);
+    : `${b.error} Nothing was made. Build again when you are ready.`,
+    [{ label: "Report this problem", run: () => openReport() }]);   // the report carries the failure (lastError) and the steps before it
 }
 // Built (Ron, 2026-11-12, mockups/build-one/fanfare.html C): over the new playlist's cover a pink check draws itself and three rings spread out, as Music sharing
 // does after Share; the cover lights up under it, Open pops in, and the participant's line comes in with its new count. Once; under reduced motion only the end shows.

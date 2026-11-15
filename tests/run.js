@@ -2,29 +2,26 @@ const { JSDOM } = require("jsdom");
 const { execFileSync } = require("child_process");
 // Run only some areas: node run.js --only=privacy|tabs   (matches part of an area's name; --list shows the names)
 const ONLY = (process.argv.find((a) => a.startsWith("--only=")) || "").slice(7).toLowerCase().split("|").filter(Boolean);
-// Build in the plan popup. With one recipe that can make several, nothing is chosen at first: like the old default, choose them all first.
-function chooseAll(w) {
-  const tiles = w.document.getElementById("bdPickTiles");
-  if (tiles && !w.document.getElementById("bdPick").hidden && !tiles.querySelector('[aria-checked="true"]') && tiles.lastElementChild) tiles.lastElementChild.click();
-}
-function pressBuild(w) {
-  const tiles = w.document.getElementById("bdPickTiles");
-  if (tiles && !w.document.getElementById("bdPick").hidden && !tiles.querySelector('[aria-checked="true"]') && tiles.lastElementChild) tiles.lastElementChild.click();
-  w.document.getElementById("confirmYes").click();
-}
-const SECTION_NAMES = ["builder landing and participants", "launch screen", "sharing card in the editor", "music sharing", "device checks", "sharing what arc built", "music sharing songs", "developer options", "menu popups and the silence help", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "build popup", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version line", "welcome recipe link", "spotify row", "one way to save", "notice line", "connecting state", "connecting screen", "save retry online", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "save packer", "playlist ids", "description test", "popups close only", "narrow more button", "the silence card", "spotify premium", "python status at the bottom", "questions and feedback", "settings below the segments, pink outline", "the tagline", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'the simpler create step', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', "telling this app's playlists from yours", 'refreshing, and playlists the app did not mark', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'the popup after Create, and the room at the bottom', 'fading and Close in the Create popup', 'tabs that scroll sideways', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
+const SECTION_NAMES = ["builder landing and participants", "launch screen", "sharing card in the editor", "music sharing", "device checks", "sharing what arc built", "music sharing songs", "developer options", "menu popups and the silence help", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version line", "welcome recipe link", "spotify row", "one way to save", "notice line", "connecting state", "connecting screen", "save retry online", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "save packer", "playlist ids", "description test", "popups close only", "narrow more button", "the silence card", "spotify premium", "python status at the bottom", "questions and feedback", "settings below the segments, pink outline", "the tagline", "a new format scrolls into view", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy: hidden in minimalist mode, gap, and where reporting is mentioned", "privacy section and anonymous counts", "report link on a connection problem", "minimalist mode steps aside", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', 'private playlists', 'cover art', 'what "private" means on Spotify', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', "the limit list, and the format's title", 'the app menu, and minimalist mode', "minimalist mode, the menu's label, and alignment", 'minimalist mode, part two', 'compact rows, centered icons, no label, no corner background', 'tabs that scroll sideways', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
 // areas that need another area's setup to have run first
 const NEEDS = {
   "the page's styles for tags and phones": ["silences, dragging and removing"],
 };
 const wantRaw = (name) => {
   if (!ONLY.length) return true;
-  const hit = (x) => ONLY.some((o) => x.toLowerCase().includes(o));
+  const hit = (x) => ONLY.some((o) => (process.env.EXACT_AREA ? x.toLowerCase() === o : x.toLowerCase().includes(o)));   // EXACT_AREA=1: whole names only
   return hit(name) || Object.entries(NEEDS).some(([user, deps]) => hit(user) && deps.some((d) => d.toLowerCase() === name.toLowerCase()));
 };
+// Every page a test opens stays in memory with its timers running until it is closed: when an area starts, the pages from two areas back are closed
+// (the area just before may still be read by this one, as NEEDS allows). Pages opened before the first area are shared by all of them and stay.
+const openPages = []; let areaSerial = 0;
+function closeOldPages() {
+  areaSerial += 1;
+  for (let i = openPages.length - 1; i >= 0; i--) if (openPages[i].area > 0 && openPages[i].area < areaSerial - 1) { try { openPages[i].w.close(); } catch (err) { /* already gone */ } openPages.splice(i, 1); }
+}
 // how long each area takes: the time from one area starting to the next (shown with --timing)
 const areaTimes = []; let areaPrev = null, areaStart = Date.now();
-const want = (name) => { const hit = wantRaw(name); if (hit && areaPrev !== name && !areaTimes.some((a) => a.name === name)) { if (areaPrev) areaTimes.push({ name: areaPrev, ms: Date.now() - areaStart }); areaPrev = name; areaStart = Date.now(); } return hit; };
+const want = (name) => { const hit = wantRaw(name); if (hit && areaPrev !== name && !areaTimes.some((a) => a.name === name)) { if (areaPrev) areaTimes.push({ name: areaPrev, ms: Date.now() - areaStart }); areaPrev = name; areaStart = Date.now(); closeOldPages(); } return hit; };
 if (process.argv.includes("--list")) { console.log(SECTION_NAMES.join("\n")); process.exit(0); }
 const FDBFactory = (require("fake-indexeddb/lib/FDBFactory").default || require("fake-indexeddb/lib/FDBFactory"));
 const { spawnSync } = require("child_process");
@@ -38,23 +35,6 @@ const appJs = fs.readFileSync(ROOT + "theme.js", "utf8") + "\n" + fs.readFileSyn
 
 // app.js and the Spotify code it uses from shared-spotify.js, for the checks that read the code itself
 const appSource = () => fs.readFileSync(ROOT + "shared-spotify.js", "utf8") + "\n" + fs.readFileSync(ROOT + "app.js", "utf8");
-
-// the sentence a finished build shows, from its parts (the music between them counts up)
-const doneSentence = (w) => { const q = (c) => (w.document.querySelector("#actionMessage ." + c) || { textContent: "" }).textContent; return `${q("bd-big")} ${q("bd-lib")}`; };
-
-// ---- fake Spotify
-// the plan text is shown in the question box (behind a link), or, when there is a problem, in the output box
-function outText(w) { return w.document.getElementById("output").hidden ? w.document.getElementById("planText").textContent : w.document.getElementById("output").textContent; }
-// The playlists listed in the build popup, as the person sees them: name, song count and the length shown
-function planRows(w) {
-  return Array.from(w.document.querySelectorAll("#results .bd-row")).map((r) => {
-    const meta = r.querySelector(".bd-meta").textContent;
-    const songs = meta.match(/^(\d+) songs?/);
-    return { name: r.querySelector(".bd-name").textContent, songs: songs ? Number(songs[1]) : null, meta, link: r.querySelector("a.bd-name") };
-  });
-}
-// The groups in the build popup when one build makes playlists for several recipes
-function planGroups(w) { return Array.from(w.document.querySelectorAll("#results .bd-group b")).map((b) => b.textContent); }
 
 const MADE = 'Made by Arc. Do not edit this description. Built 1 Nov 2026.';
 const MY_PLAYLISTS = [
@@ -274,6 +254,7 @@ async function boot({ url, session = {}, local = {}, fetchOptions = {}, before =
   const bootStarted = Date.now();
   const dom = new JSDOM(htmlChange ? htmlChange(html) : html, { url, runScripts: "outside-only", pretendToBeVisual: true });
   const w = dom.window;
+  openPages.push({ w, area: areaSerial });
   fetchOptions.writes = fetchOptions.writes || [];
   for (const [k, v] of Object.entries(session)) w.sessionStorage.setItem(k, v);
   // Most tests were written when everyone started with one format; a signed-in test with no saved formats gets that starter.
@@ -309,7 +290,7 @@ async function boot({ url, session = {}, local = {}, fetchOptions = {}, before =
   w.document.documentElement.classList.add("view-" + view);   // as the <head> script would (it does not run here)
   if (savedLocal.devMode === "1") w.document.documentElement.classList.add("dev-mode");   // developer mode, as the <head> script would
   w.__scriptsRequested = [];
-  w.eval(appJs.replace("const sharing = {", "var sharing = {").replace("const previewUrls =", "var previewUrls =").replace("let spotifyAnswerMs = 30000;", "var spotifyAnswerMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const recipeEdit =", "var recipeEdit =").replace("const builderHome =", "var builderHome =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let SHORT_LIST_RETRY_MS =", "var SHORT_LIST_RETRY_MS =").replace("let playlistPages =", "var playlistPages =").replace("let busy =", "var busy =").replace("let token = null;", "var token = null;").replace("let py = null;", "var py = null;").replace("let formatsValid =", "var formatsValid =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let appView =", "var appView =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("let launchScreen =", "var launchScreen =").replace("const GAP_STEPS =", "var GAP_STEPS =").replace("let startupDone =", "var startupDone =").replace("const limitWait =", "var limitWait ="));  // test harness only: lets a test replace the reload
+  w.eval(appJs.replace("const sharing = {", "var sharing = {").replace("const previewUrls =", "var previewUrls =").replace("let spotifyAnswerMs = 30000;", "var spotifyAnswerMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const recipeEdit =", "var recipeEdit =").replace("const builderHome =", "var builderHome =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let SHORT_LIST_RETRY_MS =", "var SHORT_LIST_RETRY_MS =").replace("let playlistPages =", "var playlistPages =").replace("let busy =", "var busy =").replace("let token = null;", "var token = null;").replace("let py = null;", "var py = null;").replace("let formatsValid =", "var formatsValid =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let appView =", "var appView =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("let launchScreen =", "var launchScreen =").replace("const GAP_STEPS =", "var GAP_STEPS =").replace("let startupDone =", "var startupDone =").replace("const limitWait =", "var limitWait =").replace("const personBuild =", "var personBuild ="));  // test harness only: lets a test replace the reload
   await Promise.race([w.__main, new Promise((r) => setTimeout(r, 1500))]);   // ready as soon as the page has finished starting up
   await new Promise((r) => setTimeout(r, 30));
   // Most tests were written when the editor was always on the page: the recipe being edited opens in its panel, as a tap on it would (panel: false leaves the landing)
@@ -324,9 +305,12 @@ function menuStatus(w) { w.document.getElementById("feAppMenuButton").click(); c
 async function saveRecipe(w) { const id = w.editor.activeId; w.document.getElementById("rpSave").click(); await w.openRecipePanel(id); }
 function capText(w) { const n = w.document.getElementById(w.eval("recipeEdit.open") ? "feCaption" : "bhCaption"); return n ? n.textContent : ""; }
 function capLinks(w) { const c = w.eval("recipeEdit.open") ? "#feCaption" : "#bhCaption"; return Array.from(w.document.querySelectorAll(`${c} .fe-notice-link, ${c} .fe-notice-ok, ${c} .fe-notice-count`)); }
-// Remove now needs a choice in the dropdown: keep one that is set, otherwise pick All recipes, then press Remove.
-// Several recipes in one build popup: Build all recipes left the menu (Ron, 2026-11-14), but the popup still takes several, so checks start it directly
-async function buildAllNow(w) { await waitFor(() => w.eval("!!token && connection === 'ready' && !!py && formatsValid && !busy"), 20000); w.eval("startCreate(currentFormats.map((f) => f.id))"); }
+// One playlist for a participant, as Build on a recipe does after Who is it for? Waits until Arc is ready, runs the build and returns where it ended (personBuild).
+async function buildFor(w, id, code = "T", repeat = null) {
+  await waitFor(() => w.eval("!!token && connection === 'ready' && !!py && formatsValid && !busy"), 20000);
+  await w.eval(`buildForParticipant(${JSON.stringify(id)}, ${JSON.stringify(code)}, ${JSON.stringify(repeat)})`);
+  return JSON.parse(w.eval("JSON.stringify(personBuild)"));
+}
 
 
 async function waitFor(condition, ms = 15000) {
@@ -350,12 +334,6 @@ const MINI = '{"mini": {"name": "mini {n}", "silence between segments": "30 sec"
   const css = fs.readFileSync(ROOT + "index.html", "utf8");
   const visible = (w, id) => !w.document.getElementById(id).hidden;
   const readyToPreview = (w) => waitFor(() => !w.document.getElementById("create").disabled, 20000);
-  const runPreview = async (w) => {
-    await readyToPreview(w);
-    w.document.getElementById("create").click();
-    await waitFor(() => visible(w, "confirmBox") || /Nothing can be built|Cannot plan|Something went wrong/.test(outText(w)), 30000);
-    chooseAll(w);   // as the popup used to start: all of them chosen
-  };
   const t0 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn() });
   const EDURL = "http://127.0.0.1:8000/";
   const optionNamed = (w, name) => Array.from(w.document.querySelectorAll("#feOptions .fe-option")).find((o) => o.getAttribute("data-name") === name);
@@ -395,18 +373,10 @@ print(json.dumps(out))
   check("address bar cleaned after sign-in", w1.location.search === "", w1.location.href);
   check("token stored for this tab", !!w1.sessionStorage.getItem("token"));
   check("connected message shows name and playlist count (paged)", /Connected as Ron\. 5 playlists found/.test(w1.document.getElementById("connectedMessage").textContent), w1.document.getElementById("connectedMessage").textContent);
-  check("the Build button builds the format being edited, and names it", w1.eval("selectedKeys()")[0] === "b1-evocative" && /^for .+$/.test(w1.document.querySelector("#create .build-name").textContent) && !!w1.document.querySelector("#create .build-name i"), w1.document.getElementById("create").textContent);
-  await waitFor(() => !w1.document.getElementById("create").disabled, 8000).catch(() => {});   // Python and the sign-in finish in either order
-  check("preview button enabled", w1.document.getElementById("create").disabled === false);
 
-  // 2. preview
-  w1.document.getElementById("create").click();
-  await waitFor(() => visible(w1, "confirmBox") || /Nothing can be built|Choose a playlist|Could not plan/.test(outText(w1)), 30000);
-  var out = outText(w1);
-  console.log("\n--- preview output ---\n" + out + "\n----------------------\n");
-  check("the plan says how many and lists no playlists: they are listed once they are being built", planRows(w1).length === 0 && /^Up to \d+, with no song repeated across them\. Why \d+\?$/.test(w1.document.getElementById("confirmText").textContent), JSON.stringify(planRows(w1).slice(0, 2)));
-  w1.document.getElementById("planToggle").click();
-  check("songs from paged playlist items were all read (130 each minus skipped)", Array.from(w1.document.querySelectorAll("#planText tbody tr")).every((tr) => /8 hrh \d+ minm/.test(tr.children[1].textContent)), outText(w1));
+  // 2. songs from playlists longer than one page are all read
+  var w1_songs = await w1.eval("loadMyPlaylists().then(() => loadTracks(playlists.find((p) => p.name === '💗 spacious + gentle').id)).then((t) => t.length)");
+  check("songs from paged playlist items were all read (130 minus skipped)", w1_songs > 100 && w1_songs <= 130, String(w1_songs));
 
   // 3. state mismatch is rejected
   var w2 = await boot({ url: "http://127.0.0.1:8000/?code=zzz&state=wrong", session: { pkceState: "st1", pkceVerifier: "v" }, local: { clientId: "c" } });
@@ -428,14 +398,13 @@ print(json.dumps(out))
     url: "http://127.0.0.1:8000/", session: { token: JSON.stringify({ value: "t", expires: Date.now() + 3600000, scope: SCOPE_ALL }) },
     local: { formats: '{"x": {"name": "x {n}", "segments": [("Someone else\'s list", 30)]}}' },
   });
-  w5.document.getElementById("create").click();
-  await waitFor(() => /is not yours/.test(outText(w5)) || visible(w5, "confirmBox"), 15000);
-  check("not-owned playlist explained", /is not yours/.test(outText(w5)), outText(w5));
+  var w5_b = await buildFor(w5, "x");
+  check("not-owned playlist explained, and nothing is made", w5_b.state === "blocked" && w5_b.problems.some((p) => /is not yours/.test(p[0])), JSON.stringify(w5_b.problems));
 
   // 6b. first runtime versions unavailable: falls back to a later one
   var w6 = await boot({ url: "http://127.0.0.1:8000/", session: { token: JSON.stringify({ value: "t", expires: Date.now() + 3600000, scope: SCOPE_ALL }) }, fetchOptions: { brokenVersions: ["v0.29.3", "v0.29.2"] } });
   await waitFor(() => /ready$|Could not load/.test(w6.document.getElementById("pythonStatus").textContent), 15000);
-  check("falls back to a later runtime version", /Pyodide 0\.29\.1 ready$/.test(w6.document.getElementById("pythonStatus").textContent) && w6.eval("selectedKeys()")[0] === "format-1", w6.document.getElementById("pythonStatus").textContent);
+  check("falls back to a later runtime version", /Pyodide 0\.29\.1 ready$/.test(w6.document.getElementById("pythonStatus").textContent) && w6.eval("currentFormats[0].id") === "format-1", w6.document.getElementById("pythonStatus").textContent);
 
   // 6c. every version unavailable: clear message, dropdown says so
   var w7 = await boot({ url: "http://127.0.0.1:8000/", session: { token: JSON.stringify({ value: "t", expires: Date.now() + 3600000, scope: SCOPE_ALL }) }, fetchOptions: { brokenVersions: ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"] } });
@@ -449,18 +418,7 @@ print(json.dumps(out))
   var two = 'FORMATS = {"b1-evocative": {"name": "evo {n}", "segments": [("💗 spacious + gentle", 30), ("🛋 rest", 30)]}, "second": {"name": "second {n}", "silence between segments": "1 min", "segments": [("💗💗 evocative", 20), ("🛋 rest", 20)]}}';
   var w8 = await boot({ url: "http://127.0.0.1:8000/", session: { token: JSON.stringify({ value: "t", expires: Date.now() + 3600000, scope: SCOPE_ALL }) }, local: { formats: two } });
   check("there is no Build all recipes row and no format dropdown", !w8.document.getElementById("buildAll") && !w8.document.getElementById("formatKey") && !/feBuildAll/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
-  await buildAllNow(w8);
-  await waitFor(() => visible(w8, "confirmBox"), 30000);
-  var out8 = outText(w8);
-  console.log("\n--- all-formats output ---\n" + out8.split("\n").slice(0, 40).join("\n") + "\n--------------------------\n");
-  check("all: Ready to build, and one sentence for the whole build", /^Ready to build \d+ playlists$/.test(w8.document.getElementById("bdPickHead").textContent) && w8.document.getElementById("confirmText").textContent === "For 2 recipes. Why these numbers?" && w8.document.getElementById("bdTitle").textContent === "Build 2 recipes", w8.document.getElementById("confirmText").textContent);
-  check("all: no length over the question, since there is more than one recipe", w8.document.getElementById("bdShapeInfo").hidden);
-  check("all: no list while it asks", planGroups(w8).length === 0 && planRows(w8).length === 0);
-  pressBuild(w8);
-  await waitFor(() => /in your Spotify library\.$/.test(w8.document.getElementById("actionMessage").textContent), 30000);
-  check("all: the playlists built are listed under their recipes' readable names", JSON.stringify(planGroups(w8)) === '["evo","second"]', JSON.stringify(planGroups(w8)));
-
-  check("page sends at most 5 arguments to build_playlists (the last is the names to skip)", global.planTextArgCounts.length > 0 && Math.max(...global.planTextArgCounts) <= 5, String(global.planTextArgCounts));
+  check("page sends at most 7 arguments to build_playlists (the last are what they heard and the repeats)", global.planTextArgCounts.length === 0 || Math.max(...global.planTextArgCounts) <= 7, String(global.planTextArgCounts));
   // two setup flows: nothing chosen at first, existing when a Client ID is already saved
   var hid = (w, id) => w.document.getElementById(id).hidden;
   check("new visitors see neither flow, and nothing below the choices", hid(fresh, "flowNew") && hid(fresh, "flowExisting") && hid(fresh, "connectBlock") && hid(fresh, "spSteps") && !hid(fresh, "spAsk"));
@@ -538,136 +496,52 @@ print(json.dumps(out))
   // B. preview first; Create appears under the plan and makes exactly that plan
   var oB = {};
   var wB = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: oB });
-  check("before creating, the question box and the plan box are closed", !visible(wB, "confirmBox") && wB.document.getElementById("output").hidden === true && wB.document.getElementById("output").textContent === "" && wB.document.getElementById("planText").hidden === true);
   var css0 = fs.readFileSync(ROOT + "index.html", "utf8");
-  check("hidden always means hidden, even for elements the page styles with display (like the flex rows)", /\[hidden\] \{ display: none !important; \}/.test(css0) && /\.row \{[^}]*display: flex/.test(css0) && /<div id="confirmBox" hidden>/.test(css0));
-  check("the Step 3 row has one Build button and no dropdown", !!wB.document.querySelector("#create") && !wB.document.getElementById("formatKey") && !wB.document.getElementById("create").parentElement.querySelector("#removeOld, #preview, #buildAll") && !wB.document.getElementById("removeOld") && !wB.document.getElementById("buildAll"));
-  await runPreview(wB);
-  var plannedCount = Number((wB.document.getElementById("confirmText").textContent.match(/^Up to (\d+),/) || [])[1]);
-  var createLabel = wB.document.getElementById("confirmYes").textContent;
-  check("after pressing Create, a question shows the exact count and offers to create it", visible(wB, "confirmBox") && plannedCount > 3 && createLabel === `Build ${plannedCount} playlists`, createLabel);
-  check("a plan with nothing to replace is the question, the count with Why N? beside it, and one button, the numbers only behind Why N?", /^Up to \d+, with no song repeated across them\. Why \d+\?$/.test(wB.document.getElementById("confirmText").textContent) && visible(wB, "bdPickHead") && !!wB.document.querySelector("#confirmText #planToggle") && !visible(wB, "confirmNotes") && !/will be replaced|renamed/.test(wB.document.getElementById("bdInfo").textContent) && wB.document.getElementById("planText").hidden === true && wB.document.getElementById("planToggle").textContent === `Why ${plannedCount}?` && wB.document.getElementById("output").hidden === true, wB.document.getElementById("confirmText").textContent);
-  check("nothing has been created yet", oB.writes.length === 0);
-  wB.document.getElementById("planToggle").click();
-  check("Why N? shows the numbers, and the link then offers to hide them", wB.document.getElementById("planText").hidden === false && wB.document.getElementById("planToggle").textContent === "Hide");
-  wB.document.getElementById("planToggle").click();
-  check("Hide puts them away again", wB.document.getElementById("planText").hidden === true);
-  pressBuild(wB);
-  await waitFor(() => /in your Spotify library\.$/.test(wB.document.getElementById("actionMessage").textContent), 30000);
+  check("hidden always means hidden, even for elements the page styles with display (like the flex rows)", /\[hidden\] \{ display: none !important; \}/.test(css0) && /\.row \{[^}]*display: flex/.test(css0));
+  var bB = await buildFor(wB, "mini");
   var creates = writesOf(oB, "create");
-  check("with nothing to replace, the question only offered to create, and no earlier playlists were removed", !visible(wB, "confirmBox") && oB.writes.every((w) => w.type !== "remove"));
-  var planned = planRows(wB);
-  check("it created exactly the playlists it said, privately, named from the recipe, and lists them", creates.length === plannedCount && planned.length === plannedCount && creates[0].name === "mini 1" && creates.every((c, i) => c.name === planned[i].name && c.public === false), `${creates.length} vs ${plannedCount}`);
+  check("a participant's build makes one playlist, private, named with their code and the recipe", bB.state === "done" && creates.length === 1 && creates[0].public === false && /^T · mini · \d+ \w+$/.test(creates[0].name), JSON.stringify(creates) + JSON.stringify(bB));
+  check("its description says it is Arc's and whom it is for", /^Made by Arc\. Do not edit this description\. For participant T\. Built /.test(creates[0].description), creates[0].description);
   var addsFor = (o, id) => writesOf(o, "add").filter((w) => w.id === id);
-  var songCounts = creates.map((c) => addsFor(oB, c.id).flatMap((a) => a.uris).filter((u) => u !== SILENCE_30).length);
-  check("each created playlist has exactly the song count the list shows", JSON.stringify(songCounts) === JSON.stringify(planned.map((p) => p.songs)), `${songCounts} vs ${planned.map((p) => p.songs)}`);
   var firstUris = addsFor(oB, creates[0].id).flatMap((a) => a.uris);
-  check("songs were added up to 100 at a time: one request for a playlist of 100 songs or fewer", creates.every((c) => addsFor(oB, c.id).length === Math.ceil(addsFor(oB, c.id).flatMap((a) => a.uris).length / 100)) && addsFor(oB, creates[0].id).length === 1, JSON.stringify(creates.map((c) => addsFor(oB, c.id).length)));
+  check("songs were added up to 100 at a time", addsFor(oB, creates[0].id).length === Math.ceil(firstUris.length / 100) && firstUris.length > 0, String(firstUris.length));
   var silenceAt = firstUris.reduce((acc, u, i) => (u === SILENCE_30 ? acc.concat(i) : acc), []);
   check("one silence track sits between the two segments", silenceAt.length === 1 && silenceAt[0] > 0 && silenceAt[0] < firstUris.length - 1, JSON.stringify(silenceAt));
-  var allUris = creates.flatMap((c) => addsFor(oB, c.id).flatMap((a) => a.uris)).filter((u) => u !== SILENCE_30);
-  check("no song repeats across the created playlists", new Set(allUris).size === allUris.length);
-  var links = wB.document.querySelectorAll("#results .bd-row a");
-  check("the created playlists are listed without links, and Open in Spotify opens the first one", links.length === 0 && /open\.spotify\.com\/playlist\/new1$/.test(wB.document.getElementById("createOpenLink").href) && wB.document.getElementById("createOpenLink").target === "_blank");
-  check("after a successful run the question and the plan are cleared, so it cannot make duplicates, and Create is ready again", !visible(wB, "confirmBox") && (wB.document.getElementById("output").hidden && wB.document.getElementById("output").textContent === "") && wB.document.getElementById("planText").textContent === "" && !wB.document.getElementById("create").disabled);
+  var musicUris = firstUris.filter((u) => u !== SILENCE_30);
+  check("no song repeats within the playlist", new Set(musicUris).size === musicUris.length);
+  var bB2 = await buildFor(wB, "mini");
+  var second = writesOf(oB, "create")[1];
+  var secondUris = second ? addsFor(oB, second.id).flatMap((a) => a.uris).filter((u) => u !== SILENCE_30) : [];
+  check("their next playlist has none of the songs they heard in the first", bB2.state === "done" && secondUris.length > 0 && secondUris.every((u) => !musicUris.includes(u)), JSON.stringify(bB2));
 
-  // C. the limit (in More options) caps the plan
-  var oC2 = {};
-  var wC2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: oC2 });
-  wC2.eval("setPlaylistLimit(3)");
-  await runPreview(wC2);
-  check("with a limit of 3, the question offers to build 3", wC2.document.getElementById("confirmYes").textContent === "Build 3 playlists", wC2.document.getElementById("confirmYes").textContent);
-  pressBuild(wC2);
-  await waitFor(() => /in your Spotify library\.$/.test(wC2.document.getElementById("actionMessage").textContent), 20000);
-  check("only the limited number are created", writesOf(oC2, "create").length === 3);
-
-  // D. a preview is one at a time, and anything that could change it clears it and re-enables Preview plan
-  var wD0 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
-  await runPreview(wD0);
-  check("with a preview showing, Preview plan is disabled", wD0.document.getElementById("create").disabled === true && visible(wD0, "confirmBox"));
-  wD0.document.getElementById("formats").value += " ";
-  wD0.document.getElementById("formats").dispatchEvent(new wD0.Event("input"));
-  await new Promise((r) => setTimeout(r, 40));
-  check("editing the formats closes the question and re-enables Create", (wD0.document.getElementById("output").hidden && outText(wD0) === "") && !visible(wD0, "confirmBox") && wD0.document.getElementById("create").disabled === false);
-  await runPreview(wD0);
-  await new Promise((r) => setTimeout(r, 40));
-  wD0.eval("setPlaylistLimit(2)");
-  await new Promise((r) => setTimeout(r, 40));
-  check("changing the limit closes the question and re-enables Create", (wD0.document.getElementById("output").hidden && outText(wD0) === "") && !visible(wD0, "confirmBox") && wD0.document.getElementById("create").disabled === false);
-  await runPreview(wD0);
-  wD0.document.querySelector("#feRows .fe-inc").click();
-  await new Promise((r) => setTimeout(r, 40));
-  check("editing a format in the editor closes the question", (wD0.document.getElementById("output").hidden && outText(wD0) === "") && !visible(wD0, "confirmBox") && wD0.document.getElementById("create").disabled === false);
-
-  // editing while a preview is still being made throws that preview away
-  var wD1 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
-  await readyToPreview(wD1);
-  wD1.document.getElementById("create").click();
-  await new Promise((r) => setTimeout(r, 10));
-  wD1.document.getElementById("formats").value += " ";
-  wD1.document.getElementById("formats").dispatchEvent(new wD1.Event("input"));
-  await waitFor(() => !wD1.document.getElementById("create").disabled, 30000);
-  await new Promise((r) => setTimeout(r, 400));
-  check("a preview finished after an edit is discarded, not shown", !visible(wD1, "confirmBox") && (wD1.document.getElementById("output").hidden && outText(wD1) === ""), outText(wD1).slice(0, 60));
-
-  // E. earlier playlists with matching names: ask, then replace
-  var existing = [
-    { id: "old1", name: "mini 1", owner: { id: "ron" }, description: MADE },
-    { id: "old2", name: "mini 12", owner: { id: "ron" }, description: MADE },
-    { id: "old3", name: "mini 3", owner: { id: "other" } },
-    { id: "old4", name: "mini extra", owner: { id: "ron" } },
-  ];
-  var oC = { extraPlaylists: existing };
-  var wC = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: oC });
-  await runPreview(wC);
-  var earlier = wC.document.getElementById("bdInfo").textContent;
-  check("the question counts only my matching earlier playlists to replace, without listing them", /^Replaces 2 earlier playlistsReplacing them is the usual choice/.test(earlier) && !/mini 1/.test(earlier), earlier);
-  check("one Build button, and keeping them is a checkbox that starts off", /^Build \d+ playlists$/.test(wC.document.getElementById("confirmYes").textContent) && wC.document.getElementById("confirmKeepEarlier").type === "checkbox" && wC.document.getElementById("confirmKeepEarlier").checked === false && /^Up to \d+,/.test(wC.document.getElementById("confirmText").textContent), wC.document.getElementById("confirmYes").textContent);
-  wC.document.getElementById("bdClose").click();
-  await waitFor(() => wC.document.getElementById("createOverlay").hidden);
-  await waitFor(() => !wC.document.getElementById("create").disabled);
-  check("cancelling changes nothing and keeps Create available", oC.writes.length === 0 && !visible(wC, "confirmBox") && !wC.document.getElementById("create").disabled, JSON.stringify(oC.writes));
-  wC.document.getElementById("create").click();
-  await waitFor(() => visible(wC, "confirmBox"));
-  pressBuild(wC);
-  await waitFor(() => /in your Spotify library\.$/.test(wC.document.getElementById("actionMessage").textContent), 30000);
-  check("earlier playlists are removed before new ones are made", oC.writes[0].type === "remove" && JSON.stringify(oC.writes[0].uris) === JSON.stringify(["spotify:playlist:old1", "spotify:playlist:old2"]) && oC.writes[1].type === "create", JSON.stringify(oC.writes.slice(0, 2)));
 
   // F. a permissions failure is explained
   var oE = { denyCreate: true };
   var wE = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: oE });
-  await runPreview(wE);
-  pressBuild(wE);
-  await waitFor(() => /did not allow/.test(wE.document.getElementById("actionMessage").textContent));
-  check("a refused permission tells the user to sign in again with Change Spotify login, and Create is available again", /Sign in again with Change Spotify login in More options, and approve every permission/.test(wE.document.getElementById("actionMessage").textContent) && true, wE.document.getElementById("actionMessage").textContent);
+  var bE = await buildFor(wE, "mini");
+  check("a refused permission stops the build and says so in the participant's row, and nothing is made", bE.state === "fail" && /Spotify/.test(bE.error) && writesOf(oE, "create").length === 0, JSON.stringify(bE));
 
   // G. when nothing can be made there is no Create and nothing is touched
   var oF = { extraPlaylists: [{ id: "old1", name: "huge 1", owner: { id: "ron" }, description: MADE }] };
   var wF = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: '{"huge": {"name": "huge {n}", "segments": [("💗 spacious + gentle", 99999)]}}' }, fetchOptions: oF });
-  await runPreview(wF);
-  check("an impossible plan offers no Create and changes nothing", !visible(wF, "confirmBox") && /Nothing can be built/.test(outText(wF)) && oF.writes.length === 0, outText(wF));
+  var bF = await buildFor(wF, "huge");
+  check("an impossible recipe makes nothing, and says why", bF.state === "blocked" && bF.problems.length > 0 && oF.writes.length === 0, JSON.stringify(bF.problems));
 
-  // H. Delete recipe can take its built playlists along (Remove built playlists left the menu, Ron, 2026-11-14)
+  // H. Delete recipe leaves the playlists built from it: they are participants'
   var TWO = '{"a": {"name": "alpha {n}", "segments": [("💗 spacious + gentle", 10)]}, "b": {"name": "beta {n}", "segments": [("🛋 rest", 10)]}}';
-  var oG2 = { extraPlaylists: [{ id: "a1", name: "alpha 1", owner: { id: "ron" }, description: MADE }, { id: "b1", name: "beta 1", owner: { id: "ron" }, description: MADE }] };
+  var oG2 = {};
   var wG2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: TWO }, fetchOptions: oG2 });
-  await readyToPreview(wG2);
+  await waitFor(() => wG2.eval("connection") === "ready", 15000);
   wG2.eval('showView("builder")');
   wG2.eval("editor.activeId = 'b'; renderEditor(); askDeleteFormat()");
   var del2 = wG2.document.getElementById("feDeleteDialog");
-  var box2 = wG2.document.getElementById("feDeleteBuilt");
-  check("Delete recipe offers to remove its built playlists too, not ticked, and says unticked they stay", !!box2 && box2.checked === false && /Also remove its playlist from Spotify/.test(del2.textContent) && /Left unticked, it stays in Spotify\./.test(del2.textContent), del2.textContent);
-  box2.click();
-  check("ticked, the button says Delete and remove", wG2.document.getElementById("feDeleteConfirm").textContent === "Delete and remove 1");
-  wG2.document.getElementById("feDeleteConfirm").click();
-  await waitFor(() => oG2.writes.length === 1);
-  check("deleting removes the recipe's playlists, and only those", JSON.stringify(oG2.writes[0].uris) === JSON.stringify(["spotify:playlist:b1"]), JSON.stringify(oG2.writes));
+  check("Delete recipe offers no box, and says participants' playlists stay", !wG2.document.getElementById("feDeleteBuilt") && /Playlists built from this recipe for participants stay\./.test(del2.textContent));
 
   // I. many playlists to remove are sent in batches of 40
   var many = Array.from({ length: 95 }, (_, i) => ({ id: "m" + i, name: "mini " + (i + 1), owner: { id: "ron" }, description: MADE }));
   var oH = { extraPlaylists: many };
   var wH = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: oH });
-  await readyToPreview(wH);
+  await waitFor(() => wH.eval("connection") === "ready", 15000);
   await wH.eval("removePlaylists(" + JSON.stringify(many.map((p) => p.id)) + ")");
   check("removals are batched at 40", JSON.stringify(oH.writes.map((w) => w.uris.length)) === "[40,40,15]", JSON.stringify(oH.writes.map((w) => w.uris && w.uris.length)));
 
@@ -684,7 +558,6 @@ print(json.dumps(out))
   check("the Python status is the DEV menu's foot, short: the versions and ready", !!wB.document.querySelector("#devMenu #pythonStatus.dm-foot") && /^(Python [\d.]+ · )?Pyodide [\d.]+ ready$/.test(wB.document.getElementById("pythonStatus").textContent) && !wB.document.querySelector("#appSection #pythonStatus"), wB.document.getElementById("pythonStatus").textContent);
   check("there is no app version label in the page", wB.document.getElementById("appVersionLabel") === null);
 
-  check("no thank-you prompt or photo after a build", !wB.document.querySelector("#createDialog .support-prompt, #createSupport, img[src=\"ron.jpg\"]"));
 
   // ---------------- the top of the page, the starting template, and the wording
   var pageHtml = fs.readFileSync(ROOT + "index.html", "utf8");
@@ -701,12 +574,10 @@ print(json.dumps(out))
   check("the two setup answers are plain labels", /Yes, I have/.test(fresh.document.getElementById("loginSection").textContent) && /No, this is my first time/.test(fresh.document.getElementById("loginSection").textContent));
   var tpl = t0.document.getElementById("formats").value;
   check("the editor starts with one format called Generated playlist, with one segment waiting for a playlist", t0.document.querySelectorAll("#feTabs .fe-tab").length === 1 && t0.document.querySelector("#feTabs .fe-tab").textContent === "Generated playlist" && t0.document.querySelectorAll("#feRows .fe-row").length === 1 && t0.document.querySelector("#feRows .fe-row .fe-title").textContent === "Choose a playlist", t0.document.getElementById("formatEditor").textContent);
-  await readyToPreview(t0);
-  check("the format being edited is format-1, from the starter", t0.eval("selectedKeys()")[0] === "format-1");
-  t0.document.getElementById("create").click();
-  await waitFor(() => /has no playlist yet/.test(outText(t0)), 20000);
-  var tplOut = outText(t0);
-  check("previewing before choosing a playlist says so, and creates nothing", /^Nothing can be built from this recipe yetA segment in Generated playlist has no playlist yet\. Choose one in the recipe\.$/.test(tplOut) && !visible(t0, "confirmBox"), tplOut);
+  check("the recipe it starts with is format-1", t0.eval("currentFormats[0].id") === "format-1");
+  var t0b_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn() });
+  var t0b = await buildFor(t0b_w, "format-1");
+  check("building before choosing a playlist says so, and creates nothing", t0b.state === "blocked" && t0b.problems.some((p) => /^A segment in Generated playlist has no playlist yet\.$/.test(p[0].replace(/[\u2066-\u2069]/g, "")) && p[1] === "Choose one in the recipe."), JSON.stringify(t0b.problems));
 
 
   // ---------------- returning visitors: a friendly welcome with one button, setup steps tucked away
@@ -746,15 +617,9 @@ print(json.dumps(out))
   var wCount = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: oCount });
   var countText = () => wCount.document.getElementById("connectedMessage").textContent;
   check("Step 1 starts with the real count", countText() === "Connected as Ron. 5 playlists found.", countText());
-  wCount.eval("setPlaylistLimit(3)");
-  await runPreview(wCount);
-  pressBuild(wCount);
-  await waitFor(() => /in your Spotify library\.$/.test(wCount.document.getElementById("actionMessage").textContent), 20000);
-  await waitFor(() => /8 playlists found/.test(countText()), 5000);
-  check("after creating 3 playlists the count goes from 5 to 8", countText() === "Connected as Ron. 8 playlists found.", countText());
-  await wCount.eval("removePlaylists(playlists.filter((p) => p.madeByApp && !p.isSave).map((p) => p.id)).then(() => loadMyPlaylists())");
-  await waitFor(() => /5 playlists found/.test(countText()), 5000);
-  check("after removing those 3 playlists the count goes back to 5", countText() === "Connected as Ron. 5 playlists found.", countText());
+  await buildFor(wCount, "mini");
+  await waitFor(() => /6 playlists found/.test(countText()), 5000);
+  check("after building a playlist the count goes from 5 to 6", countText() === "Connected as Ron. 6 playlists found.", countText());
   var tcss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
 
 
@@ -784,14 +649,14 @@ print(json.dumps(out))
   var oRp = { buildFailIn: "new1", buildFail: 500 };
   var rp2 = await boot({ url: "http://127.0.0.1:8000/", session: { token: JSON.stringify({ value: "TOKEN-VALUE-XYZ", expires: Date.now() + 3600000, scope: SCOPE_ALL }) }, local: { formats: MINI, clientId: "SECRET-CLIENT-ID-9" }, fetchOptions: oRp });
   check("no report link is offered when nothing has gone wrong", !visible(rp2, "mainReportHint") && !visible(rp2, "loginReportHint"));
-  await runPreview(rp2);
-  pressBuild(rp2);
-  await waitFor(() => /Something went wrong/.test(rp2.document.getElementById("actionMessage").textContent));
-  check("after an unexpected failure a report this problem link appears beside the message", visible(rp2, "mainReportHint") && /report this problem/.test(rp2.document.getElementById("mainReportHint").textContent));
+  var rp2_b = await buildFor(rp2, "mini");
+  check("an unexpected failure stops the build and says so in the participant's row", rp2_b.state === "fail" && /Spotify returned 500/.test(rp2_b.error), JSON.stringify(rp2_b));
   var q2 = reportParams(rp2);
-  check("the report carries the failure, without any quoted text", /Spotify returned 500/.test(q2.lastError) && !/['"]/.test(q2.lastError), q2.lastError);
-  check("and the steps that led to it", /plan started > plan: \d+ playlists planned > create started \(\d+ playlists\) > create failed after 0 of \d+ > problem: /.test(q2.recentSteps) && /create failed after 0 of \d+/.test(q2.recentSteps), q2.recentSteps);
-  rp2.document.querySelector("#mainReportHint a").click();
+  check("a report carries the failure, without any quoted text", /Spotify returned 500/.test(q2.lastError) && !/['"]/.test(q2.lastError), q2.lastError);
+  check("and the steps that led to it", /participant build started > .*participant build failed/.test(q2.recentSteps), q2.recentSteps);
+  var rp2_link = rp2.document.querySelector('#bhPeople [data-code="T"] .er-box .er-acts button');
+  check("the failure in the participant's row offers Report this problem", !!rp2_link && rp2_link.textContent === "Report this problem");
+  rp2_link.click();
   check("Report this problem opens the report form in a popup, its box ready for typing", rp2.document.getElementById("infoOverlay").hidden === false && rp2.document.getElementById("infoSlot").contains(rp2.document.getElementById("reportForm")) && rp2.document.activeElement === rp2.document.getElementById("reportText"));
   var rp2_text = rp2.document.getElementById("reportText"), rp2_send = rp2.document.querySelector("#reportForm .mf-send");
   rp2_text.value = "It stopped."; rp2_text.dispatchEvent(new rp2.Event("input"));
@@ -810,12 +675,6 @@ print(json.dumps(out))
   rp2.document.querySelector("#reportBlock .mf-again").click();
   check("Send another brings back an empty form", !rp2.document.getElementById("reportForm").hidden && rp2_text.value === "" && rp2_send.disabled === true);
   rp2.closeInfo(true);
-  rp2.document.getElementById("formats").value += " ";
-  rp2.document.getElementById("formats").dispatchEvent(new rp2.Event("input"));
-  await waitFor(() => !rp2.document.getElementById("create").disabled, 15000);
-  check("the report link stays until the person starts something new", visible(rp2, "mainReportHint"));
-  rp2.document.getElementById("create").click();
-  check("starting a new preview clears the report link", !visible(rp2, "mainReportHint"));
 
   // problems the person can fix themselves are recorded, but do not offer a report
   var rp3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: 'FORMATS = {"a": ' } });
@@ -823,7 +682,7 @@ print(json.dumps(out))
   rp3.eval("refreshReportBox()");
   check("a formats typo is recorded as the last error, with no report link offered", /^Last error: Could not read the formats/m.test(rp3.document.getElementById("reportPreview").textContent) && !visible(rp3, "mainReportHint"), rp3.document.getElementById("reportPreview").textContent);
   var rp4 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn() });
-  await runPreview(rp4);
+  await buildFor(rp4, "format-1");
   rp4.eval("refreshReportBox()");
   check("a segment with no playlist chosen is recorded as the last error, without any names", /Last error: Build blocked: 1 problem in the recipe/.test(rp4.document.getElementById("reportPreview").textContent) && !visible(rp4, "mainReportHint"), rp4.document.getElementById("reportPreview").textContent);
 
@@ -856,13 +715,6 @@ print(json.dumps(out))
   var h2s = Array.from(st.document.querySelectorAll("#appSection h2")).filter((h) => !h.closest("#builderHome, #recipePanelWrap")).map((h) => h.textContent);
   check("the steps are 2 Edit your recipes and 3 Build playlists, with no backup step", JSON.stringify(h2s) === JSON.stringify(["2. Edit your recipes", "3. Build playlists"]), JSON.stringify(h2s));
   check("the old Restore and Start over links, and the Start over warning, are gone from Step 2", !$s("resetFormats") && !$s("resetWarning") && !$s("resetAnyway") && !$s("backupRestore") && !Array.from(st.document.querySelectorAll("#appSection button")).some((b) => /Start over|Restore formats from backup/.test(b.textContent)));
-  // no nudge after a successful create
-  var x_nudge = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
-  x_nudge.eval("setPlaylistLimit(1)");
-  await runPreview(x_nudge);
-  pressBuild(x_nudge);
-  await waitFor(() => /in your Spotify library\.$/.test(x_nudge.document.getElementById("actionMessage").textContent), 20000);
-  check("creating playlists adds no reminder to back up", !x_nudge.document.querySelector("#results .backup-nudge") && !/Your formats worked|Back them up/.test(x_nudge.document.getElementById("createDialog").textContent));
 
   // ---------------- headings: the page title outranks the step headings, which are easy to spot
   var hcss = fs.readFileSync(ROOT + "index.html", "utf8");
@@ -875,7 +727,7 @@ print(json.dumps(out))
   // ---------------- every numbered section title says what the person will do
   var verbs = ["Find", "Connect", "Edit", "Build", "Back up"];
   var allH2 = Array.from(t0.document.querySelectorAll("h2")).filter((h) => !h.closest("#msOverlay, #builderHome, #recipePanelWrap")).map((h) => h.textContent);
-  check("the welcome and setup pages have their own headings, and every numbered section title left is an action", JSON.stringify(allH2) === JSON.stringify(["Connecting to Spotify", "Setup complete!", "Unwrapping the update", "Tools", "Coming soon", "Connect your Spotify account", "Have you set up Arc before?", "Find your Client ID", "1. Connect to Spotify", "1. Connect to Spotify", "2. Edit your recipes", "3. Build playlists"]) && allH2.slice(7).every((t) => verbs.some((v) => t.replace(/^\d\.\s/, "").startsWith(v))), JSON.stringify(allH2));
+  check("the welcome and setup pages have their own headings, and every numbered section title left is an action", JSON.stringify(allH2) === JSON.stringify(["Connecting to Spotify", "Setup complete!", "Unwrapping the update", "Tools", "Connect your Spotify account", "Have you set up Arc before?", "Find your Client ID", "1. Connect to Spotify", "1. Connect to Spotify", "2. Edit your recipes", "3. Build playlists"]) && allH2.slice(6).every((t) => verbs.some((v) => t.replace(/^\d\.\s/, "").startsWith(v))), JSON.stringify(allH2));
 
 
   // ---------------- What is this app? headings, and placeholder icons on the buttons
@@ -891,18 +743,14 @@ print(json.dumps(out))
   var icss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   // changing a label must not remove the icon
   var ic = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
-  await runPreview(ic);
-  var cr = ic.document.getElementById("confirmYes");
-  check("the question's button label updates with the count, in words only", /^Build \d+ playlists$/.test(cr.textContent) && !cr.querySelector("img"));
-  cr.click();
-  await waitFor(() => !ic.document.getElementById("confirmBox").hidden || /in your Spotify library\.$/.test(ic.document.getElementById("actionMessage").textContent), 20000);
+  await waitFor(() => ic.eval("connection") === "ready", 15000);
   var cp = ic.document.getElementById("copyRedirect");
   cp.dispatchEvent(new ic.Event("click"));
   await new Promise((r) => setTimeout(r, 200));
   check("the Copy button says Copied and shows a check as its icon", /^Copied$/.test(cp.textContent) && cp.querySelector("img.btn-icon").getAttribute("src") === "icons/confirm.svg", cp.textContent + " " + cp.querySelector("img.btn-icon").getAttribute("src"));
   await new Promise((r) => setTimeout(r, 2300));
   check("after two seconds the Copy button goes back to its copy icon and label", cp.textContent === "Copy" && cp.querySelector("img.btn-icon").getAttribute("src") === "icons/copy.svg");
-  check("the Build button keeps its icon, and the build popup's button has words only", ic.document.getElementById("create").querySelector("img").getAttribute("src") === "icons/build.svg" && !ic.document.getElementById("confirmYes").querySelector("img"));
+  check("the Build button keeps its icon", ic.document.getElementById("create").querySelector("img").getAttribute("src") === "icons/build.svg");
   var rs = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI + "\n# x" } });
   rs.eval("saveFile = () => {}");
 
@@ -1164,7 +1012,7 @@ print(json.dumps(out))
 
   ed1.document.getElementById("feDelete").click();
   var ed_dlg = ed1.document.getElementById("feDeleteDialog");
-  check("Delete asks first, naming the format, its rows, and its saved copy or the backup file", !!ed_dlg && /Delete Warm focus copy\?/.test(ed_dlg.textContent) && ed_dlg.querySelector("h3 i").textContent === "Warm focus copy" && /removes the recipe and its 3 rows/.test(ed_dlg.textContent) && /Playlists already in Spotify are not affected/.test(ed_dlg.textContent) && /Its saved copy in Spotify is deleted too\.|restored from a backup file if you have one\./.test(ed_dlg.textContent) && tabsOf(ed1).length === 3, ed_dlg && ed_dlg.textContent);
+  check("Delete asks first, naming the recipe, and says it goes from Spotify too while participants' playlists stay", !!ed_dlg && /Delete Warm focus copy\?/.test(ed_dlg.textContent) && ed_dlg.querySelector("h3 i").textContent === "Warm focus copy" && /This permanently removes the recipe from this list and from Spotify\. Playlists built from this recipe for participants stay\./.test(ed_dlg.textContent) && tabsOf(ed1).length === 3, ed_dlg && ed_dlg.textContent);
   ed1.document.getElementById("feDeleteCancel").click();
   check("Cancel keeps the format", !ed1.document.getElementById("feDeleteDialog") && tabsOf(ed1).length === 3);
 
@@ -1246,12 +1094,8 @@ print(json.dumps(out))
   var x_k1 = Object.keys(x_plan1)[0];
   check("the engine reads the text the editor wrote: same playlists, minutes, name pattern and no extra silence", JSON.stringify(x_plan1[x_k1].music) === JSON.stringify([[[["💗 spacious + gentle", 1]], 30], [[["🛋 rest ", 1]], 30]]) && x_plan1[x_k1].name === "UI test {n}" && x_plan1[x_k1].label === "UI test" && x_plan1[x_k1].gaps.every((g) => g === "none"), JSON.stringify(x_plan1));
   await readyToPreview(x_uiw);
-  await runPreview(x_uiw);
-  var uiOut = outText(x_uiw);
-  check("previewing it uses the format's name in the plan", x_uiw.document.getElementById("bdTitle").textContent === "UI test", x_uiw.document.getElementById("bdTitle").textContent);
-  pressBuild(x_uiw);
-  await waitFor(() => /in your Spotify library\.$/.test(x_uiw.document.getElementById("actionMessage").textContent), 20000);
-  check("creating makes playlists named from the format, with the chosen songs", x_ui.writes.some((w) => w.type === "create" && /^UI test \d+$/.test(w.name)), JSON.stringify(x_ui.writes.slice(0, 2)));
+  var x_uib = await buildFor(x_uiw, x_uiw.eval("editor.activeId"));
+  check("building makes a playlist named from the recipe", x_uib.state === "done" && x_ui.writes.some((w) => w.type === "create" && /^T · UI test · \d+ \w+$/.test(w.name)), JSON.stringify(x_ui.writes.filter((w) => w.type === "create")));
   check("the playlists just created are kept out of the picker", (() => { rowsOf(x_uiw)[0].querySelector(".fe-main").click(); const names = Array.from(x_uiw.document.querySelectorAll("#feOptions .fe-option")).map((o) => o.getAttribute("data-name")); return !names.some((n) => /^UI test \d+$/.test(n)) && names.includes("🛋 rest "); })());
 
   // silence and mixes written by the editor are understood by the engine too
@@ -1371,38 +1215,6 @@ print(json.dumps(out))
 
   
   } catch (err) { areaCrashed("one pink look, and rows linked to the bar", err); }
-}
-  if (want('the simpler create step')) { try {
-  // ================================================================ the simpler create step
-  var y_oq = {};
-  var y_cq = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: y_oq });
-  await readyToPreview(y_cq);
-  check("Step 3 is headed Build playlists and has one button, Build playlists for the format being edited, and no dropdown", /^3\. Build playlists$/.test(Array.from(y_cq.document.querySelectorAll("#appSection h2")).filter((h) => !h.closest("#builderHome, #recipePanelWrap"))[1].textContent) && /^Build playlists for .+$/.test(y_cq.document.getElementById("create").textContent.trim()) && !y_cq.document.getElementById("preview") && !y_cq.document.getElementById("createRow"));
-  y_cq.document.getElementById("create").click();
-  await waitFor(() => visible(y_cq, "confirmBox"), 30000);
-  check("while the question is open, Create is off, nothing has been written, and the plan box is quiet", y_cq.document.getElementById("create").disabled === true && y_oq.writes.length === 0 && y_cq.document.getElementById("output").hidden === true);
-  check("it offers Build and the X, plus Why N?, and nothing about drawing again", y_cq.document.getElementById("confirmYes").textContent.trim().startsWith("Build ") && y_cq.document.getElementById("bdClose").getAttribute("aria-label") === "Close" && /^Why \d+\?$/.test(y_cq.document.getElementById("planToggle").textContent) && !y_cq.document.getElementById("redraw") && !/Draw again|redraw/i.test(appSource() + fs.readFileSync(ROOT + "index.html", "utf8").replace(/redraws? the editor/g, "")));
-  await new Promise((r) => setTimeout(r, 300));
-  pressBuild(y_cq);
-  await waitFor(() => /in your Spotify library\.$/.test(y_cq.document.getElementById("actionMessage").textContent), 30000);
-  check("Create makes the playlists, and the question and its plan are gone afterward", y_oq.writes.some((w) => w.type === "create") && !visible(y_cq, "confirmBox") && y_cq.document.getElementById("planText").textContent === "");
-  // editing while the question is open closes it quietly
-  var y_cq2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
-  await readyToPreview(y_cq2);
-  y_cq2.document.getElementById("create").click();
-  await waitFor(() => visible(y_cq2, "confirmBox"), 30000);
-  y_cq2.document.querySelector("#feRows .fe-inc").click();
-  await waitFor(() => !y_cq2.document.getElementById("create").disabled, 10000);
-  check("changing a format while the question is open closes it quietly, with no Cancelled message", !visible(y_cq2, "confirmBox") && !/Cancelled/.test(y_cq2.document.getElementById("actionMessage").textContent) && !y_cq2.document.getElementById("create").disabled);
-  // a problem is shown plainly, with no question
-  var y_cq3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn() });
-  await readyToPreview(y_cq3);
-  y_cq3.document.getElementById("create").click();
-  await waitFor(() => /has no playlist yet/.test(y_cq3.document.getElementById("output").textContent), 20000);
-  check("a segment with no playlist is explained in the output box, with no question", !visible(y_cq3, "confirmBox") && y_cq3.document.getElementById("output").hidden === false);
-
-  
-  } catch (err) { areaCrashed("the simpler create step", err); }
 }
   if (want('small changes')) { try {
   // ================================================================ small changes
@@ -1586,159 +1398,21 @@ print(json.dumps(out))
   
   } catch (err) { areaCrashed("the title and the tip button on a phone", err); }
 }
-  if (want("telling this app's playlists from yours")) { try {
-  // ================================================================ telling this app's playlists from yours
-  var k_mine = [
-    { id: "m1", name: "mini 1", owner: { id: "ron" } },
-    { id: "m2", name: "mini 2", owner: { id: "ron" }, description: "A playlist I made by hand" },
-    { id: "m3", name: "Old warm set 4", owner: { id: "ron" }, description: "Made by Arc. Do not edit this description. Built 1 Nov 2026." },
-  ];
-  var k_o = { extraPlaylists: k_mine };
-  var k_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: k_o });
-  await readyToPreview(k_w);
-  var k_names = () => { rowsOf(k_w)[0].querySelector(".fe-main").click(); const n = Array.from(k_w.document.querySelectorAll("#feOptions .fe-option")).map((o) => o.getAttribute("data-name")); k_w.document.dispatchEvent(new k_w.KeyboardEvent("keydown", { key: "Escape", bubbles: true })); return n; };
-  var k_list = k_names();
-  check("the segment list leaves out a playlist this app marked as its own, even when its name matches no format", !k_list.includes("Old warm set 4"), JSON.stringify(k_list));
-  check("and leaves out playlists named like a format's, marked or not, while showing the rest", !k_list.includes("mini 1") && !k_list.includes("mini 2") && k_list.includes("💗 spacious + gentle") && k_list.includes("🛋 rest "), JSON.stringify(k_list));
-  check("the app knows which playlists are its own by the mark in the description, and by nothing else", k_w.eval("playlists").filter((p) => p.madeByApp).map((p) => p.id).join(",") === "m3" && !/madeIds|rememberMade/.test(appSource()));
-  k_w.document.getElementById("create").click();
-  await waitFor(() => visible(k_w, "confirmBox"), 30000);
-  chooseAll(k_w);
-  var k_keep = k_w.document.getElementById("bdInfo").textContent;
-  check("playlists with matching names that this app did not make are renamed to free their names, the list behind the row", /^Renames 2 of your playlistsThey have names the new playlists use, so they get new ones:mini 1 → mini 1 \(version a\)mini 2 → mini 2 \(version a\)/.test(k_keep) && k_w.document.querySelector("#bdInfo ul").closest(".bd-info-more").hidden === true, k_keep);
-  check("nothing is offered for replacing, and the button only says Build", !/will be replaced/.test(k_keep) && !k_w.document.getElementById("confirmKeepEarlier") && /^Build \d+ playlists$/.test(k_w.document.getElementById("confirmYes").textContent));
-  pressBuild(k_w);
-  await waitFor(() => /in your Spotify library\.$/.test(k_w.document.getElementById("actionMessage").textContent), 30000);
-  var k_plan = k_o.writes.filter((w) => w.type === "create").map((w) => w.name);
-  check("the new playlists take those names: they start at mini 1", k_plan[0] === "mini 1" && k_plan[1] === "mini 2", k_plan.join(","));
-  var k_creates = k_o.writes.filter((w) => w.type === "create");
-  check("creating renames them first, removes nothing, and gives every new playlist a name of its own", k_o.writes.every((w) => w.type !== "remove") && JSON.stringify(k_o.writes.slice(0, 2).map((w) => [w.type, w.id, w.name])) === JSON.stringify([["update", "m1", "mini 1 (version a)"], ["update", "m2", "mini 2 (version a)"]]) && new Set(k_creates.map((w) => w.name)).size === k_creates.length && k_creates[0].name === "mini 1", JSON.stringify(k_o.writes.slice(0, 3)));
-  var k_desc = k_o.writes.filter((w) => w.type === "create").map((w) => w.description);
-  check("each playlist it creates has the mark and the request to leave it, then which one of the set and when, and nothing more", k_desc.length > 1 && k_desc.every((d, i) => d.startsWith("Made by Arc. Do not edit this description. Playlist " + (i + 1) + " of " + k_desc.length + ", built ") && /, built \d{1,2} [A-Z][a-z]{2} \d{4}\.$/.test(d)), JSON.stringify(k_desc.slice(0, 2)));
-  var k_bd = (segs, n, c) => k_w.eval("builtDescription")({ segments: segs }, n, c, new Date(2026, 10, 4));
-  check("a description reads: one of the set and the date, no segments", k_bd([["Arrival", 20], ["Drums + Voices", 90]], 3, 5) === "Made by Arc. Do not edit this description. Playlist 3 of 5, built 4 Nov 2026.", k_bd([["Arrival", 20], ["Drums + Voices", 90]], 3, 5));
-  check("a single playlist says only when it was built", /description\. Built 4 Nov 2026\.$/.test(k_bd([["Arrival", 20]], 1, 1)));
-  check("nothing about it is stored in this browser: the mark in the description is the only record", k_w.localStorage.getItem("madeIds") === null);
-  await waitFor(() => k_w.eval("playlists").some((p) => /^mini 3$/.test(p.name)), 10000);
-  check("after creating, those playlists count as the app's own and stay out of the segment list", k_w.eval("playlists").filter((p) => p.madeByApp).length === 1 + k_o.writes.filter((w) => w.type === "create").length && !k_names().some((n) => /^mini \d+$/.test(n)) && !/Note: Spotify's playlist list/.test(k_w.document.getElementById("actionMessage").textContent));
-  var k_o2 = { listWithoutDescriptions: true };
-  var k_w2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, madeIds: JSON.stringify(["m1"]) }, fetchOptions: k_o2 });
-  await readyToPreview(k_w2);
-  k_w2.document.getElementById("create").click();
-  await waitFor(() => visible(k_w2, "confirmBox"), 30000);
-  pressBuild(k_w2);
-  await waitFor(() => /in your Spotify library\.$/.test(k_w2.document.getElementById("actionMessage").textContent), 30000);
-  await waitFor(() => /Note: Spotify's playlist list/.test(k_w2.document.getElementById("actionMessage").textContent), 10000);
-  check("if Spotify's list does not show the description, the app says it may not recognize its playlists later, and still lists none as its own", /^Spotify's playlist list did not show the description this app puts on its playlists \(or has not updated yet\), so this app may not recognize them later\.$/.test(k_w2.document.getElementById("createNotes").textContent) && k_w2.eval("playlists").every((p) => !p.madeByApp));
-  var k_py = JSON.parse(execFileSync("python3", ["-c", `
-import importlib.util, json
-spec = importlib.util.spec_from_file_location("engine", "${ROOT}engine.py")
-m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
-text = 'FORMATS = {"a": {"name": "A {n}", "segments": [("src", 10)]}}'
-tracks = json.dumps({"src": [{"uri": "u%d" % i, "ms": 600000, "label": "t%d" % i} for i in range(40)]})
-a = json.loads(m.build_playlists(text, "a", tracks, 3))
-b = json.loads(m.build_playlists(text, "a", tracks, 3, json.dumps(["a 1", "A 3"])))
-c = json.loads(m.build_playlists(text, "a", tracks, 3, "[]"))
-print(json.dumps([[p["name"] for p in a["playlists"]], [p["name"] for p in b["playlists"]], [p["name"] for p in c["playlists"]]]))
-`], { encoding: "utf8" }));
-  check("the engine numbers from 1 by default, and skips reserved names without caring about capitals", JSON.stringify(k_py[0]) === JSON.stringify(["A 1", "A 2", "A 3"]) && JSON.stringify(k_py[1]) === JSON.stringify(["A 2", "A 4", "A 5"]) && JSON.stringify(k_py[2]) === JSON.stringify(k_py[0]), JSON.stringify(k_py));
-  var k_py2 = JSON.parse(execFileSync("python3", ["-c", `
-import importlib.util, json
-spec = importlib.util.spec_from_file_location("engine", "${ROOT}engine.py")
-m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
-# A has 40 songs of its own and 30 it shares with B; B has only those 30 and 5 of its own (one listed twice). 4 min each, 100 min a playlist: 75 songs make 3.
-A = [{"uri": "a%d" % i, "ms": 240000} for i in range(40)] + [{"uri": "s%d" % i, "ms": 240000} for i in range(30)]
-B = [{"uri": "s%d" % i, "ms": 240000} for i in range(30)] + [{"uri": "b%d" % i, "ms": 240000} for i in range(5)] + [{"uri": "b0", "ms": 240000}]
-counts = []
-for _ in range(5):
-    r = json.loads(m.build_playlists('{"r": {"name": "R {n}", "segments": [("A", 60), ("B", 40)]}}', "r", json.dumps({"A": A, "B": B})))
-    counts.append(len(r["playlists"]))
-    assert all(len(set(p["uris"])) == len(p["uris"]) for p in r["playlists"])
-# one recording under two Spotify IDs (one ISRC) is one song
-C = [{"uri": "x1", "key": "isrc:I1", "ms": 240000}, {"uri": "x2", "key": "isrc:I1", "ms": 240000}] + [{"uri": "c%d" % i, "ms": 240000} for i in range(3)]
-c = json.loads(m.build_playlists('{"r": {"name": "R {n}", "segments": [("C", 16)]}}', "r", json.dumps({"C": C})))
-print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sources"][0]["has"], len(c["playlists"])]))
-`], { encoding: "utf8" }));
-  check("songs shared by two source playlists are left to the one that needs them, so the most playlists the songs allow are built", k_py2[0].every((n) => n === 3), JSON.stringify(k_py2));
-  check("a song listed twice in a playlist counts once, in the minutes too, and shared songs are counted for the Why table", k_py2[1] === 30 && JSON.stringify(k_py2[2]) === JSON.stringify([280, 140]), JSON.stringify(k_py2));
-  check("one recording under two Spotify IDs (the same ISRC) is one song", k_py2[3] === 16 && k_py2[4] === 1, JSON.stringify(k_py2));
-
-
-  
-  } catch (err) { areaCrashed("telling this app's playlists from yours", err); }
-}
-  if (want('refreshing, and playlists the app did not mark')) { try {
-  // ================================================================ refreshing, and playlists the app did not mark
-  var v_o = { extraPlaylists: [
-    { id: "v1", name: "mini 1", owner: { id: "ron" }, description: MADE },
-    { id: "v2", name: "mini 2", owner: { id: "ron" }, description: MADE },
-    { id: "v3", name: "mini 3", owner: { id: "ron" } },
-  ] };
-  var v_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: v_o });
-  await readyToPreview(v_w);
-  check("when the page loads, the app has read the playlists, two of them marked as its own", v_w.eval("playlists").filter((p) => p.madeByApp).map((p) => p.id).join(",") === "v1,v2");
-  // Create: the same switch
-  var v_o3 = { extraPlaylists: [
-    { id: "w1", name: "mini 1", owner: { id: "ron" }, description: MADE },
-    { id: "w2", name: "mini 2", owner: { id: "ron" }, description: MADE },
-    { id: "w3", name: "mini 3", owner: { id: "ron" } },
-  ] };
-  var v_w3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: v_o3 });
-  await readyToPreview(v_w3);
-  v_w3.document.getElementById("create").click();
-  await waitFor(() => visible(v_w3, "confirmBox"), 30000);
-  check("before a number is chosen, none of the person's own playlists is said to be renamed", !/will be renamed/.test(v_w3.document.getElementById("bdInfo").textContent), v_w3.document.getElementById("bdInfo").textContent);
-  v_w3.document.getElementById("bdPickTiles").lastElementChild.click();   // the most, which uses the name mini 3
-  var v_info = v_w3.document.getElementById("bdInfo").textContent;
-  check("with marked and unmarked ones, the marked ones are replaced and mine is renamed", /Replaces 2 earlier playlists/.test(v_info) && /Renames one of your playlists/.test(v_info) && /^Build \d+ playlists$/.test(v_w3.document.getElementById("confirmYes").textContent), v_info);
-  pressBuild(v_w3);
-  await waitFor(() => /in your Spotify library\.$/.test(v_w3.document.getElementById("actionMessage").textContent), 30000);
-  var v_names = v_o3.writes.filter((w) => w.type === "create").map((w) => w.name);
-  check("so the new ones use every number from 1", v_names.slice(0, 4).join(",") === "mini 1,mini 2,mini 3,mini 4", v_names.join(","));
-  check("creating renames mine, then removes the two marked ones, then makes the new set", v_o3.writes[0].type === "update" && v_o3.writes[0].id === "w3" && v_o3.writes[0].name === "mini 3 (version a)" && v_o3.writes[1].type === "remove" && v_o3.writes[1].uris.length === 2 && v_o3.writes[2].type === "create" && v_o3.writes.filter((w) => w.type === "create")[0].name === "mini 1", JSON.stringify(v_o3.writes.slice(0, 3)));
-  var v_w4 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { extraPlaylists: [{ id: "x1", name: "mini 1", owner: { id: "ron" }, description: MADE }] } });
-  await readyToPreview(v_w4);
-  v_w4.document.getElementById("create").click();
-  await waitFor(() => visible(v_w4, "confirmBox"), 30000);
-  check("with nothing unmarked, nothing is renamed", !/renamed to free/.test(v_w4.document.getElementById("bdInfo").textContent));
-
-
-  
-  } catch (err) { areaCrashed("refreshing, and playlists the app did not mark", err); }
-}
   if (want('private playlists')) { try {
   // ================================================================ private playlists
   var pv_o = {};
   var pv_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: pv_o });
-  await readyToPreview(pv_w);
-  pv_w.eval("setPlaylistLimit(2)");
-  pv_w.document.getElementById("create").click();
-  await waitFor(() => visible(pv_w, "confirmBox"), 30000);
-  pressBuild(pv_w);
-  await waitFor(() => /in your Spotify library\.$/.test(pv_w.document.getElementById("actionMessage").textContent), 30000);
-  check("every playlist is created asking to stay off the profile (public: false)", pv_o.writes.filter((w) => w.type === "create").length === 2 && pv_o.writes.filter((w) => w.type === "create").every((w) => w.public === false));
-  check("when Spotify says they came out private, nothing more is sent, and the done message is just the one sentence", pv_o.writes.every((w) => w.type !== "update") && doneSentence(pv_w) === "2 playlists are in your Spotify library." && pv_w.document.getElementById("createNotes").hidden, pv_w.document.getElementById("actionMessage").textContent);
+  var pv_b = await buildFor(pv_w, "mini");
+  check("a participant's playlist is created asking to stay off the profile (public: false)", pv_b.state === "done" && pv_o.writes.filter((w) => w.type === "create").length === 1 && pv_o.writes.filter((w) => w.type === "create").every((w) => w.public === false));
+  check("when Spotify says it came out private, nothing more is sent", pv_o.writes.every((w) => w.type !== "update"));
   var pv_o2 = { ignorePublic: true };
   var pv_w2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: pv_o2 });
-  await readyToPreview(pv_w2);
-  pv_w2.eval("setPlaylistLimit(2)");
-  pv_w2.document.getElementById("create").click();
-  await waitFor(() => visible(pv_w2, "confirmBox"), 30000);
-  pressBuild(pv_w2);
-  await waitFor(() => /in your Spotify library\.$/.test(pv_w2.document.getElementById("actionMessage").textContent), 30000);
-  check("when Spotify makes them public anyway, the app changes each one to stay off the profile right after creating it", pv_o2.writes.filter((w) => w.type === "update").length === 2 && pv_o2.writes.filter((w) => w.type === "update").every((w) => w.public === false) && pv_o2.writes.filter((w) => w.type === "update").map((w) => w.id).join() === pv_o2.writes.filter((w) => w.type === "create").map((w) => w.id).join() && doneSentence(pv_w2) === "2 playlists are in your Spotify library." && pv_w2.document.getElementById("createNotes").hidden);
+  await buildFor(pv_w2, "mini");
+  check("when Spotify makes it public anyway, Arc changes it to stay off the profile right after creating it", pv_o2.writes.filter((w) => w.type === "update").length === 1 && pv_o2.writes.filter((w) => w.type === "update").every((w) => w.public === false) && pv_o2.writes.find((w) => w.type === "update").id === pv_o2.writes.find((w) => w.type === "create").id);
   var pv_o3 = { ignorePublic: true, putFails: true };
   var pv_w3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: pv_o3 });
-  await readyToPreview(pv_w3);
-  pv_w3.eval("setPlaylistLimit(2)");
-  pv_w3.document.getElementById("create").click();
-  await waitFor(() => visible(pv_w3, "confirmBox"), 30000);
-  pressBuild(pv_w3);
-  await waitFor(() => /in your Spotify library\.$/.test(pv_w3.document.getElementById("actionMessage").textContent), 30000);
-  check("if it cannot take them off the profile it still finishes, and says how many Spotify kept there", /^Spotify kept 2 playlists on your profile and would not let this app change that\. You can change that in the Spotify app\.$/.test(pv_w3.document.getElementById("createNotes").textContent), pv_w3.document.getElementById("createNotes").textContent);
-
-
-  
+  var pv_b3 = await buildFor(pv_w3, "mini");
+  check("if it cannot take it off the profile, the build still finishes", pv_b3.state === "done", JSON.stringify(pv_b3));
   } catch (err) { areaCrashed("private playlists", err); }
 }
   if (want('cover art')) { try {
@@ -1748,35 +1422,26 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("the cover is a JPEG of the app's icon, 640 by 640, and small enough for Spotify's limit even after base64", cv_file.slice(0, 3).toString("hex") === "ffd8ff" && cv_dims === "JPEG 640 640" && Math.ceil(cv_file.length / 3) * 4 < 256 * 1024, cv_dims + " " + cv_file.length);
   var cv_app = appSource();
   check("the app asks for the image-upload permission when it signs in, but does not require it, so an older sign-in keeps working", /"ugc-image-upload",/.test(cv_app) && /const REQUIRED_SCOPES = \["playlist-modify-private", "playlist-modify-public"\];/.test(cv_app));
-  var cv_run = async (token, fetchOptions, count = 2) => {
+  var cv_run = async (token, fetchOptions) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: token, local: { formats: MINI }, fetchOptions });
-    await readyToPreview(w);
-    w.eval("setPlaylistLimit(" + count + ")");
-      w.document.getElementById("create").click();
-    await waitFor(() => visible(w, "confirmBox"), 30000);
-    pressBuild(w);
-    await waitFor(() => /in your Spotify library\.$/.test(w.document.getElementById("actionMessage").textContent), 30000);
+    w.cvBuild = await buildFor(w, "mini");
     return w;
   };
   var cv_o = {};
   var cv_w = await cv_run(signedIn(), cv_o);
   var cv_covers = cv_o.writes.filter((w) => w.type === "cover");
-  check("each playlist gets the cover: a JPEG, sent as base64 with the image content type, to its own playlist", cv_covers.length === 2 && cv_covers.every((c) => c.contentType === "image/jpeg" && c.base64 === cv_file.toString("base64")) && cv_covers.map((c) => c.id).join() === cv_o.writes.filter((w) => w.type === "create").map((w) => w.id).join(), JSON.stringify(cv_covers.map((c) => [c.id, c.contentType, (c.base64 || "").length])));
-  check("the cover goes on after the songs, so a playlist is complete when it is finished", (() => { const order = cv_o.writes.map((w) => w.type + ":" + w.id); return order.indexOf("cover:new1") > order.indexOf("create:new1") && order.indexOf("cover:new1") < order.indexOf("create:new2"); })() || cv_o.writes.filter((w) => w.type === "cover").length === 2);
-  check("when all goes well the done message is just the one sentence", doneSentence(cv_w) === "2 playlists are in your Spotify library." && cv_w.document.getElementById("createNotes").hidden);
+  check("the playlist gets the cover: a JPEG, sent as base64 with the image content type, to its own playlist", cv_covers.length === 1 && cv_covers.every((c) => c.contentType === "image/jpeg" && c.base64 === cv_file.toString("base64")) && cv_covers[0].id === cv_o.writes.find((w) => w.type === "create").id, JSON.stringify(cv_covers.map((c) => c.id)));
+  check("the cover goes on after the songs, so the playlist is complete when it is finished", (() => { const order = cv_o.writes.map((w) => w.type); return order.lastIndexOf("add") < order.indexOf("cover"); })());
   var cv_oldToken = { token: JSON.stringify({ value: "t", expires: Date.now() + 3600000, scope: "playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public user-library-modify" }) };
   var cv_o2 = {};
   var cv_w2 = await cv_run(cv_oldToken, cv_o2);
-  check("an older sign-in, without the permission, still creates the playlists, sends no covers, and says how to allow them", cv_o2.writes.filter((w) => w.type === "create").length === 2 && cv_o2.writes.every((w) => w.type !== "cover") && /^The cover art was not added, because your Spotify sign-in does not include permission to upload images\. Sign in again with Change Spotify login in More options to allow it\. Playlists you build after that will get the cover\.$/.test(cv_w2.document.getElementById("createNotes").textContent), cv_w2.document.getElementById("createNotes").textContent);
+  check("an older sign-in, without the permission, still builds the playlist and sends no cover", cv_w2.cvBuild.state === "done" && cv_o2.writes.filter((w) => w.type === "create").length === 1 && cv_o2.writes.every((w) => w.type !== "cover"));
   var cv_o3 = { coverStatus: 400 };
   var cv_w3 = await cv_run(signedIn(), cv_o3);
-  check("if Spotify will not take a cover, the playlists are still made, every one is tried, and the note says how many", cv_o3.writes.filter((w) => w.type === "create").length === 2 && cv_o3.writes.filter((w) => w.type === "cover").length === 2 && /^Spotify would not accept the cover art for 2 playlists\.$/.test(cv_w3.document.getElementById("createNotes").textContent), cv_w3.document.getElementById("createNotes").textContent);
-  var cv_o4 = { coverStatus: 403 };
-  var cv_w4 = await cv_run(signedIn(), cv_o4, 3);
-  check("if Spotify says the permission is missing, it stops asking after the first, finishes the rest, and says how to allow it", cv_o4.writes.filter((w) => w.type === "create").length === 3 && cv_o4.writes.filter((w) => w.type === "cover").length === 1 && /Sign in again with Change Spotify login in More options to allow it\./.test(cv_w4.document.getElementById("createNotes").textContent), cv_w4.document.getElementById("createNotes").textContent);
+  check("if Spotify will not take the cover, the playlist is still made", cv_w3.cvBuild.state === "done" && cv_o3.writes.filter((w) => w.type === "cover").length === 1, JSON.stringify(cv_w3.cvBuild));
   var cv_o5 = { noCoverFile: true };
   var cv_w5 = await cv_run(signedIn(), cv_o5);
-  check("if the cover file cannot be loaded, the playlists are still made, and the note says they have Spotify's default cover", cv_o5.writes.filter((w) => w.type === "create").length === 2 && cv_o5.writes.every((w) => w.type !== "cover") && /^The cover art could not be loaded, so the playlists have Spotify's default cover\.$/.test(cv_w5.document.getElementById("createNotes").textContent));
+  check("if the cover file cannot be loaded, the playlist is still made, with no cover sent", cv_w5.cvBuild.state === "done" && cv_o5.writes.every((w) => w.type !== "cover"));
 
 
   
@@ -1826,7 +1491,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want("the limit list, and the format's title")) { try {
   // ================================================================ the limit list, and the format's title
   var lm_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI } });
-  check("the limit is gone from the page; tests set it, and 0 takes it off", !lm_w.document.getElementById("maxPlaylists") && !lm_w.document.getElementById("limitTopic") && !/Limit how many/.test(lm_w.document.body.textContent) && (() => { lm_w.eval("setPlaylistLimit(3)"); return lm_w.eval("playlistLimit()") === 3; })() && (() => { lm_w.eval("setPlaylistLimit(0)"); return lm_w.eval("playlistLimit()") === undefined; })());
+  check("the limit is gone from the page", !lm_w.document.getElementById("maxPlaylists") && !lm_w.document.getElementById("limitTopic") && !/Limit how many/.test(lm_w.document.body.textContent));
   } catch (err) { areaCrashed("the limit list, and the format's title", err); }
 }
   if (want('the app menu, and minimalist mode')) { try {
@@ -1924,110 +1589,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   
   } catch (err) { areaCrashed("compact rows, centered icons, no label, no corner background", err); }
 }
-  if (want('the popup after Create, and the room at the bottom')) { try {
-  // ================================================================ the popup after Create, and the room at the bottom
-  var pp_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
-  await readyToPreview(pp_w);
-  var pp_ov = () => pp_w.document.getElementById("createOverlay");
-  var pp_close = () => pp_w.document.getElementById("createCloseRow");
-  check("everything that follows a click on Create lives in one popup: the output, the question, the progress message, the problem link and the results", !!pp_ov() && ["output", "confirmBox", "actionMessage", "mainReportHint", "results", "createCloseRow"].every((id) => pp_ov().contains(pp_w.document.getElementById(id))) && pp_ov().querySelector("#createDialog").getAttribute("role") === "dialog" && pp_ov().querySelector("#createDialog").getAttribute("aria-modal") === "true");
-  check("the popup is closed to begin with, and nothing of it is left on the page below the button", pp_ov().hidden === true && !pp_w.document.getElementById("spotifyNote").nextElementSibling.matches("pre, #confirmBox, #actionMessage, #results") && pp_w.document.getElementById("spotifyNote").nextElementSibling.id === "createOverlay");
-  pp_w.document.getElementById("create").click();
-  check("clicking Create opens it at once, with no Close button while the app is reading and planning", pp_ov().hidden === false && pp_close().hidden === true && pp_w.document.body.style.overflow === "hidden");
-  await waitFor(() => visible(pp_w, "confirmBox"), 30000);
-  check("the question replaces the progress text, and can be dismissed: it has Cancel, not Close", pp_w.document.getElementById("output").hidden === true && pp_close().hidden === true && !!pp_w.document.getElementById("bdClose"));
-  pp_ov().click();
-  await waitFor(() => !pp_w.document.getElementById("create").disabled, 10000);
-  check("clicking outside the popup while it asks is the same as Cancel: it closes, nothing is created, and Create is ready again", pp_ov().hidden === true && pp_w.document.body.style.overflow === "" && !pp_w.document.getElementById("create").disabled);
-  pp_w.document.getElementById("create").click();
-  await waitFor(() => visible(pp_w, "confirmBox"), 30000);
-  pp_w.document.getElementById("bdClose").click();
-  await waitFor(() => pp_ov().hidden === true, 10000);
-  check("the Cancel button closes it too", pp_ov().hidden === true);
-  pp_w.document.getElementById("create").click();
-  await waitFor(() => visible(pp_w, "confirmBox"), 30000);
-  pp_w.document.dispatchEvent(new pp_w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-  await waitFor(() => pp_ov().hidden === true, 10000);
-  check("and so does Escape", pp_ov().hidden === true);
-  var pp_o = {};
-  var pp_w2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: pp_o });
-  await readyToPreview(pp_w2);
-  pp_w2.eval("setPlaylistLimit(2)");
-  pp_w2.document.getElementById("create").click();
-  await waitFor(() => visible(pp_w2, "confirmBox"), 30000);
-  pressBuild(pp_w2);
-  check("once creating starts, the question gives way to the progress text in the same popup, still with no Close button", pp_w2.document.getElementById("confirmBox").hidden === true && pp_w2.document.getElementById("createCloseRow").hidden === true && pp_w2.document.getElementById("createOverlay").hidden === false);
-  pp_w2.document.getElementById("createOverlay").click();
-  check("and clicking outside does nothing while it is creating", pp_w2.document.getElementById("createOverlay").hidden === false);
-  await waitFor(() => /in your Spotify library\.$/.test(pp_w2.document.getElementById("actionMessage").textContent), 30000);
-  await waitFor(() => pp_w2.document.getElementById("createCloseRow").hidden === false, 10000);
-  check("when it is done the popup shows the result and the playlists made, with a Done button", pp_w2.document.getElementById("createOverlay").hidden === false && pp_w2.document.querySelectorAll("#results .bd-row").length >= 2 && pp_w2.document.getElementById("createClose").textContent.trim() === "Done" && doneSentence(pp_w2) === "2 playlists are in your Spotify library.");
-  pp_w2.document.getElementById("createClose").click();
-  check("Close dismisses it", pp_w2.document.getElementById("createOverlay").hidden === true);
-  pp_w2.document.getElementById("create").click();
-  await waitFor(() => pp_w2.document.getElementById("createCloseRow").hidden === false || visible(pp_w2, "confirmBox"), 30000);
-  var pp_cnt = pp_o.writes.length;
-  pp_w2.document.getElementById("bdClose") && pp_w2.document.getElementById("bdClose").click();
-  await waitFor(() => pp_w2.document.getElementById("createOverlay").hidden === true, 10000);
-  check("a second run starts clean: the earlier result is gone from the popup", pp_w2.document.querySelectorAll("#results a").length === 0 && pp_w2.document.getElementById("actionMessage").textContent !== "" || pp_w2.document.querySelectorAll("#results a").length === 0);
-  var pp_w3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn() });
-  await readyToPreview(pp_w3);
-  pp_w3.document.getElementById("create").click();
-  await waitFor(() => /has no playlist yet/.test(pp_w3.document.getElementById("output").textContent), 20000);
-  await waitFor(() => pp_w3.document.getElementById("createCloseRow").hidden === false, 10000);
-  check("a problem is shown in the popup too, with a Close button, and the popup stays until it is dismissed", pp_w3.document.getElementById("createOverlay").hidden === false && pp_w3.document.getElementById("output").hidden === false);
-  pp_w3.document.getElementById("createOverlay").click();
-  check("and a click outside dismisses it", pp_w3.document.getElementById("createOverlay").hidden === true && pp_w3.document.body.style.overflow === "");
-  var pp_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("the tip's height has been measured and set for the page", pp_w.document.documentElement.style.getPropertyValue("--tip-h") !== "");
-
-  // menus too close to the bottom open upward
-  var up_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: {}, before: (w) => {
-    Object.defineProperty(w, "innerHeight", { value: 800, configurable: true });
-    w.Element.prototype.getBoundingClientRect = function () {
-      if (this.classList && this.classList.contains("fe-pop")) return this.classList.contains("fe-up") ? { top: 420, bottom: 620, height: 200, left: 0, right: 300, width: 300 } : { top: 700, bottom: 900, height: 200, left: 0, right: 300, width: 300 };
-      return { top: 0, bottom: 0, height: 0, left: 0, right: 0, width: 0 };
-    };
-    w.Element.prototype.scrollIntoView = function () { w.__scrolled = (w.__scrolled || 0) + 1; };
-  } });
-  rowsOf(up_w)[0].querySelector(".fe-more").click();
-  check("a menu that would run off the bottom of the screen opens upward instead", up_w.document.querySelector(".fe-menu").classList.contains("fe-up"));
-
-  rowsOf(up_w)[0].querySelector(".fe-tag") && rowsOf(up_w)[0].querySelector(".fe-tag").click();
-  var up_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  var dn_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: {}, before: (w) => {
-    Object.defineProperty(w, "innerHeight", { value: 1600, configurable: true });
-    w.Element.prototype.getBoundingClientRect = function () { return this.classList && this.classList.contains("fe-pop") ? { top: 700, bottom: 900, height: 200, left: 0, right: 300, width: 300 } : { top: 0, bottom: 0, height: 0, left: 0, right: 0, width: 0 }; };
-  } });
-  rowsOf(dn_w)[0].querySelector(".fe-more").click();
-  check("with room below, a menu stays where it was and opens downward", !dn_w.document.querySelector(".fe-menu").classList.contains("fe-up"));
-
-
-  
-  } catch (err) { areaCrashed("the popup after Create, and the room at the bottom", err); }
-}
-  if (want('fading and Close in the Create popup')) { try {
-  // ================================================================ fading and Close in the Create popup
-  var dd_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
-  var dd_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  var dd_o = {};
-  var dd_w2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: dd_o });
-  await readyToPreview(dd_w2);
-  dd_w2.eval("setPlaylistLimit(1)");
-  dd_w2.document.getElementById("create").click();
-  await waitFor(() => visible(dd_w2, "confirmBox"), 30000);
-  check("the Create popup has no Close button while it asks", dd_w2.document.getElementById("createCloseRow").hidden === true);
-  pressBuild(dd_w2);
-  await waitFor(() => dd_w2.document.getElementById("createCloseRow").hidden === false, 30000);
-  var dd_btns = Array.from(dd_w2.document.querySelectorAll("#createCloseRow button"));
-  check("when it is done, the footer offers only Done, and there is no Support me, thank-you box or photo anywhere", dd_btns.map((b) => b.textContent.trim()).join("|") === "Done" && !dd_w2.document.getElementById("createSupport") && !dd_w2.document.getElementById("createDonate") && !dd_w2.document.querySelector('img[src="ron.jpg"]'));
-  dd_w2.document.getElementById("createClose").click();
-  check("closing the build popup leaves a clean page", dd_w2.document.getElementById("createOverlay").hidden === true);
-  dd_w2.document.getElementById("create").click();
-  await waitFor(() => visible(dd_w2, "confirmBox") || dd_w2.document.getElementById("createCloseRow").hidden === false, 30000);
-  check("Close in the Create popup still just closes it", (() => { if (visible(dd_w2, "confirmBox")) dd_w2.document.getElementById("bdClose").click(); return true; })());
-  } catch (err) { areaCrashed("fading and Close in the Create popup", err); }
-}
   if (want('tabs that scroll sideways')) { try {
   // ================================================================ tabs that scroll sideways
   var sc_w = await boot({ url: EDURL, session: signedIn(), local: { formats: 'FORMATS = {"a": {"name": "Alpha {n}", "segments": [("💗 spacious + gentle", 10)]}, "b": {"name": "Beta {n}", "segments": [("🛋 rest", 10)]}, "c": {"name": "Gamma {n}", "segments": [("💗💗 evocative", 10)]}}' } });
@@ -2081,19 +1642,15 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("a sign-in that has expired shows the same problem state, telling you to connect again", cx_w3.eval("connection") === "problem" && /^Your Spotify sign-in expired\. Click Connect again\.$/.test(cx_sec(cx_w3, "connectionMessage").textContent) && cx_sec(cx_w3, "create").textContent.trim() === "Connect again");
   var cx_o4 = {};
   var cx_w4 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: cx_o4 });
-  await readyToPreview(cx_w4);
+  await waitFor(() => cx_w4.eval("connection") === "ready", 15000);
   cx_o4.meStatus = 401;
-  cx_w4.document.getElementById("create").click();
+  cx_w4.eval("buildForParticipant('mini', 'T')");
   await waitFor(() => cx_w4.eval("connection") === "problem", 20000);
-  await waitFor(() => cx_w4.document.getElementById("createCloseRow").hidden === false, 20000);
+  await waitFor(() => cx_w4.eval("personBuild.state") !== "now", 20000);
   check("if the sign-in expires part way through, the page notices: Build becomes Connect again until you connect again", cx_sec(cx_w4, "create").textContent.trim() === "Connect again" && cx_sec(cx_w4, "connectionProblem").hidden === false && /sign-in expired/.test(cx_sec(cx_w4, "connectionMessage").textContent));
   var cx_o5 = { denyCreate: true };
   var cx_w5 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: cx_o5 });
-  await readyToPreview(cx_w5);
-  cx_w5.document.getElementById("create").click();
-  await waitFor(() => visible(cx_w5, "confirmBox"), 30000);
-  pressBuild(cx_w5);
-  await waitFor(() => /did not allow/.test(cx_w5.document.getElementById("actionMessage").textContent), 30000);
+  await buildFor(cx_w5, "mini");
   check("one refused request (a missing permission) is not treated as a lost connection: the page stays connected", cx_w5.eval("connection") === "ready");
   var cx_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
 
@@ -2104,15 +1661,11 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   if (want('saved songs')) { try {
   // ================================================================ saved songs
   var SONGS_FORMAT = 'FORMATS = {"mini": {"name": "mini {n}", "segments": [("💗 spacious + gentle", 10), ("🛋 rest", 10)]}}';
+  // reads the songs a build would read (gatherInputs, as a participant's build does first), without building
   var sv_run = async (idb, options, formats = SONGS_FORMAT, all = false) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats }, fetchOptions: options, idb });
-    await readyToPreview(w);
-    w.eval("setPlaylistLimit(1)");
-    if (all) await buildAllNow(w);
-    else w.document.getElementById("create").click();
-    await waitFor(() => visible(w, "confirmBox") || w.document.getElementById("createCloseRow").hidden === false, 30000);
-    if (visible(w, "confirmBox")) w.document.getElementById("bdClose").click();
-    await waitFor(() => w.document.getElementById("createOverlay").hidden === true || w.document.getElementById("createCloseRow").hidden === false, 10000);
+    await waitFor(() => w.eval("!!token && connection === 'ready' && !!py && formatsValid && !busy"), 20000);
+    w.svInputs = await w.eval(all ? "gatherInputs(currentFormats.map((f) => f.id))" : "gatherInputs([currentFormats[0].id])");
     return w;
   };
   var sv_idb = new FDBFactory();
@@ -2168,10 +1721,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await new Promise((r) => setTimeout(r, 300));
   check("Sign out and clear data clears them too", (await sv_count(sv_w12)) === 0);
   var sv_w13 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: SONGS_FORMAT }, fetchOptions: {}, idb: null, before: (w) => { w.indexedDB = undefined; } });
-  await readyToPreview(sv_w13);
-  sv_w13.document.getElementById("create").click();
-  await waitFor(() => visible(sv_w13, "confirmBox"), 30000);
-  check("if the browser will not keep songs, everything still works, just without the saved songs", visible(sv_w13, "confirmBox"));
+  await waitFor(() => sv_w13.eval("!!token && connection === 'ready' && !!py && formatsValid && !busy"), 20000);
+  var sv_b13 = await buildFor(sv_w13, "mini");
+  check("if the browser will not keep songs, everything still works, just without the saved songs", sv_b13.state === "done", JSON.stringify(sv_b13));
   var sv_w14 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: SONGS_FORMAT }, fetchOptions: {} });
   check("each playlist the app reads has a snapshot id to compare, when Spotify gives one", sv_w14.eval("playlists").every((p) => typeof p.snapshot === "string" && p.snapshot.startsWith("snap-")));
   var sv_w15 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: SONGS_FORMAT }, fetchOptions: { noSnapshots: true } });
@@ -2202,10 +1754,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("a short wait (a second or two) is still waited out and retried, and then succeeds", lw_calls.length === 2 && lw_result.id === "ron" && Date.now() - lw_started >= 1000);
   var lw_o5 = { tracksStatus: 429, tracksRetryAfter: 14689, tracksBody: { error: { status: 429, reason: "QUOTA_EXCEEDED" } } };
   var lw_w5 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: lw_o5 });
-  await readyToPreview(lw_w5);
-  lw_w5.document.getElementById("create").click();
-  await waitFor(() => lw_w5.document.getElementById("createCloseRow").hidden === false, 20000);
-  check("a quota error while reading songs shows the same message in the Create popup, after one request", /^Spotify asked this app to waitNo playlists were built\. Waiting is the only fix: try again in about 4 hours and 5 minutes\.$/.test(lw_w5.document.getElementById("actionMessage").textContent) && (lw_o5.trackRequests || []).length === 1, JSON.stringify(lw_o5.trackRequests));
+  var lw_b5 = await buildFor(lw_w5, "mini");
+  check("a quota error while reading songs stops the build after one request and says to wait", lw_b5.state === "fail" && /wait/i.test(lw_b5.error || "") && (lw_o5.trackRequests || []).length === 1, JSON.stringify(lw_b5) + JSON.stringify(lw_o5.trackRequests));
   check("and the page is still connected, since the playlists were read: only this request was refused", lw_w5.eval("connection") === "ready");
 
   
@@ -2299,9 +1849,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   // adds: 100 at a time, and 10 at a time for the rest of the visit if Spotify refuses 100
   var sr_o = { addMax: 10 };
   var sr_b = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: sr_o });
-  await runPreview(sr_b);
-  pressBuild(sr_b);
-  await waitFor(() => /in your Spotify library\.$/.test(sr_b.document.getElementById("actionMessage").textContent), 30000);
+  await buildFor(sr_b, "mini");
   var sr_adds = sr_o.writes.filter((x) => x.type === "add");
   check("when Spotify refuses 100 songs at a time, the build goes on 10 at a time, asking with 100 only once", sr_o.addRefused === 1 && sr_adds.length > 1 && sr_adds.every((a) => a.uris.length <= 10), `${sr_o.addRefused} ${sr_adds.length}`);
   check("and the record notes it", (sr_record(sr_b, "spotifyLimits") || []).some((e) => /100 songs per add refused/.test(e.note || "")));
@@ -2434,7 +1982,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("Create has become Try again, and is on", pa_bad.document.getElementById("create").textContent.trim() === "Try again" && pa_bad.document.getElementById("create").disabled === false && pa_bad.document.querySelector("#create img").getAttribute("src") === "icons/retry.svg");
   check("the note beside it says what went wrong, in place of the pointer to Step 1", pa_bad.document.getElementById("spotifyNote").hidden === false && pa_bad.document.getElementById("spotifyNote").textContent === pa_bad.document.getElementById("connectionMessage").textContent);
   delete pa_o.meStatus;
-  pa_bad.document.getElementById("create").click();
+  pa_bad.document.querySelector("#bhRecipes .bh-build").click();
   await waitFor(() => pa_bad.eval("connection") === "ready", 15000);
   await readyToPreview(pa_bad);
   check("pressing it tries again, and when Spotify answers the button goes back to Build playlists, the alert goes, and the page is still minimal", /^Build playlists for .+$/.test(pa_bad.document.getElementById("create").textContent.trim()) && pa_bad.document.querySelector("#create img").getAttribute("src") === "icons/build.svg" && !pa_bad.document.getElementById("feAppMenuButton").classList.contains("fe-alert") && pa_bad.document.getElementById("spotifyNote").hidden === true && pa_bad.document.body.classList.contains("minimal"));
@@ -2442,7 +1990,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var pa_exp = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, minimalMode: "1", connectedBefore: "1" }, fetchOptions: { meStatus: 401 } });
   pa_exp.eval("startLogin = () => { window.__loginStarted = (window.__loginStarted || 0) + 1; }");
   check("an expired sign-in makes Create read Connect again, with the link icon", pa_exp.document.getElementById("create").textContent.trim() === "Connect again" && pa_exp.document.querySelector("#create img").getAttribute("src") === "icons/connect.svg");
-  pa_exp.document.getElementById("create").click();
+  pa_exp.document.querySelector("#bhRecipes .bh-build").click();
   check("and pressing it starts the sign-in", pa_exp.__loginStarted === 1);
   pa_exp.document.getElementById("feAppMenuButton").click();
   check("when the sign-in itself is the problem the menu offers the same Connect to Spotify, with the same note, and no Connect again of its own", !!pa_exp.document.getElementById("feConnect") && !pa_exp.document.getElementById("feReconnect") && !pa_exp.document.getElementById("feRetry") && /./.test(pa_exp.document.getElementById("feConnectionNote").textContent));
@@ -2452,7 +2000,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var pa_out = await boot({ url: EDURL, local: { formats: MINI, minimalMode: "1", connectedBefore: "1", clientId: "abc123" }, fetchOptions: {} });
   pa_out.eval("startLogin = () => { window.__loginStarted = (window.__loginStarted || 0) + 1; }");
   check("not signed in but with a saved Client ID, the page is minimal, with no Step 1 above the editor", pa_out.eval("connection") === "none" && pa_out.document.body.classList.contains("minimal"));
-  check("Create reads Connect to Spotify and is on, and pressing it starts the sign-in", pa_out.document.getElementById("create").textContent.trim() === "Connect to Spotify" && pa_out.document.getElementById("create").disabled === false && (() => { pa_out.document.getElementById("create").click(); return pa_out.__loginStarted === 1; })());
+  check("Create reads Connect to Spotify and is on, and pressing it starts the sign-in", pa_out.document.getElementById("create").textContent.trim() === "Connect to Spotify" && pa_out.document.getElementById("create").disabled === false && (() => { pa_out.document.querySelector("#bhRecipes .bh-build").click(); return pa_out.__loginStarted === 1; })());
   check("the note about needing a connection stays away, since the button says what to do", pa_out.document.getElementById("spotifyNote").hidden === true);
   pa_out.document.getElementById("feAppMenuButton").click();
   check("the menu has a Connect to Spotify item, just as it has Disconnect Spotify when connected", !!pa_out.document.getElementById("feConnect") && pa_out.document.getElementById("feConnect").textContent.trim() === "Connect to Spotify" && !pa_out.document.getElementById("feDisconnect") && !pa_out.document.getElementById("feConnectionNote"));
@@ -2523,13 +2071,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
     check(`the kind of problem is ${kind}`, JSON.stringify(pv_counts(w).map((e) => e.title)) === JSON.stringify([kind]));
   }
   var pv_c4 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, counted: "1" }, fetchOptions: {}, before: pv_before });
-  await readyToPreview(pv_c4);
-  pv_c4.eval("setPlaylistLimit(2)");
-  pv_c4.document.getElementById("create").click();
-  await waitFor(() => visible(pv_c4, "confirmBox"), 30000);
-  pressBuild(pv_c4);
-  await waitFor(() => pv_c4.document.getElementById("createCloseRow").hidden === false, 30000);
-  check("a successful create counts how many playlists were made, as a number and nothing else", JSON.stringify(pv_counts(pv_c4).filter((e) => !/^active-/.test(e.path)).map((e) => [e.path, e.title])) === JSON.stringify([["playlists-created", "2"]]));
+  await buildFor(pv_c4, "mini");
+  check("a successful build counts the playlist made, as a number and nothing else", JSON.stringify(pv_counts(pv_c4).filter((e) => !/^active-/.test(e.path)).map((e) => [e.path, e.title])) === JSON.stringify([["playlists-created", "1"]]), JSON.stringify(pv_counts(pv_c4)));
   var pv_all = pv_counts(pv_c1).concat(pv_counts(pv_c3), pv_counts(pv_c4));
   // a day of use, by how long since this browser first connected
   check("connecting counts the day once, as the browser's first week, and keeps the dates only here", JSON.stringify(pv_counts(pv_c1).filter((e) => /^active-/.test(e.path)).map((e) => e.path)) === JSON.stringify(["active-first-week"]) && pv_c1.localStorage.getItem("countedDay") === new Date().toDateString() && Number(pv_c1.localStorage.getItem("countedSince")) > 0);
@@ -2648,23 +2191,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("renaming the format changes the button as you type", /Build playlists for Renamed$/.test(bb_w.document.getElementById("create").textContent));
   finishName(bb_w);
   check("the Step 3 heading says Build, and the note above the button describes building the format being edited", /3\. Build playlists/.test(bb_w.document.getElementById("createHeading").textContent) && /^Builds playlists for the selected recipe\./.test(bb_w.document.getElementById("createNote").textContent) && /^Building playlists needs a working connection/.test(bb_w.document.getElementById("spotifyNote").textContent));
-  // the question
-  bb_w.eval("setPlaylistLimit(2)");
-  bb_w.document.getElementById("create").click();
-  await waitFor(() => visible(bb_w, "confirmBox"), 30000);
-  check("the question names the format being built, with the count", bb_w.document.getElementById("confirmText").textContent === "Up to 2, with no song repeated across them. Why 2?" && bb_w.document.getElementById("planToggle").textContent === "Why 2?" && bb_w.document.getElementById("bdTitle").textContent === "Renamed" && /^Build playlists$/.test(bb_w.document.getElementById("confirmYes").textContent) && bb_w.document.getElementById("createDialog").getAttribute("aria-labelledby") === "bdTitle");
-  bb_w.document.getElementById("bdClose").click();
-  // Build all
   check("Build all recipes has no button in the page any more", !bb_w.document.getElementById("buildAll") && !bb_w.document.getElementById("moreOptions"));
-  await buildAllNow(bb_w);
-  await waitFor(() => visible(bb_w, "confirmBox"), 30000);
-  check("it builds every format, and the question says how many formats", /^Ready to build \d+ playlists$/.test(bb_w.document.getElementById("bdPickHead").textContent) && bb_w.document.getElementById("confirmText").textContent === "For 2 recipes. Why these numbers?", bb_w.document.getElementById("confirmText").textContent);
-  bb_w.document.getElementById("bdClose").click();
-  await waitFor(() => bb_w.document.getElementById("createOverlay").hidden === true, 10000);
-  bb_w.document.getElementById("create").click();
-  await waitFor(() => visible(bb_w, "confirmBox"), 30000);
-  check("and the next press of Build playlists goes back to the one format", bb_w.document.getElementById("bdTitle").textContent === "Renamed", bb_w.document.getElementById("bdTitle").textContent);
-  bb_w.document.getElementById("bdClose").click();
   check("the format dropdown is gone from Step 3", !bb_w.document.getElementById("formatKey"));
   
   } catch (err) { areaCrashed("build button, big new format button and empty start", err); }
@@ -3031,7 +2558,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var bt_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/<!--[\s\S]*?-->/g, "").replace(/<style>[\s\S]*?<\/style>/g, "");
   var bt_app = appSource().split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
   check("the page calls the action Build everywhere, never create playlists", !/create playlists/i.test(bt_html) && !/create playlists/i.test(bt_app), String((bt_html.match(/create playlists/gi) || []).length));
-  check("the messages that follow a build say built and building", /Building your playlist/.test(bt_app) && /"are"\} in your Spotify library/.test(bt_app) && /"was" : "were"\} built/.test(bt_app) && /Nothing can be built from/.test(bt_app));
   } catch (err) { areaCrashed("duplicate question, format names, empty note and equal widths", err); } }
 
   if (want("a new format scrolls into view")) { try {
@@ -3583,7 +3109,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => ss_writes(ss_o7, "create").length >= 1 && /too long/.test(ss_w7.document.getElementById("spotifySaveStatus").textContent), 8000);
   check("a format whose save would not fit is not saved, the others are, and the line under the editor's bar says which one and that it is still saved in the browser", ss_writes(ss_o7, "create").length === 1 && ss_writes(ss_o7, "create")[0].name === "Alpha (recipe)" && /Huge is too long to save to Spotify\. It is still saved in this browser\./.test(capText(ss_w7)));
   ss_w1.eval('askDeleteFormat()');
-  check("deleting a format says its saved copy in Spotify is deleted too", /Its saved copy in Spotify is deleted too\./.test(ss_w1.document.getElementById("feDeleteDialog").textContent) && !/restored from a backup/.test(ss_w1.document.getElementById("feDeleteDialog").textContent));
+  check("deleting a recipe says it is removed from Spotify too", /removes the recipe from this list and from Spotify\./.test(ss_w1.document.getElementById("feDeleteDialog").textContent) && !/restored from a backup/.test(ss_w1.document.getElementById("feDeleteDialog").textContent));
   ss_w1.document.getElementById("feDeleteCancel").click();
   } catch (err) { areaCrashed("spotify saves", err); } }
 
@@ -3941,12 +3467,16 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   cs_w.dispatchEvent(Object.assign(new cs_w.Event("pageshow"), { persisted: true }));
   await new Promise((r) => setTimeout(r, 50));
   check("if the browser shows the page again as it was left, after Back from Spotify, the button is Connect to Spotify again and works", cs_label(cs_w, "connect") === "Connect to Spotify" && !cs_w.document.getElementById("connect").disabled && cs_w.document.getElementById("loginMessage").textContent === "");
-  // minimalist mode: the Create button is the Connect button
-  var cs_m = await boot({ url: EDURL, local: { formats: MINI, minimalMode: "1", connectedBefore: "1", clientId: "client-1" }, fetchOptions: {} });
-  check("in minimalist mode, with no sign-in, the main button says Connect to Spotify", cs_label(cs_m, "create") === "Connect to Spotify" && !cs_m.document.getElementById("create").disabled);
-  cs_m.document.getElementById("create").click();
+  // the app page: a recipe's Build button is the Connect button
+  var cs_m = await boot({ url: EDURL, local: { formats: MINI, connectedBefore: "1", clientId: "client-1" }, fetchOptions: {} });
+  var cs_b = () => cs_m.document.querySelector("#bhRecipes .bh-build");
+  check("on the app page, with no sign-in, a recipe's Build button says Connect to Spotify", !!cs_b() && cs_b().getAttribute("aria-label") === "Connect to Spotify" && !cs_b().disabled);
+  cs_b().click();
   await new Promise((r) => setTimeout(r, 100));
-  check("pressing it makes it say Connecting\u2026, and cannot be pressed again, with the note under it saying Spotify is opening", cs_label(cs_m, "create") === "Connecting\u2026" && cs_m.document.getElementById("create").disabled && !cs_m.document.getElementById("spotifyNote").hidden && /Opening Spotify/.test(cs_m.document.getElementById("spotifyNote").textContent));
+  var cs_ms = cs_m.sessionStorage.getItem("pkceState");
+  cs_b().click();
+  await new Promise((r) => setTimeout(r, 50));
+  check("pressing it starts the sign-in, and a second press does not start another over it", !!cs_ms && cs_m.sessionStorage.getItem("pkceState") === cs_ms, JSON.stringify([cs_ms, cs_m.sessionStorage.getItem("pkceState")]));
   // the way back from Spotify, while the sign-in is being finished over a slow connection
   var cs_r = await boot({ url: "http://127.0.0.1:8000/?code=abc123&state=st1", session: { pkceState: "st1", pkceVerifier: "v" }, local: { clientId: "client-1" }, fetchOptions: { tokenDelayMs: 4000 } });
   check("coming back from Spotify, the button already says Connecting\u2026 while the sign-in is finished, and cannot be pressed", cs_label(cs_r, "connect") === "Connecting\u2026" && cs_r.document.getElementById("connect").disabled && /Finishing the sign-in/.test(cs_r.document.getElementById("loginMessage").textContent));
@@ -4277,7 +3807,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("reading the library for the card starts no overlap reading while the popup is closed", sc_w.eval("sharing.overlap === null && !sharing.reading"));
   check("home's card reads only which shares there are (/counts), not the library itself", sc_sh.countReads >= 1 && !sc_sh.libraryReads && !sc_w.eval("sharing.library"), JSON.stringify([sc_sh.countReads, sc_sh.libraryReads]));
   check("Arc's home, with the card, shows only on the app page's home view, and the builder's parts only in the builder", /html\.page-app\.view-home #homePage \{ display: block; \}/.test(Array.from(sc_d.querySelectorAll("style")).map((x) => x.textContent).join("")) && /html\.page-app:not\(\.view-builder\) #appSection > :is\(#builderHome, #recipePanelWrap, #editorNote, #buildRow/.test(Array.from(sc_d.querySelectorAll("style")).map((x) => x.textContent).join("")));
-  check("on connecting, a device that never read the person's shares reads them once and keeps the list (none here), so later visits do not ask again", sc_w.localStorage.getItem("sharingMineIds") === "[]" && /let known = !!sharing\.mine;[\s\S]{0,400}if \(!known \|\| devMode\(\)\) loadMine\(\)/.test(fs.readFileSync(ROOT + "sharing.js", "utf8")));
+  check("on connecting, the person's shares are read and kept (none here)", sc_w.localStorage.getItem("sharingMineIds") === "[]");
   var sc_own = { words: {}, posts: [], deletes: [], reports: [], shares: sc_sh.shares.map((x, i) => Object.assign({}, x, i < 2 ? { owner: "ron", playlist: "p" + i } : {})) };
   var sc_o = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", devMode: "1" }, fetchOptions: { sharing: sc_own } });
   await waitFor(() => /^2 shares by you, 2/.test(sc_o.document.getElementById("msCardText").textContent), 8000);
@@ -4327,7 +3857,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   sc_d.getElementById("homeBuilder").click();
   sc_d.documentElement.classList.remove("dev-mode");
   sc_d.getElementById("appTool").click();
-  check("outside developer mode Music sharing is in the list as Coming soon and cannot be chosen", sc_tm.querySelector('[data-view="sharing"]').disabled === true && sc_tm.querySelector('[data-view="builder"]').disabled === false);
+  check("outside developer mode Music sharing can be chosen in the list too", sc_tm.querySelector('[data-view="sharing"]').disabled === false && sc_tm.querySelector('[data-view="builder"]').disabled === false && !/Coming soon/.test(sc_tm.textContent));
   sc_d.body.click();
   sc_d.documentElement.classList.add("dev-mode");
   sc_d.querySelector("#feRows .fe-row .fe-main").click();
@@ -4728,7 +4258,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await new Promise((r) => setTimeout(r, 50));
   check("a shared playlist says Shared with a check in place of Share, its line unchanged", (() => { const line = sb_d.querySelector('#bhPeople [data-code="MC"] .bh-plist > .bh-pl:not(.hb-row)'); return !!line && !!line.querySelector(".bh-shared .fe-icon") && line.querySelector(".bh-shared").textContent === "Shared" && !line.querySelector(".bh-share"); })());
   check("which playlists are shared is kept, so the check shows before the list is read again", sb.eval("(() => { const m = sharing.mine; sharing.mine = null; const r = !!sharedFor({ id: 'q1' }) && !sharedFor({ id: 'p2' }); sharing.mine = m; return r; })()"));
-  check("in developer mode the person's shares are read on every connecting, not only the first", /if \(!known \|\| devMode\(\)\) loadMine\(\)/.test(fs.readFileSync(ROOT + "sharing.js", "utf8")));
+  check("the person's shares are read on every connecting, not only the first", /function sharingConnected\(\) \{[^}]*\n  loadMine\(\)\.then\(renderSharingCard\);/.test(fs.readFileSync(ROOT + "sharing.js", "utf8")));
   sb_d.querySelector('#bhPeople [data-code="MC"] .bh-shared').click();
   await waitFor(() => sb.eval("appView") === "sharing" && sb.eval("!!(sharing.detail || (sharing.flow && sharing.flow.mode === 'edit'))"), 5000);
   check("the check opens that share in Music sharing, on By you", sb.eval("sharing.tab") === "yours" && sb.eval("sharing.detail || sharing.flow.share.id") === sb_sh.shares.find((x) => x.playlist === "q1").id);
@@ -4840,7 +4370,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var dv_PE = (type, x) => new dv_w.MouseEvent(type, { bubbles: true, button: 0, clientX: x || 10, clientY: 10 });
   var dv_d = dv_w.document, dv_root = dv_d.documentElement;
   var dv_icon = dv_d.querySelector("#homePage .wp-band-icon");
-  check("regular mode: Music sharing is Coming soon on home, with no library read, and its card does not open it", !dv_root.classList.contains("dev-mode") && dv_d.querySelector("#msCard .hp-tag").textContent === "Bring some, get some!" && /html:not\(\.dev-mode\) #msCard \.hp-data \{ display: none; \}/.test(Array.from(dv_d.querySelectorAll("style")).map((x) => x.textContent).join("")) && dv_d.getElementById("msCard").getAttribute("aria-disabled") === "true" && dv_d.getElementById("hpSoon").textContent === "Coming soon" && dv_w.getComputedStyle(dv_d.getElementById("hpSoon")).display !== "none" && !dv_d.querySelector("#msCard .hp-soon") && dv_w.eval("sharing.library") === null && (dv_d.getElementById("msCard").click(), dv_root.classList.contains("view-home") && dv_d.getElementById("msOverlay").hidden === true));
+  check("regular mode: Music sharing's card on home is a tool like the builder, with no Coming soon", !dv_root.classList.contains("dev-mode") && dv_d.querySelector("#msCard .hp-tag").textContent === "Bring some, get some!" && !dv_d.getElementById("hpSoon") && dv_d.getElementById("msCard").getAttribute("aria-disabled") !== "true");
   dv_d.querySelector("#homePage .hp-band .wp-band-name").click();
   check("regular mode: no DEV menu, the word Arc opens nothing, and no hold on the builder menu's header", dv_w.getComputedStyle(dv_d.getElementById("devWrap")).display === "none" && dv_d.getElementById("devMenu").hidden && !dv_d.getElementById("devPill") && !/watchDevHold\(\$\("feMenuHead"\)\)/.test(fs.readFileSync(ROOT + "editor.js", "utf8")));
   var dv_before = dv_icon.outerHTML;
@@ -4851,9 +4381,9 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   dv_icon.dispatchEvent(dv_PE("pointerdown"));
   dv_w.eval("window.__t[window.__t.length - 1]()");
   check("held to the end, developer mode is on, kept on this device, and a message says so", dv_root.classList.contains("dev-mode") && dv_w.localStorage.getItem("devMode") === "1" && dv_d.getElementById("devToast").hidden === false && dv_d.getElementById("devToastText").textContent === "Developer mode on");
-  await waitFor(() => dv_w.eval("sharing.library") !== null, 8000);
-  check("on: Music sharing's card comes alive and its library is read", dv_d.getElementById("msCard").getAttribute("aria-disabled") === "false" && /shares? by you, \d+ by others/.test(dv_d.getElementById("msCardText").textContent));
+  check("on: Music sharing's card still shows its counts", /shares? by you, \d+ by others/.test(dv_d.getElementById("msCardText").textContent));
   await waitFor(() => dv_sh.ownerAsks === 1, 5000);
+  await waitFor(() => !!dv_w.localStorage.getItem("sharingOwner"), 8000);
   check("on, the worker is asked once whether this Spotify account is the owner, and the answer is kept for that account", JSON.parse(dv_w.localStorage.getItem("sharingOwner") || "{}").owner === true && JSON.parse(dv_w.localStorage.getItem("sharingOwner")).account === dv_w.localStorage.getItem("spotifyAccount"));
   var dv_hname = dv_d.querySelector("#homePage .hp-band .wp-band-name"), dv_hstyle = dv_w.getComputedStyle(dv_hname).cssText + dv_hname.outerHTML;
   dv_hname.click();
@@ -4893,8 +4423,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("moving the finger more than a little cancels it", dv_root.classList.contains("dev-mode") && dv_n >= 2);
   dv_bar.dispatchEvent(dv_PE("pointerdown"));
   dv_w.eval("window.__t[window.__t.length - 1]()");
-  await waitFor(() => dv_root.classList.contains("view-home"), 3000);
-  check("held again (here on the tool's button in the bar), it turns off, leaves Music sharing for home, and says so", !dv_root.classList.contains("dev-mode") && dv_w.localStorage.getItem("devMode") === null && dv_root.classList.contains("view-home") && dv_d.getElementById("devToastText").textContent === "Developer mode off" && dv_d.getElementById("msCard").getAttribute("aria-disabled") === "true");
+  check("held again (here on the tool's button in the bar), it turns off and says so", !dv_root.classList.contains("dev-mode") && dv_w.localStorage.getItem("devMode") === null && dv_d.getElementById("devToastText").textContent === "Developer mode off");
   dv_w.eval("setDevMode(true)"); dv_d.querySelector("#homePage .hp-band .wp-band-name").click(); dv_d.getElementById("devMenuOff").click();
   check("Turn off developer mode in the DEV menu turns it off", !dv_root.classList.contains("dev-mode") && dv_d.getElementById("devMenu").hidden === true);
   dv_w.eval("showView('builder')");
@@ -4907,7 +4436,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var dv_wel = await boot({ url: "http://127.0.0.1:8000/" });
   var dv_wh = dv_wel.document.getElementById("wpSharingHead");
   dv_wh.click();
-  check("regular mode on the welcome page: Music sharing sits under its own Coming soon heading and does not open", dv_wel.document.getElementById("wpSoon").textContent === "Coming soon" && dv_wel.document.getElementById("wpSoon").nextElementSibling.contains(dv_wh) && dv_wh.getAttribute("aria-expanded") === "false" && /html:not\(\.dev-mode\) #welcomePage #wpSoon \{ display: flex;/.test(fs.readFileSync(ROOT + "index.html", "utf8")));
+  check("regular mode on the welcome page: Music sharing's card opens like the builder's, with no Coming soon heading", !dv_wel.document.getElementById("wpSoon") && dv_wh.getAttribute("aria-expanded") === "true");
   var dv_wel2 = await boot({ url: "http://127.0.0.1:8000/", local: { devMode: "1" } });
   dv_wel2.document.getElementById("wpSharingHead").click();
   check("in developer mode the <head> script marks the page before it is drawn, and the welcome card opens", /if \(localStorage\.getItem\("devMode"\) === "1"\) document\.documentElement\.classList\.add\("dev-mode"\);/.test(fs.readFileSync(ROOT + "index.html", "utf8")) && dv_wel2.document.getElementById("wpSharingHead").getAttribute("aria-expanded") === "true");
@@ -5113,145 +4642,6 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await new Promise((r) => setTimeout(r, 600));
   check("a problem signing in again cannot fix (here Premium) shows no reconnect screen", sr_w8.eval("connection") === "problem" && !sr_screen(sr_w8), sr_w8.eval("connection"));
   } catch (err) { areaCrashed("sign-in renewal", err); } }
-  if (want("build popup")) { try {
-  // The build popup: steps along the top, the plan as a list with "Why N?", and a build that stops with a plain message when something goes wrong.
-  // "ran" makes 2 playlists: "💗 spacious + gentle" (about 520 min of songs) runs out first, at 200 min per playlist. Each playlist takes 6 requests to add its songs.
-  const bp_RAN = '{"ran": {"name": "ran {n}", "title": "Ran", "silence between segments": "1 min", "segments": [("💗 spacious + gentle", 200), ("🛋 rest", 30)]}}';
-  const bp_text = (w, id) => w.document.getElementById(id).textContent;
-  const bp_steps = (w) => Array.from(w.document.querySelectorAll("#bdSteps .bd-step")).map((s) => (s.className.match(/bd-step-(\w+)/) || [, "-"])[1]).join(",");
-  const bp_rows = (w) => Array.from(w.document.querySelectorAll("#results .bd-row"));
-  const bp_open = async (w) => {
-    await readyToPreview(w);
-    w.document.getElementById("create").click();
-    await waitFor(() => visible(w, "confirmBox") || !!w.document.querySelector("#output .bd-card"), 30000);
-  };
-  const bp_build = async (w) => {
-    await bp_open(w);
-    pressBuild(w);
-    await waitFor(() => visible(w, "createCloseRow"), 60000);
-  };
-
-  // the plan
-  var bp_a = await boot({ url: EDURL, session: signedIn(), local: { formats: bp_RAN } });
-  await bp_open(bp_a);
-  check("the plan asks How many playlists? and says how many the songs allow, with no line on what several means and no guide link", bp_text(bp_a, "bdPickHead") === "How many playlists?" && visible(bp_a, "bdPickHead") && bp_text(bp_a, "confirmText") === "Up to 2, with no song repeated across them. Why 2?" && !!bp_a.document.querySelector("#confirmText #planToggle") && !bp_a.document.getElementById("bdPickWhy") && !bp_a.document.getElementById("bdPickGuide"), bp_text(bp_a, "confirmText"));
-  check("while reading, each source playlist had a row, ticked with its songs; the question takes its place", bp_a.document.querySelectorAll("#bdReadList .bd-row").length === 2 && Array.from(bp_a.document.querySelectorAll("#bdReadList .bd-meta")).every((m) => /^\d+ songs$/.test(m.textContent)) && !visible(bp_a, "bdRead") && bp_a.document.querySelector("#bdRead .bd-q").textContent === "Reading your playlists" && bp_a.document.querySelector("#bdRead .bd-sub").textContent === "To see how many playlists the songs allow.", bp_text(bp_a, "bdReadList"));
-  check("the question, then that sentence, the Why table right under it, then the choice", bp_a.document.getElementById("bdPickHead").nextElementSibling.id === "confirmText" && bp_a.document.getElementById("confirmText").nextElementSibling.id === "planText" && bp_a.document.getElementById("planText").nextElementSibling.id === "bdPick");
-  var bp_opts = () => Array.from(bp_a.document.querySelectorAll("#bdPickTiles .bd-pick-opt"));
-  check("Arc's icon per playlist with its number above, 8 to a row, none chosen, and Build does nothing yet", visible(bp_a, "bdPick") && bp_opts().map((o) => o.textContent).join(",") === "1,2" && bp_opts().every((o) => o.querySelector(".bd-arc")) && /#createDialog \.bd-pick-tiles, #createDialog \.bd-tiles \{ display: grid; grid-template-columns: repeat\(8, minmax\(0, 1fr\)\);/.test(html) && !bp_a.document.querySelector("#bdPickTiles .bd-on, #bdPickTiles [aria-checked=true]") && bp_a.document.getElementById("confirmYes").disabled && bp_text(bp_a, "confirmYes") === "Build playlists" && (bp_a.document.getElementById("confirmYes").click(), visible(bp_a, "confirmBox")));
-  bp_opts()[0].click();
-  check("choosing 1 lights one tile and names it on the Build button", bp_a.document.querySelectorAll("#bdPickTiles .bd-on").length === 1 && bp_opts()[0].getAttribute("aria-checked") === "true" && !bp_a.document.getElementById("confirmYes").disabled && bp_text(bp_a, "confirmYes") === "Build 1 playlist", bp_text(bp_a, "confirmYes"));
-  bp_opts()[1].click();
-  check("hovering a choice shows one outline, around the tile and number together, not a second one on the tile", !/\.bd-pick-opt:hover/.test(html));
-  check("the icons up to the choice light, but only the chosen number turns pink", /#createDialog \.bd-pick-opt\[aria-checked="true"\] \{ color: var\(--accent\); font-weight: 700; \}/.test(html) && !/#createDialog \.bd-pick-opt\.bd-on \{/.test(html));
-  check("choosing 2 lights both", bp_a.document.querySelectorAll("#bdPickTiles .bd-on").length === 2 && bp_text(bp_a, "confirmYes") === "Build 2 playlists", bp_text(bp_a, "confirmYes"));
-  check("the title names the recipe", bp_text(bp_a, "bdTitle") === "Ran", bp_text(bp_a, "bdTitle"));
-  check("no bar under the name any more", !bp_a.document.getElementById("bdShape") && !/bd-shape-piece/.test(html));
-  check("over the question, the length of one playlist and its segments", /^(\d+ h( \d+ min)?|\d+ min) per playlist · \d+ segments?$/.test(bp_text(bp_a, "bdShapeInfo")) && visible(bp_a, "bdShapeInfo"), bp_text(bp_a, "bdShapeInfo"));
-  check("while it asks, reading and planning are ticked and building has not started", bp_steps(bp_a) === "done,done,-,-", bp_steps(bp_a));
-  check("the plan lists no playlists: the count says how many, and the list starts when building does", bp_rows(bp_a).length === 0 && !/showPlanRows|bdShowAll/.test(appSource()), bp_rows(bp_a).map((r) => r.textContent).join(" | "));
-  check("there is no separate progress bar any more", !bp_a.document.getElementById("bdProgress"));
-  check("Why 2? is offered, and the table starts hidden", bp_text(bp_a, "planToggle") === "Why 2?" && !visible(bp_a, "planText"));
-  bp_a.document.getElementById("planToggle").click();
-  var bp_trs = Array.from(bp_a.document.querySelectorAll("#planText tbody tr"));
-  check("Why 2? opens a table: what one playlist uses of each source, its length, and how many playlists that is enough for, the units hr and min wide and h and m on a phone", visible(bp_a, "planText") && bp_trs.length === 2 && /^3 hrh 20 minm of 💗 spacious \+ gentle8 hrh \d+ minm2 playlists$/.test(bp_trs[0].textContent) && /^30 minm of 🛋 rest\d+ hrh/.test(bp_trs[1].textContent) && Array.from(bp_a.document.querySelectorAll("#planText th")).map((t) => t.textContent).join(",") === "Each playlist uses,Available,Enough for" && Array.from(bp_trs[0].children[1].querySelectorAll(".bd-unit .bd-narrow")).map((u) => u.textContent).join(",") === "h,m" && /#planText \.bd-narrow[^{]*\{ display: none; \}\n\s*@media \(max-width: 759px\) \{ #createDialog #planText \.bd-wide[^{]*\{ display: none; \} #createDialog #planText \.bd-narrow[^{]*\{ display: inline; \} \}/.test(fs.readFileSync(ROOT + "index.html", "utf8")), bp_trs.map((t) => t.textContent).join(" | "));
-  check("the playlist that ran out is the marked row", bp_trs[0].className === "bd-limit" && bp_trs[1].className === "");
-  check("no note under the table when a playlist ran out (the marked row says it)", bp_a.document.querySelectorAll("#planText .bd-note").length === 0, bp_text(bp_a, "planText"));
-  bp_a.fillWhyTable({ built: [{ key: "ran", playlists: [{}, {}], ranOut: { name: "a" }, sources: [{ name: "a", per: 60, has: 130, enough: 2 }, { name: "b", per: 60, has: 300, enough: 5 }, { name: "c", per: 30, has: 70, enough: 2 }] }] });
-  check("every source with the same count as the one that ran out is marked too", Array.from(bp_a.document.querySelectorAll("#planText tbody tr")).map((t) => t.className).join(",") === "bd-limit,,bd-limit");
-  bp_a.fillWhyTable({ built: [{ key: "ran", playlists: [{}, {}], sources: [{ name: "a", per: 60, has: 130, enough: 3 }, { name: "b", per: 60, has: 300, enough: 5 }, { name: "c", per: 30, has: 100, enough: 3 }] }] });
-  check("when the cap sets the number, no row is marked, and a note above the table says so and how many the songs allow", Array.from(bp_a.document.querySelectorAll("#planText tbody tr")).map((t) => t.className).join(",") === ",," && bp_a.document.querySelector("#planText").firstElementChild.className === "bd-note bd-capnote" && bp_text(bp_a, "planText").startsWith("Capped at 2 by “Most playlists per recipe” in More options. Without it, the songs are enough for 3 playlists."), bp_text(bp_a, "planText"));
-  var bp_html = fs.readFileSync(ROOT + "index.html", "utf8"), bp_js = appSource();
-  check("the marked row is pale pink with its number in pink, and the rows are striped", /tr\.bd-limit td \{ background: color-mix\(in srgb, var\(--accent\)/.test(bp_html) && /tr\.bd-limit td:last-child \{ color: var\(--accent\);/.test(bp_html) && /tbody tr:nth-child\(odd\) td \{ background: var\(--card\); \}/.test(bp_html));
-  check("songs in more than one source get their own box, not a line under the table", /notes\.push\(\["Songs in more than one playlist", `\$\{plural\(shared, "song"\)\}/.test(bp_js) && !/className: "bd-note", textContent: `\$\{plural\(shared/.test(bp_js));
-  check("and the link then offers to hide it", bp_text(bp_a, "planToggle") === "Hide");
-  check("Build is offered with Cancel beside it, and the X closes", visible(bp_a, "confirmButtons") && bp_a.document.getElementById("confirmNo").textContent.trim() === "Cancel" && !bp_a.document.getElementById("bdClose").classList.contains("bd-x-off") && !visible(bp_a, "createCloseRow") && !visible(bp_a, "bdBusyRow") && /Build 2 playlists/.test(bp_text(bp_a, "confirmYes")));
-  pressBuild(bp_a);
-  await waitFor(() => visible(bp_a, "bdTally"), 20000);
-  check("while building: a count of the playlists made, Arc's icon for each, and Keep this tab open", /^\d+of 2 playlists$/.test(bp_text(bp_a, "bdCount")) && bp_a.document.querySelectorAll("#bdTiles .bd-arc").length === 2 && bp_text(bp_a, "bdCountNote") === "Keep this tab open.", bp_text(bp_a, "bdCount"));
-  check("while building: the X cannot be used, but keeps its place, and only the list scrolls", /const closable = stage === "question" \|\| stage === "done";[^\n]*\n\s*\$\("bdClose"\)\.classList\.toggle\("bd-x-off", !closable\);\n\s*\$\("bdClose"\)\.disabled = !closable;/.test(appSource()) && /#createDialog \.bd-x\.bd-x-off \{ visibility: hidden; \}/.test(html) && bp_a.document.getElementById("createDialog").classList.contains("bd-listing") && /#createDialog\.bd-listing #results \{ flex: 1 1 0; min-height: 0; overflow-y: auto;/.test(html) && /#createDialog\.bd-listing \.bd-body \{ display: flex; flex-direction: column; overflow: hidden;/.test(html));
-  check("while building: a playlist not built yet shows nothing on the right", bp_rows(bp_a).filter((r) => r.classList.contains("bd-wait")).every((r) => r.querySelector(".bd-meta").textContent === ""));
-  await waitFor(() => visible(bp_a, "createCloseRow"), 60000);
-  check("done: every step ticked, and the count is gone", bp_steps(bp_a) === "done,done,done,done" && !visible(bp_a, "bdTally"), bp_steps(bp_a));
-  check("done: how many and how much music, with no row of icons", doneSentence(bp_a) === "2 playlists are in your Spotify library." && /^\d+ h( \d+ min)? of music$|^\d+ min of music$/.test(bp_a.document.querySelector("#actionMessage .bd-hours").textContent) && !bp_a.document.querySelector("#actionMessage .bd-tiles, #actionMessage .bd-arc"), bp_text(bp_a, "actionMessage"));
-  check("done: Done in place of Close, and the X closes too", bp_text(bp_a, "createClose") === "Done" && !bp_a.document.getElementById("bdClose").classList.contains("bd-x-off"));
-  check("done: a fanned cover for each playlist, five at most", bp_a.document.querySelectorAll("#actionMessage .bd-fan .bd-card-img").length === 2 && /Math\.min\(made, 5\)/.test(appSource()));
-  check("done: the playlists are not links, each one ticked with its songs and length", bp_rows(bp_a).length === 2 && bp_rows(bp_a).every((r) => !r.querySelector("a") && /songs ·/.test(r.querySelector(".bd-meta").textContent)));
-  check("done: Open in Spotify opens the first new playlist, then the list", visible(bp_a, "createOpen") && /^https:\/\/open\.spotify\.com\/playlist\/new\w+$/.test(bp_a.document.getElementById("createOpenLink").href) && bp_a.document.getElementById("createOpenLink").textContent === "Open in Spotify" && bp_a.document.getElementById("createOpen").nextElementSibling.id === "mainReportHint", bp_a.document.getElementById("createOpenLink").href);
-  check("done: the status line is hidden", bp_a.document.getElementById("output").hidden);
-  check("done: no notes", !visible(bp_a, "createNotes"));
-
-  // with a limit on the number there is no hint, and the table says where the number comes from
-  var bp_b = await boot({ url: EDURL, session: signedIn(), local: { formats: bp_RAN } });
-  bp_b.eval("setPlaylistLimit(1)");
-  await bp_open(bp_b);
-  check("when the limit sets the number, the plan says Ready to build and Why 1?", bp_text(bp_b, "bdPickHead") === "Ready to build 1 playlist" && bp_text(bp_b, "confirmText") === "Why 1?", bp_text(bp_b, "confirmText"));
-  check("and Why 1? says the limit set it", /Most playlists per recipe/.test(bp_text(bp_b, "planText")), bp_text(bp_b, "planText"));
-  check("when only one can be made, no icons to choose: just the sentence", !visible(bp_b, "bdPick") && visible(bp_b, "bdPickHead"));
-  pressBuild(bp_b);
-  await waitFor(() => visible(bp_b, "bdTally"), 20000);
-  check("building one playlist says so, with no count and no tile", bp_text(bp_b, "bdCount") === "Building your playlist" && !visible(bp_b, "bdTiles"), bp_text(bp_b, "bdCount"));
-  await waitFor(() => visible(bp_b, "createCloseRow"), 60000);
-  check("one playlist done: one cover, no tiles, is in your library", doneSentence(bp_b) === "1 playlist is in your Spotify library." && bp_b.document.querySelectorAll("#actionMessage .bd-card-img").length === 1 && !bp_b.document.querySelector("#actionMessage .bd-tiles"), bp_text(bp_b, "actionMessage"));
-
-  // choosing fewer than the most builds only that many
-  var bp_c = await boot({ url: EDURL, session: signedIn(), local: { formats: bp_RAN } });
-  await bp_open(bp_c);
-  bp_c.document.querySelector("#bdPickTiles .bd-pick-opt").click();
-  pressBuild(bp_c);
-  await waitFor(() => visible(bp_c, "createCloseRow"), 60000);
-  check("1 of 2 chosen: one playlist is built", doneSentence(bp_c) === "1 playlist is in your Spotify library." && bp_rows(bp_c).length === 1, doneSentence(bp_c));
-
-  // a build that stops: what went wrong, what was built, what to do, and Close
-  const bp_fail = async (how, extra = {}) => {
-    const o = { buildFailIn: "new2", buildFail: how, ...extra };
-    const w = await boot({ url: EDURL, session: signedIn(), local: { formats: bp_RAN }, fetchOptions: o, instantRetries: true });
-    await bp_build(w);
-    return { w, o, card: (w.document.querySelector("#actionMessage .bd-card") || { textContent: "" }).textContent };
-  };
-  var bp_n = await bp_fail("network");
-  check("no connection: it says so and what to do", /^Spotify stopped answering1 of 2 playlists was built, and Ran 2 is incomplete\. Check your internet connection, then build again\. Building again replaces the ones made so far\.$/.test(bp_n.card), bp_n.card);
-  check("the build stops there: nothing more is sent", bp_n.o.addCalls === bp_n.o.writes.filter((x) => x.type === "add").length + 1 && bp_n.o.writes.every((x) => x.type !== "add" || x.id === "new1") && bp_n.o.writes.filter((x) => x.type === "create").length === 2, bp_n.o.addCalls);
-  check("the rows say what happened to each", /songs ·/.test(bp_rows(bp_n.w)[0].querySelector(".bd-meta").textContent) && bp_rows(bp_n.w)[1].querySelector(".bd-meta").textContent === "incomplete", bp_rows(bp_n.w).map((r) => r.textContent).join(" | "));
-  check("the Build step shows the failure", bp_steps(bp_n.w) === "done,done,fail,-", bp_steps(bp_n.w));
-  check("after a stop the count is gone: the message and the rows say how far it got", !visible(bp_n.w, "bdTally"));
-  check("only Close is offered: no report link", visible(bp_n.w, "createCloseRow") && !visible(bp_n.w, "mainReportHint"));
-  var bp_h = await bp_fail("hang", { answerMs: 200 });
-  check("no answer at all reads the same", /^Spotify stopped answering/.test(bp_h.card), bp_h.card);
-  var bp_r = await bp_fail(429);
-  check("a long rate limit: Spotify asked to wait, and for how long", /^Spotify asked this app to wait1 of 2 playlists was built, and Ran 2 is incomplete\. Try again in about 20 minutes\./.test(bp_r.card), bp_r.card);
-  var bp_x = await bp_fail(401);
-  check("an expired sign-in: connect again", /^Your Spotify sign-in expired.*Connect again, then build again\./.test(bp_x.card), bp_x.card);
-  var bp_d = await bp_fail(403);
-  check("a refused permission: what to do about it", /^Spotify did not allow this.*Sign in again with Change Spotify login in More options/.test(bp_d.card), bp_d.card);
-  var bp_e = await bp_fail(500);
-  check("anything else: the error in plain words, try again later, and a report link", /^Something went wrong1 of 2 playlists was built, and Ran 2 is incomplete\. Spotify returned an error \(500\)\. Try again later\./.test(bp_e.card) && visible(bp_e.w, "mainReportHint"), bp_e.card);
-
-  // a recipe that cannot make even one playlist: every reason at once
-  var bp_p = await boot({ url: EDURL, session: signedIn(), local: { formats: '{"bad": {"name": "bad {n}", "title": "Bad", "segments": [("Gone list", 10), ("💗 spacious + gentle", 900), ("Someone else\'s list", 10)]}}' } });
-  await bp_open(bp_p);
-  var bp_ptext = bp_text(bp_p, "output");
-  check("recipe problems: one card, all of them", /^Nothing can be built from this recipe yet/.test(bp_ptext) && bp_p.document.querySelectorAll("#output .bd-problems li").length === 3, bp_ptext);
-  check("a missing playlist is named, with what to do", /Gone list is not in your Spotify playlists\. Choose another playlist in the recipe/.test(bp_ptext), bp_ptext);
-  check("a playlist that is not yours is named, with what to do", /Someone else's list is not yours\./.test(bp_ptext), bp_ptext);
-  check("a playlist that is too short says by how much, even with the others missing", /💗 spacious \+ gentle is too short\. This recipe uses 15 h of it, and it has 8 h \d+ min of songs\. Add \d+ h \d+ min of songs to it, or shorten its segments\./.test(bp_ptext), bp_ptext);
-  check("the Plan step shows the failure, and only Close is offered", bp_steps(bp_p) === "done,fail,-,-" && visible(bp_p, "createCloseRow") && !visible(bp_p, "confirmButtons"), bp_steps(bp_p));
-  var bp_s = await boot({ url: EDURL, session: signedIn(), local: { formats: '{"long": {"name": "long {n}", "segments": [("💗 spacious + gentle", 900)]}}' } });
-  await bp_open(bp_s);
-  check("too short alone, found by the plan itself", /Nothing can be built from this recipe yet/.test(bp_text(bp_s, "output")) && /is too short\. This recipe uses 15 h of it/.test(bp_text(bp_s, "output")), bp_text(bp_s, "output"));
-
-  // the engine's side of it
-  const bp_py = (fn, args) => require("child_process").spawnSync("python3", [require("path").join(__dirname, "bridge.py"), fn, JSON.stringify(args)], { encoding: "utf8" }).stdout;
-  var bp_eng = JSON.parse(bp_py("build_playlists", ['{"w": {"name": "W {n}", "silence between segments": "2 min", "segments": [("A", 10), ("B", 20)]}}', "w", JSON.stringify({ A: [1, 2, 3, 4, 5].map((i) => ({ uri: "a" + i, ms: 300000 })), B: [1, 2, 3, 4].map((i) => ({ uri: "b" + i, ms: 600000 })) })]));
-  check("engine: what ran out (the playlist with the least to spare is filled first), and the minutes one more playlist needs from it", JSON.stringify(bp_eng.ranOut) === '{"name":"B","more":20}', JSON.stringify(bp_eng.ranOut));
-  check("engine: each source's minutes per playlist, minutes it has, and how many that is enough for", JSON.stringify(bp_eng.sources) === '[{"name":"A","per":10,"has":25,"enough":2},{"name":"B","per":20,"has":40,"enough":2}]', JSON.stringify(bp_eng.sources));
-  check("engine: each playlist's shape, silence included", JSON.stringify(bp_eng.playlists[0].pieces) === "[[10,false],[2,true],[20,false]]" && bp_eng.playlists[0].length === 32, JSON.stringify(bp_eng.playlists[0].pieces));
-  var bp_none = JSON.parse(bp_py("build_playlists", ['{"w": {"name": "W {n}", "segments": [("A", 10), ("B", 60)]}}', "w", JSON.stringify({ A: [1, 2, 3].map((i) => ({ uri: "a" + i, ms: 300000 })), B: [{ uri: "b1", ms: 600000 }] })]));
-  check("engine: with nothing planned, the playlists too short for even one", bp_none.playlists.length === 0 && JSON.stringify(bp_none.short) === '[{"name":"B","need":60,"has":10}]', JSON.stringify(bp_none.short));
-  var bp_fit = JSON.parse(bp_py("build_playlists", ['{"w": {"name": "W {n}", "segments": [("A", 10)]}}', "w", JSON.stringify({ A: [1, 2, 3, 4, 5, 6].map((i) => ({ uri: "a" + i, ms: 240000 })) })]));
-  check("engine: enough minutes whose song lengths cannot come within 10% says so, with what the playlist really has", bp_fit.playlists.length === 0 && JSON.stringify(bp_fit.short) === '[{"name":"A","need":10,"has":24,"fit":true}]', JSON.stringify(bp_fit.short));
-  check("engine: and the limit on the number leaves nothing ran out", JSON.parse(bp_py("build_playlists", ['{"w": {"name": "W {n}", "segments": [("A", 5)]}}', "w", JSON.stringify({ A: [1, 2, 3].map((i) => ({ uri: "a" + i, ms: 300000 })) }), 1])).ranOut === null);
-  } catch (err) { areaCrashed("build popup", err); } }
 
   if (want("silence stepper width")) { try {
   // ================================================================ the silence stepper keeps its width while it is tapped
@@ -5294,67 +4684,12 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   await waitFor(() => rs_w2.eval("saveState.savedAt") !== null, 8000);
   check("the save is done, and said to be, before the covers are: they follow it, a pause apart", rs_w2.eval("saveState.savedAt") !== null && (rs_w2.eval("saveState.coverRunning") === true || rs_o2.writes.filter((x) => x.type === "cover").length < 2));
 
-  // keeping earlier playlists instead of replacing them
-  var rs_old = [
-    { id: "old1", name: "mini 1", owner: { id: "ron" }, description: MADE },
-    { id: "old2", name: "mini 2", owner: { id: "ron" }, description: MADE },
-    { id: "old3", name: "mini 1 (version a)", owner: { id: "ron" }, description: MADE },
-  ];
-  var rs_ok = { extraPlaylists: rs_old, uniqueSongNames: true };
-  var rs_wk = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: rs_ok });
-  await runPreview(rs_wk);
-  var rs_box = rs_wk.document.getElementById("confirmKeepEarlier");
-  var rs_info = rs_wk.document.getElementById("bdInfo").querySelector(".bd-info");
-  check("the row about earlier playlists is one short line, and the checkbox waits behind it", rs_info.querySelector(".bd-info-row").textContent === "Replaces 2 earlier playlists" && rs_box.closest(".bd-info-more").hidden === true, rs_info.textContent);
-  rs_info.querySelector(".bd-info-row").click();
-  check("a tap on the row opens a line saying replacing is usual, and a checkbox to keep them, saying how they will be named: the next letter, since there is a version a already", rs_box.closest(".bd-info-more").hidden === false && rs_info.querySelector(".bd-info-row").getAttribute("aria-expanded") === "true" && /Replacing them is the usual choice, but you can keep the old ones if you like\./.test(rs_info.textContent) && rs_box.type === "checkbox" && !rs_box.checked && /Keep them, renamed to … \(version b\)$/.test(rs_box.parentElement.textContent), rs_info.textContent);
-  rs_box.checked = true;
-  pressBuild(rs_wk);
-  await waitFor(() => rs_ok.writes.filter((x) => x.type === "create").length >= 4, 30000);
-  var rs_renames = rs_ok.writes.filter((x) => x.type === "update" && /^old[12]$/.test(x.id));
-  check("checked, they are renamed, all with the same letter, and not removed", rs_renames.length === 2 && rs_renames.map((x) => x.name).sort().join("|") === "mini 1 (version b)|mini 2 (version b)" && rs_ok.writes.filter((x) => x.type === "remove").length === 0);
-  check("and the new playlists are built after, starting at 1, with the one Build button", rs_ok.writes.filter((x) => x.type === "create").slice(0, 2).map((x) => x.name).join("|") === "mini 1|mini 2" && rs_ok.writes.findIndex((x) => x.type === "create") > rs_ok.writes.findIndex((x) => x.type === "update"));
-  check("a playlist that was already kept earlier (version a) is not touched", !rs_ok.writes.some((x) => x.id === "old3"));
-  var rs_wk2 = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: { extraPlaylists: [{ id: "n1", name: "mini 1", owner: { id: "ron" }, description: MADE }], uniqueSongNames: true } });
-  await runPreview(rs_wk2);
-  check("with none kept before, the first letter is a, and for one playlist it says it, not them", /^Replaces mini 1Replacing it is the usual choice, but you can keep the old one if you like\.Keep it, renamed to … \(version a\)$/.test(rs_wk2.document.getElementById("bdInfo").textContent.replace(/[\u2066-\u2069]/g, "")), rs_wk2.document.getElementById("bdInfo").textContent);
-  var rs_wk3 = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: { uniqueSongNames: true } });
-  await runPreview(rs_wk3);
-  check("with nothing earlier to replace, there is no such box", !rs_wk3.document.getElementById("confirmKeepEarlier") && rs_wk3.document.getElementById("bdInfo").textContent === "");
-  check("the letters run a to z, then aa", rs_wk.eval("versionLetters(0)") === "a" && rs_wk.eval("versionLetters(25)") === "z" && rs_wk.eval("versionLetters(26)") === "aa" && rs_wk.eval("versionLetters(27)") === "ab");
-
-  // songs that may be one song in more than one recording
-  var rs_ws = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
-  await runPreview(rs_ws);
-  var rs_box2 = Array.from(rs_ws.document.querySelectorAll("#bdInfo .bd-info")).find((b) => /more than one recording/.test(b.textContent));
-  check("when songs in the source playlists have the same artist and title in different recordings, one short row says so, as information, not a warning", !!rs_box2 && rs_box2.querySelector(".bd-info-row").textContent === "Songs in more than one recording" && /^\d+ songs have more than one recording\./.test(rs_box2.querySelector(".bd-info-more").textContent) && !rs_box2.querySelector(".bd-warn-ic") && !rs_box2.closest(".bd-warn"), rs_box2 && rs_box2.textContent);
-  var rs_more = rs_box2.querySelector(".bd-info-more");
-  check("the songs are behind the row, and not shown until it is tapped", rs_more.hidden === true);
-  rs_box2.querySelector(".bd-info-row").click();
-  var rs_items = Array.from(rs_more.querySelectorAll("li")).map((li) => li.textContent);
-  check("tapped, it says each recording counts as its own song and lists up to ten, each with the playlists they are in, and how many more", !rs_more.hidden && /^\d+ songs have more than one recording\. Each recording \(for example live and studio\) counts as its own song/.test(rs_more.textContent) && rs_items.length === 11 && /^Artist - Song \d+: in .+, in .+$/.test(rs_items[0]) && /^and \d+ more$/.test(rs_items[10]), rs_items.slice(0, 2).join(" | "));
-  var rs_a = rs_more.querySelector("li a");
-  check("each playlist name opens it in Spotify at that song, in a new tab", !!rs_a && /^https:\/\/open\.spotify\.com\/playlist\/p\d\?highlight=spotify%3Atrack%3Ap\d-\d+$/.test(rs_a.href) && rs_a.target === "_blank", rs_a && rs_a.href);
-  var rs_wu = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: { uniqueSongNames: true } });
-  await runPreview(rs_wu);
-  check("with no such songs there is no box", !/more than one recording/.test(rs_wu.document.getElementById("bdInfo").textContent));
-
-  // songs a source playlist lists more than once
+  // a source playlist that lists songs more than once: each is used once
   var rs_or = { repeatIn: "p2", uniqueSongNames: true };
   var rs_wr = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: rs_or });
-  await runPreview(rs_wr);
-  var rs_rep = Array.from(rs_wr.document.querySelectorAll("#bdInfo .bd-info")).find((b) => /more than once/.test(b.textContent));
-  check("a source playlist that lists songs more than once gets a row, how many and that each is used once behind it, with nothing offered that changes the playlist", !!rs_rep && rs_rep.querySelector(".bd-info-row").textContent === "Songs listed more than once" && rs_rep.querySelector(".bd-info-more").textContent.replace(/[\u2066-\u2069]/g, "").startsWith("💗 spacious + gentle lists 3 songs more than once. Each is used once.") && !/Fix/.test(rs_rep.textContent) && !/removeRepeats/.test(appSource()), rs_rep && rs_rep.textContent);
-  var rs_rl = rs_rep.querySelector("ul");
-  check("the songs are behind the row, each with how many times it is listed", rs_rl.closest(".bd-info-more").hidden === true && JSON.stringify(Array.from(rs_rl.querySelectorAll("li")).map((li) => li.textContent)) === JSON.stringify(["Artist - Song 0 of p2: 2 times", "Artist - Song 1 of p2: 2 times", "Artist - Song 2 of p2: 2 times"]), Array.from(rs_rl.querySelectorAll("li")).map((li) => li.textContent).join(" | "));
-  pressBuild(rs_wr);
-  await waitFor(() => visible(rs_wr, "createCloseRow"), 30000);
-  var rs_adds = rs_or.writes.filter((x) => x.type === "add");
-  var rs_byList = {};
-  for (const x of rs_adds) (rs_byList[x.id] = rs_byList[x.id] || []).push(...x.uris.filter((u) => /p\d-/.test(u)));
-  check("each built playlist has every song once", Object.values(rs_byList).length > 0 && Object.values(rs_byList).every((u) => new Set(u).size === u.length));
-  var rs_key = (a, b) => rs_ws.eval(`songKey(${JSON.stringify(a)}) === songKey(${JSON.stringify(b)})`);
-  check("it points out the same song with a remaster note, or other case, accents, or punctuation, and not a live, acoustic or remix version, which is a different song", rs_key("Pink Floyd - Time", "Pink Floyd - Time - 2011 Remaster") && rs_key("Beyoncé - Halo", "Beyonce - Halo (Remastered 2020)") && rs_key("Simon & Garfunkel - The Sound of Silence", "simon and garfunkel - the sound of silence - remastered") && !rs_key("Pink Floyd - Time", "Pink Floyd - Time (Live)") && !rs_key("Radiohead - Creep", "Radiohead - Creep (Acoustic)") && !rs_key("Artist - Song", "Artist - Song (Remix)"));
+  await buildFor(rs_wr, "mini");
+  var rs_adds = rs_or.writes.filter((x) => x.type === "add").flatMap((x) => x.uris.filter((u) => /p\d-/.test(u)));
+  check("a source that lists a song twice still puts it in the playlist once", rs_adds.length > 0 && new Set(rs_adds).size === rs_adds.length);
   } catch (err) { areaCrashed("recipe session", err); } }
 
   if (want("builder landing and participants")) { try {
