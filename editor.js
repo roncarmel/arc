@@ -2350,7 +2350,7 @@ function blankSegmentReport(keys) {
 
 // ---------------------------------------------------------------- the builder's landing (decided by Ron, 2026-11-12, mockups/client-builder.html A1)
 // The builder opens on a list of recipes, each with its shape and a Build button, and New recipe first. A recipe opens in a panel over it (below). Beside Recipes,
-// Participants: one playlist at a time for one person, with the songs they have not heard first. Outside developer mode that half is greyed with Soon.
+// Participants: one playlist at a time for one person, with the songs they have not heard first.
 const builderHome = { tab: "recipes", person: null, recipe: null };
 
 const BH_SPARK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 2l1.8 5.6L17.5 9.5l-5.7 1.9L10 17l-1.8-5.6L2.5 9.5l5.7-1.9z"/><path d="M18 13l.9 2.6 2.6.9-2.6.9L18 20l-.9-2.6-2.6-.9 2.6-.9z"/></svg>';
@@ -2453,7 +2453,6 @@ function pageGhost(body) {
 // The builder's Recipes | Participants: the same switch and motion as Music sharing's tabs (shiftPage there): the old half moves half its width away
 // and fades as the new one comes from half its width on the other side; Participants sits to the right.
 function chooseBuilderTab(tab, drift) {
-  if (tab === "people" && !devMode()) return false;
   if (tab === builderHome.tab) return false;
   const home = $("builderHome"), old = $(builderHome.tab === "people" ? "bhPeople" : "bhRecipes");
   const change = () => { builderHome.tab = tab; renderBuilderHome(); };
@@ -2481,7 +2480,6 @@ function initBuilderHome() {
     page: () => $(builderHome.tab === "people" ? "bhPeople" : "bhRecipes"),
     choose: (side, drift) => chooseBuilderTab(side ? "people" : "recipes", drift),
     draggingClass: "bh-dragging",
-    enabled: () => devMode(),
   });
   $("rpClose").addEventListener("click", () => closeRecipePanel("x"));
   $("rpDim").addEventListener("click", () => { if (editor.renamingPanel) finishPanelRename(false); else closeRecipePanel("x"); });
@@ -2503,9 +2501,6 @@ function initBuilderHome() {
 function renderBuilderHome() {
   const home = $("builderHome");
   if (!home) return;
-  const people = devMode();
-  if (!people) { builderHome.tab = "recipes"; builderHome.person = null; }
-  $("bhTabPeople").disabled = !people;
   home.classList.toggle("bh-people", builderHome.tab === "people");
   $("bhTabRecipes").setAttribute("aria-selected", String(builderHome.tab === "recipes"));
   $("bhTabPeople").setAttribute("aria-selected", String(builderHome.tab === "people"));
@@ -2557,23 +2552,22 @@ function barSize(f) {
 function recipeRow(f, share) {
   const shape = recipeShape(f);
   const unsaved = recipeEdit.dirty && recipeEdit.id === f.id;
-  // in developer mode only the length: the segments show in the bar under it, and Build playlist needs the room on a phone (Ron, 2026-11-12)
-  const length = lengthText(shape.music + shape.quiet / 60) + (devMode() ? "" : ` · ${f.items.length === 1 ? "1 segment" : f.items.length + " segments"}`);
+  // only the length: the segments show in the bar under it, and Build playlist needs the room on a phone (Ron, 2026-11-12)
+  const length = lengthText(shape.music + shape.quiet / 60);
   const bar = feEl("span", { class: "bh-shape", "aria-hidden": "true", style: `width:${Math.max(share, 0.02) * 100}%` },
     ...shape.pieces.map((p) => feEl("span", { class: p.silence ? "bh-quiet" : undefined, style: p.style })));
   const title = f.title.trim() || "Untitled";
-  // in developer mode the row opens like a participant's (Ron, 2026-11-14, mockups/recipe-open B1): a chevron in place of the pencil, which moves inside
-  const opens = devMode(), open = opens && builderHome.recipe === f.id;
+  // the row opens like a participant's (Ron, 2026-11-14, mockups/recipe-open B1): a chevron in place of the pencil, which moves inside
+  const open = builderHome.recipe === f.id;
   const toggle = () => setRecipeOpen(builderHome.recipe === f.id ? null : f.id);
   const icons = feEl("span", { class: "bh-icons" },
-    opens ? rowIcon(BH_CHEVRON, `${title}'s playlists`, toggle, "bh-open-btn", { "aria-expanded": String(open) })
-      : rowIcon(BH_PEN, `Edit ${title}`, () => openRecipePanel(f.id)),
+    rowIcon(BH_CHEVRON, `${title}'s playlists`, toggle, "bh-open-btn", { "aria-expanded": String(open) }),
     rowIcon(BH_SPARK, buildWord(), () => buildRecipe(f.id), "bh-build", { "data-id": f.id }));
-  // outside developer mode only its buttons act (Ron, 2026-11-12); in developer mode a tap on the row outside its open list toggles it, like a participant's head, lighting only the chevron on hover (Ron, 2026-11-14)
+  // a tap on the row outside its open list toggles it, like a participant's head, lighting only the chevron on hover (Ron, 2026-11-14)
   // the recipe icon (the panel heading's), lined up with the name and length, over the bar (Ron, 2026-11-12)
   const art = $("rpIcon") && $("rpIcon").querySelector("svg");
-  const row = feEl("div", { class: "bh-row bh-recipe" + (opens ? " bh-ropens" : "") + (open ? " bh-open" : ""), "data-id": f.id,
-    onClick: opens ? (event) => { if (!event.target.closest(".bh-plist, button, a, input")) toggle(); } : undefined },
+  const row = feEl("div", { class: "bh-row bh-recipe bh-ropens" + (open ? " bh-open" : ""), "data-id": f.id,
+    onClick: (event) => { if (!event.target.closest(".bh-plist, button, a, input")) toggle(); } },
     art ? feEl("span", { class: "bh-ricon", "aria-hidden": "true" }, art.cloneNode(true)) : null,
     feEl("span", { class: "bh-text" },
       feEl("span", { class: "bh-name", text: f.title.trim() || "Untitled" }),
@@ -2936,7 +2930,7 @@ function panelEscape(event) {
   closeRecipePanel("x");
 }
 
-// ---------------------------------------------------------------- participants (developer mode for now; Ron, 2026-11-12)
+// ---------------------------------------------------------------- participants (Ron, 2026-11-12)
 // A participant is a code of up to 4 letters or numbers. What they have heard is every song in the playlists Arc built for them (participantList and heardBy in app.js).
 function cleanCode(text) { return String(text || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4); }
 function shortDate(time) { const d = new Date(time); return `${d.getDate()} ${MONTHS[d.getMonth()]}`; }
@@ -3043,10 +3037,9 @@ function buildNextFor(code) {
 }
 
 // Share on a playlist's line in the builder (Ron, 2026-11-14): the upload icon in the app's grey circle; one that can't be shared is faded, its label saying why.
-// Only while Music sharing is in developer mode.
 // Which playlists are shared became known (loadMine): the open recipe's lines are drawn again, or the participants (not while a new playlist is celebrated)
 function refreshShareMarks() {
-  if (!devMode() || !$("builderHome")) return;
+  if (!$("builderHome")) return;
   if (builderHome.tab === "recipes") {
     const f = builderHome.recipe && editor.model && editor.model.formats.find((x) => x.id === builderHome.recipe);
     const old = f && document.querySelector(`#bhRecipes .bh-recipe[data-id="${f.id}"] .bh-rlist:not(.bh-plist-gone)`);
@@ -3054,7 +3047,7 @@ function refreshShareMarks() {
   } else if (Date.now() >= celebratingUntil) renderBuilderHome();
 }
 function shareIconButton(p, why = typeof shareBlockReason === "function" ? shareBlockReason(p) : "") {
-  if (!devMode() || typeof shareFromBuilder !== "function") return null;
+  if (typeof shareFromBuilder !== "function") return null;
   // already shared: a check and Shared in grey in place of Share, opening that share (Ron, 2026-11-14)
   if (p && p.id && typeof sharedFor === "function" && sharedFor(p)) return feEl("button", { type: "button", class: "bh-shared", "aria-label": "Shared in the playlist library. Open it", title: "Shared in the playlist library",
     onClick: (e) => { e.preventDefault(); e.stopPropagation(); openShareOf(p); } }, feIcon("check"), feEl("span", { text: "Shared" }));
@@ -3407,7 +3400,7 @@ function pickRecipeFor(code) {
   });
 }
 
-// Build in developer mode is always for a participant. Who is it for? is a sheet (Ron, 2026-11-12, mockups/who-for look B): Build a playlist and the X (no For one
+// Build is always for a participant. Who is it for? is a sheet (Ron, 2026-11-12, mockups/who-for look B): Build a playlist and the X (no For one
 // participant: it is the only kind), the recipe as a card with its shape, then Choose a participant, a drop-down whose panel is a grid of code squares, four to a row, the most recently built
 // first (participantList's order), each with the day of its latest playlist (D1). Find a code at its top is only a search; + New stays the first square and
 // turns the drop-down into a code entry. (no line on how much is new to them: it confused, Ron, 2026-11-12). Resolves with the code, or null.

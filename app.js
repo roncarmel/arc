@@ -544,7 +544,7 @@ function devModeChanged(on) {
     if (head && head.getAttribute("aria-expanded") === "true") toggleWelcomeTool(head);
   }
   if (typeof renderSharingCard === "function") renderSharingCard();
-  if (typeof renderBuilderHome === "function") renderBuilderHome();   // Participants, greyed outside developer mode
+  if (typeof renderBuilderHome === "function") renderBuilderHome();
   if (on && pageName() === "app" && typeof loadCounts === "function") {
     loadCounts();
     if (connection === "ready") sharingConnected();
@@ -1026,7 +1026,7 @@ function restoreUpdateView() {
   try { kept = JSON.parse(sessionStorage.getItem("updateView") || "null"); sessionStorage.removeItem("updateView"); } catch (err) { return; }
   if (!kept || !updateScreen || pageName() !== "app" || appView !== "home") return;
   if (kept.view === "builder") {
-    if (kept.builder === "people" && devMode()) builderHome.tab = "people";
+    if (kept.builder === "people") builderHome.tab = "people";
     switchView("home", "builder", true);
   } else if (kept.view === "sharing" && devMode()) {
     switchView("home", "sharing", true, kept.sharing === "share" ? "share" : "find");
@@ -3228,7 +3228,7 @@ async function deleteParticipant(code, list) {
   setBusy(true);
   try {
     // shared ones stop being shared first; if that fails, nothing is deleted, so the library never points at a playlist that is gone (Ron, 2026-11-14)
-    if (typeof loadMine === "function" && typeof sharedFor === "function" && devMode()) {
+    if (typeof loadMine === "function" && typeof sharedFor === "function") {
       await loadMine();
       if (sharing.mineError) throw new Error(`Arc could not check which of ${code}'s playlists are shared: ${sharing.mineError}`);
       for (const p of list) { const m = sharedFor(p); if (m) { await sharingFetch("DELETE", "/share/" + m.id); ownShareChanged(m.id, null); } }
