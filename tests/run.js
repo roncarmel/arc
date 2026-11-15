@@ -634,10 +634,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-14z" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-14za" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-14z/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-14za/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("the version has no label of its own in the page", rp.document.getElementById("appVersionLabel") === null);
   check("there is no include-my-formats option, and a report never carries formats", !/include my formats/i.test(rp.document.body.textContent) && !("formats" in rq));
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
@@ -2251,7 +2251,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-14z", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-14za", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4560,7 +4560,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-14z"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-14za"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -4766,7 +4766,8 @@ print(json.dumps(out))
   check("a participant's row has the code as its title, how many playlists (no day), and the chevron and Build playlist at its end (Delete is in the open row)", (() => { const r = bd3.document.querySelector('#bhPeople [data-code="T7"]'); return r.querySelector(".bh-name").textContent === "T7" && r.querySelector(".bh-sub").textContent === "1 playlist" && !r.querySelector(".bh-info") && r.querySelector(".bh-build").getAttribute("aria-label") === "Build playlist" && JSON.stringify([...r.querySelectorAll(".bh-ib")].map((x) => x.getAttribute("aria-label"))) === '["T7\'s playlists","Build playlist"]'; })());
   check("a participant last built in an earlier year shows only the year", bd3.eval("builtWhen(new Date(2024, 4, 3).getTime())") === "2024" && bd3.eval("builtWhen(Date.now())") === bd3.eval("shortDate(Date.now())"));
   check("with participants, a note says how to build their next playlist", /a participant\u2019s +button to build their next playlist/.test(bd3.document.querySelector("#bhPeople .bh-note").textContent) && !bd3.document.querySelector(".bh-people-empty"));
-  check("with none, the list says No participants yet and how to add one", /No participants yet.*a recipe\u2019s +button and choose \+ New to add one/.test(bd3.eval("(() => { const keep = playlists; playlists = []; renderParticipantList(); const t = document.getElementById('bhPeople').textContent; playlists = keep; renderParticipantList(); return t; })()")));
+  check("with none, the list says No participants yet and that they show up from the Recipes tab", /^No participants yetParticipants show up here when you build a playlist for one on the Recipes tab\.$/.test(bd3.eval("(() => { const keep = playlists; playlists = []; renderParticipantList(); const t = document.getElementById('bhPeople').textContent; playlists = keep; renderParticipantList(); return t; })()")));
+  check("with none, Recipes in that line is a link that switches to the Recipes tab", bd3.eval("(() => { const keep = playlists, tab = builderHome.tab; playlists = []; builderHome.tab = 'people'; renderBuilderHome(); document.querySelector('#bhPeople .bh-tablink').click(); const went = builderHome.tab === 'recipes'; playlists = keep; builderHome.tab = tab; renderBuilderHome(); return went; })()"));
   check("a tap on a recipe's row does nothing: only its buttons act (Ron, 2026-11-12)", (bd3.document.querySelector('#bhRecipes .bh-recipe').click(), bd3.document.getElementById("recipePanelWrap").hidden && !bd3.document.querySelector(".bh-recipe[role], .bh-phead[role]")));
   check("a tap on a participant's row head opens it and a second closes it (Ron, 2026-11-13)", (() => { const h = () => bd3.document.querySelector('#bhPeople [data-code="MC"] .bh-phead'); h().click(); const opened = !!bd3.document.querySelector('#bhPeople .bh-person.bh-open[data-code="MC"]'); h().click(); return opened && !bd3.document.querySelector('#bhPeople .bh-person.bh-open'); })());
   bd3.document.querySelector('#bhPeople [data-code="MC"] .bh-open-btn').click();

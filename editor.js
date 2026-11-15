@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14z";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14za";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2961,8 +2961,10 @@ function renderParticipantList() {
   // the one being built (or just built) stays at the top, so the row never moves while it fills in
   const building = personBuild.code && (personBuild.state === "now" || personBuild.state === "done") ? people.findIndex((p) => p.code === personBuild.code) : -1;
   if (building > 0) people.unshift(people.splice(building, 1)[0]);
+  // empty: where participants come from, Recipes a pink link to that tab (Ron, 2026-11-14; the sparkle's buttons are not on this tab)
   if (!people.length) box.appendChild(feEl("div", { class: "bh-empty bh-people-empty" }, feEl("b", { text: "No participants yet" }),
-    sparkleHow("", `${actWord(true)} a recipe\u2019s `, " button and choose + New to add one.")));
+    feEl("p", {}, "Participants show up here when you build a playlist for one on the ",
+      feEl("button", { type: "button", class: "linklike bh-tablink", onClick: () => chooseBuilderTab("recipes") }, "Recipes"), " tab.")));
   for (const person of people) box.appendChild(personCard(person, person.code === open));
   if (people.length) box.appendChild(sparkleHow("bh-note bh-build-how", `${actWord(true)} a participant\u2019s `, " button to build their next playlist."));
   if (personBuild.state === "done" && personBuild.celebrate && personBuild.code === open) {
