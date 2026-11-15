@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14zg";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14zh";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2607,9 +2607,10 @@ function setRecipeOpen(id) {
 // the mark's length; the top one leads and each next starts a moment later. Closing (the row tapped shut, not another recipe opened) is the same upward,
 // the top one leading too. The real mark or bar piece shows the moment its copies land, and the copies go only then, so nothing blinks out. A mixed segment's piece splits evenly, one part per playlist.
 const SWING_MS = 560, SWING_BACK_MS = 340, SWING_STAGGER_MS = 45, SWING_BACK_STAGGER_MS = 30;
+// a box in the row's own coordinates: from inside its border, where its absolutely placed copies start (a 1px border left them 1px off, and the mark snapped)
 function boxIn(row, el) {
   const r = el.getBoundingClientRect(), o = row.getBoundingClientRect();
-  return { x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height };
+  return { x: r.left - o.left - row.clientLeft, y: r.top - o.top - row.clientTop, w: r.width, h: r.height };
 }
 // one box per pink mark the open list will have: its segment's piece of the bar, split evenly when the segment mixes playlists
 function barPieceBoxes(row, f) {
