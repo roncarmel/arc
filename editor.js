@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14zf";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14zg";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2603,11 +2603,10 @@ function setRecipeOpen(id) {
 }
 
 // The recipe bar's swing (Ron, 2026-11-14, mockups/segment-morph): copies of the bar's music pieces, drawn in the row over everything, each hinged at its
-// left end. Opening, the hinge glides to the top of its pink mark while the piece swings down 90 degrees around it, a little past and back, stretching to
+// left end. Opening, the hinge glides to the top of its pink mark while the piece swings down 90 degrees around it, no further, stretching to
 // the mark's length; the top one leads and each next starts a moment later. Closing (the row tapped shut, not another recipe opened) is the same upward,
-// the top one leading too. The real bar or marks stay hidden until their piece lands. A mixed segment's piece splits evenly, one part per playlist.
+// the top one leading too. The real mark or bar piece shows the moment its copies land, and the copies go only then, so nothing blinks out. A mixed segment's piece splits evenly, one part per playlist.
 const SWING_MS = 560, SWING_BACK_MS = 340, SWING_STAGGER_MS = 45, SWING_BACK_STAGGER_MS = 30;
-const EASE_SWING = "cubic-bezier(0.34, 1.45, 0.6, 1)";
 function boxIn(row, el) {
   const r = el.getBoundingClientRect(), o = row.getBoundingClientRect();
   return { x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height };
@@ -2647,12 +2646,18 @@ function swingMarks(row, from, to, opening) {
   if (!opening) row.querySelectorAll(".bh-rmark").forEach((m) => (m.style.visibility = "hidden"));
   const color = getComputedStyle(row).getPropertyValue("--accent");
   const anims = row._swing = [];
+  // a bar piece of a mixed segment takes several copies: it shows once all of them are in, and they go with it
+  const target = (i) => (opening ? to[i].mark : to[i].piece);
+  const waiting = new Map();
+  to.forEach((b, i) => waiting.set(target(i), (waiting.get(target(i)) || 0) + 1));
+  const copies = new Map();
   let left = from.length;
-  const landed = (i) => {
-    if (opening) to[i].mark.style.visibility = "";
-    if (--left > 0) return;
-    if (!opening) hidden.forEach((el) => (el.style.visibility = ""));
-    row._swing = null;
+  const landed = (i, pivot) => {
+    const el = target(i);
+    copies.set(el, [...(copies.get(el) || []), pivot]);
+    waiting.set(el, waiting.get(el) - 1);
+    if (!waiting.get(el)) { el.style.visibility = ""; copies.get(el).forEach((c) => c.remove()); }
+    if (--left === 0) row._swing = null;
   };
   from.forEach((b, i) => {
     const a0 = hinge(b, !opening), a1 = hinge(to[i], opening);
@@ -2664,8 +2669,8 @@ function swingMarks(row, from, to, opening) {
     const size = (h) => ({ width: h.len + "px", height: h.thick + "px", top: -h.thick / 2 + "px", borderRadius: h.thick / 2 + "px" });
     const glide = pivot.animate([{ transform: `translate(${a0.x}px, ${a0.y}px)` }, { transform: `translate(${a1.x}px, ${a1.y}px)` }], { ...timing, easing: EASE_OUT });
     anims.push(glide, bar.animate([size(a0), size(a1)], { ...timing, easing: EASE_OUT }),
-      bar.animate([{ transform: `rotate(${a0.angle}deg)` }, { transform: `rotate(${a1.angle}deg)` }], { ...timing, easing: EASE_SWING }));
-    glide.onfinish = () => { pivot.remove(); landed(i); };
+      bar.animate([{ transform: `rotate(${a0.angle}deg)` }, { transform: `rotate(${a1.angle}deg)` }], { ...timing, easing: EASE_OUT }));
+    glide.onfinish = () => landed(i, pivot);
   });
 }
 // An open recipe: each segment's playlist on a line (Ron, 2026-11-14, B1): a pink bar, its cover, its name with the minutes under it (or why it can't be shared),
