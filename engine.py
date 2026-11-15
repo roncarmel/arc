@@ -346,25 +346,6 @@ def match_playlists(names_json, playlists_json, me_id):
     return json.dumps({"found": found, "problems": problems, "missing": missing, "notMine": not_mine})
 
 
-def name_pattern(template):
-    """Turn a naming template into a regex, e.g. "evocative {n}" matches "evocative 12"."""
-    esc = re.escape(template)
-    esc = esc.replace(re.escape("{n}"), r"\d+").replace(re.escape("{letter}"), "[a-z]+")
-    return re.compile("^" + esc + "$")
-
-
-def existing_matches(formats_text, keys_json, playlists_json, me_id):
-    """Playlists the user owns whose names match the naming templates of the given formats."""
-    formats = parse_formats(formats_text)
-    patterns = [name_pattern(formats[key]["name"]) for key in json.loads(keys_json)]
-    found = [
-        {"id": p["id"], "name": p["name"]}
-        for p in json.loads(playlists_json)
-        if p.get("owner") == me_id and any(pat.match(p["name"]) for pat in patterns)
-    ]
-    return json.dumps(found)
-
-
 def _run_format(fmt, cache, limit, reserved=frozenset()):
     """Plan as many playlists as the songs allow. Returns (music, gaps, built, stopped, used).
     Names already in use (reserved) are skipped, so a new playlist never shares a name with one that stays."""
@@ -448,19 +429,6 @@ def _plan_lines(key, music, gaps, built, stopped, used, cache, label=None):
     lines.append("Left in source playlists after this recipe:")
     lines.append(leftover_report(cache, music, used))
     return lines
-
-
-def plan_text(formats_text, key, tracks_json, max_n=None, footer=True):
-    """Plan every playlist the format can make from the given songs. Nothing is created."""
-    fmt = parse_formats(formats_text)[key]
-    cache = _cache_from(tracks_json)
-    limit = int(max_n) if max_n else 200
-    music, gaps, built, stopped, used = _run_format(fmt, cache, limit)
-    lines = _plan_lines(key, music, gaps, built, stopped, used, cache, format_label(key, fmt))
-    if footer:
-        lines.append("")
-        lines.append("Preview only, nothing was created.")
-    return "\n".join(lines)
 
 
 def gap_seconds(uris):

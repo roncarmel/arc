@@ -475,7 +475,6 @@ function fadeWithHidden(el, kind, box, boxKind) {
 // they are told apart by what they are and where, and one is animated only when it is really new or really gone. One that is gone is put back
 // for its fade, as a copy no one can reach, where it last was.
 function initMotion() {
-  fadeWithHidden($("createOverlay"), "dim", $("createDialog"), "box");
   fadeWithHidden($("infoOverlay"), "dim", $("infoDialog"), "box");
   fadeWithHidden($("reconnectScreen"), "dim", document.querySelector("#reconnectScreen .rc-card"), "box");
   fadeWithHidden($("premiumWhyText"), "menu");
@@ -2238,18 +2237,11 @@ function askDeleteFormat() {
   if (!f) return;
   editor.cardMenu = false;
   renderHead();
-  const rows = f.items.length;
   const close = () => { overlay.remove(); document.removeEventListener("keydown", onKey); };
   const onKey = (event) => { if (event.key === "Escape") close(); };
   const cancel = feEl("button", { type: "button", id: "feDeleteCancel", onClick: close }, "Cancel");
-  // with built playlists in the library, a box (not ticked) offers to remove them too
-  // developer mode shows it as it will be once sets are gone (Ron, 2026-11-12): no box, and participants' playlists stay
-  const built = !devMode() && typeof builtPlaylistsOf === "function" ? builtPlaylistsOf(f.id) : null;
-  const offer = built && built.length ? built : null;
-  const title = f.title.trim() || "Untitled";
-  const box = offer ? feEl("input", { type: "checkbox", id: "feDeleteBuilt" }) : null;
+  // the playlists built from it are participants' and stay (Ron, 2026-11-12)
   const confirm = feEl("button", { type: "button", class: "fe-danger-button", id: "feDeleteConfirm", onClick: () => {
-    const alsoRemove = box && box.checked ? offer : null;
     editor.model.formats = editor.model.formats.filter((x) => x.id !== f.id);
     editor.activeId = editor.model.formats.length ? editor.model.formats[0].id : null;
     // deleted from its row while it had unsaved changes: those go with it
@@ -2259,16 +2251,11 @@ function askDeleteFormat() {
     commit();
     if (recipeEdit.open) closeRecipePanel("gone");
     renderEditor();
-    if (alsoRemove) removeBuiltOfDeleted(alsoRemove, title);
   } }, "Delete recipe");
-  if (box) box.addEventListener("change", () => { confirm.textContent = box.checked ? `Delete and remove ${offer.length}` : "Delete recipe"; });
   const overlay = feEl("div", { class: "fe-overlay", id: "feDeleteDialog", onClick: close },
     feEl("div", { class: "fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": "Delete recipe", onClick: (e) => e.stopPropagation() },
       feEl("h3", { text: `Delete ${named(f.title.trim() || "Untitled")}?` }),
-      devMode() ? feEl("p", { class: "muted", text: `This permanently removes the recipe from this list and from Spotify. Playlists built from this recipe for participants stay. Are you sure you want to delete it?` }) :
-      feEl("p", { text: `This removes the recipe and its ${rows === 1 ? "1 row" : rows + " rows"}.${offer ? "" : " Playlists already in Spotify are not affected."} Its saved copy in Spotify is deleted too.` }),
-      offer ? feEl("label", { class: "fe-del-built" }, box, feEl("span", { text: `Also remove its ${offer.length === 1 ? "playlist" : offer.length + " playlists"} from Spotify` })) : null,
-      offer ? feEl("p", { class: "fe-del-note", text: `Left unticked, ${offer.length === 1 ? "it stays" : "they stay"} in Spotify.` }) : null,
+      feEl("p", { class: "muted", text: `This permanently removes the recipe from this list and from Spotify. Playlists built from this recipe for participants stay. Are you sure you want to delete it?` }),
       feEl("div", { class: "row" }, cancel, confirm)));
   document.body.appendChild(overlay);
   document.addEventListener("keydown", onKey);
@@ -2649,8 +2636,8 @@ function rowIcon(svg, label, act, cls, attrs) {
     onClick: (event) => { event.stopPropagation(); act(); } }, attrs || {}), bhSvg(svg));
 }
 
-// A recipe's Build button: Build playlist in developer mode (one playlist for a participant), Build otherwise.
-function buildWord() { return devMode() ? "Build playlist" : "Build"; }
+// A recipe's Build button: one playlist for a participant (sets are gone, 2026-11-14)
+function buildWord() { return "Build playlist"; }
 
 // The Build buttons on the landing say what a build needs right now, as the old Build button did: Connect while not connected, nothing while Spotify is paused.
 function refreshBuildButtons() {
@@ -2674,7 +2661,6 @@ function refreshBuildButtons() {
 function buildRecipe(id) {
   const action = connectionAction();
   if (action) { action(); return; }
-  if (!devMode()) { startCreate([id]); return; }
   askWhoFor(id).then((answer) => {
     if (answer === null) return;
     buildForParticipant(id, answer, chosenRepeat);   // built in the participant's popup (app.js)
@@ -2945,7 +2931,7 @@ function swapPanelHead(naming, quiet) {
 function panelEscape(event) {
   if (event.key !== "Escape" || !recipeEdit.open || $("recipePanelWrap").hidden) return;
   if (editor.panel || editor.cardMenu || editor.gapPanel !== null || editor.appMenu || editor.renamingPanel) return;
-  if (document.querySelector(".fe-overlay:not([hidden])") || !$("infoOverlay").hidden || !$("createOverlay").hidden) return;
+  if (document.querySelector(".fe-overlay:not([hidden])") || !$("infoOverlay").hidden) return;
   event.preventDefault();
   closeRecipePanel("x");
 }

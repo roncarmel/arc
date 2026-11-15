@@ -1265,17 +1265,6 @@ function setIcon(button, name) {
   if (img) img.setAttribute("src", `icons/${name}.svg`);
 }
 
-function setOutput(text) {
-  // The build popup's status line: what is happening now ("Reading songs from ..."). Problems that stop a plan are cards in the same place.
-  $("output").textContent = "";
-  putNamed($("output"), text);
-  $("output").hidden = !text;
-}
-
-function setActionMessage(text) {
-  $("actionMessage").textContent = text;   // the build popup's result or problem
-}
-
 // ---------------------------------------------------------------- problem reports
 // A report carries only a few technical details. It never carries the sign-in, the Client ID, playlist names,
 // song titles, or the formats text. Nothing is sent until the person submits the form in the new tab.
@@ -1429,10 +1418,6 @@ function offerReport(hintId, rawError) {
 
 function clearReportHints(...ids) {
   for (const id of (ids.length ? ids : REPORT_HINTS)) $(id).hidden = true;
-}
-
-function clearResults() {
-  $("results").textContent = "";
 }
 
 function showFlow(flow) {
@@ -2009,25 +1994,8 @@ function renderSaveStatus() {
   if (typeof recipeSaveProgress === "function") recipeSaveProgress(saveState.running, !!saveState.error);   // Saving\u2026 and Saved on the row of a recipe just saved
 }
 
-// ---------------------------------------------------------------- how the formats are backed up
-// "manual" is the backup file. "spotify", saving each format to Spotify by itself, is the other choice, which is not available yet. Until a choice is made
-// the card asking for it is on the page, and the app behaves as it does for "manual".
-let openQuestion = null;   // finishes the "create these?" question while it is showing
-
-function closeQuestion(answer) {
-  if (openQuestion) openQuestion(answer);
-}
-
-function invalidatePlan(resetOutput = !busy) {
-  // Anything that could change what a plan would be closes a question that is waiting on it.
-  closeQuestion("stale");
-  if (resetOutput) setOutput("");
+function invalidatePlan() {
   updateButtons();
-}
-
-function planSignature() {
-  // What a plan depends on. If it changes while a plan is being made, that plan is thrown away.
-  return [$("formats").value, selectedKeys().join(","), String(playlistCap || "")].join("\u0000");
 }
 
 function setFormatsText(text) {
@@ -2061,7 +2029,7 @@ function updateButtons() {
 
 // While a build is making playlists in Spotify, nothing may leave or reload the page or change the account: it would stop the build halfway.
 // Closing or reloading the tab asks first (the browser's own Leave site?), and the buttons that would leave are greyed.
-function buildWriting() { return createStage === "creating" || personBuild.state === "now"; }
+function buildWriting() { return personBuild.state === "now"; }
 window.addEventListener("beforeunload", (e) => { if (buildWriting()) { e.preventDefault(); e.returnValue = ""; } });
 
 function updateButtonsNow() {
@@ -2205,107 +2173,6 @@ function setBusy(flag) {
 // ---------------------------------------------------------------- confirmation panels
 // Create asks under the Create button (askToCreate). Remove asks inside the Remove section, at the bottom of it.
 
-// ---------------------------------------------------------------- the popup for Create
-// One popup holds everything after a click on Build: the steps along the top (read songs, plan, build, done), then the plan and its question,
-// then the same list of playlists ticked off one by one, then the links. When something goes wrong the build stops, and the popup says what
-// went wrong, what was built, and what to do; it never tries to repair anything. It can be dismissed while it is asking and once it is done
-// (the Close button, a click outside it, or Escape), but not while the app is reading or creating.
-let createStage = "closed";   // closed, planning, question, creating or done
-
-function setCreateStage(stage) {
-  if ((stage === "creating") !== (createStage === "creating")) setTimeout(updateButtons);
-  createStage = stage;
-  $("confirmButtons").hidden = stage !== "question";
-  $("bdBusyRow").hidden = stage !== "planning" && stage !== "creating";
-  setLabel($("bdBusy"), stage === "creating" ? "Building…" : "Build playlists");   // while reading, the button that will build waits, pale
-  $("createCloseRow").hidden = stage !== "done";
-  const closable = stage === "question" || stage === "done";   // the X stays in its place, unseen, while the popup cannot be closed (reading and building)
-  $("bdClose").classList.toggle("bd-x-off", !closable);
-  $("bdClose").disabled = !closable;
-}
-
-function openCreateDialog(keys) {
-  // The header: one recipe shows its name (and, over the question, its length); several just say how many.
-  $("bdTitle").textContent = keys.length === 1 ? formatLabel(keys[0]) : `Build ${plural(keys.length, "recipe")}`;
-  const f = keys.length === 1 && editor.model ? editor.model.formats.find((x) => x.id === keys[0]) : null;
-  const info = $("bdShapeInfo");
-  info.hidden = !f;
-  if (f) {
-    const { music, quiet } = recipeShape(f);
-    info.textContent = `${lengthText(music + quiet / 60)} per playlist · ${plural(f.items.length, "segment")}`;
-  }
-  $("createOverlay").hidden = false;
-  document.body.style.overflow = "hidden";
-  setCreateStage("planning");
-  $("createDialog").focus();
-}
-
-function closeCreateDialog() {
-  if ($("createOverlay").hidden) return;
-  $("createOverlay").hidden = true;
-  document.body.style.overflow = "";
-  createStage = "closed";
-  $("createDialog").classList.remove("bd-listing");
-  closeQuestion("cancel");   // dismissing the question is the same as cancelling it
-  $("create").focus();
-}
-
-function dismissCreateDialog() {
-  if (createStage === "question" || createStage === "done") closeCreateDialog();
-}
-
-function resetBuildPopup() {
-  setOutput("");
-  setActionMessage("");
-  clearResults();
-  $("confirmBox").hidden = true;
-  $("bdTally").hidden = true;
-  $("bdTiles").textContent = "";
-  $("bdInfo").textContent = "";
-  $("bdRead").hidden = true;
-  $("bdReadList").textContent = "";
-  $("createDialog").classList.remove("bd-listing");
-  $("planText").hidden = true;
-  $("planText").textContent = "";
-  for (const id of ["bdPickHead", "bdPick"]) $(id).hidden = true;
-  $("createNotes").hidden = true;
-  $("createOpen").hidden = true;
-}
-
-// Small drawings, all made here so they follow the theme's colors.
-const BD_ICON = {
-  done: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="var(--accent)"/><path d="M4.5 8.2l2.3 2.3 4.7-4.9" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  fail: '<svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="var(--accent)"/><path d="M10 5.3v5.7" stroke="#fff" stroke-width="2.3" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1.3" fill="#fff"/></svg>',   // errors look the same everywhere: a pink ! (FE_ICONS.alert)
-  now: '<svg class="bd-spin" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="var(--line)" stroke-width="2.2" fill="none"/><path d="M8 1.5a6.5 6.5 0 0 1 6.5 6.5" stroke="var(--accent)" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>',
-  wait: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="var(--muted)" stroke-width="1.5" fill="none" stroke-dasharray="2 2.4"/></svg>',
-  num: (n) => `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7.2" stroke="var(--muted)" stroke-width="1.2" fill="none"/><text x="8" y="11.4" text-anchor="middle" font-size="${n > 9 ? 7.5 : 9.5}" font-family="system-ui, sans-serif" fill="var(--muted)">${n}</text></svg>`,
-  replace: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/></svg>',
-  rename: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
-  copy: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
-  shared: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/></svg>',
-  music: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
-};
-
-const BD_STEPS = [["read", "Read songs"], ["plan", "Plan"], ["build", "Build"], ["done", "Done"]];
-let buildStep = "read";   // the step under way, so a problem can be shown on it
-
-function setBuildSteps(current, failed = false, waiting = false) {
-  // The steps before `current` are ticked; `current` is under way, or has failed, or (waiting) has not started. "done" ticks them all.
-  buildStep = current;
-  const box = $("bdSteps");
-  box.textContent = "";
-  const at = BD_STEPS.findIndex((step) => step[0] === current);
-  BD_STEPS.forEach(([, label], i) => {
-    if (i) box.appendChild(Object.assign(document.createElement("span"), { className: "bd-sep" }));
-    const state = current === "done" || i < at ? "done" : i === at && !waiting ? (failed ? "fail" : "now") : "";
-    const step = document.createElement("span");
-    step.className = "bd-step" + (state ? " bd-step-" + state : "");
-    step.innerHTML = state ? BD_ICON[state] : BD_ICON.num(i + 1);
-    step.appendChild(document.createTextNode(label));
-    box.appendChild(step);
-  });
-}
-
 function lengthText(minutes) {
   // 45 min, 2 h 16 min
   const m = Math.round(minutes), h = Math.floor(m / 60);
@@ -2321,43 +2188,6 @@ function builtDescription(p, number, count, when = new Date(), participant = "",
   const date = `${when.getDate()} ${MONTHS[when.getMonth()]} ${when.getFullYear()}`;
   return `${APP_MARKER}. Do not edit this description. `
     + (participant ? `For participant ${participant}. Built ${date}. ${packData({ recipe, heard })}` : count > 1 ? `Playlist ${number} of ${count}, built ${date}.` : `Built ${date}.`);
-}
-
-function playlistRow(p, icon) {
-  // One playlist in the popup's list: an icon for where it stands, its name, and its songs and length (or what is under way).
-  const li = document.createElement("li");
-  li.className = "bd-row";
-  const ic = Object.assign(document.createElement("span"), { className: "bd-ic" });
-  const name = Object.assign(document.createElement("span"), { className: "bd-name", textContent: p.name });
-  const meta = Object.assign(document.createElement("span"), { className: "bd-meta" });
-  li.append(ic, name, meta);
-  li.bd = { p, ic, name, meta };
-  setRowState(li, icon);
-  return li;
-}
-
-function setRowState(li, state, note) {
-  // state: "wait", "now", "done" or "fail". note replaces the songs and length; a playlist waiting to be built shows neither.
-  const { p, ic, meta } = li.bd;
-  ic.innerHTML = BD_ICON[state];
-  li.classList.toggle("bd-wait", state === "wait");
-  li.classList.toggle("bd-now", state === "now");
-  meta.textContent = note || (state !== "wait" && p.songs != null ? `${plural(p.songs, "song")} · ${lengthText(p.length != null ? p.length : p.minutes)}` : "");
-}
-
-function setTally(made, total, status, now) {
-  // While building, at the top of the popup: how many playlists are made, what is happening, and Arc's icon for each (lit when made, breathing while under way), 8 to a row.
-  const count = $("bdCount");
-  count.textContent = "";
-  count.classList.toggle("bd-count-one", total === 1);
-  if (total === 1) count.textContent = "Building your playlist";   // "0 of 1 playlist" reads oddly
-  else count.append(Object.assign(document.createElement("b"), { textContent: String(made) }), Object.assign(document.createElement("span"), { textContent: `of ${total} playlists` }));
-  $("bdCountNote").textContent = status;
-  const tiles = $("bdTiles");
-  tiles.hidden = total < 2;   // one tile alone says nothing
-  while (tiles.children.length < total) tiles.appendChild(Object.assign(document.createElement("span"), { className: "bd-arc" }));
-  Array.from(tiles.children).forEach((tile, i) => { tile.className = "bd-arc" + (i < made ? " bd-on" : i === made && now ? " bd-now" : ""); });
-  $("bdTally").hidden = false;
 }
 
 // Confetti thrown from behind the covers: paper bits of a few shapes and shades that burst up in two puffs, slow in the air, then flutter down, turning over
@@ -2410,125 +2240,6 @@ function throwConfetti(fan) {
     if (left) requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
-}
-
-// Scrolls a box back to its top, easing in and out (longer for a longer way, at most about two thirds of a second). Resolves when it is there.
-function glideToTop(box) {
-  const from = box.scrollTop;
-  const still = typeof matchMedia !== "function" || matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (from <= 0 || still || typeof requestAnimationFrame !== "function") { box.scrollTop = 0; return Promise.resolve(); }
-  const duration = Math.min(650, 250 + from / 4);
-  const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-  return new Promise((resolve) => {
-    const began = performance.now();
-    const step = (now) => {
-      const t = Math.min(1, (now - began) / duration);
-      box.scrollTop = from * (1 - ease(t));
-      if (t < 1) requestAnimationFrame(step); else resolve();
-    };
-    requestAnimationFrame(step);
-  });
-}
-
-function showFinale(made, minutes) {
-  // After a build: the covers fanned out with a glow behind them and confetti, and how many playlists and how much music (counting up).
-  // It plays once, about two seconds, then holds still; with reduced motion it simply appears.
-  const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const el = (tag, className, text) => Object.assign(document.createElement(tag), { className, textContent: text || "" });
-  const box = el("div", "bd-finale");
-  const fan = el("div", "bd-fan");
-  fan.setAttribute("aria-hidden", "true");
-  fan.appendChild(el("div", "bd-glow"));
-  const cards = Math.min(made, 5), mid = (cards - 1) / 2;   // more than five look the same as five, and a wider fan leaves a phone's popup
-  for (let i = 0; i < cards; i++) {
-    const card = Object.assign(document.createElement("img"), { src: "playlist-cover.jpg", alt: "", className: "bd-card-img" });
-    card.style.setProperty("--r", `${(i - mid) * 8}deg`);
-    card.style.zIndex = String(10 - Math.abs(i - mid) * 2);   // the middle card on top
-    fan.appendChild(card);
-  }
-  const hours = el("b", "", lengthText(still ? minutes : 0));
-  const music = el("p", "bd-hours");
-  music.append(hours, document.createTextNode(" of music"));
-  box.append(fan, el("p", "bd-big", plural(made, "playlist")), music, el("p", "bd-lib", `${made === 1 ? "is" : "are"} in your Spotify library.`));
-  setActionMessage("");
-  $("actionMessage").appendChild(box);
-  if (still || typeof requestAnimationFrame !== "function") return;
-  throwConfetti(fan);
-  // the music counts up over a second, slowing at the end; screen readers wait for the final number
-  $("actionMessage").setAttribute("aria-busy", "true");
-  const began = Date.now();
-  const tick = () => {
-    const t = Math.min(1, (Date.now() - began) / 1000);
-    hours.textContent = lengthText(minutes * (1 - Math.pow(1 - t, 3)));
-    if (t < 1) requestAnimationFrame(tick);
-    else $("actionMessage").removeAttribute("aria-busy");
-  };
-  requestAnimationFrame(tick);
-}
-
-function groupRow(title, text) {
-  // A recipe's heading when one build makes playlists for several.
-  const li = document.createElement("li");
-  li.className = "bd-group";
-  li.appendChild(Object.assign(document.createElement("b"), { textContent: title }));
-  if (text) li.appendChild(document.createTextNode(" " + text));
-  return li;
-}
-
-function problemCard(title, items, text = "") {
-  // The usual error box (problemBox in editor.js) with a title and, below it, sentences in a list (items are [bold part, rest]) or one sentence (text, names marked).
-  const card = problemBox(title);
-  card.classList.add("bd-card");
-  const body = card.lastChild;
-  body.firstChild.classList.add("bd-ct");
-  if (text) putNamed(body.appendChild(Object.assign(document.createElement("p"), { className: "bd-small" })), text);
-  if (items.length) {
-    const ul = Object.assign(document.createElement("ul"), { className: "bd-problems" });
-    for (const [bold, rest] of items) {
-      const li = document.createElement("li");
-      if (bold) putNamed(li.appendChild(document.createElement("b")), bold);
-      if (rest) putNamed(li, (bold ? " " : "") + rest);
-      ul.appendChild(li);
-    }
-    body.appendChild(ul);
-  }
-  return card;
-}
-
-function showPlanProblems(items, recipes) {
-  // Nothing can be built: every reason at once, each with what to do about it.
-  setOutput("");
-  $("bdRead").hidden = true;
-  $("output").appendChild(problemCard(`Nothing can be built from ${recipes > 1 ? "these recipes" : "this recipe"} yet`, items));
-  $("output").hidden = false;
-  setBuildSteps("plan", true);
-}
-
-// What went wrong while building, in the popup's words: a title, and what to do about it.
-function buildProblem(message) {
-  if (/Could not reach Spotify|Spotify did not answer/.test(message)) return { title: "Spotify stopped answering", advice: "Check your internet connection, then build again." };
-  if (/rate limiting|request quota/.test(message)) return { title: "Spotify asked this app to wait", advice: message.replace(/^[^.]*\.\s*/, "") };
-  if (/sign-in expired/.test(message)) return { title: "Your Spotify sign-in expired", advice: "Connect again, then build again." };
-  if (/needs Premium/.test(message)) return { title: "Spotify Premium is needed", advice: message };
-  if (/did not allow/.test(message)) return { title: "Spotify did not allow this", advice: message.replace(/^Spotify did not allow this \([^)]*\)\.\s*/, "") };
-  const status = message.match(/^Spotify returned (\d+)/);   // the rest of that message names the request, which means nothing to a person
-  return { title: "Something went wrong", advice: `${status ? `Spotify returned an error (${status[1]}).` : message.replace(/\.?$/, ".")} Try again later.`, unexpected: true };
-}
-
-function showBuildStop(err, done) {
-  // done: { built, total, incomplete (a name or null), removing ("renaming" or "removing" if it stopped on earlier playlists) }, or null before building
-  const message = cleanError(err);
-  const problem = buildProblem(message);
-  let what = "No playlists were built.";
-  if (done && done.removing) what = `It stopped while ${done.removing} ${done.removing === "renaming" ? "playlists" : "earlier playlists"}, before anything new was built.`;
-  else if (done && (done.built || done.incomplete)) what = `${done.built} of ${plural(done.total, "playlist")} ${done.built === 1 ? "was" : "were"} built` + (done.incomplete ? `, and ${named(done.incomplete)} is incomplete.` : ".");
-  const again = done && (done.built || done.incomplete) ? " Building again replaces the ones made so far." : "";
-  setActionMessage("");
-  $("bdRead").hidden = true;
-  const card = problemCard(problem.title, [], `${what} ${problem.advice}${again}`);
-  $("actionMessage").appendChild(card);
-  setBuildSteps(buildStep === "done" ? "build" : buildStep, true);
-  if (problem.unexpected) offerReport("mainReportHint", message);
 }
 
 // ---------------------------------------------------------------- Spotify sign-in (PKCE, no server)
@@ -2608,7 +2319,7 @@ Object.assign(spotifyHooks, {
   pauseStarted: (first) => {
     updateButtons();
     // when a wait starts, the popup explains; not over the build popup, which says it already
-    if (first && $("createOverlay").hidden && typeof showPauseDialog === "function") { closeLimitDialog(); showPauseDialog(); }
+    if (first && typeof showPauseDialog === "function") { closeLimitDialog(); showPauseDialog(); }
   },
   pauseChanged: (left) => { if (typeof refreshPauseViews === "function") refreshPauseViews(left); paintWaitStrip(); },   // the strip under Arc's bar and the popup
   pauseEnded: () => {   // connect again, and save what waited
@@ -3187,9 +2898,7 @@ async function startPython() {
         neededSources: get("needed_sources"),
         sourceNeeds: get("source_needs"),
         matchPlaylists: get("match_playlists"),
-        planText: get("plan_text"),
         buildPlaylists: get("build_playlists"),
-        existingMatches: get("existing_matches"),
       };
       let pythonNumber = "";
       try { pythonNumber = await pyodide.runPythonAsync("import sys; sys.version.split()[0]"); } catch (err) { /* the version is only for the DEV menu's foot */ }
@@ -3229,14 +2938,6 @@ function refreshFormatKeys() {
   }
   updateButtons();
 }
-
-// A cap on how many playlists each recipe makes, for tests only (the build popup's chooser is how people pick fewer)
-let playlistCap;
-function setPlaylistLimit(n) { playlistCap = n > 0 ? n : undefined; invalidatePlan(); }
-function playlistLimit() { return playlistCap; }
-
-let buildScope = null;   // the formats a build in progress is for, when it is not just the one being edited
-let buildFor = "";       // a participant's code, when the build is one playlist for them (developer mode for now; Ron, 2026-11-12)
 
 // Silent tracks: the same as engine.py's SILENCE_TRACKS. They are in every playlist and are not songs anyone heard.
 const SILENCE_URIS = new Set(["spotify:track:5kiJ9x6eX37H5J9lyyXkua", "spotify:track:4iOpD4OvwCi6ndxpNYk4HG", "spotify:track:5yM42dAylwB17DomSHGcXM", "spotify:track:7depNAqAh1r9unkIRzibID", "spotify:track:3mkOlbSv5RYadx0JsjTrKq"]);
@@ -3343,36 +3044,20 @@ function activeKey() {
   return typeof editor !== "undefined" && editor.activeId && currentFormats.some((f) => f.id === editor.activeId) ? editor.activeId : null;
 }
 
-function selectedKeys() {
-  // The format being edited, unless the build is for all of them.
-  if (buildScope) return buildScope;
-  const key = activeKey();
-  return key ? [key] : [];
-}
-
-// The person's playlists whose names a recipe makes, as engine.py's existing_matches finds them, without the ones built for a participant: those are never replaced,
-// renamed or removed by building.
-function recipeMatches(formatsText, keys) {
-  const ours = new Set((playlists || []).filter((p) => p.participant).map((p) => p.id));
-  return JSON.parse(py.existingMatches(formatsText, JSON.stringify(keys), JSON.stringify(playlists), me.id)).filter((p) => !ours.has(p.id));
-}
-
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 // ---------------------------------------------------------------- actions: create, remove
-async function gatherInputs(opts = {}) {
-  // Works out which source playlists the chosen formats need and reads their songs. Returns null after showing why it cannot; quiet (a participant's build, outside
-  // the build popup) shows nothing and returns { problems } instead.
+async function gatherInputs(keys) {
+  // Works out which source playlists the chosen recipes need and reads their songs. Returns { problems } when it cannot.
   const formatsText = $("formats").value;
-  const wanted = opts.keys || selectedKeys();
-  const many = wanted.length > 1;
+  const many = keys.length > 1;
   const problems = [];
-  for (const b of blankSegmentReport(wanted)) {
+  for (const b of blankSegmentReport(keys)) {
     problems.push([b.count === 1 ? `A segment in ${named(b.title)} has no playlist yet.` : `${b.count} segments in ${named(b.title)} have no playlist yet.`, "Choose one in the recipe."]);
   }
   const plans = [];
   const failedNotes = [];
-  for (const key of wanted) {
+  for (const key of keys) {
     try {
       plans.push({ key, names: JSON.parse(py.neededSources(formatsText, key)) });
     } catch (err) {
@@ -3383,20 +3068,8 @@ async function gatherInputs(opts = {}) {
   const match = JSON.parse(py.matchPlaylists(JSON.stringify(names), JSON.stringify(playlists), me.id));
   for (const name of match.missing || []) problems.push([`${named(name)} is not in your Spotify playlists.`, "Choose another playlist in the recipe, or check its name in Spotify."]);
   for (const name of match.notMine || []) problems.push([`${named(name)} is not yours.`, "Spotify only lets this app read playlists you own. Copy its songs into a playlist of your own and use that."]);
-  // Each source playlist in the reading list: waiting, then a spinner while it is read, then ticked with its songs.
   const tracks = {};
-  const reading = names.filter((name) => match.found[name]).map((name) => {
-    if (opts.quiet) return { bd: { p: { name } } };
-    const row = playlistRow({ name }, "wait");
-    $("bdReadList").appendChild(row);
-    return row;
-  });
-  for (const row of reading) {
-    const name = row.bd.p.name;
-    if (!opts.quiet) setRowState(row, "now");
-    tracks[name] = await loadTracks(match.found[name]);
-    if (!opts.quiet) setRowState(row, "done", plural(tracks[name].length, "song"));
-  }
+  for (const name of names.filter((n) => match.found[n])) tracks[name] = await loadTracks(match.found[name]);
   if (problems.length) {
     // The recipe cannot be planned as it is. Playlists that are too short are found from their minutes alone, so they are listed too, all at once.
     for (const p of plans) {
@@ -3409,9 +3082,7 @@ async function gatherInputs(opts = {}) {
     }
     recordError(`Build blocked: ${plural(problems.length, "problem")} in the recipe`);
     logStep("plan blocked: recipe problems");
-    if (opts.quiet) return { problems: problems.concat(failedNotes) };
-    showPlanProblems(problems.concat(failedNotes), wanted.length);
-    return null;
+    return { problems: problems.concat(failedNotes) };
   }
   return { formatsText, keys: plans.map((p) => p.key), failedNotes, tracks, ids: match.found, many };
 }
@@ -3433,32 +3104,23 @@ function repeatProblem(r, asked) {
   return [`Too few new songs for ${r.wanted}% repeats.`, `This recipe’s playlists have few songs they have not heard, so about ${r.got}% would repeat. Choose ${Math.min(100, Math.ceil((r.got - 5) / 10) * 10)}% or more, or add songs to them.`];
 }
 
-async function planSelected(startedWith, opts = {}) {
-  // Works out the playlists for the chosen formats. Returns the plan, or null after saying why there isn't one. With opts (keys, forWhom, quiet), for a participant's
-  // build outside the build popup: shows nothing and returns { problems } when there is no playlist.
-  const inputs = await gatherInputs(opts);
-  if (!inputs) return null;
+async function planSelected(opts) {
+  // Works out a participant's next playlist (opts: keys, forWhom, repeat). Returns the plan, or { problems } when there is no playlist.
+  const inputs = await gatherInputs(opts.keys);
   if (inputs.problems) return inputs;
-  if (!opts.quiet) setBuildSteps("plan");
-  // Earlier playlists with names this plan uses: the ones this app made get replaced (or renamed, if the person keeps them), and the person's own get renamed
-  // to "… (version a)" so the new playlists can have their names.
-  const forWhom = opts.forWhom || buildFor;
-  const heardAll = forWhom ? await heardBy(forWhom) : null;
-  const heard = heardAll ? heardAll.songs : null;
+  const forWhom = opts.forWhom;
+  const heardAll = await heardBy(forWhom);
+  const heard = heardAll.songs;
   // Repeat songs (Ron, 2026-11-13): opts.repeat { share: 0 to 100, from: "recent" or "all" }, about that share of the minutes from their most recent playlist or everything heard
-  const repeat = heardAll && opts.repeat && opts.repeat.share > 0
+  const repeat = opts.repeat && opts.repeat.share > 0
     ? { share: opts.repeat.share / 100, songs: opts.repeat.from === "all" ? Object.keys(heard) : heardAll.recent } : null;
-  const matching = forWhom ? [] : recipeMatches(inputs.formatsText, inputs.keys);   // a participant's playlist replaces nothing
-  const madeByApp = new Set(playlists.filter((p) => p.madeByApp).map((p) => p.id));
-  const marked = matching.filter((p) => madeByApp.has(p.id));
   const built = [];
   const problems = inputs.failedNotes.slice();
   for (const key of inputs.keys) {
     try {
-      const plan = JSON.parse(heard ? py.buildPlaylists(inputs.formatsText, key, JSON.stringify(inputs.tracks), 1, "[]", JSON.stringify(heard), JSON.stringify(repeat || {}))
-        : py.buildPlaylists(inputs.formatsText, key, JSON.stringify(inputs.tracks), playlistLimit(), "[]"));
+      const plan = JSON.parse(py.buildPlaylists(inputs.formatsText, key, JSON.stringify(inputs.tracks), 1, "[]", JSON.stringify(heard), JSON.stringify(repeat || {})));
       if (!Array.isArray(plan.sources)) throw new Error("engine.py is out of date. Reload the page.");
-      if (heard && plan.playlists.length) {
+      if (plan.playlists.length) {
         // one playlist, named for the participant, and how many of its songs they have heard
         const title = (currentFormats.find((f) => f.id === key) || {}).title || "";
         const p = plan.playlists[0];
@@ -3472,8 +3134,8 @@ async function planSelected(startedWith, opts = {}) {
           if (at) { again += 1; latest = Math.max(latest, at); } else fresh += 1;
         }
         plan.fresh = { fresh, again, latest };
+        built.push(plan);
       }
-      if (plan.playlists.length) built.push(plan);
       else if (plan.repeat) problems.push(repeatProblem(plan.repeat, opts.repeat));
       else problems.push(...shortProblems(plan, inputs.many));
     } catch (err) {
@@ -3481,361 +3143,9 @@ async function planSelected(startedWith, opts = {}) {
       problems.push([`${named(formatLabel(key))} could not be planned.`, cleanError(err)]);
     }
   }
-  if (!opts.quiet && planSignature() !== startedWith) {   // the user edited something while this was planning
-    setOutput("");
-    closeCreateDialog();
-    return null;
-  }
-  const total = built.reduce((n, plan) => n + plan.playlists.length, 0);
-  logStep(total ? `plan: ${plural(total, "playlist")} planned` : "plan: nothing can be created");
-  if (!total) {
-    if (opts.quiet) return { problems };
-    showPlanProblems(problems, selectedKeys().length);
-    return null;
-  }
-  if (!opts.quiet) setOutput("");
-  const newNames = new Set(built.flatMap((b) => b.playlists.map((p) => normName(p.name))));
-  const others = matching.filter((p) => !madeByApp.has(p.id) && newNames.has(normName(p.name)));   // only the ones in the way
-  const fresh = built.length && built[0].fresh ? built[0].fresh : null;
-  return { formatsText: inputs.formatsText, keys: inputs.keys, built, total, ours: marked, marked, others, participant: forWhom, fresh,
-    suspects: findSuspects(inputs.tracks, inputs.ids), repeats: findRepeats(inputs.tracks), problems, many: built.length > 1 || problems.length > 0 };
-}
-
-// Songs that may be one song in more than one recording, among the playlists a build draws from. The app knows a song by its ISRC (one recording, whatever release
-// it is on), or its Spotify ID when there is none, so a live and a studio recording are two songs to it, and both could end up in a playlist. It does not guess which
-// songs are the same: it points out the ones whose artist and title match, once case, punctuation and a remaster note are set aside, and leaves the choice to the person.
-function songKey(label) {
-  return String(label || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/&/g, " and ")
-    .replace(/\s*[-–]\s*(?:\d{4}\s+)?(?:digital(?:ly)?\s+)?remaster(?:ed)?(?:\s+\d{4})?(?:\s+version)?\s*$/, "")
-    .replace(/\s*[\(\[]\s*(?:\d{4}\s+)?(?:digital(?:ly)?\s+)?remaster(?:ed)?(?:\s+\d{4})?(?:\s+version)?\s*[\)\]]/g, "")
-    .replace(/[^a-z0-9]+/g, " ").trim();
-}
-const songId = (t) => t.key || t.uri;   // as engine.py's song_id
-
-function findSuspects(tracksByName, ids = {}) {
-  // [{ label, versions: [{ album, lists: [{ name, id, uri }] }] }], one for each title and artist found in more than one recording
-  const byKey = new Map();
-  for (const [list, tracks] of Object.entries(tracksByName || {})) {
-    for (const t of tracks) {
-      const key = songKey(t.label);
-      if (!key) continue;
-      if (!byKey.has(key)) byKey.set(key, new Map());
-      const versions = byKey.get(key);
-      if (!versions.has(songId(t))) versions.set(songId(t), { label: t.label, album: t.album || "", lists: [] });
-      const v = versions.get(songId(t));
-      if (!v.lists.some((l) => l.name === list)) v.lists.push({ name: list, id: ids[list] || null, uri: t.uri });
-    }
-  }
-  const out = [];
-  for (const versions of byKey.values()) {
-    if (versions.size < 2) continue;
-    const all = Array.from(versions.values());
-    out.push({ label: all[0].label, versions: all.map((v) => ({ album: v.album, lists: v.lists })) });
-  }
-  return out.sort((a, b) => a.label.localeCompare(b.label));
-}
-
-function findRepeats(tracksByName) {
-  // Source playlists that list a song more than once: [{ name, songs: [{ label, times }] }]. The engine uses each once either way. The app only says so: changing
-  // the person's playlist would mean taking every copy out and putting one back (Spotify removes a song by its ID), and a failure in between would lose the song.
-  const out = [];
-  for (const [name, tracks] of Object.entries(tracksByName || {})) {
-    const count = new Map();
-    for (const t of tracks) count.set(t.uri, { label: t.label, times: ((count.get(t.uri) || {}).times || 0) + 1 });
-    const songs = Array.from(count.values()).filter((x) => x.times > 1);
-    if (songs.length) out.push({ name, songs });
-  }
-  return out;
-}
-
-function whyLength(minutes) {
-  // A length for the Why table, its units in grey: "8 hr 56 min" on a wide screen, "8 h 56 m" on a phone (CSS shows one of the two).
-  const out = document.createDocumentFragment();
-  for (const part of lengthText(minutes).split(/(\d+)/)) {
-    if (!part) continue;
-    if (/\d/.test(part)) { out.append(part); continue; }
-    const unit = part.trim(), unitBox = Object.assign(document.createElement("span"), { className: "bd-unit" });
-    unitBox.append(part.startsWith(" ") ? " " : "", Object.assign(document.createElement("span"), { className: "bd-wide", textContent: unit === "h" ? "hr" : "min" }),
-      Object.assign(document.createElement("span"), { className: "bd-narrow", textContent: unit === "h" ? "h" : "m" }), part.endsWith(" ") ? " " : "");
-    out.append(unitBox);
-  }
-  return out;
-}
-
-function fillWhyTable(plan) {
-  // "Why 4?": for each source playlist, what one playlist uses of it, how much it has available, and how many playlists that is enough for.
-  const box = $("planText");
-  box.textContent = "";
-  for (const b of plan.built) {
-    if (plan.built.length > 1) box.appendChild(Object.assign(document.createElement("p"), { className: "bd-tablehead", textContent: `${formatLabel(b.key)}: ${plural(b.playlists.length, "playlist")}` }));
-    const lowest = Math.min(...b.sources.map((r) => (r.enough == null ? Infinity : r.enough)));
-    if (!b.ranOut) {
-      // The cap set the number, not the songs: say so first, and how many the songs would allow. No row is marked, since none of them is the reason.
-      const more = lowest !== Infinity && lowest > b.playlists.length ? ` Without it, the songs are enough for ${plural(lowest, "playlist")}.` : "";
-      box.appendChild(Object.assign(document.createElement("p"), { className: "bd-note bd-capnote", textContent: `Capped at ${b.playlists.length} by “Most playlists per recipe” in More options.${more}` }));
-    }
-    const table = document.createElement("table");
-    table.innerHTML = "<thead><tr><th>Each playlist uses</th><th>Available</th><th>Enough for</th></tr></thead>";
-    const body = document.createElement("tbody");
-    // every source that sets the number is marked: the one that ran out, and any other with the same count
-    const ranOut = b.ranOut && b.sources.find((r) => r.name === b.ranOut.name);
-    for (const r of b.sources) {
-      const tr = document.createElement("tr");
-      if (ranOut && (r === ranOut || (r.enough != null && r.enough === ranOut.enough))) tr.className = "bd-limit";
-      const uses = Object.assign(document.createElement("td"), { title: r.name });   // a long name ends in "…"; the full name shows on hover
-      uses.append(whyLength(r.per), ` of ${r.name}`);
-      const length = document.createElement("td");
-      length.append(whyLength(r.has));
-      tr.append(uses, length, Object.assign(document.createElement("td"), { textContent: r.enough == null ? "" : plural(r.enough, "playlist") }));
-      body.appendChild(tr);
-    }
-    table.appendChild(body);
-    box.appendChild(table);
-  }
-}
-
-function infoBox(icon, title, ...more) {
-  // One of the rows above the Build button: an icon, a short title and a chevron. A tap opens what is behind it (elements or sentences) in place.
-  const box = Object.assign(document.createElement("div"), { className: "bd-info" });
-  const row = Object.assign(document.createElement("button"), { type: "button", className: "bd-info-row" });
-  row.setAttribute("aria-expanded", "false");
-  const text = document.createElement("span");
-  putNamed(text, title);
-  row.append(Object.assign(document.createElement("span"), { className: "bd-info-ic", innerHTML: BD_ICON[icon] }), text,
-    Object.assign(document.createElement("span"), { className: "bd-chev", innerHTML: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>' }));
-  const body = Object.assign(document.createElement("div"), { className: "bd-info-more", hidden: true });
-  for (const line of more) {
-    if (typeof line === "string") putNamed(body.appendChild(Object.assign(document.createElement("p"), { className: "bd-info-lead" })), line);
-    else body.appendChild(line);
-  }
-  row.onclick = () => { revealSmoothly(body, body.hidden); row.setAttribute("aria-expanded", String(!body.hidden)); };
-  box.append(row, body);
-  $("bdInfo").appendChild(box);
-  return box;
-}
-
-function songLink(where) {
-  // A source playlist's name, opening it in Spotify at the song
-  const name = Object.assign(document.createElement("i"), { textContent: where.name });
-  if (!where.id) return name;
-  const link = Object.assign(document.createElement("a"), { href: `https://open.spotify.com/playlist/${where.id}?highlight=${encodeURIComponent(where.uri)}`, target: "_blank", rel: "noopener noreferrer" });
-  link.appendChild(name);
-  return link;
-}
-
-function fillInfoBoxes(plan, keep) {
-  // What else the build does or found, a row each with the rest behind it: earlier playlists replaced, the person's own playlists renamed out of the way,
-  // and notes on songs (listed more than once, in more than one of these playlists, in more than one recording) gathered in one row.
-  $("bdInfo").textContent = "";
-  if (plan.marked.length) {
-    // Replacing is the usual thing, so the choice to keep them waits behind the row.
-    const one = plan.marked.length === 1;
-    const label = document.createElement("label");
-    const words = document.createElement("span");   // one piece of text beside the checkbox, so the label's gap does not split it
-    putNamed(words, `Keep ${one ? "it" : "them"}, renamed to ${named(`\u2026 (version ${nextVersionLetter(plan.marked)})`)}`);
-    label.append(keep, words);
-    const why = Object.assign(document.createElement("p"), { textContent: `Replacing ${one ? "it" : "them"} is the usual choice, but you can keep the old ${one ? "one" : "ones"} if you like.` });
-    infoBox("replace", one ? `Replaces ${named(plan.marked[0].name)}` : `Replaces ${plural(plan.marked.length, "earlier playlist")}`, why, label);
-  }
-  if (plan.others.length) {
-    const letter = nextVersionLetter(plan.others);
-    const list = document.createElement("ul");
-    for (const p of plan.others) {
-      const li = document.createElement("li");
-      li.append(Object.assign(document.createElement("span"), { className: "bd-nowrap", textContent: p.name }), " → ",
-        Object.assign(document.createElement("span"), { className: "bd-nowrap", textContent: `${p.name} (version ${letter})` }));
-      list.appendChild(li);
-    }
-    const one = plan.others.length === 1;
-    infoBox("rename", one ? "Renames one of your playlists" : `Renames ${plan.others.length} of your playlists`,
-      one ? "It has a name a new playlist uses, so it gets a new one:" : "They have names the new playlists use, so they get new ones:", list);
-  }
-  const notes = [];   // [title when it is the only note, sentence, details...]
-  const repeats = plan.repeats || [];
-  if (repeats.length) {
-    const list = document.createElement("ul");
-    for (const r of repeats) {
-      for (const x of r.songs.slice(0, 10)) putNamed(list.appendChild(document.createElement("li")), `${x.label}: ${x.times} times${repeats.length > 1 ? ` in ${named(r.name)}` : ""}`);
-      if (r.songs.length > 10) putNamed(list.appendChild(document.createElement("li")), `and ${r.songs.length - 10} more${repeats.length > 1 ? ` in ${named(r.name)}` : ""}`);
-    }
-    notes.push(["Songs listed more than once", repeats.length === 1
-      ? `${named(repeats[0].name)} lists ${plural(repeats[0].songs.length, "song")} more than once. Each is used once.`
-      : `${repeats.length} playlists list songs more than once. Each song is used once.`, list]);
-  }
-  const shared = Math.max(0, ...plan.built.map((b) => b.shared || 0));
-  if (shared) notes.push(["Songs in more than one playlist", `${plural(shared, "song")} ${shared === 1 ? "is" : "are"} in more than one of these playlists. Each is used once.`]);
-  const suspects = plan.suspects || [];
-  if (suspects.length) {
-    const list = document.createElement("ul");
-    for (const x of suspects.slice(0, 10)) {
-      const li = Object.assign(document.createElement("li"), { textContent: `${x.label}: ` });
-      const places = x.versions.flatMap((v) => v.lists.map((l) => ({ ...l, album: v.album })));
-      places.forEach((l, i) => {
-        if (i) li.append(", ");
-        li.append("in ", songLink(l));
-        if (l.album) li.append(` (${l.album})`);
-      });
-      list.appendChild(li);
-    }
-    if (suspects.length > 10) list.appendChild(Object.assign(document.createElement("li"), { textContent: `and ${suspects.length - 10} more` }));
-    notes.push(["Songs in more than one recording", `${plural(suspects.length, "song")} ${suspects.length === 1 ? "has" : "have"} more than one recording. Each recording (for example live and studio) counts as its own song, so more than one can be used.`, list]);
-  }
-  if (notes.length) infoBox("music", notes.length === 1 ? notes[0][0] : `${notes.length} notes on songs`, ...notes.flatMap(([, line, ...more]) => [line, ...more]));
-}
-
-function askToCreate(plan) {
-  // Shows what the plan found and waits: "create", "cancel", or "stale" if something was edited meanwhile. With "create", plan.keep says whether to keep the earlier playlists.
-  return new Promise((resolve) => {
-    setOutput("");
-    const summary = $("confirmText");
-    const keep = Object.assign(document.createElement("input"), { type: "checkbox", id: "confirmKeepEarlier" });
-    const whyLabel = plan.many ? "Why these numbers?" : `Why ${plan.total}?`;
-    const why = Object.assign(document.createElement("button"), { type: "button", className: "linklike", id: "planToggle", textContent: whyLabel });
-    // One recipe that can make more than one: "How many playlists?", and Arc's icon per playlist with its number above, 8 to a row. None is chosen at first,
-    // so Build does nothing until one is (decided by Ron, 2026-11-04; the popup was simplified by Ron, 2026-11-10, mockups/build-a-states.html).
-    const pick = !plan.many && plan.total > 1 && !plan.participant;
-    let chosen = pick ? 0 : plan.total;
-    // the person's own playlists in the way: only the ones whose names the chosen playlists use
-    const inWayFor = (n) => { const names = new Set(plan.built[0].playlists.slice(0, n).map((p) => normName(p.name))); return plan.others.filter((p) => names.has(normName(p.name))); };
-    let shownOthers = pick ? inWayFor(0).length : plan.others.length;
-    $("bdRead").hidden = true;
-    $("bdPick").hidden = !pick;
-    $("bdPickHead").hidden = false;
-    $("bdPickHead").textContent = pick ? "How many playlists?" : `Ready to build ${plural(plan.total, "playlist")}`;
-    summary.textContent = "";
-    if (pick) {
-      summary.append("Up to ", Object.assign(document.createElement("b"), { textContent: String(plan.total) }), ", with no song repeated across them. ", why);
-      const tiles = $("bdPickTiles");
-      tiles.textContent = "";
-      const show = () => {
-        Array.from(tiles.children).forEach((t, i) => {
-          t.classList.toggle("bd-on", i < chosen);
-          t.setAttribute("aria-checked", String(i + 1 === chosen));
-          t.tabIndex = i + 1 === (chosen || 1) ? 0 : -1;   // one stop in the tab order; the arrows move between them
-        });
-        $("confirmYes").disabled = !chosen;
-        setLabel($("confirmYes"), chosen ? `Build ${plural(chosen, "playlist")}` : "Build playlists");
-        const inWay = inWayFor(chosen);
-        if (inWay.length !== shownOthers) { shownOthers = inWay.length; fillInfoBoxes({ ...plan, others: inWay }, keep); }
-      };
-      const choose = (n, focus) => { chosen = n; show(); if (focus) tiles.children[n - 1].focus(); };
-      for (let n = 1; n <= plan.total; n++) {
-        const opt = Object.assign(document.createElement("button"), { type: "button", className: "bd-pick-opt" });
-        opt.setAttribute("role", "radio");
-        opt.setAttribute("aria-label", plural(n, "playlist"));
-        opt.append(Object.assign(document.createElement("span"), { textContent: String(n) }), Object.assign(document.createElement("span"), { className: "bd-arc" }));
-        opt.onclick = () => choose(n);
-        opt.onkeydown = (event) => {
-          const step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 8, ArrowUp: -8 }[event.key];   // up and down move a row of 8
-          if (!step) return;
-          event.preventDefault();
-          choose(Math.max(1, Math.min(plan.total, n + step)), true);
-        };
-        tiles.appendChild(opt);
-      }
-      show();
-    } else if (plan.participant) {
-      // one playlist for a participant: how many of its songs are new to them (Ron, 2026-11-12, mockups/client-builder.html C3)
-      const f = plan.fresh || { fresh: 0, again: 0, latest: 0 };
-      $("bdPickHead").textContent = `A playlist for ${plan.participant}`;
-      const b = (n) => Object.assign(document.createElement("b"), { textContent: String(n) });
-      summary.append(b(f.fresh), ` ${f.fresh === 1 ? "song" : "songs"} new to ${plan.participant}`);
-      if (f.again) {
-        const at = new Date(f.latest);
-        summary.append(", ", b(f.again), ` heard before, the latest in ${MONTHS[at.getMonth()]} ${at.getFullYear()}`);
-      }
-      summary.append(".");
-      $("bdPickTiles").textContent = "";
-      $("confirmYes").disabled = false;
-    } else {
-      if (plan.many) summary.append(`For ${plural(plan.built.length, "recipe")}. `);
-      summary.append(why);
-      $("bdPickTiles").textContent = "";
-      $("confirmYes").disabled = false;
-    }
-    // Recipes in this build that give nothing, and why
-    $("confirmNotes").hidden = !plan.problems.length;
-    const notes = $("confirmList");
-    notes.textContent = "";
-    for (const [bold, rest] of plan.problems) {
-      const li = document.createElement("li");
-      putNamed(li.appendChild(document.createElement("b")), bold);
-      putNamed(li, " " + rest);
-      notes.appendChild(li);
-    }
-    fillInfoBoxes(pick ? { ...plan, others: inWayFor(chosen) } : plan, keep);
-    if (!pick) setLabel($("confirmYes"), plan.participant ? "Build playlist" : `Build ${plural(plan.total, "playlist")}`);
-    clearResults();   // the plan says how many; the playlists are listed only once they are being built
-    fillWhyTable(plan);
-    $("planText").hidden = true;
-    $("confirmBox").hidden = false;
-    setBuildSteps("build", false, true);
-    setCreateStage("question");
-    const finish = (answer) => {
-      if (answer === "create" && !chosen) return;   // nothing chosen yet: Build does nothing
-      openQuestion = null;
-      $("confirmYes").disabled = false;
-      plan.keep = keep.checked;
-      if (answer === "create" && chosen < plan.total) choosePlaylists(plan, chosen);
-      $("confirmBox").hidden = true;
-      $("planText").hidden = true;
-      $("planText").textContent = "";
-      $("bdInfo").textContent = "";
-      $("confirmYes").onclick = null;
-      if (answer === "create") setCreateStage("creating");   // from this moment it cannot be dismissed
-      resolve(answer);
-    };
-    openQuestion = finish;
-    $("confirmYes").onclick = () => finish("create");
-    why.onclick = () => {
-      revealSmoothly($("planText"), $("planText").hidden);
-      why.textContent = $("planText").hidden ? whyLabel : "Hide";
-    };
-  });
-}
-
-function choosePlaylists(plan, count) {
-  // Fewer than the plan can make: build the first ones. Earlier playlists from the recipe are still replaced as a set; only the person's own playlists
-  // that have one of the names actually used are renamed.
-  const b = plan.built[0];
-  b.playlists = b.playlists.slice(0, count);
-  plan.total = count;
-  const names = new Set(b.playlists.map((p) => normName(p.name)));
-  plan.others = plan.others.filter((p) => names.has(normName(p.name)));
-}
-
-async function startCreate(keys = null) {
-  const connect = keys ? null : connectionAction();   // in minimalist mode, when not connected, this button connects instead
-  if (connect) { connect(); return; }
-  buildScope = Array.isArray(keys) && keys.length ? keys : null;
-  // One button: plan, show what was found, ask, then create exactly that plan.
-  setBusy(true);
-  resetBuildPopup();
-  clearReportHints("mainReportHint");
-  $("editorNote").textContent = "";
-  const wanted = selectedKeys();
-  openCreateDialog(wanted);
-  setBuildSteps("read");
-  $("bdRead").hidden = false;
-  logStep("plan started");
-  invalidatePlan(false);
-  const startedWith = planSignature();
-  try {
-    await loadMyPlaylists();   // what is in Spotify now, including anything changed there since this page loaded
-    const plan = await planSelected(startedWith);
-    if (!plan) return;
-    const answer = await askToCreate(plan);
-    if (answer === "stale" || answer === "cancel") { closeCreateDialog(); return; }
-    await createFromPlan(plan);
-  } catch (err) {
-    setOutput("");
-    showBuildStop(err, null);
-  } finally {
-    buildScope = null;
-    buildFor = "";
-    setBusy(false);
-    if (!$("createOverlay").hidden) setCreateStage("done");
-  }
+  logStep(built.length ? "plan: 1 playlist planned" : "plan: nothing can be created");
+  if (!built.length) return { problems };
+  return { built, fresh: built[0].fresh };
 }
 
 // One playlist for a participant, built where it will live (Ron, 2026-11-12, mockups/build-one C): no build popup. The participant's row opens on Participants
@@ -3861,7 +3171,7 @@ async function buildForParticipant(id, code, repeat = null) {
   try {
     await loadMyPlaylists();
     setPersonBuild({ step: "Reading the songs", progress: 0.15 });
-    const plan = await planSelected(null, { keys: [id], forWhom: code, quiet: true, repeat });
+    const plan = await planSelected({ keys: [id], forWhom: code, repeat });
     if (!plan || !plan.built) { setPersonBuild({ state: "blocked", problems: (plan && plan.problems) || [] }); return; }
     const p = plan.built[0].playlists[0];
     const songs = p.uris.filter((u) => !SILENCE_URIS.has(u)).length;
@@ -3906,221 +3216,9 @@ async function buildForParticipant(id, code, repeat = null) {
     setPersonBuild({ state: "fail", error: cleanError(err), id: made ? made.id : null });
     try { await loadMyPlaylists(); } catch (ignore) { /* keep the error showing */ }
   } finally {
-    invalidatePlan(true);
+    invalidatePlan();
     setBusy(false);
     if (typeof paintPersonBuild === "function") paintPersonBuild(true);
-  }
-}
-
-// Keeping earlier playlists instead of replacing them, and moving the person's own playlists out of the way: "Warm focus 1" becomes "Warm focus 1 (version a)". The letter
-// is the first one that none of these playlists has used before ("version b" the second time, and so on, then "aa"), and they all get the same one. A renamed playlist no
-// longer has a name the recipe makes, so building and "Remove earlier playlists" leave it alone.
-function versionLetters(index) {
-  let n = index, out = "";
-  do { out = String.fromCharCode(97 + (n % 26)) + out; n = Math.floor(n / 26) - 1; } while (n >= 0);
-  return out;
-}
-function nextVersionLetter(earlier) {
-  const used = new Set();
-  for (const p of earlier) {
-    const prefix = `${p.name} (version `;
-    for (const q of playlists) if (q.name.startsWith(prefix) && q.name.endsWith(")")) used.add(q.name.slice(prefix.length, -1));
-  }
-  let i = 0;
-  while (used.has(versionLetters(i))) i += 1;
-  return versionLetters(i);
-}
-async function keepEarlierPlaylists(earlier) {
-  const letter = nextVersionLetter(earlier);
-  let done = 0;
-  try {
-    for (const p of earlier) {
-      const name = `${p.name} (version ${letter})`;
-      await spotifyRequest("PUT", `/playlists/${p.id}`, { json: { name } });
-      const entry = playlists.find((q) => q.id === p.id);
-      if (entry) entry.name = name;
-      done += 1;
-    }
-  } catch (err) {
-    throw new Error(`${done} of ${plural(earlier.length, "playlist")} were renamed before this went wrong: ${cleanError(err)}`);
-  }
-  logStep(`renamed ${plural(earlier.length, "playlist")} to version ${letter}`);
-  return letter;
-}
-
-async function createFromPlan(plan) {
-  setCreateStage("creating");
-  setBuildSteps("build");
-  setOutput("");
-  const existing = plan.keep ? [] : plan.ours;   // removed first
-  const renamed = plan.others.concat(plan.keep ? plan.ours : []);   // renamed first, so the new playlists can have their names
-  const planned = plan.built.flatMap((b) => b.playlists.map((p) => ({ ...p, label: formatLabel(b.key), key: b.key })));
-  logStep(`create started (${plural(planned.length, "playlist")})`);
-  if (typeof markPlayTipDone === "function") markPlayTipDone();   // the tutorial tip's last step is done
-  // The playlists being made, listed for the first time, each row ticked off as it is made.
-  clearResults();
-  let removeRow = null, renameRow = null;
-  if (renamed.length) {
-    renameRow = playlistRow({ name: `Renaming ${plural(renamed.length, "playlist")}` }, "now");
-    $("results").appendChild(renameRow);
-  }
-  if (existing.length) {
-    removeRow = playlistRow({ name: `Removing ${plural(existing.length, "earlier playlist")}` }, "now");
-    $("results").appendChild(removeRow);
-  }
-  const rows = [];
-  let lastKey = null;
-  for (const p of planned) {
-    if (plan.many && p.key !== lastKey) $("results").appendChild(groupRow(p.label, ""));
-    lastKey = p.key;
-    const row = playlistRow(p, "wait");
-    rows.push(row);
-    $("results").appendChild(row);
-  }
-  // The count and the icons stay above while only the list scrolls (and, when done, the finale above it), and the list keeps the row being built in view,
-  // until the person scrolls it themselves.
-  $("createDialog").classList.add("bd-listing");
-  const body = $("results");
-  let follow = true;
-  const stopFollowing = () => { follow = false; };
-  for (const type of ["wheel", "touchmove", "keydown"]) body.addEventListener(type, stopFollowing, { passive: true });
-  const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const show = (row) => {
-    if (!follow || !row.scrollIntoView) return;
-    row.scrollIntoView({ block: "nearest", behavior: still ? "auto" : "smooth" });
-  };
-  let created = 0;
-  const progress = (status, building) => setTally(created, planned.length, status, building);
-  progress("Keep this tab open.");
-  let current = null;   // the playlist being made, if it exists in Spotify but is not finished
-  let removing = renamed.length ? "renaming" : existing.length ? "removing" : null;   // what is under way before the building starts
-  const createdIds = [];
-  const stillPublic = [];
-  let cover = null;
-  let coverBlocked = !hasScope("ugc-image-upload");   // this sign-in was not approved for uploading images
-  let coverUnloaded = false;
-  let coverFailed = 0;
-  if (!coverBlocked) {
-    try { cover = await loadCover(); } catch (err) { coverUnloaded = true; logStep("create: cover image not loaded"); }
-  }
-  try {
-    if (renamed.length) {
-      progress(`Renaming ${plural(renamed.length, "playlist")}. Keep this tab open.`);
-      if (plan.others.length) await keepEarlierPlaylists(plan.others);
-      if (plan.keep && plan.ours.length) await keepEarlierPlaylists(plan.ours);
-      renameRow.bd.name.textContent = `Renamed ${plural(renamed.length, "playlist")}`;
-      setRowState(renameRow, "done");
-      removing = existing.length ? "removing" : null;
-    }
-    if (existing.length) {
-      progress(`Removing ${plural(existing.length, "earlier playlist")}. Keep this tab open.`);
-      await removePlaylists(existing.map((p) => p.id));
-      removeRow.bd.name.textContent = `Removed ${plural(existing.length, "earlier playlist")}`;
-      setRowState(removeRow, "done");
-    }
-    removing = null;
-    for (const [i, p] of planned.entries()) {
-      const row = rows[i];
-      progress("Keep this tab open.", true);
-      setRowState(row, "now", "starting");
-      show(row);
-      const made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: builtDescription(p, planned.filter((q, j) => q.key === p.key && j <= i).length, planned.filter((q) => q.key === p.key).length, new Date(), plan.participant || "", plan.participant ? [...new Set([...((participantList().find((x) => x.code === plan.participant) || { heard: [] }).heard), ...pendingHeard(plan.participant)])] : []) } });
-      current = p.name;
-      createdIds.push(made.id);
-      if (made.public !== false) {   // asked to keep it off the profile; make sure
-        try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); }
-        catch (err) { stillPublic.push(p.name); logStep("create: could not make a playlist private"); }
-      }
-      setRowState(row, "now", "adding songs");
-      for (let k = 0; k < p.uris.length;) {
-        const n = addChunk;
-        try { await spotifyRequest("POST", `/playlists/${made.id}/items`, { json: { uris: p.uris.slice(k, k + n) } }); }
-        catch (err) {
-          // if Spotify turns out to take fewer songs at a time, the rest of the run asks with fewer (a refused request adds nothing)
-          if (n > ADD_CHUNK_SMALL && /returned 400/.test(err.message)) { addChunk = ADD_CHUNK_SMALL; logStep(`create: ${n} songs at a time refused`); recordNote(`${n} songs per add refused (400)`); continue; }
-          throw err;
-        }
-        k += n;
-      }
-      if (cover && !coverBlocked) {   // the app's icon as the cover; a problem here never stops the playlists
-        setRowState(row, "now", "adding the cover");   // an image upload, often the slowest step for a playlist
-        try { await spotifyRequest("PUT", `/playlists/${made.id}/images`, { body: cover, contentType: "image/jpeg" }); }
-        catch (err) {
-          coverFailed += 1;
-          logStep("create: cover not accepted");
-          if (/did not allow|sign-in expired/.test(err.message)) coverBlocked = true;   // no point asking again
-        }
-      }
-      created += 1;
-      current = null;
-      setRowState(row, "done", "");
-    }
-    logStep(`create finished (${plural(created, "playlist")})`);
-    invalidatePlan(true);
-    $("bdTally").hidden = true;
-    setBuildSteps("done");
-    const notes = [];
-    if (stillPublic.length) notes.push(`Spotify kept ${plural(stillPublic.length, "playlist")} on your profile and would not let this app change that. You can change that in the Spotify app.`);
-    if (coverBlocked) notes.push(`The cover art was not added, because your Spotify sign-in does not include permission to upload images. Sign in again with Change Spotify login in More options to allow it. Playlists you build after that will get the cover.`);
-    else if (coverUnloaded) notes.push("The cover art could not be loaded, so the playlists have Spotify's default cover.");
-    else if (coverFailed) notes.push(`Spotify would not accept the cover art for ${plural(coverFailed, "playlist")}.`);
-    if (created > 0) countEvent("playlists-created", String(created));
-    await glideToTop(body);   // the list starts again from its first playlist under the finale
-    showFinale(created, planned.slice(0, created).reduce((n, p) => n + (p.minutes || 0), 0));
-    // The first new playlist, at its ordinary Spotify address: on a phone it opens the Spotify app when it is installed, on a computer the web player, which offers the app.
-    if (createdIds.length) $("createOpenLink").href = `https://open.spotify.com/playlist/${createdIds[0]}`;
-    $("createOpen").hidden = !createdIds.length;
-    const showNotes = () => { $("createNotes").textContent = notes.join("\n\n"); $("createNotes").hidden = !notes.length; };
-    showNotes();
-    await loadMyPlaylists();
-    // The mark in the description is how this app finds its own playlists later. If Spotify's list does not show it, say so.
-    const marked = new Set(playlists.filter((p) => p.madeByApp).map((p) => p.id));
-    if (createdIds.length && createdIds.every((id) => !marked.has(id))) {
-      logStep("create: description mark not returned");
-      notes.push("Spotify's playlist list did not show the description this app puts on its playlists (or has not updated yet), so this app may not recognize them later.");
-      showNotes();
-    }
-  } catch (err) {
-    if (created || current) invalidatePlan(true);   // some playlists exist now, so creating the plan again would duplicate them
-    $("bdTally").hidden = true;
-    // The row that was under way gets a cross; the ones after it stay as they were, marked "not built".
-    rows.forEach((row, i) => {
-      if (i < created) return;
-      if (i === created && !removing) setRowState(row, "fail", current ? "incomplete" : "not built");
-      else setRowState(row, "wait", "not built");
-    });
-    if (removing) setRowState(removing === "renaming" ? renameRow : removeRow, "fail");
-    logStep(`create failed after ${created} of ${planned.length}`);
-    showBuildStop(err, { built: created, total: planned.length, incomplete: current, removing });
-    try { await loadMyPlaylists(); } catch (ignore) { /* keep the original error showing */ }
-  } finally {
-    for (const type of ["wheel", "touchmove", "keydown"]) body.removeEventListener(type, stopFollowing);
-    body.scrollTop = 0;   // the list from its first playlist, under the result or what went wrong
-  }
-}
-
-// Delete recipe offers to remove the recipe's own built playlists too (Ron, 2026-11-10): Arc's playlists in the library that match its names now, from the list
-// already read. null when that cannot be known now (not connected, Python not ready, a build or a removal running, or a Spotify pause).
-function builtPlaylistsOf(id) {
-  if (!token || connection !== "ready" || !py || !me || !playlists || busy || pausedSecondsLeft() > 0) return null;
-  try {
-    const made = new Set(playlists.filter((p) => p.madeByApp && !p.isSave).map((p) => p.id));
-    return recipeMatches($("formats").value, [id]).filter((p) => made.has(p.id));
-  } catch (err) { return null; }
-}
-// After Delete recipe with the box ticked: removes them, then says how it went on the line under the bar
-async function removeBuiltOfDeleted(list, title) {
-  if (!list || !list.length) return;
-  setBusy(true);
-  try {
-    await removePlaylists(list.map((p) => p.id));
-    logStep(`remove after delete (${plural(list.length, "playlist")})`);
-    showNotices([{ text: `Removed ${plural(list.length, "playlist")} built from ${named(title)}.`, transient: true }]);
-    await loadMyPlaylists();
-  } catch (err) {
-    showNotices([{ text: `The playlists built from ${named(title)} could not be removed: ${cleanError(err)}`, transient: true }]);
-  } finally {
-    setBusy(false);
   }
 }
 
@@ -4267,7 +3365,6 @@ async function main() {
   guarded("color choice", () => initThemeChooser());
   guarded("editor", () => initEditor());
   guarded("formats", () => refreshFormatKeys());
-  guarded("output", () => setOutput(""));
 
   // Start with no flow shown. People who already saved a Client ID have an app, so open that flow for them.
   showFlow($("clientId").value ? "existing" : null);
@@ -4353,7 +3450,6 @@ async function main() {
   on("connectionRetry", "click", connectToSpotify);
   on("connectionReconnect", "click", startLogin);
   on("reconnectButton", "click", startLogin);
-  on("create", "click", () => startCreate());
   $("privacyWaitRelay").hidden = !WAIT_RELAY_URL;   // Privacy says what the relay sees only once there is one
   for (const link of document.querySelectorAll(".privacy-link")) {
     link.addEventListener("click", (event) => {
@@ -4363,14 +3459,8 @@ async function main() {
       $("homeMore").scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
-  on("createClose", "click", closeCreateDialog);
-  on("bdClose", "click", closeCreateDialog);
-  on("confirmNo", "click", closeCreateDialog);   // Cancel, beside Build: the same as the X   // the X: cancels the question, or closes the popup once the build is done
   initMotion();
-  smoothResize($("createDialog"), document.querySelector("#createDialog .bd-body"));
   smoothResize($("infoDialog"), $("infoSlot"));
-  on("createOverlay", "click", (event) => { if (event.target === $("createOverlay")) dismissCreateDialog(); });
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !event.defaultPrevented && !$("createOverlay").hidden) dismissCreateDialog(); });   // an Escape that closed the guide above it is not for the build popup
   guarded("tip note", () => trackTipHeight());
   on("updateGet", "click", getUpdate);
   on("usOk", "click", closeUpdateScreen);
@@ -4441,7 +3531,7 @@ async function main() {
   endConnectingScreen();
   // A visit that starts during a wait (the tab was closed, the wait forgotten) opens the popup once, so the missing Build button is explained. A reload does not.
   const pause = spotifyPause();
-  if (pause && sessionStorage.getItem("pauseSeen") !== String(pause.until) && $("createOverlay").hidden) showPauseDialog();
+  if (pause && sessionStorage.getItem("pauseSeen") !== String(pause.until)) showPauseDialog();
 }
 
 async function preparePython() {
