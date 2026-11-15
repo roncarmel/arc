@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14za";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14zb";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -1377,10 +1377,9 @@ function renderHead(rebuild) {
           onLonger: () => { const higher = GAP_STEPS.filter((s) => s > f.gap); f.gap = higher.length ? higher[0] : GAP_STEPS[GAP_STEPS.length - 1]; afterGapChange(); },
         }),
         feEl("button", { type: "button", class: "fe-silencehelp", id: "feSilenceHelp", "aria-label": "Why silence between segments?", title: "Why silence between segments?", onClick: () => openInfo("silenceHelp") }, feIcon("help"))),
-      // Duplicate and Delete are one block that never breaks, so Delete can never end up alone on the next line
+      // Delete is on the recipe's open row (Ron, 2026-11-14); a new recipe left as it was is dropped on closing (closeRecipePanel)
       feEl("div", { class: "fe-headtools" },
-        feEl("button", { type: "button", class: "fe-iconbtn", id: "feDuplicate", "aria-label": "Duplicate recipe", title: "Duplicate recipe", onClick: askDuplicateFormat }, feIcon("copy")),
-        feEl("button", { type: "button", class: "fe-iconbtn fe-danger", id: "feDelete", "aria-label": "Delete recipe", title: "Delete recipe", onClick: askDeleteFormat }, feIcon("trash")))));
+        feEl("button", { type: "button", class: "fe-iconbtn", id: "feDuplicate", "aria-label": "Duplicate recipe", title: "Duplicate recipe", onClick: askDuplicateFormat }, feIcon("copy")))));
     renderClash();
   }
   $("feGapValue").textContent = f.gap ? describeSeconds(f.gap) : "No";
@@ -2143,7 +2142,7 @@ function askNewFormat() {
     if (vv) { vv.removeEventListener("resize", holdStill); vv.removeEventListener("scroll", holdStill); }
     if (keep) {
       delete draft.draft;
-      Object.assign(recipeEdit, { id: draft.id, before: null, dirty: true, open: false });   // new until saved
+      Object.assign(recipeEdit, { id: draft.id, before: null, dirty: true, open: false, blank: contentSignature(draft) });   // new until saved; blank: as it was made
       commit();
       if (typeof countEvent === "function") countEvent("recipe-created");
     }
@@ -2222,7 +2221,7 @@ function duplicateFormat() {
   editor.model.formats.push(copy);
   editor.activeId = copy.id;
   editor.cardMenu = false;
-  if (recipeEdit.open) Object.assign(recipeEdit, { id: copy.id, before: null, dirty: true });   // the panel goes on with the copy, new until saved
+  if (recipeEdit.open) Object.assign(recipeEdit, { id: copy.id, before: null, dirty: true, blank: null });   // the panel goes on with the copy, new until saved
   commit();
   renderEditor();
   if (recipeEdit.open) { paintPanelHead(); refreshPanelFoot(); $("recipePanel").scrollTop = 0; }
@@ -2615,13 +2614,15 @@ function recipePlaylistsBox(f) {
         l.name ? shareIconButton(p || { id: "", name: l.name }, why) : null));
     }
   }
+  // Edit recipe on the left, Delete on the right as a participant's row has it (Ron, 2026-11-14, mockups/recipe-delete)
   box.appendChild(feEl("div", { class: "bh-redit-foot" },
-    feEl("button", { type: "button", class: "bh-redit", id: "bhEditRecipe-" + f.id, onClick: () => openRecipePanel(f.id) }, bhSvg(BH_PEN), feEl("span", { text: "Edit recipe" }))));
+    feEl("button", { type: "button", class: "bh-redit", id: "bhEditRecipe-" + f.id, onClick: () => openRecipePanel(f.id) }, bhSvg(BH_PEN), feEl("span", { text: "Edit recipe" })),
+    feEl("button", { type: "button", class: "bh-pdel bh-del", id: "bhDeleteRecipe-" + f.id, "aria-label": "Delete recipe", title: "Delete recipe", onClick: () => { editor.activeId = f.id; askDeleteFormat(); } }, bhSvg(BH_BIN))));
   return box;
 }
 
 // The landing's row buttons are icons only (Ron, 2026-11-12, mockups/row-icons G): a grey pencil, and Build as a white sparkle on a pink circle.
-// Their words are their labels (and tooltips). No trash on a recipe's row: Delete is in the panel (Ron, 2026-11-12). The sparkle's label follows what a tap does now (refreshBuildButtons).
+// Their words are their labels (and tooltips). No trash on a recipe's row: Delete is at the foot of its open list (Ron, 2026-11-14). The sparkle's label follows what a tap does now (refreshBuildButtons).
 function rowIcon(svg, label, act, cls, attrs) {
   return feEl("button", Object.assign({ type: "button", class: "bh-ib" + (cls ? " " + cls : ""), "aria-label": label, title: label,
     onClick: (event) => { event.stopPropagation(); act(); } }, attrs || {}), bhSvg(svg));
@@ -2710,7 +2711,7 @@ function repeatSection() {
 // (decided by Ron, 2026-11-12, mockups/editor-head.html C, fitted; Done in place of the X, 2026-11-13). Every edit is kept in this browser at once, as before;
 // Done (or closing the panel any way) sends it to Spotify. recipeEditing in localStorage holds that copy while there are changes, so a closed tab keeps them
 // as Unsaved changes (and the cloud save and the merge leave that recipe alone: heldRecipeId in app.js).
-const recipeEdit = { id: null, before: null, dirty: false, open: false };   // before: the recipe's text when the panel opened, or null for a new one
+const recipeEdit = { id: null, before: null, dirty: false, open: false, blank: null };   // before: the recipe's text when the panel opened, or null for a new one
 
 function loadRecipeEditing() {
   try {
@@ -2812,13 +2813,16 @@ function closeRecipePanel(how, quiet) {
   if (!recipeEdit.open) return;
   if (how === "x") how = recipeEdit.dirty ? "save" : "done";
   if (editor.renamingPanel) finishPanelRename(false, true);
+  // a new recipe closed as it was made is dropped, not saved: the panel has no Delete (Ron, 2026-11-14)
+  const made = recipeEdit.before === null && recipeEdit.blank && editor.model && editor.model.formats.find((x) => x.id === recipeEdit.id);
+  if (how === "save" && made && contentSignature(made) === recipeEdit.blank) how = "cancel";
   const saved = how === "save" && recipeEdit.dirty;
   if (how === "cancel" && recipeEdit.dirty) {
     if (recipeEdit.before === null) removeLocalFormat(recipeEdit.id);
     else { const was = recipeFromText(recipeEdit.before); if (was) adoptFormat(was); }
     writeAdopted();
   }
-  Object.assign(recipeEdit, { id: null, before: null, dirty: false, open: false });
+  Object.assign(recipeEdit, { id: null, before: null, dirty: false, open: false, blank: null });
   keepRecipeEditing();
   if (saved) markRecipeSaving(editor.activeId);
   if (saved && typeof scheduleSpotifySave === "function") scheduleSpotifySave(0);
