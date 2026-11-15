@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14zh";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14zi";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -393,10 +393,11 @@ function menuFrames(pop) {
 // Its hidden attribute changes at once; while it folds away the class fx-collapsing keeps it drawn. A popup that holds it follows its height as it
 // changes, so smoothResize leaves the popup alone meanwhile (fxUnfolding).
 let fxUnfolding = 0;
+const FOLD_OPEN_MS = 240, FOLD_CLOSE_MS = 180;
 function foldMotion(el, frames, opening, done) {
   if (el._fxFold) el._fxFold.cancel();
   fxUnfolding++;
-  const anim = el._fxFold = el.animate(frames, { duration: opening ? 240 : 180, easing: opening ? EASE_OUT : EASE_IN, fill: "forwards" });
+  const anim = el._fxFold = el.animate(frames, { duration: opening ? FOLD_OPEN_MS : FOLD_CLOSE_MS, easing: opening ? EASE_OUT : EASE_IN, fill: "forwards" });
   let ended = false;
   const end = () => {
     if (ended) return;
@@ -2599,7 +2600,9 @@ function setRecipeOpen(id) {
   list.hidden = true;
   next.appendChild(list);
   revealSmoothly(list, true);
-  if (swingIn && swingIn.length) swingMarks(next, swingIn, finalMarkBoxes(next, list), true);
+  // an open recipe above this one folds first and moves it up: its bar rides up whole and swings once the fold is done
+  const wait = old && was !== id && old.compareDocumentPosition(next) & Node.DOCUMENT_POSITION_FOLLOWING ? FOLD_CLOSE_MS : 0;
+  if (swingIn && swingIn.length) swingMarks(next, swingIn, finalMarkBoxes(next, list), true, wait);
 }
 
 // The recipe bar's swing (Ron, 2026-11-14, mockups/segment-morph): copies of the bar's music pieces, drawn in the row over everything, each hinged at its
@@ -2638,7 +2641,7 @@ function stopSwing(row) {
   row.querySelectorAll(".bh-shape span, .bh-rmark").forEach((el) => (el.style.visibility = ""));
 }
 // opening: from bar pieces to marks; closing: from marks to bar pieces
-function swingMarks(row, from, to, opening) {
+function swingMarks(row, from, to, opening, wait = 0) {
   stopSwing(row);
   if (!motionAllowed(row) || from.length !== to.length) return;
   const hinge = (b, upright) => (upright ? { x: b.x + b.w / 2, y: b.y, len: b.h, thick: b.w, angle: 90 } : { x: b.x, y: b.y + b.h / 2, len: b.w, thick: b.h, angle: 0 });
@@ -2662,7 +2665,7 @@ function swingMarks(row, from, to, opening) {
   };
   from.forEach((b, i) => {
     const a0 = hinge(b, !opening), a1 = hinge(to[i], opening);
-    const timing = { duration: opening ? SWING_MS : SWING_BACK_MS, delay: i * (opening ? SWING_STAGGER_MS : SWING_BACK_STAGGER_MS), fill: "both" };
+    const timing = { duration: opening ? SWING_MS : SWING_BACK_MS, delay: wait + i * (opening ? SWING_STAGGER_MS : SWING_BACK_STAGGER_MS), fill: "both" };
     const pivot = feEl("span", { class: "bh-swing", "aria-hidden": "true" });
     const bar = feEl("span", { style: `background:${color}` });
     pivot.appendChild(bar);
