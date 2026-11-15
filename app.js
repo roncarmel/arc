@@ -14,7 +14,7 @@ const ADD_CHUNK = 100;     // songs added per request (Spotify's documented maxi
 const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
-const APP_VERSION = "2026-11-15c";
+const APP_VERSION = "2026-11-15d";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1567,6 +1567,7 @@ function pageState() {
   return { app: APP_VERSION, scripts: { ...(globalThis.scriptVersions || {}) }, updating, startupRefreshed: refreshed, updateScreen: typeof updateScreen !== "undefined" ? updateScreen : null, connection, sinceStart: Math.round(performance.now()) };
 }
 let playlistPages = [];   // the last list's pages as Spotify sent them: [offset, items, total, whether there was a next], for the records below   // how many times the list has started being read in this tab, so a record can tell whether it was read again during a save
+let playlistsLeftOut = 0;   // how many the last list's pages left out the same way twice (taken as Spotify's answer), for the records
 let playlistsHidden = [];   // where the last list had null items (playlists Spotify will not show this app), for the records
 let playlistsLoadedBy = "";   // which code last read the playlist list, for the record kept when a save question is asked (recordSyncAsk)
 var SAVE_FRESH_MS = 5000;   // a save reads the account's playlists again unless they were read this recently
@@ -1790,7 +1791,7 @@ const LIST_READS_KEY = "listReads";
 function recordListRead(by) {
   const saves = playlists.filter((p) => p.save).map((p) => [p.save.kind === "save" ? p.save.format.id : p.save.kind, p.save.format ? p.save.format.rev || 0 : null, playlists.indexOf(p)]);
   const named = playlists.filter((p) => p.name.endsWith(SAVE_SUFFIX)).map((p) => [p.name, p.id, p.save ? p.save.kind : "none", p.description == null ? null : String(p.description).length]);
-  const entry = { at: new Date().toISOString(), tab: TAB_ID, tabStarted: TAB_STARTED, page: pageState(), by, count: playlists.length, total: playlistsTotal, hidden: playlistsHidden.length, pages: playlistPages, saves, saveNames: named,
+  const entry = { at: new Date().toISOString(), tab: TAB_ID, tabStarted: TAB_STARTED, page: pageState(), by, count: playlists.length, total: playlistsTotal, hidden: playlistsHidden.length, leftOut: playlistsLeftOut, pages: playlistPages, saves, saveNames: named,
     recipes: typeof editor !== "undefined" && editor.model ? editor.model.formats.length : null, visible: document.visibilityState };
   writeRecord(LIST_READS_KEY, [...readRecord(LIST_READS_KEY, []), entry].slice(-30));
 }
@@ -2841,12 +2842,20 @@ async function loadMyPlaylists() {
   // Spotify sometimes sends a page empty or short though its total says there is more (the first page came with 0 of 98, 2026-11-13, and the merge then asked
   // about saves that were there). A short page is read again, up to 3 times, a moment apart.
   const short = (pg) => { const n = (pg.items || []).length; if (typeof pg.total !== "number" || typeof pg.offset !== "number") return false; return n < Math.min(pg.limit || 50, pg.total - pg.offset); };
+  // A page that comes short twice with the same playlists is Spotify's answer, not a slip: it leaves out playlists it will not show an app in development
+  // mode (its own, as Discover Weekly or editorial ones) though its total counts them. Those are taken as all there is (`steady`); an empty page never is.
+  // An account following 4 of them never connected, 4 short every time (937 of 941, then 939 of 943; the first user report, 2026-11-15).
+  const sameItems = (a, b) => (a.items || []).map((p) => p && p.id).join() === (b.items || []).map((p) => p && p.id).join();
+  let steady = 0;
   const readPage = async (url) => {
     let pg = await spotify(url);
     for (let tries = 0; tries < 3 && short(pg); tries++) {
       pages.push([pg.offset, (pg.items || []).length, pg.total, !!pg.next, "short, read again"]);
       await new Promise((r) => setTimeout(r, 700 * (tries + 1)));
-      pg = await spotify(url);
+      const again = await spotify(url);
+      const same = short(again) && (again.items || []).length > 0 && sameItems(pg, again);
+      pg = again;
+      if (same) { steady += Math.min(pg.limit || 50, pg.total - pg.offset) - pg.items.length; pages.push([pg.offset, pg.items.length, pg.total, !!pg.next, "short, the same again: taken"]); break; }
     }
     return pg;
   };
@@ -2866,12 +2875,14 @@ async function loadMyPlaylists() {
   // a report of 2026-11-15). Where they sat is kept for the records.
   playlistsHidden = raw.map((p, i) => (p ? null : i)).filter((i) => i !== null);
   if (playlistsHidden.length) recordNote(`playlist list: ${playlistsHidden.length} hidden by Spotify (null items) at ${JSON.stringify(playlistsHidden.slice(0, 20))}`);
+  playlistsLeftOut = steady;
+  if (steady) recordNote(`playlist list: ${steady} left out by Spotify (pages short the same way twice), pages [offset, items, total, next] ${JSON.stringify(pages)}`);
   const got = raw.length;
-  if (total !== null && got < total) {
+  if (total !== null && got + steady < total) {
     // Still short: the list is not used, so nothing works from a half-known state. Arc waits as if not connected (startLimitWait("short")) and keeps
     // the playlists it already had (or the kept list), and reads it again by itself (Ron, 2026-11-13).
     recordNote(`playlist list: ${raw.length} items, Spotify's total ${total}, pages [offset, items, total, next] ${JSON.stringify(pages)}`);
-    recordError(`Spotify listed ${got} of ${total} playlists, after reading again${playlistsHidden.length ? ` (${playlistsHidden.length} of them hidden)` : ""}`);
+    recordError(`Spotify listed ${got} of ${total} playlists, after reading again${playlistsHidden.length ? ` (${playlistsHidden.length} of them hidden)` : ""}${steady ? ` (${steady} left out the same way twice)` : ""}`);
     useKeptPlaylists();
     if (connection === "ready") { setConnection("problem", SHORT_LIST_MESSAGE); startLimitWait("short"); }
     throw new Error(SHORT_LIST_MESSAGE);
