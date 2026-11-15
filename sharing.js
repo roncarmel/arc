@@ -1887,8 +1887,7 @@ async function pickPlaylist(p) {
 function flowReady(p, d) {
   const f = sharing.flow;
   if (!d || d.refused || d.sending || f.reading) return false;
-  const typed = d.kind === "mood" && !d.moods.length && $("msMoodInput") ? cleanMood($("msMoodInput").value) : "";   // a mood still in the box counts, as Share takes it
-  if (Object.keys(draftErrors(typed.length >= 2 && !blockedWord(typed) ? { ...d, moods: [typed] } : d, p)).length) return false;
+  if (Object.keys(draftErrors(d, p)).length) return false;   // a mood counts only once added as a chip
   return !(f.mode === "edit" && draftKey(d) === f.start);
 }
 function flowFoot(foot, p, d) {

@@ -2872,9 +2872,10 @@ function closeRecipePanel(how, quiet) {
   editor.panel = null; editor.gapPanel = null; editor.cardMenu = false;
   const wrap = $("recipePanelWrap");
   if (!quiet && motionAllowed(wrap)) {
+    // the copy keeps the two ids the editor's styles hang on (#recipePanel, #formatEditor), so it leaves looking as it was: without them it showed unstyled for a
+    // moment (seen in the tutorial's capture, 2026-11-14). It is added after the real panel, so $() still finds the real one; every other id goes.
     const copy = $("recipePanel").cloneNode(true);
-    copy.removeAttribute("id");
-    copy.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+    copy.querySelectorAll("[id]").forEach((el) => { if (el.id !== "formatEditor") el.removeAttribute("id"); });
     copy.classList.add("fx-ghost");
     copy.setAttribute("aria-hidden", "true");
     const dim = feEl("div", { class: "rp-dim" });

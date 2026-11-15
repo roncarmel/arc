@@ -5081,7 +5081,8 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   ms_d.querySelectorAll("#msFlowBody .ms-phase-names button")[1].click();
   check("a phase share needs a description too, with a placeholder of its own", ms_main().disabled && /^What is the music like, and what does it leave out\?/.test(ms_d.getElementById("msDesc").placeholder) && !ms_d.querySelector('[data-field="description"] .ms-fnote'));
   ms_ftile("mood").click();
-  check("a mood's description is optional, and a word still in the box is enough for Share", ms_d.querySelector('[data-field="description"] .ms-fnote').textContent === "Optional" && ms_d.getElementById("msDesc").placeholder === "Anything to add beyond the moods above?" && ms_main().disabled && (ms_moodType("tender"), !ms_main().disabled));
+  check("a mood's description is optional, and Share stays grey until a mood is added as a chip", ms_d.querySelector('[data-field="description"] .ms-fnote').textContent === "Optional" && ms_d.getElementById("msDesc").placeholder === "Anything to add beyond the moods above?" && ms_main().disabled && (ms_moodType("tender"), ms_main().disabled) && (ms_d.getElementById("msMoodInput").dispatchEvent(new ms_w.KeyboardEvent("keydown", { key: "Enter", bubbles: true })), !ms_main().disabled));
+  { const x = ms_d.querySelector("#msFlowBody .ms-moodchip .ms-chipx"); if (x) x.click(); }
   ms_ftile("other").click();
   check("Other asks what to call it, keeps Share grey until named, and has its own placeholder", ms_d.querySelector('[data-field="other"] .ms-flabel b').textContent === "What would you call it?" && ms_main().disabled && /sound bath, integration circles/.test(ms_d.getElementById("msDesc").placeholder));
   ms_ftile("phase").click();
