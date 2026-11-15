@@ -882,9 +882,6 @@ function renderAppMenu() {
 // The tutorial video (see the tutorial video in app.js): its address, empty until it is ready, and a frame from it with a pink play button for the rows that open it.
 const TUTORIAL_VIDEO = "https://arc-media.roncarmel.workers.dev/tutorial.mp4";   // Arc's media worker (cloudflare/media); empty shows The video is coming soon
 const TUTORIAL_POSTER = "tutorial-poster.jpg";
-// In developer mode, the participants tutorial (2:15), served beside the other until participants ship; then it replaces tutorial.mp4 (Ron, 2026-11-13)
-const TUTORIAL_VIDEO_DEV = "https://arc-media.roncarmel.workers.dev/tutorial-participants.mp4";
-function tutorialVideo() { return devMode() && TUTORIAL_VIDEO_DEV ? TUTORIAL_VIDEO_DEV : TUTORIAL_VIDEO; }
 
 // a frame from the video with a pink play button, for the rows that open it
 function tutorialFrame() {

@@ -722,21 +722,21 @@ function toggleWelcomeTool(head) {
 // once and, where the browser allows (Android), turns to landscape; on an iPhone, Apple's player, and the person turns the phone (a page cannot). The end returns to
 // the page. Decided by Ron, 2026-11-11.
 // Until the tutorial's address is set, every way in opens the popup saying the video is coming soon.
-// TUTORIAL_VIDEO, tutorialVideo() (the participants one in developer mode), TUTORIAL_POSTER and tutorialFrame are in editor.js, which loads first and draws the menu and the first-recipe card.
+// TUTORIAL_VIDEO, TUTORIAL_POSTER and tutorialFrame are in editor.js, which loads first and draws the menu and the first-recipe card.
 
 // the popup's player, filled as it opens (openInfo) and emptied as it closes, so nothing plays on behind it
 function fillTutorialPlayer() {
   const player = $("tutorialPlayer");
   if (!player) return;
   player.textContent = "";
-  if (tutorialVideo()) {
+  if (TUTORIAL_VIDEO) {
     const video = document.createElement("video");
     video.controls = true;
     video.playsInline = true;
     video.setAttribute("playsinline", "");
     video.preload = "metadata";
     video.poster = TUTORIAL_POSTER;
-    video.src = tutorialVideo();
+    video.src = TUTORIAL_VIDEO;
     player.appendChild(video);
     player.appendChild(tutorialEndCard(video));
     video.addEventListener("ended", () => {   // out of the browser's fullscreen, so Watch again and Done are seen
@@ -753,7 +753,7 @@ function fillTutorialPlayer() {
     img.alt = "";
     player.appendChild(img);
   }
-  $("tutorialNote").textContent = tutorialVideo() ? "A 2 minute walkthrough." : "The video is coming soon.";
+  $("tutorialNote").textContent = TUTORIAL_VIDEO ? "A 2 minute walkthrough." : "The video is coming soon.";
 }
 // over the video once it ends: Watch again, and Done (which closes the popup, like the Done under it)
 function tutorialEndCard(video) {
@@ -791,8 +791,8 @@ function tutorialOnPhone() {
 }
 
 function watchTutorial() {
-  if (tutorialVideo()) countTutorialStart(tutorialOnPhone() ? "phone" : "computer");
-  if (tutorialVideo() && tutorialOnPhone()) playTutorialFullscreen();
+  if (TUTORIAL_VIDEO) countTutorialStart(tutorialOnPhone() ? "phone" : "computer");
+  if (TUTORIAL_VIDEO && tutorialOnPhone()) playTutorialFullscreen();
   else openInfo("tutorialSection");
 }
 
@@ -800,8 +800,7 @@ function watchTutorial() {
 // fullscreen with a video that has not. If going fullscreen fails, the popup opens instead.
 function tutorialFullVideo() {
   let video = $("tutorialFull");
-  if (video && tutorialVideo() && video.src !== tutorialVideo()) video.src = tutorialVideo();   // developer mode was turned on or off since
-  if (video || !tutorialVideo()) return video;
+  if (video || !TUTORIAL_VIDEO) return video;
   video = document.createElement("video");
   video.id = "tutorialFull";
   video.controls = true;
@@ -809,7 +808,7 @@ function tutorialFullVideo() {
   video.setAttribute("playsinline", "");
   video.preload = "metadata";
   video.poster = TUTORIAL_POSTER;
-  video.src = tutorialVideo();
+  video.src = TUTORIAL_VIDEO;
   video.setAttribute("aria-hidden", "true");
   document.body.appendChild(video);
   const done = () => {
