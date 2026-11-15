@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14ze";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14zf";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2578,14 +2578,19 @@ function setRecipeOpen(id) {
   builderHome.recipe = id;
   const rowOf = (x) => (x ? document.querySelector(`#bhRecipes .bh-recipe[data-id="${x}"]`) : null);
   const old = rowOf(was), next = rowOf(id);
+  const f = next && was !== id && editor.model ? editor.model.formats.find((x) => x.id === id) : null;
+  // the bar's pieces swing on a hinge into the open list's pink marks and back; switching recipes swings only the one opening (Ron, 2026-11-14)
+  const swingIn = f ? barPieceBoxes(next, f) : null;
+  const swingOut = old && was !== id && !next ? old.querySelectorAll(".bh-plist:not(.bh-plist-gone) .bh-rmark") : null;
+  const outFrom = swingOut ? [...swingOut].map((m) => boxIn(old, m)) : null;
   if (old && was !== id) {
     old.classList.remove("bh-open");
     old.querySelector(".bh-open-btn").setAttribute("aria-expanded", "false");
     const list = old.querySelector(".bh-plist");
     if (list) { revealSmoothly(list, false); list.classList.add("bh-plist-gone"); }
+    if (outFrom && outFrom.length) swingMarks(old, outFrom, barPieceBoxes(old, editor.model.formats.find((x) => x.id === was)), false);
+    else stopSwing(old);
   }
-  if (!next || was === id) return;
-  const f = editor.model && editor.model.formats.find((x) => x.id === id);
   if (!f) return;
   next.classList.add("bh-open");
   next.querySelector(".bh-open-btn").setAttribute("aria-expanded", "true");
@@ -2594,6 +2599,74 @@ function setRecipeOpen(id) {
   list.hidden = true;
   next.appendChild(list);
   revealSmoothly(list, true);
+  if (swingIn && swingIn.length) swingMarks(next, swingIn, finalMarkBoxes(next, list), true);
+}
+
+// The recipe bar's swing (Ron, 2026-11-14, mockups/segment-morph): copies of the bar's music pieces, drawn in the row over everything, each hinged at its
+// left end. Opening, the hinge glides to the top of its pink mark while the piece swings down 90 degrees around it, a little past and back, stretching to
+// the mark's length; the top one leads and each next starts a moment later. Closing (the row tapped shut, not another recipe opened) is the same upward,
+// the top one leading too. The real bar or marks stay hidden until their piece lands. A mixed segment's piece splits evenly, one part per playlist.
+const SWING_MS = 560, SWING_BACK_MS = 340, SWING_STAGGER_MS = 45, SWING_BACK_STAGGER_MS = 30;
+const EASE_SWING = "cubic-bezier(0.34, 1.45, 0.6, 1)";
+function boxIn(row, el) {
+  const r = el.getBoundingClientRect(), o = row.getBoundingClientRect();
+  return { x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height };
+}
+// one box per pink mark the open list will have: its segment's piece of the bar, split evenly when the segment mixes playlists
+function barPieceBoxes(row, f) {
+  const pieces = [...row.querySelectorAll(".bh-shape span:not(.bh-quiet)")];
+  if (!f || !pieces.length || pieces.length !== f.items.length || !pieces[0].getBoundingClientRect().width) return [];
+  const out = [];
+  f.items.forEach((item, i) => {
+    const p = boxIn(row, pieces[i]), n = item.lists.length, w = (p.w - 3 * (n - 1)) / n;
+    for (let k = 0; k < n; k++) out.push({ ...p, x: p.x + k * (w + 3), w, piece: pieces[i] });
+  });
+  return out;
+}
+// where the marks will be once the list has unfolded: its unfolding is jumped to its end to measure them, and put back
+function finalMarkBoxes(row, list) {
+  const anims = list.getAnimations();
+  anims.forEach((a) => { a.pause(); a.currentTime = a.effect.getComputedTiming().endTime; });
+  const boxes = [...list.querySelectorAll(".bh-rmark")].map((m) => ({ ...boxIn(row, m), mark: m }));
+  anims.forEach((a) => { a.currentTime = 0; a.play(); });
+  return boxes;
+}
+function stopSwing(row) {
+  (row._swing || []).forEach((a) => a.cancel());
+  row._swing = null;
+  row.querySelectorAll(".bh-swing").forEach((g) => g.remove());
+  row.querySelectorAll(".bh-shape span, .bh-rmark").forEach((el) => (el.style.visibility = ""));
+}
+// opening: from bar pieces to marks; closing: from marks to bar pieces
+function swingMarks(row, from, to, opening) {
+  stopSwing(row);
+  if (!motionAllowed(row) || from.length !== to.length) return;
+  const hinge = (b, upright) => (upright ? { x: b.x + b.w / 2, y: b.y, len: b.h, thick: b.w, angle: 90 } : { x: b.x, y: b.y + b.h / 2, len: b.w, thick: b.h, angle: 0 });
+  const hidden = opening ? to.map((b) => b.mark) : [...new Set(to.map((b) => b.piece))];
+  hidden.forEach((el) => (el.style.visibility = "hidden"));
+  if (!opening) row.querySelectorAll(".bh-rmark").forEach((m) => (m.style.visibility = "hidden"));
+  const color = getComputedStyle(row).getPropertyValue("--accent");
+  const anims = row._swing = [];
+  let left = from.length;
+  const landed = (i) => {
+    if (opening) to[i].mark.style.visibility = "";
+    if (--left > 0) return;
+    if (!opening) hidden.forEach((el) => (el.style.visibility = ""));
+    row._swing = null;
+  };
+  from.forEach((b, i) => {
+    const a0 = hinge(b, !opening), a1 = hinge(to[i], opening);
+    const timing = { duration: opening ? SWING_MS : SWING_BACK_MS, delay: i * (opening ? SWING_STAGGER_MS : SWING_BACK_STAGGER_MS), fill: "both" };
+    const pivot = feEl("span", { class: "bh-swing", "aria-hidden": "true" });
+    const bar = feEl("span", { style: `background:${color}` });
+    pivot.appendChild(bar);
+    row.appendChild(pivot);
+    const size = (h) => ({ width: h.len + "px", height: h.thick + "px", top: -h.thick / 2 + "px", borderRadius: h.thick / 2 + "px" });
+    const glide = pivot.animate([{ transform: `translate(${a0.x}px, ${a0.y}px)` }, { transform: `translate(${a1.x}px, ${a1.y}px)` }], { ...timing, easing: EASE_OUT });
+    anims.push(glide, bar.animate([size(a0), size(a1)], { ...timing, easing: EASE_OUT }),
+      bar.animate([{ transform: `rotate(${a0.angle}deg)` }, { transform: `rotate(${a1.angle}deg)` }], { ...timing, easing: EASE_SWING }));
+    glide.onfinish = () => { pivot.remove(); landed(i); };
+  });
 }
 // An open recipe: each segment's playlist on a line (Ron, 2026-11-14, B1): a pink bar, its cover, its name with the minutes under it (or why it can't be shared),
 // and Share; then Edit recipe, a pink button at the lower right. Silences are left out.
