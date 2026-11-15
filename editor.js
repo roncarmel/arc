@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14w";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14x";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -276,15 +276,11 @@ function syncPlaylistRefs() {
   return changed;
 }
 
-// Saves the text after playlist IDs were added or a renamed playlist's name was brought up to date. That is not an edit of the formats, so a backup that was
-// current stays current.
+// Saves the text after playlist IDs were added or a renamed playlist's name was brought up to date. That is not an edit of the formats.
 function commitHealed() {
-  const wasCurrent = typeof backupState === "function" && backupState().kind === "current";
   rememberFormats(editor.model);   // IDs and renamed names filled in by the app are not an edit, so they do not count as a new revision
   editor.healing = true;
   try { commit(); } finally { editor.healing = false; }
-  if (wasCurrent) localStorage.setItem("lastBackupText", $("formats").value);
-  if (typeof refreshBackupStatus === "function") refreshBackupStatus();
 }
 
 // ---------------------------------------------------------------- formats coming from Spotify, and questions about them
@@ -842,7 +838,6 @@ function renderAppMenu() {
   }, feIcon("dots")));
   if (!editor.appMenu) return;
   const choose = (action) => () => { editor.appMenu = false; renderAppMenu(); action(); };
-  const backupLabel = ($("backupStatus") && $("backupStatus").textContent) || "";   // the same label as in the backup step, which the app page hides
   // Connecting from the menu: with a saved Client ID, Connect to Spotify, which is also the way out of a problem.
   // Not connected is one thing in the menu, whatever the reason: Connect to Spotify, with what is wrong (or that it is under way) in a line under it. The page has its own
   // Try again and Connect again, with the same words, so the menu does not need its own.
@@ -856,22 +851,7 @@ function renderAppMenu() {
     const why = connecting ? "On a slow connection this can take a few seconds." : connection === "problem" ? $("connectionMessage").textContent : "";
     if (why) connectItems.push(feEl("div", { class: "fe-itemnote", id: "feConnectionNote", text: why }));
   }
-  // When recipes are saved to Spotify there is nothing about saving in this menu: it happens by itself, and Done in the recipe panel shows it on the recipe's row. For a person
-  // who backs up by hand there is one block: what it is, a link to change it, when the last backup was, and the two actions.
-  const auto = typeof backupMode === "function" && backupMode() === "spotify";
-  let backupBlock = null;
-  if (!auto) {
-    const status = backupLabel ? feEl("span", { class: "fe-bk-status", id: "feBackupStatus", text: backupLabel }) : null;
-    backupBlock = feEl("div", { class: "fe-bk-block" },
-      feEl("div", { class: "fe-bk-row" }, feIcon("device"),
-        feEl("div", { class: "fe-bk-text" },
-          feEl("span", { class: "fe-bk-title", text: "Manual backup to this device" }),
-          feEl("button", { type: "button", class: "linklike fe-bk-change", id: "feBackupMethod", role: "menuitem", onClick: choose(() => openBackupCard()), text: "Change how your recipes are saved" }),
-          status)),
-      feEl("div", { class: "fe-bk-actions" },
-        feEl("button", { type: "button", id: "feBackup", role: "menuitem", onClick: choose(() => downloadBackup()) }, feIcon("download"), "Back up now"),
-        feEl("button", { type: "button", id: "feRestore", role: "menuitem", onClick: choose(() => $("restoreFile").click()) }, feIcon("restore"), "Restore")));
-  }
+  // Nothing about saving in this menu: recipes save to Spotify by themselves, and Done in the recipe panel shows it on the recipe's row.
   // each opens its block alone in the info popup
   const infoItem = (id, target, icon, label) => feEl("button", { type: "button", class: "fe-item", id, role: "menuitem", onClick: choose(() => openInfo(target)) }, feIcon(icon), label);
   const rule = () => feEl("div", { class: "fe-rule" });
@@ -890,16 +870,13 @@ function renderAppMenu() {
     panel(...spotifyItems, ...(spotifyItems.length ? [rule()] : []), ...help, rule(), version());
     return;
   }
-  // The builder's (decided by Ron, 2026-11-10, mockups/app-menu-A.png, with help moved up under the tutorial): Connect and the manual backup block when they apply,
-  // Watch the tutorial, Feedback and Report a problem, then what More options held, each a row of its own, then the version. A guide for facilitators is gone; the ?
+  // The builder's (decided by Ron, 2026-11-10, mockups/app-menu-A.png, with help moved up under the tutorial): Connect when it applies,
+  // Watch the tutorial, Feedback and Report a problem, then the version (Build all recipes, Remove built playlists and Autosave or backup went, Ron, 2026-11-14). A guide for facilitators is gone; the ?
   // beside the silence stepper has its own popup. What belongs to the whole app (Privacy, Color, the account) is under Everything else on home.
   const tutorial = feEl("button", { type: "button", class: "fe-item fe-gditem", id: "feTutorial", role: "menuitem", onClick: choose(() => watchTutorial()) }, tutorialFrame(),
     feEl("span", { class: "fe-gditem-text" }, feEl("span", { text: "Watch the tutorial" }), feEl("span", { class: "fe-gditem-note", text: "2 minute walkthrough" })));
-  const buildAll = feEl("button", { type: "button", class: "fe-item", id: "feBuildAll", role: "menuitem", disabled: typeof canBuildAll === "function" && !canBuildAll(), onClick: choose(() => buildAllRecipes()) }, feIcon("sparkle"), "Build all recipes");
-  const top = [...spotifyItems, ...(backupBlock ? [...(spotifyItems.length ? [rule()] : []), backupBlock] : [])];
-  panel(...top, ...(top.length ? [rule()] : []),
+  panel(...spotifyItems, ...(spotifyItems.length ? [rule()] : []),
     tutorial, rule(), ...help, rule(),
-    buildAll, infoItem("feRemoveBuilt", "removeSection", "trash", "Remove built playlists"), feEl("button", { type: "button", class: "fe-item", id: "feSaveMethod", role: "menuitem", onClick: choose(() => openBackupCard()) }, feIcon("cloud"), "Autosave or backup"), rule(),
     version());
 }
 
@@ -1032,7 +1009,7 @@ function placeDevMenu(anchor) {
 const recipeSaved = { id: null, state: "", started: false, lastRunning: false, since: 0, timer: null };
 function markRecipeSaving(id) {
   clearTimeout(recipeSaved.timer);
-  const canSave = typeof backupMode === "function" && backupMode() === "spotify" && typeof connection !== "undefined" && connection === "ready" && !(typeof spotifyPause === "function" && spotifyPause());
+  const canSave = typeof connection !== "undefined" && connection === "ready" && !(typeof spotifyPause === "function" && spotifyPause());
   if (!canSave) { Object.assign(recipeSaved, { id: null, state: "" }); return; }
   Object.assign(recipeSaved, { id, state: "saving", started: false, lastRunning: !!saveState.running, since: Date.now() });
   recipeSaved.timer = setTimeout(() => endRecipeSaved(), 20000);   // a save that never starts (a build began, the connection went) lets the row go back
@@ -1440,7 +1417,7 @@ function attentionNow() { return typeof attentionItems === "function" ? attentio
 function noticeDuration(item) { return noticeTiming.baseMs + Math.max(0, String(item.text || item).split(/\s+/).length - 8) * noticeTiming.perWordMs; }
 
 // A message is a sentence, or { text, icon, warn, hold, actions: [{ label, run }] }. Sentences, and messages with nothing to do, come in turn for a few seconds each. A message
-// with something to do (Undo, Back up now), or one that says something went wrong, is held: it stays until the person uses it, presses OK, or edits.
+// with something to do (Try again, Details), or one that says something went wrong, is held: it stays until the person uses it, presses OK, or edits.
 function showNotices(messages) {
   if (!messages || !messages.length) return;
   for (const m of messages) {
@@ -1628,8 +1605,7 @@ function showPauseDialog() {
   if (editor.panel || editor.cardMenu || editor.gapPanel !== null || editor.appMenu) closePanels();   // an open list would take the first tap outside the popup
   const quota = pause.reason === "QUOTA_EXCEEDED";
   const kept = playlists.length || (typeof KEPT_PLAYLISTS_KEY === "string" && localStorage.getItem(KEPT_PLAYLISTS_KEY));   // the kept list may be put in just after this opens
-  const rows = [["Editing recipes", true], ["Choosing playlists", !!kept], ["Building playlists", false]];
-  if (typeof backupMode === "function" && backupMode() === "spotify") rows.push(["Saving recipes", false]);
+  const rows = [["Editing recipes", true], ["Choosing playlists", !!kept], ["Building playlists", false], ["Saving recipes", false]];
   rows.sort((a, b) => b[1] - a[1]);   // what works first
   const row = ([label, works]) => feEl("div", { class: "fe-pause-row" }, feEl("span", { text: label }),
     feEl("span", { class: "fe-pause-chip " + (works ? "fe-pause-works" : "fe-pause-waits") }, feIcon(works ? "check" : "clock"), works ? "Works" : "Waits"));
@@ -2289,10 +2265,10 @@ function askDeleteFormat() {
   const overlay = feEl("div", { class: "fe-overlay", id: "feDeleteDialog", onClick: close },
     feEl("div", { class: "fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": "Delete recipe", onClick: (e) => e.stopPropagation() },
       feEl("h3", { text: `Delete ${named(f.title.trim() || "Untitled")}?` }),
-      devMode() ? feEl("p", { class: "muted", text: `This permanently removes the recipe from this list${typeof backupMode === "function" && backupMode() === "spotify" ? " and from Spotify" : ""}. Playlists built from this recipe for participants stay. Are you sure you want to delete it?` }) :
-      feEl("p", { text: `This removes the recipe and its ${rows === 1 ? "1 row" : rows + " rows"}.${offer ? "" : " Playlists already in Spotify are not affected."}${typeof backupMode === "function" && backupMode() === "spotify" ? " Its saved copy in Spotify is deleted too." : " Recipes can be restored from a backup file if you have one."}` }),
+      devMode() ? feEl("p", { class: "muted", text: `This permanently removes the recipe from this list and from Spotify. Playlists built from this recipe for participants stay. Are you sure you want to delete it?` }) :
+      feEl("p", { text: `This removes the recipe and its ${rows === 1 ? "1 row" : rows + " rows"}.${offer ? "" : " Playlists already in Spotify are not affected."} Its saved copy in Spotify is deleted too.` }),
       offer ? feEl("label", { class: "fe-del-built" }, box, feEl("span", { text: `Also remove its ${offer.length === 1 ? "playlist" : offer.length + " playlists"} from Spotify` })) : null,
-      offer ? feEl("p", { class: "fe-del-note", text: `Left unticked, ${offer.length === 1 ? "it stays" : "they stay"}, and you can remove ${offer.length === 1 ? "it" : "them"} later from Remove built playlists.` }) : null,
+      offer ? feEl("p", { class: "fe-del-note", text: `Left unticked, ${offer.length === 1 ? "it stays" : "they stay"} in Spotify.` }) : null,
       feEl("div", { class: "row" }, cancel, confirm)));
   document.body.appendChild(overlay);
   document.addEventListener("keydown", onKey);

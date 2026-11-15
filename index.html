@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-14w">
-<script src="theme.js?v=2026-11-14w"></script>
+<meta name="app-version" content="2026-11-14x">
+<script src="theme.js?v=2026-11-14x"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -97,7 +97,6 @@
   .cn-title { margin: 0 0 6px; text-align: center; font-size: 1.35rem; }
   .cn-lead { margin: 0 auto; max-width: 30em; text-align: center; text-wrap: balance; color: var(--muted); }
   .cn-list { list-style: none; margin: 18px 0 0; padding: 6px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; }
-  html.cn-manual #cnRecipes { display: none; }   /* recipes kept by manual backup have no saves in Spotify to settle */
   .cn-step { display: flex; align-items: center; gap: 12px; margin: 0; padding: 11px 0; font-size: 1rem; color: var(--muted); transition: color 300ms var(--ease-out); }
   .cn-step + .cn-step { border-top: 1px solid var(--line); }
   .cn-step.cn-done { color: var(--fg); }
@@ -244,12 +243,12 @@
   table.parts th, table.parts td { text-align: left; vertical-align: top; padding: 6px 10px; border-bottom: 1px solid var(--line); }
   table.parts th { font-weight: 600; }
   table.parts th:last-child, table.parts td:last-child { white-space: nowrap; }
-  #confirmBox, #removeConfirmBox { margin: 12px 0; }
-  #confirmBox ul, #removeConfirmBox ul { margin: 6px 0 10px; padding-left: 20px; }
+  #confirmBox { margin: 12px 0; }
+  #confirmBox ul { margin: 6px 0 10px; padding-left: 20px; }
   .choice-row { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 0 0 8px; cursor: pointer; }
   .choice-row input { width: 20px; height: 20px; accent-color: var(--button); flex: none; }
   .choice-note { margin: -4px 0 12px 30px; font-size: 0.9rem; }
-  #actionMessage, #removeMessage { white-space: pre-line; }
+  #actionMessage { white-space: pre-line; }
   footer.debug { margin-top: 32px; font-size: 0.95rem; }
   details.card > summary { cursor: pointer; font-weight: 600; color: var(--accent); }
   details.help.card { margin: 8px 0; }
@@ -257,10 +256,8 @@
   footer.debug h3 { font-size: 1rem; margin: 20px 0 6px; color: var(--fg); }
   /* The builder menu's popups: body text is gray, so the headings, buttons, links and widgets are what stand out. */
   .menu-popup, #devMoods, #devReports, #privacySection { color: var(--muted); }
-  #removeSection input, #removeSection select { color: var(--fg); }
   #homeMore input, #homeMore select { color: var(--fg); }
   #homeMore #clearConfirm { color: var(--fg); }
-  #removeSection #removeConfirmBox { color: var(--fg); }
   #clearConfirm { scroll-margin-bottom: 16px; }   /* a little room under its buttons when it is scrolled into view */
   .plan-links { margin: 8px 0 0; }
   /* A quick second tap on a button (the plus and minus, for example) must not zoom the page. Pinching to zoom still works, and scrolling too. */
@@ -308,14 +305,6 @@
   #formatEditor .fe-appmenuwrap { position: relative; flex: none; }
   #formatEditor .fe-appmenu { right: 0; top: 48px; width: max-content; min-width: min(300px, calc(100vw - 32px)); max-width: min(320px, calc(100vw - 32px)); }
   /* the backup block of the app menu: how it is done and where to (tap to change), how it is going, and for the manual way the two actions */
-  #formatEditor .fe-bk-block { margin: 4px 2px; padding: 4px; border-radius: 12px; background: rgba(127, 127, 127, 0.13); }
-  #formatEditor .fe-bk-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px 6px 6px; }
-  #formatEditor .fe-bk-row > .fe-icon { width: 20px; margin-top: 3px; flex: none; }
-  #formatEditor .fe-bk-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
-  #formatEditor .fe-bk-title { font-weight: 600; }
-  #formatEditor .fe-bk-change { position: relative; padding: 5px 0; margin: 0; font-size: 0.9rem; }
-  #formatEditor .fe-bk-change::after { content: ""; position: absolute; left: -8px; right: -14px; top: -4px; bottom: -4px; }   /* a bigger target for a thumb */
-  #formatEditor .fe-bk-status { color: var(--muted); font-size: 0.8rem; line-height: 1.3; padding-bottom: 2px; }
   #formatEditor .fe-appmenu .fe-item > .fe-icon { width: 20px; flex: none; }
   #formatEditor .fe-menuver { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 8px 2px 14px; font-size: 0.8rem; color: var(--muted); }   /* the version at the menu's foot, Check for update at its right (checkFromMenu) */
   #formatEditor .fe-menuver-text { user-select: text; -webkit-user-select: text; }
@@ -326,8 +315,6 @@
   #formatEditor .fe-menuver-spin { width: 12px; height: 12px; box-sizing: border-box; border-radius: 50%; border: 2px solid color-mix(in srgb, currentColor 25%, transparent); border-top-color: currentColor; animation: cn-spin 0.9s linear infinite; }
   @media (prefers-reduced-motion: reduce) { #formatEditor .fe-menuver-spin { animation: none; } }
   #formatEditor .fe-appmenu .fe-itemnote { padding-left: 42px; }   /* a line under a plain row starts where that row's words do */   /* the icons of the plain rows take the width of the checkbox, so their words start in line with Compact view */   /* the app's icon and name: who this menu belongs to, and not something to press */
-  #formatEditor .fe-bk-actions { display: flex; gap: 6px; padding: 0 6px 6px; }
-  #formatEditor .fe-bk-actions button { flex: 1; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; padding: 0 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 10px; font: inherit; font-weight: 600; }
   #formatEditor .fe-itemnote { width: 0; min-width: 100%; box-sizing: border-box; padding: 0 12px 6px 40px; margin-top: -4px; font-size: 0.78rem; color: var(--muted); line-height: 1.3; }   /* the last-backup label, under its item, wrapping inside the menu */
   #formatEditor .fe-check { width: 20px; height: 20px; flex: none; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border: 2px solid var(--muted); border-radius: 5px; }
   #formatEditor .fe-check-on { background: var(--button); border-color: var(--button); color: var(--on-button, #fff); }
@@ -583,7 +570,7 @@
   details.about strong, #formatHelp h3 { color: var(--fg); }
 
   /* Standard text is gray. Headings, controls, results, and words that need a highlight (.ui) are white. */
-  h2, h3, label.choice, code, #confirmBox, #removeConfirmBox, #clearConfirm { color: var(--fg); }
+  h2, h3, label.choice, code, #confirmBox, #clearConfirm { color: var(--fg); }
   #formatEditor .fe-amount, #formatEditor .fe-pct { color: var(--fg); }
 
   .brand { display: flex; align-items: center; gap: 12px; }
@@ -605,8 +592,8 @@
   .swatch { width: 18px; height: 18px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.55); }
   /* minimalist mode: the page with only what is needed. The headings and explanations of the steps, the "more about" box, the Spotify
      connection once it is made, and the backup step all go; the app menu has the backup and sign-out. */
-  body.minimal #savedNoteSpotify, body.minimal #spotifySaveLine, body.minimal main > #about, body.minimal #connectedSection, body.minimal #editHeading, body.minimal #savedNote,
-  body.minimal #createHeading, body.minimal #createNote, body.minimal #backupBlock, body.minimal #formatHelp, body.minimal footer, body.minimal #loginSection, body.minimal #connectionProblem { display: none; }
+  body.minimal #savedNoteSpotify, body.minimal #spotifySaveLine, body.minimal main > #about, body.minimal #connectedSection, body.minimal #editHeading,
+  body.minimal #createHeading, body.minimal #createNote, body.minimal #formatHelp, body.minimal footer, body.minimal #loginSection, body.minimal #connectionProblem { display: none; }
   /* the page's title goes (once the editor is there), and the icon takes its place at the left of the tabs, as tall as they are */
   body.minimal.has-editor h1.brand { display: none; }
   body.minimal.has-editor main { padding-top: 10px; }   /* the same gap as between the tabs and the card */
@@ -694,7 +681,7 @@
   #appBar .ab-more { flex: none; color: var(--muted); }
   #appBar .ab-mi-home { min-height: 46px; }
   #appBar .ab-rule { height: 1px; margin: 6px 4px; background: var(--line); }
-  html.page-app:not(.view-builder) #appSection > :is(#builderHome, #recipePanelWrap, #editorNote, #buildRow, #pythonNote, #spotifyNote, #spotifySaveLine, #savedNote) { display: none !important; }
+  html.page-app:not(.view-builder) #appSection > :is(#builderHome, #recipePanelWrap, #editorNote, #buildRow, #pythonNote, #spotifyNote, #spotifySaveLine) { display: none !important; }
   html.page-app #appSection > #buildRow { display: none !important; }   /* Build is on each recipe's row in the builder's landing now */
   /* The builder's landing (bh-*) and the recipe panel (rp-*): Ron, 2026-11-12, mockups/client-builder.html A and mockups/editor-head.html C fitted */
   .bh { margin: 2px 0 24px; }
@@ -1542,19 +1529,6 @@
   #homeMore .dlg-cancel, #homeMore .dlg-popup-only { display: none; }   /* on home the forms sit in a panel, which its own X closes */
   .dlg-label { display: block; margin: 0 0 6px; color: var(--fg); font-weight: 600; font-size: 0.9rem; }
   .dlg-select { width: 100%; max-width: none; min-height: 46px; border-radius: 12px; margin-bottom: 10px; }
-  .dlg-list { list-style: none; padding: 0; margin: 4px 0 12px; border-top: 1px solid var(--line); color: var(--fg); }
-  .dlg-list li { padding: 10px 0; border-bottom: 1px solid var(--line); font-weight: 600; overflow-wrap: anywhere; }
-  .dlg-choice { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; margin: 0 0 10px; border: 1.5px solid var(--line); border-radius: 14px; cursor: pointer; }
-  .dlg-choice:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); }
-  .dlg-choice input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--accent); flex: none; }
-  .dlg-choice-text { display: flex; flex-direction: column; gap: 2px; }
-  .dlg-choice-text b { color: var(--fg); }
-  .dlg-choice-text b em { font-style: normal; color: var(--accent); font-weight: 600; font-size: 0.82rem; margin-left: 4px; }
-  .dlg-choice-text > span { font-size: 0.88rem; color: var(--muted); }
-  #removeDone { text-align: center; padding-top: 6px; }
-  #removeDone .mf-ok:not([hidden]) { width: 56px; height: 56px; margin: 0 auto 4px; border-radius: 50%; background: var(--accent); color: var(--on-button, #fff); display: grid; place-items: center; }
-  #infoSlot .dlg-list { padding: 0; }
-  #removeDone #removeMessage { color: var(--fg); font-weight: 600; margin: 12px 0; }
   #infoDialog details > summary, #infoSlot > :is(#reportBlock, #feedbackBlock, .menu-popup, #devMoods, #devReports) > h3:first-child { display: none; }
   /* the menu's popups: one rhythm, and everything under a heading indented a little */
   #reportBlock > :not(h3) { margin-left: 16px; }
@@ -1846,8 +1820,7 @@
     #formatEditor .fe-tab[aria-pressed="true"]:hover .fe-icon { background: rgba(255, 255, 255, 0.3); box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3); border-radius: 50%; }
     /* rows in a list, one look each (Ron, 2026-11-12): a row drawn as a card gets home's soft pink edge, as the tool cards do;
        a flat row between lines gets a faint grey fill a little wider than itself, as the menus' items do; an add row tints its dashed square */
-    .bh-row:not(.bh-add):not(.bh-recipe):not(.bh-person):hover, button.bh-row:not(.bh-add):not(:disabled):hover,
-    .dlg-choice:not(:has(input:checked)):hover { outline: none; filter: none; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+    .bh-row:not(.bh-add):not(.bh-recipe):not(.bh-person):hover, button.bh-row:not(.bh-add):not(:disabled):hover { outline: none; filter: none; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
     button.bh-row:not(:disabled):hover, button.wf-opt:not(:disabled):hover { outline: none; filter: none; }
     a.bh-pl:not(.pp-new):hover { background: rgba(127, 127, 127, 0.12); }
     a.bh-pl.pp-new:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); }
@@ -2381,7 +2354,7 @@
     try {
       var setup = localStorage.getItem("setupStarted");
       if (sessionStorage.getItem("token")) page = "app";
-      else if (/[?&]code=/.test(location.search)) { page = "app"; document.documentElement.classList.add("connecting"); if (localStorage.getItem("backupMode") === "manual") document.documentElement.classList.add("cn-manual"); }   // back from Spotify's sign-in: the connecting screen, then the app
+      else if (/[?&]code=/.test(location.search)) { page = "app"; document.documentElement.classList.add("connecting"); }   // back from Spotify's sign-in: the connecting screen, then the app
       else if (sessionStorage.getItem("setupAgain") === "1") page = "setup";
       else if (localStorage.getItem("connectedBefore") === "1") page = "app";
       else if (setup === "1" || (setup === null && localStorage.getItem("clientId"))) page = "setup";
@@ -2676,14 +2649,13 @@
       <div id="eeClear" class="hp-ee-panel" role="tabpanel" aria-labelledby="eeTabClear" hidden>
       <h3>Sign out and clear data</h3>
         <p class="muted">Signs you out of Spotify and erases what Arc keeps in this browser.</p>
-        <p id="clearRestoreHelp" class="muted">Your recipes are erased too. To get them back afterward, choose <span class="ui">Restore</span> in the Playlist builder's menu and pick the backup you made on this device. If you haven't backed up to this device, choose <span class="ui">Back up now</span> there first.</p>
-        <p id="clearBackupNote"></p>
+        <p id="clearRestoreHelp" class="muted">Your recipes stay in Spotify and come back when you connect again.</p>
         <div class="row">
           <button id="clearData" type="button"><img class="btn-icon" src="icons/clear.svg" alt="" width="20" height="20"><span class="btn-label">Sign out and clear data</span></button>
         </div>
         <div id="clearConfirm" hidden>
           <p>Sign out and erase Arc’s data in this browser?</p>
-          <p id="clearConfirmHelp" class="muted">Your recipes will be erased from this device. To get them back, choose <span class="ui">Restore</span> in the Playlist builder's menu and pick the backup you made on this device.</p>
+          <p id="clearConfirmHelp" class="muted">Your recipes stay in Spotify and come back when you connect again.</p>
           <div class="row">
             <button id="clearNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
             <button id="clearYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Sign out and clear</span></button>
@@ -2696,7 +2668,7 @@
         <p class="muted pv-lead">Arc runs in your browser. What you make here stays between this browser and your own Spotify account, unless you choose to share it. No accounts, no ads.</p>
         <ul class="muted pv-list">
           <li><b>In this browser:</b> your Client ID, sign-in, recipes, settings, and a copy of your playlists and their songs. <span class="ui">Sign out and clear data</span> erases it all.</li>
-          <li><b>In your Spotify:</b> each recipe, in a private playlist's description (unless you back up by hand). Arc changes your playlists only when you ask. Arc never sees your password.</li>
+          <li><b>In your Spotify:</b> each recipe, in a private playlist's description. Arc changes your playlists only when you ask. Arc never sees your password.</li>
           <li id="privacyParticipants"><b>Participants:</b> only a code you choose, in their playlists' descriptions.</li>
           <li id="privacyMusicSharing"><b>Shared playlist library:</b> what you share (name, cover, songs, your details, and your Spotify name unless anonymous) is public in Arc and kept on Arc's server, which knows you only by a scrambled code. A song preview asks Deezer, sending only the song's code.</li>
           <li id="privacyTutorial"><b>Tutorial video:</b> comes from Arc's own server, which keeps nothing.</li>
@@ -2748,8 +2720,6 @@
     </div>
   </section>
   <h2 id="editHeading">2. Edit your recipes</h2>
-  <p id="savedNote" class="muted" hidden>You back your recipes up to this device yourself: <button id="backupDownloadLink" class="linklike" type="button">back up now</button>, and <button id="backupRestore" class="linklike" type="button">restore from a backup</button> at any time.</p>
-  <input id="restoreFile" type="file" accept=".txt,text/plain" hidden>
   <p id="spotifySaveLine" class="muted"><span id="spotifySaveStatus" aria-live="polite"></span></p>
   <!-- The builder's landing (decided by Ron, 2026-11-12, mockups/client-builder.html A): Recipes and Participants as a switch like Music sharing's tabs, the recipes
        as rows that open the recipe panel, each with Build. Participants work only in developer mode for now (Soon otherwise). renderBuilderHome in editor.js. -->
@@ -2857,14 +2827,6 @@
     </div>
   </div>
 
-  <div id="backupBlock">
-  <h2 id="backupSection">4. Back up manually to this device (optional)</h2>
-  <p>Your recipes live only on this device. Clearing your browser data would erase them. A manual backup keeps a copy so you can restore them if needed.</p>
-  <div class="row">
-    <button id="backupDownload" type="button"><img class="btn-icon" src="icons/download.svg" alt="" width="20" height="20"><span class="btn-label">Back up now</span></button>
-  </div>
-  <p id="backupStatus" class="muted" aria-live="polite"></p>
-  </div>
   </div>
   <div id="supportBox">
     <div id="updateCard" role="status" hidden>
@@ -2876,45 +2838,6 @@
 
   <footer class="debug">
     <!-- The builder menu's own popups (renderAppMenu in editor.js): each opens alone in the info popup, its h3 as the title in the pink band (Ron, 2026-11-10, replacing More options and A guide for facilitators) -->
-    <!-- Remove built playlists: three states in one popup, choosing, the question, the result (removeStage in app.js; Ron, 2026-11-10, mockups/menu-dialogs.png) -->
-    <section id="removeSection" class="menu-popup" hidden>
-      <h3>Remove built playlists</h3>
-      <div id="removeChoose">
-        <p class="muted">Removes the playlists Arc built from a recipe. Your recipes and your other playlists are not touched.</p>
-        <label class="dlg-label" for="removeKey">Built from</label>
-        <select id="removeKey" class="dlg-select"></select>
-        <p id="removeCount" class="muted"></p>
-        <p id="removeNote" class="muted" hidden>Removing playlists needs a working connection to Spotify.</p>
-        <div class="dlg-foot"><button class="dlg-cancel" type="button">Cancel</button><button id="removeOld" class="dlg-danger" type="button" disabled><span class="btn-label">Remove playlists</span></button></div>
-      </div>
-      <div id="removeConfirmBox" hidden>
-        <p id="removeGoneWarn" class="error" hidden>Their recipe no longer exists, so once removed they can't be built again.</p>
-        <p id="removeConfirmText"></p>
-        <div id="removeGoneChoice" role="radiogroup" hidden>
-          <label class="dlg-choice"><input type="radio" name="removeGone" id="removeGoneNo" checked><span class="dlg-choice-text"><b id="removeGoneNoTitle"></b><span id="removeGoneNoNote"></span></span></label>
-          <label class="dlg-choice"><input type="radio" name="removeGone" id="removeGoneYes"><span class="dlg-choice-text"><b id="removeGoneYesTitle"></b><span id="removeGoneYesNote"></span></span></label>
-        </div>
-        <ul id="removeConfirmList" class="dlg-list"></ul>
-        <p id="removeConfirmMoreText"></p>
-        <ul id="removeConfirmMoreList" class="dlg-list"></ul>
-        <label id="removeToggleRow" class="choice-row" hidden><input type="checkbox" id="removeToggle"> <span id="removeToggleLabel"></span></label>
-        <div class="dlg-foot"><button id="removeConfirmNo" class="dlg-quiet" type="button"><span class="btn-label">Back</span></button><button id="removeConfirmYes" class="dlg-danger" type="button"><span class="btn-label">Remove</span></button></div>
-      </div>
-      <div id="removeDone" hidden>
-        <span id="removeOk" class="mf-ok" aria-hidden="true" hidden><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
-        <p id="removeMessage" aria-live="polite"></p>
-        <p id="removeReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="#" class="report-open">Report this problem</a></p>
-        <div class="dlg-foot"><button class="dlg-cancel dlg-wide" type="button">Done</button></div>
-      </div>
-    </section>
-    <!-- Autosave or backup: the choice itself, in one popup (it replaced the backup card; Ron, 2026-11-10, mockups/menu-dialogs.png). OK only marks; Save keeps it. -->
-    <section id="saveMethodSection" class="menu-popup" hidden>
-      <h3>Autosave or backup</h3>
-      <p class="muted">How your recipes are kept.</p>
-      <label class="dlg-choice"><input type="radio" name="backupMode" id="backupModeSpotify" value="spotify"><span class="dlg-choice-text"><b>Save to Spotify <em>Recommended</em></b><span>Saved as you edit, in a private playlist per recipe. Your other devices stay in step.</span></span></label>
-      <label class="dlg-choice"><input type="radio" name="backupMode" id="backupModeManual" value="manual"><span class="dlg-choice-text"><b>Back up by hand</b><span>Recipes stay on this device. You download a backup file and restore from it. Clearing your browser's data can lose them.</span></span></label>
-      <div class="dlg-foot"><button id="backupCancel" class="dlg-cancel" type="button">Cancel</button><button id="backupOk" class="primary" type="button" disabled><span class="btn-label">Save</span></button></div>
-    </section>
     <!-- the builder menu's Watch the tutorial: the video is not made yet (Ron, 2026-11-10: to be discussed) -->
     <section id="tutorialSection" class="menu-popup" hidden>
       <h3>Watch the tutorial</h3>
@@ -2968,10 +2891,10 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-14w"></script>
-<script src="editor.js?v=2026-11-14w"></script>
-<script src="shared-spotify.js?v=2026-11-14w"></script>
-<script src="app.js?v=2026-11-14w"></script>
-<script src="sharing.js?v=2026-11-14w"></script>
+<script src="formats.js?v=2026-11-14x"></script>
+<script src="editor.js?v=2026-11-14x"></script>
+<script src="shared-spotify.js?v=2026-11-14x"></script>
+<script src="app.js?v=2026-11-14x"></script>
+<script src="sharing.js?v=2026-11-14x"></script>
 </body>
 </html>

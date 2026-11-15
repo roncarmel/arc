@@ -14,15 +14,14 @@ const ADD_CHUNK = 100;     // songs added per request (Spotify's documented maxi
 const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
-const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-14w";
+const APP_VERSION = "2026-11-14x";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
 const APP_MARKER = "Made by Arc";                    // change this whenever the page is updated
 function madeByAppText(text) { return typeof text === "string" && text.startsWith(APP_MARKER); }   // "Made by Ceremony Playlist Builder" is no longer read (Ron, 2026-11-14)
 // A playlist Arc built for a participant says so in its description ("For participant MC."). Its songs are what that participant has heard, so building a recipe never
-// replaces or renames it, and Remove built playlists never lists it (decided by Ron, 2026-11-12). Returns the code, or "".
+// replaces or renames it (decided by Ron, 2026-11-12). Returns the code, or "".
 const PARTICIPANT_RE = /\bFor participant ([A-Z0-9]{1,4})\./;
 function participantOf(text) { const m = typeof text === "string" && madeByAppText(text) ? text.match(PARTICIPANT_RE) : null; return m ? m[1] : ""; }
 // A participant's playlist ends with packed data (Ron, 2026-11-14), after "For participant MC. Built 14 Nov 2026.": the recipe it was built from, by its ID, so a renamed
@@ -1110,7 +1109,7 @@ function historyMoved() {
   if (pageName() === "welcome") showWelcomeStep(state && state.page === "welcome" && state.step === 2 ? 2 : 1, false);
 }
 
-// Blocks that open in a popup (the builder menu's Remove built playlists, Autosave or backup and the tutorial, Feedback, Report a problem, the silence ?, the DEV menu's
+// Blocks that open in a popup (the builder menu's tutorial, Feedback, Report a problem, the silence ?, the DEV menu's
 // tools): the block itself moves into it, and goes back to its place when the popup closes.
 const info = { node: null, marker: null, wasOpen: false, wasHidden: false, opener: null };
 
@@ -1132,7 +1131,6 @@ function openInfo(id) {
   // the title over a line, with a round X, as in the build popup (Ron, 2026-11-10)
   $("infoTitle").textContent = title ? title.textContent.trim() : "";
   if (id === "reportBlock") refreshReportBox();
-  if (id === "removeSection") removeStage("choose");
   if (id === "tutorialSection") fillTutorialPlayer();
   if (id === "deviceChecks") setTimeout(renderDeviceChecks);   // drawn once the popup shows
   if ((id === "devMoods" || id === "devReports") && typeof sharingDevOpened === "function") sharingDevOpened(id);   // Music sharing's mood words or reports (sharing.js)
@@ -1153,7 +1151,6 @@ function motionOk() {
 }
 function closeInfo(quiet = false) {
   if (!info.node) return;
-  if (info.node.id === "saveMethodSection") backupCardOpen = false;
   if (info.node.id === "tutorialSection") emptyTutorialPlayer();
   if (info.node.tagName === "DETAILS") info.node.open = info.wasOpen;
   for (const d of info.node.querySelectorAll("details")) d.open = false;   // reopened, every section starts closed again
@@ -1279,10 +1276,6 @@ function setActionMessage(text) {
   $("actionMessage").textContent = text;   // the build popup's result or problem
 }
 
-function setRemoveMessage(text) {
-  $("removeMessage").textContent = text;   // progress and results of Remove, shown inside that section
-}
-
 // ---------------------------------------------------------------- problem reports
 // A report carries only a few technical details. It never carries the sign-in, the Client ID, playlist names,
 // song titles, or the formats text. Nothing is sent until the person submits the form in the new tab.
@@ -1345,13 +1338,6 @@ function reportUrl() {
   return url;
 }
 
-// Build all recipes, in the builder's menu: only when a build could start now (the build popup asks first, as it does for one recipe)
-function canBuildAll() {
-  return !!token && connection === "ready" && !!py && formatsValid && !busy && currentFormats.length > 0 && !spotifyPause();
-}
-function buildAllRecipes() {
-  if (canBuildAll()) startCreate(currentFormats.map((f) => f.id));
-}
 
 function refreshReportBox() {
   const d = reportDetails();
@@ -1432,7 +1418,7 @@ function initMessageForms() {
   });
 }
 
-const REPORT_HINTS = ["mainReportHint", "removeReportHint", "loginReportHint", "connectionReportHint"];
+const REPORT_HINTS = ["mainReportHint", "loginReportHint", "connectionReportHint"];
 
 function offerReport(hintId, rawError) {
   // An unexpected problem: remember it and show a "Report this problem" link next to the message.
@@ -1469,9 +1455,7 @@ function currentFlow() {
 }
 
 
-// ---------------------------------------------------------------- backing up and restoring formats
-let undoText = null;   // what the formats box held before the last restore or reset
-
+// ---------------------------------------------------------------- files and times
 function saveFile(name, text) {
   // Hands the browser a file to download. Kept separate so tests can replace it.
   const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
@@ -1484,18 +1468,9 @@ function saveFile(name, text) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function readFileText(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).replace(/^\uFEFF/, ""));
-    reader.onerror = () => reject(reader.error || new Error("The file could not be read."));
-    reader.readAsText(file);  // text files are read as UTF-8, so emoji in playlist names survive
-  });
-}
-
 function fileStamp() {
   // Local date and 24-hour time, such as 2026-10-25_14-05-09. File names sort in the order they were made,
-  // and two backups on the same day never share a name. (Colons are not allowed in file names on Windows,
+  // and two files on the same day never share a name. (Colons are not allowed in file names on Windows,
   // so the time uses hyphens.)
   const d = new Date();
   const pad = (n) => String(n).padStart(2, "0");
@@ -1542,19 +1517,22 @@ function saveName(title) {
   return (cleanTitle(title).trim() || "Untitled").slice(0, 80) + SAVE_SUFFIX;
 }
 
+// Recipes always save to Spotify (backup by hand was removed by Ron, 2026-11-14). Only the tests turn it off, for checks that are not about saving (boot in tests/run.js).
+function savingToSpotify() { return !window.arcTestNoSaves; }
+
 function pendingSaveDeletes() {
   try { const list = JSON.parse(localStorage.getItem("spotifyPendingDeletes") || "[]"); return Array.isArray(list) ? list : []; } catch (err) { return []; }
 }
 
 function noteFormatDeleted(id) {
-  if (backupMode() !== "spotify") return;
+  if (!savingToSpotify()) return;
   const list = pendingSaveDeletes();
   if (!list.includes(id)) list.push(id);
   try { localStorage.setItem("spotifyPendingDeletes", JSON.stringify(list)); } catch (err) { /* private browsing */ }
 }
 
 function scheduleSpotifySave(delay) {
-  if (backupMode() !== "spotify") return;
+  if (!savingToSpotify()) return;
   clearTimeout(saveState.timer);
   const now = Date.now();
   if (!saveState.since) saveState.since = now;
@@ -1782,7 +1760,7 @@ function savesInAccount() {
 }
 
 async function runSpotifySave() {
-  if (backupMode() !== "spotify") return;
+  if (!savingToSpotify()) return;
   clearTimeout(saveState.timer);
   saveState.timer = null;
   if (saveState.running) { saveState.again = true; return; }
@@ -1905,28 +1883,21 @@ function spotifySaveParts(full = true) {
   if (saveState.coverProblem) parts.push({ text: saveState.coverProblem.text });
   if (saveState.unread) parts.push({ text: `${saveState.unread === 1 ? "A recipe saved in Spotify" : saveState.unread + " recipes saved in Spotify"} could not be read, or ${saveState.unread === 1 ? "was" : "were"} saved by a newer version of this app, and ${saveState.unread === 1 ? "was" : "were"} left alone.` });
   for (const t of saveState.tooLong) {
-    parts.push({ text: `${named(t.title.trim() || "Untitled")} is too long to save to Spotify. It is still saved in this browser.`, action: () => downloadOneFormat(t.id), label: "Download it" });
+    parts.push({ text: `${named(t.title.trim() || "Untitled")} is too long to save to Spotify. It is still saved in this browser.` });
   }
   return parts;
-}
-
-function downloadOneFormat(id) {
-  const fmt = editor.model && editor.model.formats.find((f) => f.id === id);
-  if (!fmt) return;
-  saveFile(`playlist-recipe-${fileStamp()}.txt`, modelToText({ formats: [fmt] }));
 }
 
 // Writes the parts into a place on the page, with their actions as pink links.
 // Trouble that needs the person: it stays in the line under the editor's bar until it is fixed, or dismissed where that is all there is to do.
 function attentionItems() {
   const items = [];
-  if (backupMode() !== "spotify") return items;
   const name = (t) => named(String(t).trim() || "Untitled");
   if (connection === "ready" && saveState.error && !saveState.running) items.push({ key: "error", text: "Couldn\u2019t save to Spotify.", actions: [{ label: "Try again", run: () => { saveState.error = ""; runSpotifySave(); } }] });
   const n = saveState.unread;
   if (n && !saveState.dismissed.has("unread:" + n)) items.push({ key: "unread:" + n, ok: true, text: `${n === 1 ? "A recipe saved in Spotify" : n + " recipes saved in Spotify"} could not be read, or ${n === 1 ? "was" : "were"} saved by a newer version of this app, and ${n === 1 ? "was" : "were"} left alone.` });
   if (saveState.coverProblem && !saveState.dismissed.has("cover:" + saveState.coverProblem.key)) items.push({ key: "cover:" + saveState.coverProblem.key, ok: true, text: saveState.coverProblem.text });
-  for (const t of saveState.tooLong) if (!saveState.dismissed.has("long:" + t.id)) items.push({ key: "long:" + t.id, ok: true, text: `${name(t.title)} is too long to save to Spotify. It is still saved in this browser.`, actions: [{ label: "Download it", run: () => downloadOneFormat(t.id) }] });
+  for (const t of saveState.tooLong) if (!saveState.dismissed.has("long:" + t.id)) items.push({ key: "long:" + t.id, ok: true, text: `${name(t.title)} is too long to save to Spotify. It is still saved in this browser.` });
   return items;
 }
 
@@ -1968,7 +1939,7 @@ async function uploadCovers() {
       let cover = null;
       try { cover = await loadCover("recipe-cover.jpg"); }
       catch (err) { logStep("save: cover image not loaded"); problem = { key: "file", text: "The cover image for the recipe playlists (recipe-cover.jpg) could not be loaded from this site, so they have no cover." }; }
-      while (cover && saveState.coverQueue.length && backupMode() === "spotify" && connection === "ready") {
+      while (cover && saveState.coverQueue.length && connection === "ready") {
         const entry = saveState.coverQueue[0];
         if (entry.image && !coverDue().includes(entry.id)) { saveState.coverQueue.shift(); continue; }
         try {
@@ -1996,12 +1967,11 @@ async function uploadCovers() {
 async function askSaveFailure(message) {
   const unexpected = problemKind(message) === "other";
   if (unexpected) recordError(message);
-  const choices = [{ label: "Back up now", value: "backup", main: true, icon: "download" }, { label: "Try again", value: "retry", icon: "retry" }, { label: "Close", value: "close" }];
+  const choices = [{ label: "Try again", value: "retry", main: true, icon: "retry" }, { label: "Close", value: "close" }];
   if (unexpected) choices.push({ label: "Report this problem", value: "report", link: true, icon: "flag" });
   const choice = await askSyncChoice("Your recipes couldn\u2019t be saved to Spotify",
-    "Your latest changes haven\u2019t been saved to Spotify yet. A backup on this device keeps them safe.", choices, { problem: "cloud", what: saveFailureDetail(message) });
-  if (choice === "backup") downloadBackup();
-  else if (choice === "retry") { saveState.error = ""; runSpotifySave(); }
+    "Your latest changes haven\u2019t been saved to Spotify yet. They are kept in this browser until they are.", choices, { problem: "cloud", what: saveFailureDetail(message) });
+  if (choice === "retry") { saveState.error = ""; runSpotifySave(); }
   else if (choice === "report") openReport();
 }
 
@@ -2042,146 +2012,6 @@ function renderSaveStatus() {
 // ---------------------------------------------------------------- how the formats are backed up
 // "manual" is the backup file. "spotify", saving each format to Spotify by itself, is the other choice, which is not available yet. Until a choice is made
 // the card asking for it is on the page, and the app behaves as it does for "manual".
-let backupCardOpen = false;
-
-// Saved to Spotify is how recipes are kept unless the person has chosen the other way: nothing is asked at the first sign-in.
-function backupMode() {
-  try { return localStorage.getItem("backupMode") === "manual" ? "manual" : "spotify"; } catch (err) { return "spotify"; }
-}
-
-// Autosave or backup is a popup from the menu (#saveMethodSection, Ron, 2026-11-10): the two ways, marked as they are now, and Save, pale until the mark changes
-function refreshBackupCard() {
-  const mode = backupMode();
-  $("backupModeManual").checked = mode === "manual";
-  $("backupModeSpotify").checked = mode === "spotify";
-  refreshBackupSave();
-}
-function refreshBackupSave() {
-  const radio = document.querySelector('input[name="backupMode"]:checked');
-  $("backupOk").disabled = !radio || radio.value === backupMode();
-}
-
-function openBackupCard() {
-  openInfo("saveMethodSection");
-  backupCardOpen = true;
-  refreshBackupCard();
-  const chosen = $("backupModeManual").checked ? $("backupModeManual") : $("backupModeSpotify");
-  chosen.focus({ preventScroll: true });   // a keyboard starts on the choice
-}
-
-// The radio buttons only mark a choice. Save keeps it and closes the popup; Cancel, the X, Escape and a tap outside close it and change nothing.
-async function chooseBackupMode(value) {
-  const was = backupMode();
-  try { localStorage.setItem("backupMode", value); } catch (err) { /* private browsing */ }
-  backupCardOpen = false;
-  if (info.node && info.node.id === "saveMethodSection") closeInfo(true);
-  applyBackupMode();
-  // To Spotify: the first pass settles what is here against what is there, and asks only about formats that differ.
-  if (value === "spotify" && was !== "spotify") scheduleSpotifySave(200);
-  if (value !== "spotify" && was === "spotify") await leaveSpotifyBackups();
-  if (typeof renderAppMenu === "function") renderAppMenu();
-}
-
-// Away from Spotify: nothing more is saved there, this device forgets what it knew of the backups, and the person is asked whether to keep the backups that are in
-// Spotify or remove them. Keeping them is what happens unless they say otherwise, since another device may still be using them.
-async function leaveSpotifyBackups() {
-  clearTimeout(saveState.timer);
-  saveState.timer = null;
-  saveState.since = 0;
-  saveState.error = ""; saveState.added = []; saveState.updated = []; saveState.tooLong = []; saveState.newer = []; saveState.unread = 0;
-  try { for (const key of ["spotifySynced", "spotifyPendingDeletes", "spotifySavedAt"]) localStorage.removeItem(key); } catch (err) { /* private browsing */ }
-  const saves = playlists.filter((p) => p.save && p.save.kind === "save");
-  // From here the backup file is the way, so a file is offered in each case, in the message that says what happened to the backups in Spotify.
-  const offer = { label: "Back up now", onClick: () => { downloadBackup(); } };
-  if (!saves.length) { showBackupMessage("Your recipes are now saved only in this browser.", false, offer); return; }
-  const many = saves.length > 1;
-  if (connection !== "ready") { showBackupMessage(`The ${many ? "recipes" : "recipe"} saved in Spotify ${many ? "were" : "was"} left as ${many ? "they are" : "it is"}.`, false, offer); return; }
-  const them = many ? "them" : "it";
-  const answers = [{ label: "Keep " + them, value: "keep" }, { label: "Remove " + them, value: "remove", danger: true }];
-  let choice = await askSyncChoice("Remove saved recipes from Spotify?",
-    `${many ? "There are " + saves.length + " saved recipes" : "There is 1 saved recipe"} in Spotify, in private playlists ending in (recipe). Keeping ${them} is recommended. Another device that saves to Spotify would lose ${them} too.`, answers);
-  // Removing asks once more, and a backup file is downloaded before anything is removed, since from here this browser holds the only copy
-  if (choice === "remove") choice = await askSyncChoice("Are you sure?", `If you remove ${them}, a backup file of your recipes downloads to this device first.`, answers);
-  if (choice !== "remove") { showBackupMessage(`The ${many ? "recipes" : "recipe"} saved in Spotify ${many ? "were" : "was"} left as ${many ? "they are" : "it is"}.`, false, offer); return; }
-  downloadBackup();
-  try {
-    const ids = saves.map((p) => p.id);
-    for (let i = 0; i < ids.length; i += REMOVE_CHUNK) {
-      await spotifyRequest("DELETE", "/me/library", { params: { uris: ids.slice(i, i + REMOVE_CHUNK).map((id) => "spotify:playlist:" + id).join(",") } });
-    }
-    playlists = playlists.filter((p) => !ids.includes(p.id));
-    showBackupMessage(`Removed ${plural(ids.length, "saved recipe")} from Spotify. Your recipes are now saved only in this browser, and a backup file is on this device.`);
-  } catch (err) {
-    showBackupMessage("The saved recipes could not be removed from Spotify: " + String(err && err.message || err), false, offer, true);
-  }
-}
-
-// Only what belongs to the chosen way is on the page: the backup file's note and step for "manual", the status of the saving for "spotify".
-function applyBackupMode() {
-  const spotify = backupMode() === "spotify";
-  if ($("savedNote")) $("savedNote").hidden = spotify;
-  if ($("spotifySaveLine")) $("spotifySaveLine").hidden = !spotify;
-  if ($("backupBlock")) $("backupBlock").hidden = spotify;
-  document.body.classList.toggle("spotify-backup", spotify);
-  // Sign out and clear data: with Spotify as the way, the formats come back from Spotify, not from a file
-  for (const [id, text] of [["clearRestoreHelp", "Your recipes stay in Spotify and come back when you connect again."], ["clearConfirmHelp", "Your recipes stay in Spotify and come back when you connect again."]]) {
-    const el = $(id);
-    if (!el) continue;
-    if (el.dataset.manual === undefined) el.dataset.manual = el.innerHTML;
-    if (spotify) el.textContent = text; else el.innerHTML = el.dataset.manual;
-  }
-  if (typeof refreshBackupStatus === "function") refreshBackupStatus();
-  renderSaveStatus();
-}
-
-function dismissBackupCard() {
-  backupCardOpen = false;
-  if (info.node && info.node.id === "saveMethodSection") closeInfo();
-}
-
-function backupState() {
-  const text = $("formats").value;
-  const backedUp = localStorage.getItem("lastBackupText");
-  const at = localStorage.getItem("lastBackupAt");
-  const when = at ? formatBackupTime(at) : "";
-  if (backedUp === null) return { kind: text === DEFAULT_FORMATS ? "example" : "never", when };
-  return { kind: text !== backedUp ? "edited" : "current", when };
-}
-
-function refreshBackupStatus() {
-  const state = backupState();
-  // Step 4: where the formats stand with regard to a backup.
-  $("backupStatus").textContent = {
-    example: "You haven't made any recipes yet, so there is nothing to back up.",
-    never: "You haven't backed up to this device yet.",
-    edited: "Your recipes have been edited since your last backup.",
-    current: state.when ? "Last backup: " + state.when + "." : "Your recipes are backed up.",
-  }[state.kind];
-  // Sign out and clear data: what would be lost, so a backup can be made first.
-  $("clearBackupNote").hidden = backupMode() === "spotify";   // with Spotify, the line above already says the recipes stay
-  if (backupMode() === "spotify") { $("clearBackupNote").textContent = ""; return; }
-  $("clearBackupNote").textContent = {
-    example: "You haven't made any recipes yet, so there is nothing to lose.",
-    never: "You haven't backed up to this device yet. Back up first, or they will be gone for good.",
-    edited: "Your recipes have been edited since your last backup. Back up again first to keep the changes.",
-    current: "Your recipes are backed up" + (state.when ? " (last backup: " + state.when + ")" : "") + ".",
-  }[state.kind];
-}
-
-function markBackedUp(text, atMs) {
-  localStorage.setItem("lastBackupText", text);
-  localStorage.setItem("lastBackupAt", new Date(atMs || Date.now()).toISOString());
-}
-
-// What the person has just done says what happened in the line under the editor's bar, as a notice. One with something to offer (Undo, a link) or one that
-// says something went wrong is held there until it is used, put away with OK, or the formats are edited.
-function showBackupMessage(text, undo = false, link = null, warn = false) {
-  const actions = [];
-  if (link) actions.push({ label: link.label, run: link.onClick });
-  if (undo) actions.push({ label: "Undo", run: undoLastChange });
-  if (typeof showNotices === "function") showNotices([{ text, icon: warn ? "alert" : "device", warn, hold: warn || actions.length > 0, actions, transient: true }]);
-}
-
 let openQuestion = null;   // finishes the "create these?" question while it is showing
 
 function closeQuestion(answer) {
@@ -2205,55 +2035,9 @@ function setFormatsText(text) {
   localStorage.setItem("formats", text);
   invalidatePlan();
   refreshFormatKeys();
-  refreshBackupStatus();
   syncEditorFromText();
 }
 
-function undoLastChange() {
-  if (undoText === null) return;
-  setFormatsText(undoText);
-  undoText = null;
-  showBackupMessage("Undone. Your recipes are back as they were.");
-}
-
-function downloadBackup() {
-  const text = $("formats").value;
-  saveFile(`playlist-recipes-${fileStamp()}.txt`, text);
-  markBackedUp(text);
-  undoText = null;
-  logStep("backup downloaded");
-  showBackupMessage(BACKED_UP_MESSAGE);
-  refreshBackupStatus();
-}
-
-async function restoreFromFile(file) {
-  if (!file) return;
-  undoText = null;
-  if (file.size > 200000) {
-    showBackupMessage(`${file.name} is too large to be a recipe backup, so nothing was changed.`, false, null, true);
-    return;
-  }
-  let text;
-  let formatCount;
-  try {
-    text = await readFileText(file);
-    formatCount = textToModel(text).formats.length;
-  } catch (err) {
-    recordError(cleanError(err));
-    logStep("restore: file rejected");
-    showBackupMessage(`${file.name} doesn't look like a recipe backup, so nothing was changed. (${cleanError(err)})`, false, null, true);
-    return;
-  }
-  const previous = $("formats").value;
-  setFormatsText(text);
-  markBackedUp(text, file.lastModified);   // the file matches what is now in the box
-  refreshBackupStatus();
-  undoText = previous;
-  logStep(`restore: ${plural(formatCount, "format")} loaded`);
-  showBackupMessage(`Restored ${formatCount} recipe${formatCount === 1 ? "" : "s"} from ${file.name}.`, true);
-}
-
-const BACKED_UP_MESSAGE = "Backed up to this device. Find the file in Downloads, or in the Files app on a phone.";   // after a manual backup, wherever it is made from
 let reloadPage = () => location.reload();   // a separate function so tests can replace it
 
 // Sign out and clear data (Everything else on home) erases everything and copies nothing: it is for leaving a computer that is not yours. Start over (developer options)
@@ -2319,7 +2103,6 @@ function updateButtonsNow() {
     setIcon($("create"), "build");
     $("create").disabled = !ready;
   }
-  $("removeOld").disabled = !(!!token && connection === "ready" && !!py && !busy) || !$("removeKey").value || removeNone;
   // The notes appear when Create cannot work because there is no connection, not while the app is still connecting.
   const noConnection = !$("appSection").hidden && (connection === "problem" || connection === "none");
   if (noConnection && minimalActive()) {
@@ -2330,7 +2113,6 @@ function updateButtonsNow() {
     $("spotifyNote").textContent = CREATE_NEEDS_SPOTIFY;
     $("spotifyNote").hidden = !noConnection;
   }
-  $("removeNote").hidden = !noConnection;
   const paused = !!spotifyPause();   // the line under the bar counts down instead
   $("create").hidden = paused || (!currentFormats.length && !action && !connectingNow);   // nothing to build yet: the welcome points at New recipe instead
   document.body.classList.toggle("no-recipes", !currentFormats.length);   // and no status lines either
@@ -2470,24 +2252,6 @@ function closeCreateDialog() {
 
 function dismissCreateDialog() {
   if (createStage === "question" || createStage === "done") closeCreateDialog();
-}
-
-function fillConfirmList(listId, textId, text, list) {
-  $(textId).textContent = text;
-  $(textId).hidden = !text;
-  const ul = $(listId);
-  ul.textContent = "";
-  for (const item of list.slice(0, 8)) {
-    const li = document.createElement("li");
-    li.textContent = item;
-    ul.appendChild(li);
-  }
-  if (list.length > 8) {
-    const li = document.createElement("li");
-    li.textContent = `...and ${list.length - 8} more`;
-    ul.appendChild(li);
-  }
-  ul.hidden = list.length === 0;
 }
 
 function resetBuildPopup() {
@@ -3442,16 +3206,6 @@ async function startPython() {
 }
 
 // ---------------------------------------------------------------- the formats box
-function fillFormatDropdown(select, formats, blankFirst) {
-  const previous = select.value;
-  select.innerHTML = "";
-  if (blankFirst) select.add(new Option("", ""));   // nothing chosen yet: the person has to pick before Remove works
-  for (const f of formats) select.add(new Option(f.title, f.id));
-  select.add(new Option("All recipes", ALL_FORMATS));
-  if (formats.some((f) => f.id === previous) || previous === ALL_FORMATS) select.value = previous;
-  else select.value = "";
-}
-
 function formatLabel(key) {
   const f = currentFormats.find((x) => x.id === key);
   return f ? f.title : key;
@@ -3467,11 +3221,9 @@ function refreshFormatKeys() {
     } else {
       formatsValid = true;
     }
-    fillRemoveKey();
   } catch (err) {
     currentFormats = [];
     recordError(cleanError(err));
-    fillRemoveKey();
     formatsValid = false;
     invalidatePlan();
   }
@@ -3598,67 +3350,11 @@ function selectedKeys() {
   return key ? [key] : [];
 }
 
-function removeKeys() {
-  const choice = $("removeKey").value;
-  if (choice.startsWith(GONE_PREFIX)) return [];
-  return choice === ALL_FORMATS ? currentFormats.map((f) => f.id) : [choice];
-}
-
 // The person's playlists whose names a recipe makes, as engine.py's existing_matches finds them, without the ones built for a participant: those are never replaced,
-// renamed or removed by building or by Remove built playlists.
+// renamed or removed by building.
 function recipeMatches(formatsText, keys) {
   const ours = new Set((playlists || []).filter((p) => p.participant).map((p) => p.id));
   return JSON.parse(py.existingMatches(formatsText, JSON.stringify(keys), JSON.stringify(playlists), me.id)).filter((p) => !ours.has(p.id));
-}
-
-// Playlists Arc built for recipes that no longer exist (deleted or renamed; Ron, 2026-11-10, mockups/remove-gone.html): Arc's own (its marker in the description),
-// the person's, not a recipe save, and matching no recipe's names now. Grouped by the name without its number or (version x), sorted by that name.
-// Empty until Python, the sign-in and the playlist list are there. Remove built playlists lists each group as <name> (no recipe).
-const GONE_PREFIX = "gone:";
-function goneStem(name) { return String(name).replace(/\s*\(version [a-z]+\)$/i, "").replace(/\s+\d+$/, "").trim() || String(name); }
-function goneGroups() {
-  if (!py || !me || !playlists) return [];
-  let current = new Set();
-  try {
-    if (currentFormats.length) current = new Set(recipeMatches($("formats").value, currentFormats.map((f) => f.id)).map((p) => p.id));
-  } catch (err) { return []; }
-  const groups = new Map();
-  for (const p of playlists) {
-    if (!p.madeByApp || p.isSave || p.participant || p.owner !== me.id || current.has(p.id)) continue;
-    const stem = goneStem(p.name);
-    if (!groups.has(stem)) groups.set(stem, []);
-    groups.get(stem).push({ id: p.id, name: p.name });
-  }
-  return [...groups.entries()].map(([stem, list]) => ({ stem, playlists: list })).sort((a, b) => a.stem.localeCompare(b.stem));
-}
-// The Built from list: the recipes, All recipes, then under No longer a recipe each gone one. What was chosen stays chosen while it is still there.
-function fillRemoveKey() {
-  const select = $("removeKey");
-  if (!select) return;
-  const previous = select.value;
-  fillFormatDropdown(select, currentFormats, true);
-  if (!currentFormats.length) select.remove(select.options.length - 1);   // no All recipes with no recipes
-  const gone = goneGroups();
-  if (gone.length) {
-    const group = document.createElement("optgroup");
-    group.label = "No longer a recipe";
-    for (const g of gone) group.appendChild(new Option(`${g.stem} (no recipe)`, GONE_PREFIX + g.stem));
-    select.appendChild(group);
-  }
-  if ([...select.options].some((o) => o.value === previous)) select.value = previous;
-}
-// What the chosen entry stands for now: Arc's playlists of the chosen recipes, and those of gone recipes (all of them for All recipes, one group for a gone one)
-function removeTargets() {
-  const key = $("removeKey").value;
-  const made = new Set((playlists || []).filter((p) => p.madeByApp).map((p) => p.id));
-  const gone = goneGroups();
-  if (key.startsWith(GONE_PREFIX)) {
-    const g = gone.find((x) => x.stem === key.slice(GONE_PREFIX.length));
-    return { current: [], others: [], gone: g ? g.playlists : [] };
-  }
-  const keys = removeKeys();
-  const existing = keys.length ? recipeMatches($("formats").value, keys) : [];
-  return { current: existing.filter((p) => made.has(p.id)), others: existing.filter((p) => !made.has(p.id)), gone: key === ALL_FORMATS ? gone.flatMap((g) => g.playlists) : [] };
 }
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -4403,96 +4099,6 @@ async function createFromPlan(plan) {
   }
 }
 
-// Remove built playlists has three states in one popup (Ron, 2026-11-10): choosing a recipe, the question, and the result. The popup's title follows.
-function removeStage(stage) {
-  $("removeChoose").hidden = stage !== "choose";
-  $("removeConfirmBox").hidden = stage !== "ask";
-  $("removeDone").hidden = stage !== "done";
-  if (stage === "choose") { setRemoveMessage(""); clearReportHints("removeReportHint"); fillRemoveKey(); refreshRemoveCount(); }
-  if (info.node && info.node.id === "removeSection") {
-    const total = stage === "ask" ? Number($("removeConfirmYes").dataset.total || 0) : 0;
-    $("infoTitle").textContent = total ? `Remove ${plural(total, "playlist")}?` : stage === "ask" ? "Remove playlists?" : "Remove built playlists";
-  }
-}
-
-// While choosing, how many of Arc's playlists from the chosen recipe are in the library now, from the list already read (the button says the number)
-let removeNone = false;   // the list already read shows none of Arc's playlists from the chosen entry
-function refreshRemoveCount() {
-  let t = null;
-  try { if (py && me && playlists && $("removeKey").value) t = removeTargets(); } catch (err) { t = null; }
-  const key = $("removeKey").value, line = $("removeCount");
-  const gone = key.startsWith(GONE_PREFIX), all = key === ALL_FORMATS;
-  const label = all ? "all recipes" : named(gone ? key.slice(GONE_PREFIX.length) : formatLabel(key));
-  const count = t ? t.current.length + t.gone.length : null;
-  const are = (n) => (n === 1 ? "is" : "are");
-  line.textContent = "";   // putNamed adds to what is there
-  if (count === null) { /* nothing known yet */ }
-  else if (!count) putNamed(line, gone ? `None of these playlists are in your library now.` : `None of Arc's playlists from ${label} are in your library.`);
-  else if (all && t.gone.length) putNamed(line, `${plural(count, "playlist")} ${are(count)} in your library, ${t.gone.length} of them from ${t.gone.length === 1 ? "a recipe that no longer exists" : "recipes that no longer exist"}.`);
-  else putNamed(line, `${plural(count, "playlist")} from ${label} ${are(count)} in your library.`);
-  // with gone ones in All recipes the question decides how many, so the button does not say
-  setLabel($("removeOld"), !count ? "Remove playlists" : all && t.gone.length && t.current.length ? "Remove\u2026" : `Remove ${count}`);
-  if (removeNone !== (count === 0)) { removeNone = count === 0; updateButtons(); }
-}
-
-// The question before removing. Resolves with the playlists to remove, or null for Back. gone: playlists of recipes that no longer exist, which cannot be built again:
-// alongside the recipes' own (All recipes), two choices, only those with a recipe (chosen at first) or all; alone (one gone recipe), a note above the list.
-function askToRemove(marked, others, label, gone = []) {
-  return new Promise((resolve) => {
-    let include = false, withGone = false;
-    const many = others.length !== 1;
-    const choose = gone.length > 0 && marked.length > 0;
-    const goneOnly = gone.length > 0 && !marked.length;
-    const names = (list) => (list.length <= 4 ? list.map((p) => p.name).join(", ") : `${list.slice(0, 3).map((p) => p.name).join(", ")}, and ${list.length - 3} more`);
-    const draw = () => {
-      const total = marked.length + (include ? others.length : 0) + (goneOnly || withGone ? gone.length : 0);
-      if (choose) {
-        fillConfirmList("removeConfirmList", "removeConfirmText",
-          `${marked.length} ${marked.length === 1 ? "is" : "are"} from your recipes and can be built again any time. ${gone.length} ${gone.length === 1 ? "is from a recipe that no longer exists, so once removed it" : "are from recipes that no longer exist, so once removed they"} can't be built again.`, []);
-        $("removeGoneNoTitle").textContent = `Only the ${marked.length} with a recipe`;
-        $("removeGoneNoNote").textContent = names(marked);
-        $("removeGoneYesTitle").textContent = `All ${marked.length + gone.length}`;
-        $("removeGoneYesNote").textContent = `Also ${names(gone)}, which can't be built again`;
-        $("removeGoneNo").checked = !withGone;
-        $("removeGoneYes").checked = withGone;
-      } else if (goneOnly) {
-        fillConfirmList("removeConfirmList", "removeConfirmText", "", gone.map((p) => p.name));
-      } else {
-        fillConfirmList("removeConfirmList", "removeConfirmText",
-          marked.length ? `Remove ${plural(marked.length, "playlist")} made by this app from your library? They match the naming pattern of ${label}.` : `No playlists made by this app match the naming pattern of ${label}.`,
-          marked.map((p) => p.name));
-      }
-      $("removeGoneChoice").hidden = !choose;
-      $("removeGoneWarn").hidden = !goneOnly;
-      fillConfirmList("removeConfirmMoreList", "removeConfirmMoreText",
-        !others.length ? ""
-          : include ? `${plural(others.length, "playlist")} with matching names ${many ? "were" : "was"} not made by this app, and will be removed too because you chose to remove ${many ? "them" : "it"}:`
-          : `${plural(others.length, "playlist")} with matching names ${many ? "were" : "was"} not made by this app (older ones, or ones whose description was changed), so ${many ? "they" : "it"} will not be touched:`,
-        others.map((p) => p.name));
-      $("removeToggleRow").hidden = others.length === 0;
-      $("removeToggle").checked = include;
-      $("removeToggleLabel").textContent = `Remove ${many ? "them" : "it"} too`;
-      setLabel($("removeConfirmYes"), !total ? "Nothing to remove" : choose ? `Remove ${total}` : "Remove");
-      $("removeConfirmYes").disabled = total === 0;
-      $("removeConfirmYes").dataset.total = choose ? "" : String(total);   // with a choice to make, the title does not give a number
-      setLabel($("removeConfirmNo"), "Back");
-      removeStage("ask");
-    };
-    const finish = (value) => {
-      $("removeConfirmYes").onclick = null;
-      $("removeConfirmNo").onclick = null;
-      $("removeToggle").onchange = null;
-      $("removeGoneNo").onchange = $("removeGoneYes").onchange = null;
-      resolve(value);
-    };
-    draw();
-    $("removeConfirmYes").onclick = () => finish(marked.concat(include ? others : [], goneOnly || withGone ? gone : []));
-    $("removeConfirmNo").onclick = () => finish(null);
-    $("removeToggle").onchange = () => { include = $("removeToggle").checked; draw(); };
-    $("removeGoneNo").onchange = $("removeGoneYes").onchange = () => { withGone = $("removeGoneYes").checked; draw(); };
-  });
-}
-
 // Delete recipe offers to remove the recipe's own built playlists too (Ron, 2026-11-10): Arc's playlists in the library that match its names now, from the list
 // already read. null when that cannot be known now (not connected, Python not ready, a build or a removal running, or a Spotify pause).
 function builtPlaylistsOf(id) {
@@ -4512,7 +4118,7 @@ async function removeBuiltOfDeleted(list, title) {
     showNotices([{ text: `Removed ${plural(list.length, "playlist")} built from ${named(title)}.`, transient: true }]);
     await loadMyPlaylists();
   } catch (err) {
-    showNotices([{ text: `The playlists built from ${named(title)} could not be removed: ${cleanError(err)} Remove built playlists in the menu can try again.`, transient: true }]);
+    showNotices([{ text: `The playlists built from ${named(title)} could not be removed: ${cleanError(err)}`, transient: true }]);
   } finally {
     setBusy(false);
   }
@@ -4543,63 +4149,24 @@ async function deleteParticipant(code, list) {
   }
 }
 
-async function removeEarlier() {
-  // Everything about removing, including the question and the result, stays inside the Remove popup.
-  setBusy(true);
-  setRemoveMessage("");
-  clearReportHints("removeReportHint");
-  logStep("remove started");
-  const done = (text, ok = false) => { setRemoveMessage(text); $("removeOk").hidden = !ok; removeStage("done"); };
-  try {
-    await loadMyPlaylists();   // what is in Spotify now, including anything changed there since this page loaded
-    fillRemoveKey();   // what is gone may have changed with the list
-    const t = removeTargets();
-    if (!t.current.length && !t.others.length && !t.gone.length) {
-      done("No playlists matching these recipes' names were found.");
-      return;
-    }
-    const chosen = await askToRemove(t.current, t.others, removeKeys().map(formatLabel).join(", "), t.gone);
-    if (!chosen) {
-      removeStage("choose");   // Back: nothing was changed
-      return;
-    }
-    setLabel($("removeConfirmYes"), "Removing\u2026");
-    $("removeConfirmYes").disabled = $("removeConfirmNo").disabled = true;
-    await removePlaylists(chosen.map((p) => p.id));
-    logStep(`remove finished (${plural(chosen.length, "playlist")})`);
-    done(`Removed ${plural(chosen.length, "playlist")} from your library.`, true);
-    await loadMyPlaylists();
-  } catch (err) {
-    done("Something went wrong: " + cleanError(err));
-    offerReport("removeReportHint", cleanError(err));
-  } finally {
-    $("removeConfirmNo").disabled = false;
-    setBusy(false);
-  }
-}
-
 // ---------------------------------------------------------------- start up
-// ---------------------------------------------------------------- the backup card, sign-in returns, saving when the page is left
+// ---------------------------------------------------------------- sign-in returns, saving when the page is left
 function initPageEvents() {
-  on("backupOk", "click", () => { const radio = document.querySelector('input[name="backupMode"]:checked'); if (radio) chooseBackupMode(radio.value); else dismissBackupCard(); });
-  on("backupCancel", "click", dismissBackupCard);
   on("changeSpotifyLogin", "click", () => changeSpotifyLogin());
-  for (const id of ["backupModeSpotify", "backupModeManual"]) on(id, "change", refreshBackupSave);
   // Back from Spotify's page, a browser may show this page as it was left, with the buttons still waiting
   window.addEventListener("pageshow", (event) => { if (event.persisted && signingIn) { setSigningIn(false); setLoginMessage(""); } });
   // the connection coming back after a failed save: try again, without waiting to be asked
-  window.addEventListener("online", () => { if (backupMode() === "spotify" && saveState.error) { saveState.error = ""; scheduleSpotifySave(500); } });
+  window.addEventListener("online", () => { if (saveState.error) { saveState.error = ""; scheduleSpotifySave(500); } });
   // someone leaving the page, or switching to another app, does not wait for the pause: whatever has not been saved is saved now
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden" && saveState.timer && backupMode() === "spotify") runSpotifySave();
+    if (document.visibilityState === "hidden" && saveState.timer) runSpotifySave();
     if (document.visibilityState === "visible" && startupDone && Date.now() - versionCheck.last > versionCheck.everyMs) checkForNewVersion();
     // coming back after a while: another device may have changed a backup, so the account's playlists are read again
-    if (document.visibilityState === "visible" && backupMode() === "spotify" && connection === "ready" && playlistsLoadedAt && Date.now() - playlistsLoadedAt > playlistRefreshMs && !saveState.running) loadMyPlaylists().catch(() => {});
+    if (document.visibilityState === "visible" && connection === "ready" && playlistsLoadedAt && Date.now() - playlistsLoadedAt > playlistRefreshMs && !saveState.running) loadMyPlaylists().catch(() => {});
   });
   // a window that was behind another one and comes forward counts as coming back too
   window.addEventListener("focus", () => { if (startupDone && Date.now() - versionCheck.last > versionCheck.everyMs) checkForNewVersion(); });
-  refreshBackupCard();
-  applyBackupMode();
+  renderSaveStatus();
 }
 
 function trackTipHeight() {
@@ -4809,25 +4376,12 @@ async function main() {
   on("usOk", "click", closeUpdateScreen);
   document.addEventListener("keydown", (event) => { if (updateScreen && $("updateScreen").classList.contains("us-done") && (event.key === "Escape" || event.key === "Enter")) { event.preventDefault(); closeUpdateScreen(); } });
   guarded("page events", () => initPageEvents());
-  on("removeOld", "click", removeEarlier);
-  on("removeKey", "change", () => { updateButtons(); refreshRemoveCount(); });
-  on("backupDownload", "click", downloadBackup);
-  on("backupRestore", "click", () => $("restoreFile").click());
-  on("backupDownloadLink", "click", () => downloadBackup());   // the same as the menu's Back up now a backup
-  on("restoreFile", "change", async (event) => {
-    const file = event.target.files && event.target.files[0];
-    event.target.value = "";   // so choosing the same file again still counts
-    await restoreFromFile(file);
-  });
   on("formats", "input", () => {
     localStorage.setItem("formats", $("formats").value);
     invalidatePlan();
-    undoText = null;
-    if (typeof editor === "undefined" || !editor.internal) clearHeldNotice();   // an Undo offered earlier would now overwrite new edits
-    refreshBackupStatus();
+    if (typeof editor === "undefined" || !editor.internal) clearHeldNotice();
     refreshFormatKeys();
   });
-  refreshBackupStatus();
   guarded("a wait from Spotify", () => tickPause());
 
   if (signingIn) { setLoginMessage(signInNote, true); updateButtons(); }   // coming back from Spotify: say so before the sign-in is finished
@@ -4867,7 +4421,7 @@ async function main() {
     else await connectingStepFailed("Playlists");   // the connection problem shows in the app
   }
   if (connectingScreen) await settleFirstSave();
-  else if ((updateScreen || launchScreen) && connection === "ready" && backupMode() === "spotify") {
+  else if ((updateScreen || launchScreen) && connection === "ready") {
     updateStep("Loading your recipes");
     await runSpotifySave();
     while (saveState.running) await new Promise((r) => setTimeout(r, 100));   // a save already under way (the connection starts one) is waited for too
