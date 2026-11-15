@@ -14,7 +14,7 @@ const ADD_CHUNK = 100;     // songs added per request (Spotify's documented maxi
 const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
-const APP_VERSION = "2026-11-14zl";
+const APP_VERSION = "2026-11-15a";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -3437,6 +3437,9 @@ async function main() {
   initHomeMore();
   window.addEventListener("resize", fitHomeLines);
   window.addEventListener("resize", placeSharingPage);
+  const unpan = () => { if (appView === "sharing" && typeof unpanSharingPage === "function") unpanSharingPage(true); };   // back to the tab, a page left panned up goes back
+  window.addEventListener("pageshow", unpan);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) unpan(); });
   on("infoClose", "click", () => closeInfo());
   on("infoOverlay", "click", (event) => { if (event.target === $("infoOverlay")) closeInfo(); });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && info.node && !event.defaultPrevented) { event.preventDefault(); closeInfo(); } });   // an Escape that closed something inside it (the color list) is not for the popup
