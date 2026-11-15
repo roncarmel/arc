@@ -1763,7 +1763,7 @@ function refreshPlayTip() {
   const made = feEl("div", { class: "fe-playtip", id: "fePlayTip", hidden: true },
     feEl("div", { class: "fe-playtip-card" },
       feEl("p", { class: "fe-playtip-title", text: "You got this, go play!" }),
-      feEl("p", { class: "muted", text: `Add more segments to this recipe and explore more of the options available to you here. When you\u2019re ready, ${actWord(false)} the Build playlists button below.` })),
+      sparkleHow("muted", `Add more segments to this recipe and explore more of the options available to you here. When you\u2019re ready, ${actWord(false)} Done, then the `, " button on its row.")),
     feEl("button", { type: "button", class: "fe-playtip-close", id: "fePlayTipClose", "aria-label": "Close tip", onClick: markPlayTipDone }, feIcon("close")));
   slot.appendChild(made);
   revealSmoothly(made, true);

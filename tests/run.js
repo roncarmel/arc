@@ -2949,7 +2949,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   check("not before the only recipe has a playlist (the first tip shows then)", !pt_tip(pt_w) && !!pt_w.document.getElementById("feFirstTip"));
   pt_w.eval("activeFormat().items[0].lists[0].name = 'Calm'; renderRows();");
   check("once it has one, the play tip shows at the bottom of the card, and the first tip goes", !!pt_tip(pt_w) && pt_tip(pt_w).parentNode.id === "fePlayTipSlot" && pt_w.document.getElementById("feCard").lastElementChild.id === "fePlayTipSlot" && !pt_w.document.getElementById("feFirstTip"));
-  check("it says what to try and how to finish, with nothing about saving", pt_tip(pt_w).querySelector(".fe-playtip-title").textContent === "You got this, go play!" && /^Add more segments to this recipe and explore more of the options available to you here\. When you\u2019re ready, (click|tap) the Build playlists button below\.$/.test(pt_tip(pt_w).querySelector(".muted").textContent));
+  check("it says what to try and how to finish, with nothing about saving", pt_tip(pt_w).querySelector(".fe-playtip-title").textContent === "You got this, go play!" && /^Add more segments to this recipe and explore more of the options available to you here\. When you\u2019re ready, (click|tap) Done, then the  button on its row\.$/.test(pt_tip(pt_w).querySelector(".muted").textContent) && !!pt_tip(pt_w).querySelector(".muted .bh-mini svg"));
   check("it has a Close tip button", pt_w.document.getElementById("fePlayTipClose").getAttribute("aria-label") === "Close tip");
   pt_w.document.getElementById("feAddSegment").click();
   check("it stays while the recipe grows", !!pt_tip(pt_w));
@@ -2965,7 +2965,7 @@ print(json.dumps([counts, r["shared"], [s["has"] for s in r["sources"]], c["sour
   var pt_two = await boot({ url: EDURL, session: signedIn(), local: { formats: 'RECIPES = {"a": {"name": "A {n}", "segments": [("Calm", 20)]}, "b": {"name": "B {n}", "segments": [("Calm", 20)]}}' }, fetchOptions: {} });
   check("not with more than one recipe", !pt_tip(pt_two));
   var pt_src = appSource();
-  check("starting a build marks it done", /logStep\(`create started[^\n]*\n\s*if \(typeof markPlayTipDone === "function"\) markPlayTipDone\(\);/.test(pt_src));
+  check("building a playlist marks it done", /async function buildForParticipant[\s\S]*?if \(typeof markPlayTipDone === "function"\) markPlayTipDone\(\);[\s\S]*?\n}\n/.test(pt_src));
   check("finding playlists the app made does not hide it", !/madeByApp\)[^\n]*markPlayTipDone/.test(pt_src));
   } catch (err) { areaCrashed("the play tip", err); } }
 
