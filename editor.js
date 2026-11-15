@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14zi";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14zj";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2580,9 +2580,9 @@ function setRecipeOpen(id) {
   const rowOf = (x) => (x ? document.querySelector(`#bhRecipes .bh-recipe[data-id="${x}"]`) : null);
   const old = rowOf(was), next = rowOf(id);
   const f = next && was !== id && editor.model ? editor.model.formats.find((x) => x.id === id) : null;
-  // the bar's pieces swing on a hinge into the open list's pink marks and back; switching recipes swings only the one opening (Ron, 2026-11-14)
+  // the bar's pieces swing on a hinge into the open list's pink marks and back; switching recipes swings both, the old one back into its bar (Ron, 2026-11-14)
   const swingIn = f ? barPieceBoxes(next, f) : null;
-  const swingOut = old && was !== id && !next ? old.querySelectorAll(".bh-plist:not(.bh-plist-gone) .bh-rmark") : null;
+  const swingOut = old && was !== id ? old.querySelectorAll(".bh-plist:not(.bh-plist-gone) .bh-rmark") : null;
   const outFrom = swingOut ? [...swingOut].map((m) => boxIn(old, m)) : null;
   if (old && was !== id) {
     old.classList.remove("bh-open");
@@ -2607,7 +2607,7 @@ function setRecipeOpen(id) {
 
 // The recipe bar's swing (Ron, 2026-11-14, mockups/segment-morph): copies of the bar's music pieces, drawn in the row over everything, each hinged at its
 // left end. Opening, the hinge glides to the top of its pink mark while the piece swings down 90 degrees around it, no further, stretching to
-// the mark's length; the top one leads and each next starts a moment later. Closing (the row tapped shut, not another recipe opened) is the same upward,
+// the mark's length; the top one leads and each next starts a moment later. Closing (tapped shut, or another recipe opened) is the same upward,
 // the top one leading too. The real mark or bar piece shows the moment its copies land, and the copies go only then, so nothing blinks out. A mixed segment's piece splits evenly, one part per playlist.
 const SWING_MS = 560, SWING_BACK_MS = 340, SWING_STAGGER_MS = 45, SWING_BACK_STAGGER_MS = 30;
 // a box in the row's own coordinates: from inside its border, where its absolutely placed copies start (a 1px border left them 1px off, and the mark snapped)
@@ -2637,7 +2637,7 @@ function finalMarkBoxes(row, list) {
 function stopSwing(row) {
   (row._swing || []).forEach((a) => a.cancel());
   row._swing = null;
-  row.querySelectorAll(".bh-swing").forEach((g) => g.remove());
+  row.querySelectorAll(".bh-swing-clip").forEach((g) => g.remove());
   row.querySelectorAll(".bh-shape span, .bh-rmark").forEach((el) => (el.style.visibility = ""));
 }
 // opening: from bar pieces to marks; closing: from marks to bar pieces
@@ -2650,6 +2650,9 @@ function swingMarks(row, from, to, opening, wait = 0) {
   if (!opening) row.querySelectorAll(".bh-rmark").forEach((m) => (m.style.visibility = "hidden"));
   const color = getComputedStyle(row).getPropertyValue("--accent");
   const anims = row._swing = [];
+  // the copies are clipped to the card, as its list is while it folds and unfolds, so none hangs over the next recipe
+  const layer = feEl("span", { class: "bh-swing-clip", "aria-hidden": "true" });
+  row.appendChild(layer);
   // a bar piece of a mixed segment takes several copies: it shows once all of them are in, and they go with it
   const target = (i) => (opening ? to[i].mark : to[i].piece);
   const waiting = new Map();
@@ -2661,7 +2664,7 @@ function swingMarks(row, from, to, opening, wait = 0) {
     copies.set(el, [...(copies.get(el) || []), pivot]);
     waiting.set(el, waiting.get(el) - 1);
     if (!waiting.get(el)) { el.style.visibility = ""; copies.get(el).forEach((c) => c.remove()); }
-    if (--left === 0) row._swing = null;
+    if (--left === 0) { row._swing = null; layer.remove(); }
   };
   from.forEach((b, i) => {
     const a0 = hinge(b, !opening), a1 = hinge(to[i], opening);
@@ -2669,7 +2672,7 @@ function swingMarks(row, from, to, opening, wait = 0) {
     const pivot = feEl("span", { class: "bh-swing", "aria-hidden": "true" });
     const bar = feEl("span", { style: `background:${color}` });
     pivot.appendChild(bar);
-    row.appendChild(pivot);
+    layer.appendChild(pivot);
     const size = (h) => ({ width: h.len + "px", height: h.thick + "px", top: -h.thick / 2 + "px", borderRadius: h.thick / 2 + "px" });
     const glide = pivot.animate([{ transform: `translate(${a0.x}px, ${a0.y}px)` }, { transform: `translate(${a1.x}px, ${a1.y}px)` }], { ...timing, easing: EASE_OUT });
     anims.push(glide, bar.animate([size(a0), size(a1)], { ...timing, easing: EASE_OUT }),
