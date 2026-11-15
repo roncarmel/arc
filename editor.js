@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14zd";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14ze";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2606,7 +2606,10 @@ function recipePlaylistsBox(f) {
       const shared = !!(p && typeof sharedFor === "function" && sharedFor(p));   // shared keeps its minutes; the check in place of Share says it (Ron, 2026-11-14)
       const why = !l.name || shared ? "" : typeof shareBlockReason === "function" ? shareBlockReason(p) : "";
       const minutes = `${Math.round(item.minutes * 10) / 10} min${mixed ? ", mixed" : ""}`;
-      const text = feEl("span", { class: "bh-pl-text" }, feEl("span", { class: "bh-pl-name", text: l.name || "No playlist yet" }), feEl("span", { class: "bh-pl-under", text: why || minutes }));
+      // a line that opens Spotify has the participant lines' small grey arrow after its name (Ron, 2026-11-14)
+      const title = p ? feEl("span", { class: "bh-pl-top" }, feEl("span", { class: "bh-pl-name bh-pl-ext", text: l.name }), bhSvg(BH_EXT))
+        : feEl("span", { class: "bh-pl-name", text: l.name || "No playlist yet" });
+      const text = feEl("span", { class: "bh-pl-text" }, title, feEl("span", { class: "bh-pl-under", text: why || minutes }));
       const cover = feEl("span", { class: "bh-cover", style: p && p.image ? `background-image:url("${p.image}")` : "" });
       box.appendChild(feEl("div", { class: "bh-pl bh-pl-split bh-rseg" + (l.name ? "" : " bh-rseg-empty") },
         feEl("span", { class: "bh-rmark", "aria-hidden": "true" }),
