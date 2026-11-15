@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14q";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14r";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -141,8 +141,8 @@ function addTopicIcons(root) {
   }
 }
 addTopicIcons();
-// Developer mode turns on and off from a hold on Arc's icon wherever it shows: each pink band (welcome, setup, connecting), home, and Arc's bar
-for (const icon of document.querySelectorAll(".wp-band-icon, #appHome img")) watchDevHold(icon);
+// Developer mode turns on and off from a hold on Arc's icon wherever it shows: each pink band (welcome, setup, connecting) and home; in a tool, on the tool's button in Arc's bar
+for (const icon of document.querySelectorAll(".wp-band-icon, #appTool")) watchDevHold(icon);
 
 // diagonal stripes running from lower left to upper right; each stripe is as thick as its share of the mix
 function feStripes(shareA, period) {
@@ -926,10 +926,10 @@ function tutorialFrame() {
 
 // Developer mode (decided by Ron, 2026-11-08, mockups/dev-mode.html): holding Arc's icon for 3 seconds turns it on, and again off. Nothing shows while holding, on purpose:
 // it is not for people to find. A short message says which way it went. Kept on this device (devMode in localStorage; the <head> script sets html.dev-mode before the
-// first paint). While it is on, a tap on Arc's icon in the bar (in a tool) or the word Arc in home's band opens the developer menu: Turn off developer mode as its pink header, the owner's Music sharing tools, Phone width, Copy Spotify request log, Clear data and start over, and Python's state. Off, Music sharing is Coming soon (devModeChanged in app.js).
+// first paint). While it is on, Developer › in the tools' list in Arc's bar (in a tool) or a tap on the word Arc in home's band opens the developer menu: Turn off developer mode as its pink header, the owner's Music sharing tools, Phone width, Copy Spotify request log, Clear data and start over, and Python's state. Off, Music sharing is Coming soon (devModeChanged in app.js).
 // The icon takes no text selection, image callout or browser menu, so a long press on a phone reaches the end.
 const DEV_HOLD_MS = 3000;
-let devHeld = null;   // the icon a hold just turned developer mode on or off with: its release is not a tap that opens the DEV menu (the bar's icon is both)
+let devHeld = null;   // what a hold just turned developer mode on or off with: its release is not a tap (on the bar's tool button, not one that opens the list)
 function watchDevHold(head) {
   if (!head) return;
   const img = head.querySelector("img");
@@ -979,16 +979,18 @@ function showDevToast(text) {
     devToastTimer = setTimeout(() => { toast.hidden = true; }, 300);
   }, 2000);
 }
-// In developer mode a tap opens the DEV menu under what was tapped: in a tool, the icon in Arc's bar, which goes home outside developer mode (Ron, 2026-11-12, when
-// the bar lost the word Arc); on home, the word Arc in the band (the bar is hidden there). It replaced a floating DEV capsule (Ron, 2026-11-10).
-const DEV_ANCHORS = "#appBar .ab-home, #homePage .hp-band .wp-band-name";
+// In developer mode the DEV menu opens under the word Arc in home's band when it is tapped (the bar is hidden there), and in a tool from Developer › at the foot of
+// the tools' list, taking the list's place with a row back to it at its top (Ron, 2026-11-14, mockups/tool-icons 3, once the tool's icon joined its name in one
+// button). It replaced a floating DEV capsule (Ron, 2026-11-10).
+const DEV_ANCHORS = "#homePage .hp-band .wp-band-name";
 let devAnchor = null;
-function showDevMenu(open, anchor) {
+function showDevMenu(open, anchor, fromList) {
   const menu = document.getElementById("devMenu");
   if (!menu || menu.hidden === !open) return;
   if (open) {
-    devAnchor = anchor || document.querySelector(DEV_ANCHORS.split(", ")[document.documentElement.classList.contains("view-home") ? 1 : 0]);
+    devAnchor = anchor || document.querySelector(document.documentElement.classList.contains("view-home") ? DEV_ANCHORS : "#appTool");
     if (devAnchor) placeDevMenu(devAnchor);
+    document.getElementById("devMenuBack").hidden = !fromList;
   }
   menu.hidden = !open;
   if (open && typeof devMenuOpened === "function") devMenuOpened();   // the owner's rows and their counts (sharing.js), Phone width's choice (app.js)
@@ -1007,7 +1009,8 @@ function placeDevMenu(anchor) {
   $("devMenuMoods").addEventListener("click", () => { showDevMenu(false); openInfo("devMoods"); });
   $("devMenuReports").addEventListener("click", () => { showDevMenu(false); openInfo("devReports"); });
   $("devMenuOff").addEventListener("click", () => setDevMode(false));
-  // capture, so the bar's word does not also go home
+  $("devMenuBack").addEventListener("click", () => { showDevMenu(false); if (typeof openToolMenu === "function") openToolMenu(); });
+  // capture, so the word Arc does nothing else
   document.addEventListener("click", (event) => {
     const name = event.target.closest && event.target.closest(DEV_ANCHORS);
     if (name && devMode() && !(devHeld && devHeld.contains(event.target))) { event.preventDefault(); event.stopPropagation(); showDevMenu($("devMenu").hidden, name); return; }

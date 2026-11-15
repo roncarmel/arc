@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-14q";
+const APP_VERSION = "2026-11-14r";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -276,7 +276,15 @@ const TOOL_NAMES = { builder: "Playlist builder", sharing: "Shared playlist libr
 const TOOL_SHORT_NAMES = { sharing: "Shared playlists" };
 const PHONE_BAR = window.matchMedia ? window.matchMedia("(max-width: 759px)") : null;
 function toolName(view, phone = !!(PHONE_BAR && PHONE_BAR.matches)) { return (phone && TOOL_SHORT_NAMES[view]) || TOOL_NAMES[view] || ""; }
-function nameToolInBar() { $("appToolName").textContent = toolName(appView); }
+function nameToolInBar() {
+  $("appToolName").textContent = toolName(appView);
+  // the tool's own icon beside its name, the one its row in the list shows (Ron, 2026-11-14, mockups/tool-icon-bar)
+  const icon = document.querySelector('#appToolMenu .ab-mi[data-view="' + appView + '"] .ab-icon');
+  if (!icon) return;
+  const copy = icon.cloneNode(true);
+  copy.className = "tool-icon";
+  $("appToolIcon").replaceChildren(copy);
+}
 if (PHONE_BAR && PHONE_BAR.addEventListener) PHONE_BAR.addEventListener("change", () => nameToolInBar());
 
 function showView(view, push = true) {
@@ -489,6 +497,7 @@ function initToolMenu() {
   on("appTool", "click", (event) => { event.stopPropagation(); openToolMenu(); });
   on("appToolMenu", "click", (event) => {
     const item = event.target.closest && event.target.closest(".ab-mi");
+    if (item && item.id === "appDevRow") { closeToolMenu(false); showDevMenu(true, $("appTool"), true); return; }
     if (item && !item.disabled) chooseTool(item.dataset.view);
   });
   // like the editor's menus, a tap elsewhere only closes the list
@@ -4738,7 +4747,6 @@ async function main() {
   on("setupBack", "click", setupBack);
   window.addEventListener("popstate", pageHistoryMoved);
   try { if (history.state && (history.state.view || history.state.step)) history.replaceState(null, ""); } catch (err) { /* nothing to forget */ }   // a reload keeps the step, but the page opens on home (and the welcome page on its first step)
-  on("appHome", "click", goHome);
   initToolMenu();
   on("homeBuilder", "click", () => showView("builder"));
   // Everything else on home: each icon opens its panel in place
