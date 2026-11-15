@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-15a";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-15b";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -2212,6 +2212,7 @@ function watchKeyboard() {
   const fit = () => {
     const field = document.activeElement;
     const typing = !$("msOverlay").hidden && field && dialog.contains(field) && field.matches("input[type=text], input[type=search], textarea") && window.innerHeight - vv.height > 120;
+    if (!!typing !== dialog.classList.contains("ms-typing") && typeof logLayout === "function") logLayout(typing ? "typing starts" : "typing ends", field && (field.id || field.tagName));
     dialog.classList.toggle("ms-typing", !!typing);
     dialog.style.height = typing ? vv.height + "px" : "";
     dialog.style.transform = typing && vv.offsetTop ? `translateY(${vv.offsetTop}px)` : "";
@@ -2225,8 +2226,6 @@ function watchKeyboard() {
   vv.addEventListener("scroll", fit);
   dialog.addEventListener("focusin", () => setTimeout(fit, 50));
   dialog.addEventListener("focusout", () => { setTimeout(fit, 50); setTimeout(fit, 400); });   // again once the keyboard has gone: iOS can leave the page panned up
-  // the list scrolling while not typing puts a page left panned back too, so it never stays stuck
-  $("msBody") && $("msBody").addEventListener("scroll", () => { if (!dialog.classList.contains("ms-typing")) unpanSharingPage(true); }, { passive: true });
   for (const box of [$("msBody"), $("msFlowBody")]) box && box.addEventListener("pointerdown", (e) => {
     const a = document.activeElement;
     // a playlist's row is left alone too: putting the keyboard away moved the list under the finger, so the tap missed the row (it opens its page, which ends the typing)
@@ -2247,12 +2246,14 @@ function endTyping() {
 }
 // iOS Safari pans the page up to show a field over the keyboard and, now and then, leaves it panned when the keyboard goes: Arc's bar half under the
 // status bar and the tabs over it, stuck, since the page itself cannot scroll in Music sharing (Ron, 2026-11-15). Scroll it back, then place the page under the bar.
-function unpanSharingPage(onlyIfPanned) {
+function unpanSharingPage() {
   if (!document.documentElement.classList.contains("page-app")) return;
   const vv = window.visualViewport;
   const panned = window.scrollY !== 0 || (vv && vv.offsetTop > 0.5);
-  if (onlyIfPanned && !panned) return;
-  if (panned) window.scrollTo(0, 0);
+  if (panned) {
+    if (typeof logLayout === "function") logLayout("panned after the keyboard, scrolling back");
+    window.scrollTo(0, 0);
+  }
   if (typeof placeSharingPage === "function") { placeSharingPage(); if (panned) requestAnimationFrame(placeSharingPage); }
 }
 
