@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14s";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14u";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2393,6 +2393,8 @@ const builderHome = { tab: "recipes", person: null, recipe: null };
 const BH_SPARK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 2l1.8 5.6L17.5 9.5l-5.7 1.9L10 17l-1.8-5.6L2.5 9.5l5.7-1.9z"/><path d="M18 13l.9 2.6 2.6.9-2.6.9L18 20l-.9-2.6-2.6-.9 2.6-.9z"/></svg>';
 // Spotify's mark in the accent with its bars cut out (evenodd, so no mask id to share), where a participant's playlist opens in Spotify (Ron, 2026-11-13, mockups/spotify-mark D)
 // Spotify's mark as the Build button is drawn: the theme's button color with its text color for the bars (white on most themes), 32 px like Share (Ron, 2026-11-14)
+// a small arrow up and right after a name whose line opens Spotify
+const BH_EXT = '<svg class="bh-ext" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 16 16 8M9.5 8H16v6.5"/></svg>';
 const BH_OPEN = '<svg class="bh-sp" width="32" height="32" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="currentColor"/><path class="bh-sp-bars" d="M17.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>';
 const BH_BACK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
 const BH_CHEVRON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
@@ -3097,7 +3099,8 @@ function shareIconButton(p, why = typeof shareBlockReason === "function" ? share
     onClick: (e) => { e.preventDefault(); e.stopPropagation(); shareFromBuilder(p.id); } }, feIcon("upload"));
 }
 
-// Their playlists, one line each: the cover, the name without their code, and Spotify's mark (no song count: it left the name no room); the one being built first, or what stopped it
+// Their playlists, one line each: the cover, the name without their code with a small grey arrow after it (the line opens Spotify), and Share;
+// no Spotify mark, so Share is the row's one pink button (Ron, 2026-11-14, mockups/share-emph D); the one being built first, or what stopped it
 function personPlaylists(person) {
   const code = person.code;
   const mine = personBuild.code === code ? personBuild : null;
@@ -3107,20 +3110,19 @@ function personPlaylists(person) {
   for (const p of person.playlists) {
     const isNew = mine && mine.state === "done" && mine.id === p.id;
     const href = `https://open.spotify.com/playlist/${p.id}`;
-    // the open mark (or Open) sits under the row's chevron, in one column with the trash (Ron, 2026-11-13)
-    const mark = isNew ? feEl("span", { class: "pp-open" }, bhSvg(BH_OPEN), feEl("span", { text: "Open" })) : bhSvg(BH_OPEN);
+    const name = [feEl("span", { class: "bh-pl-name bh-pl-ext", text: nameWithoutCode(p.name, code) }), bhSvg(BH_EXT)];
+    // just built, Open stays in the mark's place until the row folds
+    const open = isNew ? feEl("span", { class: "pp-open" }, bhSvg(BH_OPEN), feEl("span", { text: "Open" })) : null;
     const share = shareIconButton(p);
-    // with Share (Ron, 2026-11-14) the line is a link, the button, then the mark as a link of its own: a button can't sit inside a link
+    // with Share (Ron, 2026-11-14) the line is a link, then the button: a button can't sit inside a link
     if (share) box.appendChild(feEl("div", { class: "bh-pl bh-pl-split" + (isNew ? " pp-new" : "") },
-      feEl("a", { class: "bh-pl-main", href, target: "_blank", rel: "noopener" },
-        feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }),
-        feEl("span", { class: "bh-pl-name", text: nameWithoutCode(p.name, code) })),
-      share,
-      feEl("a", { class: "bh-pl-end", href, target: "_blank", rel: "noopener", "aria-label": "Open in Spotify" }, mark)));
-    else box.appendChild(feEl("a", { class: "bh-pl" + (isNew ? " pp-new" : ""), href, target: "_blank", rel: "noopener" },
-      feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }),
-      feEl("span", { class: "bh-pl-name", text: nameWithoutCode(p.name, code) }),
-      feEl("span", { class: "bh-pl-end" }, mark)));
+      feEl("a", { class: "bh-pl-main", href, target: "_blank", rel: "noopener", "aria-label": `${p.name}, open in Spotify` },
+        feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }), ...name),
+      open ? feEl("a", { class: "bh-pl-end", href, target: "_blank", rel: "noopener", "aria-label": "Open in Spotify" }, open) : null,
+      share));
+    else box.appendChild(feEl("a", { class: "bh-pl" + (isNew ? " pp-new" : ""), href, target: "_blank", rel: "noopener", "aria-label": `${p.name}, open in Spotify` },
+      feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }), ...name,
+      open ? feEl("span", { class: "bh-pl-end" }, open) : null));
   }
   // Heard before (Ron, 2026-11-13, mockups/earlier-playlists 4): under a small heading, faded covers and grey names, each linking to Spotify;
   // one Spotify no longer has says so in place of the mark
@@ -3131,8 +3133,7 @@ function personPlaylists(person) {
       if (info.gone) box.appendChild(feEl("div", { class: "bh-pl hb-row hb-gone" }, feEl("span", { class: "bh-cover" }), feEl("span", { class: "bh-pl-name", text: info.name || "A playlist" }), feEl("span", { class: "hb-gone-note", text: "No longer in Spotify" })));
       else box.appendChild(feEl("a", { class: "bh-pl hb-row", href: `https://open.spotify.com/playlist/${id}`, target: "_blank", rel: "noopener" },
         feEl("span", { class: "bh-cover", style: info.image ? `background-image:url("${info.image}")` : "" }),
-        feEl("span", { class: "bh-pl-name", text: info.name || "\u2026" }),
-        feEl("span", { class: "bh-pl-end" }, bhSvg(BH_OPEN))));
+        feEl("span", { class: "bh-pl-name bh-pl-ext", text: info.name || "\u2026" }), bhSvg(BH_EXT)));
     }
   }
   // Delete at the foot, a red trash in a small circle at the right: the question that follows has the big button (Ron, 2026-11-12, mockups/participant-delete B);
