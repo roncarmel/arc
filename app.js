@@ -14,7 +14,7 @@ const ADD_CHUNK = 100;     // songs added per request (Spotify's documented maxi
 const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
-const APP_VERSION = "2026-11-14zk";
+const APP_VERSION = "2026-11-14zl";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -386,7 +386,11 @@ function putCounts(el, parts) {
 function fitHomeLines() {
   const page = $("homePage");
   if (!page || !document.documentElement.classList.contains("view-home")) return;
-  const lines = [...page.querySelectorAll(".hp-tool .hp-tag, .hp-tool .hp-data")].filter((el) => el.offsetParent !== null);
+  fitOnOneLine([...page.querySelectorAll(".hp-tool .hp-tag, .hp-tool .hp-data")]);
+}
+// Lines that must not wrap share one size, shrunk together by a tenth of a pixel only while one would not fit (home's cards, the welcome page's tool cards).
+function fitOnOneLine(all) {
+  const lines = all.filter((el) => el.offsetParent !== null);
   for (const el of lines) el.style.fontSize = "";
   if (!lines.length) return;
   const wide = (el) => {
@@ -696,6 +700,9 @@ function flashBandVersion(band) {
 
 function alignWelcomeIcons() {
   for (const band of document.querySelectorAll(".wp-band")) alignIconToText(band.querySelector(".wp-band-icon"), band.querySelector(".wp-band-text"), band.querySelector(".wp-band-name"), band.querySelector(".wp-band-tag"));
+  // the tool cards' names and taglines stay on one line each, so both icons come out the same size (the builder's tagline wrapped on phones, Ron, 2026-11-14)
+  fitOnOneLine([...document.querySelectorAll("#welcomePage .wp-tool-text b")]);
+  fitOnOneLine([...document.querySelectorAll("#welcomePage .wp-tool-tag")]);
   for (const head of document.querySelectorAll("#welcomePage .wp-tool-head")) alignIconToText(head.querySelector(".tool-icon"), head.querySelector(".wp-tool-lines"), head.querySelector(".wp-tool-text b"), head.querySelector(".wp-tool-tag"));
   placeTutorialTip();
 }
