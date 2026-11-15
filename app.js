@@ -15,7 +15,7 @@ const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
 const ALL_FORMATS = "__all__";  // dropdown value that means every format
-const APP_VERSION = "2026-11-14v";
+const APP_VERSION = "2026-11-14w";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -440,6 +440,7 @@ function initHomeMore() {
       list[(to + list.length) % list.length].focus();
     });
   }
+  initHomeTips(tabs);
   on("eeClose", "click", closeHomeTab);
   on("homeMore", "keydown", (event) => {
     if (event.key !== "Escape" || event.defaultPrevented || $("eeClose").hidden) return;
@@ -448,6 +449,32 @@ function initHomeMore() {
     closeHomeTab();
   });
   openHomeTab(null, false);
+}
+
+// Each icon's name in a small capsule above it while a mouse rests on it (Ron, 2026-11-14), never for touch or a pen: pointerType says which,
+// so a laptop with a touch screen gets it for the mouse only. Drawn in <body>, fixed, since the card clips what leaves it.
+function initHomeTips(tabs) {
+  let tip = null, timer = 0;
+  const hide = () => { clearTimeout(timer); if (tip) tip.classList.remove("on"); };
+  for (const tab of tabs) {
+    tab.addEventListener("pointerenter", (event) => {
+      if (event.pointerType !== "mouse") return;
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (!tip) { tip = document.createElement("div"); tip.id = "eeTip"; tip.setAttribute("aria-hidden", "true"); document.body.appendChild(tip); }
+        tip.textContent = tab.getAttribute("aria-label");
+        const box = tab.getBoundingClientRect(), width = tip.offsetWidth;
+        const left = Math.max(8, Math.min(innerWidth - width - 8, box.left + box.width / 2 - width / 2));
+        tip.style.left = left + "px";
+        tip.style.top = box.top - tip.offsetHeight - 6 + "px";
+        tip.style.setProperty("--tip-x", box.left + box.width / 2 - left + "px");
+        tip.classList.add("on");
+      }, tip && tip.classList.contains("on") ? 0 : 350);
+    });
+    tab.addEventListener("pointerleave", hide);
+    tab.addEventListener("pointerdown", hide);
+  }
+  addEventListener("scroll", hide, { passive: true });
 }
 
 // Back home: undoes the tool's step in the history when there is one, so the back button does not return to the tool

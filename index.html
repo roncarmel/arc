@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-14v">
-<script src="theme.js?v=2026-11-14v"></script>
+<meta name="app-version" content="2026-11-14w">
+<script src="theme.js?v=2026-11-14w"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -1140,6 +1140,10 @@
   #homeMore .hp-ee-close { flex: none; width: 32px; height: 32px; min-height: 0; margin: 0; padding: 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: color-mix(in srgb, var(--fg) 8%, transparent); box-shadow: none; color: var(--muted); cursor: pointer; }
   #homeMore .hp-ee-close[hidden] { display: grid; visibility: hidden; }
   @media (hover: hover) { #homeMore .hp-ee-close:hover { outline: none; filter: none; color: var(--fg); } }
+  #eeTip { position: fixed; z-index: 60; padding: 5px 10px; border-radius: 8px; background: var(--fg); color: var(--bg); font-size: 0.8rem; font-weight: 600; line-height: 1.2; white-space: nowrap; pointer-events: none; opacity: 0; transform: translateY(3px); transition: opacity 0.12s var(--ease-in), transform 0.12s var(--ease-in); }
+  #eeTip.on { opacity: 1; transform: none; transition: opacity 0.16s var(--ease-out), transform 0.16s var(--ease-out); }
+  #eeTip::after { content: ""; position: absolute; top: 100%; left: var(--tip-x, 50%); margin-left: -5px; border: 5px solid transparent; border-top-color: var(--fg); }
+  @media (prefers-reduced-motion: reduce) { #eeTip, #eeTip.on { transition: none; transform: none; } }
   #homeMore .hp-ee-panel { padding: 14px 16px 6px; border-top: 1px solid var(--line); color: var(--muted); line-height: 1.5; }
   #homeMore .hp-ee-panel > h3 { margin: 0 0 8px; font-size: 1rem; color: var(--fg); }
   #homeMore :is(#reportBlock, #feedbackBlock) > h3 { display: none; }
@@ -2654,7 +2658,7 @@
          panel under the bar; the X at the bar's end, or a tap on the lit icon, closes it (initHomeMore in app.js). -->
     <div id="homeMore" class="hp-more">
       <div class="hp-ee-bar">
-        <div class="hp-ee-tabs" role="tablist" aria-label="Everything else"><button id="eeTabColor" class="hp-ee-tab" type="button" role="tab" aria-selected="false" aria-controls="eeColor" aria-label="Color" title="Color" data-icon="palette"></button><button id="eeTabLogin" class="hp-ee-tab" type="button" role="tab" aria-selected="false" aria-controls="eeLogin" aria-label="Change Spotify login" title="Change Spotify login" data-icon="user"></button><button id="eeTabClear" class="hp-ee-tab" type="button" role="tab" aria-selected="false" aria-controls="eeClear" aria-label="Sign out and clear data" title="Sign out and clear data" data-icon="logout"></button><button id="eeTabPrivacy" class="hp-ee-tab" type="button" role="tab" aria-selected="false" aria-controls="privacySection" aria-label="Privacy" title="Privacy" data-icon="lock"></button><button id="eeTabReport" class="hp-ee-tab" type="button" role="tab" aria-selected="false" aria-controls="eeReport" aria-label="Report a problem" title="Report a problem" data-icon="flag"></button><button id="eeTabFeedback" class="hp-ee-tab" type="button" role="tab" aria-selected="false" aria-controls="eeFeedback" aria-label="Feedback" title="Feedback" data-icon="chat"></button></div>
+        <div class="hp-ee-tabs" role="tablist" aria-label="Everything else"><button id="eeTabColor" class="hp-ee-tab" type="button" role="tab" aria-selected="false" aria-controls="eeColor" aria-label="Color" data-icon="palette"></button><button id="eeTabLogin" class="hp-ee-tab" type="button" role="tab" aria-selected="false" aria-controls="eeLogin" aria-label="Change Spotify login" data-icon="user"></button><button id="eeTabClear" class="hp-ee-tab" type="button" role="tab" aria-selected="false" aria-controls="eeClear" aria-label="Sign out and clear data" data-icon="logout"></button><button id="eeTabPrivacy" class="hp-ee-tab" type="button" role="tab" aria-selected="false" aria-controls="privacySection" aria-label="Privacy" data-icon="lock"></button><button id="eeTabReport" class="hp-ee-tab" type="button" role="tab" aria-selected="false" aria-controls="eeReport" aria-label="Report a problem" data-icon="flag"></button><button id="eeTabFeedback" class="hp-ee-tab" type="button" role="tab" aria-selected="false" aria-controls="eeFeedback" aria-label="Feedback" data-icon="chat"></button></div>
         <button id="eeClose" class="hp-ee-close" type="button" aria-label="Close" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       </div>
       <div id="eeColor" class="hp-ee-panel" role="tabpanel" aria-labelledby="eeTabColor" hidden>
@@ -2964,10 +2968,10 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-14v"></script>
-<script src="editor.js?v=2026-11-14v"></script>
-<script src="shared-spotify.js?v=2026-11-14v"></script>
-<script src="app.js?v=2026-11-14v"></script>
-<script src="sharing.js?v=2026-11-14v"></script>
+<script src="formats.js?v=2026-11-14w"></script>
+<script src="editor.js?v=2026-11-14w"></script>
+<script src="shared-spotify.js?v=2026-11-14w"></script>
+<script src="app.js?v=2026-11-14w"></script>
+<script src="sharing.js?v=2026-11-14w"></script>
 </body>
 </html>
