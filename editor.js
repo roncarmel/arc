@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14zj";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-14zk";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2650,7 +2650,7 @@ function swingMarks(row, from, to, opening, wait = 0) {
   if (!opening) row.querySelectorAll(".bh-rmark").forEach((m) => (m.style.visibility = "hidden"));
   const color = getComputedStyle(row).getPropertyValue("--accent");
   const anims = row._swing = [];
-  // the copies are clipped to the card, as its list is while it folds and unfolds, so none hangs over the next recipe
+  // the copies share one layer over the card, not clipped to it: one still swinging is drawn over the recipe rising from below (Ron, 2026-11-14)
   const layer = feEl("span", { class: "bh-swing-clip", "aria-hidden": "true" });
   row.appendChild(layer);
   // a bar piece of a mixed segment takes several copies: it shows once all of them are in, and they go with it
