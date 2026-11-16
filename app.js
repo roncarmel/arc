@@ -14,7 +14,7 @@ const ADD_CHUNK = 100;     // songs added per request (Spotify's documented maxi
 const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
-const APP_VERSION = "2026-11-15f";
+const APP_VERSION = "2026-11-15g";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2481,6 +2481,8 @@ Object.assign(spotifyHooks, {
 // and Try again on the Build buttons. Now connecting that is refused that way opens a popup once (showLimitDialog in editor.js) and Arc connects again by itself
 // every 5 minutes. Either kind shows the strip under Arc's bar on every view (#waitStrip), with the time to go, until it is over; the strip opens the popup.
 const LIMIT_RETRY_MS = 5 * 60 * 1000;
+const LIST_RETRY_MS = 10000;   // reading short pages of the playlist list again stops after this, in all
+var BUILD_LIST_FRESH_MS = 3 * 60 * 1000;   // a build uses a list read this recently instead of reading it again (var: the tests set it)
 const SHORT_LIST_MESSAGE = "Spotify didn\u2019t send all your playlists.";
 let SHORT_LIST_RETRY_MS = [30000, 120000, 600000];   // a short list is read again after these, then every 10 minutes for as long as it takes
 const limitWait = { active: false, retryAt: 0, timer: null, shown: false, reason: "limit", tries: 0 };
@@ -2905,7 +2907,9 @@ function forgetOtherAccount(id) {
   } catch (err) { /* private browsing */ }
 }
 
-async function loadMyPlaylists() {
+// options.onPage(n, of) follows the reading, page by page (a build shows it: 943 playlists are 19 requests). options.keepIfShort: a list still short does not
+// put Arc in the short-list wait when a whole list from this visit is in hand; it throws SHORT_LIST_MESSAGE and the caller goes on with that list (a build).
+async function loadMyPlaylists(options = {}) {
   const by = callerTrail();   // before the first wait: after it Safari's stack no longer shows the caller (the record came out blank, 2026-11-13)
   me = await spotify("/me");
   forgetOtherAccount(me.id);
@@ -2922,12 +2926,14 @@ async function loadMyPlaylists() {
   const idsOf = (pg) => (pg.items || []).map((p) => (p ? p.id : "")).sort().join();
   const expected = (pg) => Math.min(pg.limit || 50, pg.total - pg.offset);
   let steady = 0;
+  // Reading short pages again stops after 10 s in all, however many came short: a build sat a minute or more on Reading your playlists, then failed (2026-11-15)
+  const retryUntil = Date.now() + LIST_RETRY_MS;
   const readPage = async (url) => {
     let pg = await spotify(url);
     const seen = new Map();
     const join = (q) => (q.items || []).forEach((p, i) => { if (p && !seen.has(p.id)) seen.set(p.id, p); else if (!p) seen.set("null:" + i, null); });
     join(pg);
-    for (let tries = 0; tries < 3 && short(pg); tries++) {
+    for (let tries = 0; tries < 3 && short(pg) && Date.now() < retryUntil; tries++) {
       pages.push([pg.offset, (pg.items || []).length, pg.total, !!pg.next, "short, read again"]);
       await new Promise((r) => setTimeout(r, 700 * (tries + 1)));
       const again = await spotify(url);
@@ -2943,9 +2949,11 @@ async function loadMyPlaylists() {
   const pages = [];
   let page = await readPage("/me/playlists?limit=50");
   const total = typeof page.total === "number" ? page.total : null;
-  for (;;) {
+  const pageCount = total ? Math.ceil(total / (page.limit || 50)) : 1;
+  for (let n = 1; ; n++) {
     pages.push([page.offset, (page.items || []).length, page.total, !!page.next]);
     raw.push(...(page.items || []));
+    if (options.onPage) options.onPage(n, pageCount);
     if (!page.next) break;
     page = await readPage(page.next);
   }
@@ -2967,6 +2975,7 @@ async function loadMyPlaylists() {
     const reads = pages.filter((x) => x[4] || (typeof x[2] === "number" && x[1] < Math.min(50, x[2] - x[0]))).map((x) => [x[0], x[1]]).slice(0, 12);
     recordError(`Spotify listed ${got} of ${total} playlists, after reading again${playlistsHidden.length ? ` (${playlistsHidden.length} of them hidden)` : ""}${steady ? ` (${steady} left out the same way twice)` : ""}; short reads [offset, items] ${JSON.stringify(reads)}`);
     autoReport(lastErrorText);
+    if (options.keepIfShort && playlistsLoadedAt) { logStep("playlist list short, the one read earlier kept"); throw new Error(SHORT_LIST_MESSAGE); }
     useKeptPlaylists();
     if (connection === "ready") { setConnection("problem", SHORT_LIST_MESSAGE); startLimitWait("short"); }
     throw new Error(SHORT_LIST_MESSAGE);
@@ -3342,7 +3351,15 @@ async function buildForParticipant(id, code, repeat = null) {
   logStep("participant build started");
   let made = null;
   try {
-    await loadMyPlaylists();
+    // The list read when connecting (or by a save) is used if it is this fresh: reading it again took 19 requests for 943 playlists and a minute on short
+    // pages. Read again, a list that comes short leaves the build on the whole one already held; the strict rule stays for saving and merging (2026-11-15).
+    if (!playlistsLoadedAt || Date.now() - playlistsLoadedAt > BUILD_LIST_FRESH_MS) {
+      try {
+        await loadMyPlaylists({ keepIfShort: true, onPage: (n, of) => { if (of > 3) setPersonBuild({ step: `Reading your playlists \u00b7 ${n} of ${of}`, progress: 0.03 + 0.12 * (n / of) }); } });
+      } catch (err) {
+        if (String(err.message || err) !== SHORT_LIST_MESSAGE || !playlistsLoadedAt) throw err;
+      }
+    }
     setPersonBuild({ step: "Reading the songs", progress: 0.15 });
     const plan = await planSelected({ keys: [id], forWhom: code, repeat });
     if (!plan || !plan.built) { setPersonBuild({ state: "blocked", problems: (plan && plan.problems) || [] }); return; }
@@ -3380,7 +3397,7 @@ async function buildForParticipant(id, code, repeat = null) {
     countEvent("playlists-created", "1");
     logStep("participant build finished");
     setPersonBuild({ step: "Finishing", progress: 0.95 });
-    try { await loadMyPlaylists(); } catch (err) { /* the playlist is made; the list catches up later */ }
+    try { await loadMyPlaylists({ keepIfShort: true }); } catch (err) { /* the playlist is made; the list catches up later */ }
     setPersonBuild({ progress: 1 });
     setPersonBuild({ state: "done", id: made.id, celebrate: true });   // played once by renderParticipantList
   } catch (err) {
@@ -3388,7 +3405,7 @@ async function buildForParticipant(id, code, repeat = null) {
     logStep("participant build failed");
     autoReport(lastErrorText);
     setPersonBuild({ state: "fail", error: cleanError(err), id: made ? made.id : null });
-    try { await loadMyPlaylists(); } catch (ignore) { /* keep the error showing */ }
+    try { await loadMyPlaylists({ keepIfShort: true }); } catch (ignore) { /* keep the error showing */ }
   } finally {
     invalidatePlan();
     setBusy(false);
