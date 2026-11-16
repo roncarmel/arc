@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16zb";
+const APP_VERSION = "2026-11-16zc";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1497,6 +1497,41 @@ function reportShortListArrived(list) {
   autoReport(text, "Sent by Arc after a short playlist list: ");
 }
 
+// Slots of the list Spotify could not send (service-spotify.js reads an empty page in pieces; see "Spotify's empty pages" in CLAUDE.md): the playlists Arc
+// needs by ID, recipe saves this device knows and the playlists in the recipes, that the list lacks are read on their own and put back, so the person
+// keeps them while Spotify cannot list them (Ron, 2026-11-16). Reading by ID cannot tell a playlist removed from the library from one in an unreadable
+// slot; the next whole list settles that. At most READ_BACK_MAX.
+const READ_BACK_MAX = 20;
+async function readBackUnreadable(list) {
+  const have = new Set(list.map((p) => p.id));
+  const saves = Object.values(readSynced()).map((r) => r && r.playlistId).filter(Boolean);
+  const inRecipes = typeof editor !== "undefined" && editor.model ? editor.model.formats.flatMap((f) => (f.items || []).flatMap((it) => (it.lists || []).map((l) => l.id))) : [];
+  const wanted = [...new Set([...saves, ...inRecipes])].filter((id) => id && !have.has(id));
+  const out = { saves: 0, recipePlaylists: 0, wanted: wanted.length, found: 0, notFound: 0, failed: 0 };
+  if (typeof service.readListEntry !== "function") return out;
+  for (const id of wanted.slice(0, READ_BACK_MAX)) {
+    try {
+      const p = await service.readListEntry(id);
+      const isSave = saves.includes(id);
+      if (!p || (isSave && me && p.owner !== me.id)) { out.notFound += 1; continue; }
+      list.push(p);
+      out.found += 1;
+      if (isSave) out.saves += 1; else out.recipePlaylists += 1;
+    } catch (err) { out.failed += 1; }
+  }
+  logStep(`unreadable slots: ${out.found} of ${out.wanted} read back by ID`);
+  return out;
+}
+// One automatic report each time the list had empty pages read in pieces, once it is all done, so working around Spotify does not hide that it happens
+function reportSplitList(list, readBack) {
+  const requests = list.splits.reduce((a, x) => a + x.requests, 0);
+  const text = `${list.unreadable.length} slot${list.unreadable.length === 1 ? "" : "s"} of ${list.total} unreadable (at ${JSON.stringify(list.unreadable.slice(0, 20))}), ${list.splits.length} empty page${list.splits.length === 1 ? "" : "s"} read in ${requests} requests in pieces`
+    + (readBack ? `; read back by ID: ${readBack.found} of ${readBack.wanted} (${readBack.saves} saves, ${readBack.recipePlaylists} recipe playlists, ${readBack.notFound} not found, ${readBack.failed} failed)` : "");
+  logStep("empty playlist pages read in pieces");
+  // the words before the numbers are the same every time, so this is one kind of report in each version (autoReportKind reads the first 80 characters)
+  autoReport(`${service.name} sent empty pages of the playlist list, and Arc read them again in smaller pieces: ` + text, "Sent by Arc: ");
+}
+
 function autoReport(text, intro = "Sent by Arc when this happened: ") {
   const kind = autoReportKind(text);
   if (autoReports.has(kind)) return autoReports.get(kind).promise;
@@ -1704,6 +1739,7 @@ function pageState() {
   return { app: APP_VERSION, scripts: { ...(globalThis.scriptVersions || {}) }, updating, startupRefreshed: refreshed, updateScreen: typeof updateScreen !== "undefined" ? updateScreen : null, connection, sinceStart: Math.round(performance.now()) };
 }
 let playlistPages = [];   // the last list's pages as Spotify sent them: [offset, items, total, whether there was a next], for the records below   // how many times the list has started being read in this tab, so a record can tell whether it was read again during a save
+let playlistsUnreadable = [];   // where the last list had slots Spotify sent empty even one at a time (offsets), for the records
 let playlistsLeftOut = 0;   // how many the last list's pages left out the same way twice (taken as Spotify's answer), for the records
 let playlistsHidden = [];   // where the last list had null items (playlists Spotify will not show this app), for the records
 let playlistsLoadedBy = "";   // which code last read the playlist list, for the record kept when a save question is asked (recordSyncAsk)
@@ -1928,7 +1964,7 @@ const LIST_READS_KEY = "listReads";
 function recordListRead(by) {
   const saves = playlists.filter((p) => p.save).map((p) => [p.save.kind === "save" ? p.save.format.id : p.save.kind, p.save.format ? p.save.format.rev || 0 : null, playlists.indexOf(p)]);
   const named = playlists.filter((p) => p.name.endsWith(SAVE_SUFFIX)).map((p) => [p.name, p.id, p.save ? p.save.kind : "none", p.description == null ? null : String(p.description).length]);
-  const entry = { at: new Date().toISOString(), tab: TAB_ID, tabStarted: TAB_STARTED, page: pageState(), by, count: playlists.length, total: playlistsTotal, hidden: playlistsHidden.length, leftOut: playlistsLeftOut, pages: playlistPages, saves, saveNames: named,
+  const entry = { at: new Date().toISOString(), tab: TAB_ID, tabStarted: TAB_STARTED, page: pageState(), by, count: playlists.length, total: playlistsTotal, hidden: playlistsHidden.length, leftOut: playlistsLeftOut, unreadable: playlistsUnreadable.length, pages: playlistPages, saves, saveNames: named,
     recipes: typeof editor !== "undefined" && editor.model ? editor.model.formats.length : null, visible: document.visibilityState };
   writeRecord(LIST_READS_KEY, [...readRecord(LIST_READS_KEY, []), entry].slice(-30));
 }
@@ -3030,6 +3066,7 @@ async function loadMyPlaylists(options = {}) {
   playlistPages = list.pages;
   playlistsHidden = list.hidden;
   playlistsLeftOut = list.leftOut;
+  playlistsUnreadable = list.unreadable || [];
   if (list.short) {
     // Still short: the list is not used, so nothing works from a half-known state. Arc waits as if not connected (startLimitWait("short")) and keeps
     // the playlists it already had (or the kept list), and reads it again by itself (Ron, 2026-11-13).
@@ -3042,6 +3079,7 @@ async function loadMyPlaylists(options = {}) {
     throw new Error(SHORT_LIST_MESSAGE);
   }
   playlistsLoadedBy = by;
+  const readBack = playlistsUnreadable.length ? await readBackUnreadable(list) : null;
   playlists = list.map((p) => ({
     id: p.id, name: p.name, owner: p.owner, collaborative: p.collaborative, image: p.image, cover: p.cover, count: p.count, description: p.description,
     snapshot: p.version,   // changes whenever the playlist does
@@ -3053,6 +3091,7 @@ async function loadMyPlaylists(options = {}) {
   recordListRead(by);
   keepPlaylists();
   reportShortListArrived(list);
+  if (list.splits && list.splits.length) reportSplitList(list, readBack);
   if (list.reread && devMode()) showNotices([{ text: "Spotify sent a short list. Read again, all there.", transient: true }]);
   // The count shown in Step 1 always matches the list, including after playlists are created or removed.
   playlistsLoadedAt = Date.now();
