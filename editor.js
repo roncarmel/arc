@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-16c";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-16e";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -440,7 +440,7 @@ function toggleDetailsSmoothly(details) {
   foldMotion(details, frames(shut), false, (finished) => { if (finished && details._fxClosing) { details._fxClosing = false; details.open = false; } });
 }
 
-// Everything else on home, and each topic in it, sits near the foot of the page: once opened, the page scrolls so what opened is in view (its
+// Everything else on home, and each row in it, sits near the foot of the page: once opened, the page scrolls so what opened is in view (its
 // bottom, but never past its top), once it has unfolded (before that the page may be too short to scroll).
 function bringOpenedIntoView(details) {
   if (!details.closest || !details.closest("#homeMore") || typeof window.scrollBy !== "function") return;
@@ -655,7 +655,7 @@ function copyEditorStylesToBar() {
     let text = "";
     for (const rule of Array.from(rules)) {
       if (rule.selectorText && rule.selectorText.includes("#formatEditor")) {
-        for (const to of ["#appBar", "#builderHome"]) text += rule.cssText.replace(/#formatEditor(?=[ .:\[>])/g, to) + "\n";   // the bar's menu, and the landing's notices
+        for (const to of ["#appBar", "#builderHome", "#hpMenuSlot"]) text += rule.cssText.replace(/#formatEditor(?=[ .:\[>])/g, to) + "\n";   // the bar's menu, the landing's notices, and home's menu
       } else if (rule.cssRules && rule.media) {
         const inner = copy(rule.cssRules);
         if (inner) text += `@media ${rule.media.mediaText} {\n${inner}}\n`;
@@ -832,6 +832,10 @@ async function checkFromMenu(event) {
 function renderAppMenu() {
   const slot = $("feAppMenu");
   if (!slot) return;
+  // one menu, in home's band on home (Ron, 2026-11-16, mockups/home-menu-move A) and in Arc's bar in a tool
+  const onHome = typeof appView === "string" && appView === "home";
+  const host = onHome ? $("hpMenuSlot") : $("appBar");
+  if (host && slot.parentElement !== host) host.appendChild(slot);
   slot.innerHTML = "";
   slot.appendChild(feEl("button", {
     type: "button", class: "fe-iconbtn fe-trigger", id: "feAppMenuButton",
@@ -857,8 +861,12 @@ function renderAppMenu() {
   // each opens its block alone in the info popup
   const infoItem = (id, target, icon, label) => feEl("button", { type: "button", class: "fe-item", id, role: "menuitem", onClick: choose(() => openInfo(target)) }, feIcon(icon), label);
   const rule = () => feEl("div", { class: "fe-rule" });
-  // Help is the same at the foot of both tools' menus: Feedback, Report a problem, then the version as a grey line to read, not a button
+  // Help is the same at the foot of every menu: Feedback, Report a problem, then the version as a grey line to read, not a button
   const help = [infoItem("feFeedback", "feedbackBlock", "chat", "Feedback"), infoItem("feReport", "reportBlock", "flag", "Report a problem")];
+  // Color in every menu, the chosen color as a dot at its right; it opens the swatches in a popup (Ron, 2026-11-16, mockups/home-menu-move A)
+  const chosen = document.querySelector('#themeSwatches [aria-checked="true"]');
+  const colorItem = infoItem("feColor", "colorBlock", "palette", "Color");
+  colorItem.appendChild(feEl("span", { class: "fe-colordot", "aria-hidden": "true", style: chosen && chosen.style.background ? `background: ${chosen.style.background}` : "" }));
   // The version, and at its right Check for update in pink with a round arrow (Ron, 2026-11-13, mockups/menu-update B)
   const version = () => feEl("div", { class: "fe-menuver", id: "feMenuVersion" },
     feEl("span", { class: "fe-menuver-text", text: "Arc " + (typeof APP_VERSION === "string" ? APP_VERSION : "") }),
@@ -868,17 +876,22 @@ function renderAppMenu() {
   const panel = (...items) => slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" }, ...items));
   // No title row: Arc's icon is in the bar right above the menu (Ron, 2026-11-10).
   // In Music sharing the menu has only what is not the builder's: Connect while not connected, then help
+  // On home: Color, help and the version; what belongs to the account and Privacy are under Everything else
+  if (onHome) {
+    panel(colorItem, rule(), ...help, rule(), version());
+    return;
+  }
   if (typeof appView === "string" && appView === "sharing") {
-    panel(...spotifyItems, ...(spotifyItems.length ? [rule()] : []), ...help, rule(), version());
+    panel(...spotifyItems, ...(spotifyItems.length ? [rule()] : []), colorItem, rule(), ...help, rule(), version());
     return;
   }
   // The builder's (decided by Ron, 2026-11-10, mockups/app-menu-A.png, with help moved up under the tutorial): Connect when it applies,
-  // Watch the tutorial, Feedback and Report a problem, then the version (Build all recipes, Remove built playlists and Autosave or backup went, Ron, 2026-11-14). A guide for facilitators is gone; the ?
-  // beside the silence stepper has its own popup. What belongs to the whole app (Privacy, Color, the account) is under Everything else on home.
+  // Watch the tutorial, Color, Feedback and Report a problem, then the version (Build all recipes, Remove built playlists and Autosave or backup went, Ron, 2026-11-14). A guide for facilitators is gone; the ?
+  // beside the silence stepper has its own popup. What belongs to the account, and Privacy, are under Everything else on home.
   const tutorial = feEl("button", { type: "button", class: "fe-item fe-gditem", id: "feTutorial", role: "menuitem", onClick: choose(() => watchTutorial()) }, tutorialFrame(),
     feEl("span", { class: "fe-gditem-text" }, feEl("span", { text: "Watch the tutorial" }), feEl("span", { class: "fe-gditem-note", text: "2 minute walkthrough" })));
   panel(...spotifyItems, ...(spotifyItems.length ? [rule()] : []),
-    tutorial, rule(), ...help, rule(),
+    tutorial, rule(), colorItem, rule(), ...help, rule(),
     version());
 }
 

@@ -1,9 +1,16 @@
-// app.js: the page's logic. It signs in to Spotify, reads playlists, and asks engine.py (running in
+// app.js: the page's logic. It signs in to the music service, reads playlists, and asks engine.py (running in
 // Pyodide, which is Python in the browser) to plan the new playlists. Then it can create them.
+
+// The music service this browser uses (work/tidal-plan.md, "The service layer"): Spotify, or TIDAL when `arcService` says so. Each service file sets
+// its own object with the same members (service-spotify.js, service-tidal.js); the rest of Arc reaches the service only through `service`.
+const service = (() => {
+  try { if (localStorage.getItem("arcService") === "tidal" && typeof tidalService !== "undefined") return tidalService; } catch (err) { /* no storage: Spotify */ }
+  return spotifyService;
+})();
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16c";
+const APP_VERSION = "2026-11-16e";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -317,6 +324,7 @@ function switchView(was, view, push, sharingTab = "find") {
   const root = document.documentElement;
   for (const v of VIEWS) root.classList.toggle("view-" + v, v === view);
   nameToolInBar();
+  if (typeof renderAppMenu === "function") renderAppMenu();   // the ⋯ sits in home's band on home, in Arc's bar in a tool
   closeToolMenu(false);
   if (push && view !== "home") { try { history.pushState({ view }, ""); } catch (err) { /* the back button just leaves the page */ } }
   window.scrollTo(0, 0);
@@ -412,78 +420,20 @@ function fitOnOneLine(all) {
   }
 }
 
-// Everything else on home: a bar of icons that are tabs (decided by Ron, 2026-11-09, mockups/home-a1-iter-2.html E4). A tap lights one and opens its panel under
-// the bar; a tap on the lit one, the X at the bar's end, or Escape inside it closes it. The arrow keys move between the icons.
-function homeTabs() { return [...document.querySelectorAll("#homeMore .hp-ee-tab")].filter((tab) => !tab.hidden); }
-function openHomeTab(panelId, scroll = true) {
-  let opened = null;
-  for (const tab of document.querySelectorAll("#homeMore .hp-ee-tab")) {
-    const on = tab.getAttribute("aria-controls") === panelId;
-    tab.setAttribute("aria-selected", String(on));
-    tab.tabIndex = on || (!panelId && tab === homeTabs()[0]) ? 0 : -1;
-    $(tab.getAttribute("aria-controls")).hidden = !on;
-    if (on) opened = $(panelId);
-  }
-  $("eeClose").hidden = !opened;
-  if (panelId === "eeReport") refreshReportBox();
-  if (opened && scroll && typeof bringOpenedIntoView === "function") requestAnimationFrame(() => bringOpenedIntoView(opened));
-}
-function closeHomeTab() {
-  const lit = document.querySelector('#homeMore .hp-ee-tab[aria-selected="true"]');
-  openHomeTab(null);
-  if (lit) lit.focus({ preventScroll: true });
-}
+// Everything else on home (Ron, 2026-11-16, mockups/home-menu-move): a card of rows, each its icon and name, that open in place (<details>, unfolding with
+// toggleDetailsSmoothly in editor.js). Color, Feedback and Report a problem moved to home's ⋯ menu.
 function initHomeMore() {
-  const tabs = document.querySelectorAll("#homeMore .hp-ee-tab");
-  for (const tab of tabs) {
-    if (typeof feIcon === "function" && FE_ICONS[tab.dataset.icon]) tab.appendChild(feIcon(tab.dataset.icon)).className = "hp-ee-icon";
-    tab.addEventListener("click", () => {
-      if (tab.getAttribute("aria-selected") === "true") closeHomeTab();
-      else openHomeTab(tab.getAttribute("aria-controls"));
-    });
-    tab.addEventListener("keydown", (event) => {
-      const list = homeTabs(), at = list.indexOf(tab);
-      const to = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: list.length - 1 }[event.key];
-      if (to === undefined) return;
-      event.preventDefault();
-      list[(to + list.length) % list.length].focus();
-    });
+  for (const ico of document.querySelectorAll("#homeMore .hp-ee-ico")) {
+    if (typeof feIcon === "function" && FE_ICONS[ico.dataset.icon]) ico.appendChild(feIcon(ico.dataset.icon));
   }
-  initHomeTips(tabs);
-  on("eeClose", "click", closeHomeTab);
-  on("homeMore", "keydown", (event) => {
-    if (event.key !== "Escape" || event.defaultPrevented || $("eeClose").hidden) return;
-    if (event.target.closest && event.target.closest("#clearConfirm")) return;   // an Escape inside the question is for it
-    event.preventDefault();
-    closeHomeTab();
-  });
-  openHomeTab(null, false);
+  if (typeof renderAppMenu === "function") renderAppMenu();   // home's ⋯ goes into its band
 }
-
-// Each icon's name in a small capsule above it while a mouse rests on it (Ron, 2026-11-14), never for touch or a pen: pointerType says which,
-// so a laptop with a touch screen gets it for the mouse only. Drawn in <body>, fixed, since the card clips what leaves it.
-function initHomeTips(tabs) {
-  let tip = null, timer = 0;
-  const hide = () => { clearTimeout(timer); if (tip) tip.classList.remove("on"); };
-  for (const tab of tabs) {
-    tab.addEventListener("pointerenter", (event) => {
-      if (event.pointerType !== "mouse") return;
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        if (!tip) { tip = document.createElement("div"); tip.id = "eeTip"; tip.setAttribute("aria-hidden", "true"); document.body.appendChild(tip); }
-        tip.textContent = tab.getAttribute("aria-label");
-        const box = tab.getBoundingClientRect(), width = tip.offsetWidth;
-        const left = Math.max(8, Math.min(innerWidth - width - 8, box.left + box.width / 2 - width / 2));
-        tip.style.left = left + "px";
-        tip.style.top = box.top - tip.offsetHeight - 6 + "px";
-        tip.style.setProperty("--tip-x", box.left + box.width / 2 - left + "px");
-        tip.classList.add("on");
-      }, tip && tip.classList.contains("on") ? 0 : 350);
-    });
-    tab.addEventListener("pointerleave", hide);
-    tab.addEventListener("pointerdown", hide);
-  }
-  addEventListener("scroll", hide, { passive: true });
+// opens one of Everything else's rows and brings it into view (a Privacy link elsewhere)
+function openHomeRow(rowId) {
+  const row = $(rowId);
+  if (!row) return;
+  row.open = true;
+  row.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 // Back home: undoes the tool's step in the history when there is one, so the back button does not return to the tool
@@ -1243,7 +1193,6 @@ function closeInfo(quiet = false) {
   info.opener = null;
   if (quiet) return;
   if (under && opener && under.contains(opener)) opener.focus({ preventScroll: true });
-  else if (!under && opener && opener.closest && opener.closest("#homeMore")) opener.focus({ preventScroll: true });   // opened from Everything else on home
   else if (!under && $("feAppMenuButton")) $("feAppMenuButton").focus();
 }
 
@@ -2606,6 +2555,7 @@ function useKeptPlaylists() {
 function devMenuOpened() {
   let width = ""; try { width = localStorage.getItem("devPhoneWidth") || ""; } catch (e) {}
   for (const button of document.querySelectorAll("#devMenu [data-width]")) button.setAttribute("aria-pressed", String(button.dataset.width === width));
+  for (const button of document.querySelectorAll("#devMenu [data-pick-service]")) button.setAttribute("aria-pressed", String(button.dataset.pickService === service.key));
   if (typeof sharingDevMenu === "function") sharingDevMenu();
 }
 
@@ -2623,7 +2573,7 @@ function limitRecordText() {
   return JSON.stringify({
     app: APP_VERSION, copiedAt: new Date().toISOString(), timezoneOffsetMin: new Date().getTimezoneOffset(),
     previousCopy: Number(localStorage.getItem("spotifyRecordCopiedAt")) || null,
-    limits: readRecord(LIMITS_KEY, []), callsPerMinute: readRecord(CALLS_KEY, {}), syncAsks: readRecord(SYNC_ASKS_KEY, []), saveCreates: readRecord(SAVE_CREATES_KEY, []), saveDuplicates: readRecord(SAVE_DUPLICATES_KEY, []), listReads: readRecord(LIST_READS_KEY, []), tab: TAB_ID,
+    ...service.requestLog(), syncAsks: readRecord(SYNC_ASKS_KEY, []), saveCreates: readRecord(SAVE_CREATES_KEY, []), saveDuplicates: readRecord(SAVE_DUPLICATES_KEY, []), listReads: readRecord(LIST_READS_KEY, []), tab: TAB_ID,
   });
 }
 
@@ -3441,7 +3391,7 @@ function initThemeChooser() {
 
 // Every other script names its own version in scriptVersions. An old copy of one, kept by a browser or a phone's Home Screen app while the rest is new,
 // is a startup problem like any other: fresh copies are fetched and the page loads again by itself, then the popup if it is still there.
-const SCRIPT_FILES = ["theme.js", "formats.js", "editor.js", "service-spotify.js", "sharing.js"];
+const SCRIPT_FILES = ["theme.js", "formats.js", "editor.js", "shared-service.js", "service-spotify.js", "service-tidal.js", "sharing.js"];
 function checkScriptVersions() {
   const versions = globalThis.scriptVersions || {};
   const old = SCRIPT_FILES.filter((file) => versions[file] !== APP_VERSION);
@@ -3528,6 +3478,22 @@ async function main() {
       pageWindow().location.reload();
     });
   }
+  // Music service (TIDAL plan, stage 4): this browser uses Spotify or TIDAL. Each keeps its own Client ID (clientId-spotify, clientId-tidal), swapped in as
+  // `clientId`; the page reloads under the other service. Until stage 5 TIDAL has no setup of its own: its Client ID goes in the usual field.
+  for (const button of document.querySelectorAll("#devMenu [data-pick-service]")) {
+    button.addEventListener("click", () => {
+      const next = button.dataset.pickService;
+      if (next === service.key || buildWriting()) return;
+      try {
+        const current = localStorage.getItem("clientId");
+        if (current) localStorage.setItem("clientId-" + service.key, current); else localStorage.removeItem("clientId-" + service.key);
+        const theirs = localStorage.getItem("clientId-" + next);
+        if (theirs) localStorage.setItem("clientId", theirs); else localStorage.removeItem("clientId");
+        if (next === "spotify") localStorage.removeItem("arcService"); else localStorage.setItem("arcService", next);
+      } catch (e) { return; }
+      pageWindow().location.reload();
+    });
+  }
   on("connect", "click", startLogin);
   on("startSetup", "click", () => slideScreens(() => goToSetup(false)));
   on("getStarted", "click", () => slideScreens(() => showWelcomeStep(2, true)));
@@ -3560,13 +3526,12 @@ async function main() {
   on("connectionRetry", "click", connectToSpotify);
   on("connectionReconnect", "click", startLogin);
   on("reconnectButton", "click", startLogin);
-  $("privacyWaitRelay").hidden = !WAIT_RELAY_URL;   // Privacy says what the relay sees only once there is one
+  $("privacyWaitRelay").hidden = !service.waitRelay();   // Privacy says what the relay sees only once there is one
   for (const link of document.querySelectorAll(".privacy-link")) {
     link.addEventListener("click", (event) => {
       event.preventDefault();
-      if (pageName() === "app" && typeof showView === "function") showView("home");   // Privacy is under Everything else on home
-      openHomeTab("privacySection", false);
-      $("homeMore").scrollIntoView({ behavior: "smooth", block: "start" });
+      if (pageName() === "app" && typeof showView === "function") showView("home");   // Privacy is a row under Everything else on home
+      openHomeRow("eePrivacyRow");
     });
   }
   initMotion();
@@ -3582,7 +3547,7 @@ async function main() {
     if (typeof editor === "undefined" || !editor.internal) clearHeldNotice();
     refreshFormatKeys();
   });
-  guarded(`a wait from ${service.name}`, () => tickPause());
+  guarded(`a wait from ${service.name}`, () => service.tick());
 
   if (signingIn) { setLoginMessage(signInNote, true); updateButtons(); }   // coming back from Spotify: say so before the sign-in is finished
   updateStep(launchScreen ? `Connecting to ${service.name}` : `Signing in to ${service.name}`);

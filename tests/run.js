@@ -2,7 +2,7 @@ const { JSDOM } = require("jsdom");
 const { execFileSync } = require("child_process");
 // Run only some areas: node run.js --only=privacy|tabs   (matches part of an area's name; --list shows the names)
 const ONLY = (process.argv.find((a) => a.startsWith("--only=")) || "").slice(7).toLowerCase().split("|").filter(Boolean);
-const SECTION_NAMES = ["builder landing and participants", "launch screen", "sharing card in the editor", "music sharing", "device checks", "sharing what arc built", "music sharing songs", "developer options", "menu popups and the silence help", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version line", "welcome recipe link", "spotify row", "notice line", "connecting state", "connecting screen", "save retry online", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "save packer", "playlist ids", "popups close only", "narrow more button", "the silence card", "spotify premium", "python status at the bottom", "questions and feedback", "settings below the segments, pink outline", "the tagline", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "scrolling home with the keyboard watch", "privacy section and anonymous counts", "report link on a connection problem", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', 'private playlists', 'cover art', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', 'the app menu, and minimalist mode', 'minimalist mode, part two', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
+const SECTION_NAMES = ["builder landing and participants", "launch screen", "sharing card in the editor", "music sharing", "tidal", "device checks", "sharing what arc built", "music sharing songs", "developer options", "menu popups and the silence help", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version line", "welcome recipe link", "spotify row", "notice line", "connecting state", "connecting screen", "save retry online", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "save packer", "playlist ids", "popups close only", "narrow more button", "the silence card", "spotify premium", "python status at the bottom", "questions and feedback", "settings below the segments, pink outline", "the tagline", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "scrolling home with the keyboard watch", "privacy section and anonymous counts", "report link on a connection problem", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', 'private playlists', 'cover art', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', 'the app menu, and minimalist mode', 'minimalist mode, part two', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
 // areas that need another area's setup to have run first
 const NEEDS = {
   "the page's styles for tags and phones": ["silences, dragging and removing"],
@@ -29,9 +29,9 @@ const fs = require("fs");
 
 // where the app is: the folder above this one, or APP_DIR
 const ROOT = (process.env.APP_DIR || require("path").join(__dirname, "..")).replace(/\/?$/, "/");
-const html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/<script src="(theme|formats|editor|service-spotify|app|sharing)\.js(\?v=[^"]*)?"><\/script>/g, "");
+const html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/<script src="(theme|formats|editor|shared-service|service-spotify|service-tidal|app|sharing)\.js(\?v=[^"]*)?"><\/script>/g, "");
 // the three scripts share one scope in a browser, so they are run together here
-const appJs = fs.readFileSync(ROOT + "theme.js", "utf8") + "\n" + fs.readFileSync(ROOT + "formats.js", "utf8") + "\n" + fs.readFileSync(ROOT + "editor.js", "utf8") + "\n" + fs.readFileSync(ROOT + "service-spotify.js", "utf8") + "\n" + fs.readFileSync(ROOT + "app.js", "utf8") + "\n" + fs.readFileSync(ROOT + "sharing.js", "utf8");
+const appJs = fs.readFileSync(ROOT + "theme.js", "utf8") + "\n" + fs.readFileSync(ROOT + "formats.js", "utf8") + "\n" + fs.readFileSync(ROOT + "editor.js", "utf8") + "\n" + fs.readFileSync(ROOT + "shared-service.js", "utf8") + "\n" + fs.readFileSync(ROOT + "service-spotify.js", "utf8") + "\n" + fs.readFileSync(ROOT + "service-tidal.js", "utf8") + "\n" + fs.readFileSync(ROOT + "app.js", "utf8") + "\n" + fs.readFileSync(ROOT + "sharing.js", "utf8");
 
 // app.js and the Spotify code it uses from service-spotify.js, for the checks that read the code itself
 const appSource = () => fs.readFileSync(ROOT + "service-spotify.js", "utf8") + "\n" + fs.readFileSync(ROOT + "app.js", "utf8");
@@ -73,6 +73,49 @@ const RUN_STARTED = Date.now();
 global.bridgeCalls = 0; global.bridgeMs = 0; global.bootCount = 0; global.bootMs = 0;
 const SCOPE_ALL = "playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public user-library-modify ugc-image-upload";
 global.planTextArgCounts = [];
+// A pretend TIDAL (openapi.tidal.com/v2, JSON:API), for the areas that run Arc under TIDAL (work/tidal-plan.md, stage 4): the same playlists as
+// MY_PLAYLISTS that are the person's own, under UUIDs, with numeric song IDs, ISRCs and lengths as "PT2M31S"; pages of 20, as TIDAL sends them.
+// options.tidal holds what was written: {created: [{id, name, description, accessType}], adds: [{id, ids}], patches: [{id, attributes}], deletes: [id], descs: {id: text}}
+const TIDAL_SILENCE = { "83423070": 30, "83423071": 60, "83423073": 180, "83423075": 300, "83423080": 600 };
+const tidalUuid = (n) => `${String(n).padStart(8, "0")}-aaaa-4bbb-8ccc-${String(n).padStart(12, "0")}`;
+const TIDAL_PLAYLISTS = MY_PLAYLISTS.filter((p) => p.owner.id === "ron").map((p, i) => ({ id: tidalUuid(i + 1), from: p.id, name: p.name }));
+function tidalTrack(id) {
+  const silence = TIDAL_SILENCE[id];
+  if (silence) return { id, type: "tracks", attributes: { title: "Silence", isrc: "DEAR4" + id.slice(-7), duration: `PT${Math.floor(silence / 60)}M${silence % 60}S` }, relationships: { artists: { data: [{ type: "artists", id: "a0" }] } } };
+  const pl = String(Number(id.slice(0, -4))), n = String(Number(id.slice(-4)));   // "10042": playlist 1's song 42
+  const ms = 150000 + ((Number(pl) * 7919 + Number(n) * 104729) % 180000);
+  return { id, type: "tracks", attributes: { title: `Song ${n}`, isrc: `TEST${pl.padStart(3, "0")}${n.padStart(5, "0")}`, duration: `PT${Math.floor(ms / 60000)}M${(ms % 60000) / 1000}S` }, relationships: { artists: { data: [{ type: "artists", id: "a1" }] } } };
+}
+const tidalSongIds = (i) => Array.from({ length: 130 }, (_, n) => `${i + 1}${String(n).padStart(4, "0")}`);
+function tidalAnswer(options, url, method, init, json) {
+  const st = options.tidal = options.tidal || { created: [], adds: [], patches: [], deletes: [], descs: {}, requests: [] };
+  const u = new URL(url), path = u.pathname.replace(/^\/v2/, ""), body = init.body ? JSON.parse(init.body) : null;
+  st.requests.push(`${method} ${path}`);
+  if (!/^Bearer \S/.test((init.headers || {}).Authorization || "")) return json({ errors: [{ status: "401" }] }, 401);
+  const all = () => TIDAL_PLAYLISTS.map((p) => ({ id: p.id, name: p.name })).concat(st.created).filter((p) => !st.deletes.includes(p.id));
+  const songsOf = (id) => { const p = TIDAL_PLAYLISTS.find((x) => x.id === id); if (p) return tidalSongIds(TIDAL_PLAYLISTS.indexOf(p)); return st.adds.filter((a) => a.id === id).flatMap((a) => a.ids); };
+  const asPlaylist = (p) => ({ id: p.id, type: "playlists", attributes: { name: p.name, description: st.descs[p.id] !== undefined ? st.descs[p.id] : (p.description || ""), numberOfItems: songsOf(p.id).length, lastModifiedAt: "2026-11-16T10:00:00Z", accessType: p.accessType || "PUBLIC" }, relationships: { owners: { data: [{ type: "users", id: "777" }] } } });
+  const page = (items, mapped) => { const at = Number(u.searchParams.get("page[cursor]") || 0); const next = at + 20 < items.length ? (u.searchParams.set("page[cursor]", String(at + 20)), u.pathname.replace(/^\/v2/, "") + "?" + u.searchParams.toString()) : null; return { data: items.slice(at, at + 20).map(mapped), links: next ? { next } : {} }; };
+  if (method === "GET" && path === "/users/me") return json({ data: { id: "777", type: "users", attributes: { username: "ron", country: "US" } } });
+  if (method === "GET" && path === "/playlists") return json(page(all(), asPlaylist));
+  if (method === "POST" && path === "/playlists") { const a = body.data.attributes; const made = { id: tidalUuid(900 + st.created.length), name: a.name, description: a.description, accessType: a.accessType }; st.created.push(made); st.descs[made.id] = a.description; return json({ data: asPlaylist(made) }, 201); }
+  let m = path.match(/^\/playlists\/([0-9a-f-]+)\/relationships\/items$/);
+  if (m && method === "POST") { if (body.data.length > 50) return json({ errors: [{ status: "400" }] }, 400); st.adds.push({ id: m[1], ids: body.data.map((r) => r.id) }); return json({}, 201); }
+  if (m && method === "GET") { const refs = songsOf(m[1]).map((id) => ({ id, type: "tracks" })); const p = page(refs, (r) => r); return json({ ...p, included: p.data.map((r) => tidalTrack(r.id)).concat([{ id: "a1", type: "artists", attributes: { name: "Artist" } }, { id: "a0", type: "artists", attributes: { name: "silence moments" } }]) }); }
+  m = path.match(/^\/playlists\/([0-9a-f-]+)$/);
+  if (m) {
+    const p = all().find((x) => x.id === m[1]);
+    if (!p) return json({ errors: [{ status: "404" }] }, 404);
+    if (method === "PATCH") { const a = body.data.attributes; st.patches.push({ id: m[1], attributes: a }); if (a.description !== undefined) st.descs[m[1]] = a.description; if (a.name !== undefined) p.name = a.name; return json({}, 204); }
+    if (method === "DELETE") { st.deletes.push(m[1]); return json({}, 204); }
+    return json({ data: asPlaylist(p) });
+  }
+  if (method === "GET" && path === "/tracks") { const want = (u.searchParams.get("filter[isrc]") || "").split(","); st.lookups = (st.lookups || 0) + 1; return json({ data: Object.keys(TIDAL_SILENCE).map(tidalTrack).filter((t) => want.includes(t.attributes.isrc)) }); }
+  m = path.match(/^\/tracks\/(\d+)$/);
+  if (m) return json({ data: tidalTrack(m[1]) });
+  return json({ errors: [{ status: "404" }] }, 404);
+}
+
 function makeFetch(options = {}) {
   return async (url, init = {}) => {
     url = String(url);
@@ -80,6 +123,7 @@ function makeFetch(options = {}) {
     const method = (init.method || "GET").toUpperCase();
     const writes = options.writes;
     const json = (body, status = 200) => ({ ok: status < 400, status, headers: { get: () => null }, json: async () => body, text: async () => JSON.stringify(body) });
+    if (url.startsWith("https://openapi.tidal.com/")) return tidalAnswer(options, url, method, init, json);
     if (options.premiumRequired && url.startsWith("https://api.spotify.com/")) return json({ error: { status: 403, message: "Active premium subscription required for the owner of the app" } }, 403);
     if (url.startsWith("https://music-sharing.roncarmel.workers.dev/")) {   // a pretend Music sharing worker: options.sharing holds its shares
       const sh = options.sharing = options.sharing || { shares: [], words: {}, posts: [], deletes: [], reports: [] };
@@ -297,7 +341,7 @@ async function boot({ url, session = {}, local = {}, fetchOptions = {}, before =
   w.document.documentElement.classList.add("view-" + view);   // as the <head> script would (it does not run here)
   if (savedLocal.devMode === "1") w.document.documentElement.classList.add("dev-mode");   // developer mode, as the <head> script would
   w.__scriptsRequested = [];
-  w.eval(appJs.replace("const sharing = {", "var sharing = {").replace("const service = {", "var service = {").replace("const previewUrls =", "var previewUrls =").replace("let spotifyAnswerMs = 30000;", "var spotifyAnswerMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const recipeEdit =", "var recipeEdit =").replace("const builderHome =", "var builderHome =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let SHORT_LIST_RETRY_MS =", "var SHORT_LIST_RETRY_MS =").replace("let playlistPages =", "var playlistPages =").replace("let busy =", "var busy =").replace("let token = null;", "var token = null;").replace("let py = null;", "var py = null;").replace("let formatsValid =", "var formatsValid =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let appView =", "var appView =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("let launchScreen =", "var launchScreen =").replace("const GAP_STEPS =", "var GAP_STEPS =").replace("let startupDone =", "var startupDone =").replace("const limitWait =", "var limitWait =").replace("const personBuild =", "var personBuild ="));  // test harness only: lets a test replace the reload
+  w.eval(appJs.replace("const sharing = {", "var sharing = {").replace("const service = (() => {", "var service = (() => {").replace("const previewUrls =", "var previewUrls =").replace("let answerLimitMs = 30000;", "var answerLimitMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const recipeEdit =", "var recipeEdit =").replace("const builderHome =", "var builderHome =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let SHORT_LIST_RETRY_MS =", "var SHORT_LIST_RETRY_MS =").replace("let playlistPages =", "var playlistPages =").replace("let busy =", "var busy =").replace("let token = null;", "var token = null;").replace("let py = null;", "var py = null;").replace("let formatsValid =", "var formatsValid =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let appView =", "var appView =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("let launchScreen =", "var launchScreen =").replace("const GAP_STEPS =", "var GAP_STEPS =").replace("let startupDone =", "var startupDone =").replace("const limitWait =", "var limitWait =").replace("const personBuild =", "var personBuild ="));  // test harness only: lets a test replace the reload
   await Promise.race([w.__main, new Promise((r) => setTimeout(r, 1500))]);   // ready as soon as the page has finished starting up
   await new Promise((r) => setTimeout(r, 30));
   // Most tests were written when the editor was always on the page: the recipe being edited opens in its panel, as a tap on it would (panel: false leaves the landing)
@@ -628,14 +672,14 @@ print(json.dumps(out))
 
   var rp = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, clientId: "SECRET-CLIENT-ID-9" } });
   await readyToPreview(rp);
-  check("Report a problem has its own block, opened from the app menu, that explains what happens", !!rp.document.getElementById("reportBlock").closest("#homeMore #eeReport") && /Say what happened\. I \(Ron\) read every report and respond when I can\./.test(rp.document.getElementById("reportBlock").textContent));
+  check("Report a problem has its own block, opened from the app menu, that explains what happens", !!rp.document.getElementById("reportBlock").closest("footer") && rp.document.getElementById("reportBlock").hidden === true && /Say what happened\. I \(Ron\) read every report and respond when I can\./.test(rp.document.getElementById("reportBlock").textContent));
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly these seven, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16c" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16e" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16c/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16e/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -869,8 +913,9 @@ print(json.dumps(out))
   check("page text in the scripts names the service, not Spotify (Spotify's setup, Device checks and developer notes aside)", sv_left.every((t) => sv_allowed.includes(t) || /Spotify's own cover/.test(t)), JSON.stringify(sv_left.filter((t) => !sv_allowed.includes(t))));
   var sv_html = fs.readFileSync(ROOT + "index.html", "utf8");
   check("the markup marks the service's name for filling in, and the requirement (Spotify Premium) where it is said", (sv_html.match(/<span data-service>Spotify<\/span>/g) || []).length >= 25 && (sv_html.match(/data-requirement-name>Spotify Premium</g) || []).length === 2 && (sv_html.match(/ data-requirement>/g) || []).length === 2);
-  check("only the service file talks to Spotify: no Spotify address, URI, request, sign-in token, wait, permission or ID packing elsewhere, and songs carry the service's id, not a URI", ["app.js", "editor.js", "sharing.js", "formats.js", "engine.py"].every((f) => !/api\.spotify\.com|spotify:(track|playlist):|spotifyRequest|\bspotify\(|spotifyPause\(|pausedSecondsLeft|spotifyIdToBytes|bytesToSpotifyId|\bSCOPES\b/.test(fs.readFileSync(ROOT + f, "utf8").replace(/(^|\s)\/\/.*$/gm, ""))) && ["app.js", "editor.js", "sharing.js"].every((f) => !/(^|[^\w.])token\b(?!\s*[:"])/.test(fs.readFileSync(ROOT + f, "utf8").replace(/(^|\s)\/\/.*$/gm, "").replace(/(["'`])(?:\\.|(?!\1).)*?\1/g, ""))) && /const service = \{/.test(fs.readFileSync(ROOT + "service-spotify.js", "utf8")) && !/\["uri"\]/.test(fs.readFileSync(ROOT + "engine.py", "utf8")));
-  check("the page has six scripts of its own, with the theme first, and nothing about embeds", finalHtml.match(/<script src="[^"]+"><\/script>/g).join("").replace(/\?v=[^"]+/g, "") === '<script src="theme.js"></script><script src="formats.js"></script><script src="editor.js"></script><script src="service-spotify.js"></script><script src="app.js"></script><script src="sharing.js"></script>' && finalHtml.indexOf('<script src="theme.js">') < finalHtml.indexOf("</head>") && !/embeds/i.test(finalHtml) && !/embeds/i.test(appSource()) && !fs.existsSync(ROOT + "embeds.js"));
+  check("only TIDAL's file names TIDAL's addresses", ["app.js", "editor.js", "sharing.js", "formats.js", "shared-service.js", "service-spotify.js"].every((f) => !/tidal\.com/.test(fs.readFileSync(ROOT + f, "utf8"))) && /openapi\.tidal\.com/.test(fs.readFileSync(ROOT + "service-tidal.js", "utf8")));
+  check("only the service file talks to Spotify: no Spotify address, URI, request, sign-in token, wait, permission or ID packing elsewhere, and songs carry the service's id, not a URI", ["app.js", "editor.js", "sharing.js", "formats.js", "engine.py"].every((f) => !/api\.spotify\.com|spotify:(track|playlist):|spotifyRequest|\bspotify\(|spotifyPause\(|pausedSecondsLeft|spotifyIdToBytes|bytesToSpotifyId|\bSCOPES\b/.test(fs.readFileSync(ROOT + f, "utf8").replace(/(^|\s)\/\/.*$/gm, ""))) && ["app.js", "editor.js", "sharing.js"].every((f) => !/(^|[^\w.])token\b(?!\s*[:"])/.test(fs.readFileSync(ROOT + f, "utf8").replace(/(^|\s)\/\/.*$/gm, "").replace(/(["'`])(?:\\.|(?!\1).)*?\1/g, ""))) && /const spotifyService = \{/.test(fs.readFileSync(ROOT + "service-spotify.js", "utf8")) && !/\["uri"\]/.test(fs.readFileSync(ROOT + "engine.py", "utf8")));
+  check("the page has eight scripts of its own, with the theme first, and nothing about embeds", finalHtml.match(/<script src="[^"]+"><\/script>/g).join("").replace(/\?v=[^"]+/g, "") === '<script src="theme.js"></script><script src="formats.js"></script><script src="editor.js"></script><script src="shared-service.js"></script><script src="service-spotify.js"></script><script src="service-tidal.js"></script><script src="app.js"></script><script src="sharing.js"></script>' && finalHtml.indexOf('<script src="theme.js">') < finalHtml.indexOf("</head>") && !/embeds/i.test(finalHtml) && !/embeds/i.test(appSource()) && !fs.existsSync(ROOT + "embeds.js"));
   check("the app never names an outside script, so no Ko-fi or Tally code can run in the page", !/tally\.so\/widgets|overlay-widget|storage\.ko-fi\.com\/cdn\/scripts/.test(appSource() + finalHtml));
   check("Tally is left only in the startup problem popup, whose report link must work when the scripts did not start", (finalHtml.match(/tally\.so/g) || []).length === 1 && /id="startupReport"[^>]*href="https:\/\/tally\.so\/r\/VppLZN"/.test(finalHtml) && !/FEEDBACK_FORM_URL/.test(appSource()));
   var stale = await boot({ url: "http://127.0.0.1:8000/?embeds=on", session: { ...signedIn(), embeds: "on" }, local: { formats: MINI } });
@@ -1272,7 +1317,7 @@ print(json.dumps(out))
   // ================================================================ the color theme
   var y_thm = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI } });
   var y_root = y_thm.document.documentElement.style;
-  check("Everything else on home has a Color panel with 17 swatches, single-color names, Pink first and chosen, no name shown", y_thm.document.querySelector("#homeMore #eeColor > h3").textContent === "Color" && y_thm.document.getElementById("eeTabColor").getAttribute("aria-label") === "Color" && Array.from(y_thm.document.querySelectorAll("#themeSwatches .theme-swatch")).length === 17 && y_thm.document.querySelector("#themeSwatches .theme-swatch").getAttribute("aria-label") === "Pink" && y_thm.document.querySelector("#themeSwatches [aria-checked=true]").getAttribute("aria-label") === "Pink" && /#ff38b8|rgb\(255, 56, 184\)/.test(y_thm.document.querySelector("#themeSwatches [aria-checked=true]").style.background) && Array.from(y_thm.document.querySelectorAll("#themeSwatches .theme-swatch")).every((o) => o.style.background !== "" && o.getAttribute("role") === "radio" && !/\band\b/.test(o.getAttribute("aria-label"))));
+  check("Color is a popup of its own (from the ⋯ menus) with 17 swatches, single-color names, Pink first and chosen, no name shown", y_thm.document.querySelector("#colorBlock.menu-popup > h3").textContent === "Color" && Array.from(y_thm.document.querySelectorAll("#themeSwatches .theme-swatch")).length === 17 && y_thm.document.querySelector("#themeSwatches .theme-swatch").getAttribute("aria-label") === "Pink" && y_thm.document.querySelector("#themeSwatches [aria-checked=true]").getAttribute("aria-label") === "Pink" && /#ff38b8|rgb\(255, 56, 184\)/.test(y_thm.document.querySelector("#themeSwatches [aria-checked=true]").style.background) && Array.from(y_thm.document.querySelectorAll("#themeSwatches .theme-swatch")).every((o) => o.style.background !== "" && o.getAttribute("role") === "radio" && !/\band\b/.test(o.getAttribute("aria-label"))));
   check("the theme's two colors become every color the page uses", y_root.getPropertyValue("--button") === "#ff38b8" && y_root.getPropertyValue("--silence-line") === "#8a8a92" && ["--bg", "--fg", "--muted", "--line", "--card", "--cover", "--accent", "--accent-deep", "--accent-tint", "--accent-tint-border", "--accent-wash", "--on-button", "--icon-filter"].every((v) => y_root.getPropertyValue(v) !== ""), y_root.getPropertyValue("--bg"));
   check("light mode: a white page, dark text, and white text on the pink buttons", y_root.getPropertyValue("--bg") === "#ffffff" && y_thm.contrastRatio(y_root.getPropertyValue("--fg"), y_root.getPropertyValue("--bg")) > 12 && y_root.getPropertyValue("--on-button") === "#ffffff" && y_root.getPropertyValue("--icon-filter") === "none");
   check("link and title text in light mode is darkened until it can be read (4.5 to 1 or better)", y_thm.contrastRatio(y_root.getPropertyValue("--accent"), y_root.getPropertyValue("--bg")) >= 4.5);
@@ -1330,7 +1375,7 @@ print(json.dumps(out))
   }
   check("in every theme, in light and dark, the text, links, buttons and silence tags are readable", z_bad.length === 0, z_bad.join("; "));
   z_t.eval('showView("home", false)');
-  z_t.document.getElementById("eeTabColor").click();   // the color list is under Everything else on home, behind its icon
+  z_t.eval('openInfo("colorBlock")');   // the color list is a popup from the ⋯ menus
   var z_sw = (name) => Array.from(z_t.document.querySelectorAll("#themeSwatches .theme-swatch")).find((o) => o.getAttribute("aria-label") === name);
   check("only the chosen swatch can be tabbed to", z_sw("Pink").tabIndex === 0 && Array.from(z_t.document.querySelectorAll("#themeSwatches .theme-swatch")).filter((o) => o.tabIndex === 0).length === 1);
   z_sw("Pink").focus();
@@ -1518,19 +1563,18 @@ print(json.dumps(out))
   check("the menu starts closed", !am_w.document.getElementById("feAppMenuPanel") && am_w.document.getElementById("feAppMenuButton").getAttribute("aria-expanded") === "false");
   am_w.document.getElementById("feAppMenuButton").click();
   var am_items = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel .fe-item")).map((b) => b.textContent.trim());
-  var am_ids = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel [id]")).map((n) => n.id).filter((id) => ["feTutorial", "feFeedback", "feBuildAll", "feRemoveBuilt", "feSaveMethod", "feMoreOptions", "feGuide", "feAbout", "feTips", "fePrivacy", "feReport", "feBackupMethod", "feBackup", "feRestore", "feDisconnect", "feMenuVersion"].includes(id));
-  check("it has no Disconnect and no title row; Watch the tutorial, Feedback, Report a problem and the version, in that order, with no backup block", JSON.stringify(am_ids) === JSON.stringify(["feTutorial", "feFeedback", "feReport", "feMenuVersion"]) && !am_w.document.querySelector("#feAppMenuPanel .fe-menuhead") && !am_w.document.querySelector("#feAppMenuPanel .fe-bk-block"), JSON.stringify(am_ids));
+  var am_ids = Array.from(am_w.document.querySelectorAll("#feAppMenuPanel [id]")).map((n) => n.id).filter((id) => ["feTutorial", "feColor", "feFeedback", "feBuildAll", "feRemoveBuilt", "feSaveMethod", "feMoreOptions", "feGuide", "feAbout", "feTips", "fePrivacy", "feReport", "feBackupMethod", "feBackup", "feRestore", "feDisconnect", "feMenuVersion"].includes(id));
+  check("it has no Disconnect and no title row; Watch the tutorial, Color, Feedback, Report a problem and the version, in that order, with no backup block", JSON.stringify(am_ids) === JSON.stringify(["feTutorial", "feColor", "feFeedback", "feReport", "feMenuVersion"]) && !am_w.document.querySelector("#feAppMenuPanel .fe-menuhead") && !am_w.document.querySelector("#feAppMenuPanel .fe-bk-block"), JSON.stringify(am_ids));
   var am_info = (id) => am_w.document.getElementById("infoSlot").firstElementChild && am_w.document.getElementById("infoSlot").firstElementChild.id === id && am_w.document.getElementById("infoOverlay").hidden === false;
-  am_w.document.getElementById("eeTabPrivacy").click();
-  check("Privacy opens in place under Everything else on home, not in the popup, and the menu has no About this app", !am_w.document.getElementById("homePrivacy") && !!am_w.document.getElementById("privacySection").closest("#homeMore") && am_w.document.getElementById("infoOverlay").hidden === true && !am_w.document.getElementById("feAbout"));
+  check("Privacy is a row that opens in place under Everything else on home, not in the popup, and the menu has no About this app", !am_w.document.getElementById("homePrivacy") && !!am_w.document.getElementById("privacySection").closest("#homeMore #eePrivacyRow") && am_w.document.getElementById("infoOverlay").hidden === true && !am_w.document.getElementById("feAbout"));
   am_w.document.getElementById("infoOverlay").dispatchEvent(new am_w.MouseEvent("click", { bubbles: true }));
   check("a tap outside it closes it", am_w.document.getElementById("infoOverlay").hidden === true);
   am_w.document.getElementById("feAppMenuButton").click();
   am_w.document.getElementById("feReport").click();
-  check("Report a problem opens only the report part, with its details filled in, and it goes back to its own place under Everything else after", am_info("reportBlock") && /Version: /.test(am_w.document.getElementById("reportPreview").textContent) && (() => { am_w.document.getElementById("infoClose").click(); return !!am_w.document.getElementById("reportBlock").closest("#eeReport") ; })());
+  check("Report a problem opens only the report part, with its details filled in, and it goes back to its own place, hidden, after", am_info("reportBlock") && /Version: /.test(am_w.document.getElementById("reportPreview").textContent) && (() => { am_w.document.getElementById("infoClose").click(); return !!am_w.document.getElementById("reportBlock").closest("footer") && am_w.document.getElementById("reportBlock").hidden; })());
   am_w.document.getElementById("feAppMenuButton").click();
   am_w.document.getElementById("feFeedback").click();
-  check("Feedback opens only the feedback form in the popup, and it goes back to its place under Everything else after", am_info("feedbackBlock") && am_w.document.getElementById("infoTitle").textContent === "Feedback" && !!am_w.document.querySelector("#infoSlot #feedbackForm") && (() => { am_w.document.getElementById("infoClose").click(); return !!am_w.document.getElementById("feedbackBlock").closest("#eeFeedback"); })());
+  check("Feedback opens only the feedback form in the popup, and it goes back to its place, hidden, after", am_info("feedbackBlock") && am_w.document.getElementById("infoTitle").textContent === "Feedback" && !!am_w.document.querySelector("#infoSlot #feedbackForm") && (() => { am_w.document.getElementById("infoClose").click(); return !!am_w.document.getElementById("feedbackBlock").closest("footer") && am_w.document.getElementById("feedbackBlock").hidden; })());
   am_w.document.getElementById("feAppMenuButton").click();
   check("the version is a grey line at the menu's foot, with Check for update at its right", am_w.document.querySelector("#feMenuVersion .fe-menuver-text").textContent === "Arc " + am_w.eval("APP_VERSION") && am_w.document.getElementById("feCheckUpdate").textContent === "Check for update" && am_w.document.getElementById("feCheckUpdate").parentElement.id === "feMenuVersion" && am_w.document.querySelector("#feAppMenuPanel").lastElementChild.id === "feMenuVersion");
   am_w.document.body.click();   // the menu closes
@@ -1937,7 +1981,7 @@ print(json.dumps(out))
   var pv_html = fs.readFileSync(ROOT + "index.html", "utf8");
   var pv_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   var pv_sec = pv_w.document.getElementById("privacySection");
-  check("Privacy is a panel under Everything else on home, closed at first, behind its lock icon", !!pv_sec && pv_sec.hidden === true && pv_sec.closest("#homeMore") !== null && pv_w.document.getElementById("eeTabPrivacy").dataset.icon === "lock" && pv_w.document.getElementById("eeTabPrivacy").getAttribute("aria-controls") === "privacySection" && pv_sec.querySelector("h3").textContent === "Privacy");
+  check("Privacy is a row under Everything else on home, closed at first, with its lock icon", !!pv_sec && pv_sec.closest("#homeMore #eePrivacyRow") !== null && pv_w.document.getElementById("eePrivacyRow").open === false && pv_w.document.querySelector("#eePrivacyRow > summary .hp-ee-ico").dataset.icon === "lock" && pv_w.document.querySelector("#eePrivacyRow > summary").textContent.trim() === "Privacy");
   var pv_text = pv_sec.textContent.replace(/\s+/g, " ");
   check("it opens with what Arc stands for, then one short line per topic", /^Arc runs in your browser\. What you make here stays between this browser and your own Spotify account, unless you choose to share it\. No accounts, no ads\.$/.test(pv_sec.querySelector(".pv-lead").textContent) && JSON.stringify(Array.from(pv_sec.querySelectorAll("li > b")).map((b) => b.textContent)) === JSON.stringify(["In this browser:", "In your Spotify:", "Participants:", "Shared playlist library:", "Tutorial video:", "Anonymous counts:", "Spotify waits:", "Problems and feedback:"]));
   check("it says the app never sees the Spotify password, that Arc changes the person's playlists only when asked, that Sign out and clear data erases what is kept, and what reports never hold", /never sees your password/.test(pv_text) && /Arc changes your playlists only when you ask/.test(pv_text) && /Sign out and clear data erases it all/.test(pv_text) && /Never your sign-in, Client ID, playlist names or songs/.test(pv_text) && /GoatCounter counts visits and a few actions, without cookies/.test(pv_text));
@@ -2127,9 +2171,9 @@ print(json.dumps(out))
   var ws_app = appSource();
   var ws_ver = ws_app.match(/const APP_VERSION = "([^"]+)";/)[1];
   var ws_stamps = [ws_html.match(/<meta name="app-version" content="([^"]+)">/)[1], ...Array.from(ws_html.matchAll(/\.js\?v=([^"]+)"/g)).map((m) => m[1])];
-  check("the page, its six scripts and the script itself all carry the same version, so a half-updated upload is caught here and not on someone's screen", ws_stamps.length === 7 && ws_stamps.every((v) => v === ws_ver), JSON.stringify(ws_stamps) + " vs " + ws_ver);
-  var ws_own = ["theme.js", "formats.js", "editor.js", "service-spotify.js", "sharing.js"].map((f) => (fs.readFileSync(ROOT + f, "utf8").match(/\(globalThis\.scriptVersions = globalThis\.scriptVersions \|\| \{\}\)\["([a-z-]+\.js)"\] = "([^"]+)";/) || []).slice(1).join("="));
-  check("every other script names its own version, the same as the app's", ws_own.join() === ["theme.js", "formats.js", "editor.js", "service-spotify.js", "sharing.js"].map((f) => f + "=" + ws_ver).join(), ws_own.join());
+  check("the page, its eight scripts and the script itself all carry the same version, so a half-updated upload is caught here and not on someone's screen", ws_stamps.length === 9 && ws_stamps.every((v) => v === ws_ver), JSON.stringify(ws_stamps) + " vs " + ws_ver);
+  var ws_own = ["theme.js", "formats.js", "editor.js", "shared-service.js", "service-spotify.js", "service-tidal.js", "sharing.js"].map((f) => (fs.readFileSync(ROOT + f, "utf8").match(/\(globalThis\.scriptVersions = globalThis\.scriptVersions \|\| \{\}\)\["([a-z-]+\.js)"\] = "([^"]+)";/) || []).slice(1).join("="));
+  check("every other script names its own version, the same as the app's", ws_own.join() === ["theme.js", "formats.js", "editor.js", "shared-service.js", "service-spotify.js", "service-tidal.js", "sharing.js"].map((f) => f + "=" + ws_ver).join(), ws_own.join());
   var ws_sv = await boot({ url: "http://127.0.0.1:8000/", session: { startupRefreshed: "1" } });
   await ws_sv.__main;
   check("a normal start finds every script's version in agreement", ws_sv.document.getElementById("startupProblem").hidden === true && !ws_sv.eval("startupProblems").some((p) => /is version/.test(p)));
@@ -2142,7 +2186,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16c", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16e", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -2279,7 +2323,7 @@ print(json.dumps(out))
   check("closing puts it back, hidden", gf_d.getElementById("silenceHelp").hidden && !!gf_d.getElementById("silenceHelp").closest("footer"));
   gf_d.getElementById("feAppMenuButton").click();
   var gf_item = gf_d.getElementById("feTutorial");
-  check("the menu begins with Watch the tutorial, with a line under it, then a divider, Feedback and Report a problem", !!gf_item && gf_item.nextElementSibling.classList.contains("fe-rule") && gf_item.nextElementSibling.nextElementSibling.id === "feFeedback" && gf_item.nextElementSibling.nextElementSibling.nextElementSibling.id === "feReport" && /^Watch the tutorial/.test(gf_item.textContent) && gf_item.querySelector(".fe-gditem-note").textContent === "2 minute walkthrough");
+  check("the menu begins with Watch the tutorial, with a line under it, then Color, a line, Feedback and Report a problem", !!gf_item && gf_item.nextElementSibling.classList.contains("fe-rule") && gf_item.nextElementSibling.nextElementSibling.id === "feColor" && gf_item.nextElementSibling.nextElementSibling.nextElementSibling.classList.contains("fe-rule") && gf_item.nextElementSibling.nextElementSibling.nextElementSibling.nextElementSibling.id === "feFeedback" && /^Watch the tutorial/.test(gf_item.textContent) && gf_item.querySelector(".fe-gditem-note").textContent === "2 minute walkthrough");
   gf_item.click();
   check("the tutorial popup has the browser's own player (controls, plays inline, the frame as its poster), a line under it, and Done", gf_d.getElementById("infoSlot").firstElementChild.id === "tutorialSection" && (() => { const v = gf_d.querySelector("#tutorialPlayer video"); return !!v && v.controls && v.hasAttribute("playsinline") && v.getAttribute("poster") === "tutorial-poster.jpg" && v.getAttribute("src") === "https://arc-media.roncarmel.workers.dev/tutorial.mp4"; })() && gf_d.getElementById("tutorialNote").textContent === "A 2 minute walkthrough." && gf_d.querySelector("#tutorialSection .dlg-foot .dlg-cancel").textContent === "Done");
   check("the menu's item shows a small frame from the video in place of an icon", !!gf_item.querySelector(".tv-frame img[src='tutorial-poster.jpg']") && !gf_item.querySelector(".fe-icon"));
@@ -2287,31 +2331,28 @@ print(json.dumps(out))
   var gf_html = fs.readFileSync(ROOT + "index.html", "utf8");
   check("every topic heading in Privacy has an icon, ahead of its text", [...gf_d.querySelectorAll("#privacySection details.gd-topic > summary")].every(s => s.querySelector(".gd-thead > .gd-ticon svg") && s.querySelector(".gd-thead > .gd-ttext").textContent.trim() && !s.querySelector(".gd-ticon").textContent));
   check("a heading's icon is grey, and pink while its topic is open", /details\.gd-topic > summary \.gd-ticon \{[^}]*color: var\(--muted\)/.test(gf_html) && /details\.gd-topic\[open\] > summary \.gd-ticon \{ color: var\(--accent\)/.test(gf_html));
-  check("Everything else on home is a bar of icon tabs, in order, each drawn from FE_ICONS, Sign out and clear data with the sign-out arrow", JSON.stringify([...gf_d.querySelectorAll("#homeMore .hp-ee-tab")].map(t => t.getAttribute("aria-label"))) === JSON.stringify(["Color", "Change Spotify login", "Sign out and clear data", "Privacy", "Report a problem", "Feedback"]) && gf_d.getElementById("eeTabClear").querySelector(".hp-ee-icon").innerHTML === gf_w.eval("feIcon(\"logout\").innerHTML") && [...gf_d.querySelectorAll("#homeMore .hp-ee-tab")].every(t => t.getAttribute("role") === "tab" && t.querySelector(".hp-ee-icon svg") && !t.textContent.trim()));
   gf_w.eval("closeInfo(true); showView(\"home\", false)");
-  var ee_tab = gf_d.getElementById("eeTabLogin");
-  check("closed at first: no icon lit, every panel hidden, the X kept but hidden", [...gf_d.querySelectorAll("#homeMore .hp-ee-panel")].every(p => p.hidden) && [...gf_d.querySelectorAll("#homeMore .hp-ee-tab")].every(t => t.getAttribute("aria-selected") === "false") && gf_d.getElementById("eeClose").hidden === true);
-  ee_tab.click();
-  check("a tap on an icon lights it and opens its panel alone, and the X shows", ee_tab.getAttribute("aria-selected") === "true" && gf_d.getElementById("eeLogin").hidden === false && [...gf_d.querySelectorAll("#homeMore .hp-ee-panel")].filter(p => !p.hidden).length === 1 && gf_d.getElementById("eeClose").hidden === false);
-  gf_d.getElementById("eeTabClear").click();
-  check("a tap on another icon moves to its panel", gf_d.getElementById("eeClear").hidden === false && gf_d.getElementById("eeLogin").hidden === true && ee_tab.getAttribute("aria-selected") === "false");
-  gf_d.getElementById("eeTabClear").click();
-  check("a tap on the lit icon closes it", gf_d.getElementById("eeClear").hidden === true && gf_d.getElementById("eeClose").hidden === true && gf_d.activeElement === gf_d.getElementById("eeTabClear"));
-  gf_d.getElementById("eeTabReport").click();
-  check("Report a problem's panel holds the report block, its details filled in", gf_d.getElementById("eeReport").hidden === false && gf_d.getElementById("reportBlock").closest("#eeReport") !== null && gf_d.getElementById("reportPreview").textContent.trim() !== "");
-  gf_d.getElementById("eeClose").click();
-  check("the X closes it and gives the focus back to its icon", gf_d.getElementById("eeReport").hidden === true && gf_d.activeElement === gf_d.getElementById("eeTabReport"));
-  gf_d.getElementById("eeTabColor").click();
-  gf_d.getElementById("eeColor").dispatchEvent(new gf_w.KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
-  check("Escape inside an open panel closes it", gf_d.getElementById("eeColor").hidden === true);
-  gf_d.getElementById("eeTabColor").dispatchEvent(new gf_w.KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true }));
-  check("the arrow keys move between the icons", gf_d.activeElement === gf_d.getElementById("eeTabLogin"));
+  check("Everything else on home is a card of rows that open in place, in order, each its icon from FE_ICONS and its name, Sign out and clear data with the sign-out arrow", JSON.stringify([...gf_d.querySelectorAll("#homeMore > details.hp-ee-row > summary")].map(t => t.textContent.trim())) === JSON.stringify(["Change Spotify login", "Sign out and clear data", "Privacy"]) && gf_d.querySelector("#eeClearRow .hp-ee-ico").innerHTML === gf_w.eval("feIcon(\"logout\").outerHTML") && [...gf_d.querySelectorAll("#homeMore .hp-ee-row")].every(r => r.querySelector("summary .hp-ee-ico svg") && r.querySelector("summary .hp-ee-chev") && r.querySelector(":scope > .hp-ee-panel")) && !gf_d.querySelector("#homeMore [role=tab], #homeMore .hp-ee-tab, #eeClose"));
+  check("closed at first", [...gf_d.querySelectorAll("#homeMore .hp-ee-row")].every(r => !r.open));
+  check("a row's icon and chevron turn pink while it is open", /#homeMore \.hp-ee-row\[open\] > summary \.hp-ee-chev \{[^}]*border-color: var\(--accent\)/.test(gf_html) && /#homeMore \.hp-ee-row\[open\] > summary \.hp-ee-ico \{ color: var\(--accent\)/.test(gf_html));
+  check("Color, Feedback and Report a problem are not on home's page but in its ⋯ menu", !gf_d.querySelector("#homeMore #colorBlock, #homeMore #reportBlock, #homeMore #feedbackBlock, #homeMore #themeSwatches"));
+  check("home's ⋯ sits in its band, in the top right corner, as far in as Arc's icon", gf_d.getElementById("feAppMenu").parentElement.id === "hpMenuSlot" && gf_d.getElementById("hpMenuSlot").parentElement.classList.contains("hp-band") && /#homePage #hpMenuSlot \{ position: absolute; top: 16px; right: 16px;/.test(gf_html));
+  gf_d.getElementById("feAppMenuButton").click();
+  var gf_home = Array.from(gf_d.querySelectorAll("#feAppMenuPanel > *")).map((k) => k.id || k.className);
+  check("home's ⋯ menu: Color, a line, Feedback, Report a problem, a line, the version", JSON.stringify(gf_home) === JSON.stringify(["feColor", "fe-rule", "feFeedback", "feReport", "fe-rule", "feMenuVersion"]), JSON.stringify(gf_home));
+  check("Color shows the chosen color as a dot at its right", !!gf_d.querySelector("#feColor .fe-colordot") && gf_d.querySelector("#feColor").lastElementChild.classList.contains("fe-colordot") && gf_d.querySelector("#feColor .fe-colordot").style.background !== "");
+  gf_d.getElementById("feColor").click();
+  check("and opens the swatches in the menu's popup, titled Color, with Done", gf_d.getElementById("infoOverlay").hidden === false && gf_d.getElementById("infoTitle").textContent === "Color" && !!gf_d.querySelector("#infoSlot #colorBlock #themeSwatches .theme-swatch") && gf_d.querySelector("#infoSlot #colorBlock .dlg-foot .dlg-cancel").textContent.trim() === "Done");
+  gf_d.querySelector("#infoSlot #colorBlock .dlg-cancel").click();
+  check("Done closes it and Color goes back, hidden", gf_d.getElementById("infoOverlay").hidden === true && gf_d.getElementById("colorBlock").hidden === true && !!gf_d.getElementById("colorBlock").closest("footer"));
+  gf_w.eval("showView(\"builder\", false)");
+  check("in a tool the ⋯ is back in Arc's bar", gf_d.getElementById("feAppMenu").parentElement.id === "appBar" && !gf_d.getElementById("hpMenuSlot").firstElementChild);
   var gf_titles = {};
   for (const id of ["feedbackBlock", "reportBlock"]) { gf_w.eval(`openInfo("${id}")`); const t = gf_d.getElementById("infoTitle"); gf_titles[id] = [t.textContent, t.querySelector(".info-ticon") && t.querySelector(".info-ticon").innerHTML]; gf_d.getElementById("infoClose").click(); }
   check("each popup has its name as its title, with no icon, as in the build popup", JSON.stringify(Object.keys(gf_titles).map(k => gf_titles[k][0])) === JSON.stringify(["Feedback", "Report a problem"]) && Object.keys(gf_titles).every(k => !gf_titles[k][1]), JSON.stringify(gf_titles));
   gf_w.eval('openInfo("feedbackBlock")');
-  check("Feedback's foot is Cancel then Send, and Cancel closes the popup", JSON.stringify(Array.from(gf_d.querySelectorAll("#infoSlot #feedbackForm .dlg-foot button")).map((b) => b.textContent.trim())) === JSON.stringify(["Cancel", "Send"]) && (gf_d.querySelector("#infoSlot #feedbackForm .dlg-cancel").click(), gf_d.getElementById("infoOverlay").hidden === true && !!gf_d.getElementById("feedbackBlock").closest("#eeFeedback")));
-  check("on home the forms show no Cancel or Done: the panel's own X closes them", /#homeMore \.dlg-cancel, #homeMore \.dlg-popup-only \{ display: none; \}/.test(gf_html));
+  check("Feedback's foot is Cancel then Send, and Cancel closes the popup", JSON.stringify(Array.from(gf_d.querySelectorAll("#infoSlot #feedbackForm .dlg-foot button")).map((b) => b.textContent.trim())) === JSON.stringify(["Cancel", "Send"]) && (gf_d.querySelector("#infoSlot #feedbackForm .dlg-cancel").click(), gf_d.getElementById("infoOverlay").hidden === true && !!gf_d.getElementById("feedbackBlock").closest("footer")));
+  check("the forms always show Cancel and Done: they open only in the popup", !/#homeMore \.dlg-cancel/.test(gf_html));
   check("the popup's title has a round grey X and a line under it, like the build popup", /#infoHeader \{[^}]*border-bottom: 1px solid var\(--line\)/.test(gf_html) && /#infoDialog #infoClose \{[^}]*width: 32px; height: 32px;[^}]*border-radius: 50%/.test(gf_html));
   check("the popup title shrinks only on narrow screens, so a long title fits on one line at 320 px", /#infoTitle \{[^}]*font-size: min\(1\.15rem, calc\(\(100vw - 140px\) \/ 11\)\)/.test(gf_html));
   } catch (err) { areaCrashed("menu popups and the silence help", err); } }
@@ -2496,8 +2537,9 @@ print(json.dumps(out))
   // ================================================================ questions and feedback
   var qf_o = {};
   var qf_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: qf_o, view: "home" });
-  check("Everything else on home always has Feedback, after Report a problem", qf_w.document.getElementById("eeTabFeedback").hidden === false && qf_w.document.getElementById("eeTabReport").nextElementSibling === qf_w.document.getElementById("eeTabFeedback") && qf_w.document.getElementById("eeTabFeedback").getAttribute("aria-label") === "Feedback");
-  qf_w.openHomeTab("eeFeedback", false);
+  qf_w.document.getElementById("feAppMenuButton").click();
+  check("home's ⋯ menu always has Feedback, before Report a problem", !!qf_w.document.getElementById("feFeedback") && qf_w.document.getElementById("feFeedback").nextElementSibling === qf_w.document.getElementById("feReport") && qf_w.document.getElementById("feFeedback").textContent.trim() === "Feedback");
+  qf_w.document.getElementById("feFeedback").click();
   var qf_f = qf_w.document.getElementById("feedbackForm"), qf_t = qf_w.document.getElementById("feedbackText"), qf_s = qf_f.querySelector(".mf-send");
   check("its panel is a form: Your message, an optional email, and Send, pale until something is typed, with nothing attached", qf_f.dataset.kind === "feedback" && /Your message/.test(qf_f.textContent) && qf_w.document.getElementById("feedbackEmail").type === "email" && qf_s.disabled && qf_s.textContent.trim() === "Send" && !qf_f.querySelector("pre"));
   qf_t.value = "   "; qf_t.dispatchEvent(new qf_w.Event("input"));
@@ -2509,11 +2551,11 @@ print(json.dumps(out))
   check("a refusal is said in the form's small error box, in the worker's words, and Send can be pressed again", /Too many messages today/.test(qf_f.querySelector(".mf-error").textContent) && !qf_f.hidden && qf_s.disabled === false);
   qf_o.sharing.messageFail = "";
   qf_s.click();
-  await waitFor(() => !qf_w.document.querySelector("#eeFeedback .mf-done").hidden, 4000);
+  await waitFor(() => !qf_w.document.querySelector("#feedbackBlock .mf-done").hidden, 4000);
   var qf_m = qf_o.sharing.messages[qf_o.sharing.messages.length - 1];
-  check("then it sends only the message and an empty email, no details, and says Sent", qf_m.kind === "feedback" && qf_m.message === "More colors please" && qf_m.email === "" && !("details" in qf_m) && qf_f.hidden && /Sent/.test(qf_w.document.querySelector("#eeFeedback .mf-done").textContent) && !qf_f.querySelector(".mf-error .er-box"));
+  check("then it sends only the message and an empty email, no details, and says Sent", qf_m.kind === "feedback" && qf_m.message === "More colors please" && qf_m.email === "" && !("details" in qf_m) && qf_f.hidden && /Sent/.test(qf_w.document.querySelector("#feedbackBlock .mf-done").textContent) && !qf_f.querySelector(".mf-error .er-box"));
   qf_o.sharing.down = true;
-  qf_w.document.querySelector("#eeFeedback .mf-again").click();
+  qf_w.document.querySelector("#feedbackBlock .mf-again").click();
   qf_t.value = "Hello"; qf_t.dispatchEvent(new qf_w.Event("input"));
   qf_s.click();
   await waitFor(() => !!qf_f.querySelector(".mf-error .er-box"), 4000);
@@ -2527,8 +2569,8 @@ print(json.dumps(out))
   var py_w = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
   py_w.document.getElementById("feAppMenuButton").click();
   py_w.document.body.click();
-  var py_home = Array.from(py_w.document.querySelectorAll("#homeMore .hp-ee-panel > h3")).map((h) => h.textContent);
-  check("Everything else on home has Sign out and clear data, then Privacy; Python status is in the DEV menu", py_home.slice(2, 4).join("|") === "Sign out and clear data|Privacy" && !!py_w.document.querySelector("#devMenu #pythonStatus"), JSON.stringify(py_home));
+  var py_home = Array.from(py_w.document.querySelectorAll("#homeMore .hp-ee-row > summary")).map((h) => h.textContent.trim());
+  check("Everything else on home has Sign out and clear data, then Privacy; Python status is in the DEV menu", py_home.slice(1, 3).join("|") === "Sign out and clear data|Privacy" && !!py_w.document.querySelector("#devMenu #pythonStatus"), JSON.stringify(py_home));
   } catch (err) { areaCrashed("python status at the bottom", err); } }
 
   if (want("spotify premium")) { try {
@@ -3981,6 +4023,35 @@ print(json.dumps(out))
   } catch (err) { areaCrashed("music sharing", err); }
   }
 
+  if (want("tidal")) { try {
+  // ================================================================ TIDAL (work/tidal-plan.md, stage 4): the same page under arcService "tidal", against a pretend TIDAL
+  // (tidalAnswer): it connects, names TIDAL, sends nothing to Spotify, saves recipes and builds a participant's playlist the way TIDAL takes them
+  var td_opts = {}, td_from = log.length;
+  var td_scope = "playlists.read playlists.write collection.read user.read search.read";
+  var td = await boot({ url: EDURL, session: { tidalToken: JSON.stringify({ value: "tt", expires: Date.now() + 3600000, scope: td_scope }) }, local: { formats: MINI, connectedBefore: "1", arcService: "tidal", clientId: "tidal-client", backupMode: "spotify" }, fetchOptions: td_opts });
+  await waitFor(() => td.eval("connection") === "ready", 15000);
+  var td_d = td.document;
+  check("under arcService tidal the page uses TIDAL and connects to it", td.eval("service.key") === "tidal" && td.eval("connection") === "ready" && td.eval("playlists.length") === 4, td.eval("connection") + " " + td.eval("JSON.stringify((playlists || []).map((p) => p.name))"));
+  check("the page names TIDAL, and with no requirement the Spotify Premium lines are hidden", td_d.querySelector(".hp-band .wp-band-tag").textContent.includes("for your TIDAL library") && Array.from(td_d.querySelectorAll("[data-requirement]")).every((el) => el.hidden));
+  check("nothing goes to Spotify while TIDAL is the service", !log.slice(td_from).some((e) => /spotify\.com/.test(e.url)), JSON.stringify(log.slice(td_from).filter((e) => /spotify\.com/.test(e.url)).map((e) => e.url).slice(0, 3)));
+  check("a TIDAL playlist ID (a UUID) packs into 16 bytes and back unchanged", td.eval(`service.idToBytes("${TIDAL_PLAYLISTS[0].id}").length`) === 16 && td.eval(`service.idFromBytes(service.idToBytes("${TIDAL_PLAYLISTS[0].id}"))`) === TIDAL_PLAYLISTS[0].id && td.eval("service.idToBytes('5kiJ9x6eX37H5J9lyyXkua')") === null);
+  td.eval("spotifySaveDelayMs = 50; spotifySaveMaxWaitMs = 200");
+  await waitFor(() => (td_opts.tidal.created || []).some((c) => /^Holds a recipe/.test(c.description || "")), 15000);
+  var td_save = (td_opts.tidal.created || []).find((c) => /^Holds a recipe/.test(c.description || ""));
+  check("the recipe is saved to TIDAL as an Unlisted playlist named <title> (recipe), with no cover sent", !!td_save && /\(recipe\)$/.test(td_save.name) && td_save.accessType === "UNLISTED" && !log.slice(td_from).some((e) => /images|artworks/.test(e.url)), JSON.stringify(td_opts.tidal.created));
+  await waitFor(() => td.eval("service.signedIn() && connection === 'ready' && !!py && formatsValid && !busy && !saveState.running"), 20000);
+  await td.eval("buildForParticipant('mini', 'T', null)");
+  var td_built = (td_opts.tidal.created || []).find((c) => /For participant T\./.test(c.description || ""));
+  var td_adds = td_built ? td_opts.tidal.adds.filter((a) => a.id === td_built.id) : [];
+  var td_ids = td_adds.flatMap((a) => a.ids);
+  check("a participant's playlist is built on TIDAL: Unlisted, named with the code, songs added at most 50 at a time", td.eval("personBuild.state") === "done" && !!td_built && /^T · /.test(td_built.name) && td_built.accessType === "UNLISTED" && td_adds.length >= 1 && td_adds.every((a) => a.ids.length <= 50), JSON.stringify({ state: td.eval("personBuild.state"), error: td.eval("personBuild.error || ''"), built: td_built, adds: td_adds.map((a) => a.ids.length) }));
+  check("its songs are TIDAL's own IDs from the recipe's playlists, with TIDAL's 30 second silence between segments", td_ids.length > 10 && td_ids.includes("83423070") && td_ids.every((id) => /^\d+$/.test(id)), JSON.stringify(td_ids.slice(0, 8)));
+  var td_found = await td.eval(`service.findByIsrc(${JSON.stringify(Array.from({ length: 25 }, (_, i) => "DEAR4" + String(i).padStart(7, "0")).concat(["DEAR4" + "3423070".slice(-7)]))})`);
+  check("songs are looked up by ISRC 20 to a request", td_opts.tidal.lookups === 2 && Object.values(td_found).every((id) => /^\d+$/.test(id)), JSON.stringify({ lookups: td_opts.tidal.lookups, td_found }));
+  td.close();
+  } catch (err) { areaCrashed("tidal", err); }
+  }
+
   if (want("device checks")) { try {
   // ================================================================ Device checks (Ron, 2026-11-14, mockups/device-checks A): automatic checks on the real account that clean up after
   // themselves, and guided ones opened in place in the list, with steps and two answers; results kept on the device and copied as text
@@ -4242,7 +4313,7 @@ print(json.dumps(out))
   dv_hname.click();
   check("on, home: no DEV capsule; a tap on the word Arc in home's band opens the DEV menu under it, in <body>, the word unchanged", !dv_d.getElementById("devPill") && dv_d.getElementById("devWrap").parentNode === dv_d.body && dv_w.getComputedStyle(dv_d.getElementById("devWrap")).position === "fixed" && dv_d.getElementById("devMenu").hidden === false && dv_d.getElementById("devMenu").getBoundingClientRect().top >= dv_hname.getBoundingClientRect().bottom && dv_w.getComputedStyle(dv_hname).cssText + dv_hname.outerHTML === dv_hstyle);
   var dv_rows = () => Array.from(dv_d.querySelectorAll("#devMenu > button, #devMenu > .dm-item")).filter((r) => !r.hidden).map((r) => r.querySelector("span").textContent);
-  check("the DEV menu: Turn off developer mode as its pink header, then Manage mood words, Review reports, Phone width, Launch screen, Device checks, Copy Spotify request log, Copy page position log, Clear data and start over, and Python at its foot", dv_d.getElementById("devMenu").hidden === false && dv_d.querySelector("#devMenu > .dm-head").id === "devMenuOff" && JSON.stringify(dv_rows()) === JSON.stringify(["Turn off developer mode", "Manage mood words", "Review reports", "Phone width", "Launch screen", "Device checks", "Copy Spotify request log", "Copy page position log", "Clear data and start over"]) && dv_d.querySelector("#devMenu > :last-child").id === "pythonStatus", JSON.stringify(dv_rows()));
+  check("the DEV menu: Turn off developer mode as its pink header, then Manage mood words, Review reports, Phone width, Launch screen, Music service, Device checks, Copy Spotify request log, Copy page position log, Clear data and start over, and Python at its foot", dv_d.getElementById("devMenu").hidden === false && dv_d.querySelector("#devMenu > .dm-head").id === "devMenuOff" && JSON.stringify(dv_rows()) === JSON.stringify(["Turn off developer mode", "Manage mood words", "Review reports", "Phone width", "Launch screen", "Music service", "Device checks", "Copy Spotify request log", "Copy page position log", "Clear data and start over"]) && dv_d.querySelector("#devMenu > :last-child").id === "pythonStatus", JSON.stringify(dv_rows()));
   await waitFor(() => dv_d.getElementById("devReportsCount").textContent !== "", 3000);
   check("Review reports counts the shares that wait for a look (not ones the owner hid)", dv_d.getElementById("devReportsCount").textContent === "1 reported", dv_d.getElementById("devReportsCount").textContent);
   check("Clear data and start over is red", dv_d.getElementById("devStartOver").classList.contains("dm-red"));
@@ -4306,16 +4377,16 @@ print(json.dumps(out))
   if (want("spotify last")) { try {
   // ================================================================ the Spotify item is always first in the menu, under the app's name; then the rest in a fixed order, and the version
   var sl_ids = (w) => { w.document.getElementById("feAppMenuButton").click(); const ids = Array.from(w.document.querySelectorAll("#feAppMenuPanel > *")).map((k) => k.id || k.className); w.document.body.click(); return ids; };
-  var sl_rest = ["fe-rule", "feTutorial", "fe-rule", "feFeedback", "feReport", "fe-rule", "feMenuVersion"];   // no title row since 2026-11-10
+  var sl_rest = ["fe-rule", "feTutorial", "fe-rule", "feColor", "fe-rule", "feFeedback", "feReport", "fe-rule", "feMenuVersion"];   // no title row since 2026-11-10
   var sl_ready = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: {} });
   var sl_r = sl_ids(sl_ready);
-  check("connected: Watch the tutorial, Feedback, Report a problem, then the version", JSON.stringify(sl_r) === JSON.stringify(sl_rest.slice(1)), JSON.stringify(sl_r));
+  check("connected: Watch the tutorial, Color, Feedback, Report a problem, then the version", JSON.stringify(sl_r) === JSON.stringify(sl_rest.slice(1)), JSON.stringify(sl_r));
   var sl_ms = sl_ready.document; sl_ready.document.getElementById("feAppMenuButton").click();
   var sl_msi = sl_ms.getElementById("feMusicSharing");
   check("Music sharing is not in the menu: it is a tool on Arc's home", !sl_msi && /Shared playlist library/.test(sl_ms.getElementById("homePage").textContent));
   sl_ready.document.body.click();
   sl_ready.eval("appView = \"sharing\""); var sl_sh = sl_ids(sl_ready); sl_ready.eval("appView = \"builder\"");
-  check("in Music sharing the menu is Feedback, Report a problem and the version", JSON.stringify(sl_sh) === JSON.stringify(["feFeedback", "feReport", "fe-rule", "feMenuVersion"]), JSON.stringify(sl_sh));
+  check("in Music sharing the menu is Color, Feedback, Report a problem and the version", JSON.stringify(sl_sh) === JSON.stringify(["feColor", "fe-rule", "feFeedback", "feReport", "fe-rule", "feMenuVersion"]), JSON.stringify(sl_sh));
   var sl_slow = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI, connectedBefore: "1", backupMode: "spotify" }, fetchOptions: { listDelayMs: 4000 } });
   var sl_s = sl_ids(sl_slow);
   check("connecting: the Connecting item and its note come first, then the same order", sl_slow.eval("connection") === "connecting" && JSON.stringify(sl_s) === JSON.stringify(["feConnect", "feConnectionNote"].concat(sl_rest)), JSON.stringify(sl_s));
@@ -4415,7 +4486,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16c"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16e"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -4812,7 +4883,7 @@ print(json.dumps(out))
   // ================================================================ a newer version on the site
   var nv_src = fs.readFileSync(ROOT + "index.html", "utf8").match(/<script>\n  \/\/ If the page's own script never starts[\s\S]*?<\/script>/)[0].replace(/^<script>|<\/script>$/g, "");
   var nv_version = appSource().match(/const APP_VERSION = "([^"]+)"/)[1];
-  check("version.txt holds just the version of the files, so a check costs a few bytes, and it is the same stamp as the page's", fs.readFileSync(ROOT + "version.txt", "utf8").trim() === nv_version && fs.readFileSync(ROOT + "version.txt", "utf8").length < 40 && fs.readFileSync(ROOT + "index.html", "utf8").split(nv_version).length - 1 === 7);
+  check("version.txt holds just the version of the files, so a check costs a few bytes, and it is the same stamp as the page's", fs.readFileSync(ROOT + "version.txt", "utf8").trim() === nv_version && fs.readFileSync(ROOT + "version.txt", "utf8").length < 40 && fs.readFileSync(ROOT + "index.html", "utf8").split(nv_version).length - 1 === 9);
   var nv_make = async (fetchOptions = {}, session = {}, local = {}) => {
     const w = await boot({ url: EDURL, session: Object.assign(signedIn(), session), local: Object.assign({ formats: MINI, connectedBefore: "1", backupMode: "manual" }, local), fetchOptions });
     w.eval(nv_src);

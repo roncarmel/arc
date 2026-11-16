@@ -2,9 +2,9 @@
 // no server), the refresh token, requests with their limits and waits, and the record of those limits; at its end the `service` object, the only way the rest
 // of Arc talks to Spotify (work/tidal-plan.md, "The service layer"): every Spotify address, URI and quirk stays in this file. It shows nothing itself: each page
 // fills serviceHooks with what to do and say, so this file names no element of any page. Loaded before the page's own script.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-spotify.js"] = "2026-11-16c";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-spotify.js"] = "2026-11-16e";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
-// The permissions Arc's sign-in asks for. Another page of this repository (the tagger) may set its own in serviceHooks.
+// The permissions Arc's sign-in asks for. Another page of this repository (the tagger) may set its own in serviceHooks (shared-service.js).
 const SCOPES = [
   "playlist-read-private", "playlist-read-collaborative",   // read your playlists
   "playlist-modify-private", "playlist-modify-public",      // create playlists
@@ -13,18 +13,6 @@ const SCOPES = [
 ].join(" ");
 const REQUIRED_SCOPES = ["playlist-modify-private", "playlist-modify-public"];   // cover art is optional, so an older sign-in without it keeps working
 
-const serviceHooks = {
-  scopes: SCOPES,              // the permissions the sign-in asks for, space separated
-  requiredScopes: REQUIRED_SCOPES,   // a kept sign-in without all of these is not used
-  log: (text) => {},           // a step, for problem reports
-  oldSignIn: () => {},         // a kept sign-in was missing a required permission and was dropped
-  expiredText: () => "Your Spotify sign-in expired. Connect again.",
-  signInExpired: (message) => {},   // the sign-in ran out and could not be renewed
-  refusedText: (what) => `Spotify did not allow this (${what}). Sign in again and approve every permission it asks for.`,
-  pauseStarted: (first) => {}, // a long wait from Spotify began (first: none was running)
-  pauseChanged: (secondsLeft) => {},   // every second of a wait, and once with 0 at its end
-  pauseEnded: () => {},        // the wait is over: time to connect again
-};
 
 // ---------------------------------------------------------------- the basics
 // Not called API: Pyodide 0.29 treats a global named API as its own and fails to start (it falls back to an older version).
@@ -32,35 +20,13 @@ const SPOTIFY_API = "https://api.spotify.com/v1";
 
 let token = null;       // Spotify access token (kept in this tab only)
 
-function redirectUri() {
-  // The exact address of this page. It must be added to the Spotify app's redirect URIs.
-  return location.origin + location.pathname.replace(/index\.html$/, "");
-}
 
-function randomString(length) {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
-  const bytes = crypto.getRandomValues(new Uint8Array(length));
-  return Array.from(bytes, (b) => chars[b % chars.length]).join("");
-}
 
-function base64url(buffer) {
-  let text = "";
-  for (const b of new Uint8Array(buffer)) text += String.fromCharCode(b);
-  return btoa(text).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
 
-async function sha256(text) {
-  return crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-}
 
 // Spotify's free developer app now needs Premium on the account that owns it. Without it, Spotify refuses requests with a 403 that says so.
 const PREMIUM_REQUIRED_MESSAGE = "Spotify says the account that owns this Client ID needs Premium. A free Spotify account will not work. Once that account has Premium, try again.";
 
-// the window that holds the page: itself, or, in Developer options' Phone width frame, the outer page (Spotify's sign-in will not open in a frame)
-function pageWindow() {
-  try { if (window.top !== window && window.top.location.origin === location.origin && window.top.document.getElementById("devPhoneFrame")) return window.top; } catch (e) {}
-  return window;
-}
 
 // ---------------------------------------------------------------- sign-in (PKCE, no server)
 // Readies Spotify's sign-in page for this Client ID and gives a function that goes there, so the page can get ready for leaving first.
@@ -76,7 +42,7 @@ async function openSpotifySignIn(clientId, { switchAccount = false } = {}) {
     client_id: clientId,
     response_type: "code",
     redirect_uri: redirectUri(),
-    scope: serviceHooks.scopes,
+    scope: serviceHooks.scopes || SCOPES,
     code_challenge_method: "S256",
     code_challenge: challenge,
     state,
@@ -103,7 +69,7 @@ async function finishSpotifySignIn() {
       client_id: localStorage.getItem("clientId") || "",
       code_verifier: sessionStorage.getItem("pkceVerifier") || "",
     }),
-  });
+  }, NO_ANSWER);
   const data = await response.json();
   if (!response.ok) return { problem: "Spotify refused the sign-in: " + (data.error_description || data.error || response.status), report: "Spotify refused the sign-in: " + (data.error || response.status) };
   keepToken(data);
@@ -142,7 +108,7 @@ function renewSignIn() {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: saved.token, client_id: localStorage.getItem("clientId") || "" }),
-      });
+      }, NO_ANSWER);
       let data = {};
       try { data = await response.json(); } catch (err) { /* no body */ }
       if (!response.ok || !data.access_token) {
@@ -169,7 +135,7 @@ function loadStoredToken() {
     const saved = JSON.parse(sessionStorage.getItem("token") || "null");
     if (saved && saved.expires > Date.now() + 30000) {
       const granted = String(saved.scope || "").split(/\s+/);
-      if (serviceHooks.requiredScopes.every((s) => granted.includes(s))) return saved.value;
+      if ((serviceHooks.requiredScopes || REQUIRED_SCOPES).every((s) => granted.includes(s))) return saved.value;
       sessionStorage.removeItem("token");  // an older, read-only sign-in
       serviceHooks.oldSignIn();
     }
@@ -202,12 +168,6 @@ const LIMITS_KEY = "spotifyLimits";    // [{at, what, kind, reason, sent30s, sen
 const CALLS_KEPT_MIN = 8 * 24 * 60;
 const recentCalls = [];                // times of the requests of the last minute, for the 30-second count
 
-function readRecord(key, empty) {
-  try { const v = JSON.parse(localStorage.getItem(key) || "null"); return v && typeof v === "object" ? v : empty; } catch (err) { return empty; }
-}
-function writeRecord(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch (err) { /* private browsing, or full */ }
-}
 
 function callKind(method, path) {
   const p = path.replace(SPOTIFY_API, "").split("?")[0];
@@ -356,22 +316,8 @@ async function askSpotifyWait(url = SPOTIFY_API + "/me") {
   return waitAsked.pending;
 }
 
-// A request to Spotify that gets no answer at all (a stalled connection) fails after this long, instead of waiting for the browser to give up.
-let spotifyAnswerMs = 30000;
 const NO_ANSWER = "Spotify did not answer. Check your internet connection and try again.";
 
-async function fetchWithAnswerLimit(url, init) {
-  const stop = new AbortController();
-  const timer = setTimeout(() => stop.abort(), spotifyAnswerMs);
-  try {
-    return await fetch(url, { ...init, signal: stop.signal });
-  } catch (err) {
-    if (stop.signal.aborted) throw new Error(NO_ANSWER);
-    throw err;
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 async function spotifyRequest(method, path, { params, json, body, contentType, noWait } = {}) {   // noWait: a rate limit is not waited out, it is an error at once
   let url = path.startsWith("http") ? path : SPOTIFY_API + path;
@@ -389,7 +335,7 @@ async function spotifyRequest(method, path, { params, json, body, contentType, n
         method,
         headers: { Authorization: "Bearer " + token, ...(json ? { "Content-Type": "application/json" } : (contentType ? { "Content-Type": contentType } : {})) },
         body: json ? JSON.stringify(json) : body,
-      });
+      }, NO_ANSWER);
     } catch (err) {
       throw new Error(err.message === NO_ANSWER ? NO_ANSWER : "Could not reach Spotify. Check your internet connection and try again.");
     }
@@ -606,7 +552,7 @@ function bytesToSpotifyId(bytes) {
   return id;
 }
 
-const service = {
+const spotifyService = {
   key: "spotify",
   name: "Spotify",
   // the kind of a problem from a message this file wrote (quota, rate-limit, network, premium), or null; the page keeps the sign-in's own
@@ -636,6 +582,9 @@ const service = {
   // a wait Spotify asked for: {until, from, reason} while it lasts, else null; waitLeft is its seconds left, 0 when none
   wait: () => spotifyPause(),
   waitLeft: () => pausedSecondsLeft(),
+  tick: () => tickPause(),   // every second: counts a wait down, and notices its end
+  waitRelay: () => !!WAIT_RELAY_URL,   // a refusal with no readable wait is asked about through Arc's relay (Privacy says so)
+  requestLog: () => ({ limits: readRecord(LIMITS_KEY, []), callsPerMinute: readRecord(CALLS_KEY, {}) }),   // the record of requests and refusals, for reports
   authHeader: () => (token ? "Bearer " + token : null),   // for Arc's own worker, which asks Spotify who this is
   storedSignIn: () => (token = loadStoredToken()),   // this tab's sign-in, if it is still good
   canRenew: () => !!storedRefresh(),       // a sign-in from an earlier visit is kept
@@ -687,7 +636,7 @@ const service = {
       await spotifyRequest("DELETE", "/me/library", { params: { uris: ids.slice(i, i + REMOVE_CHUNK).map(playlistUri).join(",") } });
     }
   },
-  deletePlaylist: (id) => service.deletePlaylists([id]),
+  deletePlaylist: (id) => spotifyService.deletePlaylists([id]),
   setCover: (id, jpegBase64, { noWait = false } = {}) => spotifyRequest("PUT", `/playlists/${id}/images`, { body: jpegBase64, contentType: "image/jpeg", ...(noWait ? { noWait } : {}) }),
   async hasOwnCover(id) {
     // whether the playlist shows an uploaded cover, not Spotify's own of four albums (Device checks)
