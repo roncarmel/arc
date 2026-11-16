@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16e";
+const APP_VERSION = "2026-11-16h";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -433,7 +433,7 @@ function openHomeRow(rowId) {
   const row = $(rowId);
   if (!row) return;
   row.open = true;
-  row.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (row.scrollIntoView) row.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 // Back home: undoes the tool's step in the history when there is one, so the back button does not return to the tool

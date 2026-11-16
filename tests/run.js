@@ -676,10 +676,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly these seven, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16e" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16h" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16e/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16h/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -757,7 +757,7 @@ print(json.dumps(out))
 
   // ---------------- Sign out and clear data says the recipes stay in Spotify
   var cb = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: null } });
-  var clearSection = cb.document.getElementById("homeMore").textContent.replace(/\s+/g, " ");
+  var clearSection = cb.document.getElementById("eeClearRow").textContent.replace(/\s+/g, " ");
   check("the Sign out and clear data section says what it does and that the recipes stay in Spotify", /^Signs you out of Spotify and erases what Arc keeps in this browser\./.test(clearSection.slice(clearSection.indexOf("Sign out and clear data") + 23).trim()) && /Your recipes stay in Spotify and come back when you connect again\./.test(clearSection) && !/If something looks stuck/.test(clearSection));
   cb.document.getElementById("clearData").click();
   check("the confirmation says the same", !cb.document.getElementById("clearConfirm").hidden && /Your recipes stay in Spotify and come back when you connect again\./.test(cb.document.getElementById("clearConfirm").textContent));
@@ -2186,7 +2186,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16e", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16h", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -2332,7 +2332,7 @@ print(json.dumps(out))
   check("every topic heading in Privacy has an icon, ahead of its text", [...gf_d.querySelectorAll("#privacySection details.gd-topic > summary")].every(s => s.querySelector(".gd-thead > .gd-ticon svg") && s.querySelector(".gd-thead > .gd-ttext").textContent.trim() && !s.querySelector(".gd-ticon").textContent));
   check("a heading's icon is grey, and pink while its topic is open", /details\.gd-topic > summary \.gd-ticon \{[^}]*color: var\(--muted\)/.test(gf_html) && /details\.gd-topic\[open\] > summary \.gd-ticon \{ color: var\(--accent\)/.test(gf_html));
   gf_w.eval("closeInfo(true); showView(\"home\", false)");
-  check("Everything else on home is a card of rows that open in place, in order, each its icon from FE_ICONS and its name, Sign out and clear data with the sign-out arrow", JSON.stringify([...gf_d.querySelectorAll("#homeMore > details.hp-ee-row > summary")].map(t => t.textContent.trim())) === JSON.stringify(["Change Spotify login", "Sign out and clear data", "Privacy"]) && gf_d.querySelector("#eeClearRow .hp-ee-ico").innerHTML === gf_w.eval("feIcon(\"logout\").outerHTML") && [...gf_d.querySelectorAll("#homeMore .hp-ee-row")].every(r => r.querySelector("summary .hp-ee-ico svg") && r.querySelector("summary .hp-ee-chev") && r.querySelector(":scope > .hp-ee-panel")) && !gf_d.querySelector("#homeMore [role=tab], #homeMore .hp-ee-tab, #eeClose"));
+  check("Everything else on home is a card of grey rows that open in place, Privacy first, each its icon from FE_ICONS and its name, Sign out and clear data with the sign-out arrow", JSON.stringify([...gf_d.querySelectorAll("#homeMore > details.hp-ee-row > summary")].map(t => t.textContent.trim())) === JSON.stringify(["Privacy", "Change Spotify login", "Sign out and clear data"]) && /#homeMore \.hp-ee-row > summary \{[^}]*color: var\(--muted\)/.test(gf_html) && gf_d.querySelector("#eeClearRow .hp-ee-ico").innerHTML === gf_w.eval("feIcon(\"logout\").outerHTML") && [...gf_d.querySelectorAll("#homeMore .hp-ee-row")].every(r => r.querySelector("summary .hp-ee-ico svg") && r.querySelector("summary .hp-ee-chev") && r.querySelector(":scope > .hp-ee-panel")) && !gf_d.querySelector("#homeMore [role=tab], #homeMore .hp-ee-tab, #eeClose"));
   check("closed at first", [...gf_d.querySelectorAll("#homeMore .hp-ee-row")].every(r => !r.open));
   check("a row's icon and chevron turn pink while it is open", /#homeMore \.hp-ee-row\[open\] > summary \.hp-ee-chev \{[^}]*border-color: var\(--accent\)/.test(gf_html) && /#homeMore \.hp-ee-row\[open\] > summary \.hp-ee-ico \{ color: var\(--accent\)/.test(gf_html));
   check("Color, Feedback and Report a problem are not on home's page but in its ⋯ menu", !gf_d.querySelector("#homeMore #colorBlock, #homeMore #reportBlock, #homeMore #feedbackBlock, #homeMore #themeSwatches"));
@@ -2342,9 +2342,10 @@ print(json.dumps(out))
   check("home's ⋯ menu: Color, a line, Feedback, Report a problem, a line, the version", JSON.stringify(gf_home) === JSON.stringify(["feColor", "fe-rule", "feFeedback", "feReport", "fe-rule", "feMenuVersion"]), JSON.stringify(gf_home));
   check("Color shows the chosen color as a dot at its right", !!gf_d.querySelector("#feColor .fe-colordot") && gf_d.querySelector("#feColor").lastElementChild.classList.contains("fe-colordot") && gf_d.querySelector("#feColor .fe-colordot").style.background !== "");
   gf_d.getElementById("feColor").click();
-  check("and opens the swatches in the menu's popup, titled Color, with Done", gf_d.getElementById("infoOverlay").hidden === false && gf_d.getElementById("infoTitle").textContent === "Color" && !!gf_d.querySelector("#infoSlot #colorBlock #themeSwatches .theme-swatch") && gf_d.querySelector("#infoSlot #colorBlock .dlg-foot .dlg-cancel").textContent.trim() === "Done");
-  gf_d.querySelector("#infoSlot #colorBlock .dlg-cancel").click();
-  check("Done closes it and Color goes back, hidden", gf_d.getElementById("infoOverlay").hidden === true && gf_d.getElementById("colorBlock").hidden === true && !!gf_d.getElementById("colorBlock").closest("footer"));
+  check("and opens the swatches in the menu's popup, titled Color, with only its X to close it (no Done)", gf_d.getElementById("infoOverlay").hidden === false && gf_d.getElementById("infoTitle").textContent === "Color" && !!gf_d.querySelector("#infoSlot #colorBlock #themeSwatches .theme-swatch") && !gf_d.querySelector("#infoSlot #colorBlock .dlg-foot"));
+  check("the page behind Color is not dimmed, so the color shows as it is", /#infoOverlay:has\(#colorBlock\) \{ background: transparent; \}/.test(gf_html));
+  gf_d.getElementById("infoClose").click();
+  check("the X closes it and Color goes back, hidden", gf_d.getElementById("infoOverlay").hidden === true && gf_d.getElementById("colorBlock").hidden === true && !!gf_d.getElementById("colorBlock").closest("footer"));
   gf_w.eval("showView(\"builder\", false)");
   check("in a tool the ⋯ is back in Arc's bar", gf_d.getElementById("feAppMenu").parentElement.id === "appBar" && !gf_d.getElementById("hpMenuSlot").firstElementChild);
   var gf_titles = {};
@@ -2570,7 +2571,7 @@ print(json.dumps(out))
   py_w.document.getElementById("feAppMenuButton").click();
   py_w.document.body.click();
   var py_home = Array.from(py_w.document.querySelectorAll("#homeMore .hp-ee-row > summary")).map((h) => h.textContent.trim());
-  check("Everything else on home has Sign out and clear data, then Privacy; Python status is in the DEV menu", py_home.slice(1, 3).join("|") === "Sign out and clear data|Privacy" && !!py_w.document.querySelector("#devMenu #pythonStatus"), JSON.stringify(py_home));
+  check("Everything else on home has Privacy, Change Spotify login, then Sign out and clear data; Python status is in the DEV menu", py_home.join("|") === "Privacy|Change Spotify login|Sign out and clear data" && !!py_w.document.querySelector("#devMenu #pythonStatus"), JSON.stringify(py_home));
   } catch (err) { areaCrashed("python status at the bottom", err); } }
 
   if (want("spotify premium")) { try {
@@ -4486,7 +4487,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16e"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16h"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
