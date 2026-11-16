@@ -3,6 +3,8 @@ import sys, os, json, importlib.util
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location("engine", os.path.join(os.environ.get("APP_DIR") or os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."), "engine.py"))
 engine = importlib.util.module_from_spec(spec); spec.loader.exec_module(engine)
+if os.environ.get("ARC_SILENCE"):   # the service's silent tracks, as the page hands them to engine.py (set_silence)
+    engine.set_silence(os.environ["ARC_SILENCE"])
 name = sys.argv[1]
 args = json.loads(sys.argv[2])
 try:

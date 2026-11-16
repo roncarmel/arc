@@ -24,14 +24,15 @@ REPEAT_SLACK = 0.05
 
 # Silent tracks, keyed by length in seconds. Longer pauses are built by combining them, so a
 # silence of 2.5 min uses one 30 sec and two 1 min tracks. They may repeat in every playlist
-# and never count toward segment minutes.
-SILENCE_TRACKS = {
-    30: "spotify:track:5kiJ9x6eX37H5J9lyyXkua",
-    60: "spotify:track:4iOpD4OvwCi6ndxpNYk4HG",
-    180: "spotify:track:5yM42dAylwB17DomSHGcXM",
-    300: "spotify:track:7depNAqAh1r9unkIRzibID",
-    600: "spotify:track:3mkOlbSv5RYadx0JsjTrKq",
-}
+# and never count toward segment minutes. The IDs are the music service's (service.silence in its
+# file), set by set_silence when the page loads this file; these stand in until then.
+SILENCE_TRACKS = {30: "silence-30", 60: "silence-60", 180: "silence-180", 300: "silence-300", 600: "silence-600"}
+
+
+def set_silence(silence_json):
+    """The service's silent tracks: {"30": id, "60": id, ...}, the same lengths as above."""
+    SILENCE_TRACKS.clear()
+    SILENCE_TRACKS.update({int(sec): song for sec, song in json.loads(silence_json).items()})
 
 
 def norm(s):
@@ -40,9 +41,9 @@ def norm(s):
 
 
 def song_id(t):
-    """What makes two entries one song: the recording's ISRC when Spotify gives one (the same recording on an album and on a
-    compilation has two Spotify IDs but one ISRC), else the Spotify ID."""
-    return t.get("key") or t["uri"]
+    """What makes two entries one song: the recording's ISRC when the service gives one (the same recording on an album and on a
+    compilation has two IDs but one ISRC), else the service's ID."""
+    return t.get("key") or t["id"]
 
 
 def pick(tracks, minutes, used):
@@ -247,15 +248,15 @@ def parse_silence(value):
 def plan_format(fmt):
     """Split a format's segment list into its music segments and the silence around them.
     Returns (music, gaps): music is [(source, minutes)], gaps has one more item than music
-    and each gap is ([silent track URIs], label), before the first segment, between each
+    and each gap is ([silent track IDs], label), before the first segment, between each
     pair, and after the last."""
     default = parse_silence(fmt.get("silence between segments", "none"))
     none = ([], "none")
 
     def combine(entries):
-        uris = [u for entry in entries for u in entry[0]]
+        ids = [u for entry in entries for u in entry[0]]
         labels = [entry[1] for entry in entries if entry[1] != "none"]
-        return uris, " + ".join(labels) or "none"
+        return ids, " + ".join(labels) or "none"
 
     music, gaps, pending = [], [], []  # pending: silence entries since the last segment
     for item in fmt["segments"]:
@@ -412,7 +413,7 @@ def _plan_lines(key, music, gaps, built, stopped, used, cache, label=None):
     """The text shown in a preview, from one planning run."""
     label = label or key
     lines = [f"=== {label} ==="]
-    if any(uris for uris, _ in gaps[1:-1]):
+    if any(ids for ids, _ in gaps[1:-1]):
         lines.append("Silence between segments: " + ", ".join(label for _, label in gaps[1:-1]))
     if gaps[0][0]:
         lines.append("Silence at the start: " + gaps[0][1])
@@ -431,10 +432,10 @@ def _plan_lines(key, music, gaps, built, stopped, used, cache, label=None):
     return lines
 
 
-def gap_seconds(uris):
+def gap_seconds(ids):
     """How long a run of silent tracks lasts, in seconds."""
-    lengths = {uri: sec for sec, uri in SILENCE_TRACKS.items()}
-    return sum(lengths.get(u, 0) for u in uris)
+    lengths = {song: sec for sec, song in SILENCE_TRACKS.items()}
+    return sum(lengths.get(u, 0) for u in ids)
 
 
 def source_report(cache, music):
@@ -513,11 +514,11 @@ def build_playlists(formats_text, key, tracks_json, max_n=None, reserved_json="[
             built = []
     playlists = []
     for name, results in built:
-        uris = []
+        ids = []
         for idx, r in enumerate(results):
-            uris += gaps[idx][0]            # silence before this segment (none before the first unless asked)
-            uris += [t["uri"] for t in r[2]]
-        uris += gaps[-1][0]                 # silence after the last segment (only if asked)
+            ids += gaps[idx][0]             # silence before this segment (none before the first unless asked)
+            ids += [t["id"] for t in r[2]]
+        ids += gaps[-1][0]                  # silence after the last segment (only if asked)
         # the shape of this playlist, for the small bar beside it: [minutes, is silence], in order
         pieces = []
         for idx, r in enumerate(results):
@@ -528,7 +529,7 @@ def build_playlists(formats_text, key, tracks_json, max_n=None, reserved_json="[
             pieces.append([gap_seconds(gaps[-1][0]) / 60, True])
         playlists.append({
             "name": name,
-            "uris": uris,
+            "ids": ids,
             "songs": sum(len(r[2]) for r in results),
             "minutes": round(sum(r[3] for r in results) / 60000),
             "length": round((sum(r[3] for r in results) / 1000 + sum(gap_seconds(g[0]) for g in gaps)) / 60),

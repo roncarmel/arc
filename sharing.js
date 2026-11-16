@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-15h";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-15i";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -58,7 +58,7 @@ async function sharingFetch(method, path, json, retried = false) {
   let data = {};
   try { data = await response.json(); } catch (err) { /* no body */ }
   if (response.status === 401 && data.code === "signin" && !retried) {
-    const renewed = await renewSignIn();   // the sign-in ran out (a tab open over an hour): renew it, then send this once more with the new one
+    const renewed = await service.renewSignIn();   // the sign-in ran out (a tab open over an hour): renew it, then send this once more with the new one
     if (renewed) { token = renewed; return sharingFetch(method, path, json, true); }
   }
   if (!response.ok) { const e = new Error(data.error || `Music sharing answered ${response.status}.`); e.code = data.code || ""; e.status = response.status; e.percent = data.percent; e.of = data.of; throw e; }
@@ -394,7 +394,7 @@ async function keptSongsFor(id) {
 }
 async function measureOverlap() {
   const ids = recipePlaylistIds();
-  const keys = new Set(), uris = new Set(), labels = new Map();
+  const keys = new Set(), songIds = new Set(), labels = new Map();
   let kept = 0, songs = 0;
   const missing = [];
   for (const id of ids) {
@@ -403,15 +403,15 @@ async function measureOverlap() {
     kept++;
     for (const t of tracks) {
       if (t.key) { keys.add(t.key); labels.set(t.key, t.label); }
-      uris.add(t.uri);
-      labels.set(t.uri, t.label);
+      songIds.add(t.id);
+      labels.set(t.id, t.label);
     }
   }
-  songs = uris.size;
-  const result = { per: {}, songs, playlists: kept, missing, labels, keys, uris };
+  songs = songIds.size;
+  const result = { per: {}, songs, playlists: kept, missing, labels, keys, songIds };
   for (const s of (sharing.library ? sharing.library.shares : [])) {
     const music = s.songs.filter((x) => !isSilence(x));
-    const same = music.filter(([id, isrc]) => (isrc && keys.has("isrc:" + isrc)) || uris.has("spotify:track:" + id));
+    const same = music.filter(([id, isrc]) => (isrc && keys.has("isrc:" + isrc)) || songIds.has(id));
     result.per[s.id] = { same: same.length, pct: music.length ? Math.round((same.length / music.length) * 100) : 0, songs: same };
   }
   result.usable = songs >= OVERLAP_MIN_SONGS && kept >= OVERLAP_MIN_PLAYLISTS && Object.values(result.per).filter((p) => p.pct >= 1).length >= OVERLAP_MIN_SHARES;
@@ -432,16 +432,8 @@ async function readMissingSlowly(ids) {
     for (const id of ids) {
       if (sharing.readStop || connection !== "ready" || spotifyPause() || busy) break;
       const info = playlists.find((p) => p.id === id);
-      const entries = [];
-      let path = `/playlists/${id}/items?limit=50`;
-      while (path && !sharing.readStop) {
-        await new Promise((r) => setTimeout(r, OVERLAP_READ_GAP_MS));
-        const page = await spotifyRequest("GET", path, { noWait: true });
-        entries.push(...(page.items || []));
-        path = page.next || null;
-      }
-      if (sharing.readStop) break;
-      const tracks = songsFromEntries(entries);
+      const tracks = await service.readSongs(id, { gapMs: OVERLAP_READ_GAP_MS, stopped: () => sharing.readStop });
+      if (!tracks || sharing.readStop) break;
       trackCache.set(id, tracks);
       await saveSongs({ id, snapshot: info && info.snapshot ? info.snapshot : null, tracks, v: SONGS_VERSION, savedAt: Date.now() });
     }
@@ -460,28 +452,19 @@ async function addShared(s) {
   renderSharing();
   let made = null;
   try {
-    made = await spotifyRequest("POST", "/me/playlists", { json: { name: s.name, public: false, description: copyDescription(s) } });
-    if (made.public !== false) { try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); } catch (err) { logStep("shared copy: could not make it private"); } }
-    const uris = s.songs.map(([id]) => "spotify:track:" + id);
-    for (let k = 0; k < uris.length;) {
-      const n = addChunk;
-      try { await spotifyRequest("POST", `/playlists/${made.id}/items`, { json: { uris: uris.slice(k, k + n) } }); }
-      catch (err) {
-        if (n > ADD_CHUNK_SMALL && /returned 400/.test(err.message)) { addChunk = ADD_CHUNK_SMALL; recordNote(`${n} songs per add refused (400)`); continue; }
-        throw err;
-      }
-      k += n;
-    }
-    if (s.cover && hasScope("ugc-image-upload")) {   // a problem with the picture never undoes the playlist
+    made = await service.createPlaylist({ name: s.name, description: copyDescription(s) });
+    if (!made.private) logStep("shared copy: could not make it private");
+    await service.addSongs(made.id, s.songs.map(([id]) => id));
+    if (s.cover && service.coversAllowed()) {   // a problem with the picture never undoes the playlist
       try {
         const bytes = new Uint8Array(await (await fetch(s.cover)).arrayBuffer());
         let binary = "";
         for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-        await spotifyRequest("PUT", `/playlists/${made.id}/images`, { body: btoa(binary), contentType: "image/jpeg", noWait: true });
+        await service.setCover(made.id, btoa(binary), { noWait: true });
       } catch (err) { logStep("shared copy: cover not copied"); }
     }
   } catch (err) {
-    if (made) { try { await removePlaylists([made.id]); } catch (e) { logStep("shared copy: half-made copy not removed"); } }   // all or nothing
+    if (made) { try { await service.deletePlaylist(made.id); } catch (e) { logStep("shared copy: half-made copy not removed"); } }   // all or nothing
     made = null;
     sharing.addErrors[s.id] = String(err && err.message || err).replace(/\.?$/, ".");   // what went wrong, shown in the usual error box (getError)
   }
@@ -508,7 +491,7 @@ async function markOldCopies() {
       const p = playlists.find((x) => x.id === copy && x.owner === me.id);
       if (!p || typeof p.description !== "string" || copyShareId(p) === shareId) continue;   // gone, not read with its description, or has it already
       const description = withShareId(cleanSpotifyDescription(p.description), shareId);
-      await spotifyRequest("PUT", `/playlists/${p.id}`, { json: { description }, noWait: true });
+      await service.updatePlaylist(p.id, { description }, { noWait: true });
       p.description = description;
     }
   } catch (err) { logStep("music sharing: marking an older copy stopped (" + (err && err.message) + ")"); }   // tried again next time
@@ -1094,7 +1077,7 @@ function renderDetail(body) {
       feEl("button", { type: "button", class: "linklike", onClick: () => { sharing.showOverlapSongs = !sharing.showOverlapSongs; renderSharing(); } }, sharing.showOverlapSongs ? "Hide them" : "Show them"))));
     if (sharing.showOverlapSongs) {
       const labels = sharing.overlap.labels;
-      body.appendChild(feEl("ul", { class: "ms-songs" }, ...ov.songs.map(([id, isrc]) => feEl("li", {}, labels.get("isrc:" + isrc) || labels.get("spotify:track:" + id) || "A song"))));
+      body.appendChild(feEl("ul", { class: "ms-songs" }, ...ov.songs.map(([id, isrc]) => feEl("li", {}, labels.get("isrc:" + isrc) || labels.get(id) || "A song"))));
     }
   }
   if (names.state !== "none") renderSongs(body, s, names, ov && ov.same ? ov : null);
@@ -1319,7 +1302,7 @@ function songMenu(s, i, label) {
       end: feEl("span", { class: "ms-mi-end ms-mi-chev" }, feIcon("chevron")),
       onClick: () => turnSongMenu(1, () => { m.view = "lists"; m.note = ""; }) }));
     menu.appendChild(feEl("div", { class: "ms-mi-rule" }));
-    menu.appendChild(feEl("a", { role: "menuitem", class: "ms-mi", id: "msSongOpen", href: `https://open.spotify.com/track/${encodeURIComponent(id)}`, target: "_blank", rel: "noopener noreferrer",
+    menu.appendChild(feEl("a", { role: "menuitem", class: "ms-mi", id: "msSongOpen", href: service.songUrl(id), target: "_blank", rel: "noopener noreferrer",
       onClick: () => setTimeout(() => closeSongMenu(false)) }, feIcon("spotify"), feEl("span", { class: "ms-mi-text", text: "Open in Spotify" })));
   }
   if (m.note) menu.appendChild(problemBox(m.note, "", [], true));
@@ -1330,35 +1313,35 @@ function songIsIn(s, i, playlistId) {
   const [id, isrc] = s.songs[i];
   if ((sharing.addedTo.get(playlistId) || new Set()).has(id)) return true;
   const tracks = trackCache.get(playlistId);
-  return !!tracks && tracks.some((t) => t.uri === "spotify:track:" + id || (isrc && t.key === "isrc:" + String(isrc).toUpperCase()));
+  return !!tracks && tracks.some((t) => t.id === id || (isrc && t.key === "isrc:" + String(isrc).toUpperCase()));
 }
 async function likeSong(s, i) {
   const m = sharing.songMenu, id = s.songs[i][0];
   m.busy = "like"; m.note = "";
   renderSharing();
   try {
-    await spotifyRequest("PUT", "/me/library", { params: { uris: "spotify:track:" + id } });
+    await service.likeSong(id);
     sharing.liked.add(id);
   } catch (err) { m.note = "It wasn\u2019t added. " + (err && err.message ? err.message : ""); }
   m.busy = null;
   if (sharing.songMenu === m) { renderSharing(); if ($("msSongLike")) $("msSongLike").focus(); }
 }
 async function addSongTo(s, i, p) {
-  const m = sharing.songMenu, [id, isrc] = s.songs[i], uri = "spotify:track:" + id;
+  const m = sharing.songMenu, [id, isrc] = s.songs[i];
   m.busy = p.id; m.note = "";
   renderSharing();
   try {
-    const res = await spotifyRequest("POST", `/playlists/${p.id}/items`, { json: { uris: [uri] } });
+    const res = await service.addSongs(p.id, [id]);
     if (!sharing.addedTo.has(p.id)) sharing.addedTo.set(p.id, new Set());
     sharing.addedTo.get(p.id).add(id);
     // what this browser keeps of the playlist gets the song too, so the checks and the overlap follow at once
     const info = playlists.find((x) => x.id === p.id);
-    if (info && res && res.snapshot_id) info.snapshot = res.snapshot_id;
+    if (info && res && res.version) info.snapshot = res.version;
     if (info && typeof info.count === "number") info.count++;
     const kept = await keptSongsFor(p.id);
     if (kept) {
       const [title, artist, ms] = m.names || [];
-      const song = { uri, ms: ms || 0, label: `${artist || ""} - ${title || ""}` };
+      const song = { id, ms: ms || 0, label: `${artist || ""} - ${title || ""}` };
       if (isrc) song.key = "isrc:" + String(isrc).toUpperCase();
       const tracks = [...kept, song];
       trackCache.set(p.id, tracks);
@@ -1529,7 +1512,7 @@ function changedInSpotify(m, p) {
   if (known && known.snapshot === p.snapshot) return known.changed;   // false while it is being read
   sharing.changeChecks[m.id] = { snapshot: p.snapshot, changed: false };
   loadTracks(p.id).then((tracks) => {
-    const now = tracks.map((t) => String(t.uri).replace("spotify:track:", "")).filter((id) => /^[A-Za-z0-9]{10,40}$/.test(id));   // as the worker keeps them
+    const now = tracks.map((t) => String(t.id)).filter((id) => /^[A-Za-z0-9]{10,40}$/.test(id));   // as the worker keeps them
     const then = pub.songs.map(([id]) => id);
     sharing.changeChecks[m.id] = { snapshot: p.snapshot, changed: now.length !== then.length || now.some((id, i) => id !== then[i]) };
     if (sharing.changeChecks[m.id].changed) renderSharing();
@@ -1664,7 +1647,6 @@ function shareTitleFor(p) {
   return (r && cleanTitle(r.title).trim()) || m[1];
 }
 // Arc's silence tracks: kept in a share and in copies of it (the gaps are part of a ceremony's shape), left out of its song list and counts
-const SILENCE_IDS = new Set([...(typeof SILENCE_URIS !== "undefined" ? SILENCE_URIS : [])].map((u) => u.replace("spotify:track:", "")));
 function isSilence(song) { return !!song && SILENCE_IDS.has(song[0]); }
 function musicCount(s) { return (s.songs || []).filter((x) => !isSilence(x)).length; }
 // Share a playlist and Edit details are one form (Ron, 2026-11-10, mockups/share-one-dialog.html): the playlist's card at the top (a tap opens
@@ -1764,7 +1746,7 @@ function playlistCard(p, d) {
   const tracks = trackCache.get(p.id);
   const ms = tracks ? tracks.reduce((n, t) => n + (t.ms || 0), 0) : (f.share && f.share.ms) || 0;
   const look = { kind: d.kind, books: [...d.books], bookOther: d.bookOther, phases: [...d.phases], moods: d.moods, other: cleanWord(d.other, SHARE_OTHER_MAX) };
-  const by = d.anon ? "Anonymous" : (me && (me.display_name || me.id)) || "";
+  const by = d.anon ? "Anonymous" : (me && me.name) || "";
   const label = kindLabel(look);
   const shown = shareName(p, d);
   // one Arc built has a title of its own: the pencil (a grey circle) turns the name into a field (Ron, 2026-11-14, mockups/share-title B)
@@ -2139,14 +2121,14 @@ const shareName = (p, d) => (d.arc && d.title.trim()) || p.name;
 async function sendShare(p, d) {
   const tracks = await loadTracks(p.id);
   const ms = tracks.reduce((n, t) => n + (t.ms || 0), 0);
-  const songs = tracks.map((t) => [String(t.uri).replace("spotify:track:", ""), t.key ? t.key.slice(5) : ""]);
+  const songs = tracks.map((t) => [String(t.id), t.key ? t.key.slice(5) : ""]);
   const names = tracks.map(songName);   // for the playlist's page; the worker sends them one playlist at a time
   const kind = d.kind;
   const sent = {
-    playlist: p.id, snapshot: p.snapshot || null, name: shareName(p, d), by: d.anon ? null : (me && (me.display_name || me.id)) || null,
+    playlist: p.id, snapshot: p.snapshot || null, name: shareName(p, d), by: d.anon ? null : (me && me.name) || null,
     kind, books: kind === "ceremony" ? [...d.books].sort((a, b) => a - b) : [], bookOther: kind === "ceremony" && d.books.has(OTHER_BOOK) ? cleanBookCode(d.bookOther) : "", phases: kind === "phase" ? [...d.phases].sort() : [], moods: kind === "mood" ? d.moods.slice() : [],
     other: kind === "other" ? cleanWord(d.other, SHARE_OTHER_MAX) : "", description: draftDescription(d, p), descSource: d.descSource,
-    cover: p.cover || null, songs, names, ms, artists: topArtists(tracks.filter((t) => !SILENCE_URIS.has(t.uri))),
+    cover: p.cover || null, songs, names, ms, artists: topArtists(tracks.filter((t) => !SILENCE_IDS.has(t.id))),
   };
   const done = await sharingFetch("POST", "/share", sent);
   // the share as the library will have it (publicShare in the worker), put in at once (ownShareChanged); a hidden one stays out, as in the library
@@ -2271,7 +2253,7 @@ function rememberBlock(p, why, of) {
   try { localStorage.setItem(SHARING_BLOCKED_KEY, JSON.stringify(all)); } catch (err) { /* private browsing: known for this visit only */ }
 }
 function shortDate(ms) { const d = new Date(ms); return `${d.getDate()} ${MONTHS[d.getMonth()]}`; }
-// a kept song's [title, artist, length in ms]; its label is "artist - title" (songsFromEntries in app.js)
+// a kept song's [title, artist, length in ms]; its label is "artist - title" (songsFromEntries in service-spotify.js)
 function songName(t) {
   const label = String(t.label || ""), cut = label.indexOf(" - ");
   return cut < 0 ? [label, "", t.ms || 0] : [label.slice(cut + 3), label.slice(0, cut), t.ms || 0];

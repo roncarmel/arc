@@ -1,9 +1,10 @@
-// shared-spotify.js: talking to Spotify, shared by this repository's apps (the playlist builder, and later the tagger). Sign-in (PKCE in the browser,
-// no secret, no server), the refresh token, requests with their limits and waits, and the record of those limits. It shows nothing itself: each page
-// fills spotifyHooks with what to do and say, so this file names no element of any page. Loaded before the page's own script.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["shared-spotify.js"] = "2026-11-15h";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+// service-spotify.js: Spotify as Arc's music service, also used by this repository's other apps (later the tagger). Sign-in (PKCE in the browser, no secret,
+// no server), the refresh token, requests with their limits and waits, and the record of those limits; at its end the `service` object, the only way the rest
+// of Arc talks to Spotify (work/tidal-plan.md, "The service layer"): every Spotify address, URI and quirk stays in this file. It shows nothing itself: each page
+// fills serviceHooks with what to do and say, so this file names no element of any page. Loaded before the page's own script.
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-spotify.js"] = "2026-11-15i";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
-const spotifyHooks = {
+const serviceHooks = {
   scopes: "",                  // the permissions the sign-in asks for, space separated
   requiredScopes: [],          // a kept sign-in without all of these is not used
   log: (text) => {},           // a step, for problem reports
@@ -66,7 +67,7 @@ async function openSpotifySignIn(clientId, { switchAccount = false } = {}) {
     client_id: clientId,
     response_type: "code",
     redirect_uri: redirectUri(),
-    scope: spotifyHooks.scopes,
+    scope: serviceHooks.scopes,
     code_challenge_method: "S256",
     code_challenge: challenge,
     state,
@@ -137,15 +138,15 @@ function renewSignIn() {
       try { data = await response.json(); } catch (err) { /* no body */ }
       if (!response.ok || !data.access_token) {
         if (response.status === 400 || response.status === 401) keepRefresh(null);   // refused for good: reconnecting is the only way
-        spotifyHooks.log("sign-in renewal refused");
+        serviceHooks.log("sign-in renewal refused");
         return null;
       }
       keepToken(data);
       const renewed = loadStoredToken();
-      spotifyHooks.log(renewed ? "sign-in renewed" : "sign-in renewed without every permission");
+      serviceHooks.log(renewed ? "sign-in renewed" : "sign-in renewed without every permission");
       return renewed;
     } catch (err) {
-      spotifyHooks.log("sign-in renewal: no answer");   // the refresh token is kept, for when the connection is back
+      serviceHooks.log("sign-in renewal: no answer");   // the refresh token is kept, for when the connection is back
       return null;
     } finally {
       renewing = null;
@@ -159,9 +160,9 @@ function loadStoredToken() {
     const saved = JSON.parse(sessionStorage.getItem("token") || "null");
     if (saved && saved.expires > Date.now() + 30000) {
       const granted = String(saved.scope || "").split(/\s+/);
-      if (spotifyHooks.requiredScopes.every((s) => granted.includes(s))) return saved.value;
+      if (serviceHooks.requiredScopes.every((s) => granted.includes(s))) return saved.value;
       sessionStorage.removeItem("token");  // an older, read-only sign-in
-      spotifyHooks.oldSignIn();
+      serviceHooks.oldSignIn();
     }
   } catch (err) { /* ignore */ }
   return null;
@@ -290,15 +291,15 @@ function startSpotifyPause(wait, reason) {
   const before = spotifyPause();
   const first = !before;
   try { localStorage.setItem(PAUSE_KEY, JSON.stringify({ until: Date.now() + wait * 1000, from: (before && before.from) || Date.now(), reason: reason || "", clientId: localStorage.getItem("clientId") || "" })); } catch (err) { /* private browsing: the wait lasts this visit */ }
-  spotifyHooks.log(`paused for ${wait} s`);
+  serviceHooks.log(`paused for ${wait} s`);
   tickPause();
-  spotifyHooks.pauseStarted(first);
+  serviceHooks.pauseStarted(first);
 }
 function tickPause() {
   clearTimeout(pauseTimer);
   pauseTimer = null;
   const left = pausedSecondsLeft();
-  spotifyHooks.pauseChanged(left);
+  serviceHooks.pauseChanged(left);
   if (left) {
     pauseOn = true;
     pauseTimer = setTimeout(tickPause, 1000);
@@ -306,8 +307,8 @@ function tickPause() {
   }
   if (!pauseOn) return;
   pauseOn = false;   // the time is up: the page connects again
-  spotifyHooks.log("wait over");
-  spotifyHooks.pauseEnded();
+  serviceHooks.log("wait over");
+  serviceHooks.pauseEnded();
 }
 
 // Spotify's wait, through the relay. A page cannot read Retry-After, so after a rate limit with no readable wait the app sends one GET through
@@ -341,7 +342,7 @@ async function askSpotifyWait(url = SPOTIFY_API + "/me") {
       if (response.ok) { const data = await response.json(); result = { status: data.status, wait: Number(data.retryAfter) > 0 ? Number(data.retryAfter) : null, reason: data.reason || "" }; }
     } catch (err) { /* the relay is down or slow: the message says no time, as before */ }
     finally { clearTimeout(timer); }
-    spotifyHooks.log(result ? `wait asked: ${result.status}${result.wait ? ", " + result.wait + " s" : ""}` : "wait asked: no answer");
+    serviceHooks.log(result ? `wait asked: ${result.status}${result.wait ? ", " + result.wait + " s" : ""}` : "wait asked: no answer");
     const limits = readRecord(LIMITS_KEY, []);
     const open = limits.length && !limits[limits.length - 1].note && !limits[limits.length - 1].relay ? limits[limits.length - 1] : null;
     if (open) { open.relay = result ? { at: Date.now(), path: path.replace(/[A-Za-z0-9]{22}/, "{id}"), status: result.status, retryAfter: result.wait, reason: result.reason } : { at: Date.now(), status: "no answer" }; writeRecord(LIMITS_KEY, limits); }
@@ -417,15 +418,15 @@ async function spotifyRequest(method, path, { params, json, body, contentType, n
         const renewed = await renewSignIn();
         if (renewed) { token = renewed; attempt -= 1; continue; }
       }
-      const message = spotifyHooks.expiredText();
-      spotifyHooks.signInExpired(message);
+      const message = serviceHooks.expiredText();
+      serviceHooks.signInExpired(message);
       throw new Error(message);
     }
     if (response.status === 403) {   // one refused request (a playlist you cannot read, a missing permission) does not mean the connection is lost
       let body = "";
       try { body = await response.text(); } catch (err) { /* no body */ }
       if (/premium/i.test(body)) throw new Error(PREMIUM_REQUIRED_MESSAGE);   // reconnecting cannot fix this, so it gets its own message
-      throw new Error(spotifyHooks.refusedText(what));
+      throw new Error(serviceHooks.refusedText(what));
     }
     if (!response.ok) throw new Error(`Spotify returned ${response.status} for ${what}`);
     const text = await response.text();
@@ -463,3 +464,208 @@ async function pagedItems(path) {
     page = await spotify(page.next);
   }
 }
+
+// ---------------------------------------------------------------- the service: what the rest of Arc uses (work/tidal-plan.md, "The service layer")
+// Every service file sets `service` with the same members, so the page never names Spotify's addresses, URIs or limits. A song outside this file is
+// { id, key, ms, label, album }: id is Spotify's track ID, key "isrc:..." when Spotify gives one (engine.py's song_id).
+const ADD_CHUNK = 100;     // songs added per request (Spotify's documented maximum; fewer requests means fewer rate limits)
+const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
+const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
+let addChunk = ADD_CHUNK;   // lowered for the visit if Spotify refuses that many
+const LIST_RETRY_MS = 10000;   // reading short pages of the playlist list again stops after this, in all
+const trackUri = (id) => "spotify:track:" + id;
+const playlistUri = (id) => "spotify:playlist:" + id;
+
+// A playlist's items from Spotify, as the songs the app keeps
+function songsFromEntries(entries) {
+  const tracks = [];
+  for (const entry of entries) {
+    const t = entry && (entry.item || entry.track);  // "item" is the 2026 field name
+    if (!t || t.is_local || t.type !== "track" || !t.uri) continue;
+    const artist = t.artists && t.artists[0] ? t.artists[0].name : "";
+    const isrc = t.external_ids && typeof t.external_ids.isrc === "string" && t.external_ids.isrc ? t.external_ids.isrc.toUpperCase() : "";
+    const song = { id: String(t.uri).replace("spotify:track:", ""), ms: t.duration_ms, label: `${artist} - ${t.name}` };
+    if (isrc) song.key = "isrc:" + isrc;   // one recording, whichever release it came from (engine.py's song_id)
+    if (t.album && t.album.name) song.album = t.album.name + (t.album.release_date ? `, ${String(t.album.release_date).slice(0, 4)}` : "");
+    tracks.push(song);
+  }
+  return tracks;
+}
+
+// The person's playlists, every page. Spotify sometimes sends a page empty or short though its total says there is more (the first page came with 0 of 98,
+// 2026-11-13, and the merge then asked about saves that were there). A short page is read again, up to 3 times, a moment apart. Gives the playlists, with
+// what the reading found on the array: total (Spotify's count), pages ([offset, items, total, next, note] as read), hidden (where Spotify sent null),
+// leftOut (counted but never sent), reread (a short page came right when read again), and short: the error a report carries when the list is still short.
+async function listSpotifyPlaylists({ onPage } = {}) {
+  const raw = [];
+  const short = (pg) => { const n = (pg.items || []).length; if (typeof pg.total !== "number" || typeof pg.offset !== "number") return false; return n < Math.min(pg.limit || 50, pg.total - pg.offset); };
+  // A page that comes short twice with the same playlists is Spotify's answer, not a slip: it leaves out playlists it will not show an app in development
+  // mode (its own, as Discover Weekly or editorial ones) though its total counts them. Those are taken as all there is (`steady`); an empty page never is.
+  // An account following 4 of them never connected, 4 short every time (937 of 941, then 939 of 943; the first user report, 2026-11-15).
+  // The same playlists in any order (Spotify's order may differ between reads). Reads that differ are joined: every playlist in any of them is in the library,
+  // so a page whose reads together come to its full count is whole (`joined`).
+  const idsOf = (pg) => (pg.items || []).map((p) => (p ? p.id : "")).sort().join();
+  const expected = (pg) => Math.min(pg.limit || 50, pg.total - pg.offset);
+  let steady = 0;
+  // Reading short pages again stops after 10 s in all, however many came short: a build sat a minute or more on Reading your playlists, then failed (2026-11-15)
+  const retryUntil = Date.now() + LIST_RETRY_MS;
+  const readPage = async (url) => {
+    let pg = await spotify(url);
+    const seen = new Map();
+    const join = (q) => (q.items || []).forEach((p, i) => { if (p && !seen.has(p.id)) seen.set(p.id, p); else if (!p) seen.set("null:" + i, null); });
+    join(pg);
+    for (let tries = 0; tries < 3 && short(pg) && Date.now() < retryUntil; tries++) {
+      pages.push([pg.offset, (pg.items || []).length, pg.total, !!pg.next, "short, read again"]);
+      await new Promise((r) => setTimeout(r, 700 * (tries + 1)));
+      const again = await spotify(url);
+      const same = short(again) && (again.items || []).length > 0 && idsOf(pg) === idsOf(again);
+      join(again);
+      pg = again;
+      if (!short(pg)) break;
+      if (typeof pg.total === "number" && typeof pg.offset === "number" && seen.size >= expected(pg)) { pg = { ...pg, items: [...seen.values()] }; pages.push([pg.offset, pg.items.length, pg.total, !!pg.next, "short, joined from reads"]); break; }
+      if (same) { steady += expected(pg) - pg.items.length; pages.push([pg.offset, pg.items.length, pg.total, !!pg.next, "short, the same again: taken"]); break; }
+    }
+    return pg;
+  };
+  const pages = [];
+  let page = await readPage("/me/playlists?limit=50");
+  const total = typeof page.total === "number" ? page.total : null;
+  const pageCount = total ? Math.ceil(total / (page.limit || 50)) : 1;
+  for (let n = 1; ; n++) {
+    pages.push([page.offset, (page.items || []).length, page.total, !!page.next]);
+    raw.push(...(page.items || []));
+    if (onPage) onPage(n, pageCount);
+    if (!page.next) break;
+    page = await readPage(page.next);
+  }
+  // Spotify sends null in place of a playlist it will not show to an app in development mode (its own, as Discover Weekly or editorial ones, since 2024).
+  // Those count as arrived: Arc can never read them, so leaving them out of the count kept an account that follows some from ever connecting (937 of 941,
+  // a report of 2026-11-15). Where they sat is kept for the records.
+  const hidden = raw.map((p, i) => (p ? null : i)).filter((i) => i !== null);
+  if (hidden.length) recordNote(`playlist list: ${hidden.length} hidden by Spotify (null items) at ${JSON.stringify(hidden.slice(0, 20))}`);
+  if (steady) recordNote(`playlist list: ${steady} left out by Spotify (pages short the same way twice), pages [offset, items, total, next] ${JSON.stringify(pages)}`);
+  const got = raw.length;
+  let shortError = "";
+  if (total !== null && raw.length !== total) recordNote(`playlist list: ${raw.length} items, Spotify's total ${total}, pages [offset, items, total, next] ${JSON.stringify(pages)}`);
+  if (total !== null && got + steady < total) {
+    // the short reads go into the report too ([offset, items], each read), since a report is often all there is (2026-11-15)
+    const reads = pages.filter((x) => x[4] || (typeof x[2] === "number" && x[1] < Math.min(50, x[2] - x[0]))).map((x) => [x[0], x[1]]).slice(0, 12);
+    shortError = `Spotify listed ${got} of ${total} playlists, after reading again${hidden.length ? ` (${hidden.length} of them hidden)` : ""}${steady ? ` (${steady} left out the same way twice)` : ""}; short reads [offset, items] ${JSON.stringify(reads)}`;
+  }
+  const list = raw.filter(Boolean).map((p) => ({
+    id: p.id,
+    name: p.name,
+    owner: p.owner && p.owner.id,
+    collaborative: !!p.collaborative,
+    image: Array.isArray(p.images) && p.images.length ? p.images[p.images.length - 1].url : null,   // Spotify lists the largest first
+    cover: Array.isArray(p.images) && p.images.length ? p.images[0].url : null,   // the largest, for Music sharing
+    count: p.tracks && typeof p.tracks.total === "number" ? p.tracks.total : (p.items && typeof p.items.total === "number" ? p.items.total : null),
+    description: typeof p.description === "string" ? p.description : null,
+    version: typeof p.snapshot_id === "string" && p.snapshot_id ? p.snapshot_id : null,   // changes whenever the playlist does
+  }));
+  return Object.assign(list, { total, pages, hidden, leftOut: steady, reread: pages.some((x) => x[4]), short: shortError });
+}
+
+async function pagedItems(path, { gapMs = 0, stopped = null } = {}) {
+  // gapMs and stopped: read gently (Music sharing's slow reading), a rate limit an error at once; null when stopped partway
+  const slow = !!(gapMs || stopped);
+  const items = [];
+  while (path) {
+    if (stopped && stopped()) return null;
+    if (gapMs) await new Promise((r) => setTimeout(r, gapMs));
+    const page = await spotifyRequest("GET", path, slow ? { noWait: true } : {});
+    items.push(...(page.items || []));
+    path = page.next || null;
+  }
+  if (stopped && stopped()) return null;
+  return items;
+}
+
+const service = {
+  key: "spotify",
+  name: "Spotify",
+  limits: { description: 300, addBatch: ADD_CHUNK },
+  can: { covers: true, privatePlaylists: true, likedSongs: true },
+  // Arc's silent tracks by length in seconds (engine.py combines them): Silence for Playlists, by silence moments
+  silence: { 30: "5kiJ9x6eX37H5J9lyyXkua", 60: "4iOpD4OvwCi6ndxpNYk4HG", 180: "5yM42dAylwB17DomSHGcXM", 300: "7depNAqAh1r9unkIRzibID", 600: "3mkOlbSv5RYadx0JsjTrKq" },
+
+  // sign-in
+  signIn: (clientId, options) => openSpotifySignIn(clientId, options),
+  finishSignIn: () => finishSpotifySignIn(),
+  renewSignIn: () => renewSignIn(),
+  signedIn: () => !!token,
+  storedSignIn: () => loadStoredToken(),   // this tab's sign-in, if it is still good
+  canRenew: () => !!storedRefresh(),       // a sign-in from an earlier visit is kept
+  coversAllowed: () => hasScope("ugc-image-upload"),   // the sign-in was approved for cover art (an optional permission)
+  async me() {
+    const r = await spotify("/me");
+    return { id: r.id, name: r.display_name || r.id, country: r.country || "" };
+  },
+
+  // playlists
+  listMyPlaylists: (options) => listSpotifyPlaylists(options),
+  async readPlaylist(id) {
+    const r = await spotify(`/playlists/${id}?fields=id,name,owner(id),description,images`);
+    return { id: r.id || id, name: r.name, description: r.description, owner: r.owner && r.owner.id, image: Array.isArray(r.images) && r.images.length ? r.images[r.images.length - 1].url : null };
+  },
+  inLibrary: (id) => spotify(`/me/library/contains?uris=${encodeURIComponent(playlistUri(id))}`),
+  async readSongs(id, options) {
+    const items = await pagedItems(`/playlists/${id}/items?limit=50`, options);
+    return items ? songsFromEntries(items) : null;
+  },
+  async createPlaylist({ name, description }) {
+    // private: Spotify may ignore public: false, so it is asked again; private false when even that failed
+    const made = await spotifyRequest("POST", "/me/playlists", { json: { name, public: false, description } });
+    let isPrivate = true;
+    if (made.public !== false) { try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); } catch (err) { isPrivate = false; } }
+    return { id: made.id, private: isPrivate };
+  },
+  updatePlaylist: (id, { name, description }, { noWait = false } = {}) => spotifyRequest("PUT", `/playlists/${id}`, { json: { name, description }, ...(noWait ? { noWait } : {}) }),
+  async addSongs(id, songIds, { onBatch } = {}) {
+    // onBatch(done, total) before each request. Gives { version }: the playlist's new snapshot
+    let version = null;
+    for (let k = 0; k < songIds.length;) {
+      if (onBatch) onBatch(k, songIds.length);
+      const n = addChunk;
+      let res;
+      try { res = await spotifyRequest("POST", `/playlists/${id}/items`, { json: { uris: songIds.slice(k, k + n).map(trackUri) } }); }
+      catch (err) {
+        if (n > ADD_CHUNK_SMALL && /returned 400/.test(err.message)) { addChunk = ADD_CHUNK_SMALL; recordNote(`${n} songs per add refused (400)`); continue; }
+        throw err;
+      }
+      if (res && res.snapshot_id) version = res.snapshot_id;
+      k += n;
+    }
+    return { version };
+  },
+  async deletePlaylists(ids) {
+    // Spotify's 2026 API removes playlists from a library with one generic endpoint
+    for (let i = 0; i < ids.length; i += REMOVE_CHUNK) {
+      await spotifyRequest("DELETE", "/me/library", { params: { uris: ids.slice(i, i + REMOVE_CHUNK).map(playlistUri).join(",") } });
+    }
+  },
+  deletePlaylist: (id) => service.deletePlaylists([id]),
+  setCover: (id, jpegBase64, { noWait = false } = {}) => spotifyRequest("PUT", `/playlists/${id}/images`, { body: jpegBase64, contentType: "image/jpeg", ...(noWait ? { noWait } : {}) }),
+  async hasOwnCover(id) {
+    // whether the playlist shows an uploaded cover, not Spotify's own of four albums (Device checks)
+    const images = await spotify(`/playlists/${id}/images`);
+    return Array.isArray(images) && images.some((im) => im && im.url && !/mosaic/.test(im.url));
+  },
+
+  // songs
+  async findByIsrc(isrcs) {
+    // one search per song on Spotify; gives {isrc: songId} for those found
+    const found = {};
+    for (const isrc of isrcs) {
+      const r = await spotify(`/search?type=track&limit=1&q=${encodeURIComponent("isrc:" + isrc)}`);
+      const t = r && r.tracks && r.tracks.items && r.tracks.items[0];
+      if (t && t.id) found[isrc] = t.id;
+    }
+    return found;
+  },
+  likeSong: (id) => spotifyRequest("PUT", "/me/library", { params: { uris: trackUri(id) } }),
+
+  // addresses: song picks it out in the playlist (Spotify's ?highlight=)
+  playlistUrl: (id, { song } = {}) => `https://open.spotify.com/playlist/${id}` + (song ? `?highlight=${encodeURIComponent(trackUri(song))}` : ""),
+  songUrl: (id) => `https://open.spotify.com/track/${encodeURIComponent(id)}`,
+};

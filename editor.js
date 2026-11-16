@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-15h";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-15i";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -2700,7 +2700,7 @@ function recipePlaylistsBox(f) {
       const cover = feEl("span", { class: "bh-cover", style: p && p.image ? `background-image:url("${p.image}")` : "" });
       box.appendChild(feEl("div", { class: "bh-pl bh-pl-split bh-rseg" + (l.name ? "" : " bh-rseg-empty") },
         feEl("span", { class: "bh-rmark", "aria-hidden": "true" }),
-        p ? feEl("a", { class: "bh-pl-main", href: `https://open.spotify.com/playlist/${p.id}`, target: "_blank", rel: "noopener" }, cover, text) : feEl("span", { class: "bh-pl-main" }, cover, text),
+        p ? feEl("a", { class: "bh-pl-main", href: service.playlistUrl(p.id), target: "_blank", rel: "noopener" }, cover, text) : feEl("span", { class: "bh-pl-main" }, cover, text),
         l.name ? shareIconButton(p || { id: "", name: l.name }, why) : null));
     }
   }
@@ -3158,7 +3158,7 @@ function personPlaylists(person) {
   if (mine && mine.state === "now") box.appendChild(personBuildRow(mine));
   for (const p of person.playlists) {
     const isNew = mine && mine.state === "done" && mine.id === p.id;
-    const href = `https://open.spotify.com/playlist/${p.id}`;
+    const href = service.playlistUrl(p.id);
     const name = [feEl("span", { class: "bh-pl-name bh-pl-ext", text: nameWithoutCode(p.name, code) }), bhSvg(BH_EXT)];
     // just built, Open stays in the mark's place until the row folds
     const open = isNew ? feEl("span", { class: "pp-open" }, bhSvg(BH_OPEN), feEl("span", { text: "Open" })) : null;
@@ -3180,7 +3180,7 @@ function personPlaylists(person) {
     for (const id of person.heard) {
       const info = heardInfo(id);
       if (info.gone) box.appendChild(feEl("div", { class: "bh-pl hb-row hb-gone" }, feEl("span", { class: "bh-cover" }), feEl("span", { class: "bh-pl-name", text: info.name || "A playlist" }), feEl("span", { class: "hb-gone-note", text: "No longer in Spotify" })));
-      else box.appendChild(feEl("a", { class: "bh-pl hb-row", href: `https://open.spotify.com/playlist/${id}`, target: "_blank", rel: "noopener" },
+      else box.appendChild(feEl("a", { class: "bh-pl hb-row", href: service.playlistUrl(id), target: "_blank", rel: "noopener" },
         feEl("span", { class: "bh-cover", style: info.image ? `background-image:url("${info.image}")` : "" }),
         feEl("span", { class: "bh-pl-name bh-pl-ext", text: info.name || "\u2026" }), bhSvg(BH_EXT)));
     }
@@ -3524,8 +3524,8 @@ function heardInfo(id) {
   if (p) return { name: p.name, image: p.image, count: p.count };
   if (heardCache.has(id)) return heardCache.get(id);
   heardCache.set(id, {});
-  spotifyRequest("GET", `/playlists/${id}?fields=name,images`).then((r) => {
-    heardCache.set(id, { name: r.name, image: Array.isArray(r.images) && r.images.length ? r.images[r.images.length - 1].url : null });
+  service.readPlaylist(id).then((r) => {
+    heardCache.set(id, { name: r.name, image: r.image });
   }, (err) => {
     heardCache.set(id, /\b404\b|not found/i.test(String(err && err.message)) ? { gone: true } : {});
   }).then(() => renderParticipantList());

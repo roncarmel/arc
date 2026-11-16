@@ -10,11 +10,8 @@ const SCOPES = [
   "ugc-image-upload",                                       // the cover art on the playlists it creates
 ].join(" ");
 const REQUIRED_SCOPES = ["playlist-modify-private", "playlist-modify-public"];   // cover art is optional, so an older sign-in without it keeps working
-const ADD_CHUNK = 100;     // songs added per request (Spotify's documented maximum; fewer requests means fewer rate limits)
-const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
-const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
-const APP_VERSION = "2026-11-15h";
+const APP_VERSION = "2026-11-15i";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1269,7 +1266,7 @@ const trackCache = new Map();  // playlist id -> songs, for the life of this pag
 // Everything here is best effort: if the browser will not keep songs, the app simply asks Spotify, as it did before.
 const SONGS_DB = "ceremony-playlist-builder";
 const SONGS_STORE = "songs";
-const SONGS_VERSION = 2;   // 2: each song carries its ISRC and album; older saves are read again
+const SONGS_VERSION = 3;   // 2: each song carries its ISRC and album; 3: a song carries the service's own id, not a Spotify URI; older saves are read again
 let songsDb = null;
 
 function openSongsDb() {
@@ -1873,11 +1870,11 @@ function recordListRead(by) {
 async function readSaveDirectly(id) {
   const d = { id };
   try {
-    const got = await spotify(`/playlists/${id}?fields=id,name,owner(id),description`);
+    const got = await service.readPlaylist(id);
     const u = unpackFormat(got.description);
-    Object.assign(d, { name: got.name, owner: got.owner && got.owner.id, kind: u.kind, recipeId: u.format ? u.format.id : null, rev: u.format ? u.format.rev || 0 : null, descLength: got.description == null ? null : String(got.description).length });
+    Object.assign(d, { name: got.name, owner: got.owner, kind: u.kind, recipeId: u.format ? u.format.id : null, rev: u.format ? u.format.rev || 0 : null, descLength: got.description == null ? null : String(got.description).length });
   } catch (err) { d.readError = String(err && err.message || err); }
-  try { d.inLibrary = await spotify(`/me/library/contains?uris=${encodeURIComponent("spotify:playlist:" + id)}`); }
+  try { d.inLibrary = await service.inLibrary(id); }
   catch (err) { d.libraryError = String(err && err.message || err); }
   return d;
 }
@@ -1926,7 +1923,7 @@ async function runSpotifySave() {
       if (!editor.model.formats.some((f) => f.id === id)) {
         const save = savesInAccount().get(id);
         if (save) {
-          await spotifyRequest("DELETE", "/me/library", { params: { uris: "spotify:playlist:" + save.id } });
+          await service.deletePlaylist(save.id);
           playlists = playlists.filter((p) => p.id !== save.id);
         }
         const known = readSynced();
@@ -1948,7 +1945,7 @@ async function runSpotifySave() {
       if (have) {
         if (have.save.format.rev > (fmt.rev || 0)) { newer.push(fmt.title); continue; }
         if (have.description === description && have.name === name) { synced[fmt.id] = { rev: fmt.rev || 0, playlistId: have.id }; putCover(have); continue; }   // already as it should be
-        await spotifyRequest("PUT", `/playlists/${have.id}`, { json: { name, description } });
+        await service.updatePlaylist(have.id, { name, description });
         oldCover(have);
         have.name = name;
         have.description = description;
@@ -1956,7 +1953,7 @@ async function runSpotifySave() {
         synced[fmt.id] = { rev: fmt.rev || 0, playlistId: have.id };
         putCover(have);
       } else if (unreadOfIt) {
-        await spotifyRequest("PUT", `/playlists/${unreadOfIt.id}`, { json: { name, description } });
+        await service.updatePlaylist(unreadOfIt.id, { name, description });
         markCoverDue(unreadOfIt.id, true);
         unreadOfIt.description = description;
         unreadOfIt.save = unpackFormat(description);
@@ -1964,8 +1961,8 @@ async function runSpotifySave() {
         putCover(unreadOfIt);
       } else {
         await recordSaveCreate(fmt, synced, saveRun);
-        const made = await spotifyRequest("POST", "/me/playlists", { json: { name, public: false, description } });
-        if (made.public !== false) { try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); } catch (err) { logStep("save: could not make a recipe playlist private"); } }
+        const made = await service.createPlaylist({ name, description });
+        if (!made.private) logStep("save: could not make a recipe playlist private");
         const entry = { id: made.id, name, owner: me.id, collaborative: false, image: null, count: 0, description, snapshot: null, madeByApp: false };
         entry.save = unpackFormat(description);
         entry.isSave = true;
@@ -2066,7 +2063,7 @@ async function uploadCovers() {
   saveState.coverRunning = true;
   let problem = null, stopped = false;
   try {
-    if (saveState.coverBlocked || !hasScope("ugc-image-upload")) {
+    if (saveState.coverBlocked || !service.coversAllowed()) {
       problem = { key: "permission", text: "Your Spotify sign-in does not include permission to add cover art, so the recipe playlists have no cover. Sign in again with Change Spotify login in More options to allow it." };
     } else {
       let cover = null;
@@ -2076,7 +2073,7 @@ async function uploadCovers() {
         const entry = saveState.coverQueue[0];
         if (entry.image && !coverDue().includes(entry.id)) { saveState.coverQueue.shift(); continue; }
         try {
-          await spotifyRequest("PUT", `/playlists/${entry.id}/images`, { body: cover, contentType: "image/jpeg", noWait: true });
+          await service.setCover(entry.id, cover, { noWait: true });
           entry.image = "set";
           markCoverDue(entry.id, false);
           saveState.coverQueue.shift();
@@ -2421,7 +2418,7 @@ async function startLogin(options) {
   clearReportHints("loginReportHint");
   logStep("sign-in started");
   let go;
-  try { go = await openSpotifySignIn(clientId, { switchAccount }); } catch (err) { setSigningIn(false); setLoginMessage("This browser could not start the sign-in: " + String(err && err.message || err)); return; }
+  try { go = await service.signIn(clientId, { switchAccount }); } catch (err) { setSigningIn(false); setLoginMessage("This browser could not start the sign-in: " + String(err && err.message || err)); return; }
   // if Spotify has not opened after this long, say so, so the buttons are not left waiting for good
   signInTimer = setTimeout(() => {
     if (!signingIn) return;
@@ -2434,7 +2431,7 @@ async function startLogin(options) {
 }
 
 async function finishLoginIfReturning() {
-  const result = await finishSpotifySignIn();
+  const result = await service.finishSignIn();
   if (!result || !result.problem) return;
   revealLoginProblem();
   setLoginMessage(result.problem);
@@ -2453,9 +2450,8 @@ function revealLoginProblem() {
   if (!currentFlow()) showFlow("existing");
 }
 
-// ---------------------------------------------------------------- talking to Spotify (shared-spotify.js), and what this page does and says along the way
-let addChunk = ADD_CHUNK;   // lowered for the visit if Spotify refuses that many
-Object.assign(spotifyHooks, {
+// ---------------------------------------------------------------- talking to Spotify (service-spotify.js), and what this page does and says along the way
+Object.assign(serviceHooks, {
   scopes: SCOPES,
   requiredScopes: REQUIRED_SCOPES,
   log: logStep,
@@ -2477,11 +2473,10 @@ Object.assign(spotifyHooks, {
 });
 
 // ---------------------------------------------------------------- Spotify asked Arc to wait (Ron, 2026-11-12, mockups/rate-limit B solid)
-// A wait of over a minute is a pause (shared-spotify.js). A refusal with no readable wait, or a short one that outlasted the retries, used to leave only a grey line
+// A wait of over a minute is a pause (service-spotify.js). A refusal with no readable wait, or a short one that outlasted the retries, used to leave only a grey line
 // and Try again on the Build buttons. Now connecting that is refused that way opens a popup once (showLimitDialog in editor.js) and Arc connects again by itself
 // every 5 minutes. Either kind shows the strip under Arc's bar on every view (#waitStrip), with the time to go, until it is over; the strip opens the popup.
 const LIMIT_RETRY_MS = 5 * 60 * 1000;
-const LIST_RETRY_MS = 10000;   // reading short pages of the playlist list again stops after this, in all
 var BUILD_LIST_FRESH_MS = 3 * 60 * 1000;   // a build uses a list read this recently instead of reading it again (var: the tests set it)
 const SHORT_LIST_MESSAGE = "Spotify didn\u2019t send all your playlists.";
 let SHORT_LIST_RETRY_MS = [30000, 120000, 600000];   // a short list is read again after these, then every 10 minutes for as long as it takes
@@ -2654,21 +2649,21 @@ function dcOwnPlaylists() { return (playlists || []).filter((p) => (!me || p.own
 
 const DC_AUTO = [
   { key: "renew", name: "Sign-in renewal", what: "Renews the sign-in in the background, then uses it", run: async () => {
-    if (!storedRefresh()) return { ok: false, note: "This device keeps no refresh token, so the sign-in can't be renewed." };
+    if (!service.canRenew()) return { ok: false, note: "This device keeps no refresh token, so the sign-in can't be renewed." };
     const started = performance.now();
-    const renewed = await renewSignIn();
+    const renewed = await service.renewSignIn();
     if (!renewed) return { ok: false, note: "Spotify refused the renewal, or did not answer." };
     token = renewed;
-    await spotify("/me");
+    await service.me();
     return { ok: true, detail: `${((performance.now() - started) / 1000).toFixed(1)} s` };
   } },
   { key: "save", name: "Recipe save at full length", what: `Writes ${SAVE_LIMIT} characters to a description, reads them back`, run: async (ctx) => {
     const id = await ctx.playlist();
     const bytes = Array.from({ length: 600 }, () => Math.floor(Math.random() * 256));
     const text = (`${DC_NAME}. ` + denseEncode(bytes)).slice(0, SAVE_LIMIT);
-    await spotifyRequest("PUT", `/playlists/${id}`, { json: { description: text } });
+    await service.updatePlaylist(id, { description: text });
     await dcWait(1500);
-    const got = String((await spotify(`/playlists/${id}?fields=description`)).description || "");
+    const got = String((await service.readPlaylist(id)).description || "");
     if (got === text) return { ok: true, detail: `${got.length} of ${SAVE_LIMIT}` };
     let at = 0;
     while (at < Math.min(got.length, text.length) && got[at] === text[at]) at++;
@@ -2678,34 +2673,33 @@ const DC_AUTO = [
     const id = await ctx.playlist();
     const heard = Array.from({ length: HEARD_MAX }, dcRandomId);
     const text = `${DC_NAME}. For participant ZQ9X. Built 14 Nov 2026. ${packData({ recipe: "format-check123", heard })}`;
-    await spotifyRequest("PUT", `/playlists/${id}`, { json: { description: text } });
+    await service.updatePlaylist(id, { description: text });
     await dcWait(1500);
-    const got = String((await spotify(`/playlists/${id}?fields=description`)).description || "");
+    const got = String((await service.readPlaylist(id)).description || "");
     const data = dataOf(got), code = (got.match(PARTICIPANT_RE) || [])[1], day = new Date(builtAtOf(got));
     const fine = data && data.recipe === "format-check123" && data.heard.length === heard.length && data.heard.every((x, i) => x === heard[i]) && code === "ZQ9X" && day.getDate() === 14;
     return fine ? { ok: true, detail: `${text.length} characters` }
       : { ok: false, note: !data ? "The packed part did not read back." : code !== "ZQ9X" ? "The participant's code did not read back." : "Part of it came back changed." };
   } },
   { key: "cover", name: "Cover upload", what: "On an empty test playlist, then one with songs", run: async (ctx) => {
-    if (!hasScope("ugc-image-upload")) return { ok: false, note: "This sign-in has no permission to upload covers." };
+    if (!service.coversAllowed()) return { ok: false, note: "This sign-in has no permission to upload covers." };
     const cover = await loadCover();
     const custom = async (id) => {
       for (let i = 0; i < 4; i++) {
         await dcWait(2000);
-        const images = await spotify(`/playlists/${id}/images`);
-        if (Array.isArray(images) && images.some((im) => im && im.url && !/mosaic/.test(im.url))) return true;
+        if (await service.hasOwnCover(id)) return true;
       }
       return false;
     };
     const empty = await ctx.playlist();
-    await spotifyRequest("PUT", `/playlists/${empty}/images`, { body: cover, contentType: "image/jpeg" });
+    await service.setCover(empty, cover);
     const emptyOk = await custom(empty);
     const source = dcOwnPlaylists()[0];
     if (!source) return { ok: emptyOk, detail: emptyOk ? "empty only" : "", note: emptyOk ? "" : "The empty playlist kept no uploaded cover. No playlist of yours had songs to try a full one." };
-    const songs = (await loadTracks(source.id)).filter((t) => /^spotify:track:/.test(t.uri)).slice(0, 4).map((t) => t.uri);
+    const songs = (await loadTracks(source.id)).slice(0, 4).map((t) => t.id);
     const full = await ctx.playlist();
-    if (songs.length) await spotifyRequest("POST", `/playlists/${full}/items`, { json: { uris: songs } });
-    await spotifyRequest("PUT", `/playlists/${full}/images`, { body: cover, contentType: "image/jpeg" });
+    if (songs.length) await service.addSongs(full, songs);
+    await service.setCover(full, cover);
     const fullOk = await custom(full);
     if (emptyOk && fullOk) return { ok: true, detail: "both" };
     return { ok: false, note: `${emptyOk ? "The empty playlist took the cover" : "The empty playlist kept Spotify's own cover"}. ${fullOk ? "The one with songs took it." : "The one with songs kept Spotify's own cover."}` };
@@ -2713,7 +2707,7 @@ const DC_AUTO = [
   { key: "isrc", name: "Song codes", what: "Your playlists' songs carry an ISRC", run: async () => {
     let all = 0, coded = 0;
     for (const p of dcOwnPlaylists().slice(0, 3)) {
-      for (const t of await loadTracks(p.id)) { if (!/^spotify:track:/.test(t.uri)) continue; all++; if (String(t.key || "").startsWith("isrc:")) coded++; }
+      for (const t of await loadTracks(p.id)) { all++; if (String(t.key || "").startsWith("isrc:")) coded++; }
     }
     if (!all) return { ok: false, note: "None of your playlists had songs to look at." };
     const pct = Math.round((coded / all) * 100);
@@ -2729,8 +2723,8 @@ const DC_AUTO = [
 function dcSongLink() {
   for (const p of dcOwnPlaylists()) {
     const kept = trackCache.get(p.id);
-    const t = kept && kept.find((x) => /^spotify:track:/.test(x.uri));
-    if (t) return `https://open.spotify.com/playlist/${p.id}?highlight=${encodeURIComponent(t.uri)}`;
+    const t = kept && kept[0];
+    if (t) return service.playlistUrl(p.id, { song: t.id });
   }
   return "";
 }
@@ -2768,7 +2762,7 @@ async function runDeviceChecks() {
   dcKeep(state);
   const made = [];
   const ctx = { playlist: async () => {
-    const p = await spotifyRequest("POST", "/me/playlists", { json: { name: DC_NAME, public: false, description: `${DC_NAME}. Removed after the check.` } });
+    const p = await service.createPlaylist({ name: DC_NAME, description: `${DC_NAME}. Removed after the check.` });
     made.push(p.id);
     return p.id;
   } };
@@ -2786,7 +2780,7 @@ async function runDeviceChecks() {
     }
   } finally {
     // the test playlists go, even when a check failed
-    try { if (made.length) await removePlaylists(made); } catch (err) { state.cleanup = `The test playlists could not all be removed: ${cleanError(err)}`; dcKeep(state); }
+    try { if (made.length) await service.deletePlaylists(made); } catch (err) { state.cleanup = `The test playlists could not all be removed: ${cleanError(err)}`; dcKeep(state); }
     try { await loadMyPlaylists(); } catch (err) { /* the list is read again on the next connection */ }
     dcRunning = false;
     logStep("device checks done");
@@ -2911,87 +2905,29 @@ function forgetOtherAccount(id) {
 // put Arc in the short-list wait when a whole list from this visit is in hand; it throws SHORT_LIST_MESSAGE and the caller goes on with that list (a build).
 async function loadMyPlaylists(options = {}) {
   const by = callerTrail();   // before the first wait: after it Safari's stack no longer shows the caller (the record came out blank, 2026-11-13)
-  me = await spotify("/me");
+  me = await service.me();
   forgetOtherAccount(me.id);
   playlistLoads += 1;
-  const raw = [];
-  // Spotify sometimes sends a page empty or short though its total says there is more (the first page came with 0 of 98, 2026-11-13, and the merge then asked
-  // about saves that were there). A short page is read again, up to 3 times, a moment apart.
-  const short = (pg) => { const n = (pg.items || []).length; if (typeof pg.total !== "number" || typeof pg.offset !== "number") return false; return n < Math.min(pg.limit || 50, pg.total - pg.offset); };
-  // A page that comes short twice with the same playlists is Spotify's answer, not a slip: it leaves out playlists it will not show an app in development
-  // mode (its own, as Discover Weekly or editorial ones) though its total counts them. Those are taken as all there is (`steady`); an empty page never is.
-  // An account following 4 of them never connected, 4 short every time (937 of 941, then 939 of 943; the first user report, 2026-11-15).
-  // The same playlists in any order (Spotify's order may differ between reads). Reads that differ are joined: every playlist in any of them is in the library,
-  // so a page whose reads together come to its full count is whole (`joined`).
-  const idsOf = (pg) => (pg.items || []).map((p) => (p ? p.id : "")).sort().join();
-  const expected = (pg) => Math.min(pg.limit || 50, pg.total - pg.offset);
-  let steady = 0;
-  // Reading short pages again stops after 10 s in all, however many came short: a build sat a minute or more on Reading your playlists, then failed (2026-11-15)
-  const retryUntil = Date.now() + LIST_RETRY_MS;
-  const readPage = async (url) => {
-    let pg = await spotify(url);
-    const seen = new Map();
-    const join = (q) => (q.items || []).forEach((p, i) => { if (p && !seen.has(p.id)) seen.set(p.id, p); else if (!p) seen.set("null:" + i, null); });
-    join(pg);
-    for (let tries = 0; tries < 3 && short(pg) && Date.now() < retryUntil; tries++) {
-      pages.push([pg.offset, (pg.items || []).length, pg.total, !!pg.next, "short, read again"]);
-      await new Promise((r) => setTimeout(r, 700 * (tries + 1)));
-      const again = await spotify(url);
-      const same = short(again) && (again.items || []).length > 0 && idsOf(pg) === idsOf(again);
-      join(again);
-      pg = again;
-      if (!short(pg)) break;
-      if (typeof pg.total === "number" && typeof pg.offset === "number" && seen.size >= expected(pg)) { pg = { ...pg, items: [...seen.values()] }; pages.push([pg.offset, pg.items.length, pg.total, !!pg.next, "short, joined from reads"]); break; }
-      if (same) { steady += expected(pg) - pg.items.length; pages.push([pg.offset, pg.items.length, pg.total, !!pg.next, "short, the same again: taken"]); break; }
-    }
-    return pg;
-  };
-  const pages = [];
-  let page = await readPage("/me/playlists?limit=50");
-  const total = typeof page.total === "number" ? page.total : null;
-  const pageCount = total ? Math.ceil(total / (page.limit || 50)) : 1;
-  for (let n = 1; ; n++) {
-    pages.push([page.offset, (page.items || []).length, page.total, !!page.next]);
-    raw.push(...(page.items || []));
-    if (options.onPage) options.onPage(n, pageCount);
-    if (!page.next) break;
-    page = await readPage(page.next);
-  }
-  playlistsTotal = total;
-  playlistPages = pages;
-  // Spotify sends null in place of a playlist it will not show to an app in development mode (its own, as Discover Weekly or editorial ones, since 2024).
-  // Those count as arrived: Arc can never read them, so leaving them out of the count kept an account that follows some from ever connecting (937 of 941,
-  // a report of 2026-11-15). Where they sat is kept for the records.
-  playlistsHidden = raw.map((p, i) => (p ? null : i)).filter((i) => i !== null);
-  if (playlistsHidden.length) recordNote(`playlist list: ${playlistsHidden.length} hidden by Spotify (null items) at ${JSON.stringify(playlistsHidden.slice(0, 20))}`);
-  playlistsLeftOut = steady;
-  if (steady) recordNote(`playlist list: ${steady} left out by Spotify (pages short the same way twice), pages [offset, items, total, next] ${JSON.stringify(pages)}`);
-  const got = raw.length;
-  if (total !== null && got + steady < total) {
+  // short and empty pages are read again by the service (service-spotify.js); what it found comes with the list
+  const list = await service.listMyPlaylists({ onPage: options.onPage });
+  playlistsTotal = list.total;
+  playlistPages = list.pages;
+  playlistsHidden = list.hidden;
+  playlistsLeftOut = list.leftOut;
+  if (list.short) {
     // Still short: the list is not used, so nothing works from a half-known state. Arc waits as if not connected (startLimitWait("short")) and keeps
     // the playlists it already had (or the kept list), and reads it again by itself (Ron, 2026-11-13).
-    recordNote(`playlist list: ${raw.length} items, Spotify's total ${total}, pages [offset, items, total, next] ${JSON.stringify(pages)}`);
-    // the short reads go into the report too ([offset, items], each read), since a report is often all there is (2026-11-15)
-    const reads = pages.filter((x) => x[4] || (typeof x[2] === "number" && x[1] < Math.min(50, x[2] - x[0]))).map((x) => [x[0], x[1]]).slice(0, 12);
-    recordError(`Spotify listed ${got} of ${total} playlists, after reading again${playlistsHidden.length ? ` (${playlistsHidden.length} of them hidden)` : ""}${steady ? ` (${steady} left out the same way twice)` : ""}; short reads [offset, items] ${JSON.stringify(reads)}`);
+    recordError(list.short);
     autoReport(lastErrorText);
     if (options.keepIfShort && playlistsLoadedAt) { logStep("playlist list short, the one read earlier kept"); throw new Error(SHORT_LIST_MESSAGE); }
     useKeptPlaylists();
     if (connection === "ready") { setConnection("problem", SHORT_LIST_MESSAGE); startLimitWait("short"); }
     throw new Error(SHORT_LIST_MESSAGE);
   }
-  if (total !== null && raw.length !== total) recordNote(`playlist list: ${raw.length} items, Spotify's total ${total}, pages [offset, items, total, next] ${JSON.stringify(pages)}`);
   playlistsLoadedBy = by;
-  playlists = raw.filter(Boolean).map((p) => ({
-    id: p.id,
-    name: p.name,
-    owner: p.owner && p.owner.id,
-    collaborative: !!p.collaborative,
-    image: Array.isArray(p.images) && p.images.length ? p.images[p.images.length - 1].url : null,   // Spotify lists the largest first
-    cover: Array.isArray(p.images) && p.images.length ? p.images[0].url : null,   // the largest, for Music sharing
-    count: p.tracks && typeof p.tracks.total === "number" ? p.tracks.total : (p.items && typeof p.items.total === "number" ? p.items.total : null),
-    description: typeof p.description === "string" ? p.description : null,
-    snapshot: typeof p.snapshot_id === "string" && p.snapshot_id ? p.snapshot_id : null,   // changes whenever the playlist does
+  playlists = list.map((p) => ({
+    id: p.id, name: p.name, owner: p.owner, collaborative: p.collaborative, image: p.image, cover: p.cover, count: p.count, description: p.description,
+    snapshot: p.version,   // changes whenever the playlist does
   }));
   for (const p of playlists) { p.madeByApp = madeByAppText(p.description); p.participant = participantOf(p.description); }
   // A format's backup in Spotify is known by what its description decodes to, whatever the playlist is called.
@@ -2999,10 +2935,10 @@ async function loadMyPlaylists(options = {}) {
   recordSaveDuplicates();
   recordListRead(by);
   keepPlaylists();
-  if (pages.some((x) => x[4]) && devMode()) showNotices([{ text: "Spotify sent a short list. Read again, all there.", transient: true }]);
+  if (list.reread && devMode()) showNotices([{ text: "Spotify sent a short list. Read again, all there.", transient: true }]);
   // The count shown in Step 1 always matches the list, including after playlists are created or removed.
   playlistsLoadedAt = Date.now();
-  $("connectedMessage").textContent = `Connected as ${me.display_name || me.id}. ${plural(playlists.length, "playlist")} found.`;
+  $("connectedMessage").textContent = `Connected as ${me.name}. ${plural(playlists.length, "playlist")} found.`;
   if (typeof editorPlaylistsChanged === "function") editorPlaylistsChanged();
 }
 
@@ -3023,34 +2959,10 @@ async function loadTracks(id) {
     trackCache.set(id, saved.tracks);
     return saved.tracks;
   }
-  const tracks = songsFromEntries(await pagedItems(`/playlists/${id}/items?limit=50`));
+  const tracks = await service.readSongs(id);
   trackCache.set(id, tracks);
   await saveSongs({ id, snapshot, tracks, v: SONGS_VERSION, savedAt: Date.now() });
   return tracks;
-}
-
-// A playlist's items from Spotify, as the songs the app keeps (also used by Music sharing's slow reading, sharing.js)
-function songsFromEntries(entries) {
-  const tracks = [];
-  for (const entry of entries) {
-    const t = entry && (entry.item || entry.track);  // "item" is the 2026 field name
-    if (!t || t.is_local || t.type !== "track" || !t.uri) continue;
-    const artist = t.artists && t.artists[0] ? t.artists[0].name : "";
-    const isrc = t.external_ids && typeof t.external_ids.isrc === "string" && t.external_ids.isrc ? t.external_ids.isrc.toUpperCase() : "";
-    const song = { uri: t.uri, ms: t.duration_ms, label: `${artist} - ${t.name}` };
-    if (isrc) song.key = "isrc:" + isrc;   // one recording, whichever release it came from (engine.py's song_id)
-    if (t.album && t.album.name) song.album = t.album.name + (t.album.release_date ? `, ${String(t.album.release_date).slice(0, 4)}` : "");
-    tracks.push(song);
-  }
-  return tracks;
-}
-
-async function removePlaylists(ids) {
-  // Spotify's 2026 API removes playlists from a library with one generic endpoint.
-  for (let i = 0; i < ids.length; i += REMOVE_CHUNK) {
-    const uris = ids.slice(i, i + REMOVE_CHUNK).map((id) => "spotify:playlist:" + id).join(",");
-    await spotifyRequest("DELETE", "/me/library", { params: { uris } });
-  }
 }
 
 // ---------------------------------------------------------------- Python (Pyodide)
@@ -3074,6 +2986,7 @@ async function startPython() {
       const pyodide = await loadPyodide({ indexURL: base });
       const source = await (await fetch("engine.py", { cache: "no-cache" })).text();
       await pyodide.runPythonAsync(source);
+      await pyodide.runPythonAsync(`set_silence(${JSON.stringify(JSON.stringify(service.silence))})`);   // the service's silent tracks
       const get = (name) => pyodide.globals.get(name);
       py = {
         formatKeys: get("format_keys"),
@@ -3121,8 +3034,8 @@ function refreshFormatKeys() {
   updateButtons();
 }
 
-// Silent tracks: the same as engine.py's SILENCE_TRACKS. They are in every playlist and are not songs anyone heard.
-const SILENCE_URIS = new Set(["spotify:track:5kiJ9x6eX37H5J9lyyXkua", "spotify:track:4iOpD4OvwCi6ndxpNYk4HG", "spotify:track:5yM42dAylwB17DomSHGcXM", "spotify:track:7depNAqAh1r9unkIRzibID", "spotify:track:3mkOlbSv5RYadx0JsjTrKq"]);
+// Silent tracks: the service's (engine.py's SILENCE_TRACKS are set from them). They are in every playlist and are not songs anyone heard.
+const SILENCE_IDS = new Set(Object.values(service.silence));
 
 // When each participant playlist was built in this tab (sessionStorage, so a reload keeps it): the description has only the day, so this keeps the order
 // exact through a session. Other tabs and devices sort by the day and Spotify's order. Nothing else reads it.
@@ -3163,8 +3076,8 @@ async function heardBy(code) {
   for (const p of (playlists || []).filter((q) => q.participant === code && (!me || q.owner === me.id))) {
     const at = builtAtOf(p.description) || 1;
     for (const t of await loadTracks(p.id)) {
-      if (SILENCE_URIS.has(t.uri)) continue;
-      const id = t.key || t.uri;
+      if (SILENCE_IDS.has(t.id)) continue;
+      const id = t.key || t.id;
       songs[id] = Math.max(songs[id] || 0, at);
       if (person && person.latest && p.id === person.latest.id) recent.push(id);
     }
@@ -3174,8 +3087,8 @@ async function heardBy(code) {
     let tracks = [];
     try { tracks = await loadTracks(id); } catch (err) { logStep("heard before: a playlist could not be read"); continue; }
     for (const t of tracks) {
-      if (SILENCE_URIS.has(t.uri)) continue;
-      const key = t.key || t.uri;
+      if (SILENCE_IDS.has(t.id)) continue;
+      const key = t.key || t.id;
       if (!(key in songs)) songs[key] = 0;
     }
   }
@@ -3203,7 +3116,7 @@ async function saveHeardBefore(code, ids) {
     const now = heardOf(p.description);
     if (p === person.latest ? same(now, ids) : now.every((id) => ids.includes(id))) continue;
     const description = withHeard(p.description, p === person.latest ? ids : now.filter((id) => ids.includes(id)));
-    await spotifyRequest("PUT", `/playlists/${p.id}`, { json: { description } });
+    await service.updatePlaylist(p.id, { description });
     p.description = description;
     const entry = playlists.find((q) => q.id === p.id);
     if (entry) entry.description = description;
@@ -3308,11 +3221,11 @@ async function planSelected(opts) {
         const p = plan.playlists[0];
         p.name = participantPlaylistName(title, forWhom);
         const idOf = new Map();
-        for (const list of Object.values(inputs.tracks)) for (const t of list) idOf.set(t.uri, t.key || t.uri);
+        for (const list of Object.values(inputs.tracks)) for (const t of list) idOf.set(t.id, t.key || t.id);
         let fresh = 0, again = 0, latest = 0;
-        for (const uri of p.uris) {
-          if (SILENCE_URIS.has(uri)) continue;
-          const at = heard[idOf.get(uri) || uri];
+        for (const songId of p.ids) {
+          if (SILENCE_IDS.has(songId)) continue;
+          const at = heard[idOf.get(songId) || songId];
           if (at) { again += 1; latest = Math.max(latest, at); } else fresh += 1;
         }
         plan.fresh = { fresh, again, latest };
@@ -3364,35 +3277,23 @@ async function buildForParticipant(id, code, repeat = null) {
     const plan = await planSelected({ keys: [id], forWhom: code, repeat });
     if (!plan || !plan.built) { setPersonBuild({ state: "blocked", problems: (plan && plan.problems) || [] }); return; }
     const p = plan.built[0].playlists[0];
-    const songs = p.uris.filter((u) => !SILENCE_URIS.has(u)).length;
+    const songs = p.ids.filter((x) => !SILENCE_IDS.has(x)).length;
     setPersonBuild({ name: p.name, minutes: p.minutes || 0, fresh: plan.fresh, songs, step: "Making the playlist", progress: 0.4 });
     if (typeof markPlayTipDone === "function") markPlayTipDone();
     let cover = null;
-    if (hasScope("ugc-image-upload")) { try { cover = await loadCover(); } catch (err) { logStep("participant build: cover image not loaded"); } }
+    if (service.coversAllowed()) { try { cover = await loadCover(); } catch (err) { logStep("participant build: cover image not loaded"); } }
     // Heard before rides along: what their playlists carry and what was chosen as they were added
     const known = participantList().find((x) => x.code === code);
     const heard = [...new Set([...(known ? known.heard : []), ...pendingHeard(code)])];
-    made = await spotifyRequest("POST", "/me/playlists", { json: { name: p.name, public: false, description: builtDescription(p, 1, 1, new Date(), code, heard, id) } });
+    made = await service.createPlaylist({ name: p.name, description: builtDescription(p, 1, 1, new Date(), code, heard, id) });
     setPendingHeard(code, null);
     noteBuiltNow(made.id);
-    if (made.public !== false) {
-      try { await spotifyRequest("PUT", `/playlists/${made.id}`, { json: { public: false } }); } catch (err) { logStep("participant build: could not make it private"); }
-    }
-    const total = p.uris.length;
+    if (!made.private) logStep("participant build: could not make it private");
     const songsFrom = 0.5, songsTo = cover ? 0.85 : 0.95;
-    for (let k = 0; k < total;) {
-      setPersonBuild({ step: `Adding songs · ${Math.min(k, total)} of ${total}`, progress: songsFrom + (songsTo - songsFrom) * (k / total) });
-      const n = addChunk;
-      try { await spotifyRequest("POST", `/playlists/${made.id}/items`, { json: { uris: p.uris.slice(k, k + n) } }); }
-      catch (err) {
-        if (n > ADD_CHUNK_SMALL && /returned 400/.test(err.message)) { addChunk = ADD_CHUNK_SMALL; recordNote(`${n} songs per add refused (400)`); continue; }
-        throw err;
-      }
-      k += n;
-    }
+    await service.addSongs(made.id, p.ids, { onBatch: (k, total) => setPersonBuild({ step: `Adding songs · ${Math.min(k, total)} of ${total}`, progress: songsFrom + (songsTo - songsFrom) * (k / total) }) });
     if (cover) {
       setPersonBuild({ step: "Adding the cover", progress: songsTo });
-      try { await spotifyRequest("PUT", `/playlists/${made.id}/images`, { body: cover, contentType: "image/jpeg" }); } catch (err) { logStep("participant build: cover not accepted"); }
+      try { await service.setCover(made.id, cover); } catch (err) { logStep("participant build: cover not accepted"); }
     }
     countEvent("playlists-created", "1");
     logStep("participant build finished");
@@ -3425,7 +3326,7 @@ async function deleteParticipant(code, list) {
       for (const p of list) { const m = sharedFor(p); if (m) { await sharingFetch("DELETE", "/share/" + m.id); ownShareChanged(m.id, null); } }
       if (list.some((p) => sharedFor(p))) loadMine();
     }
-    await removePlaylists(list.map((p) => p.id));
+    await service.deletePlaylists(list.map((p) => p.id));
     logStep(`participant deleted (${plural(list.length, "playlist")})`);
     if (builderHome.person === code) builderHome.person = null;
     showNotices([{ text: `Deleted ${code} and ${plural(list.length, "playlist")}.`, transient: true }]);
@@ -3525,7 +3426,7 @@ function initThemeChooser() {
 
 // Every other script names its own version in scriptVersions. An old copy of one, kept by a browser or a phone's Home Screen app while the rest is new,
 // is a startup problem like any other: fresh copies are fetched and the page loads again by itself, then the popup if it is still there.
-const SCRIPT_FILES = ["theme.js", "formats.js", "editor.js", "shared-spotify.js", "sharing.js"];
+const SCRIPT_FILES = ["theme.js", "formats.js", "editor.js", "service-spotify.js", "sharing.js"];
 function checkScriptVersions() {
   const versions = globalThis.scriptVersions || {};
   const old = SCRIPT_FILES.filter((file) => versions[file] !== APP_VERSION);
@@ -3677,10 +3578,10 @@ async function main() {
     offerReport("loginReportHint", String(err.message || err));
   }
   setSigningIn(false);   // the sign-in is over, one way or the other: from here the connection itself is what the buttons follow
-  token = loadStoredToken();
-  if (!token && !needsReconnect && storedRefresh()) {
+  token = service.storedSignIn();
+  if (!token && !needsReconnect && service.canRenew()) {
     setConnection("connecting");
-    token = await renewSignIn();   // a sign-in from an earlier visit, renewed without leaving the page
+    token = await service.renewSignIn();   // a sign-in from an earlier visit, renewed without leaving the page
     if (!token) setConnection("none");
   }
   if (!token) { endLaunchScreen(); await connectingStepFailed("Signin"); }   // nothing more to wait for: the app says what to do   // the sign-in did not work: the setup page shows what went wrong

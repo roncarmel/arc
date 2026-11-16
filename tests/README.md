@@ -1,6 +1,6 @@
 # Tests
 
-About 1,500 checks against the real `index.html`, `app.js`, `shared-spotify.js`, `editor.js`, `formats.js`, `theme.js` and `engine.py`, with no browser and no network:
+About 1,500 checks against the real `index.html`, `app.js`, `service-spotify.js`, `editor.js`, `formats.js`, `theme.js` and `engine.py`, with no browser and no network:
 the page runs in jsdom, Spotify is a pretend server written in `run.js` (`makeFetch`), and `engine.py` is the real file, run by `bridge.py` in place of Pyodide.
 
     cd tests && npm install
@@ -19,7 +19,7 @@ Playwright (1.48.2, matching the Chromium already in `~/.cache/ms-playwright`) i
 - An area is `if (want("area name")) { try { ... } catch (err) { areaCrashed("area name", err); } }`, and its name is in `SECTION_NAMES` at the top. Checks are `check("what is true", condition)`.
 - `boot({ url, session, local, fetchOptions })` starts the page. `session` and `local` are sessionStorage and localStorage; `fetchOptions` steers the pretend Spotify (a few: `extraPlaylists`, `putFails`, `putStatus`, `coverStatus`, `coverRateLimit`, `noCoverFile`, `listDelayMs`, `tokenDelayMs`, `serverVersion`, `versionFail`, `uniqueSongNames`, and `buildFailIn` with `buildFail` to fail a build partway: the first request adding songs to that playlist, such as `"new2"`, fails with `"network"`, `"hang"` or a status). Read `makeFetch` for the rest.
 - `signedIn()` is a session with a token. `MINI` is a small recipe text. `waitFor(condition)` polls.
-- Names such as `editor`, `saveState`, `notices`, `noticeTiming`, `versionCheck`, `signingIn` are `let`/`const` in the page; `boot` turns them into `var` so a check can reach them with `w.eval(...)`. A new top-level name that a check needs goes in that list of `.replace(...)` calls in `boot`. Checks that read the code's text use `appSource()`: app.js together with shared-spotify.js, where its Spotify code moved.
+- Names such as `editor`, `saveState`, `notices`, `noticeTiming`, `versionCheck`, `signingIn` are `let`/`const` in the page; `boot` turns them into `var` so a check can reach them with `w.eval(...)`. A new top-level name that a check needs goes in that list of `.replace(...)` calls in `boot`. Checks that read the code's text use `appSource()`: app.js together with service-spotify.js, where its Spotify code moved. `service` (the service object) is made a `var` in `boot` too.
 
 ## Quirks of the pretend page
 
