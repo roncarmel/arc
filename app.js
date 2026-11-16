@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16z";
+const APP_VERSION = "2026-11-16za";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2792,7 +2792,12 @@ const DC_AUTO = [
   } },
   { key: "byisrc", name: "Finding songs by ISRC", what: "Looks up Arc's five silences by their ISRCs", run: async () => {
     const isrcs = ["DEAR41889211", "DEAR41877634", "DEAR41854451", "DEAR41825110", "DEAR41862465"];
-    const found = await service.findByIsrc(isrcs);
+    let found;
+    try { found = await service.findByIsrc(isrcs); }
+    catch (err) {   // refused: is it search itself, or only its isrc: filter?
+      const plain = service.searchProbe ? await service.searchProbe() : "";
+      return { ok: false, note: `${err && err.message || err}${plain ? ` A plain search: ${plain}.` : ""}` };
+    }
     const off = [], other = [];
     for (const isrc of isrcs) {
       if (!found[isrc]) { off.push(`${isrc} not found`); continue; }
