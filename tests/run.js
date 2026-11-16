@@ -2,7 +2,7 @@ const { JSDOM } = require("jsdom");
 const { execFileSync } = require("child_process");
 // Run only some areas: node run.js --only=privacy|tabs   (matches part of an area's name; --list shows the names)
 const ONLY = (process.argv.find((a) => a.startsWith("--only=")) || "").slice(7).toLowerCase().split("|").filter(Boolean);
-const SECTION_NAMES = ["builder landing and participants", "launch screen", "sharing card in the editor", "music sharing", "device checks", "sharing what arc built", "music sharing songs", "developer options", "menu popups and the silence help", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version line", "welcome recipe link", "spotify row", "notice line", "connecting state", "connecting screen", "save retry online", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "save packer", "playlist ids", "popups close only", "narrow more button", "the silence card", "spotify premium", "python status at the bottom", "questions and feedback", "settings below the segments, pink outline", "the tagline", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "privacy section and anonymous counts", "report link on a connection problem", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', 'private playlists', 'cover art', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', 'the app menu, and minimalist mode', 'minimalist mode, part two', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
+const SECTION_NAMES = ["builder landing and participants", "launch screen", "sharing card in the editor", "music sharing", "device checks", "sharing what arc built", "music sharing songs", "developer options", "menu popups and the silence help", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version line", "welcome recipe link", "spotify row", "notice line", "connecting state", "connecting screen", "save retry online", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "save packer", "playlist ids", "popups close only", "narrow more button", "the silence card", "spotify premium", "python status at the bottom", "questions and feedback", "settings below the segments, pink outline", "the tagline", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "scrolling home with the keyboard watch", "privacy section and anonymous counts", "report link on a connection problem", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', 'private playlists', 'cover art', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', 'the app menu, and minimalist mode', 'minimalist mode, part two', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
 // areas that need another area's setup to have run first
 const NEEDS = {
   "the page's styles for tags and phones": ["silences, dragging and removing"],
@@ -626,10 +626,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly these seven, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-15g" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-15h" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-15g/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-15h/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -1966,6 +1966,30 @@ print(json.dumps(out))
 }
 
 
+  if (want("scrolling home with the keyboard watch")) { try {
+  // ================================================================ scrolling home with the keyboard watch
+  // Music sharing's keyboard watch runs on every scroll of the visible area, on every view; on Home it once scrolled the page back to its top (Ron, 2026-11-15)
+  var hk_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
+  var hk_vv = new hk_w.EventTarget(); hk_vv.offsetTop = 0; hk_vv.height = 760;
+  Object.defineProperty(hk_w, "visualViewport", { configurable: true, value: hk_vv });
+  var hk_y = 0, hk_scrolls = [];
+  Object.defineProperty(hk_w, "scrollY", { configurable: true, get: () => hk_y });
+  hk_w.scrollTo = (x, y) => { hk_scrolls.push(typeof x === "object" ? x.top : y); hk_y = typeof x === "object" ? x.top : y; };
+  hk_w.eval("watchKeyboard()");
+  hk_w.eval("showView('home')"); hk_scrolls.length = 0;
+  hk_y = 400; hk_vv.offsetTop = 0; hk_vv.height = 700;
+  hk_vv.dispatchEvent(new hk_w.Event("scroll")); hk_vv.dispatchEvent(new hk_w.Event("resize"));
+  check("scrolling Home leaves it where it was: the keyboard watch does not scroll it back to the top", hk_scrolls.length === 0 && hk_y === 400, JSON.stringify(hk_scrolls));
+  hk_w.eval("showView('sharing')"); hk_scrolls.length = 0;
+  var hk_ov = hk_w.document.getElementById("msOverlay");
+  hk_ov.classList.add("ms-typing-page"); hk_ov.style.top = "0px";
+  hk_y = 0; hk_vv.offsetTop = 120; hk_vv.dispatchEvent(new hk_w.Event("resize"));
+  check("typing ending in Music sharing places the page under the bar again and logs a page left panned, without scrolling it", !hk_ov.classList.contains("ms-typing-page") && hk_scrolls.length === 0 && /panned after the keyboard/.test(hk_w.localStorage.getItem("layoutLog") || ""), JSON.stringify(hk_scrolls));
+  check("nothing in Music sharing scrolls the window back after the keyboard", !/unpanSharingPage/.test(fs.readFileSync(ROOT + "sharing.js", "utf8")));
+  } catch (err) { areaCrashed("scrolling home with the keyboard watch", err); }
+}
+
+
   if (want("confirming a new format")) { try {
   // ================================================================ confirming a new format
   var nf_w = await boot({ url: EDURL, session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
@@ -2099,7 +2123,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-15g", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-15h", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4363,7 +4387,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-15g"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-15h"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
