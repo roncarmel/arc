@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16n";
+const APP_VERSION = "2026-11-16o";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -622,10 +622,33 @@ function showWelcomeStep(step, push) {
 // opening on the next step (welcomeAt in sessionStorage, read by the <head> script and by startup), with the choice still one step back.
 // Only Spotify can be chosen outside developer mode: TIDAL says Coming soon, greyed (Ron, 2026-11-16). A browser already on TIDAL keeps it.
 function serviceOpen(key) { return key === "spotify" || key === service.key || document.documentElement.classList.contains("dev-mode"); }
-function markServiceTiles() {
-  for (const tile of document.querySelectorAll("#wpWhich [data-pick-service]")) {
-    if (serviceOpen(tile.dataset.pickService)) tile.removeAttribute("aria-disabled"); else tile.setAttribute("aria-disabled", "true");
+// The tiles are radio buttons (Ron, 2026-11-16): a tap chooses one, and Next goes on with it. Arrow keys move the choice; only the chosen tile (or the
+// first open one) is in the tab order. A tile closed again (developer mode turned off) loses its choice.
+function serviceTiles() { return [...document.querySelectorAll("#wpWhich [data-pick-service]")]; }
+function chosenService() { const t = serviceTiles().find((x) => x.getAttribute("aria-checked") === "true"); return t ? t.dataset.pickService : null; }
+function markServiceTiles(chosen = chosenService()) {
+  if (chosen && !serviceOpen(chosen)) chosen = null;
+  const tiles = serviceTiles();
+  const focusable = chosen || (tiles.find((t) => serviceOpen(t.dataset.pickService)) || {}).dataset?.pickService;
+  for (const tile of tiles) {
+    const key = tile.dataset.pickService;
+    if (serviceOpen(key)) tile.removeAttribute("aria-disabled"); else tile.setAttribute("aria-disabled", "true");
+    tile.setAttribute("aria-checked", String(key === chosen));
+    tile.tabIndex = key === focusable ? 0 : -1;
   }
+  if ($("wpWhichNext")) $("wpWhichNext").disabled = !chosen;
+}
+function chooseServiceTile(key, focus = false) {
+  if (!serviceOpen(key)) return;
+  markServiceTiles(key);
+  if (focus) { const t = serviceTiles().find((x) => x.dataset.pickService === key); if (t) t.focus(); }
+}
+function moveServiceChoice(step) {
+  const open = serviceTiles().map((t) => t.dataset.pickService).filter(serviceOpen);
+  if (!open.length) return;
+  const at = open.indexOf(chosenService());
+  const next = at < 0 ? (step > 0 ? 0 : open.length - 1) : (at + step + open.length) % open.length;
+  chooseServiceTile(open[next], true);
 }
 function pickService(key) {
   if (!serviceOpen(key)) return;
@@ -1233,11 +1256,35 @@ function closeInfo(quiet = false) {
 
 function startFlowChoice() {
   // The two answers on the setup page are wired first of all, for the whole page at once, so they work whatever else goes wrong.
-  // The capture phase catches the click even from a script that stops it bubbling.
+  // The capture phase catches the click even from a script that stops it bubbling. They are radio buttons: a tap chooses, Next goes on (Ron, 2026-11-16).
   document.addEventListener("click", (event) => {
-    const button = event.target.closest && event.target.closest("[data-flow]");
-    if (button) slideScreens(() => { showFlow(button.getAttribute("data-flow")); window.scrollTo(0, 0); });
+    const button = event.target.closest && event.target.closest("[data-flow], #spNext");
+    if (!button) return;
+    if (button.id !== "spNext") { chooseFlow(button.getAttribute("data-flow")); return; }
+    const flow = chosenFlow();
+    if (flow) slideScreens(() => { showFlow(flow); window.scrollTo(0, 0); });
   }, true);
+  document.addEventListener("keydown", (event) => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+    if (!step || !(event.target.closest && event.target.closest("[data-flow]"))) return;
+    event.preventDefault();
+    const flows = [...document.querySelectorAll("[data-flow]")].map((b) => b.getAttribute("data-flow"));
+    const at = flows.indexOf(chosenFlow());
+    chooseFlow(flows[at < 0 ? (step > 0 ? 0 : flows.length - 1) : (at + step + flows.length) % flows.length], true);
+  }, true);
+}
+function chosenFlow() { const b = document.querySelector('[data-flow][aria-checked="true"]'); return b ? b.getAttribute("data-flow") : null; }
+// The chosen answer is checked and the only one in the tab order (the first when none is), and Next is ready
+function chooseFlow(flow, focus = false) {
+  const answers = [...document.querySelectorAll("[data-flow]")];
+  answers.forEach((b, i) => {
+    const on = b.getAttribute("data-flow") === flow;
+    b.setAttribute("aria-checked", String(on));
+    b.tabIndex = on || (!flow && i === 0) ? 0 : -1;
+    if (on && focus) b.focus();
+  });
+  const next = document.getElementById("spNext");
+  if (next) next.disabled = !flow;
 }
 let py = null;          // the Python functions, once loaded
 let me = null;          // the signed-in Spotify user
@@ -1568,6 +1615,8 @@ function showFlow(flow) {
   $("connectBlock").hidden = !flow;
   $("spAsk").hidden = !!flow;
   $("spSteps").hidden = !flow;
+  if ($("spNext")) $("spNext").hidden = !!flow;   // on the steps, Back stands alone
+  if (flow) chooseFlow(flow);   // back from the steps, the answer is still chosen
   $("spStepsTitle").textContent = flow === "new" ? `Create an app inside your ${service.name} account` : "Find your Client ID";
   currentFlowName = flow;
   if (!flow) { alignWelcomeIcons(); drawSetupJoint(); }
@@ -3570,8 +3619,15 @@ async function main() {
   on("startSetup", "click", () => slideScreens(() => goToSetup(false)));
   on("getStarted", "click", () => slideScreens(() => showWelcomeStep(2, true)));
   on("wpWhichBack", "click", welcomeStepBack);
-  for (const tile of document.querySelectorAll("#wpWhich [data-pick-service]")) tile.addEventListener("click", () => pickService(tile.dataset.pickService));
-  markServiceTiles();
+  for (const tile of serviceTiles()) {
+    tile.addEventListener("click", () => chooseServiceTile(tile.dataset.pickService));
+    tile.addEventListener("keydown", (e) => {
+      const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+      if (step) { e.preventDefault(); moveServiceChoice(step); }
+    });
+  }
+  on("wpWhichNext", "click", () => { const key = chosenService(); if (key) pickService(key); });
+  markServiceTiles(service.key !== "spotify" ? service.key : null);   // back from a service chosen before the page loaded again, it is still chosen
   on("wpSetupBack", "click", welcomeStepBack);
   for (const head of document.querySelectorAll("#welcomePage .wp-tool-head")) head.addEventListener("click", () => toggleWelcomeTool(head));
   watchTutorialRows();
