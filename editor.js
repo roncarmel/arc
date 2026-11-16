@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-16b";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-16c";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -845,10 +845,10 @@ function renderAppMenu() {
   // Try again and Connect again, with the same words, so the menu does not need its own.
   const connectItems = [];
   const hasClientId = !!localStorage.getItem("clientId");
-  if ((connection === "none" && hasClientId) || ((connection === "problem" || connection === "connecting") && (hasClientId || token))) {
+  if ((connection === "none" && hasClientId) || ((connection === "problem" || connection === "connecting") && (hasClientId || service.signedIn()))) {
     const connecting = connection === "connecting";
     // a problem that waiting can mend (the network, a rate limit) is tried again where it stopped; one in the sign-in itself, or no sign-in, starts a new sign-in
-    const press = () => (typeof spotifyPause === "function" && spotifyPause() ? showPauseDialog() : connection === "problem" && connectionKind === "retry" && token ? connectToSpotify() : startLogin());
+    const press = () => (service.wait() ? showPauseDialog() : connection === "problem" && connectionKind === "retry" && service.signedIn() ? connectToSpotify() : startLogin());
     connectItems.push(feEl("button", { type: "button", class: "fe-item", id: "feConnect", role: "menuitem", disabled: connecting, onClick: choose(press) }, feIcon("link"), connecting ? "Connecting\u2026" : `Connect to ${service.name}`));
     const why = connecting ? "On a slow connection this can take a few seconds." : connection === "problem" ? $("connectionMessage").textContent : "";
     if (why) connectItems.push(feEl("div", { class: "fe-itemnote", id: "feConnectionNote", text: why }));
@@ -1008,7 +1008,7 @@ function placeDevMenu(anchor) {
 const recipeSaved = { id: null, state: "", started: false, lastRunning: false, since: 0, timer: null };
 function markRecipeSaving(id) {
   clearTimeout(recipeSaved.timer);
-  const canSave = typeof connection !== "undefined" && connection === "ready" && !(typeof spotifyPause === "function" && spotifyPause());
+  const canSave = typeof connection !== "undefined" && connection === "ready" && !service.wait();
   if (!canSave) { Object.assign(recipeSaved, { id: null, state: "" }); return; }
   Object.assign(recipeSaved, { id, state: "saving", started: false, lastRunning: !!saveState.running, since: Date.now() });
   recipeSaved.timer = setTimeout(() => endRecipeSaved(), 20000);   // a save that never starts (a build began, the connection went) lets the row go back
@@ -1542,7 +1542,7 @@ function refreshPauseViews(left) {
 // The ring in the popup shows the part of the wait still to go. A wait kept with no start gets one the first time it is read (spotifyPause), so its ring empties from then.
 function setPauseRing() {
   const ring = $("fePauseRing");
-  const pause = typeof spotifyPause === "function" ? spotifyPause() : null;
+  const pause = service.wait();
   if (!ring || !pause) return;
   const share = pause.from && pause.until > pause.from ? Math.min(1, Math.max(0, (pause.until - Date.now()) / (pause.until - pause.from))) : 1;
   ring.style.setProperty("--left", (share * 100).toFixed(2) + "%");
@@ -1595,7 +1595,7 @@ function showLimitDialog() {
 }
 
 function showPauseDialog() {
-  const pause = typeof spotifyPause === "function" ? spotifyPause() : null;
+  const pause = service.wait();
   if (!pause || $("fePauseDialog")) return;
   if (typeof endConnectingScreen === "function") endConnectingScreen();   // the popup needs the page in view
   if (typeof closeUpdateScreen === "function") closeUpdateScreen();
@@ -1613,7 +1613,7 @@ function showPauseDialog() {
       feEl("h3", { id: "fePauseTitle", text: `${service.name} paused this app` }),
       feEl("div", { class: "fe-pause-ring", id: "fePauseRing" },
         feEl("div", { class: "fe-pause-label", text: "Back in" }),
-        feEl("div", { class: "fe-pause-clock", id: "fePauseClock", text: clockText(pausedSecondsLeft()) }),
+        feEl("div", { class: "fe-pause-clock", id: "fePauseClock", text: clockText(service.waitLeft()) }),
         feEl("div", { class: "fe-pause-at", id: "fePauseAt", text: "at " + new Date(pause.until).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) })),
       feEl("p", { id: "fePauseWhy", text: (quota
         ? `${service.name} limits how much each app may ask of it in a day. This app reached that limit, so ${service.name} stopped answering it for a while.`
@@ -2087,7 +2087,7 @@ function listPanel(item, slot) {
     if (!shown) list.appendChild(feEl("p", { class: "muted", style: "margin:8px", text: playlists.length ? "No playlists match." : (connection === "problem" ? "Your playlists could not be loaded. See the app menu." : connection === "none" ? `Connect to ${service.name} to see your playlists.` : "Your playlists are still loading.") }));
   };
   // During a wait with no list kept from an earlier visit there is nothing to search: say when the playlists come
-  const pause = typeof spotifyPause === "function" ? spotifyPause() : null;
+  const pause = service.wait();
   if (pause && !playlists.length) {
     const back = pauseBackAtText(pause.until).replace(/^Back/, "back");
     list.appendChild(feEl("p", { class: "muted fe-pausenote", id: "fePauseNote" }, `Your playlists will show here when ${service.name} is ${back}. `,
@@ -2725,8 +2725,8 @@ function buildWord() { return "Build playlist"; }
 function refreshBuildButtons() {
   if (typeof connectionAction !== "function") return;
   const action = connectionAction();
-  const paused = typeof spotifyPause === "function" && !!spotifyPause();
-  const ready = !!token && connection === "ready" && !!py && formatsValid && !busy && !paused;
+  const paused = !!service.wait();
+  const ready = !!service.signedIn() && connection === "ready" && !!py && formatsValid && !busy && !paused;
   const word = action ? (connection === "problem" && connectionKind !== "reconnect" ? "Try again" : `Connect to ${service.name}`) : buildWord();
   for (const b of document.querySelectorAll("#builderHome .bh-build")) {
     b.setAttribute("aria-label", word);
@@ -3188,7 +3188,7 @@ function personPlaylists(person) {
   // Delete at the foot, a red trash in a small circle at the right: the question that follows has the big button (Ron, 2026-11-12, mockups/participant-delete B);
   // greyed as refreshBuildButtons says. Add previously heard playlists (Edit heard playlists once there are some) at its left (Ron, 2026-11-13).
   if (person.playlists.length) {
-    const paused = typeof spotifyPause === "function" && !!spotifyPause();
+    const paused = !!service.wait();
     box.appendChild(feEl("div", { class: "bh-pdel-foot hb-foot" },
       feEl("button", { type: "button", class: "hb-addlink", id: "hbAdd", disabled: busy || paused, onClick: () => askHeardBefore(code) }, feIcon(person.heard.length ? "pencil" : "plus"), person.heard.length ? "Edit heard playlists" : "Add previously heard playlists"),
       feEl("button", { type: "button", class: "bh-pdel bh-del", "aria-label": `Delete ${code}`, title: `Delete ${code}`, disabled: busy || paused, onClick: () => askDeleteParticipant(code) }, bhSvg(BH_BIN))));

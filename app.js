@@ -3,15 +3,7 @@
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const SCOPES = [
-  "playlist-read-private", "playlist-read-collaborative",   // read your playlists
-  "playlist-modify-private", "playlist-modify-public",      // create playlists
-  "user-library-modify",                                    // Spotify's generic library endpoint: removing playlists, and a song's menu in Music sharing saving it to Liked Songs
-  "ugc-image-upload",                                       // the cover art on the playlists it creates
-].join(" ");
-const REQUIRED_SCOPES = ["playlist-modify-private", "playlist-modify-public"];   // cover art is optional, so an older sign-in without it keeps working
-
-const APP_VERSION = "2026-11-16b";
+const APP_VERSION = "2026-11-16c";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -36,7 +28,7 @@ function packData({ recipe = "", heard = [] } = {}) {
   if (!/^[\x20-\x7e]{0,100}$/.test(id)) id = "";
   const bytes = [DATA_MAGIC, DATA_VERSION, id.length + (prefixed && id ? 128 : 0), ...[...id].map((c) => c.charCodeAt(0)), 0];
   const count = bytes.length - 1;
-  for (const h of heard) { const b = spotifyIdToBytes(h); if (b && bytes[count] < HEARD_MAX) { bytes.push(...b); bytes[count] += 1; } }
+  for (const h of heard) { const b = service.idToBytes(h); if (b && bytes[count] < HEARD_MAX) { bytes.push(...b); bytes[count] += 1; } }
   const crc = crc16(bytes);
   bytes.push(crc >> 8, crc & 0xff);
   return denseEncode(bytes);
@@ -61,7 +53,7 @@ function dataOf(text) {
   if (crc16(bytes.slice(0, end)) !== ((bytes[end] << 8) | bytes[end + 1])) return null;
   const id = String.fromCharCode(...bytes.slice(3, 3 + idLength));
   const heard = [];
-  for (let i = 4 + idLength; i < end; i += 16) heard.push(bytesToSpotifyId(bytes.slice(i, i + 16)));
+  for (let i = 4 + idLength; i < end; i += 16) heard.push(service.idFromBytes(bytes.slice(i, i + 16)));
   return { recipe: id ? ((bytes[2] & 128) ? RECIPE_PREFIX : "") + id : "", heard };
 }
 function heardOf(text) { const d = dataOf(text); return d ? d.heard : []; }
@@ -99,6 +91,11 @@ function fillServiceWords() {
   if (!req) return;
   for (const el of document.querySelectorAll("[data-requirement-name]")) el.textContent = req.name;
   for (const el of document.querySelectorAll("[data-requirement-why]")) el.textContent = req.why;
+}
+// a time as H:MM:SS: 22564 seconds is "6:16:04"
+function clockText(seconds) {
+  const s = Math.max(0, Math.round(seconds));
+  return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 // Tally, only for the startup problem popup: when the scripts failed, the page's own report form (sendMessageForm) cannot run
 const REPORT_FORM_URL = "https://tally.so/r/VppLZN";
@@ -247,7 +244,7 @@ function storedItem(store, key) {
 }
 
 function pageName() {
-  if (token || connectingScreen) return "app";
+  if (service.signedIn() || connectingScreen) return "app";
   if (storedItem(sessionStorage, "setupAgain") === "1") return "setup";
   if (storedItem(localStorage, "connectedBefore") === "1") return "app";
   const setup = storedItem(localStorage, "setupStarted");
@@ -256,7 +253,7 @@ function pageName() {
 }
 
 function showPage() {
-  if (token) { try { sessionStorage.removeItem("setupAgain"); } catch (err) { /* nothing to forget */ } }   // signed in: the setup that was opened again is done
+  if (service.signedIn()) { try { sessionStorage.removeItem("setupAgain"); } catch (err) { /* nothing to forget */ } }   // signed in: the setup that was opened again is done
   const page = pageName();
   const root = document.documentElement;
   const was = PAGES.find((p) => root.classList.contains("page-" + p));
@@ -1907,7 +1904,7 @@ async function runSpotifySave() {
   if (saveState.running) { saveState.again = true; return; }
   if (busy) { saveState.timer = setTimeout(runSpotifySave, 3000); return; }   // a plan or a build is under way: wait for it to finish
   saveState.since = 0;
-  if (connection !== "ready" || !me || typeof editor === "undefined" || !editor.model || spotifyPause()) { renderSaveStatus(); return; }   // after a wait, it is saved then
+  if (connection !== "ready" || !me || typeof editor === "undefined" || !editor.model || service.wait()) { renderSaveStatus(); return; }   // after a wait, it is saved then
   saveState.running = true;
   saveState.error = "";
   renderSaveStatus();
@@ -2010,7 +2007,7 @@ async function runSpotifySave() {
 function spotifySaveParts(full = true) {
   const parts = [];   // each: { text } or { text, action, label }
   if (saveState.running) { parts.push({ text: `Saving to ${service.name}\u2026` }); return parts; }
-  if (spotifyPause()) parts.push({ text: `Waiting to save to ${service.name} until it is back.` });
+  if (service.wait()) parts.push({ text: `Waiting to save to ${service.name} until it is back.` });
   else if (connection !== "ready") { parts.push({ text: connection === "problem" ? `Waiting to save to ${service.name}: see the connection problem in the app menu.` : `Waiting to save to ${service.name}: connect first.` }); }
   else if (saveState.error) parts.push({ text: `Couldn\u2019t save to ${service.name}.`, action: () => { saveState.error = ""; runSpotifySave(); }, label: "Try again" });
   else if (saveState.timer) parts.push({ text: `Saving to ${service.name}\u2026` });
@@ -2091,7 +2088,7 @@ async function uploadCovers() {
         } catch (err) {
           if (problemKind(String(err && err.message || err)) === "rate-limit") { stopped = true; logStep("save: covers wait, Spotify is limiting uploads"); break; }
           logStep("save: cover not accepted");
-          if (/did not allow|sign-in expired/.test(err.message)) saveState.coverBlocked = true;
+          if (problemKind(err.message) === "sign-in") saveState.coverBlocked = true;
           problem = { key: "refused", text: `${service.name} did not accept the cover for the recipe playlists: ${String(err.message || err).replace(/\.$/, "")}. They have no cover.` };
           saveState.coverQueue.shift();   // the next save queues it again
         }
@@ -2190,7 +2187,7 @@ window.addEventListener("beforeunload", (e) => { if (buildWriting()) { e.prevent
 function updateButtonsNow() {
   const writing = buildWriting();
   for (const id of ["updateGet", "changeSpotifyLogin", "clearYes"]) { const b = $(id); if (b) b.disabled = writing; }
-  const ready = !!token && connection === "ready" && !!py && formatsValid && !busy && !!activeKey();
+  const ready = !!service.signedIn() && connection === "ready" && !!py && formatsValid && !busy && !!activeKey();
   const action = connectionAction();
   // Step 1's buttons, while a sign-in is under way
   const connectButton = $("connect");
@@ -2236,7 +2233,7 @@ function updateButtonsNow() {
     $("spotifyNote").textContent = CREATE_NEEDS_SPOTIFY;
     $("spotifyNote").hidden = !noConnection;
   }
-  const paused = !!spotifyPause();   // the line under the bar counts down instead
+  const paused = !!service.wait();   // the line under the bar counts down instead
   $("create").hidden = paused || (!currentFormats.length && !action && !connectingNow);   // nothing to build yet: the welcome points at New recipe instead
   document.body.classList.toggle("no-recipes", !currentFormats.length);   // and no status lines either
   if (paused) $("spotifyNote").hidden = true;
@@ -2310,13 +2307,14 @@ async function connectToSpotify() {
     const short = message === SHORT_LIST_MESSAGE;
     if (!short) recordError(message);   // a short list was recorded with its counts
     logStep("connection failed");
-    if (spotifyPause()) useKeptPlaylists();
-    setConnection("problem", message, /sign-in expired|did not allow/.test(message) ? "reconnect" : "retry");
+    if (service.wait()) useKeptPlaylists();
+    const kind = problemKind(message);
+    setConnection("problem", message, kind === "sign-in" ? "reconnect" : "retry");
     if (short) startLimitWait("short");
-    else if (/rate limiting|request quota/.test(message) && !spotifyPause()) startLimitWait(); else endLimitWait();
-    countEvent("connection-problem", problemKind(message));
+    else if ((kind === "rate-limit" || kind === "quota") && !service.wait()) startLimitWait(); else endLimitWait();
+    countEvent("connection-problem", kind);
     // A report link is for something unexpected. A rate limit, a quota, no internet and a lapsed sign-in are known, and nothing here can fix them.
-    if (!short && !/rate limiting|request quota|Could not reach Spotify|Spotify did not answer|sign-in expired|did not allow|needs Premium/.test(message)) offerReport("connectionReportHint", message);
+    if (!short && kind === "other") offerReport("connectionReportHint", message);
   }
 }
 
@@ -2463,8 +2461,6 @@ function revealLoginProblem() {
 
 // ---------------------------------------------------------------- talking to Spotify (service-spotify.js), and what this page does and says along the way
 Object.assign(serviceHooks, {
-  scopes: SCOPES,
-  requiredScopes: REQUIRED_SCOPES,
   log: logStep,
   oldSignIn: () => { needsReconnect = true; },
   expiredText: () => `Your ${service.name} sign-in expired. ${actWord(true)} Connect again.`,
@@ -2478,7 +2474,7 @@ Object.assign(serviceHooks, {
   pauseChanged: (left) => { if (typeof refreshPauseViews === "function") refreshPauseViews(left); paintWaitStrip(); },   // the strip under Arc's bar and the popup
   pauseEnded: () => {   // connect again, and save what waited
     updateButtons();
-    if (token && connection !== "ready" && connection !== "connecting") connectToSpotify().then(() => { if (connection === "ready") scheduleSpotifySave(500); });
+    if (service.signedIn() && connection !== "ready" && connection !== "connecting") connectToSpotify().then(() => { if (connection === "ready") scheduleSpotifySave(500); });
     else if (connection === "ready") scheduleSpotifySave(500);
   },
 });
@@ -2517,7 +2513,7 @@ function endLimitWait() {
   paintWaitStrip();
 }
 function tickLimitWait() {
-  if (limitWait.retryAt && Date.now() >= limitWait.retryAt && connection === "problem" && token && !spotifyPause()) { limitWait.retryAt = 0; retryAfterLimit(); }
+  if (limitWait.retryAt && Date.now() >= limitWait.retryAt && connection === "problem" && service.signedIn() && !service.wait()) { limitWait.retryAt = 0; retryAfterLimit(); }
   paintWaitStrip();
 }
 function retryAfterLimit() {
@@ -2529,7 +2525,7 @@ function retryAfterLimit() {
 }
 function waitStripState() {
   // what the strip shows: { text, open } or null
-  const left = pausedSecondsLeft();
+  const left = service.waitLeft();
   if (left) return { text: `${service.name} asked Arc to wait \u00b7 ${clockText(left)}`, open: () => showPauseDialog() };
   if (!limitWait.active) return null;
   const ms = limitWait.retryAt - Date.now();
@@ -2582,13 +2578,10 @@ let tutorialFinishCounted = true;
 function countTutorialStart(where) { tutorialFinishCounted = false; countEvent("tutorial-started", where); }
 function countTutorialEnd() { if (!tutorialFinishCounted) { tutorialFinishCounted = true; countEvent("tutorial-finished"); } }
 
+// The kind of a problem from its message: the sign-in's messages are the page's own (serviceHooks), the rest the service's, which knows its own wording
 function problemKind(message) {
-  if (/request quota/.test(message)) return "quota";
-  if (/rate limiting/.test(message)) return "rate-limit";
-  if (/Could not reach Spotify|Spotify did not answer/.test(message)) return "network";
   if (/sign-in expired|did not allow/.test(message)) return "sign-in";
-  if (/needs Premium/.test(message)) return "premium";
-  return "other";
+  return service.problemKind(message) || "other";
 }
 
 const KEPT_PLAYLISTS_KEY = "spotifyPlaylists";   // {user, list}: the playlist list from the last time Spotify answered, for the menus during a wait
@@ -2654,7 +2647,7 @@ function dcIOS() { return /iPhone|iPad/.test(navigator.userAgent || "") || (navi
 function dcDevice() { return [describeBrowser(), dcStandalone() ? "Home Screen app" : null, APP_VERSION].filter(Boolean).join(" · "); }
 var dcPace = 1;   // the tests make the waits for Spotify short (var: the tests reach it)
 function dcWait(ms) { return new Promise((resolve) => setTimeout(resolve, ms * dcPace)); }
-function dcRandomId() { return bytesToSpotifyId(Array.from({ length: 16 }, () => Math.floor(Math.random() * 256))); }   // a Spotify ID is a 128-bit number
+function dcRandomId() { return service.idFromBytes(Array.from({ length: 16 }, () => Math.floor(Math.random() * 256))); }   // a Spotify ID is a 128-bit number
 // the person's own playlists with songs, not Arc's and not saves
 function dcOwnPlaylists() { return (playlists || []).filter((p) => (!me || p.owner === me.id) && !p.isSave && !p.madeByApp && (p.count == null || p.count > 0)); }
 
@@ -2664,7 +2657,6 @@ const DC_AUTO = [
     const started = performance.now();
     const renewed = await service.renewSignIn();
     if (!renewed) return { ok: false, note: "Spotify refused the renewal, or did not answer." };
-    token = renewed;
     await service.me();
     return { ok: true, detail: `${((performance.now() - started) / 1000).toFixed(1)} s` };
   } },
@@ -2776,7 +2768,7 @@ function dcApplies(g) { return !g.applies || g.applies(); }
 
 var dcRunning = false;   // var: the tests read it
 async function runDeviceChecks() {
-  if (dcRunning || busy || connection !== "ready" || (typeof spotifyPause === "function" && spotifyPause())) return;
+  if (dcRunning || busy || connection !== "ready" || service.wait()) return;
   dcRunning = true;
   const state = dcState();
   state.auto = {};
@@ -2896,7 +2888,7 @@ function renderDeviceChecks() {
   body.appendChild(guidedList);
   body.appendChild(feEl("p", { class: "dc-note", text: `Test playlists are named ${DC_NAME} and are removed after each run, even when a check fails. Results stay on this device.` }));
   if (connection !== "ready") body.appendChild(feEl("p", { class: "dc-note", text: `Connect to ${service.name} to run the automatic checks.` }));
-  const ready = !dcRunning && !busy && connection === "ready" && !(typeof spotifyPause === "function" && spotifyPause());
+  const ready = !dcRunning && !busy && connection === "ready" && !service.wait();
   const copy = feEl("button", { type: "button", class: "dlg-quiet", id: "dcCopy", onClick: () => copyDeviceChecks(copy) }, "Copy results");
   body.appendChild(feEl("div", { class: "dlg-foot" }, copy,
     feEl("button", { type: "button", id: "dcRun", disabled: !ready, onClick: runDeviceChecks }, feEl("span", { class: "btn-label", text: dcRunning ? "Running…" : state.autoAt ? "Run again" : "Run checks" }))));
@@ -3602,15 +3594,15 @@ async function main() {
     offerReport("loginReportHint", String(err.message || err));
   }
   setSigningIn(false);   // the sign-in is over, one way or the other: from here the connection itself is what the buttons follow
-  token = service.storedSignIn();
-  if (!token && !needsReconnect && service.canRenew()) {
+  service.storedSignIn();
+  if (!service.signedIn() && !needsReconnect && service.canRenew()) {
     setConnection("connecting");
-    token = await service.renewSignIn();   // a sign-in from an earlier visit, renewed without leaving the page
-    if (!token) setConnection("none");
+    await service.renewSignIn();   // a sign-in from an earlier visit, renewed without leaving the page
+    if (!service.signedIn()) setConnection("none");
   }
-  if (!token) { endLaunchScreen(); await connectingStepFailed("Signin"); }   // nothing more to wait for: the app says what to do   // the sign-in did not work: the setup page shows what went wrong
+  if (!service.signedIn()) { endLaunchScreen(); await connectingStepFailed("Signin"); }   // nothing more to wait for: the app says what to do   // the sign-in did not work: the setup page shows what went wrong
   connectingStep("Signin", "done");
-  if (!token && needsReconnect) {
+  if (!service.signedIn() && needsReconnect) {
     revealLoginProblem();
     setLoginMessage("Please connect again so this page can build playlists.");
   }
@@ -3620,7 +3612,7 @@ async function main() {
   showStartupProblems();
   if (!startupProblems.length) setTimeout(checkForNewVersion, 5000);   // a few seconds after a clean start, off the way of everything else
   showPage();   // signed in, or connected before: the app
-  if (token) {
+  if (service.signedIn()) {
     document.body.classList.add("connected");
     connectingStep("Playlists", "active");
     updateStep("Reading your playlists");
@@ -3648,7 +3640,7 @@ async function main() {
   await setupComplete();   // Continue leaves Arc's home, where the page always opens, in view
   endConnectingScreen();
   // A visit that starts during a wait (the tab was closed, the wait forgotten) opens the popup once, so the missing Build button is explained. A reload does not.
-  const pause = spotifyPause();
+  const pause = service.wait();
   if (pause && sessionStorage.getItem("pauseSeen") !== String(pause.until)) showPauseDialog();
 }
 

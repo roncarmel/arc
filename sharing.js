@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16b";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16c";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -50,7 +50,7 @@ const sharing = {
 async function sharingFetch(method, path, json, retried = false) {
   const headers = {};
   if (json) headers["Content-Type"] = "application/json";
-  if (token && path !== "/library" && !path.startsWith("/songs/")) headers.Authorization = "Bearer " + token;   // the library and a playlist's songs are public: reading them sends no sign-in
+  if (service.signedIn() && path !== "/library" && !path.startsWith("/songs/")) headers.Authorization = service.authHeader();   // the library and a playlist's songs are public: reading them sends no sign-in
   let response;
   try {
     response = await fetchWithAnswerLimit(SHARING_URL + path, { method, headers, body: json ? JSON.stringify(json) : undefined });
@@ -59,7 +59,7 @@ async function sharingFetch(method, path, json, retried = false) {
   try { data = await response.json(); } catch (err) { /* no body */ }
   if (response.status === 401 && data.code === "signin" && !retried) {
     const renewed = await service.renewSignIn();   // the sign-in ran out (a tab open over an hour): renew it, then send this once more with the new one
-    if (renewed) { token = renewed; return sharingFetch(method, path, json, true); }
+    if (renewed) return sharingFetch(method, path, json, true);
   }
   if (!response.ok) { const e = new Error(data.error || `Music sharing answered ${response.status}.`); e.code = data.code || ""; e.status = response.status; e.percent = data.percent; e.of = data.of; throw e; }
   return data;
@@ -161,7 +161,7 @@ function startSharingCard() {
 }
 
 async function loadMine() {
-  if (!token || !me) return;
+  if (!service.signedIn() || !me) return;
   sharing.mineError = "";
   try {
     sharing.mine = (await sharingFetch("GET", "/mine")).shares;
@@ -430,7 +430,7 @@ async function readMissingSlowly(ids) {
   sharing.readStop = false;
   try {
     for (const id of ids) {
-      if (sharing.readStop || connection !== "ready" || spotifyPause() || busy) break;
+      if (sharing.readStop || connection !== "ready" || service.wait() || busy) break;
       const info = playlists.find((p) => p.id === id);
       const tracks = await service.readSongs(id, { gapMs: OVERLAP_READ_GAP_MS, stopped: () => sharing.readStop });
       if (!tracks || sharing.readStop) break;
@@ -487,7 +487,7 @@ async function markOldCopies() {
   sharing.marking = true;
   try {
     for (const [shareId, copy] of Object.entries(sharingCopies())) {
-      if (connection !== "ready" || spotifyPause() || busy) break;
+      if (connection !== "ready" || service.wait() || busy) break;
       const p = playlists.find((x) => x.id === copy && x.owner === me.id);
       if (!p || typeof p.description !== "string" || copyShareId(p) === shareId) continue;   // gone, not read with its description, or has it already
       const description = withShareId(cleanSpotifyDescription(p.description), shareId);
@@ -2270,7 +2270,7 @@ function topArtists(tracks, n = 4) {
 const ownerTools = { asking: null, reports: null };
 function askOwner() {
   if (ownerTools.asking) return ownerTools.asking;
-  if (!devMode() || !token || !me) return Promise.resolve(false);
+  if (!devMode() || !service.signedIn() || !me) return Promise.resolve(false);
   ownerTools.asking = (async () => {
     try {
       const data = await sharingFetch("GET", "/admin/reports");

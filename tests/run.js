@@ -632,10 +632,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly these seven, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16b" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16c" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16b/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16c/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -869,7 +869,7 @@ print(json.dumps(out))
   check("page text in the scripts names the service, not Spotify (Spotify's setup, Device checks and developer notes aside)", sv_left.every((t) => sv_allowed.includes(t) || /Spotify's own cover/.test(t)), JSON.stringify(sv_left.filter((t) => !sv_allowed.includes(t))));
   var sv_html = fs.readFileSync(ROOT + "index.html", "utf8");
   check("the markup marks the service's name for filling in, and the requirement (Spotify Premium) where it is said", (sv_html.match(/<span data-service>Spotify<\/span>/g) || []).length >= 25 && (sv_html.match(/data-requirement-name>Spotify Premium</g) || []).length === 2 && (sv_html.match(/ data-requirement>/g) || []).length === 2);
-  check("only the service file talks to Spotify: no Spotify address, URI or request elsewhere, and songs carry the service's id, not a URI", ["app.js", "editor.js", "sharing.js", "formats.js", "engine.py"].every((f) => !/api\.spotify\.com|spotify:(track|playlist):|spotifyRequest|\bspotify\(/.test(fs.readFileSync(ROOT + f, "utf8"))) && /const service = \{/.test(fs.readFileSync(ROOT + "service-spotify.js", "utf8")) && !/\["uri"\]/.test(fs.readFileSync(ROOT + "engine.py", "utf8")));
+  check("only the service file talks to Spotify: no Spotify address, URI, request, sign-in token, wait, permission or ID packing elsewhere, and songs carry the service's id, not a URI", ["app.js", "editor.js", "sharing.js", "formats.js", "engine.py"].every((f) => !/api\.spotify\.com|spotify:(track|playlist):|spotifyRequest|\bspotify\(|spotifyPause\(|pausedSecondsLeft|spotifyIdToBytes|bytesToSpotifyId|\bSCOPES\b/.test(fs.readFileSync(ROOT + f, "utf8").replace(/(^|\s)\/\/.*$/gm, ""))) && ["app.js", "editor.js", "sharing.js"].every((f) => !/(^|[^\w.])token\b(?!\s*[:"])/.test(fs.readFileSync(ROOT + f, "utf8").replace(/(^|\s)\/\/.*$/gm, "").replace(/(["'`])(?:\\.|(?!\1).)*?\1/g, ""))) && /const service = \{/.test(fs.readFileSync(ROOT + "service-spotify.js", "utf8")) && !/\["uri"\]/.test(fs.readFileSync(ROOT + "engine.py", "utf8")));
   check("the page has six scripts of its own, with the theme first, and nothing about embeds", finalHtml.match(/<script src="[^"]+"><\/script>/g).join("").replace(/\?v=[^"]+/g, "") === '<script src="theme.js"></script><script src="formats.js"></script><script src="editor.js"></script><script src="service-spotify.js"></script><script src="app.js"></script><script src="sharing.js"></script>' && finalHtml.indexOf('<script src="theme.js">') < finalHtml.indexOf("</head>") && !/embeds/i.test(finalHtml) && !/embeds/i.test(appSource()) && !fs.existsSync(ROOT + "embeds.js"));
   check("the app never names an outside script, so no Ko-fi or Tally code can run in the page", !/tally\.so\/widgets|overlay-widget|storage\.ko-fi\.com\/cdn\/scripts/.test(appSource() + finalHtml));
   check("Tally is left only in the startup problem popup, whose report link must work when the scripts did not start", (finalHtml.match(/tally\.so/g) || []).length === 1 && /id="startupReport"[^>]*href="https:\/\/tally\.so\/r\/VppLZN"/.test(finalHtml) && !/FEEDBACK_FORM_URL/.test(appSource()));
@@ -1448,7 +1448,7 @@ print(json.dumps(out))
   var cv_dims = execFileSync("python3", ["-c", `from PIL import Image; im = Image.open("${ROOT}playlist-cover.jpg"); print(im.format, im.size[0], im.size[1])`], { encoding: "utf8" }).trim();
   check("the cover is a JPEG of the app's icon, 640 by 640, and small enough for Spotify's limit even after base64", cv_file.slice(0, 3).toString("hex") === "ffd8ff" && cv_dims === "JPEG 640 640" && Math.ceil(cv_file.length / 3) * 4 < 256 * 1024, cv_dims + " " + cv_file.length);
   var cv_app = appSource();
-  check("the app asks for the image-upload permission when it signs in, but does not require it, so an older sign-in keeps working", /"ugc-image-upload",/.test(cv_app) && /const REQUIRED_SCOPES = \["playlist-modify-private", "playlist-modify-public"\];/.test(cv_app));
+  check("the app asks for the image-upload permission when it signs in, but does not require it, so an older sign-in keeps working", /"ugc-image-upload",/.test(fs.readFileSync(ROOT + "service-spotify.js", "utf8")) && /const REQUIRED_SCOPES = \["playlist-modify-private", "playlist-modify-public"\];/.test(fs.readFileSync(ROOT + "service-spotify.js", "utf8")));
   var cv_run = async (token, fetchOptions) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: token, local: { formats: MINI }, fetchOptions });
     w.cvBuild = await buildFor(w, "mini");
@@ -2142,7 +2142,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16b", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16c", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -2751,7 +2751,7 @@ print(json.dumps(out))
   var sp_same2 = sp_id(7), sp_twin = sp_same2.slice(0, 10) + "ABCDEFGHIJKL";
   check("the test IDs are built so that two of them share their ending only when I say so", sp_w.tailOfId(sp_same2) !== sp_w.tailOfId(sp_twin));
   var sp_bytes = (front, back) => [...Array(10).fill(front), ...Array(6).fill(back)];
-  var sp_clash = sp_w.bytesToSpotifyId(sp_bytes(0x11, 0x7a)), sp_clashB = sp_w.bytesToSpotifyId(sp_bytes(0x22, 0x7a));
+  var sp_clash = sp_w.service.idFromBytes(sp_bytes(0x11, 0x7a)), sp_clashB = sp_w.service.idFromBytes(sp_bytes(0x22, 0x7a));
   check("two IDs that differ only in the first 10 bytes share an ending", sp_clash !== sp_clashB && sp_w.tailOfId(sp_clash) === sp_w.tailOfId(sp_clashB));
   var sp_one = sp_w.ensureGaps({ id: "x", title: "T", gap: 0, gaps: [], lead: 0, items: [{ id: "a", kind: "seg", lists: [{ name: "", id: sp_clash, weight: 1 }], minutes: 10 }], rev: 0, modified: 0 });
   var sp_alone = sp_w.packFormat(sp_one, [sp_clash, sp_id(40)]), sp_shared = sp_w.packFormat(sp_one, [sp_clash, sp_clashB]);
@@ -4415,7 +4415,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16b"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16c"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

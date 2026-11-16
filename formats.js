@@ -2,7 +2,7 @@
 //
 // The text is the same Python-style text the engine reads (engine.py). The editor never asks people to
 // type it; it only keeps it up to date. Nothing in this file touches the page.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["formats.js"] = "2026-11-16b";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["formats.js"] = "2026-11-16c";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // Silence lengths the editor steps through, in seconds: 30 sec, 1 to 10 min by the minute, then every 5 min up to 60 min
 const SILENCE_STEPS = [30, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 900, 1200, 1500, 1800, 2100, 2400, 2700, 3000, 3300, 3600];
@@ -436,32 +436,13 @@ const OLD_SAVE_PREFIX = "Do not edit.";
 const SAVE_VERSION = 2;   // 2 added the place, at the end
 const SAVE_EPOCH = 1767225600;
 const DENSE_BASE = 0x4e00;
-const SPOTIFY_ID_DIGITS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-function spotifyIdToBytes(id) {
-  if (!/^[0-9A-Za-z]{22}$/.test(id)) return null;
-  let n = 0n;
-  for (const ch of id) n = n * 62n + BigInt(SPOTIFY_ID_DIGITS.indexOf(ch));
-  if (n >= (1n << 128n)) return null;
-  const out = [];
-  for (let i = 0; i < 16; i++) { out.unshift(Number(n & 0xffn)); n >>= 8n; }
-  return out;
-}
-
-// The last 6 bytes of a Spotify ID: 48 bits that tell your playlists apart (the front of an ID is not safe to use, since Spotify's own playlists share a long
+// The last 6 bytes of a playlist's ID (service.idToBytes): 48 bits that tell your playlists apart (the front of an ID is not safe to use, since Spotify's own playlists share a long
 // beginning). It is how a playlist is kept in a save, when no other playlist of yours ends the same way.
 function tailOfId(id) {
-  const bytes = spotifyIdToBytes(id);
+  const bytes = service.idToBytes(id);
   return bytes ? bytes.slice(10).map((b) => b.toString(16).padStart(2, "0")).join("") : null;
 }
 
-function bytesToSpotifyId(bytes) {
-  let n = 0n;
-  for (const b of bytes) n = (n << 8n) | BigInt(b);
-  let id = "";
-  for (let i = 0; i < 22; i++) { id = SPOTIFY_ID_DIGITS[Number(n % 62n)] + id; n /= 62n; }
-  return id;
-}
 
 function crc16(bytes) {
   let crc = 0xffff;
@@ -517,7 +498,7 @@ function packFormat(fmt, allIds) {
     writeVarint(body, item.minutes * 60);
     writeVarint(body, item.lists.length);
     for (const l of item.lists) {
-      const idBytes = l.id ? spotifyIdToBytes(l.id) : null;
+      const idBytes = l.id ? service.idToBytes(l.id) : null;
       const shared = idBytes && tails.has(tailOfId(l.id)) && [...tails.get(tailOfId(l.id))].some((other) => other !== l.id);
       if (idBytes && shared) { body.push(1); for (const b of idBytes) body.push(b); }
       else if (idBytes) { body.push(3); for (const b of idBytes.slice(10)) body.push(b); }
@@ -556,7 +537,7 @@ function resolveSaveTails(format, allIds) {
 }
 
 // How long a format's save is, for the size limit: its description as it would be written, with a playlist not yet linked counted as one that is.
-const SAVE_LIMIT = 300;
+const SAVE_LIMIT = 300;   // the smallest of the services' limits (Spotify shows 300; TIDAL takes 500), so a recipe saved on one fits on the other (Ron, 2026-11-16)
 const PLACEHOLDER_ID = "3" + "0".repeat(21);
 function saveLength(fmt) {
   const copy = Object.assign({}, fmt, { items: fmt.items.map((it) => Object.assign({}, it, { lists: it.lists.map((l) => Object.assign({}, l, { id: l.id || PLACEHOLDER_ID })) })) });
@@ -613,7 +594,7 @@ function unpackFormat(description) {
       for (let j = 0; j < listCount; j++) {
         const kind = u8();
         let list;
-        if (kind === 1) list = { name: "", id: bytesToSpotifyId(take(16)) };
+        if (kind === 1) list = { name: "", id: service.idFromBytes(take(16)) };
         else if (kind === 3) list = { name: "", tail: take(6).map((b) => b.toString(16).padStart(2, "0")).join("") };
         else if (kind === 2) list = { name: "", id: str() };
         else if (kind === 0) list = { name: str() };

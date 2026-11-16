@@ -2,11 +2,20 @@
 // no server), the refresh token, requests with their limits and waits, and the record of those limits; at its end the `service` object, the only way the rest
 // of Arc talks to Spotify (work/tidal-plan.md, "The service layer"): every Spotify address, URI and quirk stays in this file. It shows nothing itself: each page
 // fills serviceHooks with what to do and say, so this file names no element of any page. Loaded before the page's own script.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-spotify.js"] = "2026-11-16b";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-spotify.js"] = "2026-11-16c";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+
+// The permissions Arc's sign-in asks for. Another page of this repository (the tagger) may set its own in serviceHooks.
+const SCOPES = [
+  "playlist-read-private", "playlist-read-collaborative",   // read your playlists
+  "playlist-modify-private", "playlist-modify-public",      // create playlists
+  "user-library-modify",                                    // Spotify's generic library endpoint: removing playlists, and a song's menu in Music sharing saving it to Liked Songs
+  "ugc-image-upload",                                       // the cover art on the playlists it creates
+].join(" ");
+const REQUIRED_SCOPES = ["playlist-modify-private", "playlist-modify-public"];   // cover art is optional, so an older sign-in without it keeps working
 
 const serviceHooks = {
-  scopes: "",                  // the permissions the sign-in asks for, space separated
-  requiredScopes: [],          // a kept sign-in without all of these is not used
+  scopes: SCOPES,              // the permissions the sign-in asks for, space separated
+  requiredScopes: REQUIRED_SCOPES,   // a kept sign-in without all of these is not used
   log: (text) => {},           // a step, for problem reports
   oldSignIn: () => {},         // a kept sign-in was missing a required permission and was dropped
   expiredText: () => "Your Spotify sign-in expired. Connect again.",
@@ -281,11 +290,6 @@ function spotifyPause() {
 function pausedSecondsLeft() {
   const p = spotifyPause();
   return p ? Math.max(1, Math.ceil((p.until - Date.now()) / 1000)) : 0;
-}
-function clockText(seconds) {
-  // 22564 seconds is "6:16:04"
-  const s = Math.max(0, Math.round(seconds));
-  return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 function startSpotifyPause(wait, reason) {
   const before = spotifyPause();
@@ -581,9 +585,39 @@ async function pagedItems(path, { gapMs = 0, stopped = null } = {}) {
   return items;
 }
 
+// A Spotify ID is a 128-bit number in 22 base-62 digits. Saves and participants' playlists pack playlist IDs as its 16 bytes (TIDAL's are UUIDs, 16 bytes too).
+const SPOTIFY_ID_DIGITS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+function spotifyIdToBytes(id) {
+  if (!/^[0-9A-Za-z]{22}$/.test(id)) return null;
+  let n = 0n;
+  for (const ch of id) n = n * 62n + BigInt(SPOTIFY_ID_DIGITS.indexOf(ch));
+  if (n >= (1n << 128n)) return null;
+  const out = [];
+  for (let i = 0; i < 16; i++) { out.unshift(Number(n & 0xffn)); n >>= 8n; }
+  return out;
+}
+
+function bytesToSpotifyId(bytes) {
+  let n = 0n;
+  for (const b of bytes) n = (n << 8n) | BigInt(b);
+  let id = "";
+  for (let i = 0; i < 22; i++) { id = SPOTIFY_ID_DIGITS[Number(n % 62n)] + id; n /= 62n; }
+  return id;
+}
+
 const service = {
   key: "spotify",
   name: "Spotify",
+  // the kind of a problem from a message this file wrote (quota, rate-limit, network, premium), or null; the page keeps the sign-in's own
+  problemKind(message) {
+    const m = String(message || "");
+    if (/request quota/.test(m)) return "quota";
+    if (/rate limiting/.test(m)) return "rate-limit";
+    if (m.includes(NO_ANSWER) || m.includes("Could not reach Spotify")) return "network";
+    if (m.includes(PREMIUM_REQUIRED_MESSAGE)) return "premium";
+    return null;
+  },
   // what an account needs to use Arc, for page text; null when any account will do
   requirement: { name: "Spotify Premium", why: "Arc relies on a feature that is not available in Spotify Free accounts." },
   limits: { description: 300, addBatch: ADD_CHUNK },
@@ -594,9 +628,16 @@ const service = {
   // sign-in
   signIn: (clientId, options) => openSpotifySignIn(clientId, options),
   finishSignIn: () => finishSpotifySignIn(),
-  renewSignIn: () => renewSignIn(),
+  renewSignIn: async () => { const renewed = await renewSignIn(); if (renewed) token = renewed; return renewed; },   // gives the new sign-in, or null
   signedIn: () => !!token,
-  storedSignIn: () => loadStoredToken(),   // this tab's sign-in, if it is still good
+  // a playlist ID as 16 bytes (null when it is not one), and back, for packing into descriptions
+  idToBytes: (id) => spotifyIdToBytes(id),
+  idFromBytes: (bytes) => bytesToSpotifyId(bytes),
+  // a wait Spotify asked for: {until, from, reason} while it lasts, else null; waitLeft is its seconds left, 0 when none
+  wait: () => spotifyPause(),
+  waitLeft: () => pausedSecondsLeft(),
+  authHeader: () => (token ? "Bearer " + token : null),   // for Arc's own worker, which asks Spotify who this is
+  storedSignIn: () => (token = loadStoredToken()),   // this tab's sign-in, if it is still good
   canRenew: () => !!storedRefresh(),       // a sign-in from an earlier visit is kept
   coversAllowed: () => hasScope("ugc-image-upload"),   // the sign-in was approved for cover art (an optional permission)
   async me() {
