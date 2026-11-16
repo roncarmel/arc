@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16za";
+const APP_VERSION = "2026-11-16zb";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1478,7 +1478,26 @@ const AUTO_REPORTED_KEY = "autoReported";   // {v: version, kinds: [...]}
 var autoReports = new Map();   // kind -> {promise, ok}; var so the tests can clear it
 function autoReportKind(text) { return scrubError(text).replace(/\d+/g, "#").slice(0, 80); }
 function autoReportState(text) { return autoReports.get(autoReportKind(text)) || null; }
-function autoReport(text) {
+// A list that came short leaves a mark (`shortListSince`: when it first came short, how many reads came short, the tab); the next whole list, in this visit
+// or a later one, reports that it arrived and how long it took, so a report of a short list is followed by whether waiting fixed it (Ron, 2026-11-16).
+const SHORT_SINCE_KEY = "shortListSince";
+function noteShortList() {
+  try {
+    const was = JSON.parse(localStorage.getItem(SHORT_SINCE_KEY) || "null");
+    localStorage.setItem(SHORT_SINCE_KEY, JSON.stringify(was ? { ...was, reads: (was.reads || 1) + 1 } : { at: Date.now(), reads: 1, tab: TAB_ID, v: APP_VERSION }));
+  } catch (err) { /* private browsing */ }
+}
+function reportShortListArrived(list) {
+  let was = null;
+  try { was = JSON.parse(localStorage.getItem(SHORT_SINCE_KEY) || "null"); localStorage.removeItem(SHORT_SINCE_KEY); } catch (err) { return; }
+  if (!was || !was.at) return;
+  const mins = Math.max(0, Math.round((Date.now() - was.at) / 60000));
+  const text = `the whole playlist list arrived (${list.length} of ${list.total}), ${mins} min after it first came short, with ${was.reads} short read${was.reads === 1 ? "" : "s"} before; ${was.tab === TAB_ID ? "the same visit" : "a later visit"}${was.v !== APP_VERSION ? `, short on ${was.v}` : ""}`;
+  logStep("short playlist list arrived whole");
+  autoReport(text, "Sent by Arc after a short playlist list: ");
+}
+
+function autoReport(text, intro = "Sent by Arc when this happened: ") {
   const kind = autoReportKind(text);
   if (autoReports.has(kind)) return autoReports.get(kind).promise;
   if (problemKind(String(text)) !== "other") return Promise.resolve(false);
@@ -1486,13 +1505,13 @@ function autoReport(text) {
   let before = false;
   try { const r = JSON.parse(localStorage.getItem(AUTO_REPORTED_KEY) || "{}"); before = r.v === APP_VERSION && (r.kinds || []).includes(kind); } catch (err) { /* private browsing */ }
   const entry = { ok: before ? true : undefined };
-  entry.promise = before ? Promise.resolve(true) : sendAutoReport(text, kind).then((ok) => { entry.ok = ok; if (!ok) autoReports.delete(kind); return ok; });
+  entry.promise = before ? Promise.resolve(true) : sendAutoReport(text, kind, intro).then((ok) => { entry.ok = ok; if (!ok) autoReports.delete(kind); return ok; });
   autoReports.set(kind, entry);
   return entry.promise;
 }
-async function sendAutoReport(text, kind) {
+async function sendAutoReport(text, kind, intro) {
   try {
-    const body = { kind: "problem", auto: true, message: "Sent by Arc when this happened: " + scrubError(text), details: reportDetails(), log: reportLogText() };
+    const body = { kind: "problem", auto: true, message: intro + scrubError(text), details: reportDetails(), log: reportLogText() };
     const response = await fetchWithAnswerLimit(SHARING_URL + "/message", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (!response.ok) { logStep(`problem not reported (${response.status})`); return false; }
     try {
@@ -3016,6 +3035,7 @@ async function loadMyPlaylists(options = {}) {
     // the playlists it already had (or the kept list), and reads it again by itself (Ron, 2026-11-13).
     recordError(list.short);
     autoReport(lastErrorText);
+    noteShortList();
     if (options.keepIfShort && playlistsLoadedAt) { logStep("playlist list short, the one read earlier kept"); throw new Error(SHORT_LIST_MESSAGE); }
     useKeptPlaylists();
     if (connection === "ready") { setConnection("problem", SHORT_LIST_MESSAGE); startLimitWait("short"); }
@@ -3032,6 +3052,7 @@ async function loadMyPlaylists(options = {}) {
   recordSaveDuplicates();
   recordListRead(by);
   keepPlaylists();
+  reportShortListArrived(list);
   if (list.reread && devMode()) showNotices([{ text: "Spotify sent a short list. Read again, all there.", transient: true }]);
   // The count shown in Step 1 always matches the list, including after playlists are created or removed.
   playlistsLoadedAt = Date.now();
