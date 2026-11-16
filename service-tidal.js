@@ -2,7 +2,7 @@
 // (openapi.tidal.com/v2, JSON:API). Sign-in is PKCE from the page, with a refresh token; requests are paced at about 2 a second, and a refusal (429)
 // is tried again after 2, 4, 8... seconds, since TIDAL's refusals clear in about 2 s (tested on Ron's account, 2026-11-16). Every TIDAL address and quirk
 // stays in this file. TIDAL has no covers through its API and no private playlists: what Arc makes is Unlisted (anyone with the link can open it).
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-tidal.js"] = "2026-11-16j";   // this file's version, checked against the app's at startup
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-tidal.js"] = "2026-11-16k";   // this file's version, checked against the app's at startup
 
 const TIDAL_API = "https://openapi.tidal.com/v2";
 const TIDAL_AUTH_URL = "https://login.tidal.com/authorize";
@@ -181,8 +181,8 @@ async function tidalRequest(method, path, { json, noWait = false } = {}) {
 }
 const tidal = (path) => tidalRequest("GET", tidalWithCountry(path));
 
-// Every page of a JSON:API list, following links.next: { data, included }. gapMs and stopped as in service-spotify.js's pagedItems.
-async function tidalPages(path, { onPage, gapMs = 0, stopped = null } = {}) {
+// Every page of a JSON:API list, following links.next: { data, included }. gapMs, stopped and onSongs (items read so far) as in service-spotify.js's pagedItems.
+async function tidalPages(path, { onPage, onSongs = null, gapMs = 0, stopped = null } = {}) {
   const data = [], included = [];
   let next = tidalWithCountry(path), pages = 0;
   while (next) {
@@ -192,6 +192,7 @@ async function tidalPages(path, { onPage, gapMs = 0, stopped = null } = {}) {
     data.push(...(page.data || []));
     included.push(...(page.included || []));
     if (onPage) onPage(pages);
+    if (onSongs) onSongs(data.length);
     const n = page.links && page.links.next;
     next = n ? (n.startsWith("http") || n.startsWith("/") ? n : "/" + n) : null;
     if (next && gapMs) await tidalSleep(gapMs);

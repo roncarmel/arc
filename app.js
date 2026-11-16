@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16j";
+const APP_VERSION = "2026-11-16k";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2914,18 +2914,44 @@ function showShortListDialog() {
     [{ label: "OK", value: "ok", main: true }], { problem: "cloud", reported: reportedLine(lastErrorText) });
 }
 
+// Reading the songs for a build, counted so its step moves as it goes (Ron, 2026-11-16: it sat still, then jumped): every playlist the build will read is
+// expected first (expectReading), weighed by its song count, and each page read moves it on. songReading is { want, got: Map id -> songs, onChange } while it runs.
+let songReading = null;
+function expectReading(ids) {
+  if (!songReading) return;
+  for (const id of ids) {
+    if (songReading.want.has(id)) continue;
+    const info = (playlists || []).find((p) => p.id === id);
+    songReading.want.set(id, Math.max(1, info && typeof info.count === "number" ? info.count : 100));   // a Heard before playlist not in the library: a guess
+  }
+  songReading.onChange();
+}
+function songsRead(id, n) {
+  if (!songReading || !songReading.want.has(id)) return;
+  songReading.got.set(id, Math.min(n, songReading.want.get(id)));
+  songReading.onChange();
+}
+function readingShare() {
+  if (!songReading) return null;
+  let want = 0, got = 0, done = 0;
+  for (const [id, n] of songReading.want) { want += n; const g = songReading.got.get(id) || 0; got += g; if (g >= n) done += 1; }
+  return { share: want ? got / want : 0, done, of: songReading.want.size };
+}
+
 async function loadTracks(id) {
-  if (trackCache.has(id)) return trackCache.get(id);
+  if (trackCache.has(id)) { songsRead(id, Infinity); return trackCache.get(id); }
   const info = playlists.find((p) => p.id === id);
   const snapshot = info && info.snapshot ? info.snapshot : null;
   const saved = await savedSongs(id);
   // Saved songs are used when Spotify reports no snapshot to compare (the refresh control covers that case), or when the snapshot is the same.
   if (saved && saved.v === SONGS_VERSION && Array.isArray(saved.tracks) && (!snapshot || saved.snapshot === snapshot)) {
     trackCache.set(id, saved.tracks);
+    songsRead(id, Infinity);
     return saved.tracks;
   }
-  const tracks = await service.readSongs(id);
+  const tracks = await service.readSongs(id, songReading ? { onSongs: (n) => songsRead(id, n) } : {});
   trackCache.set(id, tracks);
+  songsRead(id, Infinity);
   await saveSongs({ id, snapshot, tracks, v: SONGS_VERSION, savedAt: Date.now() });
   return tracks;
 }
@@ -3035,10 +3061,16 @@ function participantList() {
 }
 // What a participant has heard: every song in the playlists built for them, by the song's id as engine.py knows it (song_id), with when the playlist was built.
 // Reads their playlists' songs (kept in this browser after the first time). { songs: {id: time}, count, recent: [ids in their most recent playlist] }
+// The playlists heardBy reads: those built for them, then their Heard before
+function heardReads(code) {
+  const person = participantList().find((p) => p.code === code);
+  return { person, built: (playlists || []).filter((q) => q.participant === code && (!me || q.owner === me.id)),
+    before: [...new Set([...(person ? person.heard : []), ...pendingHeard(code)])] };
+}
 async function heardBy(code) {
   const songs = {}, recent = [];
-  const person = participantList().find((p) => p.code === code);
-  for (const p of (playlists || []).filter((q) => q.participant === code && (!me || q.owner === me.id))) {
+  const { person, built, before } = heardReads(code);
+  for (const p of built) {
     const at = builtAtOf(p.description) || 1;
     for (const t of await loadTracks(p.id)) {
       if (SILENCE_IDS.has(t.id)) continue;
@@ -3048,9 +3080,9 @@ async function heardBy(code) {
     }
   }
   // Heard before: heard longest ago of all (0). A playlist no longer in the library is still read by its ID; one Spotify no longer has is skipped.
-  for (const id of [...new Set([...(person ? person.heard : []), ...pendingHeard(code)])]) {
+  for (const id of before) {
     let tracks = [];
-    try { tracks = await loadTracks(id); } catch (err) { logStep("heard before: a playlist could not be read"); continue; }
+    try { tracks = await loadTracks(id); } catch (err) { songsRead(id, Infinity); logStep("heard before: a playlist could not be read"); continue; }
     for (const t of tracks) {
       if (SILENCE_IDS.has(t.id)) continue;
       const key = t.key || t.id;
@@ -3129,6 +3161,7 @@ async function gatherInputs(keys) {
   for (const name of match.missing || []) problems.push([`${named(name)} is not in your ${service.name} playlists.`, `Choose another playlist in the recipe, or check its name in ${service.name}.`]);
   for (const name of match.notMine || []) problems.push([`${named(name)} is not yours.`, `${service.name} only lets this app read playlists you own. Copy its songs into a playlist of your own and use that.`]);
   const tracks = {};
+  expectReading(names.filter((n) => match.found[n]).map((n) => match.found[n]));
   for (const name of names.filter((n) => match.found[n])) tracks[name] = await loadTracks(match.found[name]);
   if (problems.length) {
     // The recipe cannot be planned as it is. Playlists that are too short are found from their minutes alone, so they are listed too, all at once.
@@ -3166,6 +3199,7 @@ function repeatProblem(r, asked) {
 
 async function planSelected(opts) {
   // Works out a participant's next playlist (opts: keys, forWhom, repeat). Returns the plan, or { problems } when there is no playlist.
+  if (songReading) { const h = heardReads(opts.forWhom); expectReading([...h.built.map((p) => p.id), ...h.before]); }   // so the count is whole before the first read
   const inputs = await gatherInputs(opts.keys);
   if (inputs.problems) return inputs;
   const forWhom = opts.forWhom;
@@ -3239,7 +3273,12 @@ async function buildForParticipant(id, code, repeat = null) {
       }
     }
     setPersonBuild({ step: "Reading the songs", progress: 0.15 });
-    const plan = await planSelected({ keys: [id], forWhom: code, repeat });
+    songReading = { want: new Map(), got: new Map(), onChange: () => {
+      const r = readingShare();
+      if (r && r.of) setPersonBuild({ step: r.of > 1 ? `Reading the songs \u00b7 ${Math.min(r.done + 1, r.of)} of ${r.of}` : "Reading the songs", progress: 0.15 + 0.23 * r.share });
+    } };
+    let plan;
+    try { plan = await planSelected({ keys: [id], forWhom: code, repeat }); } finally { songReading = null; }
     if (!plan || !plan.built) { setPersonBuild({ state: "blocked", problems: (plan && plan.problems) || [] }); return; }
     const p = plan.built[0].playlists[0];
     const songs = p.ids.filter((x) => !SILENCE_IDS.has(x)).length;
