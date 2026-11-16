@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-16zh">
-<script src="theme.js?v=2026-11-16zh"></script>
+<meta name="app-version" content="2026-11-16zj">
+<script src="theme.js?v=2026-11-16zj"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -253,8 +253,6 @@
   /* The builder menu's popups: body text is gray, so the headings, buttons, links and widgets are what stand out. */
   .menu-popup, #devMoods, #devReports, #privacySection { color: var(--muted); }
   #homeMore input, #homeMore select { color: var(--fg); }
-  #homeMore #clearConfirm { color: var(--fg); }
-  #clearConfirm { scroll-margin-bottom: 16px; }   /* a little room under its buttons when it is scrolled into view */
   .plan-links { margin: 8px 0 0; }
   /* A quick second tap on a button (the plus and minus, for example) must not zoom the page. Pinching to zoom still works, and scrolling too. */
   * { touch-action: manipulation; }
@@ -568,7 +566,7 @@
   details.about strong, #formatHelp h3 { color: var(--fg); }
 
   /* Standard text is gray. Headings, controls, results, and words that need a highlight (.ui) are white. */
-  h2, h3, label.choice, code, #clearConfirm { color: var(--fg); }
+  h2, h3, label.choice, code { color: var(--fg); }
   #formatEditor .fe-amount, #formatEditor .fe-pct { color: var(--fg); }
 
   .brand { display: flex; align-items: center; gap: 12px; }
@@ -1130,7 +1128,7 @@
      and opens its panel under the bar; the X at the bar's end (kept in place, invisible, while nothing is open) closes it. */
   #homeMore { margin: 22px 0 0; border-radius: 18px; background: var(--card); border: 1px solid var(--line); overflow: hidden; }
   #homeMore .hp-ee-row + .hp-ee-row { border-top: 1px solid var(--line); }
-  #homeMore .hp-ee-row > summary { display: flex; align-items: center; gap: 12px; min-height: 54px; padding: 0 16px 0 12px; color: var(--muted); font-weight: 600; cursor: pointer; list-style: none; -webkit-tap-highlight-color: transparent; }
+  #homeMore .hp-ee-row > summary { display: flex; align-items: center; gap: 12px; min-height: 54px; padding: 0 16px 0 12px; color: var(--muted); font-weight: 400; cursor: pointer; list-style: none; -webkit-tap-highlight-color: transparent; }
   #homeMore .hp-ee-row > summary::-webkit-details-marker { display: none; }
   #homeMore .hp-ee-ico { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); background: color-mix(in srgb, var(--muted) 14%, transparent); transition: color 0.2s var(--ease-out), background-color 0.2s var(--ease-out); }
   #homeMore .hp-ee-ico > *, #homeMore .hp-ee-ico svg { display: block; width: 18px; height: 18px; }
@@ -2502,8 +2500,8 @@
       <button id="homeBuilder" class="hp-tool" type="button"><span class="hp-head"><span class="tool-icon" aria-hidden="true"><svg class="tool-glyph" viewBox="0 0 24 24"><path d="M10.2 1.8Q10.62 9.78 18.6 10.2Q10.62 10.62 10.2 18.6Q9.78 10.62 1.8 10.2Q9.78 9.78 10.2 1.8Z"/><path d="M18.8 14.7Q18.995 18.405 22.7 18.6Q18.995 18.795 18.8 22.5Q18.605 18.795 14.9 18.6Q18.605 18.405 18.8 14.7Z"/></svg></span><span class="hp-text"><b class="hp-line">Playlist builder</b><span class="hp-tag hp-line">Ceremony playlists, ready in seconds</span><span id="homeRecipes" class="hp-data hp-line hp-hide-empty"></span></span><svg class="hp-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
       <button id="msCard" class="hp-tool" type="button"><span class="hp-head"><span class="tool-icon" aria-hidden="true"><svg class="tool-glyph tool-glyph-soft" viewBox="0 0 24 24"><rect x="3" y="4.2" width="3.3" height="14.4" rx="1.2"/><rect x="7.5" y="6.6" width="3.3" height="12" rx="1.2"/><rect x="12" y="5.2" width="3.3" height="13.4" rx="1.2"/><rect x="16.9" y="6.2" width="3.3" height="12.4" rx="1.2" transform="rotate(14 18.55 18.6)"/><rect x="2.5" y="19.6" width="19" height="2" rx="1"/></svg></span><span class="hp-text"><b class="hp-line">Shared playlist library</b><span class="hp-tag hp-line">Bring some, get some!</span><span id="msCardText" class="hp-data hp-line"></span></span><svg class="hp-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
     </div>
-    <!-- Everything else (Ron, 2026-11-16, mockups/home-menu-move): a card of grey rows, Privacy first, each its icon and name, that open in place (<details>, unfolding with
-         toggleDetailsSmoothly). Color, Feedback and Report a problem are in home's ⋯ menu. -->
+    <!-- Everything else (Ron, 2026-11-16, mockups/home-menu-move): a card of grey rows, each its icon and name, that open in place (<details>, unfolding with
+         toggleDetailsSmoothly); only Privacy now. Color, Feedback, Report a problem, Change Spotify login and Sign out and clear data are in home's ⋯ menu. -->
     <div id="homeMore" class="hp-more">
       <!-- Privacy, short (decided by Ron, 2026-11-08): what Arc stands for first, then one line per thing that leaves or stays -->
       <details id="eePrivacyRow" class="hp-ee-row"><summary><span class="hp-ee-ico" data-icon="lock" aria-hidden="true"></span><span class="hp-ee-name">Privacy</span><span class="hp-ee-chev" aria-hidden="true"></span></summary>
@@ -2519,29 +2517,6 @@
           <li id="privacyWaitRelay" hidden><b>Spotify waits:</b> when Spotify limits requests, one check goes through Arc's relay, which keeps nothing.</li>
           <li><b>Problems and feedback:</b> when something unexpected goes wrong, Arc sends its developer the technical details and a log of its requests to <span data-service>Spotify</span> (counts, playlist IDs and <span data-service>Spotify</span>'s answers), once for each kind of problem in each version. What you write in Report a problem or Feedback is emailed only when you <span data-act>tap</span> Send. Never your sign-in, Client ID, playlist names or songs.</li>
         </ul>
-      </div>
-      </details>
-      <details id="eeLoginRow" class="hp-ee-row"><summary><span class="hp-ee-ico" data-icon="user" aria-hidden="true"></span><span class="hp-ee-name">Change <span data-service>Spotify</span> login</span><span class="hp-ee-chev" aria-hidden="true"></span></summary>
-      <div id="eeLogin" class="hp-ee-panel">
-        <p class="muted">Switch to another <span data-service>Spotify</span> account. On <span data-service>Spotify</span>’s page, <span data-act>tap</span> <span class="ui">Not you?</span> to choose it. Your recipes stay and save to the new account.</p>
-        <p><button id="changeSpotifyLogin" class="linklike" type="button">Change <span data-service>Spotify</span> login</button></p>
-      </div>
-      </details>
-      <details id="eeClearRow" class="hp-ee-row"><summary><span class="hp-ee-ico" data-icon="logout" aria-hidden="true"></span><span class="hp-ee-name">Sign out and clear data</span><span class="hp-ee-chev" aria-hidden="true"></span></summary>
-      <div id="eeClear" class="hp-ee-panel">
-        <p class="muted">Signs you out of <span data-service>Spotify</span> and erases what Arc keeps in this browser.</p>
-        <p id="clearRestoreHelp" class="muted">Your recipes stay in <span data-service>Spotify</span> and come back when you connect again.</p>
-        <div class="row">
-          <button id="clearData" type="button"><img class="btn-icon" src="icons/clear.svg" alt="" width="20" height="20"><span class="btn-label">Sign out and clear data</span></button>
-        </div>
-        <div id="clearConfirm" hidden>
-          <p>Sign out and erase Arc’s data in this browser?</p>
-          <p id="clearConfirmHelp" class="muted">Your recipes stay in <span data-service>Spotify</span> and come back when you connect again.</p>
-          <div class="row">
-            <button id="clearNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
-            <button id="clearYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Sign out and clear</span></button>
-          </div>
-        </div>
       </div>
       </details>
     </div>
@@ -2622,6 +2597,18 @@
       <div id="tutorialPlayer" class="tv-player"></div>
       <p id="tutorialNote" class="muted tv-note">A 2 minute walkthrough.</p>
       <div class="dlg-foot"><button class="dlg-cancel dlg-wide" type="button">Done</button></div>
+    </section>
+    <!-- Change Spotify login and Sign out and clear data, from home's ⋯ menu in a section of their own under Feedback and Report a problem (Ron, 2026-11-16) -->
+    <section id="eeLogin" class="menu-popup" hidden>
+      <h3>Change <span data-service>Spotify</span> login</h3>
+      <p class="muted">Switch to another <span data-service>Spotify</span> account. On <span data-service>Spotify</span>’s page, <span data-act>tap</span> <span class="ui">Not you?</span> to choose it. Your recipes stay and save to the new account.</p>
+      <div class="dlg-foot"><button class="dlg-cancel" type="button">Cancel</button><button id="changeSpotifyLogin" class="primary" type="button">Change login</button></div>
+    </section>
+    <section id="eeClear" class="menu-popup" hidden>
+      <h3>Sign out and clear data</h3>
+      <p class="muted">Signs you out of <span data-service>Spotify</span> and erases what Arc keeps in this browser.</p>
+      <p id="clearRestoreHelp" class="muted">Your recipes stay in <span data-service>Spotify</span> and come back when you connect again.</p>
+      <div class="dlg-foot"><button class="dlg-cancel" type="button">Cancel</button><button id="clearYes" class="dlg-danger" type="button">Sign out and clear</button></div>
     </section>
     <!-- Color, from the ⋯ menu of home and both tools (Ron, 2026-11-16, mockups/home-menu-move A; no Done, the X is enough): the colors as a grid of swatches, the chosen one ringed, no name shown; initThemeChooser in app.js -->
     <section id="colorBlock" class="menu-popup" hidden>
@@ -2711,12 +2698,12 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-16zh"></script>
-<script src="editor.js?v=2026-11-16zh"></script>
-<script src="shared-service.js?v=2026-11-16zh"></script>
-<script src="service-spotify.js?v=2026-11-16zh"></script>
-<script src="service-tidal.js?v=2026-11-16zh"></script>
-<script src="app.js?v=2026-11-16zh"></script>
-<script src="sharing.js?v=2026-11-16zh"></script>
+<script src="formats.js?v=2026-11-16zj"></script>
+<script src="editor.js?v=2026-11-16zj"></script>
+<script src="shared-service.js?v=2026-11-16zj"></script>
+<script src="service-spotify.js?v=2026-11-16zj"></script>
+<script src="service-tidal.js?v=2026-11-16zj"></script>
+<script src="app.js?v=2026-11-16zj"></script>
+<script src="sharing.js?v=2026-11-16zj"></script>
 </body>
 </html>

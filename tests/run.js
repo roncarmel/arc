@@ -552,16 +552,17 @@ print(json.dumps(out))
   // 6h. clearing saved data forgets the Client ID, formats and sign-in, after asking
   var wClear = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { clientId: "keep-me", formats: MINI } });
   wClear.eval("reloadPage = () => { window.__reloaded = true; }");
-  check("clear panel is hidden until asked", wClear.document.getElementById("clearConfirm").hidden === true);
-  wClear.document.getElementById("clearData").click();
-  check("clicking Sign out and clear data asks first, and clears nothing yet", wClear.document.getElementById("clearConfirm").hidden === false && wClear.localStorage.getItem("clientId") === "keep-me" && !!wClear.sessionStorage.getItem("token"));
-  wClear.document.getElementById("clearNo").click();
-  check("cancel leaves everything saved", wClear.document.getElementById("clearConfirm").hidden === true && wClear.localStorage.getItem("clientId") === "keep-me" && !wClear.__reloaded);
-  wClear.document.getElementById("clearData").click();
+  wClear.eval("showView('home', false)");
+  wClear.document.getElementById("feAppMenuButton").click();
+  wClear.document.getElementById("feClear").click();
+  check("Sign out and clear data in home's menu asks first in a popup, and clears nothing yet", wClear.document.getElementById("infoOverlay").hidden === false && wClear.document.getElementById("infoTitle").textContent === "Sign out and clear data" && !!wClear.document.querySelector("#infoSlot #eeClear #clearYes") && wClear.localStorage.getItem("clientId") === "keep-me" && !!wClear.sessionStorage.getItem("token"));
+  wClear.document.querySelector("#eeClear .dlg-cancel").click();
+  check("Cancel closes it and leaves everything saved", wClear.document.getElementById("infoOverlay").hidden === true && wClear.document.getElementById("eeClear").hidden === true && wClear.localStorage.getItem("clientId") === "keep-me" && !wClear.__reloaded);
+  wClear.eval("openInfo('eeClear')");
   wClear.document.getElementById("clearYes").click();
   await waitFor(() => wClear.__reloaded === true, 5000);
   check("confirming forgets the Client ID, formats and sign-in, then reloads", wClear.localStorage.length === 0 && wClear.sessionStorage.length === 0 && wClear.__reloaded === true, `${wClear.localStorage.length} local, ${wClear.sessionStorage.length} session`);
-  check("troubleshooting is available before connecting too", !!fresh.document.getElementById("clearData") && fresh.document.getElementById("appSection").hidden === true);
+  check("troubleshooting is available before connecting too", !!fresh.document.getElementById("clearYes") && fresh.document.getElementById("appSection").hidden === true);
 
   check("no Support me: no Ko-fi link, caption or cup on the page", !fresh.document.getElementById("supportButton") && !fresh.document.getElementById("supportCaption") && !fresh.document.querySelector('a[href*="ko-fi"], img[src="cup-border.png"]'));
 
@@ -714,10 +715,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly these seven, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16zh" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16zj" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16zh/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16zj/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -796,10 +797,9 @@ print(json.dumps(out))
 
   // ---------------- Sign out and clear data says the recipes stay in Spotify
   var cb = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: null } });
-  var clearSection = cb.document.getElementById("eeClearRow").textContent.replace(/\s+/g, " ");
-  check("the Sign out and clear data section says what it does and that the recipes stay in Spotify", /^Signs you out of Spotify and erases what Arc keeps in this browser\./.test(clearSection.slice(clearSection.indexOf("Sign out and clear data") + 23).trim()) && /Your recipes stay in Spotify and come back when you connect again\./.test(clearSection) && !/If something looks stuck/.test(clearSection));
-  cb.document.getElementById("clearData").click();
-  check("the confirmation says the same", !cb.document.getElementById("clearConfirm").hidden && /Your recipes stay in Spotify and come back when you connect again\./.test(cb.document.getElementById("clearConfirm").textContent));
+  var clearSection = [...cb.document.querySelectorAll("#eeClear p")].map((p) => p.textContent).join(" ").replace(/\s+/g, " ");
+  check("the Sign out and clear data popup says what it does and that the recipes stay in Spotify", /^Signs you out of Spotify and erases what Arc keeps in this browser\./.test(clearSection) && /Your recipes stay in Spotify and come back when you connect again\./.test(clearSection) && !/If something looks stuck/.test(clearSection));
+  check("its buttons are Cancel and a red Sign out and clear", JSON.stringify([...cb.document.querySelectorAll("#eeClear .dlg-foot button")].map((b) => b.textContent.trim())) === JSON.stringify(["Cancel", "Sign out and clear"]) && cb.document.getElementById("clearYes").classList.contains("dlg-danger"));
 
 
   // ---------------- the old numbered steps
@@ -850,29 +850,17 @@ print(json.dumps(out))
 
 
 
-  var cc = cb.document.getElementById("clearConfirm");
 
 
   // ---------------- the Sign out and clear data question
   var cq = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI } });
-  var cqBox = cq.document.getElementById("clearConfirm");
-  var cqBtn = cq.document.getElementById("clearData");
   cq.eval("reloadPage = () => { window.__reloadedByClear = true; }");
-  check("before it is asked, the Sign out and clear data button is enabled and the question is hidden", cqBox.hidden === true && cqBtn.disabled === false);
-  cqBtn.click();
-  var cqLead = cqBox.querySelector("p");
-  check("the question is plain text, not bold, so it does not read like a heading", cqLead.textContent === "Sign out and erase Arc’s data in this browser?" && !cqLead.querySelector("strong, b, h1, h2, h3, h4") && !cqBox.querySelector("strong, b"));
-  check("while the question is showing, the Sign out and clear data button is disabled", cqBox.hidden === false && cqBtn.disabled === true);
-  cqBtn.click();
-  check("clicking the disabled button does nothing more", cqBox.hidden === false && cqBtn.disabled === true);
-  cq.document.getElementById("clearNo").click();
-  check("Cancel closes the question and turns the button back on", cqBox.hidden === true && cqBtn.disabled === false);
-  cqBtn.click();
+  cq.eval("openInfo('eeClear')");
   var cqCopied = []; cq.navigator.clipboard = { writeText: async (t) => { cqCopied.push(t); } };
   cq.localStorage.setItem("clientId", "cq-id");
   cq.document.getElementById("clearYes").click();
   await waitFor(() => cq.__reloadedByClear === true, 5000);
-  check("Sign out and clear clears everything and reloads, leaving the button off", cq.localStorage.length === 0 && cq.__reloadedByClear === true && cqBtn.disabled === true);
+  check("Sign out and clear clears everything and reloads", cq.localStorage.length === 0 && cq.__reloadedByClear === true);
   check("and it copies nothing to the clipboard, and says nothing about it: it is for leaving a computer that is not yours", cqCopied.length === 0 && !/clipboard/i.test(cq.document.getElementById("eeClear").textContent));
   var so = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { clientId: "so-id", formats: MINI } });
   so.eval("reloadPage = () => { window.__reloadedByStartOver = true; }");
@@ -908,9 +896,8 @@ print(json.dumps(out))
   var moCss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("the menu's popups are gray by default", /\.menu-popup(, [#\w-]+)* \{ color: var\(--muted\); \}/.test(moCss) && ["tutorialSection", "silenceHelp"].every((id) => fresh.document.getElementById(id).classList.contains("menu-popup")));
   check("their headings stay in the normal text color", /footer\.debug h3 \{[^}]*color: var\(--fg\)/.test(moCss));
-  check("its inputs, dropdowns and confirmation questions keep the normal text color", /#homeMore #clearConfirm \{ color: var\(--fg\); \}/.test(moCss));
   var moreBoxes = Array.from(fresh.document.querySelectorAll(".menu-popup"));
-  var loud = moreBoxes.flatMap((b) => Array.from(b.querySelectorAll("p, label, span"))).filter((el) => el.closest("#clearConfirm, .btn-label") === null && el.hasAttribute("style") && /color\s*:/.test(el.getAttribute("style")));
+  var loud = moreBoxes.flatMap((b) => Array.from(b.querySelectorAll("p, label, span"))).filter((el) => el.closest(".btn-label") === null && el.hasAttribute("style") && /color\s*:/.test(el.getAttribute("style")));
   check("no paragraph in the menu's popups sets its own text color, so the gray applies everywhere", loud.length === 0, loud.map((e) => e.id || e.textContent.slice(0, 30)).join(","));
 
 
@@ -1753,7 +1740,6 @@ print(json.dumps(out))
   check("the songs of both playlists are saved in the browser", (await sv_count(sv_w11)) === 2);
   var sv_idb5 = new FDBFactory();
   var sv_w12 = await sv_run(sv_idb5, {});
-  sv_w12.document.getElementById("clearData").click();
   sv_w12.document.getElementById("clearYes").click();
   await waitFor(() => sv_w12.__reloaded === true || true, 100);
   await new Promise((r) => setTimeout(r, 300));
@@ -2195,8 +2181,8 @@ print(json.dumps(out))
   var su_bad = await boot({ url: "http://127.0.0.1:8000/", session: { startupRefreshed: "1" }, htmlChange: (h) => h.replace('id="formatEditor"', 'id="oldEditor"') });
   su_radio(su_bad, "existing").click();
   check("if a step of starting up throws, the steps after it still run and the choices still work", su_bad.document.getElementById("flowExisting").hidden === false && su_bad.document.getElementById("startupProblem").hidden === true === false || su_bad.document.getElementById("flowExisting").hidden === false);
-  var su_none = await boot({ url: "http://127.0.0.1:8000/", session: { startupRefreshed: "1" }, htmlChange: (h) => h.replace('id="clearData"', 'id="oldClear"') });
-  check("a missing button does not stop the ones after it from working", su_none.document.getElementById("startupProblem").hidden === false && su_none.eval("startupProblems").some((p) => /missing element clearData/.test(p)));
+  var su_none = await boot({ url: "http://127.0.0.1:8000/", session: { startupRefreshed: "1" }, htmlChange: (h) => h.replace('id="clearYes"', 'id="oldClear"') });
+  check("a missing button does not stop the ones after it from working", su_none.document.getElementById("startupProblem").hidden === false && su_none.eval("startupProblems").some((p) => /missing element clearYes/.test(p)));
   su_none.document.getElementById("connect").click();
   check("Connect, which comes after it in the startup code, is still wired", /Enter your Client ID|Client ID/i.test(su_none.document.getElementById("loginMessage").textContent) || su_none.document.getElementById("loginMessage").textContent !== "");
   var su_css = su_html.replace(/\s+/g, " ");
@@ -2226,7 +2212,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16zh", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16zj", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -2372,14 +2358,14 @@ print(json.dumps(out))
   check("every topic heading in Privacy has an icon, ahead of its text", [...gf_d.querySelectorAll("#privacySection details.gd-topic > summary")].every(s => s.querySelector(".gd-thead > .gd-ticon svg") && s.querySelector(".gd-thead > .gd-ttext").textContent.trim() && !s.querySelector(".gd-ticon").textContent));
   check("a heading's icon is grey, and pink while its topic is open", /details\.gd-topic > summary \.gd-ticon \{[^}]*color: var\(--muted\)/.test(gf_html) && /details\.gd-topic\[open\] > summary \.gd-ticon \{ color: var\(--accent\)/.test(gf_html));
   gf_w.eval("closeInfo(true); showView(\"home\", false)");
-  check("Everything else on home is a card of grey rows that open in place, Privacy first, each its icon from FE_ICONS and its name, Sign out and clear data with the sign-out arrow", JSON.stringify([...gf_d.querySelectorAll("#homeMore > details.hp-ee-row > summary")].map(t => t.textContent.trim())) === JSON.stringify(["Privacy", "Change Spotify login", "Sign out and clear data"]) && /#homeMore \.hp-ee-row > summary \{[^}]*color: var\(--muted\)/.test(gf_html) && gf_d.querySelector("#eeClearRow .hp-ee-ico").innerHTML === gf_w.eval("feIcon(\"logout\").outerHTML") && [...gf_d.querySelectorAll("#homeMore .hp-ee-row")].every(r => r.querySelector("summary .hp-ee-ico svg") && r.querySelector("summary .hp-ee-chev") && r.querySelector(":scope > .hp-ee-panel")) && !gf_d.querySelector("#homeMore [role=tab], #homeMore .hp-ee-tab, #eeClose"));
+  check("Everything else on home is a card of grey rows that open in place, only Privacy now, its icon from FE_ICONS and its name", JSON.stringify([...gf_d.querySelectorAll("#homeMore > details.hp-ee-row > summary")].map(t => t.textContent.trim())) === JSON.stringify(["Privacy"]) && /#homeMore \.hp-ee-row > summary \{[^}]*color: var\(--muted\)/.test(gf_html) && gf_d.querySelector("#eePrivacyRow .hp-ee-ico").innerHTML === gf_w.eval("feIcon(\"lock\").outerHTML") && [...gf_d.querySelectorAll("#homeMore .hp-ee-row")].every(r => r.querySelector("summary .hp-ee-ico svg") && r.querySelector("summary .hp-ee-chev") && r.querySelector(":scope > .hp-ee-panel")) && !gf_d.querySelector("#homeMore [role=tab], #homeMore .hp-ee-tab, #eeClose"));
   check("closed at first", [...gf_d.querySelectorAll("#homeMore .hp-ee-row")].every(r => !r.open));
   check("a row's icon and chevron turn pink while it is open", /#homeMore \.hp-ee-row\[open\] > summary \.hp-ee-chev \{[^}]*border-color: var\(--accent\)/.test(gf_html) && /#homeMore \.hp-ee-row\[open\] > summary \.hp-ee-ico \{ color: var\(--accent\)/.test(gf_html));
   check("Color, Feedback and Report a problem are not on home's page but in its ⋯ menu", !gf_d.querySelector("#homeMore #colorBlock, #homeMore #reportBlock, #homeMore #feedbackBlock, #homeMore #themeSwatches"));
   check("home's ⋯ sits in its band, in the top right corner, as far in as Arc's icon", gf_d.getElementById("feAppMenu").parentElement.id === "hpMenuSlot" && gf_d.getElementById("hpMenuSlot").parentElement.classList.contains("hp-band") && /#homePage #hpMenuSlot \{ position: absolute; top: 16px; right: 16px;/.test(gf_html));
   gf_d.getElementById("feAppMenuButton").click();
   var gf_home = Array.from(gf_d.querySelectorAll("#feAppMenuPanel > *")).map((k) => k.id || k.className);
-  check("home's ⋯ menu: Color, a line, Feedback, Report a problem, a line, the version", JSON.stringify(gf_home) === JSON.stringify(["feColor", "fe-rule", "feFeedback", "feReport", "fe-rule", "feMenuVersion"]), JSON.stringify(gf_home));
+  check("home's ⋯ menu: Color, a line, Feedback, Report a problem, a line, Change Spotify login, Sign out and clear data, a line, the version", JSON.stringify(gf_home) === JSON.stringify(["feColor", "fe-rule", "feFeedback", "feReport", "fe-rule", "feLogin", "feClear", "fe-rule", "feMenuVersion"]) && gf_d.getElementById("feLogin").textContent.trim() === "Change Spotify login" && gf_d.getElementById("feClear").textContent.trim() === "Sign out and clear data" && gf_d.querySelector("#feClear .fe-icon").outerHTML === gf_w.eval("feIcon(\"logout\").outerHTML"), JSON.stringify(gf_home));
   check("Color shows the chosen color as a dot at its right", !!gf_d.querySelector("#feColor .fe-colordot") && gf_d.querySelector("#feColor").lastElementChild.classList.contains("fe-colordot") && gf_d.querySelector("#feColor .fe-colordot").style.background !== "");
   gf_d.getElementById("feColor").click();
   check("and opens the swatches in the menu's popup, titled Color, with only its X to close it (no Done)", gf_d.getElementById("infoOverlay").hidden === false && gf_d.getElementById("infoTitle").textContent === "Color" && !!gf_d.querySelector("#infoSlot #colorBlock #themeSwatches .theme-swatch") && !gf_d.querySelector("#infoSlot #colorBlock .dlg-foot"));
@@ -3432,7 +3418,7 @@ print(json.dumps(out))
   var sw_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   check("the privacy text says that each recipe is kept in a private playlist's description in the person's own Spotify", /<b>In your <span data-service>Spotify<\/span>:<\/b> each recipe, in a <span data-only="spotify">private<\/span><span data-only="tidal" hidden>unlisted<\/span> playlist's description\. /.test(sw_html) && !/back up by hand/.test(sw_html));
   var sw_s = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "spotify" }, fetchOptions: {} });
-  check("Sign out and clear data says the recipes stay in Spotify and come back when connecting again, and does not mention a file", /Your recipes stay in Spotify/.test(sw_s.document.getElementById("clearRestoreHelp").textContent) && /come back when you connect again/.test(sw_s.document.getElementById("clearConfirmHelp").textContent) && !/restore from a backup|Restore in/.test(sw_s.document.getElementById("clearRestoreHelp").textContent + sw_s.document.getElementById("clearConfirmHelp").textContent));
+  check("Sign out and clear data says the recipes stay in Spotify and come back when connecting again, and does not mention a file", /Your recipes stay in Spotify/.test(sw_s.document.getElementById("clearRestoreHelp").textContent) && /come back when you connect again/.test(sw_s.document.getElementById("clearRestoreHelp").textContent) && !/restore from a backup|Restore in/.test(sw_s.document.getElementById("clearRestoreHelp").textContent));
   } catch (err) { areaCrashed("spotify wording", err); } }
 
 
@@ -4681,7 +4667,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16zh"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16zj"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

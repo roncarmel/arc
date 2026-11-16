@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16zh";
+const APP_VERSION = "2026-11-16zj";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -3699,17 +3699,6 @@ async function main() {
     });
   }
   initMessageForms();
-  on("clearData", "click", () => {
-    $("clearConfirm").hidden = false;
-    $("clearData").disabled = true;    // the question is already open, so the button that opened it waits
-    // the question and its buttons can open below the bottom of the screen: bring them into view once the popup has grown (smoothResize, 0.32 s)
-    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if ($("clearConfirm").scrollIntoView) setTimeout(() => $("clearConfirm").scrollIntoView({ block: "nearest", behavior: still ? "auto" : "smooth" }), still ? 0 : 340);
-  });
-  on("clearNo", "click", () => {
-    $("clearConfirm").hidden = true;
-    $("clearData").disabled = false;
-  });
   on("clearYes", "click", () => clearSavedData());
   // The DEV menu's rows (editor.js opens and closes it): each closes the menu first, so its question or message is in view
   on("devStartOver", "click", async () => {
