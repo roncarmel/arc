@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16w";
+const APP_VERSION = "2026-11-16x";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2340,7 +2340,7 @@ async function connectToSpotify() {
     setConnection("ready");
     endLimitWait();
     logStep(`connected, ${plural(playlists.length, "playlist")} found`);
-    if (!localStorage.getItem("counted") && countEvent("first-connection")) localStorage.setItem("counted", "1");   // once per browser
+    if (!localStorage.getItem("counted") && countEvent(serviceCount("first-connection"))) localStorage.setItem("counted", "1");   // once per browser
     countActiveDay();
   } catch (err) {
     const message = String(err.message || err);
@@ -2597,6 +2597,9 @@ function countEvent(name, title) {
   return false;
 }
 
+// The service goes into the name (GoatCounter counts by name): first-connection-spotify, active-first-week-tidal (Ron, 2026-11-16)
+function serviceCount(name) { return name + "-" + service.key; }
+
 // Once a day per browser, how long since this browser first connected, so returning people show apart from new ones.
 // Only the span goes out; the dates stay in localStorage.
 function countActiveDay() {
@@ -2606,7 +2609,7 @@ function countActiveDay() {
     const since = Number(localStorage.getItem("countedSince")) || now;
     const days = (now - since) / 86400000;
     const span = days < 7 ? "first-week" : days < 14 ? "second-week" : days < 28 ? "weeks-3-4" : days < 90 ? "months-2-3" : "after-3-months";
-    if (countEvent("active-" + span)) {
+    if (countEvent(serviceCount("active-" + span))) {
       localStorage.setItem("countedDay", today);
       if (!localStorage.getItem("countedSince")) localStorage.setItem("countedSince", String(since));
     }

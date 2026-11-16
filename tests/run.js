@@ -97,7 +97,17 @@ function tidalAnswer(options, url, method, init, json) {
   const asPlaylist = (p) => ({ id: p.id, type: "playlists", attributes: { name: p.name, description: st.descs[p.id] !== undefined ? st.descs[p.id] : (p.description || ""), numberOfItems: songsOf(p.id).length, lastModifiedAt: "2026-11-16T10:00:00Z", accessType: p.accessType || "PUBLIC" }, relationships: { owners: { data: [{ type: "users", id: "777" }] } } });
   const page = (items, mapped) => { const at = Number(u.searchParams.get("page[cursor]") || 0); const next = at + 20 < items.length ? (u.searchParams.set("page[cursor]", String(at + 20)), u.pathname.replace(/^\/v2/, "") + "?" + u.searchParams.toString()) : null; return { data: items.slice(at, at + 20).map(mapped), links: next ? { next } : {} }; };
   if (method === "GET" && path === "/users/me") return json({ data: { id: "777", type: "users", attributes: { username: "ron", country: "US" } } });
-  if (method === "GET" && path === "/playlists") return json(page(all(), asPlaylist));
+  if (method === "GET" && path === "/playlists") {
+    // with include=coverArt,suggestedCoverArts: the first playlist has its own cover, the second only suggested ones, the rest none
+    const p = page(all(), asPlaylist), want = (u.searchParams.get("include") || "").split(",");
+    const art = (id, sizes) => ({ id, type: "artworks", attributes: { mediaType: "IMAGE", files: sizes.map((n) => ({ href: `https://resources.tidal.com/images/${id}/${n}x${n}.jpg`, meta: { width: n, height: n } })) } });
+    const included = [];
+    for (const d of p.data) {
+      if (d.id === TIDAL_PLAYLISTS[0].id && want.includes("coverArt")) { d.relationships = { coverArt: { data: [{ id: "own1", type: "artworks" }] } }; included.push(art("own1", [1080, 640, 320, 160, 80])); }
+      if (d.id === TIDAL_PLAYLISTS[1].id && want.includes("suggestedCoverArts")) { d.relationships = { coverArt: { data: [] }, suggestedCoverArts: { data: [{ id: "sug1", type: "artworks" }, { id: "sug2", type: "artworks" }] } }; included.push(art("sug1", [750, 480, 320]), art("sug2", [640])); }
+    }
+    return json(included.length ? { ...p, included } : p);
+  }
   if (method === "POST" && path === "/playlists") { const a = body.data.attributes; const made = { id: tidalUuid(900 + st.created.length), name: a.name, description: a.description, accessType: a.accessType }; st.created.push(made); st.descs[made.id] = a.description; return json({ data: asPlaylist(made) }, 201); }
   let m = path.match(/^\/playlists\/([0-9a-f-]+)\/relationships\/items$/);
   if (m && method === "POST") { if (body.data.length > 50) return json({ errors: [{ status: "400" }] }, 400); st.adds.push({ id: m[1], ids: body.data.map((r) => r.id) }); return json({}, 201); }
@@ -686,10 +696,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly these seven, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16w" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16x" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16w/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16x/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -2005,9 +2015,9 @@ print(json.dumps(out))
   var pv_counts = (w) => w.__counts || [];
   var pv_before = (w) => { w.goatcounter = { count: (v) => { (w.__counts = w.__counts || []).push(v); } }; };
   var pv_c1 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {}, before: pv_before });
-  check("the first connection in a browser is counted once, with a marker so the next visit does not count it again", pv_counts(pv_c1).filter((e) => e.path === "first-connection").length === 1 && pv_c1.localStorage.getItem("counted") === "1" && pv_counts(pv_c1)[0].event === true);
+  check("the first connection in a browser is counted once, with a marker so the next visit does not count it again", pv_counts(pv_c1).filter((e) => e.path === "first-connection-spotify").length === 1 && pv_c1.localStorage.getItem("counted") === "1" && pv_counts(pv_c1)[0].event === true);
   var pv_c2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, counted: "1" }, fetchOptions: {}, before: pv_before });
-  check("a browser already counted is not counted again", pv_counts(pv_c2).filter((e) => e.path === "first-connection").length === 0);
+  check("a browser already counted is not counted again", pv_counts(pv_c2).filter((e) => e.path === "first-connection-spotify").length === 0);
   var pv_c3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { meStatus: 429, meBody: { error: { reason: "QUOTA_EXCEEDED" } } }, before: pv_before });
   check("a connection problem is counted as its kind only, and the first connection is not counted when there was none", JSON.stringify(pv_counts(pv_c3).map((e) => [e.path, e.title])) === JSON.stringify([["connection-problem", "quota"]]) && pv_c3.localStorage.getItem("counted") === null);
   var pv_kinds = [[{ meStatus: 429, retryAfter: 120 }, "rate-limit"], [{ meNetworkFail: true }, "network"], [{ meStatus: 401 }, "sign-in"], [{ meStatus: 500 }, "other"]];
@@ -2020,11 +2030,11 @@ print(json.dumps(out))
   check("a successful build counts the playlist made, as a number and nothing else", JSON.stringify(pv_counts(pv_c4).filter((e) => !/^active-/.test(e.path)).map((e) => [e.path, e.title])) === JSON.stringify([["playlists-created", "1"]]), JSON.stringify(pv_counts(pv_c4)));
   var pv_all = pv_counts(pv_c1).concat(pv_counts(pv_c3), pv_counts(pv_c4));
   // a day of use, by how long since this browser first connected
-  check("connecting counts the day once, as the browser's first week, and keeps the dates only here", JSON.stringify(pv_counts(pv_c1).filter((e) => /^active-/.test(e.path)).map((e) => e.path)) === JSON.stringify(["active-first-week"]) && pv_c1.localStorage.getItem("countedDay") === new Date().toDateString() && Number(pv_c1.localStorage.getItem("countedSince")) > 0);
+  check("connecting counts the day once, as the browser's first week, and keeps the dates only here", JSON.stringify(pv_counts(pv_c1).filter((e) => /^active-/.test(e.path)).map((e) => e.path)) === JSON.stringify(["active-first-week-spotify"]) && pv_c1.localStorage.getItem("countedDay") === new Date().toDateString() && Number(pv_c1.localStorage.getItem("countedSince")) > 0);
   var pv_d1 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, counted: "1", countedSince: String(Date.now() - 40 * 86400000), countedDay: new Date().toDateString() }, fetchOptions: {}, before: pv_before });
   check("the same day is not counted twice", pv_counts(pv_d1).filter((e) => /^active-/.test(e.path)).length === 0);
   var pv_d2 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, counted: "1", countedSince: String(Date.now() - 40 * 86400000), countedDay: "Mon Jan 01 2024" }, fetchOptions: {}, before: pv_before });
-  check("a later day says how long since the first connection, here months 2 to 3", JSON.stringify(pv_counts(pv_d2).filter((e) => /^active-/.test(e.path)).map((e) => e.path)) === JSON.stringify(["active-months-2-3"]));
+  check("a later day says how long since the first connection, here months 2 to 3", JSON.stringify(pv_counts(pv_d2).filter((e) => /^active-/.test(e.path)).map((e) => e.path)) === JSON.stringify(["active-months-2-3-spotify"]));
   // the tutorial
   pv_c2.__counts = [];
   pv_c2.eval("watchTutorial()");
@@ -2197,7 +2207,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16w", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16x", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4073,11 +4083,14 @@ print(json.dumps(out))
   // (tidalAnswer): it connects, names TIDAL, sends nothing to Spotify, saves recipes and builds a participant's playlist the way TIDAL takes them
   var td_opts = {}, td_from = log.length;
   var td_scope = "playlists.read playlists.write collection.read user.read search.read";
-  var td = await boot({ url: EDURL, session: { tidalToken: JSON.stringify({ value: "tt", expires: Date.now() + 3600000, scope: td_scope }) }, local: { formats: MINI, connectedBefore: "1", arcService: "tidal", clientId: "tidal-client", backupMode: "spotify" }, fetchOptions: td_opts });
+  var td = await boot({ url: EDURL, session: { tidalToken: JSON.stringify({ value: "tt", expires: Date.now() + 3600000, scope: td_scope }) }, local: { formats: MINI, connectedBefore: "1", arcService: "tidal", clientId: "tidal-client", backupMode: "spotify" }, fetchOptions: td_opts, before: (w) => { w.goatcounter = { count: (v) => { (w.__counts = w.__counts || []).push(v.path); } }; } });
   await waitFor(() => td.eval("connection") === "ready", 15000);
   var td_d = td.document;
   check("under arcService tidal the page uses TIDAL and connects to it", td.eval("service.key") === "tidal" && td.eval("connection") === "ready" && td.eval("playlists.length") === 4, td.eval("connection") + " " + td.eval("JSON.stringify((playlists || []).map((p) => p.name))"));
   check("the page names TIDAL, and with no requirement the Spotify Premium lines are hidden", td_d.querySelector(".hp-band .wp-band-tag").textContent.includes("for your TIDAL library") && Array.from(td_d.querySelectorAll("[data-requirement]")).every((el) => el.hidden));
+  check("the anonymous counts name TIDAL: its first connection and active day end in -tidal, as Spotify's end in -spotify", JSON.stringify((td.__counts || []).filter((p) => /^(first-connection|active-)/.test(p))) === JSON.stringify(["first-connection-tidal", "active-first-week-tidal"]), JSON.stringify(td.__counts));
+  var td_pl = (i) => td.eval(`JSON.stringify(playlists.find((p) => p.id === "${TIDAL_PLAYLISTS[i].id}"))`);
+  check("TIDAL's covers are read with the list: a playlist's own, else the first TIDAL suggests; the smallest of 160 px or more for lists and the largest up to 640 for Music sharing; none stays none", JSON.parse(td_pl(0)).image === "https://resources.tidal.com/images/own1/160x160.jpg" && JSON.parse(td_pl(0)).cover === "https://resources.tidal.com/images/own1/640x640.jpg" && JSON.parse(td_pl(1)).image === "https://resources.tidal.com/images/sug1/320x320.jpg" && JSON.parse(td_pl(1)).cover === "https://resources.tidal.com/images/sug1/480x480.jpg" && JSON.parse(td_pl(2)).image === null, td_pl(0) + " " + td_pl(1));
   check("nothing goes to Spotify while TIDAL is the service", !log.slice(td_from).some((e) => /spotify\.com/.test(e.url)), JSON.stringify(log.slice(td_from).filter((e) => /spotify\.com/.test(e.url)).map((e) => e.url).slice(0, 3)));
   check("a TIDAL playlist ID (a UUID) packs into 16 bytes and back unchanged", td.eval(`service.idToBytes("${TIDAL_PLAYLISTS[0].id}").length`) === 16 && td.eval(`service.idFromBytes(service.idToBytes("${TIDAL_PLAYLISTS[0].id}"))`) === TIDAL_PLAYLISTS[0].id && td.eval("service.idToBytes('5kiJ9x6eX37H5J9lyyXkua')") === null);
   td.eval("spotifySaveDelayMs = 50; spotifySaveMaxWaitMs = 200");
@@ -4533,7 +4546,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16w"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16x"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

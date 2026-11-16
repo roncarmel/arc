@@ -1,8 +1,8 @@
 // service-tidal.js: TIDAL as Arc's music service (work/tidal-plan.md, stage 4), the same members as service-spotify.js over TIDAL's API
 // (openapi.tidal.com/v2, JSON:API). Sign-in is PKCE from the page, with a refresh token; requests are paced at about 2 a second, and a refusal (429)
 // is tried again after 2, 4, 8... seconds, since TIDAL's refusals clear in about 2 s (tested on Ron's account, 2026-11-16). Every TIDAL address and quirk
-// stays in this file. TIDAL has no covers through its API and no private playlists: what Arc makes is Unlisted (anyone with the link can open it).
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-tidal.js"] = "2026-11-16w";   // this file's version, checked against the app's at startup
+// stays in this file. TIDAL lets an app read covers but not set them, and has no private playlists: what Arc makes is Unlisted (anyone with the link can open it).
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-tidal.js"] = "2026-11-16x";   // this file's version, checked against the app's at startup
 
 const TIDAL_API = "https://openapi.tidal.com/v2";
 const TIDAL_AUTH_URL = "https://login.tidal.com/authorize";
@@ -215,15 +215,36 @@ function tidalSong(t, byKey) {
   if (a.isrc) song.key = "isrc:" + String(a.isrc).toUpperCase();
   return song;
 }
-function tidalPlaylist(p) {
+// A playlist's cover from what TIDAL included: its own cover art, else the first of the ones TIDAL suggests (from its albums).
+// image: the smallest file of at least 160 px, for lists; cover: the largest up to 640 px, for Music sharing. Read only: a third-party app can't upload one (w_usr is TIDAL's own).
+function tidalCovers(p, byKey) {
+  const rel = p.relationships || {};
+  const refs = [].concat((rel.coverArt && rel.coverArt.data) || [], (rel.suggestedCoverArts && rel.suggestedCoverArts.data) || []);
+  for (const ref of refs) {
+    const art = ref && byKey[ref.type + ":" + ref.id];
+    const files = ((art && art.attributes && art.attributes.files) || [])
+      .filter((f) => f && typeof f.href === "string" && f.href.startsWith("https://"))
+      .map((f) => ({ href: f.href, w: (f.meta && f.meta.width) || 0 }))
+      .sort((x, y) => x.w - y.w);
+    if (!files.length) continue;
+    const image = files.find((f) => f.w >= 160) || files[files.length - 1];
+    const cover = files.filter((f) => f.w <= 640).pop() || files[0];
+    return { image: image.href, cover: cover.href };
+  }
+  return { image: null, cover: null };
+}
+const tidalIncluded = (included) => Object.fromEntries((included || []).map((x) => [x.type + ":" + x.id, x]));
+const TIDAL_COVERS = "coverArt,suggestedCoverArts";
+function tidalPlaylist(p, byKey = {}) {
   const a = p.attributes || {};
+  const { image, cover } = tidalCovers(p, byKey);
   return {
     id: p.id,
     name: a.name || "",
     owner: tidalUserId || null,   // listed by owner, so every one is this account's
     collaborative: false,
-    image: null,   // covers are not read yet
-    cover: null,
+    image,
+    cover,
     count: typeof a.numberOfItems === "number" ? a.numberOfItems : null,
     description: typeof a.description === "string" ? a.description : null,
     version: a.lastModifiedAt || null,   // changes whenever the playlist does
@@ -285,15 +306,16 @@ const tidalService = {
   // playlists
   async listMyPlaylists({ onPage } = {}) {
     if (!tidalUserId) await tidalService.me();
-    const r = await tidalPages("/playlists?filter[owners.id]=me", { onPage: onPage ? (n) => onPage(n, n) : null });
-    const list = r.data.filter((p) => p && p.type === "playlists").map(tidalPlaylist);
+    const r = await tidalPages(`/playlists?filter[owners.id]=me&include=${TIDAL_COVERS}`, { onPage: onPage ? (n) => onPage(n, n) : null });
+    const byKey = tidalIncluded(r.included);
+    const list = r.data.filter((p) => p && p.type === "playlists").map((p) => tidalPlaylist(p, byKey));
     return Object.assign(list, { total: list.length, pages: [], hidden: [], leftOut: 0, reread: false, short: "" });
   },
   async readPlaylist(id) {
-    const r = await tidal(`/playlists/${encodeURIComponent(id)}?include=owners`);
-    const p = tidalPlaylist(r.data || { id, attributes: {} });
+    const r = await tidal(`/playlists/${encodeURIComponent(id)}?include=owners,${TIDAL_COVERS}`);
+    const p = tidalPlaylist(r.data || { id, attributes: {} }, tidalIncluded(r.included));
     const owner = r.data && r.data.relationships && r.data.relationships.owners && (r.data.relationships.owners.data || [])[0];
-    return { id: p.id || id, name: p.name, description: p.description, owner: owner ? String(owner.id) : null, image: null };
+    return { id: p.id || id, name: p.name, description: p.description, owner: owner ? String(owner.id) : null, image: p.image };
   },
   async inLibrary(id) {
     // a playlist TIDAL still has; deleting on TIDAL removes it for good
