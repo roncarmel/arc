@@ -292,6 +292,7 @@ function makeFetch(options = {}) {
     if (url.startsWith("https://api.spotify.com/v1/search")) {   // as Spotify answers apps like Arc's: the isrc: filter refused, a search by words allowed (Device checks, 2026-11-16)
       const q = new URL(url).searchParams.get("q") || "";
       (options.searches = options.searches || []).push(q);
+      (options.searchForms = options.searchForms || []).push(url.replace(/&q=.*$/, "").replace(/^.*\?type=track&/, ""));
       if (/^isrc:/.test(q)) return { ok: false, status: 403, headers: { get: () => null }, text: async () => "Forbidden", json: async () => ({}) };
       const items = (options.searchable || []).filter((t) => q.toLowerCase().includes(t.name.toLowerCase())).map((t) => ({ id: t.id, name: t.name, type: "track", uri: "spotify:track:" + t.id, external_ids: { isrc: t.isrc }, artists: [{ name: t.artist }], duration_ms: 200000 }));
       return json({ tracks: { items } });
@@ -715,10 +716,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly these seven, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16zj" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16zk" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16zj/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16zk/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -2212,7 +2213,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16zj", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16zk", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4222,6 +4223,7 @@ print(json.dumps(out))
   xs_t.document.getElementById("msMain").click();
   await waitFor(() => xs_t.eval("isAdded(sharing.library.shares.find((s) => s.id === 'z1'))"), 8000);
   check("Spotify refusing the isrc: filter, it is tried once and songs are then searched by title and artist", JSON.stringify(xs_t_opts.searches) === JSON.stringify(["isrc:TEST00100009", "Night river Ana Lune", "Lost Nobody"]), JSON.stringify(xs_t_opts.searches));
+  check("searches ask for 10 results and name no market", xs_t_opts.searchForms.every((f) => f === "limit=10"), JSON.stringify(xs_t_opts.searchForms));
   check("only a result with the same ISRC is taken, never a look-alike, and the worker hears both", JSON.stringify((xs_t_sh.matches || []).map((m) => [m.service, m.body.found, m.body.none])) === JSON.stringify([["spotify", { TEST00100009: "spFOUND000000000000001" }, ["TEST00100010"]]]), JSON.stringify(xs_t_sh.matches));
   xs_t.close();
   } catch (err) { areaCrashed("music sharing across services", err); }
@@ -4667,7 +4669,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16zj"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16zk"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

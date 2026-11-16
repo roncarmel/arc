@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16zj";
+const APP_VERSION = "2026-11-16zk";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2865,10 +2865,9 @@ const DC_AUTO = [
       names[isrc] = [title.join(" - "), artist];
     }
     const found = await service.findByIsrc(isrcs, { names });
-    if (found.stopped) {   // refused: is it search itself, or only its isrc: filter?
-      const err = found.stopped, plain = service.searchProbe ? await service.searchProbe() : "";
-      return { ok: false, note: `${err && err.message || err}${plain ? ` A plain search: ${plain}.` : ""}` };
-    }
+    // which forms of search the service allows, and the one in use (Spotify refused some to Arc, 2026-11-16)
+    const forms = service.searchProbe ? `Searches: ${await service.searchProbe()}.` : "";
+    if (found.stopped) return { ok: false, note: `${found.stopped && found.stopped.message || found.stopped} ${forms}`.trim() };
     const off = [], other = [];
     for (const isrc of isrcs) {
       if (!found[isrc]) { off.push(`${isrc} not found`); continue; }
@@ -2877,7 +2876,7 @@ const DC_AUTO = [
       if (!Object.values(service.silence).includes(found[isrc])) other.push(`${isrc}: ${found[isrc]}`);
     }
     const n = isrcs.length - off.length;
-    return { ok: !off.length, detail: `${n} of ${isrcs.length}`, note: [off.join("; "), other.length ? `Other IDs than Arc's own: ${other.join("; ")}.` : ""].filter(Boolean).join(" ") };
+    return { ok: !off.length, detail: `${n} of ${isrcs.length}`, note: [off.join("; "), other.length ? `Other IDs than Arc's own: ${other.join("; ")}.` : "", forms].filter(Boolean).join(" ") };
   } },
   { key: "list", name: "Your playlist list", what: "Every page arrives, none short", run: async () => {
     await loadMyPlaylists();   // a short page is read again, and a list still short throws
