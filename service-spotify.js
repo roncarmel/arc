@@ -2,7 +2,7 @@
 // no server), the refresh token, requests with their limits and waits, and the record of those limits; at its end the `service` object, the only way the rest
 // of Arc talks to Spotify (work/tidal-plan.md, "The service layer"): every Spotify address, URI and quirk stays in this file. It shows nothing itself: each page
 // fills serviceHooks with what to do and say, so this file names no element of any page. Loaded before the page's own script.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-spotify.js"] = "2026-11-16a";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-spotify.js"] = "2026-11-16b";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const serviceHooks = {
   scopes: "",                  // the permissions the sign-in asks for, space separated
@@ -584,6 +584,8 @@ async function pagedItems(path, { gapMs = 0, stopped = null } = {}) {
 const service = {
   key: "spotify",
   name: "Spotify",
+  // what an account needs to use Arc, for page text; null when any account will do
+  requirement: { name: "Spotify Premium", why: "Arc relies on a feature that is not available in Spotify Free accounts." },
   limits: { description: 300, addBatch: ADD_CHUNK },
   can: { covers: true, privatePlaylists: true, likedSongs: true },
   // Arc's silent tracks by length in seconds (engine.py combines them): Silence for Playlists, by silence moments

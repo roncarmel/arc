@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-16a";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-16b";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -622,7 +622,7 @@ function debugLink(text) {
   const link = feEl("button", { type: "button", class: "fe-sync-debug", id: "feSyncDebug", text: "Copy details" });
   link.addEventListener("click", async () => {
     try { await navigator.clipboard.writeText(text); link.textContent = "Copied. Paste it into the chat with Claude."; }
-    catch (err) { link.textContent = "Could not copy. It is in Copy Spotify request log too."; }
+    catch (err) { link.textContent = `Could not copy. It is in Copy ${service.name} request log too.`; }
   });
   return link;
 }
@@ -849,7 +849,7 @@ function renderAppMenu() {
     const connecting = connection === "connecting";
     // a problem that waiting can mend (the network, a rate limit) is tried again where it stopped; one in the sign-in itself, or no sign-in, starts a new sign-in
     const press = () => (typeof spotifyPause === "function" && spotifyPause() ? showPauseDialog() : connection === "problem" && connectionKind === "retry" && token ? connectToSpotify() : startLogin());
-    connectItems.push(feEl("button", { type: "button", class: "fe-item", id: "feConnect", role: "menuitem", disabled: connecting, onClick: choose(press) }, feIcon("link"), connecting ? "Connecting\u2026" : "Connect to Spotify"));
+    connectItems.push(feEl("button", { type: "button", class: "fe-item", id: "feConnect", role: "menuitem", disabled: connecting, onClick: choose(press) }, feIcon("link"), connecting ? "Connecting\u2026" : `Connect to ${service.name}`));
     const why = connecting ? "On a slow connection this can take a few seconds." : connection === "problem" ? $("connectionMessage").textContent : "";
     if (why) connectItems.push(feEl("div", { class: "fe-itemnote", id: "feConnectionNote", text: why }));
   }
@@ -1582,9 +1582,9 @@ function showLimitDialog() {
   if (editor.panel || editor.cardMenu || editor.gapPanel !== null || editor.appMenu) closePanels();
   const overlay = feEl("div", { class: "fe-overlay", id: "feLimitDialog", onClick: () => closeLimitDialog() },
     feEl("div", { class: "fe-dialog fe-pause-dialog", id: "feLimitBox", tabindex: "-1", role: "dialog", "aria-modal": "true", "aria-labelledby": "feLimitTitle", onClick: (e) => e.stopPropagation() },
-      feEl("h3", { id: "feLimitTitle", text: "Spotify asked Arc to wait" }),
+      feEl("h3", { id: "feLimitTitle", text: `${service.name} asked Arc to wait` }),
       feEl("div", { class: "fe-limit-clock", html: '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>' }),
-      feEl("p", { id: "feLimitWhy", class: "fe-limit-text", text: "Spotify limits how often each app may ask it for things. Arc asked too often, so Spotify stopped answering for a while, and did not say how long. It is usually a few minutes." }),
+      feEl("p", { id: "feLimitWhy", class: "fe-limit-text", text: `${service.name} limits how often each app may ask it for things. Arc asked too often, so ${service.name} stopped answering for a while, and did not say how long. It is usually a few minutes.` }),
       feEl("p", { class: "fe-limit-text", text: "Arc tries again by itself every 5 minutes. Recipes can still be edited meanwhile." }),
       feEl("div", { class: "row" },
         feEl("button", { type: "button", id: "feLimitClose", onClick: () => closeLimitDialog() }, "Close"),
@@ -1610,14 +1610,14 @@ function showPauseDialog() {
   const close = feEl("button", { type: "button", id: "fePauseClose", onClick: () => closePauseDialog() }, "Close");
   const overlay = feEl("div", { class: "fe-overlay", id: "fePauseDialog", onClick: () => closePauseDialog() },
     feEl("div", { class: "fe-dialog fe-pause-dialog", id: "fePauseBox", tabindex: "-1", role: "dialog", "aria-modal": "true", "aria-labelledby": "fePauseTitle", onClick: (e) => e.stopPropagation() },
-      feEl("h3", { id: "fePauseTitle", text: "Spotify paused this app" }),
+      feEl("h3", { id: "fePauseTitle", text: `${service.name} paused this app` }),
       feEl("div", { class: "fe-pause-ring", id: "fePauseRing" },
         feEl("div", { class: "fe-pause-label", text: "Back in" }),
         feEl("div", { class: "fe-pause-clock", id: "fePauseClock", text: clockText(pausedSecondsLeft()) }),
         feEl("div", { class: "fe-pause-at", id: "fePauseAt", text: "at " + new Date(pause.until).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) })),
       feEl("p", { id: "fePauseWhy", text: (quota
-        ? "Spotify limits how much each app may ask of it in a day. This app reached that limit, so Spotify stopped answering it for a while."
-        : "Spotify limits how often each app may ask it for things. This app asked too often, so Spotify stopped answering it for a while.")
+        ? `${service.name} limits how much each app may ask of it in a day. This app reached that limit, so ${service.name} stopped answering it for a while.`
+        : `${service.name} limits how often each app may ask it for things. This app asked too often, so ${service.name} stopped answering it for a while.`)
         + " Asking sooner does not help, so the app waits, and connects again by itself when the time is up." }),
       feEl("div", { class: "fe-pause-lists", id: "fePauseList" }, ...rows.map(row)),
       feEl("div", { class: "row" }, close)));
@@ -1958,7 +1958,7 @@ function menuPanel(f, item, index) {
     pop.appendChild(feEl("button", {
       type: "button", class: "fe-item", id: "feRefreshSongs",
       onClick: () => { editor.panel = null; renderRows(); refreshSongsFor(unwatched.map((l) => l.name)); },
-    }, feIcon("reset"), "Refresh songs from Spotify"));
+    }, feIcon("reset"), `Refresh songs from ${service.name}`));
   }
   pop.appendChild(feEl("div", { class: "fe-rule" }));   // the playlist choices above, the silences below
   // a silence can be added before or after this segment; the choice is dimmed where there is one already
@@ -2084,13 +2084,13 @@ function listPanel(item, slot) {
       feEl("span", { class: "fe-text" }, feEl("span", { class: "fe-title", text: p.name }),
         feEl("span", { class: "fe-sub", text: taken ? "Already in this mix" : (typeof p.count === "number" ? `${p.count} songs` : "") }))));
     }
-    if (!shown) list.appendChild(feEl("p", { class: "muted", style: "margin:8px", text: playlists.length ? "No playlists match." : (connection === "problem" ? "Your playlists could not be loaded. See the app menu." : connection === "none" ? "Connect to Spotify to see your playlists." : "Your playlists are still loading.") }));
+    if (!shown) list.appendChild(feEl("p", { class: "muted", style: "margin:8px", text: playlists.length ? "No playlists match." : (connection === "problem" ? "Your playlists could not be loaded. See the app menu." : connection === "none" ? `Connect to ${service.name} to see your playlists.` : "Your playlists are still loading.") }));
   };
   // During a wait with no list kept from an earlier visit there is nothing to search: say when the playlists come
   const pause = typeof spotifyPause === "function" ? spotifyPause() : null;
   if (pause && !playlists.length) {
     const back = pauseBackAtText(pause.until).replace(/^Back/, "back");
-    list.appendChild(feEl("p", { class: "muted fe-pausenote", id: "fePauseNote" }, `Your playlists will show here when Spotify is ${back}. `,
+    list.appendChild(feEl("p", { class: "muted fe-pausenote", id: "fePauseNote" }, `Your playlists will show here when ${service.name} is ${back}. `,
       feEl("button", { type: "button", class: "linklike", id: "fePauseNoteDetails", onClick: () => showPauseDialog() }, "Details")));
     return feEl("div", { class: "fe-pop fe-listpanel" }, list);
   }
@@ -2254,7 +2254,7 @@ function askDeleteFormat() {
   const overlay = feEl("div", { class: "fe-overlay", id: "feDeleteDialog", onClick: close },
     feEl("div", { class: "fe-dialog", role: "dialog", "aria-modal": "true", "aria-label": "Delete recipe", onClick: (e) => e.stopPropagation() },
       feEl("h3", { text: `Delete ${named(f.title.trim() || "Untitled")}?` }),
-      feEl("p", { class: "muted", text: `This permanently removes the recipe from this list and from Spotify. Playlists built from this recipe for participants stay. Are you sure you want to delete it?` }),
+      feEl("p", { class: "muted", text: `This permanently removes the recipe from this list and from ${service.name}. Playlists built from this recipe for participants stay. Are you sure you want to delete it?` }),
       feEl("div", { class: "row" }, cancel, confirm)));
   document.body.appendChild(overlay);
   document.addEventListener("keydown", onKey);
@@ -2727,7 +2727,7 @@ function refreshBuildButtons() {
   const action = connectionAction();
   const paused = typeof spotifyPause === "function" && !!spotifyPause();
   const ready = !!token && connection === "ready" && !!py && formatsValid && !busy && !paused;
-  const word = action ? (connection === "problem" && connectionKind !== "reconnect" ? "Try again" : "Connect to Spotify") : buildWord();
+  const word = action ? (connection === "problem" && connectionKind !== "reconnect" ? "Try again" : `Connect to ${service.name}`) : buildWord();
   for (const b of document.querySelectorAll("#builderHome .bh-build")) {
     b.setAttribute("aria-label", word);
     b.title = word;
@@ -3100,7 +3100,7 @@ function askDeleteParticipant(code) {
   const confirm = feEl("button", { type: "button", class: "fe-danger-button", id: "bhDeleteConfirm", onClick: async () => {
     close();
     // A second question before anything goes (Ron, 2026-11-12): it starts on Cancel
-    const sure = await askSyncChoice("Are you sure?", `${n === 1 ? "1 playlist" : n + " playlists"} will be deleted from your Spotify, and Arc can't undo it.`,
+    const sure = await askSyncChoice("Are you sure?", `${n === 1 ? "1 playlist" : n + " playlists"} will be deleted from your ${service.name}, and Arc can't undo it.`,
       [{ label: "Cancel", value: false }, { label: "Delete", value: true, danger: true }]);
     if (sure) deleteParticipant(code, person.playlists);
   } },
@@ -3112,7 +3112,7 @@ function askDeleteParticipant(code) {
   const overlay = feEl("div", { class: "fe-overlay", id: "bhDeleteDialog", onClick: close },
     feEl("div", { class: "fe-dialog bh-del-dialog", role: "dialog", "aria-modal": "true", "aria-label": `Delete ${code}`, onClick: (e) => e.stopPropagation() },
       feEl("h3", { text: `Delete ${code}?` }),
-      feEl("p", { class: "bh-del-text", text: `${code} is here because of the ${n === 1 ? "playlist" : n + " playlists"} Arc built for them. Deleting ${code} also deletes ${n === 1 ? "that playlist" : "those playlists"} from your Spotify.` }),
+      feEl("p", { class: "bh-del-text", text: `${code} is here because of the ${n === 1 ? "playlist" : n + " playlists"} Arc built for them. Deleting ${code} also deletes ${n === 1 ? "that playlist" : "those playlists"} from your ${service.name}.` }),
       list,
       // shared ones stop being shared first (Ron, 2026-11-14): the library never points at a playlist that is gone
       shared.length ? feEl("p", { class: "bh-del-text bh-del-shared", id: "bhDeleteShared", text: `${shared.length === 1 ? "1 of them is" : shared.length + " of them are"} in the shared playlist library and will stop being shared. Copies others got stay theirs.` }) : null,
@@ -3165,11 +3165,11 @@ function personPlaylists(person) {
     const share = shareIconButton(p);
     // with Share (Ron, 2026-11-14) the line is a link, then the button: a button can't sit inside a link
     if (share) box.appendChild(feEl("div", { class: "bh-pl bh-pl-split" + (isNew ? " pp-new" : "") },
-      feEl("a", { class: "bh-pl-main", href, target: "_blank", rel: "noopener", "aria-label": `${p.name}, open in Spotify` },
+      feEl("a", { class: "bh-pl-main", href, target: "_blank", rel: "noopener", "aria-label": `${p.name}, open in ${service.name}` },
         feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }), ...name),
-      open ? feEl("a", { class: "bh-pl-end", href, target: "_blank", rel: "noopener", "aria-label": "Open in Spotify" }, open) : null,
+      open ? feEl("a", { class: "bh-pl-end", href, target: "_blank", rel: "noopener", "aria-label": `Open in ${service.name}` }, open) : null,
       share));
-    else box.appendChild(feEl("a", { class: "bh-pl" + (isNew ? " pp-new" : ""), href, target: "_blank", rel: "noopener", "aria-label": `${p.name}, open in Spotify` },
+    else box.appendChild(feEl("a", { class: "bh-pl" + (isNew ? " pp-new" : ""), href, target: "_blank", rel: "noopener", "aria-label": `${p.name}, open in ${service.name}` },
       feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }), ...name,
       open ? feEl("span", { class: "bh-pl-end" }, open) : null));
   }
@@ -3179,7 +3179,7 @@ function personPlaylists(person) {
     box.appendChild(feEl("p", { class: "hb-subhead", text: "Heard before" }));
     for (const id of person.heard) {
       const info = heardInfo(id);
-      if (info.gone) box.appendChild(feEl("div", { class: "bh-pl hb-row hb-gone" }, feEl("span", { class: "bh-cover" }), feEl("span", { class: "bh-pl-name", text: info.name || "A playlist" }), feEl("span", { class: "hb-gone-note", text: "No longer in Spotify" })));
+      if (info.gone) box.appendChild(feEl("div", { class: "bh-pl hb-row hb-gone" }, feEl("span", { class: "bh-cover" }), feEl("span", { class: "bh-pl-name", text: info.name || "A playlist" }), feEl("span", { class: "hb-gone-note", text: `No longer in ${service.name}` })));
       else box.appendChild(feEl("a", { class: "bh-pl hb-row", href: service.playlistUrl(id), target: "_blank", rel: "noopener" },
         feEl("span", { class: "bh-cover", style: info.image ? `background-image:url("${info.image}")` : "" }),
         feEl("span", { class: "bh-pl-name bh-pl-ext", text: info.name || "\u2026" }), bhSvg(BH_EXT)));
@@ -3265,7 +3265,7 @@ function personBuildProblem(b) {
     return box;
   }
   return problemBox("The playlist was not finished", b.id
-    ? `${b.error} ${b.name} is in Spotify with only some of its songs. Delete it there, then build again.`
+    ? `${b.error} ${b.name} is in ${service.name} with only some of its songs. Delete it there, then build again.`
     : `${b.error} Nothing was made. Build again when you are ready.`,
     [], false, reportedLine(b.error, "er-sent"));   // Arc sends the report itself (autoReport); the link is there only if that failed
 }
@@ -3552,7 +3552,7 @@ function heardPicker(already, onChange, editing) {
       feEl("span", { class: "hb-check", html: on ? HB_TICK : "" }),
       feEl("span", { class: "bh-cover", style: p.image ? `background-image:url("${p.image}")` : "" }),
       feEl("span", { class: "bh-pl-name", text: p.name || (p.gone ? "A playlist" : "\u2026") }),
-      feEl("span", { class: "bh-pl-sub", text: had && on ? "Already in" : p.gone ? "No longer in Spotify" : p.count === null || p.count === undefined ? "" : p.count === 1 ? "1 song" : `${p.count} songs` }));
+      feEl("span", { class: "bh-pl-sub", text: had && on ? "Already in" : p.gone ? `No longer in ${service.name}` : p.count === null || p.count === undefined ? "" : p.count === 1 ? "1 song" : `${p.count} songs` }));
   }
   function paint() {
     const typed = search.value.trim().toLowerCase();

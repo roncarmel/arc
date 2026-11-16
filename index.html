@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-16a">
-<script src="theme.js?v=2026-11-16a"></script>
+<meta name="app-version" content="2026-11-16b">
+<script src="theme.js?v=2026-11-16b"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -611,7 +611,10 @@
   body.no-recipes #pythonNote, body.no-recipes #spotifyNote, body.no-recipes #editorNote, body.no-recipes #formatEditor .fe-caption { display: none; }
   /* Arc's bar and home (app.js showView): html.view-home, view-builder or view-sharing on the app page. The bar is over every view; the builder's parts show only in its view. */
   #appBar, #homePage { display: none; }
-  html.page-app #appBar { display: flex; align-items: center; gap: 8px; min-height: 44px; margin: 0 0 12px; position: relative; z-index: 60; }
+  html.page-app #appBar { display: flex; align-items: center; gap: 8px; min-height: 0; margin: 0 0 14px; padding: 8px 10px 8px 12px; border-radius: 18px; position: relative; z-index: 60; color: #fff;
+    background: linear-gradient(120deg, var(--accent-deep, #c2177f), var(--accent) 45%, color-mix(in srgb, var(--accent) 60%, #fff 40%) 70%, var(--accent)); background-size: 220% 100%; animation: wp-drift 9s ease-in-out infinite alternate;
+    box-shadow: 0 14px 26px -14px color-mix(in srgb, var(--accent) 45%, transparent); }   /* a short pink band in home's band's look, drifting with it (Ron, 2026-11-16, mockups/tool-band A) */
+  @media (prefers-reduced-motion: reduce) { html.page-app #appBar { animation: none; background-position: 0% 50%; } }
   #appBar .ab-left { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
   html.view-home #appBar .ab-left { visibility: hidden; }
   /* Music sharing's page is fixed under Arc's bar and only its list scrolls, so the document itself must not move: on an iPhone it bounced, taking the bar up over the tabs (Ron, 2026-11-10) */
@@ -641,20 +644,20 @@
   @keyframes vt-tool-in { from { opacity: 0; transform: translateY(50%); } }
   @keyframes vt-tool-out-down { to { opacity: 0; transform: translateY(50%); } }
   @keyframes vt-tool-in-down { from { opacity: 0; transform: translateY(-50%); } }
-  /* Arc's bar, quiet (decided by Ron, 2026-11-12, mockups/top-row A): the tool's icon and name as one button with its caret (Ron, 2026-11-14, mockups/tool-icon-bar),
-     and the ⋯ as a grey round button, so the only pink up here is the caret and the chosen tab under it */
+  /* Arc's bar (Ron, 2026-11-12, mockups/top-row A; a pink band since 2026-11-16, mockups/tool-band A): the tool's icon and name as one button with its caret (Ron, 2026-11-14, mockups/tool-icon-bar),
+     white on the band, and the ⋯ as a see-through white circle */
   #appBar .ab-ticon { flex: none; display: flex; }
-  #appBar .ab-ticon .tool-icon { width: 30px; height: 30px; border-radius: 8px; }
+  #appBar .ab-ticon .tool-icon { width: 30px; height: 30px; border-radius: 8px; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.55), 0 2px 4px rgba(0, 0, 0, 0.12), 0 6px 14px color-mix(in srgb, var(--accent-deep, #a8217c) 35%, transparent); }   /* home's white edge and shadow, to stand out on the pink */
   /* The tool's name opens a list of the tools and Arc home (decided by Ron, 2026-11-08, mockups/switch-tools.html A; openToolMenu in app.js) */
-  #appBar .ab-tool { display: inline-flex; align-items: center; gap: 6px; min-width: 0; margin: 0 0 0 -5px; padding: 5px 10px 5px 5px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; min-height: 0; border-radius: 10px; border: 0; background: transparent; box-shadow: none; color: var(--fg); font: inherit; font-weight: 800; font-size: 1.2rem; letter-spacing: -0.01em; cursor: pointer; }
+  #appBar .ab-tool { display: inline-flex; align-items: center; gap: 6px; min-width: 0; margin: 0 0 0 -5px; padding: 5px 10px 5px 5px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; min-height: 0; border-radius: 10px; border: 0; background: transparent; box-shadow: none; color: #fff; font: inherit; font-weight: 800; font-size: 1.2rem; letter-spacing: -0.01em; cursor: pointer; }
   #appBar .ab-tool-name { margin-left: 3px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #appBar .ab-caret { flex: none; color: var(--accent); transition: transform 0.2s var(--ease-out); }
-  #appBar .ab-tool[aria-expanded="true"] { background: color-mix(in srgb, var(--fg) 7%, transparent); }
+  #appBar .ab-caret { flex: none; color: #fff; opacity: 0.85; transition: transform 0.2s var(--ease-out); }
+  #appBar .ab-tool[aria-expanded="true"] { background: rgba(255, 255, 255, 0.16); }
   #appBar .ab-tool[aria-expanded="true"] .ab-caret { transform: rotate(180deg); }
-  @media (hover: hover) { #appBar .ab-tool:hover { outline: none; filter: none; background: color-mix(in srgb, var(--fg) 7%, transparent); } }
-  #appBar #feAppMenuButton { width: 40px; height: 40px; border-radius: 50%; border: 0; background: color-mix(in srgb, var(--fg) 6%, transparent); color: color-mix(in srgb, var(--fg) 70%, var(--bg)); }
-  #appBar #feAppMenuButton[aria-expanded="true"] { background: color-mix(in srgb, var(--fg) 11%, transparent); color: var(--fg); }
-  @media (hover: hover) { #appBar #feAppMenuButton:not(:disabled):hover { filter: none; outline: none; border-color: transparent; background-color: color-mix(in srgb, var(--fg) 11%, transparent); color: var(--fg); } }
+  @media (hover: hover) { #appBar .ab-tool:hover { outline: none; filter: none; background: rgba(255, 255, 255, 0.16); } }
+  #appBar #feAppMenuButton { width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, 0.18); color: #fff; }
+  #appBar #feAppMenuButton[aria-expanded="true"] { background: rgba(255, 255, 255, 0.28); color: #fff; }
+  @media (hover: hover) { #appBar #feAppMenuButton:not(:disabled):hover { filter: none; outline: none; border-color: transparent; background-color: rgba(255, 255, 255, 0.28); color: #fff; } }
   #appBar .ab-menu { position: absolute; left: 0; top: calc(100% + 6px); z-index: 70; width: min(340px, calc(100vw - 32px)); box-sizing: border-box; padding: 6px; border-radius: 18px; background: var(--bg); background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)); color: var(--fg); border: 1px solid var(--line); box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35); }
   #appBar .ab-menu[hidden]:not(.fx-leaving) { display: none; }
   #appBar .ab-mi { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 54px; margin: 0; padding: 8px 10px; border: 0; border-radius: 12px; box-sizing: border-box; background: transparent; box-shadow: none; color: var(--fg); font: inherit; font-weight: 400; text-align: left; cursor: pointer; }
@@ -2195,10 +2198,10 @@
 </head>
 <body>
 <div id="vtCover" aria-hidden="true"></div>
-<div id="launchScreen" role="status" aria-live="polite"><div class="ls-shade"></div><div class="ls-mid"><div class="wp-band ls-band"><span class="wp-band-icon" aria-hidden="true"></span><div class="wp-band-text"><p class="wp-band-name">Arc</p><p class="wp-band-tag">Ceremony playlist tools<br> for your Spotify library</p></div></div><div class="ls-foot"><span class="ls-spin" aria-hidden="true"></span><span class="ls-ok" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span id="lsStep">Starting</span></div></div></div>
+<div id="launchScreen" role="status" aria-live="polite"><div class="ls-shade"></div><div class="ls-mid"><div class="wp-band ls-band"><span class="wp-band-icon" aria-hidden="true"></span><div class="wp-band-text"><p class="wp-band-name">Arc</p><p class="wp-band-tag">Ceremony playlist tools<br> for your <span data-service>Spotify</span> library</p></div></div><div class="ls-foot"><span class="ls-spin" aria-hidden="true"></span><span class="ls-ok" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span id="lsStep">Starting</span></div></div></div>
 <div id="connectingScreen" role="status">
   <div class="cn-page">
-    <div class="wp-band"><span class="wp-band-icon" aria-hidden="true"></span><div class="wp-band-text"><p class="wp-band-name">Arc</p><p class="wp-band-tag">Ceremony playlist tools<br> for your Spotify library</p></div></div>
+    <div class="wp-band"><span class="wp-band-icon" aria-hidden="true"></span><div class="wp-band-text"><p class="wp-band-name">Arc</p><p class="wp-band-tag">Ceremony playlist tools<br> for your <span data-service>Spotify</span> library</p></div></div>
     <div class="cn-body">
       <div class="wp-joint cn-joint" aria-hidden="true">
         <svg class="wp-wire"><defs><clipPath id="cnBandClip"><rect class="wp-band-rect"/></clipPath></defs><path class="wp-wire-main"/><path class="wp-wire-band" clip-path="url(#cnBandClip)"/></svg>
@@ -2206,12 +2209,12 @@
         <svg class="wp-spotify" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12"/><path fill="#fff" d="M17.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
         <span class="wp-spotify-name">Your Spotify</span>
       </div>
-      <h2 class="cn-title cn-working">Connecting to Spotify</h2>
+      <h2 class="cn-title cn-working">Connecting to <span data-service>Spotify</span></h2>
       <h2 class="cn-title cn-finish">Setup complete!</h2>
       <p class="cn-lead cn-working">Almost there.</p>
-      <p class="cn-lead cn-finish">Arc is connected to your Spotify.</p>
+      <p class="cn-lead cn-finish">Arc is connected to your <span data-service>Spotify</span>.</p>
       <ul class="cn-list">
-    <li id="cnSignin" class="cn-step cn-active"><span class="cn-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span>Signing in to Spotify</span></li>
+    <li id="cnSignin" class="cn-step cn-active"><span class="cn-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span>Signing in to <span data-service>Spotify</span></span></li>
     <li id="cnPlaylists" class="cn-step"><span class="cn-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span>Reading your playlists</span></li>
     <li id="cnRecipes" class="cn-step"><span class="cn-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span>Loading your recipes</span></li>
     <li id="cnPython" class="cn-step cn-active"><span class="cn-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span>Starting the playlist builder</span></li>
@@ -2235,9 +2238,9 @@
 <div id="reconnectScreen" role="dialog" aria-modal="true" aria-labelledby="reconnectText" hidden>
   <div class="rc-card">
     <img src="arc-mark.png" alt="" width="56" height="56">
-    <p id="reconnectText" class="rc-text">Spotify needs you to sign in again.</p>
+    <p id="reconnectText" class="rc-text"><span data-service>Spotify</span> needs you to sign in again.</p>
     <p id="reconnectNote" class="error" hidden></p>
-    <button id="reconnectButton" class="primary" type="button"><img class="btn-icon" src="icons/connect.svg" alt="" width="20" height="20"><span class="btn-label">Reconnect to Spotify</span></button>
+    <button id="reconnectButton" class="primary" type="button"><img class="btn-icon" src="icons/connect.svg" alt="" width="20" height="20"><span class="btn-label">Reconnect to <span data-service>Spotify</span></span></button>
   </div>
 </div>
 <main>
@@ -2260,20 +2263,20 @@
   </div>
 
   <section id="welcomePage">
-    <div class="wp-band"><span class="wp-band-icon" aria-hidden="true"></span><div class="wp-band-text"><p class="wp-band-name">Arc</p><p class="tagline wp-band-tag">Ceremony playlist tools<br> for your Spotify library</p></div></div>
+    <div class="wp-band"><span class="wp-band-icon" aria-hidden="true"></span><div class="wp-band-text"><p class="wp-band-name">Arc</p><p class="tagline wp-band-tag">Ceremony playlist tools<br> for your <span data-service>Spotify</span> library</p></div></div>
     <div id="wpFirst">
-      <p class="wp-lead">Free tools for facilitators who play music in ceremonies, retreats and other long events. They work with your own Spotify playlists, and everything they make goes straight into your Spotify library.</p>
-      <div class="wp-req">
-        <span class="wp-cap">Requires Spotify Premium</span>
+      <p class="wp-lead">Free tools for facilitators who play music in ceremonies, retreats and other long events. They work with your own <span data-service>Spotify</span> playlists, and everything they make goes straight into your <span data-service>Spotify</span> library.</p>
+      <div class="wp-req" data-requirement>
+        <span class="wp-cap">Requires <span data-requirement-name>Spotify Premium</span></span>
         <button id="premiumWhy" class="linklike" type="button" aria-expanded="false" aria-controls="premiumWhyText">Why?</button>
-        <p id="premiumWhyText" class="wp-pop" hidden>Arc relies on a feature that is not available in Spotify Free accounts.</p>
+        <p id="premiumWhyText" class="wp-pop" hidden data-requirement-why>Arc relies on a feature that is not available in Spotify Free accounts.</p>
       </div>
       <h2 class="wp-sec">Tools</h2>
       <div class="wp-tool">
         <button id="wpBuilderHead" class="wp-tool-head" type="button" aria-expanded="false" aria-controls="wpBuilderMore"><span class="tool-icon" aria-hidden="true"><svg class="tool-glyph" viewBox="0 0 24 24"><path d="M10.2 1.8Q10.62 9.78 18.6 10.2Q10.62 10.62 10.2 18.6Q9.78 10.62 1.8 10.2Q9.78 9.78 10.2 1.8Z"/><path d="M18.8 14.7Q18.995 18.405 22.7 18.6Q18.995 18.795 18.8 22.5Q18.605 18.795 14.9 18.6Q18.605 18.405 18.8 14.7Z"/></svg></span><span class="wp-tool-text"><span class="wp-tool-lines"><b>Playlist builder</b><span class="wp-tool-tag">Ceremony playlists, ready in seconds</span></span></span><span class="wp-chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></button>
         <div id="wpBuilderMore" class="wp-tool-more" hidden>
           <button id="wpWatchIn" class="tv-row tv-in" type="button" data-tutorial><span class="tv-frame" aria-hidden="true"><img src="tutorial-poster.jpg" alt=""><span class="tv-play"></span></span><span class="tv-row-text"><b>Watch how it works</b><span>2 minute walkthrough</span></span></button>
-          <p class="wp-recipe-para">Your ceremonies have an arc, and the music you play follows it. Describe this arc in a <span class="wp-term"><button id="recipeWhat" class="linklike" type="button" aria-expanded="false" aria-controls="recipeWhatText">recipe</button><span id="recipeWhatText" class="wp-pop" role="note" hidden>A recipe is a plan for one ceremony: which of your Spotify playlists to draw from, in what order, and for how many minutes each.</span></span> and the builder follows it to make new ceremony playlists from your existing Spotify playlists.</p>
+          <p class="wp-recipe-para">Your ceremonies have an arc, and the music you play follows it. Describe this arc in a <span class="wp-term"><button id="recipeWhat" class="linklike" type="button" aria-expanded="false" aria-controls="recipeWhatText">recipe</button><span id="recipeWhatText" class="wp-pop" role="note" hidden>A recipe is a plan for one ceremony: which of your <span data-service>Spotify</span> playlists to draw from, in what order, and for how many minutes each.</span></span> and the builder follows it to make new ceremony playlists from your existing <span data-service>Spotify</span> playlists.</p>
         </div>
       </div>
       <!-- the tutorial under the builder's card, pointing up at its icon; it plays fullscreen, and folds away while the card is open (the card has its own row) -->
@@ -2282,7 +2285,7 @@
         <button id="wpSharingHead" class="wp-tool-head" type="button" aria-expanded="false" aria-controls="wpSharingMore"><span class="tool-icon" aria-hidden="true"><svg class="tool-glyph tool-glyph-soft" viewBox="0 0 24 24"><rect x="3" y="4.2" width="3.3" height="14.4" rx="1.2"/><rect x="7.5" y="6.6" width="3.3" height="12" rx="1.2"/><rect x="12" y="5.2" width="3.3" height="13.4" rx="1.2"/><rect x="16.9" y="6.2" width="3.3" height="12.4" rx="1.2" transform="rotate(14 18.55 18.6)"/><rect x="2.5" y="19.6" width="19" height="2" rx="1"/></svg></span><span class="wp-tool-text"><span class="wp-tool-lines"><b>Shared playlist library</b><span class="wp-tool-tag">Bring some, get some!</span></span></span><span class="wp-chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></button>
         <div id="wpSharingMore" class="wp-tool-more" hidden>
           <figure class="wp-shot"><picture><source media="(prefers-color-scheme: dark)" srcset="welcome-sharing.jpg"><img src="welcome-sharing-light.jpg" alt="Shared playlist library: playlists other facilitators share, each with its type and a Get button." width="460" height="525"></picture></figure>
-          <p>Find playlists other facilitators share, by ceremony, phase of a session or mood. Hear previews, then get your own private copy in Spotify. Share yours the same way, with your name or anonymously.</p>
+          <p>Find playlists other facilitators share, by ceremony, phase of a session or mood. Hear previews, then get your own private copy in <span data-service>Spotify</span>. Share yours the same way, with your name or anonymously.</p>
         </div>
       </div>
       <div class="row wp-go"><button id="getStarted" class="primary" type="button"><span class="btn-label">Get started</span><img class="btn-icon" src="icons/start.svg" alt="" width="20" height="20"></button></div>
@@ -2294,9 +2297,9 @@
         <svg class="wp-spotify" id="wpSpotify" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12"/><path fill="#fff" d="M17.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
         <span class="wp-spotify-name" id="wpSpotifyName">Your Spotify</span>
       </div>
-      <h2 class="wp-setup-title">Connect your Spotify account</h2>
-      <p class="muted wp-setup-lead">A one-time setup connects Arc to your Spotify account. It takes a couple of minutes, with clear step-by-step instructions.</p>
-      <p class="wp-note"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>Spotify Premium is needed for the connection.</span></p>
+      <h2 class="wp-setup-title">Connect your <span data-service>Spotify</span> account</h2>
+      <p class="muted wp-setup-lead">A one-time setup connects Arc to your <span data-service>Spotify</span> account. It takes a couple of minutes, with clear step-by-step instructions.</p>
+      <p class="wp-note" data-requirement><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span><span data-requirement-name>Spotify Premium</span> is needed for the connection.</span></p>
       <div class="wp-pair"><button id="wpSetupBack" type="button"><img class="btn-icon" src="icons/back.svg" alt="" width="20" height="20"><span class="btn-label">Back</span></button><button id="startSetup" class="primary" type="button"><span class="btn-label">Start setup</span><img class="btn-icon" src="icons/start.svg" alt="" width="20" height="20"></button></div>
     </div>
   </section>
@@ -2317,7 +2320,7 @@
   </details>
 
   <section id="loginSection">
-    <div class="wp-band sp-band"><span class="wp-band-icon" aria-hidden="true"></span><div class="wp-band-text"><p class="wp-band-name">Arc</p><p class="tagline wp-band-tag">Ceremony playlist tools<br> for your Spotify library</p></div></div>
+    <div class="wp-band sp-band"><span class="wp-band-icon" aria-hidden="true"></span><div class="wp-band-text"><p class="wp-band-name">Arc</p><p class="tagline wp-band-tag">Ceremony playlist tools<br> for your <span data-service>Spotify</span> library</p></div></div>
     <div id="spAsk">
       <div class="wp-joint" id="spJoint" aria-hidden="true">
         <svg class="wp-wire"><defs><clipPath id="spBandClip"><rect class="wp-band-rect"/></clipPath></defs><path class="wp-wire-main"/><path class="wp-wire-band" clip-path="url(#spBandClip)"/></svg>
@@ -2422,7 +2425,7 @@
   <div id="appBar">
     <span class="ab-left"><button id="appTool" class="ab-tool" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="appToolMenu"><span id="appToolIcon" class="ab-ticon" aria-hidden="true"></span><span id="appToolName" class="ab-tool-name"></span><svg class="ab-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></span>
     <div id="appToolMenu" class="ab-menu" role="menu" aria-label="Tools" hidden><button type="button" class="ab-mi" role="menuitemradio" aria-checked="false" data-view="builder"><span class="tool-icon ab-icon" aria-hidden="true"><svg class="tool-glyph" viewBox="0 0 24 24"><path d="M10.2 1.8Q10.62 9.78 18.6 10.2Q10.62 10.62 10.2 18.6Q9.78 10.62 1.8 10.2Q9.78 9.78 10.2 1.8Z"/><path d="M18.8 14.7Q18.995 18.405 22.7 18.6Q18.995 18.795 18.8 22.5Q18.605 18.795 14.9 18.6Q18.605 18.405 18.8 14.7Z"/></svg></span><span class="ab-mi-text"><b>Playlist builder</b><small>Ceremony playlists, ready in seconds.</small></span><svg class="ab-tick" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><button type="button" class="ab-mi" role="menuitemradio" aria-checked="false" data-view="sharing"><span class="tool-icon ab-icon" aria-hidden="true"><svg class="tool-glyph tool-glyph-soft" viewBox="0 0 24 24"><rect x="3" y="4.2" width="3.3" height="14.4" rx="1.2"/><rect x="7.5" y="6.6" width="3.3" height="12" rx="1.2"/><rect x="12" y="5.2" width="3.3" height="13.4" rx="1.2"/><rect x="16.9" y="6.2" width="3.3" height="12.4" rx="1.2" transform="rotate(14 18.55 18.6)"/><rect x="2.5" y="19.6" width="19" height="2" rx="1"/></svg></span><span class="ab-mi-text"><b>Shared playlist library</b><small>Bring some, get some!</small></span><svg class="ab-tick" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><div class="ab-rule" aria-hidden="true"></div><button type="button" class="ab-mi ab-mi-home" role="menuitem" data-view="home"><img class="ab-homeic" src="arc-mark.png" alt="" aria-hidden="true"><span class="ab-mi-text"><b>Arc home</b></span></button><div class="ab-rule ab-dev-only" aria-hidden="true"></div><button id="appDevRow" type="button" class="ab-mi ab-mi-home ab-dev-only" role="menuitem"><span class="ab-devic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 4.5l-3 15"/></svg></span><span class="ab-mi-text"><b>Developer</b></span><svg class="ab-more" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>
-<span id="devWrap" class="dm-wrap"><div id="devMenu" class="dm-menu" role="menu" hidden><button id="devMenuBack" class="dm-back" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg><span>Developer</span></button><button id="devMenuOff" class="dm-head" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.3 7.5a8 8 0 1 0 11.4 0"/></svg><span>Turn off developer mode</span></button><button id="devMenuMoods" class="dm-item" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/></svg><span>Manage mood words</span><span id="devMoodsCount" class="dm-end"></span></button><button id="devMenuReports" class="dm-item" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Review reports</span><span id="devReportsCount" class="dm-end"></span></button><div class="dm-item dm-width" role="group" aria-label="Phone width"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/></svg><span>Phone width</span><span class="dm-seg"><button type="button" data-width="" aria-pressed="false">Off</button><button type="button" data-width="360" aria-pressed="false">360</button><button type="button" data-width="320" aria-pressed="false">320</button></span></div><div class="dm-item dm-width" role="group" aria-label="Launch screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg><span>Launch screen</span><span class="dm-seg"><button type="button" data-launch="1">Play</button><button type="button" data-launch="slow">Slow</button></span></div><button id="devChecks" class="dm-item" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="2.5"/><path d="M8.5 9l1.5 1.5L13 7.5M8.5 15l1.5 1.5L13 13.5M15.5 9.5h1M15.5 15.5h1"/></svg><span>Device checks</span></button><button id="devCopyRecord" class="dm-item" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span>Copy Spotify request log</span></button><button id="devCopyLayout" class="dm-item" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span>Copy page position log</span></button><button id="devStartOver" class="dm-item dm-red" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span>Clear data and start over</span></button><div id="pythonStatus" class="dm-foot">Starting Python...</div></div></span>
+<span id="devWrap" class="dm-wrap"><div id="devMenu" class="dm-menu" role="menu" hidden><button id="devMenuBack" class="dm-back" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg><span>Developer</span></button><button id="devMenuOff" class="dm-head" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.3 7.5a8 8 0 1 0 11.4 0"/></svg><span>Turn off developer mode</span></button><button id="devMenuMoods" class="dm-item" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/></svg><span>Manage mood words</span><span id="devMoodsCount" class="dm-end"></span></button><button id="devMenuReports" class="dm-item" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Review reports</span><span id="devReportsCount" class="dm-end"></span></button><div class="dm-item dm-width" role="group" aria-label="Phone width"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/></svg><span>Phone width</span><span class="dm-seg"><button type="button" data-width="" aria-pressed="false">Off</button><button type="button" data-width="360" aria-pressed="false">360</button><button type="button" data-width="320" aria-pressed="false">320</button></span></div><div class="dm-item dm-width" role="group" aria-label="Launch screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg><span>Launch screen</span><span class="dm-seg"><button type="button" data-launch="1">Play</button><button type="button" data-launch="slow">Slow</button></span></div><button id="devChecks" class="dm-item" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="2.5"/><path d="M8.5 9l1.5 1.5L13 7.5M8.5 15l1.5 1.5L13 13.5M15.5 9.5h1M15.5 15.5h1"/></svg><span>Device checks</span></button><button id="devCopyRecord" class="dm-item" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span>Copy <span data-service>Spotify</span> request log</span></button><button id="devCopyLayout" class="dm-item" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span>Copy page position log</span></button><button id="devStartOver" class="dm-item dm-red" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span>Clear data and start over</span></button><div id="pythonStatus" class="dm-foot">Starting Python...</div></div></span>
     <div class="fe-appmenuwrap" id="feAppMenu"></div>
   </div>
   <!-- Spotify asked Arc to wait: under Arc's bar on every view, until it is over (app.js paintWaitStrip; Ron, 2026-11-12, mockups/rate-limit B solid) -->
@@ -2432,7 +2435,7 @@
   <section id="homePage">
     <!-- Arc's home (layout C, decided by Ron, 2026-11-08; cards as A1 in mockups/home-a1-iter-2.html, 2026-11-09): the welcome page's band, Your tools, and a card per
          tool of three lines that never wrap: name, tagline, what is waiting in it (renderHomeRecipes in app.js, renderSharingCard in sharing.js; fitHomeLines) -->
-    <div class="wp-band hp-band"><span class="wp-band-icon" aria-hidden="true"></span><div class="wp-band-text"><h1 class="wp-band-name">Arc</h1><p class="tagline wp-band-tag">Ceremony playlist tools<br> for your Spotify library</p></div></div>
+    <div class="wp-band hp-band"><span class="wp-band-icon" aria-hidden="true"></span><div class="wp-band-text"><h1 class="wp-band-name">Arc</h1><p class="tagline wp-band-tag">Ceremony playlist tools<br> for your <span data-service>Spotify</span> library</p></div></div>
     <div class="hp-sec">Your tools</div>
     <div class="hp-tools">
       <button id="homeBuilder" class="hp-tool" type="button"><span class="hp-head"><span class="tool-icon" aria-hidden="true"><svg class="tool-glyph" viewBox="0 0 24 24"><path d="M10.2 1.8Q10.62 9.78 18.6 10.2Q10.62 10.62 10.2 18.6Q9.78 10.62 1.8 10.2Q9.78 9.78 10.2 1.8Z"/><path d="M18.8 14.7Q18.995 18.405 22.7 18.6Q18.995 18.795 18.8 22.5Q18.605 18.795 14.9 18.6Q18.605 18.405 18.8 14.7Z"/></svg></span><span class="hp-text"><b class="hp-line">Playlist builder</b><span class="hp-tag hp-line">Ceremony playlists, ready in seconds</span><span id="homeRecipes" class="hp-data hp-line hp-hide-empty"></span></span><svg class="hp-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
@@ -2453,20 +2456,20 @@
         <p id="themeNote" class="muted" hidden></p>
       </div>
       <div id="eeLogin" class="hp-ee-panel" role="tabpanel" aria-labelledby="eeTabLogin" hidden>
-      <h3>Change Spotify login</h3>
-        <p class="muted">Switch to another Spotify account. On Spotify’s page, <span data-act>tap</span> <span class="ui">Not you?</span> to choose it. Your recipes stay and save to the new account.</p>
-        <p><button id="changeSpotifyLogin" class="linklike" type="button">Change Spotify login</button></p>
+      <h3>Change <span data-service>Spotify</span> login</h3>
+        <p class="muted">Switch to another <span data-service>Spotify</span> account. On <span data-service>Spotify</span>’s page, <span data-act>tap</span> <span class="ui">Not you?</span> to choose it. Your recipes stay and save to the new account.</p>
+        <p><button id="changeSpotifyLogin" class="linklike" type="button">Change <span data-service>Spotify</span> login</button></p>
       </div>
       <div id="eeClear" class="hp-ee-panel" role="tabpanel" aria-labelledby="eeTabClear" hidden>
       <h3>Sign out and clear data</h3>
-        <p class="muted">Signs you out of Spotify and erases what Arc keeps in this browser.</p>
-        <p id="clearRestoreHelp" class="muted">Your recipes stay in Spotify and come back when you connect again.</p>
+        <p class="muted">Signs you out of <span data-service>Spotify</span> and erases what Arc keeps in this browser.</p>
+        <p id="clearRestoreHelp" class="muted">Your recipes stay in <span data-service>Spotify</span> and come back when you connect again.</p>
         <div class="row">
           <button id="clearData" type="button"><img class="btn-icon" src="icons/clear.svg" alt="" width="20" height="20"><span class="btn-label">Sign out and clear data</span></button>
         </div>
         <div id="clearConfirm" hidden>
           <p>Sign out and erase Arc’s data in this browser?</p>
-          <p id="clearConfirmHelp" class="muted">Your recipes stay in Spotify and come back when you connect again.</p>
+          <p id="clearConfirmHelp" class="muted">Your recipes stay in <span data-service>Spotify</span> and come back when you connect again.</p>
           <div class="row">
             <button id="clearNo" type="button"><img class="btn-icon" src="icons/cancel.svg" alt="" width="20" height="20"><span class="btn-label">Cancel</span></button>
             <button id="clearYes" class="primary" type="button"><img class="btn-icon" src="icons/confirm.svg" alt="" width="20" height="20"><span class="btn-label">Sign out and clear</span></button>
@@ -2476,16 +2479,16 @@
       <!-- Privacy, short (decided by Ron, 2026-11-08): what Arc stands for first, then one line per thing that leaves or stays -->
       <div id="privacySection" class="hp-ee-panel" role="tabpanel" aria-labelledby="eeTabPrivacy" hidden>
       <h3>Privacy</h3>
-        <p class="muted pv-lead">Arc runs in your browser. What you make here stays between this browser and your own Spotify account, unless you choose to share it. No accounts, no ads.</p>
+        <p class="muted pv-lead">Arc runs in your browser. What you make here stays between this browser and your own <span data-service>Spotify</span> account, unless you choose to share it. No accounts, no ads.</p>
         <ul class="muted pv-list">
           <li><b>In this browser:</b> your Client ID, sign-in, recipes, settings, and a copy of your playlists and their songs. <span class="ui">Sign out and clear data</span> erases it all.</li>
-          <li><b>In your Spotify:</b> each recipe, in a private playlist's description. Arc changes your playlists only when you ask. Arc never sees your password.</li>
+          <li><b>In your <span data-service>Spotify</span>:</b> each recipe, in a private playlist's description. Arc changes your playlists only when you ask. Arc never sees your password.</li>
           <li id="privacyParticipants"><b>Participants:</b> only a code you choose, in their playlists' descriptions.</li>
-          <li id="privacyMusicSharing"><b>Shared playlist library:</b> what you share (name, cover, songs, your details, and your Spotify name unless anonymous) is public in Arc and kept on Arc's server, which knows you only by a scrambled code. A song preview asks Deezer, sending only the song's code.</li>
+          <li id="privacyMusicSharing"><b>Shared playlist library:</b> what you share (name, cover, songs, your details, and your <span data-service>Spotify</span> name unless anonymous) is public in Arc and kept on Arc's server, which knows you only by a scrambled code. A song preview asks Deezer, sending only the song's code.</li>
           <li id="privacyTutorial"><b>Tutorial video:</b> comes from Arc's own server, which keeps nothing.</li>
           <li><b>Anonymous counts:</b> GoatCounter counts visits and a few actions, without cookies. Never names, recipes or songs.</li>
           <li id="privacyWaitRelay" hidden><b>Spotify waits:</b> when Spotify limits requests, one check goes through Arc's relay, which keeps nothing.</li>
-          <li><b>Problems and feedback:</b> when something unexpected goes wrong, Arc sends its developer the technical details and a log of its requests to Spotify (counts, playlist IDs and Spotify's answers), once for each kind of problem in each version. What you write in Report a problem or Feedback is emailed only when you <span data-act>tap</span> Send. Never your sign-in, Client ID, playlist names or songs.</li>
+          <li><b>Problems and feedback:</b> when something unexpected goes wrong, Arc sends its developer the technical details and a log of its requests to <span data-service>Spotify</span> (counts, playlist IDs and <span data-service>Spotify</span>'s answers), once for each kind of problem in each version. What you write in Report a problem or Feedback is emailed only when you <span data-act>tap</span> Send. Never your sign-in, Client ID, playlist names or songs.</li>
         </ul>
       </div>
       <div id="eeReport" class="hp-ee-panel" role="tabpanel" aria-labelledby="eeTabReport" hidden>
@@ -2585,7 +2588,7 @@
     <button id="create" class="primary" type="button" disabled><img class="btn-icon" src="icons/build.svg" alt="" width="24" height="24"><span class="btn-label"><span class="build-verb">Build playlists</span></span></button>
   </div>
   <p id="pythonNote" class="muted"></p>
-  <p id="spotifyNote" class="muted" hidden>Building playlists needs a working connection to Spotify.</p>
+  <p id="spotifyNote" class="muted" hidden>Building playlists needs a working connection to <span data-service>Spotify</span>.</p>
 
   <p id="mainReportHint" class="report-hint muted" hidden>If it keeps happening, <a href="#" class="report-open">report this problem</a>.</p>
 
@@ -2653,10 +2656,10 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-16a"></script>
-<script src="editor.js?v=2026-11-16a"></script>
-<script src="service-spotify.js?v=2026-11-16a"></script>
-<script src="app.js?v=2026-11-16a"></script>
-<script src="sharing.js?v=2026-11-16a"></script>
+<script src="formats.js?v=2026-11-16b"></script>
+<script src="editor.js?v=2026-11-16b"></script>
+<script src="service-spotify.js?v=2026-11-16b"></script>
+<script src="app.js?v=2026-11-16b"></script>
+<script src="sharing.js?v=2026-11-16b"></script>
 </body>
 </html>

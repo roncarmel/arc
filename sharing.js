@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16a";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16b";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -1090,10 +1090,10 @@ function offerToShare(s) {
   const invite = mineCount() * SHARE_GET_RATIO < addedCount();
   const sheet = feEl("div", { id: "msSheet", class: "ms-sheet-wrap" });
   const who = s.by || "the sharer";
-  const panel = feEl("div", { class: "ms-sheet", role: "dialog", "aria-modal": "true", "aria-label": `${s.name} is in your Spotify`, tabindex: "-1" },
+  const panel = feEl("div", { class: "ms-sheet", role: "dialog", "aria-modal": "true", "aria-label": `${s.name} is in your ${service.name}`, tabindex: "-1" },
     feEl("div", { class: "ms-grab" }),
     feEl("div", { class: "ms-gothead" }, shareCoverEl(s, "ms-cover"),
-      feEl("div", {}, feEl("div", { class: "ms-gottitle", text: `${named(s.name)} is in your Spotify` }), feEl("div", { class: "ms-sub" }, "Your own private copy"))),
+      feEl("div", {}, feEl("div", { class: "ms-gottitle", text: `${named(s.name)} is in your ${service.name}` }), feEl("div", { class: "ms-sub" }, "Your own private copy"))),
     feEl("ul", { class: "ms-gotwhy" },
       feEl("li", {}, feEl("b", {}, "Yours to change."), " Add, remove or reorder songs."),
       feEl("li", {}, feEl("b", {}, "It stays as it is"), ` if ${who} changes theirs.`)),
@@ -1303,7 +1303,7 @@ function songMenu(s, i, label) {
       onClick: () => turnSongMenu(1, () => { m.view = "lists"; m.note = ""; }) }));
     menu.appendChild(feEl("div", { class: "ms-mi-rule" }));
     menu.appendChild(feEl("a", { role: "menuitem", class: "ms-mi", id: "msSongOpen", href: service.songUrl(id), target: "_blank", rel: "noopener noreferrer",
-      onClick: () => setTimeout(() => closeSongMenu(false)) }, feIcon("spotify"), feEl("span", { class: "ms-mi-text", text: "Open in Spotify" })));
+      onClick: () => setTimeout(() => closeSongMenu(false)) }, feIcon("spotify"), feEl("span", { class: "ms-mi-text", text: `Open in ${service.name}` })));
   }
   if (m.note) menu.appendChild(problemBox(m.note, "", [], true));
   return menu;
@@ -1520,7 +1520,7 @@ function changedInSpotify(m, p) {
   return false;
 }
 function renderShareYours(body, foot) {
-  if (connection !== "ready" || !me) { body.appendChild(feEl("p", { class: "ms-note" }, "Connect to Spotify to share your playlists.")); return; }
+  if (connection !== "ready" || !me) { body.appendChild(feEl("p", { class: "ms-note" }, `Connect to ${service.name} to share your playlists.`)); return; }
   if (sharing.mineError) body.appendChild(problemBox("Your shares didn\u2019t load", sharing.mineError, [{ label: "Try again", run: () => loadMine() }]));
   if (!sharing.mine && !sharing.mineError) { body.appendChild(feEl("p", { class: "ms-note" }, "Loading...")); return; }
   const mine = sharing.mine || [];
@@ -1550,7 +1550,7 @@ function yourRow(m) {
   const busy = sharing.updating === m.id;
   const failed = sharing.updateErrors && sharing.updateErrors[m.id];
   return feEl("div", { class: "ms-joined" }, row,
-    feEl("div", { class: "ms-strip", id: "msStrip-" + m.id }, feEl("span", {}, "Changed in Spotify since you shared it"),
+    feEl("div", { class: "ms-strip", id: "msStrip-" + m.id }, feEl("span", {}, `Changed in ${service.name} since you shared it`),
       feEl("button", { type: "button", class: "ms-stripbtn", disabled: busy || !!sharing.updating, onClick: () => updateShare(m) }, busy ? "Updating..." : "Update")),
     failed ? problemBox("Not updated", failed, [{ label: "Try again", run: () => updateShare(m) }]) : null);
 }
@@ -1601,7 +1601,7 @@ function shareCandidates() {
 }
 // Why a playlist can't be shared, or "" (the builder's Share buttons say it under the name, or in their label)
 function shareBlockReason(p) {
-  if (!p) return "Not in your Spotify";
+  if (!p) return `Not in your ${service.name}`;
   if (me && p.owner !== me.id) return "Someone else’s playlist";
   if (p.isSave || (p.madeByApp && !arcBuilt(p))) return "Made by Arc";
   if (new Set(Object.values(sharingCopies())).has(p.id) || copyShareId(p)) return "A copy from Music sharing";
@@ -1803,7 +1803,7 @@ function pickList() {
   const why = (p) => sharedFor(p) ? "Already shared" : copies.has(p.id) || copyShareId(p) ? "A copy from Music sharing" : knownBlock(p) ? "Mostly songs another facilitator shares" : "";
   const off = me ? playlists.filter((p) => p.owner === me.id && !p.isSave && !p.madeByApp && !ok.includes(p) && p.id !== (f.draft && f.draft.playlist) && why(p)) : [];
   if (!ok.length && !off.length) {
-    box.appendChild(emptyState("notes", "No playlists of your own to share", "Make a playlist in Spotify, then come back. Playlists you got from Music sharing can't be shared."));
+    box.appendChild(emptyState("notes", "No playlists of your own to share", `Make a playlist in ${service.name}, then come back. Playlists you got from Music sharing can't be shared.`));
     return box;
   }
   const search = feEl("input", { type: "search", class: "ms-input ms-picksearch", id: "msPickSearch", placeholder: "Search your playlists", "aria-label": "Search your playlists",
@@ -2047,9 +2047,9 @@ function descriptionField(p, d) {
     "aria-label": "How would you describe it?", readonly: spotify || null }, spotify ? theirs : d.desc);
   area.addEventListener("input", () => { if (!spotify) { d.desc = area.value; draftChanged(); } });
   const sw = theirs ? feEl("span", { class: "ms-mseg", role: "radiogroup", "aria-label": "Whose description" },
-    ...[["mine", "Mine"], ["spotify", "Spotify's"]].map(([v, label]) => feEl("button", { type: "button", role: "radio", "aria-checked": String(d.descSource === v), class: d.descSource === v ? "ms-on" : "",
+    ...[["mine", "Mine"], ["spotify", `${service.name}'s`]].map(([v, label]) => feEl("button", { type: "button", role: "radio", "aria-checked": String(d.descSource === v), class: d.descSource === v ? "ms-on" : "",
       id: v === "mine" ? "msDescMine" : "msDescSpotify", onClick: () => { if (d.descSource !== v) { d.descSource = v; draftChanged(); const old = document.querySelector('#msFlowBody [data-field="description"]'); if (old) old.replaceWith(descriptionField(p, d)); } } }, label))) : null;
-  return field("description", "How would you describe it?", feEl("div", {}, area, spotify ? feEl("p", { class: "ms-fsub ms-keptnote" }, "Kept in step with Spotify when you Update.") : null),
+  return field("description", "How would you describe it?", feEl("div", {}, area, spotify ? feEl("p", { class: "ms-fsub ms-keptnote" }, `Kept in step with ${service.name} when you Update.`) : null),
     sw || (required ? null : fieldNote("Optional")));
 }
 // what is missing, by field (Share stays grey while any is; the worker's refusals show under their fields)

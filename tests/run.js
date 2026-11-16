@@ -632,10 +632,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly these seven, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16a" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16b" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16a/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16b/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -857,6 +857,18 @@ print(json.dumps(out))
 
   // ---------------- after the embeds experiment was reverted
   var finalHtml = fs.readFileSync(ROOT + "index.html", "utf8");
+  // page text names the service (service.name, <span data-service>), not Spotify; the strings left are Spotify's own setup, Device checks and developer notes
+  var sv_left = [];
+  for (const f of ["app.js", "editor.js", "sharing.js", "formats.js", "theme.js"]) {
+    fs.readFileSync(ROOT + f, "utf8").split("\n").forEach((line, i) => {
+      const code = line.replace(/(^|\s)\/\/.*$/, "");
+      for (const m of code.matchAll(/(["'`])((?:\\.|(?!\1).)*?)\1/g)) if (/(^|[^A-Za-z])Spotify(?![A-Za-z])/.test(m[2])) sv_left.push(m[2]);
+    });
+  }
+  var sv_allowed = ["Create an app inside your Spotify account", "save: covers wait, Spotify is limiting uploads", "Spotify refused the renewal, or did not answer.", "Spotify sent back ${got.length} characters, differing from character ${at + 1} on.", "Opens Spotify at the song", "Spotify should open the playlist with that song picked out.", "Spotify sent a short list. Read again, all there."];
+  check("page text in the scripts names the service, not Spotify (Spotify's setup, Device checks and developer notes aside)", sv_left.every((t) => sv_allowed.includes(t) || /Spotify's own cover/.test(t)), JSON.stringify(sv_left.filter((t) => !sv_allowed.includes(t))));
+  var sv_html = fs.readFileSync(ROOT + "index.html", "utf8");
+  check("the markup marks the service's name for filling in, and the requirement (Spotify Premium) where it is said", (sv_html.match(/<span data-service>Spotify<\/span>/g) || []).length >= 25 && (sv_html.match(/data-requirement-name>Spotify Premium</g) || []).length === 2 && (sv_html.match(/ data-requirement>/g) || []).length === 2);
   check("only the service file talks to Spotify: no Spotify address, URI or request elsewhere, and songs carry the service's id, not a URI", ["app.js", "editor.js", "sharing.js", "formats.js", "engine.py"].every((f) => !/api\.spotify\.com|spotify:(track|playlist):|spotifyRequest|\bspotify\(/.test(fs.readFileSync(ROOT + f, "utf8"))) && /const service = \{/.test(fs.readFileSync(ROOT + "service-spotify.js", "utf8")) && !/\["uri"\]/.test(fs.readFileSync(ROOT + "engine.py", "utf8")));
   check("the page has six scripts of its own, with the theme first, and nothing about embeds", finalHtml.match(/<script src="[^"]+"><\/script>/g).join("").replace(/\?v=[^"]+/g, "") === '<script src="theme.js"></script><script src="formats.js"></script><script src="editor.js"></script><script src="service-spotify.js"></script><script src="app.js"></script><script src="sharing.js"></script>' && finalHtml.indexOf('<script src="theme.js">') < finalHtml.indexOf("</head>") && !/embeds/i.test(finalHtml) && !/embeds/i.test(appSource()) && !fs.existsSync(ROOT + "embeds.js"));
   check("the app never names an outside script, so no Ko-fi or Tally code can run in the page", !/tally\.so\/widgets|overlay-widget|storage\.ko-fi\.com\/cdn\/scripts/.test(appSource() + finalHtml));
@@ -2130,7 +2142,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16a", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16b", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -2531,6 +2543,9 @@ print(json.dumps(out))
   check("a tap anywhere else closes it", pr_pop.hidden === true && pr_why.getAttribute("aria-expanded") === "false");
   pr_why.click(); pr_pop.click();
   check("a tap on the note itself leaves it open, Why? again closes it, and so does Escape", pr_pop.hidden === false && (pr_why.click(), pr_pop.hidden === true) && (pr_why.click(), pr_w.document.dispatchEvent(new pr_w.KeyboardEvent("keydown", { key: "Escape" })), pr_pop.hidden === true));
+  pr_w.eval('service.name = "TIDAL"; service.requirement = null; fillServiceWords()');
+  var pr_note = pr_w.document.querySelector("#welcomePage .wp-note");
+  check("a service with no requirement (TIDAL: every account pays) hides the capsule and the setup's note, and the page names that service", pr_req.hidden === true && !!pr_note && pr_note.hidden === true && /their own TIDAL playlists|your own TIDAL playlists/.test(pr_w.document.querySelector(".wp-lead").textContent) && pr_w.document.querySelector(".wp-band-tag").textContent.includes("for your TIDAL library"), JSON.stringify([pr_req.hidden, !!pr_note && pr_note.hidden, pr_w.document.querySelector(".wp-lead").textContent, pr_w.document.querySelector(".wp-band-tag").textContent]));
   var pr_w2 = await boot({ url: "http://127.0.0.1:8000/", local: { clientId: "abc123" } });
   var pr_w3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, clientId: "abc123" } });
   check("when connected, the welcome page and its notice are not shown", pr_w3.document.documentElement.classList.contains("page-app"));
@@ -3267,7 +3282,7 @@ print(json.dumps(out))
   if (want("spotify wording")) { try {
   // ================================================================ the wording that depends on the way the formats are backed up
   var sw_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("the privacy text says that each recipe is kept in a private playlist's description in the person's own Spotify", /<b>In your Spotify:<\/b> each recipe, in a private playlist's description\. /.test(sw_html) && !/back up by hand/.test(sw_html));
+  check("the privacy text says that each recipe is kept in a private playlist's description in the person's own Spotify", /<b>In your <span data-service>Spotify<\/span>:<\/b> each recipe, in a private playlist's description\. /.test(sw_html) && !/back up by hand/.test(sw_html));
   var sw_s = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "spotify" }, fetchOptions: {} });
   check("Sign out and clear data says the recipes stay in Spotify and come back when connecting again, and does not mention a file", /Your recipes stay in Spotify/.test(sw_s.document.getElementById("clearRestoreHelp").textContent) && /come back when you connect again/.test(sw_s.document.getElementById("clearConfirmHelp").textContent) && !/restore from a backup|Restore in/.test(sw_s.document.getElementById("clearRestoreHelp").textContent + sw_s.document.getElementById("clearConfirmHelp").textContent));
   } catch (err) { areaCrashed("spotify wording", err); } }
@@ -3372,8 +3387,8 @@ print(json.dumps(out))
   // ================================================================ back from Spotify's sign-in: a quiet screen until the editor is ready
   var cn_html = fs.readFileSync(ROOT + "index.html", "utf8");
   check("the page's first script puts up the connecting screen, and picks the app page, when the address has a sign-in code from Spotify", /code=\/\.test\(location\.search\)\) \{ page = "app"; document\.documentElement\.classList\.add\("connecting"\)/.test(cn_html));
-  var cn_steps = Array.from(cn_html.matchAll(/<li id="(cn\w+)" class="cn-step[^"]*"><span class="cn-mark"><svg[^>]*>.*?<\/svg><\/span><span>([^<]+)<\/span><\/li>/g)).map((m) => m[1] + ": " + m[2]);
-  check("the connecting screen has the setup page's band, the line to Spotify with a spinner in its middle, Connecting to Spotify, and four steps in order", /<div id="connectingScreen" role="status">\s*<div class="cn-page">\s*<div class="wp-band">/.test(cn_html) && /<div class="wp-joint cn-joint" aria-hidden="true">[\s\S]{0,400}<span class="wp-ok cn-mid">/.test(cn_html) && /<h2 class="cn-title cn-working">Connecting to Spotify<\/h2>/.test(cn_html) && JSON.stringify(cn_steps) === JSON.stringify(["cnSignin: Signing in to Spotify", "cnPlaylists: Reading your playlists", "cnRecipes: Loading your recipes", "cnPython: Starting the playlist builder"]), JSON.stringify(cn_steps));
+  var cn_steps = Array.from(cn_html.matchAll(/<li id="(cn\w+)" class="cn-step[^"]*"><span class="cn-mark"><svg[^>]*>.*?<\/svg><\/span><span>(.+?)<\/span><\/li>/g)).map((m) => m[1] + ": " + m[2].replace(/<span data-service>(\w+)<\/span>/g, "$1"));
+  check("the connecting screen has the setup page's band, the line to Spotify with a spinner in its middle, Connecting to Spotify, and four steps in order", /<div id="connectingScreen" role="status">\s*<div class="cn-page">\s*<div class="wp-band">/.test(cn_html) && /<div class="wp-joint cn-joint" aria-hidden="true">[\s\S]{0,400}<span class="wp-ok cn-mid">/.test(cn_html) && /<h2 class="cn-title cn-working">Connecting to <span data-service>Spotify<\/span><\/h2>/.test(cn_html) && JSON.stringify(cn_steps) === JSON.stringify(["cnSignin: Signing in to Spotify", "cnPlaylists: Reading your playlists", "cnRecipes: Loading your recipes", "cnPython: Starting the playlist builder"]), JSON.stringify(cn_steps));
   check("signing in and starting Python are under way from the first moment; the other two wait", /id="cnSignin" class="cn-step cn-active"/.test(cn_html) && /id="cnPython" class="cn-step cn-active"/.test(cn_html) && /id="cnPlaylists" class="cn-step"/.test(cn_html) && /id="cnRecipes" class="cn-step"/.test(cn_html));
   check("the screen sits below the startup problem popup, so a page that cannot start still says so", /#connectingScreen \{[^}]*z-index: 1500/.test(cn_html) && /#startupProblem \{ z-index: 2000/.test(cn_html));
   check("with reduced motion nothing turns or fades", /prefers-reduced-motion: reduce\) \{ #connectingScreen, \.cn-step \{ transition: none; \} \.cn-active \.cn-mark::before, \.cn-mid::before \{ animation: none; \} #connectingScreen\.cn-finished \.cn-finish, #connectingScreen\.cn-finished \.cn-go \{ animation: none; \} \}/.test(cn_html));
@@ -4400,7 +4415,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16a"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16b"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

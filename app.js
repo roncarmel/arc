@@ -11,7 +11,7 @@ const SCOPES = [
 ].join(" ");
 const REQUIRED_SCOPES = ["playlist-modify-private", "playlist-modify-public"];   // cover art is optional, so an older sign-in without it keeps working
 
-const APP_VERSION = "2026-11-16a";
+const APP_VERSION = "2026-11-16b";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -88,6 +88,17 @@ function actWord(capital) {
 }
 function fillActWords() {
   for (const el of document.querySelectorAll("[data-act]")) el.textContent = actWord(/^[A-Z]/.test(el.textContent));
+}
+// The music service's name in the markup's page text: <span data-service>Spotify</span>, filled in at startup (the markup's own word stays if scripts fail). Its
+// requirement (Spotify Premium; none on TIDAL, where every account pays): [data-requirement] holds what says so, hidden when the service has none; inside it,
+// [data-requirement-name] takes the requirement's name and [data-requirement-why] why it is needed.
+function fillServiceWords() {
+  for (const el of document.querySelectorAll("[data-service]")) el.textContent = service.name;
+  const req = service.requirement;
+  for (const el of document.querySelectorAll("[data-requirement]")) el.hidden = !req;
+  if (!req) return;
+  for (const el of document.querySelectorAll("[data-requirement-name]")) el.textContent = req.name;
+  for (const el of document.querySelectorAll("[data-requirement-why]")) el.textContent = req.why;
 }
 // Tally, only for the startup problem popup: when the scripts failed, the page's own report form (sendMessageForm) cannot run
 const REPORT_FORM_URL = "https://tally.so/r/VppLZN";
@@ -1309,7 +1320,7 @@ async function refreshSongsFor(names) {
   const ids = names.map((name) => (playlists.find((p) => normName(p.name) === normName(name)) || {}).id).filter(Boolean);
   for (const id of ids) trackCache.delete(id);
   await forgetSongs(ids);
-  $("editorNote").textContent = "Songs will be read again from Spotify the next time you build.";
+  $("editorNote").textContent = `Songs will be read again from ${service.name} the next time you build.`;
 }
 
 // ---------------------------------------------------------------- small helpers
@@ -1475,7 +1486,7 @@ function refreshReportBox() {
     `Last error: ${d.lastError}`,
     `Earlier errors: ${d.earlierErrors}`,
     `Recent steps: ${d.recentSteps}`,
-    `Spotify request log: about ${Math.max(1, Math.round(reportLogText().length / 1024))} KB, attached (counts, IDs and Spotify\u2019s answers, no names)`,
+    `${service.name} request log: about ${Math.max(1, Math.round(reportLogText().length / 1024))} KB, attached (counts, IDs and ${service.name}\u2019s answers, no names)`,
   ].join("\n");
 }
 
@@ -1749,10 +1760,10 @@ async function mergeFromSpotify() {
     const label = a.title.trim() || "Untitled";
     let choice;
     if (a.kind === "conflict") {
-      choice = await askSyncChoice(`${named(label)} was changed in two places`, `This device has a version from ${whenText(a.local.modified)}, and Spotify has one from ${whenText(a.remote.modified)}, probably saved from another device. Which one do you want to keep? The other one is replaced.`,
-        [{ label: "Keep this device\u2019s", value: "mine" }, { label: "Use Spotify\u2019s", value: "theirs" }], { required: true, debug });
+      choice = await askSyncChoice(`${named(label)} was changed in two places`, `This device has a version from ${whenText(a.local.modified)}, and ${service.name} has one from ${whenText(a.remote.modified)}, probably saved from another device. Which one do you want to keep? The other one is replaced.`,
+        [{ label: "Keep this device\u2019s", value: "mine" }, { label: `Use ${service.name}\u2019s`, value: "theirs" }], { required: true, debug });
     } else {
-      choice = await askSyncChoice(`${named(label)} is no longer in Spotify`, "It was removed from your Spotify, maybe on another device. Keep it here, and it will be saved to Spotify again, or remove it from this device too?",
+      choice = await askSyncChoice(`${named(label)} is no longer in ${service.name}`, `It was removed from your ${service.name}, maybe on another device. Keep it here, and it will be saved to ${service.name} again, or remove it from this device too?`,
         [{ label: "Keep it here", value: "keep" }, { label: "Remove it here", value: "remove", danger: true }], { required: true, debug });
     }
     if (a.kind === "conflict" && choice === "theirs") { adoptFormat(a.remote); synced[a.id] = { rev: a.remote.rev || 0, playlistId: a.playlist.id }; saveState.updated.push(a.remote.title); }
@@ -1998,11 +2009,11 @@ async function runSpotifySave() {
 // What the saving is up to, in words, with the actions that belong to it.
 function spotifySaveParts(full = true) {
   const parts = [];   // each: { text } or { text, action, label }
-  if (saveState.running) { parts.push({ text: "Saving to Spotify\u2026" }); return parts; }
-  if (spotifyPause()) parts.push({ text: "Waiting to save to Spotify until it is back." });
-  else if (connection !== "ready") { parts.push({ text: connection === "problem" ? "Waiting to save to Spotify: see the connection problem in the app menu." : "Waiting to save to Spotify: connect first." }); }
-  else if (saveState.error) parts.push({ text: "Couldn\u2019t save to Spotify.", action: () => { saveState.error = ""; runSpotifySave(); }, label: "Try again" });
-  else if (saveState.timer) parts.push({ text: "Saving to Spotify\u2026" });
+  if (saveState.running) { parts.push({ text: `Saving to ${service.name}\u2026` }); return parts; }
+  if (spotifyPause()) parts.push({ text: `Waiting to save to ${service.name} until it is back.` });
+  else if (connection !== "ready") { parts.push({ text: connection === "problem" ? `Waiting to save to ${service.name}: see the connection problem in the app menu.` : `Waiting to save to ${service.name}: connect first.` }); }
+  else if (saveState.error) parts.push({ text: `Couldn\u2019t save to ${service.name}.`, action: () => { saveState.error = ""; runSpotifySave(); }, label: "Try again" });
+  else if (saveState.timer) parts.push({ text: `Saving to ${service.name}\u2026` });
   else {
     const at = saveState.savedAt || (() => { try { return localStorage.getItem("spotifySavedAt"); } catch (err) { return null; } })();
     if (at) parts.push({ text: "Last saved at " + new Date(at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "." });
@@ -2011,9 +2022,9 @@ function spotifySaveParts(full = true) {
   // the menu keeps a record of the last news, which the line under the bar only shows for a few seconds
   if (saveState.lastNews) parts.push({ text: `${saveState.lastNews.text} (${new Date(saveState.lastNews.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })})` });
   if (saveState.coverProblem) parts.push({ text: saveState.coverProblem.text });
-  if (saveState.unread) parts.push({ text: `${saveState.unread === 1 ? "A recipe saved in Spotify" : saveState.unread + " recipes saved in Spotify"} could not be read, or ${saveState.unread === 1 ? "was" : "were"} saved by a newer version of this app, and ${saveState.unread === 1 ? "was" : "were"} left alone.` });
+  if (saveState.unread) parts.push({ text: `${saveState.unread === 1 ? `A recipe saved in ${service.name}` : saveState.unread + ` recipes saved in ${service.name}`} could not be read, or ${saveState.unread === 1 ? "was" : "were"} saved by a newer version of this app, and ${saveState.unread === 1 ? "was" : "were"} left alone.` });
   for (const t of saveState.tooLong) {
-    parts.push({ text: `${named(t.title.trim() || "Untitled")} is too long to save to Spotify. It is still saved in this browser.` });
+    parts.push({ text: `${named(t.title.trim() || "Untitled")} is too long to save to ${service.name}. It is still saved in this browser.` });
   }
   return parts;
 }
@@ -2023,18 +2034,18 @@ function spotifySaveParts(full = true) {
 function attentionItems() {
   const items = [];
   const name = (t) => named(String(t).trim() || "Untitled");
-  if (connection === "ready" && saveState.error && !saveState.running) items.push({ key: "error", text: "Couldn\u2019t save to Spotify.", actions: [{ label: "Try again", run: () => { saveState.error = ""; runSpotifySave(); } }] });
+  if (connection === "ready" && saveState.error && !saveState.running) items.push({ key: "error", text: `Couldn\u2019t save to ${service.name}.`, actions: [{ label: "Try again", run: () => { saveState.error = ""; runSpotifySave(); } }] });
   const n = saveState.unread;
-  if (n && !saveState.dismissed.has("unread:" + n)) items.push({ key: "unread:" + n, ok: true, text: `${n === 1 ? "A recipe saved in Spotify" : n + " recipes saved in Spotify"} could not be read, or ${n === 1 ? "was" : "were"} saved by a newer version of this app, and ${n === 1 ? "was" : "were"} left alone.` });
+  if (n && !saveState.dismissed.has("unread:" + n)) items.push({ key: "unread:" + n, ok: true, text: `${n === 1 ? `A recipe saved in ${service.name}` : n + ` recipes saved in ${service.name}`} could not be read, or ${n === 1 ? "was" : "were"} saved by a newer version of this app, and ${n === 1 ? "was" : "were"} left alone.` });
   if (saveState.coverProblem && !saveState.dismissed.has("cover:" + saveState.coverProblem.key)) items.push({ key: "cover:" + saveState.coverProblem.key, ok: true, text: saveState.coverProblem.text });
-  for (const t of saveState.tooLong) if (!saveState.dismissed.has("long:" + t.id)) items.push({ key: "long:" + t.id, ok: true, text: `${name(t.title)} is too long to save to Spotify. It is still saved in this browser.` });
+  for (const t of saveState.tooLong) if (!saveState.dismissed.has("long:" + t.id)) items.push({ key: "long:" + t.id, ok: true, text: `${name(t.title)} is too long to save to ${service.name}. It is still saved in this browser.` });
   return items;
 }
 
 // What went wrong, in words a person can read: the plain messages are kept, and the technical one ("Spotify returned 500 for PUT /playlists/…") becomes a sentence.
 function saveFailureDetail(message) {
   const code = /Spotify returned (\d{3})/.exec(message);
-  if (code) return `Spotify returned an error (${code[1]}) while saving.`;
+  if (code) return `${service.name} returned an error (${code[1]}) while saving.`;
   return String(message).replace(/\s*\/playlists\/[A-Za-z0-9]+/g, "").trim();
 }
 
@@ -2064,7 +2075,7 @@ async function uploadCovers() {
   let problem = null, stopped = false;
   try {
     if (saveState.coverBlocked || !service.coversAllowed()) {
-      problem = { key: "permission", text: "Your Spotify sign-in does not include permission to add cover art, so the recipe playlists have no cover. Sign in again with Change Spotify login in More options to allow it." };
+      problem = { key: "permission", text: `Your ${service.name} sign-in does not include permission to add cover art, so the recipe playlists have no cover. Sign in again with Change ${service.name} login in More options to allow it.` };
     } else {
       let cover = null;
       try { cover = await loadCover("recipe-cover.jpg"); }
@@ -2081,7 +2092,7 @@ async function uploadCovers() {
           if (problemKind(String(err && err.message || err)) === "rate-limit") { stopped = true; logStep("save: covers wait, Spotify is limiting uploads"); break; }
           logStep("save: cover not accepted");
           if (/did not allow|sign-in expired/.test(err.message)) saveState.coverBlocked = true;
-          problem = { key: "refused", text: `Spotify did not accept the cover for the recipe playlists: ${String(err.message || err).replace(/\.$/, "")}. They have no cover.` };
+          problem = { key: "refused", text: `${service.name} did not accept the cover for the recipe playlists: ${String(err.message || err).replace(/\.$/, "")}. They have no cover.` };
           saveState.coverQueue.shift();   // the next save queues it again
         }
         if (saveState.coverGapMs) await new Promise((r) => setTimeout(r, saveState.coverGapMs));
@@ -2098,8 +2109,8 @@ async function askSaveFailure(message) {
   const unexpected = problemKind(message) === "other";
   if (unexpected) recordError(message);
   const choices = [{ label: "Try again", value: "retry", main: true, icon: "retry" }, { label: "Close", value: "close" }];
-  const choice = await askSyncChoice("Your recipes couldn\u2019t be saved to Spotify",
-    "Your latest changes haven\u2019t been saved to Spotify yet. They are kept in this browser until they are.", choices, { problem: "cloud", what: saveFailureDetail(message), reported: unexpected ? reportedLine(message) : null });
+  const choice = await askSyncChoice(`Your recipes couldn\u2019t be saved to ${service.name}`,
+    `Your latest changes haven\u2019t been saved to ${service.name} yet. They are kept in this browser until they are.`, choices, { problem: "cloud", what: saveFailureDetail(message), reported: unexpected ? reportedLine(message) : null });
   if (choice === "retry") { saveState.error = ""; runSpotifySave(); }
   else if (choice === "report") openReport();
 }
@@ -2112,9 +2123,9 @@ function dismissAttention(key) {
 // News from reading Spotify: one sentence for each kind, so a few formats added together are one message and not several.
 function newsText(verb, titles) {
   const names = titles.map((t) => named(String(t).trim() || "Untitled"));
-  if (names.length === 1) return `${verb} ${names[0]} from Spotify.`;
-  if (names.length === 2) return `${verb} ${names[0]} and ${names[1]} from Spotify.`;
-  return `${verb} ${names.length} recipes from Spotify.`;
+  if (names.length === 1) return `${verb} ${names[0]} from ${service.name}.`;
+  if (names.length === 2) return `${verb} ${names[0]} and ${names[1]} from ${service.name}.`;
+  return `${verb} ${names.length} recipes from ${service.name}.`;
 }
 
 function writeSaveParts(into, full = true) {
@@ -2183,7 +2194,7 @@ function updateButtonsNow() {
   const action = connectionAction();
   // Step 1's buttons, while a sign-in is under way
   const connectButton = $("connect");
-  if (connectButton) { setLabel(connectButton, signingIn ? "Connecting\u2026" : "Connect to Spotify"); connectButton.disabled = signingIn; }
+  if (connectButton) { setLabel(connectButton, signingIn ? "Connecting\u2026" : `Connect to ${service.name}`); connectButton.disabled = signingIn; }
   if ($("connectionReconnect")) $("connectionReconnect").disabled = signingIn;
   const connectingNow = signingIn || connection === "connecting";
   if (connectingNow && minimalActive()) {
@@ -2193,7 +2204,7 @@ function updateButtonsNow() {
     $("create").disabled = true;
   } else if (action) {
     const again = connection === "problem";
-    setLabel($("create"), again ? (connectionKind === "reconnect" ? "Connect again" : "Try again") : "Connect to Spotify");
+    setLabel($("create"), again ? (connectionKind === "reconnect" ? "Connect again" : "Try again") : `Connect to ${service.name}`);
     setIcon($("create"), again && connectionKind !== "reconnect" ? "retry" : "connect");
     $("create").disabled = busy;
   } else {
@@ -2230,7 +2241,7 @@ function updateButtonsNow() {
   document.body.classList.toggle("no-recipes", !currentFormats.length);   // and no status lines either
   if (paused) $("spotifyNote").hidden = true;
   if (minimalActive() && (signingIn || connection === "connecting" || signInNote)) {
-    $("spotifyNote").textContent = signingIn ? signInNote : connection === "connecting" ? "Connecting to Spotify. On a slow connection this can take a few seconds." : signInNote;
+    $("spotifyNote").textContent = signingIn ? signInNote : connection === "connecting" ? `Connecting to ${service.name}. On a slow connection this can take a few seconds.` : signInNote;
     $("spotifyNote").hidden = false;
   }
   refreshReconnectScreen();
@@ -2250,7 +2261,7 @@ function refreshReconnectScreen() {
   if (!show) return;
   const button = $("reconnectButton");
   button.disabled = signingIn;
-  setLabel(button, signingIn ? "Connecting\u2026" : "Reconnect to Spotify");
+  setLabel(button, signingIn ? "Connecting\u2026" : `Reconnect to ${service.name}`);
   const problem = $("loginMessage").className === "error" ? $("loginMessage").textContent : "";
   $("reconnectNote").textContent = problem;
   $("reconnectNote").hidden = !problem;
@@ -2263,7 +2274,7 @@ function connectionAction() {
   return localStorage.getItem("clientId") ? startLogin : null;
 }
 
-const CREATE_NEEDS_SPOTIFY = "Building playlists needs a working connection to Spotify.";
+const CREATE_NEEDS_SPOTIFY = `Building playlists needs a working connection to ${service.name}.`;
 
 function setConnection(state, message = "", kind = "retry") {
   connectionKind = kind;
@@ -2390,7 +2401,7 @@ function throwConfetti(fan) {
 // Signing in takes a few seconds on a slow connection, in two stretches: opening Spotify, then finishing the sign-in when Spotify sends the person back. In both the
 // Connect buttons say so and cannot be pressed again, since a second press would start a second sign-in over the first and spoil it.
 let signingIn = new URLSearchParams(location.search).has("code");   // coming back from Spotify: on from the first moment
-let signInNote = signingIn ? "Finishing the sign-in with Spotify. On a slow connection this can take a few seconds." : "";
+let signInNote = signingIn ? `Finishing the sign-in with ${service.name}. On a slow connection this can take a few seconds.` : "";
 let signInTimer = null;
 
 function setSigningIn(flag, note = "") {
@@ -2414,7 +2425,7 @@ async function startLogin(options) {
     return;
   }
   localStorage.setItem("clientId", clientId);
-  setSigningIn(true, "Opening Spotify. On a slow connection this can take a few seconds.");
+  setSigningIn(true, `Opening ${service.name}. On a slow connection this can take a few seconds.`);
   clearReportHints("loginReportHint");
   logStep("sign-in started");
   let go;
@@ -2423,7 +2434,7 @@ async function startLogin(options) {
   signInTimer = setTimeout(() => {
     if (!signingIn) return;
     setSigningIn(false);
-    signInNote = "Spotify did not open. Check your connection, then try again.";
+    signInNote = `${service.name} did not open. Check your connection, then try again.`;
     setLoginMessage(signInNote);
     updateButtons();
   }, 30000);
@@ -2456,9 +2467,9 @@ Object.assign(serviceHooks, {
   requiredScopes: REQUIRED_SCOPES,
   log: logStep,
   oldSignIn: () => { needsReconnect = true; },
-  expiredText: () => `Your Spotify sign-in expired. ${actWord(true)} Connect again.`,
+  expiredText: () => `Your ${service.name} sign-in expired. ${actWord(true)} Connect again.`,
   signInExpired: (message) => { if (connection === "ready") setConnection("problem", message, "reconnect"); },   // from here on nothing that needs Spotify is offered
-  refusedText: (what) => `Spotify did not allow this (${what}). Sign in again with Change Spotify login in More options, and approve every permission it asks for.`,
+  refusedText: (what) => `${service.name} did not allow this (${what}). Sign in again with Change ${service.name} login in More options, and approve every permission it asks for.`,
   pauseStarted: (first) => {
     updateButtons();
     // when a wait starts, the popup explains; not over the build popup, which says it already
@@ -2478,7 +2489,7 @@ Object.assign(serviceHooks, {
 // every 5 minutes. Either kind shows the strip under Arc's bar on every view (#waitStrip), with the time to go, until it is over; the strip opens the popup.
 const LIMIT_RETRY_MS = 5 * 60 * 1000;
 var BUILD_LIST_FRESH_MS = 3 * 60 * 1000;   // a build uses a list read this recently instead of reading it again (var: the tests set it)
-const SHORT_LIST_MESSAGE = "Spotify didn\u2019t send all your playlists.";
+const SHORT_LIST_MESSAGE = `${service.name} didn\u2019t send all your playlists.`;
 let SHORT_LIST_RETRY_MS = [30000, 120000, 600000];   // a short list is read again after these, then every 10 minutes for as long as it takes
 const limitWait = { active: false, retryAt: 0, timer: null, shown: false, reason: "limit", tries: 0 };
 function startLimitWait(reason = "limit") {
@@ -2519,12 +2530,12 @@ function retryAfterLimit() {
 function waitStripState() {
   // what the strip shows: { text, open } or null
   const left = pausedSecondsLeft();
-  if (left) return { text: `Spotify asked Arc to wait \u00b7 ${clockText(left)}`, open: () => showPauseDialog() };
+  if (left) return { text: `${service.name} asked Arc to wait \u00b7 ${clockText(left)}`, open: () => showPauseDialog() };
   if (!limitWait.active) return null;
   const ms = limitWait.retryAt - Date.now();
   const s = Math.max(0, Math.ceil(ms / 1000));
   const short = limitWait.reason === "short";
-  return { text: (short ? "Waiting for all your playlists \u00b7 " : "Spotify asked Arc to wait \u00b7 ") + (connection === "connecting" || ms <= 0 ? "trying again" : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`), open: () => (short ? showShortListDialog() : showLimitDialog()) };
+  return { text: (short ? "Waiting for all your playlists \u00b7 " : `${service.name} asked Arc to wait \u00b7 `) + (connection === "connecting" || ms <= 0 ? "trying again" : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`), open: () => (short ? showShortListDialog() : showLimitDialog()) };
 }
 function paintWaitStrip() {
   const strip = $("waitStrip");
@@ -2625,9 +2636,9 @@ function limitRecordText() {
 
 async function copyLimitRecord() {
   try { await navigator.clipboard.writeText(limitRecordText()); }
-  catch (err) { showNotices([{ text: "The Spotify request log could not be copied.", transient: true }]); return; }
+  catch (err) { showNotices([{ text: `The ${service.name} request log could not be copied.`, transient: true }]); return; }
   try { localStorage.setItem("spotifyRecordCopiedAt", String(Date.now())); } catch (err) { /* private browsing */ }
-  showNotices([{ text: "Spotify request log copied. Paste it into the chat with Claude.", transient: true }]);
+  showNotices([{ text: `${service.name} request log copied. Paste it into the chat with Claude.`, transient: true }]);
 }
 
 // ---------------------------------------------------------------- Device checks (the DEV menu; Ron, 2026-11-14, mockups/device-checks A)
@@ -2884,7 +2895,7 @@ function renderDeviceChecks() {
   }
   body.appendChild(guidedList);
   body.appendChild(feEl("p", { class: "dc-note", text: `Test playlists are named ${DC_NAME} and are removed after each run, even when a check fails. Results stay on this device.` }));
-  if (connection !== "ready") body.appendChild(feEl("p", { class: "dc-note", text: "Connect to Spotify to run the automatic checks." }));
+  if (connection !== "ready") body.appendChild(feEl("p", { class: "dc-note", text: `Connect to ${service.name} to run the automatic checks.` }));
   const ready = !dcRunning && !busy && connection === "ready" && !(typeof spotifyPause === "function" && spotifyPause());
   const copy = feEl("button", { type: "button", class: "dlg-quiet", id: "dcCopy", onClick: () => copyDeviceChecks(copy) }, "Copy results");
   body.appendChild(feEl("div", { class: "dlg-foot" }, copy,
@@ -2956,7 +2967,7 @@ async function loadMyPlaylists(options = {}) {
 
 // The popup when Spotify's list stays short: once a wait, and again from the strip's Details. Ron, 2026-11-13: plain words, OK and a report link.
 function showShortListDialog() {
-  askSyncChoice("Spotify didn\u2019t send all your playlists",
+  askSyncChoice(`${service.name} didn\u2019t send all your playlists`,
     "This happens now and then. Arc will keep trying. Until then you can edit your recipes, and building waits.",
     [{ label: "OK", value: "ok", main: true }], { problem: "cloud", reported: reportedLine(lastErrorText) });
 }
@@ -3173,8 +3184,8 @@ async function gatherInputs(keys) {
   }
   const names = [...new Set(plans.flatMap((p) => p.names))].filter((n) => String(n).trim());
   const match = JSON.parse(py.matchPlaylists(JSON.stringify(names), JSON.stringify(playlists), me.id));
-  for (const name of match.missing || []) problems.push([`${named(name)} is not in your Spotify playlists.`, "Choose another playlist in the recipe, or check its name in Spotify."]);
-  for (const name of match.notMine || []) problems.push([`${named(name)} is not yours.`, "Spotify only lets this app read playlists you own. Copy its songs into a playlist of your own and use that."]);
+  for (const name of match.missing || []) problems.push([`${named(name)} is not in your ${service.name} playlists.`, `Choose another playlist in the recipe, or check its name in ${service.name}.`]);
+  for (const name of match.notMine || []) problems.push([`${named(name)} is not yours.`, `${service.name} only lets this app read playlists you own. Copy its songs into a playlist of your own and use that.`]);
   const tracks = {};
   for (const name of names.filter((n) => match.found[n])) tracks[name] = await loadTracks(match.found[name]);
   if (problems.length) {
@@ -3456,6 +3467,7 @@ async function main() {
   if (window.pageStart) window.pageStart.started = true;   // tells the page's watchdog that this script is running
   startFlowChoice();
   fillActWords();
+  fillServiceWords();
   logStep("page opened");
   const pageVersion = (document.querySelector('meta[name="app-version"]') || {}).content;
   if (pageVersion !== APP_VERSION) startupProblems.push(`page version ${pageVersion || "unknown"} and script version ${APP_VERSION} differ`);
@@ -3578,10 +3590,10 @@ async function main() {
     if (typeof editor === "undefined" || !editor.internal) clearHeldNotice();
     refreshFormatKeys();
   });
-  guarded("a wait from Spotify", () => tickPause());
+  guarded(`a wait from ${service.name}`, () => tickPause());
 
   if (signingIn) { setLoginMessage(signInNote, true); updateButtons(); }   // coming back from Spotify: say so before the sign-in is finished
-  updateStep(launchScreen ? "Connecting to Spotify" : "Signing in to Spotify");
+  updateStep(launchScreen ? `Connecting to ${service.name}` : `Signing in to ${service.name}`);
   const pythonReady = connectingScreen || updateScreen || launchScreen ? preparePython().then((ok) => { if (ok) connectingStep("Python", "done"); else connectingStepFailed("Python"); return ok; }) : null;   // behind the connecting screen (or the update card) Python loads alongside the sign-in, so the wait is the slower of the two
   try {
     await finishLoginIfReturning();
