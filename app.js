@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16zg";
+const APP_VERSION = "2026-11-16zh";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -500,6 +500,7 @@ function initToolMenu() {
 // Developer mode went on or off (setDevMode in editor.js): on, the owner's tools are asked for (sharing.js).
 function devModeChanged(on) {
   markServiceTiles();
+  paintTabTitle();
   if (on && connection === "ready" && typeof askOwner === "function") askOwner();
 }
 
@@ -3653,12 +3654,19 @@ function whenScriptsLoaded(work) {
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => guarded("script versions", work));
   else guarded("script versions", work);
 }
+// The browser tab's title: Arc, and in developer mode the music service in use after it, Arc (Spotify) (Ron, 2026-11-16). Built from TAB_TITLE, never
+// read back from document.title, so the service is never added twice. The <title> tag and apple-mobile-web-app-title stay Arc (the Home Screen name).
+const TAB_TITLE = "Arc";
+function paintTabTitle() {
+  document.title = document.documentElement.classList.contains("dev-mode") ? `${TAB_TITLE} (${service.name})` : TAB_TITLE;
+}
 
 async function main() {
   if (window.pageStart) window.pageStart.started = true;   // tells the page's watchdog that this script is running
   startFlowChoice();
   fillActWords();
   fillServiceWords();
+  paintTabTitle();
   logStep("page opened");
   const pageVersion = (document.querySelector('meta[name="app-version"]') || {}).content;
   if (pageVersion !== APP_VERSION) startupProblems.push(`page version ${pageVersion || "unknown"} and script version ${APP_VERSION} differ`);
