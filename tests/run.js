@@ -203,7 +203,8 @@ function makeFetch(options = {}) {
       if (options.listDelayMs) await new Promise((r) => setTimeout(r, options.listDelayMs));
       const u = new URL(url); const offset = Number(u.searchParams.get("offset") || 0);
       const all = MY_PLAYLISTS.concat(options.extraPlaylists || [], options.createdPlaylists || []).filter((p) => !p || !(options.removedIds && options.removedIds.has(p.id)));   // null: a playlist Spotify will not show the app
-      const page = all.slice(offset, offset + 2).filter((p) => !(p && options.leaveOut && options.leaveOut.includes(p.id))).map((p) => { if (!p) return null; const q = options.listWithoutDescriptions ? { ...p, description: undefined } : { ...p, description: (options.descStore && options.descStore[p.id] !== undefined) ? options.descStore[p.id] : p.description, name: (options.nameStore && options.nameStore[p.id] !== undefined) ? options.nameStore[p.id] : p.name }; if (!options.noSnapshots) q.snapshot_id = (options.snapshots && options.snapshots[p.id]) || "snap-" + p.id; return q; });   // tiny pages, to exercise paging
+      const out = typeof options.leaveOut === "function" ? options.leaveOut(offset) : options.leaveOut;   // playlists Spotify leaves out of this read
+      const page = all.slice(offset, offset + 2).filter((p) => !(p && out && out.includes(p.id))).map((p) => { if (!p) return null; const q = options.listWithoutDescriptions ? { ...p, description: undefined } : { ...p, description: (options.descStore && options.descStore[p.id] !== undefined) ? options.descStore[p.id] : p.description, name: (options.nameStore && options.nameStore[p.id] !== undefined) ? options.nameStore[p.id] : p.name }; if (!options.noSnapshots) q.snapshot_id = (options.snapshots && options.snapshots[p.id]) || "snap-" + p.id; return q; });   // tiny pages, to exercise paging
       const next = offset + 2 < all.length ? `https://api.spotify.com/v1/me/playlists?limit=2&offset=${offset + 2}` : null;
       if (options.emptyFirstPages !== undefined) {   // Spotify's total on every page, and the first page sent empty this many times (as on 2026-11-13)
         const empty = offset === 0 && options.emptyFirstPages > 0;
@@ -625,10 +626,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-15d" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-15e" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-15d/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-15e/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -2070,7 +2071,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-15d", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-15e", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3159,6 +3160,19 @@ print(json.dumps(out))
   await mg_settled(mg_w16);
   var mg_lr16 = JSON.parse(mg_w16.localStorage.getItem("listReads") || "[]").pop() || {};
   check("pages Spotify sends short the same way twice are taken as its answer: Arc connects with no wait or question, and records how many were left out", mg_w16.eval("connection") === "ready" && !mg_w16.eval("limitWait.active") && !mg_w16.document.getElementById("feSyncDialog") && mg_lr16.leftOut === 2 && mg_lr16.count === mg_lr16.total - 2 && /2 left out by Spotify/.test(mg_w16.limitRecordText()), JSON.stringify({ c: mg_w16.eval("connection"), lr: mg_lr16 }));
+
+  // each read of a page misses a different playlist (a slip, not Spotify's answer): the reads are joined, and the page is whole
+  var mg_n17 = 0;
+  var mg_o17 = { descStore: {}, nameStore: {}, emptyFirstPages: 0, leaveOut: (offset) => (offset === 4 ? [(mg_n17++ % 2) ? "s1" : "p5"] : []), extraPlaylists: [mg_o13Saves[0], mg_o13Saves[1]] };
+  var mg_w17 = await mg_go({ formats: mg_text(mg_item("f1", "Alpha", 2, 30), mg_item("f2", "Beta", 1, 40)), spotifySynced: JSON.stringify({ f1: { rev: 2, playlistId: "s1" }, f2: { rev: 1, playlistId: "s2" } }) }, mg_o17);
+  await waitFor(() => mg_w17.eval("connection") !== "connecting", 12000);
+  await mg_settled(mg_w17);
+  var mg_lr17 = JSON.parse(mg_w17.localStorage.getItem("listReads") || "[]").pop() || {};
+  check("a page whose reads each miss a different playlist is joined from them: Arc connects with every playlist, none taken as left out", mg_w17.eval("connection") === "ready" && mg_lr17.count === mg_lr17.total && mg_lr17.leftOut === 0 && /joined from reads/.test(JSON.stringify(mg_lr17.pages)) && mg_o17.writes.filter((x) => x.type === "create").length === 0, JSON.stringify({ c: mg_w17.eval("connection"), lr: mg_lr17 }));
+  // a list still short keeps its counts and short reads as the error a report carries, though the message is caught further up
+  mg_w14.eval("recordError('Spotify listed 5 of 9 playlists, after reading again; short reads [offset, items] [[0,0]]')");
+  mg_w14.eval("recordError(\"Spotify didn\u2019t send all your playlists.\")");
+  check("the bare short-list message does not replace the counted one in a report", /^Spotify listed 5 of 9/.test(mg_w14.eval("reportDetails().lastError")), mg_w14.eval("reportDetails().lastError"));
 
   // a backup that cannot be read, with the format's name, is written over, and is not taken for a removed one
   var mg_o10 = { descStore: {}, nameStore: {}, extraPlaylists: [mg_pl("s1", "Alpha (recipe)", mg_remote("f1", "Alpha", 2, 30)), mg_pl("sx", "Beta (recipe)", mg_remote("f2", "Beta", 1, 40).slice(0, -4))] };
@@ -4314,7 +4328,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-15d"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-15e"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

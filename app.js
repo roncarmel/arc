@@ -14,7 +14,7 @@ const ADD_CHUNK = 100;     // songs added per request (Spotify's documented maxi
 const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
-const APP_VERSION = "2026-11-15d";
+const APP_VERSION = "2026-11-15e";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1361,6 +1361,8 @@ function scrubError(text) {
 }
 
 function recordError(text) {
+  // A short list was recorded with its counts where it was found; the bare message from a catch further up would hide them from a report (2026-11-15)
+  if (String(text).startsWith(SHORT_LIST_MESSAGE) && /^Spotify listed /.test(lastErrorText || "")) return;
   lastErrorText = scrubError(text);
 }
 
@@ -2845,17 +2847,26 @@ async function loadMyPlaylists() {
   // A page that comes short twice with the same playlists is Spotify's answer, not a slip: it leaves out playlists it will not show an app in development
   // mode (its own, as Discover Weekly or editorial ones) though its total counts them. Those are taken as all there is (`steady`); an empty page never is.
   // An account following 4 of them never connected, 4 short every time (937 of 941, then 939 of 943; the first user report, 2026-11-15).
-  const sameItems = (a, b) => (a.items || []).map((p) => p && p.id).join() === (b.items || []).map((p) => p && p.id).join();
+  // The same playlists in any order (Spotify's order may differ between reads). Reads that differ are joined: every playlist in any of them is in the library,
+  // so a page whose reads together come to its full count is whole (`joined`).
+  const idsOf = (pg) => (pg.items || []).map((p) => (p ? p.id : "")).sort().join();
+  const expected = (pg) => Math.min(pg.limit || 50, pg.total - pg.offset);
   let steady = 0;
   const readPage = async (url) => {
     let pg = await spotify(url);
+    const seen = new Map();
+    const join = (q) => (q.items || []).forEach((p, i) => { if (p && !seen.has(p.id)) seen.set(p.id, p); else if (!p) seen.set("null:" + i, null); });
+    join(pg);
     for (let tries = 0; tries < 3 && short(pg); tries++) {
       pages.push([pg.offset, (pg.items || []).length, pg.total, !!pg.next, "short, read again"]);
       await new Promise((r) => setTimeout(r, 700 * (tries + 1)));
       const again = await spotify(url);
-      const same = short(again) && (again.items || []).length > 0 && sameItems(pg, again);
+      const same = short(again) && (again.items || []).length > 0 && idsOf(pg) === idsOf(again);
+      join(again);
       pg = again;
-      if (same) { steady += Math.min(pg.limit || 50, pg.total - pg.offset) - pg.items.length; pages.push([pg.offset, pg.items.length, pg.total, !!pg.next, "short, the same again: taken"]); break; }
+      if (!short(pg)) break;
+      if (typeof pg.total === "number" && typeof pg.offset === "number" && seen.size >= expected(pg)) { pg = { ...pg, items: [...seen.values()] }; pages.push([pg.offset, pg.items.length, pg.total, !!pg.next, "short, joined from reads"]); break; }
+      if (same) { steady += expected(pg) - pg.items.length; pages.push([pg.offset, pg.items.length, pg.total, !!pg.next, "short, the same again: taken"]); break; }
     }
     return pg;
   };
@@ -2882,7 +2893,9 @@ async function loadMyPlaylists() {
     // Still short: the list is not used, so nothing works from a half-known state. Arc waits as if not connected (startLimitWait("short")) and keeps
     // the playlists it already had (or the kept list), and reads it again by itself (Ron, 2026-11-13).
     recordNote(`playlist list: ${raw.length} items, Spotify's total ${total}, pages [offset, items, total, next] ${JSON.stringify(pages)}`);
-    recordError(`Spotify listed ${got} of ${total} playlists, after reading again${playlistsHidden.length ? ` (${playlistsHidden.length} of them hidden)` : ""}${steady ? ` (${steady} left out the same way twice)` : ""}`);
+    // the short reads go into the report too ([offset, items], each read), since a report is often all there is (2026-11-15)
+    const reads = pages.filter((x) => x[4] || (typeof x[2] === "number" && x[1] < Math.min(50, x[2] - x[0]))).map((x) => [x[0], x[1]]).slice(0, 12);
+    recordError(`Spotify listed ${got} of ${total} playlists, after reading again${playlistsHidden.length ? ` (${playlistsHidden.length} of them hidden)` : ""}${steady ? ` (${steady} left out the same way twice)` : ""}; short reads [offset, items] ${JSON.stringify(reads)}`);
     useKeptPlaylists();
     if (connection === "ready") { setConnection("problem", SHORT_LIST_MESSAGE); startLimitWait("short"); }
     throw new Error(SHORT_LIST_MESSAGE);
