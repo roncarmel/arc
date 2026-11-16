@@ -696,10 +696,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly these seven, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16y" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16z" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16y/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16z/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -725,6 +725,7 @@ print(json.dumps(out))
   check("the same kind of problem is sent once per version, whatever its numbers; an expected one never", oRp.sharing.messages.length === 2 && (await rp2.eval("autoReport('Could not reach Spotify')")) === false && oRp.sharing.messages.length === 2);
   rp2.localStorage.setItem("autoReported", JSON.stringify({ v: "2000-01-01a", kinds: JSON.parse(rp2.localStorage.getItem("autoReported")).kinds }));
   check("a new version reports it again", (await rp2.eval("autoReports.clear(); autoReport('Spotify returned 500 for 7 songs')")) === true && oRp.sharing.messages.length === 3);
+  check("Python's script not arriving from the CDN is a network problem, never sent", (await rp2.eval("autoReport('Could not load Python from the internet. Check your connection, then reload. Details are in the browser console. (Could not load the Python runtime from https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js)')")) === false && oRp.sharing.messages.length === 2);
   oRp.sharing.messages = [];
   rp2.eval("openReport()");
   check("Report this problem opens the report form in a popup, its box ready for typing", rp2.document.getElementById("infoOverlay").hidden === false && rp2.document.getElementById("infoSlot").contains(rp2.document.getElementById("reportForm")) && rp2.document.activeElement === rp2.document.getElementById("reportText"));
@@ -2207,7 +2208,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16y", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16z", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4546,7 +4547,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16y"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16z"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

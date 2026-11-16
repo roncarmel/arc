@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16y";
+const APP_VERSION = "2026-11-16z";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1482,6 +1482,7 @@ function autoReport(text) {
   const kind = autoReportKind(text);
   if (autoReports.has(kind)) return autoReports.get(kind).promise;
   if (problemKind(String(text)) !== "other") return Promise.resolve(false);
+  if (navigator.webdriver) return Promise.resolve(false);   // a browser driven by a script (Playwright mockups and checks in Arc's own VM) never reports
   let before = false;
   try { const r = JSON.parse(localStorage.getItem(AUTO_REPORTED_KEY) || "{}"); before = r.v === APP_VERSION && (r.kinds || []).includes(kind); } catch (err) { /* private browsing */ }
   const entry = { ok: before ? true : undefined };
@@ -2624,6 +2625,7 @@ function countTutorialEnd() { if (!tutorialFinishCounted) { tutorialFinishCounte
 // The kind of a problem from its message: the sign-in's messages are the page's own (serviceHooks), the rest the service's, which knows its own wording
 function problemKind(message) {
   if (/sign-in expired|did not allow/.test(message)) return "sign-in";
+  if (message.includes("Could not load the Python runtime from")) return "network";   // the CDN's script did not arrive: the connection or a blocker, not Arc
   return service.problemKind(message) || "other";
 }
 
