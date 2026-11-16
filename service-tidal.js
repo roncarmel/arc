@@ -2,7 +2,7 @@
 // (openapi.tidal.com/v2, JSON:API). Sign-in is PKCE from the page, with a refresh token; requests are paced at about 2 a second, and a refusal (429)
 // is tried again after 2, 4, 8... seconds, since TIDAL's refusals clear in about 2 s (tested on Ron's account, 2026-11-16). Every TIDAL address and quirk
 // stays in this file. TIDAL lets an app read covers but not set them, and has no private playlists: what Arc makes is Unlisted (anyone with the link can open it).
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-tidal.js"] = "2026-11-16zf";   // this file's version, checked against the app's at startup
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-tidal.js"] = "2026-11-16zg";   // this file's version, checked against the app's at startup
 
 const TIDAL_API = "https://openapi.tidal.com/v2";
 const TIDAL_AUTH_URL = "https://login.tidal.com/authorize";
@@ -368,11 +368,22 @@ const tidalService = {
   hasOwnCover: () => Promise.resolve(false),
 
   // songs
-  async findByIsrc(isrcs) {
-    const found = {};
+  async findByIsrc(isrcs, { skip = {}, onEach } = {}) {
+    // 20 songs a request; as spotifyService.findByIsrc: skip, searched, and a failure stops it quietly with what was found so far (stopped)
+    const found = {}, searched = [];
+    Object.defineProperty(found, "unsearched", { value: [] });
+    Object.defineProperty(found, "searched", { value: searched });
     for (let i = 0; i < isrcs.length; i += TIDAL_LOOKUP_BATCH) {
-      const r = await tidal("/tracks?filter[isrc]=" + isrcs.slice(i, i + TIDAL_LOOKUP_BATCH).map(encodeURIComponent).join(","));
-      for (const t of r.data || []) { const isrc = String((t.attributes || {}).isrc || "").toUpperCase(); if (isrc && !found[isrc]) found[isrc] = String(t.id); }
+      const part = isrcs.slice(i, i + TIDAL_LOOKUP_BATCH);
+      let r;
+      try { r = await tidal("/tracks?filter[isrc]=" + part.map(encodeURIComponent).join(",")); }
+      catch (err) { Object.defineProperty(found, "stopped", { value: err }); break; }
+      searched.push(...part);
+      for (const t of r.data || []) {
+        const isrc = String((t.attributes || {}).isrc || "").toUpperCase();
+        if (isrc && !found[isrc] && !(skip[isrc] || []).includes(String(t.id))) found[isrc] = String(t.id);
+      }
+      if (onEach) onEach(searched.length, isrcs.length);
     }
     return found;
   },

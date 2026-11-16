@@ -4,8 +4,8 @@
 -- One row per shared playlist. Only what the sharer chose and wrote, the songs as IDs, and a short summary made on their device when they shared it.
 CREATE TABLE IF NOT EXISTS shares (
   id TEXT PRIMARY KEY,                -- random, the shared playlist's own ID here
-  owner TEXT NOT NULL,                -- HMAC of the sharer's Spotify user ID (never the ID itself)
-  playlist TEXT NOT NULL,             -- the sharer's Spotify playlist ID, so their device knows which of its playlists this is
+  owner TEXT NOT NULL,                -- HMAC of the sharer's user ID (never the ID itself): a Spotify ID alone, a TIDAL one as tidal:<ID>
+  playlist TEXT NOT NULL,             -- the sharer's playlist ID on their service, so their device knows which of its playlists this is
   snapshot TEXT,                      -- Spotify's snapshot ID when shared, to say "Changed in Spotify since you shared it"
   name TEXT NOT NULL,
   shown_as TEXT,                      -- the sharer's Spotify name; NULL is anonymous
@@ -17,8 +17,8 @@ CREATE TABLE IF NOT EXISTS shares (
   other TEXT,                         -- what an Other playlist is, in a word or two
   description TEXT,                   -- the sharer's description, or the playlist's Spotify description
   desc_source TEXT,                   -- mine or spotify (kept in step with Spotify when the sharer updates)
-  cover TEXT,                         -- the address of the playlist's picture at Spotify, or NULL
-  songs TEXT NOT NULL,                -- JSON: [[spotify track ID, ISRC or ""], ...] in order
+  cover TEXT,                         -- the address of the playlist's picture at Spotify or TIDAL, or NULL
+  songs TEXT NOT NULL,                -- JSON: [[Spotify ID, ISRC or "", TIDAL ID], ...] in order, the sharer's service's column filled (shares from before TIDAL have two)
   song_count INTEGER NOT NULL,
   total_ms INTEGER NOT NULL,
   avg_ms INTEGER NOT NULL,
@@ -53,4 +53,14 @@ CREATE TABLE IF NOT EXISTS daily (
   kind TEXT NOT NULL,
   n INTEGER NOT NULL,
   PRIMARY KEY (who, day, kind)
+);
+
+-- Songs matched across services by ISRC (work/tidal-plan.md, stage 6; added 2026-11-16: add-recordings.sql). A share keeps the IDs its sharer's
+-- service gave; other IDs come from here, found by people's own Arc with their own sign-in and sent back (POST /matches). As small as it can be.
+CREATE TABLE IF NOT EXISTS recordings (
+  isrc TEXT PRIMARY KEY,
+  spotify TEXT,                       -- up to 3 Spotify track IDs, space separated, the one that last played for someone first; NULL: none
+  tidal TEXT,                         -- the same for TIDAL
+  spotify_none INTEGER,               -- when it was last looked for on Spotify and not found (ms), while there is no ID; looked for again after 30 days
+  tidal_none INTEGER
 );

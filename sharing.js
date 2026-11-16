@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16zf";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16zg";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -44,13 +44,17 @@ const sharing = {
   overlap: null, overlapShown: null, reading: false, readStop: false, showOverlapSongs: false,
   songNames: new Map(), player: null, previewNote: "",
   songMenu: null, songMenuClose: null, liked: new Set(), addedTo: new Map(),   // a song's menu, and what it did this visit
+  foundHere: new Map(), lookingUp: new Map(), lookupErrors: {},   // songs looked up on this service by ISRC this visit (ISRC: ID, null not found); lookingUp: share ID: {done, total}
 };
 
 // ---------------------------------------------------------------- talking to the worker
 async function sharingFetch(method, path, json, retried = false) {
   const headers = {};
   if (json) headers["Content-Type"] = "application/json";
-  if (service.signedIn() && path !== "/library" && !path.startsWith("/songs/")) headers.Authorization = service.authHeader();   // the library and a playlist's songs are public: reading them sends no sign-in
+  if (service.signedIn() && path !== "/library" && !path.startsWith("/songs/")) {   // the library and a playlist's songs are public: reading them sends no sign-in
+    headers.Authorization = service.authHeader();
+    headers["X-Arc-Service"] = service.key;   // whose sign-in it is
+  }
   let response;
   try {
     response = await fetchWithAnswerLimit(SHARING_URL + path, { method, headers, body: json ? JSON.stringify(json) : undefined });
@@ -77,6 +81,7 @@ function loadLibrary(force = false) {
   libraryRead = (async () => {
     try {
       sharing.library = await sharingFetch("GET", "/library");
+      for (const s of sharing.library.shares) songsForService(s);
       sharing.libraryAt = Date.now();
       applyOwnChanges();
       computeMoodIndex();
@@ -444,9 +449,153 @@ async function readMissingSlowly(ids) {
   renderSharing();
 }
 
-// ---------------------------------------------------------------- copying a shared playlist into the person's Spotify
+// ---------------------------------------------------------------- one library for both services (work/tidal-plan.md, stage 6)
+// The library sends each song as [Spotify ID, ISRC, TIDAL ID], a column holding the IDs to try on that service, space separated, best first.
+// Here it becomes [this service's first ID or "", ISRC], so the rest of the page reads songs[i][0] as before; s.ids keeps every ID to try, and
+// s.here marks the songs looked for lately and not found ("!").
+const SERVICE_COLUMN = { spotify: 0, tidal: 2 };
+const LOOKUP_GAP_MS = 250;   // between one search and the next, so a share's first lookup on Spotify is not a burst (Ron, 2026-11-16)
+function songsForService(s) {
+  if (s.here) return;
+  const col = SERVICE_COLUMN[service.key];
+  s.here = s.songs.map((t) => (String(t[col] || "") === "!" ? "!" : ""));
+  s.ids = s.songs.map((t) => (String(t[col] || "") === "!" ? [] : String(t[col] || "").split(" ").filter(Boolean)));
+  s.songs = s.songs.map((t, i) => [s.ids[i][0] || "", t[1] || ""]);
+}
+// Which songs have no ID here: found this visit (filled in), still to look up (need, by ISRC), or missing (no ISRC, or not found)
+function songsHere(s) {
+  songsForService(s);
+  const missing = new Set(), need = new Set();
+  s.songs.forEach((t, i) => {
+    if (t[0]) return;
+    const known = t[1] ? sharing.foundHere.get(t[1]) : undefined;
+    if (known) { t[0] = known; s.ids[i] = [known]; }
+    else if (!t[1] || known === null || s.here[i] === "!") missing.add(i);
+    else need.add(t[1]);
+  });
+  return { missing, need: [...need] };
+}
+// the song names, when they are there or once they arrive (Spotify finds a song by them when it refuses the isrc: filter)
+async function songNamesReady(s) {
+  for (let k = 0; k < 100 && songNamesFor(s).state === "loading"; k++) await new Promise((r) => setTimeout(r, 100));
+  const nm = songNamesFor(s), names = {};
+  if (nm.state === "ok") s.songs.forEach((t, i) => { if (t[1] && nm.list[i]) names[t[1]] = [nm.list[i][0], nm.list[i][1]]; });
+  return names;
+}
+// On Get, songs nobody has looked up on this service yet are looked up by ISRC with the person's own sign-in, and what was found (or not)
+// goes to the worker for everyone after: only on Get, so browsing costs the service nothing, and never again for those songs (Ron, 2026-11-16).
+// TIDAL takes 20 a request, Spotify one search each, spaced out. A refusal stops it quietly; what was found is kept and sent, and Try again goes on.
+async function lookUpSongs(s) {
+  const { need } = songsHere(s);
+  if (!need.length) return true;
+  if (sharing.lookingUp.has(s.id) || connection !== "ready" || !me || service.wait()) return false;
+  const progress = { done: 0, total: need.length };
+  sharing.lookingUp.set(s.id, progress);
+  delete sharing.lookupErrors[s.id];
+  renderSharing();
+  const names = await songNamesReady(s);
+  const found = await service.findByIsrc(need, { names, gapMs: LOOKUP_GAP_MS, onEach: (done) => { progress.done = done; paintChecking(s); } });
+  const unsearched = new Set(found.unsearched || []);
+  const none = (found.searched || []).filter((x) => !found[x] && !unsearched.has(x));
+  for (const isrc of found.searched || []) sharing.foundHere.set(isrc, found[isrc] || null);
+  for (const isrc of unsearched) sharing.foundHere.set(isrc, null);
+  if (Object.keys(found).length || none.length) sharingFetch("POST", "/matches", { found: { ...found }, none })
+    .catch((err) => logStep("music sharing: matches not sent (" + (err && err.message) + ")"));
+  if (found.stopped) sharing.lookupErrors[s.id] = String(found.stopped && found.stopped.message || found.stopped);
+  sharing.lookingUp.delete(s.id);
+  renderSharing();
+  return !found.stopped;
+}
+const checkingText = (p) => `Finding the songs on ${service.name} \u00b7 ${p.done} of ${p.total}`;
+function paintChecking(s) {
+  const el = $("msCheckingText"), p = sharing.lookingUp.get(s.id);
+  if (el && p) el.textContent = checkingText(p);
+}
+// The box under Get on a playlist's page: finding the songs, a problem, or how many songs aren't on this service and, for a share from the
+// other service, that Get finds its songs here (a grey box, not an error: Ron, 2026-11-16, B)
+function missingBox(s) {
+  if (isMine(s) || isAdded(s)) return null;
+  const here = songsHere(s), p = sharing.lookingUp.get(s.id);
+  if (p) return feEl("div", { class: "ms-checking", id: "msChecking" }, feEl("span", { class: "ms-play-spin" }), feEl("span", { id: "msCheckingText" }, checkingText(p)));
+  if (sharing.lookupErrors[s.id]) return problemBox(`Couldn\u2019t check every song on ${service.name}`, sharing.lookupErrors[s.id], [{ label: "Try again", run: () => addShared(s) }]);
+  if (!here.missing.size && !here.need.length) return null;
+  const n = here.missing.size, total = musicCount(s) + [...here.missing].filter((i) => isSilence(s.songs[i])).length;
+  const names = sharing.songNames.get(s.id);
+  const ms = names && names.state === "ok" ? [...here.missing].reduce((sum, i) => sum + ((names.list[i] && names.list[i][2]) || 0), 0) : 0;
+  const lines = [];
+  if (n) lines.push(feEl("span", {}, feEl("b", {}, `${n} of ${total} songs`), ` ${n === 1 ? "isn\u2019t" : "aren\u2019t"} on ${service.name}`, ms >= 30000 ? ` \u00b7 ${lengthText(ms / 60000)} shorter` : ""));
+  // songs nobody has looked up here come only from a share made on the other service: say so, without naming the sharer (Ron, 2026-11-16,
+  // mockups/missing-songs/from-tidal.png, bottom left), and that Get finds them
+  const from = { spotify: spotifyService, tidal: tidalService }[s.service];
+  if (here.need.length) lines.push(feEl("span", { id: "msUnchecked" }, from && s.service !== service.key ? `Shared from ${from.name}. ` : "", `Arc finds its songs on ${service.name} when you get it.`));
+  return feEl("div", { class: "ms-missing", id: "msMissing" }, feIcon("info"), feEl("div", { class: "ms-missing-lines" }, ...lines));
+}
+// After a Get, the copy is read back (one request for 50 songs on Spotify, 20 on TIDAL). A song that came out as another recording was a bad
+// match, which the worker drops. A song that doesn't play for this person is tried with the next ID the library gave, else searched for again;
+// when that gives another version, the copy is made again with it (seconds old, so nothing of the person's is lost) and read back once more,
+// and the versions that played go to the worker, which puts them first for everyone. One message at most. Gives the copy, the same or the new one.
+async function fixCopy(s, made, ids) {
+  const at = new Map();   // song ID: its place in s.songs
+  s.songs.forEach((t, i) => { if (t[0] && !at.has(t[0])) at.set(t[0], i); });
+  const wrong = {}, found = {}, swap = new Map();
+  try {
+    const bad = [];
+    for (const t of await service.readPlayable(made.id)) {
+      const i = at.get(t.from || t.id), isrc = i === undefined ? "" : s.songs[i][1];
+      if (!isrc) continue;
+      if (!t.from && t.key && t.key.startsWith("isrc:") && t.key !== "isrc:" + isrc) wrong[isrc] = s.songs[i][0];
+      else if (t.playable === false) bad.push(i);
+    }
+    const search = [];
+    for (const i of bad) {
+      const next = s.ids[i][s.ids[i].indexOf(s.songs[i][0]) + 1];
+      if (next) swap.set(i, next); else search.push(i);
+    }
+    if (search.length) {
+      const isrcs = search.map((i) => s.songs[i][1]), skip = {};
+      for (const i of search) skip[s.songs[i][1]] = s.ids[i];
+      const got = await service.findByIsrc(isrcs, { names: await songNamesReady(s), skip, gapMs: LOOKUP_GAP_MS });
+      for (const i of search) if (got[s.songs[i][1]]) swap.set(i, got[s.songs[i][1]]);
+    }
+    if (swap.size) {
+      logStep(`shared copy: ${bad.length} songs don't play here, ${swap.size} made again with another version`);
+      const again = await service.createPlaylist({ name: s.name, description: copyDescription(s) });
+      try {
+        await service.addSongs(again.id, s.songs.map((t, i) => swap.get(i) || t[0]).filter(Boolean));
+        await copyCover(s, again.id);
+      } catch (err) { try { await service.deletePlaylist(again.id); } catch (e) { /* left to the person */ } throw err; }
+      try { await service.deletePlaylist(made.id); } catch (err) { logStep("shared copy: the first copy not removed"); }
+      made = again;
+      const plays = new Map((await service.readPlayable(made.id)).map((t) => [t.from || t.id, t.playable !== false]));
+      for (const [i, id] of swap) if (plays.get(id)) { found[s.songs[i][1]] = id; s.songs[i][0] = id; s.ids[i] = [id, ...s.ids[i].filter((x) => x !== id)]; }
+    }
+  } catch (err) { logStep("shared copy: not checked (" + (err && err.message) + ")"); }
+  if (Object.keys(wrong).length || Object.keys(found).length) {
+    logStep(`shared copy: ${Object.keys(wrong).length} other recordings, ${Object.keys(found).length} other versions played`);
+    sharingFetch("POST", "/matches", { found, wrong }).catch((err) => logStep("music sharing: matches not sent (" + (err && err.message) + ")"));
+  }
+  return made;
+}
+// a share's cover onto a copy; a problem with the picture never undoes the playlist
+async function copyCover(s, id) {
+  if (!s.cover || !service.coversAllowed()) return;
+  try {
+    const bytes = new Uint8Array(await (await fetch(s.cover)).arrayBuffer());
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    await service.setCover(id, btoa(binary), { noWait: true });
+  } catch (err) { logStep("shared copy: cover not copied"); }
+}
+
+// ---------------------------------------------------------------- copying a shared playlist into the person's library
 async function addShared(s) {
-  if (sharing.adding.has(s.id) || connection !== "ready") return;
+  if (sharing.adding.has(s.id) || sharing.lookingUp.has(s.id) || connection !== "ready") return;
+  // from the list, a share with songs missing or not checked yet opens its page first, where the person sees how many and decides
+  const here = songsHere(s);
+  if ((here.need.length || here.missing.size) && sharing.detail !== s.id) { openDetail(s.id); return; }
+  if (!(await lookUpSongs(s))) return;
+  const ids = s.songs.map(([id]) => id).filter(Boolean);
+  if (!ids.length) { sharing.addErrors[s.id] = `None of its songs are on ${service.name}.`; renderSharing(); return; }
   sharing.adding.add(s.id);
   delete sharing.addErrors[s.id];
   renderSharing();
@@ -454,20 +603,14 @@ async function addShared(s) {
   try {
     made = await service.createPlaylist({ name: s.name, description: copyDescription(s) });
     if (!made.private) logStep("shared copy: could not make it private");
-    await service.addSongs(made.id, s.songs.map(([id]) => id));
-    if (s.cover && service.coversAllowed()) {   // a problem with the picture never undoes the playlist
-      try {
-        const bytes = new Uint8Array(await (await fetch(s.cover)).arrayBuffer());
-        let binary = "";
-        for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-        await service.setCover(made.id, btoa(binary), { noWait: true });
-      } catch (err) { logStep("shared copy: cover not copied"); }
-    }
+    await service.addSongs(made.id, ids);
+    await copyCover(s, made.id);
   } catch (err) {
     if (made) { try { await service.deletePlaylist(made.id); } catch (e) { logStep("shared copy: half-made copy not removed"); } }   // all or nothing
     made = null;
     sharing.addErrors[s.id] = String(err && err.message || err).replace(/\.?$/, ".");   // what went wrong, shown in the usual error box (getError)
   }
+  if (made) made = await fixCopy(s, made, ids);
   sharing.adding.delete(s.id);
   if (made) {
     countEvent("playlist-gotten", s.kind);   // the type only
@@ -967,7 +1110,7 @@ function addButton(s, big = false) {
   if (isMine(s)) return big ? null : feEl("span", { class: "ms-add ms-yours" }, "Yours");
   if (sharing.adding.has(s.id)) return feEl("button", { type: "button", id: big ? "msMain" : null, class: big ? "ms-mainbtn ms-grey" : "ms-add ms-busy", disabled: true }, "Getting...");
   if (isAdded(s)) return feEl("button", { type: "button", id: big ? "msMain" : null, class: big ? "ms-mainbtn ms-grey" : "ms-add ms-done", disabled: true }, feIcon("check"), "Gotten");
-  return feEl("button", { type: "button", id: big ? "msMain" : null, class: big ? "ms-mainbtn" : "ms-add", disabled: connection !== "ready", onClick: (e) => { e.stopPropagation(); addShared(s); } }, big ? feIcon("plus") : null, big ? "Get this playlist" : "Get");
+  return feEl("button", { type: "button", id: big ? "msMain" : null, class: big ? "ms-mainbtn" : "ms-add", disabled: connection !== "ready" || sharing.lookingUp.has(s.id), onClick: (e) => { e.stopPropagation(); addShared(s); } }, big ? feIcon("plus") : null, big ? "Get this playlist" : "Get");
 }
 // a row: the cover, the type's line in pink small capitals, the name, who and how long, and Get
 function shareRow(s, ov) {
@@ -1057,6 +1200,8 @@ function renderDetail(body) {
       feEl("div", { class: "ms-sub" }, isMine(s) ? "Shared by you" : s.by ? `Shared by ${s.by}` : "Shared anonymously"),
       feEl("div", { class: "ms-sub" }, `${songCountText(musicCount(s))} · ${lengthText(s.ms / 60000)}`))));
   if (!isMine(s)) { const get = addButton(s, true); get.classList.add("ms-getwide"); body.appendChild(get); }
+  const missing = missingBox(s);
+  if (missing) body.appendChild(missing);
   if (sharing.addErrors[s.id]) body.appendChild(getError(s));
   // on the person's own share, what Edit details changes sits in one card with Edit details at its top right
   const into = mine ? feEl("div", { class: "ms-dcard" }, feEl("div", { class: "ms-dhead" }, feEl("b", {}, "Details"),
@@ -1164,10 +1309,11 @@ function renderSongs(body, s, names, ov) {
   // Arc's silence tracks stay in the share and in copies, but are not songs: one line says they are there (Ron, 2026-11-14)
   if (s.songs.some(isSilence)) body.appendChild(feEl("p", { class: "ms-song-note", id: "msSilenceNote" }, "Includes silences between segments."));
   const list = feEl("div", { class: "ms-tracks" });
-  names.list.forEach((n, i) => { if (!isSilence(s.songs[i])) list.appendChild(songRow(s, i, n, have.has(s.songs[i] && s.songs[i][0]))); });
+  const gone = isMine(s) ? new Set() : songsHere(s).missing;
+  names.list.forEach((n, i) => { if (!isSilence(s.songs[i])) list.appendChild(songRow(s, i, n, have.has(s.songs[i] && s.songs[i][0]), gone.has(i))); });
   body.appendChild(list);
 }
-function songRow(s, i, [title, artist, ms], had) {
+function songRow(s, i, [title, artist, ms], had, gone = false) {
   const isrc = s.songs[i] && s.songs[i][1];
   const known = isrc && previewUrls.get(isrc);
   const none = !isrc || (known && known.url === null);   // no recording code, or Deezer has no preview of it
@@ -1179,13 +1325,13 @@ function songRow(s, i, [title, artist, ms], had) {
   if (on && p.state === "loading") btn.appendChild(feEl("span", { class: "ms-play-spin" }));
   else btn.appendChild(feIcon(on && p.state === "playing" ? "pause" : "play"));
   if (on && p.state !== "loading") btn.appendChild(previewRing());
-  return feEl("div", { class: "ms-track" + (on ? " ms-track-on" : "") + (none ? " ms-track-none" : "") }, btn,
+  return feEl("div", { class: "ms-track" + (on ? " ms-track-on" : "") + (none ? " ms-track-none" : "") + (gone ? " ms-track-gone" : "") }, btn,
     feEl("div", { class: "ms-track-text" },
       feEl("div", { class: "ms-track-name" }, feEl("span", { class: "ms-track-title", text: label }), had ? feEl("span", { class: "ms-track-have", title: "Already in your recipes", "aria-label": "Already in your recipes" }, feIcon("check")) : null),
-      artist ? feEl("div", { class: "ms-track-artist", text: artist }) : null),
+      artist || gone ? feEl("div", { class: "ms-track-artist" }, artist || "", gone ? feEl("span", { class: "ms-gone-tag" }, (artist ? " · " : "") + `Not on ${service.name}`) : null) : null),
     // while its preview is on, the length counts the preview down instead
     feEl("span", { class: "ms-track-len" + (on && p.state !== "loading" ? " ms-track-left" : "") }, on && p.state !== "loading" ? previewLeft() : songLength(ms)),
-    songMoreButton(s, i, [title, artist, ms], label));
+    songMoreButton(s, i, [title, artist, ms], label) || feEl("span", { class: "ms-more ms-more-none", "aria-hidden": "true" }));   // keeps the lengths in line
 }
 
 // ---------------------------------------------------------------- a song's menu
@@ -2134,7 +2280,7 @@ async function sendShare(p, d) {
   // the share as the library will have it (publicShare in the worker), put in at once (ownShareChanged); a hidden one stays out, as in the library
   const now = Date.now();
   const share = { id: done.id, name: sent.name, by: sent.by, kind, books: sent.books, bookOther: sent.bookOther, phases: sent.phases, moods: sent.moods, other: sent.other,
-    description: sent.description || "", cover: sent.cover, songs, count: songs.length, ms, avgMs: songs.length ? Math.round(ms / songs.length) : 0, artists: sent.artists, sharedAt: now, updatedAt: now };
+    description: sent.description || "", cover: sent.cover, songs, here: songs.map((t) => t[0]), count: songs.length, ms, avgMs: songs.length ? Math.round(ms / songs.length) : 0, artists: sent.artists, sharedAt: now, updatedAt: now };
   ownShareChanged(done.id, done.hidden ? null : share);
   return done;
 }

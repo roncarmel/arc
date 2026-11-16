@@ -2,8 +2,11 @@
 // People share their own playlists (a type: ceremony, phase, mood or other, with its books, phases, mood words or name, a description,
 // the songs as Spotify IDs and ISRCs, a short summary) and copy each other's.
 // Each song's title, artist and length are kept too, but sent only for one playlist at a time (GET /songs/:id, when its page opens), never with the library.
-// Who someone is comes from Spotify: every write carries the person's Spotify sign-in, the worker asks Spotify's /me with it,
-// and keeps only an HMAC of the user ID (SECRET), never the ID. There are no accounts or passwords here.
+// Who someone is comes from their music service (Spotify or TIDAL, named by the X-Arc-Service header, Spotify when there is none): every write
+// carries the person's sign-in, the worker asks that service who it is, and keeps only an HMAC of the user ID (SECRET), never the ID.
+// There are no accounts or passwords here, and no app or secret of either service.
+// One library for both services (work/tidal-plan.md, stage 6): a share's songs are [Spotify ID, ISRC, TIDAL ID], the sharer's service filling
+// its column. The other is filled from recordings, matches by ISRC that people's own Arc finds with their own sign-in and sends back (POST /matches).
 // Reports are emailed to the owner of the app through Resend; three reports from different people hide a playlist until he looks.
 // Arc's Report a problem and Feedback forms (POST /message) are emailed the same way, with no sign-in; nothing of them is kept.
 //
@@ -19,7 +22,7 @@ import BLOCKED from "../../blocked-words/blocked-words.json";
 
 const LIMITS = {
   nameChars: 200, shownChars: 40, descChars: 300, moodsMax: 8, moodChars: 30, otherChars: 24, phases: 5, books: 6, maxSongs: 5000, artists: 5, songChars: 100,
-  sharesPerDay: 60, reportsPerDay: 30, noteChars: 500, copyShare: 0.9, hideAfterReports: 3,
+  sharesPerDay: 60, reportsPerDay: 30, matchesPerDay: 200, matchesAtOnce: 500, noneKeepMs: 30 * 86400000, noteChars: 500, copyShare: 0.9, hideAfterReports: 3,
   messagesPerDay: 10, autoReportsPerDay: 50, messageChars: 3000, emailChars: 120, detailChars: 4000, logChars: 1000000,
 };
 const KINDS = ["ceremony", "phase", "mood", "other"];
@@ -29,7 +32,7 @@ export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
     const allowed = String(env.ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
-    const cors = allowed.includes(origin) ? { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Methods": "GET, POST, DELETE", "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Max-Age": "86400", "Vary": "Origin" } : {};
+    const cors = allowed.includes(origin) ? { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Methods": "GET, POST, DELETE", "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Arc-Service", "Access-Control-Max-Age": "86400", "Vary": "Origin" } : {};
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return new Response(null, { status: cors["Access-Control-Allow-Origin"] ? 204 : 403, headers: cors });
     try {
@@ -42,8 +45,9 @@ export default {
         case "GET /counts": return answer({ ids: (await library(env)).shares.map((s) => s.id) }, 200, cors);   // Arc's home card: which shares there are, nothing more
         case "GET /songs/:id": return answer(await songNames(env, id), 200, cors);
         case "GET /mine": return answer(await mine(env, await who(request, env)), 200, cors);
-        case "POST /share": return answer(await share(env, await who(request, env), await body(request)), 200, cors);
+        case "POST /share": return answer(await share(env, await user(request, env), await body(request)), 200, cors);
         case "DELETE /share/:id": return answer(await unshare(env, await who(request, env), id), 200, cors);
+        case "POST /matches": return answer(await matches(env, await user(request, env), await body(request)), 200, cors);
         case "POST /report": return answer(await report(env, await who(request, env), await body(request), url), 200, cors);
         case "POST /message": return answer(await message(env, request, await body(request)), 200, cors);
         case "GET /admin/reports": return answer(await adminReports(env, await owner(request, env)), 200, cors);
@@ -75,15 +79,17 @@ async function hmac(env, value) {
   return Array.from(sig, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// The person, from their Spotify sign-in: Spotify says who it is, and only an HMAC of the ID is kept.
+// The person, from their sign-in: their service says who it is, and only an HMAC of the ID is kept.
+const serviceOf = (request) => (request.headers.get("X-Arc-Service") === "tidal" ? "tidal" : "spotify");
+function testUser(env, auth, name) {   // local testing only (.dev.vars, never deployed): pretend sign-ins, { token: user ID }
+  const id = JSON.parse(env.TEST_USERS)[auth.slice(7)];
+  if (!id) throw new Refusal(401, `${name} did not accept the sign-in.`, "signin");
+  return id;
+}
 async function spotifyUser(request, env) {
   const auth = request.headers.get("Authorization") || "";
   if (!/^Bearer [\w.-]{20,}$/.test(auth)) throw new Refusal(401, "Sign in to Spotify first.");
-  if (env.TEST_USERS) {   // local testing only (.dev.vars, never deployed): pretend sign-ins, { token: user ID }
-    const id = JSON.parse(env.TEST_USERS)[auth.slice(7)];
-    if (!id) throw new Refusal(401, "Spotify did not accept the sign-in.", "signin");
-    return id;
-  }
+  if (env.TEST_USERS) return testUser(env, auth, "Spotify");
   const reply = await fetch("https://api.spotify.com/v1/me", { headers: { Authorization: auth } });
   if (reply.status === 401) throw new Refusal(401, "Spotify did not accept the sign-in.", "signin");
   if (reply.status === 429) throw new Refusal(503, "Spotify is busy. Try again in a minute.", "busy");
@@ -92,7 +98,26 @@ async function spotifyUser(request, env) {
   if (!me || !me.id) throw new Refusal(502, "Spotify did not answer.", "spotify");
   return me.id;
 }
-async function who(request, env) { return hmac(env, await spotifyUser(request, env)); }
+async function tidalUser(request, env) {
+  const auth = request.headers.get("Authorization") || "";
+  if (!/^Bearer [\w.-]{20,}$/.test(auth)) throw new Refusal(401, "Sign in to TIDAL first.");
+  if (env.TEST_USERS) return testUser(env, auth, "TIDAL");
+  const reply = await fetch("https://openapi.tidal.com/v2/users/me", { headers: { Authorization: auth, Accept: "application/vnd.api+json" } });
+  if (reply.status === 401) throw new Refusal(401, "TIDAL did not accept the sign-in.", "signin");
+  if (reply.status === 429) throw new Refusal(503, "TIDAL is busy. Try again in a minute.", "busy");
+  if (!reply.ok) throw new Refusal(502, "TIDAL did not answer.", "service");
+  const me = await reply.json();
+  const id = me && me.data && me.data.id;
+  if (!id) throw new Refusal(502, "TIDAL did not answer.", "service");
+  return String(id);
+}
+// { service, who }: who is the HMAC; a Spotify ID alone as before (so shares made before TIDAL stay their sharers'), another service's with its name first
+async function user(request, env) {
+  const service = serviceOf(request);
+  const id = service === "tidal" ? await tidalUser(request, env) : await spotifyUser(request, env);
+  return { service, who: await hmac(env, service === "spotify" ? id : service + ":" + id) };
+}
+async function who(request, env) { return (await user(request, env)).who; }
 async function owner(request, env) {
   const id = await spotifyUser(request, env);
   const owners = String(env.OWNER_SPOTIFY_IDS || "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -113,9 +138,12 @@ function kindOf(r) {
   return { kind: r.kind, books: bitList(r.books, LIMITS.books), bookOther: r.book_other || "", phases: bitList(r.phases, LIMITS.phases), moods: r.moods ? JSON.parse(r.moods) : [], other: r.other || "", description: r.description || "" };
 }
 function publicShare(r) {
+  const songs = JSON.parse(r.songs);
   return {
     id: r.id, name: r.name, by: r.shown_as || null, ...kindOf(r), cover: r.cover || null,
-    songs: JSON.parse(r.songs), count: r.song_count, ms: r.total_ms, avgMs: r.avg_ms, artists: JSON.parse(r.artists),
+    // the service it was shared from, told by which column the sharer's songs fill (Shared from TIDAL. on a playlist's page)
+    service: songs.some((t) => t[0]) || !songs.some((t) => t[2]) ? "spotify" : "tidal",
+    songs, count: r.song_count, ms: r.total_ms, avgMs: r.avg_ms, artists: JSON.parse(r.artists),
     sharedAt: r.shared_at, updatedAt: r.updated_at,
   };
 }
@@ -129,10 +157,33 @@ async function library(env) {
   // the song names stay out: they are read one playlist at a time (songNames)
   const shares = await env.DB.prepare("SELECT id, name, shown_as, kind, books, book_other, phases, moods, other, description, cover, songs, song_count, total_ms, avg_ms, artists, shared_at, updated_at FROM shares WHERE hidden = 0 ORDER BY shared_at DESC").all();
   const words = await env.DB.prepare("SELECT word, hidden FROM words").all();
-  const data = { shares: shares.results.map(publicShare), words: Object.fromEntries(words.results.map((w) => [w.word, w.hidden])), at: Date.now() };
+  const found = await recordingsMap(env);
+  const data = { shares: shares.results.map((r) => withMatches(publicShare(r), found)), words: Object.fromEntries(words.results.map((w) => [w.word, w.hidden])), at: Date.now() };
   kept = { at: Date.now(), data };
   return data;
 }
+// Each song as [Spotify ID, ISRC, TIDAL ID], each service's column the IDs to try there, space separated: the sharer's own first, then the ones
+// in recordings, most recently found to play first (up to 3). An empty column is "!" when it was looked for and not found in the last 30 days,
+// else "" (never looked for: the person's Arc looks it up on Get and sends what it found).
+const COLS = { spotify: 0, tidal: 2 };
+async function recordingsMap(env) {
+  const rows = await env.DB.prepare("SELECT isrc, spotify, tidal, spotify_none, tidal_none FROM recordings").all();
+  return new Map(rows.results.map((r) => [r.isrc, r]));
+}
+const idList = (v) => String(v || "").split(" ").filter(Boolean);
+function withMatches(s, found) {
+  s.songs = s.songs.map((t) => {
+    const out = [t[0] || "", t[1] || "", t[2] || ""];
+    const r = out[1] && found.get(out[1]);
+    if (r) for (const [svc, col] of Object.entries(COLS)) {
+      const ids = [...new Set([...idList(out[col]), ...idList(r[svc])])];
+      out[col] = ids.length ? ids.join(" ") : r[svc + "_none"] && Date.now() - r[svc + "_none"] < LIMITS.noneKeepMs ? "!" : "";
+    }
+    return out;
+  });
+  return s;
+}
+
 // One playlist's songs as [title, artist, length in ms], in the order of its songs in the library; null for a share made before names were kept.
 async function songNames(env, id) {
   const r = await env.DB.prepare("SELECT names FROM shares WHERE id = ? AND hidden = 0").bind(id).first();
@@ -164,9 +215,10 @@ function blockedWord(t) {
 }
 
 // ---------------------------------------------------------------- sharing
-async function share(env, whoId, d) {
+const SONG_ID = { spotify: /^[A-Za-z0-9]{10,40}$/, tidal: /^\d{1,15}$/ };
+async function share(env, { service, who: whoId }, d) {
   const playlist = text(d.playlist, 40);
-  if (!/^[A-Za-z0-9]{10,40}$/.test(playlist)) throw new Refusal(400, "That playlist could not be read.");
+  if (!/^[A-Za-z0-9-]{10,40}$/.test(playlist)) throw new Refusal(400, "That playlist could not be read.");
   const name = text(d.name, LIMITS.nameChars);
   if (!name) throw new Refusal(400, "The playlist needs a name.");
   const kind = KINDS.includes(d.kind) ? d.kind : null;
@@ -200,13 +252,14 @@ async function share(env, whoId, d) {
   }
   if ((kind === "ceremony" || kind === "phase" || kind === "other") && !description) throw new Refusal(400, "Add a description.", "description");
   // each song's name goes with it, so a song left out takes its name along and the two lists stay in step
-  const sent = Array.isArray(d.songs) ? d.songs.slice(0, LIMITS.maxSongs).map((s, i) => [s, Array.isArray(d.names) ? d.names[i] : null]).filter(([s]) => Array.isArray(s) && /^[A-Za-z0-9]{10,40}$/.test(s[0])) : [];
-  const songs = sent.map(([s]) => [s[0], /^[A-Z0-9]{12}$/.test(s[1] || "") ? s[1] : ""]);
+  // sent as [ID on the sharer's service, ISRC]; kept as [Spotify ID, ISRC, TIDAL ID], the other service's column empty
+  const sent = Array.isArray(d.songs) ? d.songs.slice(0, LIMITS.maxSongs).map((s, i) => [s, Array.isArray(d.names) ? d.names[i] : null]).filter(([s]) => Array.isArray(s) && SONG_ID[service].test(String(s[0]))) : [];
+  const songs = sent.map(([s]) => { const isrc = /^[A-Z0-9]{12}$/.test(s[1] || "") ? s[1] : ""; return service === "tidal" ? ["", isrc, String(s[0])] : [s[0], isrc]; });
   const names = Array.isArray(d.names) ? sent.map(([, n]) => Array.isArray(n) ? [text(n[0], LIMITS.songChars), text(n[1], LIMITS.songChars), Math.max(0, Math.round(Number(n[2]) || 0))] : ["", "", 0]) : null;
   const ms = Math.round(Number(d.ms) || 0);
   if (!songs.length) throw new Refusal(400, "That playlist has no songs.", "empty");
   const shown = d.by === null ? null : text(d.by, LIMITS.shownChars) || null;
-  const cover = typeof d.cover === "string" && /^https:\/\/([a-z0-9-]+\.)*(scdn\.co|spotifycdn\.com)\/[\w/.-]+$/.test(d.cover) ? d.cover : null;
+  const cover = typeof d.cover === "string" && /^https:\/\/([a-z0-9-]+\.)*(scdn\.co|spotifycdn\.com|resources\.tidal\.com)\/[\w/.-]+$/.test(d.cover) ? d.cover : null;
   const artists = Array.isArray(d.artists) ? d.artists.slice(0, LIMITS.artists).map((a) => text(a, 100)).filter(Boolean) : [];
   const avg = Math.round(ms / songs.length);
   await countToday(env, whoId, "share", LIMITS.sharesPerDay);
@@ -214,8 +267,8 @@ async function share(env, whoId, d) {
   const others = await env.DB.prepare("SELECT name, songs FROM shares WHERE owner != ?").bind(whoId).all();
   for (const o of others.results) {
     const theirs = JSON.parse(o.songs);
-    const ids = new Set(theirs.map((t) => t[0])), isrcs = new Set(theirs.map((t) => t[1]).filter(Boolean));
-    const same = songs.filter(([id, isrc]) => ids.has(id) || (isrc && isrcs.has(isrc))).length;
+    const ids = new Set(theirs.flatMap((t) => [t[0], t[2]]).filter(Boolean)), isrcs = new Set(theirs.map((t) => t[1]).filter(Boolean));
+    const same = songs.filter((t) => (t[1] && isrcs.has(t[1])) || (t[0] && ids.has(t[0])) || (t[2] && ids.has(t[2]))).length;
     if (theirs.length && same / songs.length >= LIMITS.copyShare && same / theirs.length >= 0.5) {
       const percent = Math.floor((same / songs.length) * 100);
       throw new Refusal(409, `${percent}% of its songs are in ${o.name}, which someone else shares, so it can't be shared.`, "copy", { percent, of: o.name });
@@ -244,6 +297,41 @@ async function unshare(env, whoId, id) {
   await env.DB.prepare("DELETE FROM reports WHERE share = ?").bind(id).run();
   forgetLibrary();
   return { removed: id };
+}
+
+// ---------------------------------------------------------------- matches: songs found (or not) on the person's service by ISRC
+// Sent by people's own Arc, looked up with their own sign-in: { found: {ISRC: ID}, none: [ISRC], wrong: {ISRC: ID} }. Kept as small as it can be
+// (Ron, 2026-11-16): per recording and service up to 3 IDs, and the time it was last looked for and not found. "found" is an ID that played for
+// someone: it moves to the front, and a fourth pushes out the last, so a version that keeps working stays near the front without anyone
+// confirming it. "none" counts only while there is no ID, and is looked for again after 30 days. "wrong" (a copy whose song had another ISRC)
+// drops that ID; a sharer's own IDs are not kept here, so it never touches them. Only rows that change are written.
+async function matches(env, { service, who: whoId }, d) {
+  const col = service, isrcOk = (x) => /^[A-Z0-9]{12}$/.test(x), idOk = (id) => SONG_ID[service].test(String(id));
+  const pairs = (v) => Object.entries(v && typeof v === "object" && !Array.isArray(v) ? v : {}).filter(([isrc, id]) => isrcOk(isrc) && idOk(id)).slice(0, LIMITS.matchesAtOnce);
+  const found = pairs(d.found), wrong = pairs(d.wrong);
+  const none = (Array.isArray(d.none) ? d.none : []).filter(isrcOk).slice(0, LIMITS.matchesAtOnce);
+  if (!found.length && !none.length && !wrong.length) return { found: 0, none: 0, wrong: 0 };
+  await countToday(env, whoId, "match", LIMITS.matchesPerDay);
+  const isrcs = [...new Set([...found.map(([x]) => x), ...wrong.map(([x]) => x), ...none])];
+  const rows = new Map();
+  for (let i = 0; i < isrcs.length; i += 90) {   // D1 takes 100 values a statement
+    const part = isrcs.slice(i, i + 90);
+    const got = await env.DB.prepare(`SELECT isrc, ${col} AS ids, ${col}_none AS none FROM recordings WHERE isrc IN (${part.map(() => "?").join(",")})`).bind(...part).all();
+    for (const r of got.results) rows.set(r.isrc, r);
+  }
+  const now = Date.now(), next = new Map();
+  const get = (isrc) => next.get(isrc) || (() => { const r = rows.get(isrc); return { ids: idList(r && r.ids), none: (r && r.none) || null }; })();
+  for (const [isrc, id] of wrong) { const r = get(isrc); r.ids = r.ids.filter((x) => x !== String(id)); next.set(isrc, r); }
+  for (const [isrc, id] of found) { const r = get(isrc); r.ids = [String(id), ...r.ids.filter((x) => x !== String(id))].slice(0, 3); r.none = null; next.set(isrc, r); }
+  for (const isrc of none) { const r = get(isrc); if (!r.ids.length) { r.none = now; next.set(isrc, r); } }
+  const steps = [];
+  for (const [isrc, r] of next) {
+    const old = rows.get(isrc), ids = r.ids.join(" ") || null;
+    if (old && (old.ids || null) === ids && (old.none || null) === r.none) continue;
+    steps.push(env.DB.prepare(`INSERT INTO recordings (isrc, ${col}, ${col}_none) VALUES (?, ?, ?) ON CONFLICT (isrc) DO UPDATE SET ${col} = excluded.${col}, ${col}_none = excluded.${col}_none`).bind(isrc, ids, r.none));
+  }
+  if (steps.length) { await env.DB.batch(steps); forgetLibrary(); }
+  return { found: found.length, none: none.length, wrong: wrong.length, written: steps.length };
 }
 
 // ---------------------------------------------------------------- reports

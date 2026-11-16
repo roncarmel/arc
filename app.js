@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16zf";
+const APP_VERSION = "2026-11-16zg";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2863,10 +2863,9 @@ const DC_AUTO = [
       const [artist, ...title] = String((song && song.label) || "").split(" - ");
       names[isrc] = [title.join(" - "), artist];
     }
-    let found;
-    try { found = await service.findByIsrc(isrcs, { names }); }
-    catch (err) {   // refused: is it search itself, or only its isrc: filter?
-      const plain = service.searchProbe ? await service.searchProbe() : "";
+    const found = await service.findByIsrc(isrcs, { names });
+    if (found.stopped) {   // refused: is it search itself, or only its isrc: filter?
+      const err = found.stopped, plain = service.searchProbe ? await service.searchProbe() : "";
       return { ok: false, note: `${err && err.message || err}${plain ? ` A plain search: ${plain}.` : ""}` };
     }
     const off = [], other = [];
