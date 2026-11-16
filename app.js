@@ -11,7 +11,7 @@ const SCOPES = [
 ].join(" ");
 const REQUIRED_SCOPES = ["playlist-modify-private", "playlist-modify-public"];   // cover art is optional, so an older sign-in without it keeps working
 
-const APP_VERSION = "2026-11-15i";
+const APP_VERSION = "2026-11-16a";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2712,6 +2712,18 @@ const DC_AUTO = [
     if (!all) return { ok: false, note: "None of your playlists had songs to look at." };
     const pct = Math.round((coded / all) * 100);
     return { ok: pct >= 90, detail: `${pct}%`, note: pct >= 90 ? "" : `Only ${coded} of ${all} songs carry an ISRC.` };
+  } },
+  { key: "silence", name: "Silence tracks", what: "Arc's silences have the same ISRCs as the ones found on TIDAL", run: async () => {
+    // the same album, Silence for Playlists by silence moments, is on TIDAL (work/tidal-plan.md, decision 1); a match lets one silence serve both services
+    const tidal = { 30: "DEAR41889211", 60: "DEAR41877634", 180: "DEAR41854451", 300: "DEAR41825110", 600: "DEAR41862465" };
+    const off = [];
+    for (const [secs, isrc] of Object.entries(tidal)) {
+      const song = await service.readSong(service.silence[secs]);
+      const got = song && song.key ? song.key.replace("isrc:", "") : "none";
+      const length = song ? Math.round(song.ms / 1000) : 0;
+      if (got !== isrc || Math.abs(length - Number(secs)) > 1) off.push(`${secs < 60 ? secs + " s" : secs / 60 + " min"}: ${got}, ${length} s (TIDAL: ${isrc})`);
+    }
+    return off.length ? { ok: false, note: `Differs: ${off.join("; ")}.` } : { ok: true, detail: "5 of 5" };
   } },
   { key: "list", name: "Your playlist list", what: "Every page arrives, none short", run: async () => {
     await loadMyPlaylists();   // a short page is read again, and a list still short throws
