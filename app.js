@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16x";
+const APP_VERSION = "2026-11-16y";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2771,6 +2771,35 @@ const DC_AUTO = [
       if (got !== isrc || Math.abs(length - Number(secs)) > 1) off.push(`${secs < 60 ? secs + " s" : secs / 60 + " min"}: ${got}, ${length} s (TIDAL: ${isrc})`);
     }
     return off.length ? { ok: false, note: `Differs: ${off.join("; ")}.` } : { ok: true, detail: "5 of 5" };
+  } },
+  { key: "playable", name: "Which songs play here", what: "Reads up to 3 of your playlists the way Arc checks a copy after Get", run: async () => {
+    // stage 6 of work/tidal-plan.md: does the service say, song by song, what plays for this person in their country?
+    let all = 0, yes = 0, no = 0, unknown = 0, swapped = 0;
+    const notes = [];
+    for (const p of dcOwnPlaylists().slice(0, 3)) {
+      for (const t of await service.readPlayable(p.id)) {
+        all++;
+        if (t.playable === true) yes++; else if (t.playable === false) no++; else unknown++;
+        if (t.from) swapped++;
+        if (t.playable === false && notes.length < 5) notes.push(`${t.id}${t.key ? " " + t.key.slice(5) : ""}${t.why ? " (" + t.why + ")" : ""}`);
+      }
+    }
+    if (!all) return { ok: false, note: "None of your playlists had songs to look at." };
+    const detail = `${all} songs: ${yes} play, ${no} don't, ${unknown} unsaid, ${swapped} swapped`;
+    return { ok: unknown <= all * 0.1, detail, note: [unknown > all * 0.1 ? `${service.name} said nothing about ${unknown} of ${all}.` : "", notes.length ? `Don't play: ${notes.join("; ")}.` : ""].filter(Boolean).join(" ") };
+  } },
+  { key: "byisrc", name: "Finding songs by ISRC", what: "Looks up Arc's five silences by their ISRCs", run: async () => {
+    const isrcs = ["DEAR41889211", "DEAR41877634", "DEAR41854451", "DEAR41825110", "DEAR41862465"];
+    const found = await service.findByIsrc(isrcs);
+    const off = [], other = [];
+    for (const isrc of isrcs) {
+      if (!found[isrc]) { off.push(`${isrc} not found`); continue; }
+      const song = await service.readSong(found[isrc]);
+      if (!song || song.key !== "isrc:" + isrc) off.push(`${isrc} gave ${found[isrc]}, another recording`);
+      if (!Object.values(service.silence).includes(found[isrc])) other.push(`${isrc}: ${found[isrc]}`);
+    }
+    const n = isrcs.length - off.length;
+    return { ok: !off.length, detail: `${n} of ${isrcs.length}`, note: [off.join("; "), other.length ? `Other IDs than Arc's own: ${other.join("; ")}.` : ""].filter(Boolean).join(" ") };
   } },
   { key: "list", name: "Your playlist list", what: "Every page arrives, none short", run: async () => {
     await loadMyPlaylists();   // a short page is read again, and a list still short throws

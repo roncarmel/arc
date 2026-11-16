@@ -2,7 +2,7 @@
 // (openapi.tidal.com/v2, JSON:API). Sign-in is PKCE from the page, with a refresh token; requests are paced at about 2 a second, and a refusal (429)
 // is tried again after 2, 4, 8... seconds, since TIDAL's refusals clear in about 2 s (tested on Ron's account, 2026-11-16). Every TIDAL address and quirk
 // stays in this file. TIDAL lets an app read covers but not set them, and has no private playlists: what Arc makes is Unlisted (anyone with the link can open it).
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-tidal.js"] = "2026-11-16x";   // this file's version, checked against the app's at startup
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-tidal.js"] = "2026-11-16y";   // this file's version, checked against the app's at startup
 
 const TIDAL_API = "https://openapi.tidal.com/v2";
 const TIDAL_AUTH_URL = "https://login.tidal.com/authorize";
@@ -327,6 +327,18 @@ const tidalService = {
     const byKey = {};
     for (const x of r.included) byKey[x.type + ":" + x.id] = x;
     return r.data.filter((ref) => ref.type === "tracks" && byKey["tracks:" + ref.id]).map((ref) => tidalSong(byKey["tracks:" + ref.id], byKey));
+  },
+  async readPlayable(id) {
+    // as spotifyService.readPlayable: TIDAL reads in the person's country, and a song's availability lists STREAM when it streams there
+    // (a field TIDAL calls deprecated; null when it sends none). A song TIDAL leaves out of the list counts as not playable.
+    const r = await tidalPages(`/playlists/${encodeURIComponent(id)}/relationships/items?include=items`);
+    const byKey = {};
+    for (const x of r.included) byKey[x.type + ":" + x.id] = x;
+    return r.data.filter((ref) => ref.type === "tracks").map((ref) => {
+      const tr = byKey["tracks:" + ref.id], a = (tr && tr.attributes) || {};
+      return { id: String(ref.id), key: a.isrc ? "isrc:" + String(a.isrc).toUpperCase() : "", from: null, why: tr ? "" : "left out",
+        playable: !tr ? false : Array.isArray(a.availability) ? a.availability.includes("STREAM") : null };
+    });
   },
   async createPlaylist({ name, description }) {
     // Unlisted: the most private TIDAL's API allows

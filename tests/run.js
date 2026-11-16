@@ -696,10 +696,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly these seven, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16x" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16y" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16x/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16y/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -2207,7 +2207,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16x", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16y", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4121,14 +4121,14 @@ print(json.dumps(out))
   check("the DEV menu has Device checks, before Copy Spotify request log", !!dc_d.getElementById("devChecks") && dc_d.getElementById("devChecks").nextElementSibling.id === "devCopyRecord" && /Device checks/.test(dc_d.getElementById("devChecks").textContent));
   dc_d.getElementById("devChecks").click();
   await new Promise((r) => setTimeout(r, 30));
-  check("it opens in the menu's popup: the device and version, seven automatic checks not run yet, then the guided ones", dc_d.getElementById("infoTitle").textContent === "Device checks" && dc_d.getElementById("dcDevice").textContent.includes(dc.eval("APP_VERSION")) && dc_d.querySelectorAll("#dcAuto .dc-row").length === 7 && dc_d.getElementById("dcAutoSum").textContent === "Not run on this device" && dc_d.querySelectorAll("#dcGuided .dc-ghead").length === 5 && dc_d.getElementById("dcRun").textContent === "Run checks");
+  check("it opens in the menu's popup: the device and version, nine automatic checks not run yet, then the guided ones", dc_d.getElementById("infoTitle").textContent === "Device checks" && dc_d.getElementById("dcDevice").textContent.includes(dc.eval("APP_VERSION")) && dc_d.querySelectorAll("#dcAuto .dc-row").length === 9 && dc_d.getElementById("dcAutoSum").textContent === "Not run on this device" && dc_d.querySelectorAll("#dcGuided .dc-ghead").length === 5 && dc_d.getElementById("dcRun").textContent === "Run checks");
   check("a guided check that doesn't apply here says Not here (the Home Screen app's dashboard links on a computer)", dc_d.querySelector('#dcGuided [data-check="dashboard"] .dc-right').textContent === "Not here");
   dc.eval("dcPace = 0.005");
   dc_d.getElementById("dcRun").click();
   await waitFor(() => !dc.eval("dcRunning"), 15000);
   var dc_made = (dc_opts.writes || []).filter((w) => w.type === "create").map((w) => w.id);
   var dc_gone = (dc_opts.writes || []).filter((w) => w.type === "remove").flatMap((w) => w.uris || []);
-  check("every automatic check finishes, passed or failed, and Run checks becomes Run again", dc_d.querySelectorAll("#dcAuto .dc-ok, #dcAuto .dc-fail").length === 7 && dc_d.getElementById("dcRun").textContent === "Run again");
+  check("every automatic check finishes, passed or failed, and Run checks becomes Run again", dc_d.querySelectorAll("#dcAuto .dc-ok, #dcAuto .dc-fail").length === 9 && dc_d.getElementById("dcRun").textContent === "Run again");
   check("its test playlists are named Arc device check, private, and all removed afterwards", dc_made.length >= 2 && (dc_opts.writes || []).filter((w) => w.type === "create").every((w) => w.name === "Arc device check" && w.public === false) && dc_made.every((id) => dc_gone.some((u) => String(u).includes(id))), JSON.stringify({ dc_made, dc_gone }));
   check("the full-length save and the participant's details read back as written", dc_d.querySelector('#dcAuto [data-check="save"] .dc-mark').classList.contains("dc-ok") && dc_d.querySelector('#dcAuto [data-check="packed"] .dc-mark').classList.contains("dc-ok"), dc.eval("JSON.stringify(dcState().auto)"));
   check("the silence check reads Arc's five silences and finds TIDAL's ISRCs on them", dc_d.querySelector('#dcAuto [data-check="silence"] .dc-mark').classList.contains("dc-ok") && dc.eval("dcState().auto.silence.detail") === "5 of 5", dc.eval("JSON.stringify(dcState().auto.silence)"));
@@ -4144,7 +4144,7 @@ print(json.dumps(out))
   dc_d.getElementById("dcYes-devices").click();
   check("an answer closes it, its row says Passed, and the count goes up", !dc_d.getElementById("dcStep-devices") && dc_d.querySelector('#dcGuided [data-check="devices"] .dc-right').textContent === "Passed" && /^1 of \d done$/.test(dc_d.getElementById("dcGuidedSum").textContent));
   var dc_text = dc.eval("dcResultsText()");
-  check("Copy results gives the device, every check and how it went", /^Arc device checks\nDevice: .*2026/.test(dc_text) && /- Two devices: passed \(It asked\)/.test(dc_text) && /- Dashboard links: not here/.test(dc_text) && /- Recipe save at full length: passed/.test(dc_text) && dc_text.split("\n").filter((l) => l.startsWith("- ")).length === 12, dc_text);
+  check("Copy results gives the device, every check and how it went", /^Arc device checks\nDevice: .*2026/.test(dc_text) && /- Two devices: passed \(It asked\)/.test(dc_text) && /- Dashboard links: not here/.test(dc_text) && /- Recipe save at full length: passed/.test(dc_text) && dc_text.split("\n").filter((l) => l.startsWith("- ")).length === 14, dc_text);
   dc.close();
   } catch (err) { areaCrashed("device checks", err); }
   }
@@ -4546,7 +4546,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16x"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16y"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

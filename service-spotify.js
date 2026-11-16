@@ -2,7 +2,7 @@
 // no server), the refresh token, requests with their limits and waits, and the record of those limits; at its end the `service` object, the only way the rest
 // of Arc talks to Spotify (work/tidal-plan.md, "The service layer"): every Spotify address, URI and quirk stays in this file. It shows nothing itself: each page
 // fills serviceHooks with what to do and say, so this file names no element of any page. Loaded before the page's own script.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-spotify.js"] = "2026-11-16x";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-spotify.js"] = "2026-11-16y";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The permissions Arc's sign-in asks for. Another page of this repository (the tagger) may set its own in serviceHooks (shared-service.js).
 const SCOPES = [
@@ -608,6 +608,16 @@ const spotifyService = {
     const items = await pagedItems(`/playlists/${id}/items?limit=50`, options);
     return items ? songsFromEntries(items) : null;
   },
+  async readPlayable(id) {
+    // which of a playlist's songs play for this person, in their country (market=from_token): [{id, key, playable (true, false, or null when Spotify
+    // says nothing), from (the ID asked for, when Spotify plays another version there: linked_from), why (Spotify's restriction reason)}]
+    const items = await pagedItems(`/playlists/${id}/items?limit=50&market=from_token`);
+    return items.map((e) => e && (e.item || e.track)).filter((t) => t && !t.is_local && t.type === "track" && t.id).map((t) => {
+      const isrc = t.external_ids && typeof t.external_ids.isrc === "string" ? t.external_ids.isrc.toUpperCase() : "";
+      return { id: t.id, key: isrc ? "isrc:" + isrc : "", playable: typeof t.is_playable === "boolean" ? t.is_playable : null,
+        from: (t.linked_from && t.linked_from.id && t.linked_from.id !== t.id) ? t.linked_from.id : null, why: (t.restrictions && t.restrictions.reason) || "" };
+    });
+  },
   async createPlaylist({ name, description }) {
     // private: Spotify may ignore public: false, so it is asked again; private false when even that failed
     const made = await spotifyRequest("POST", "/me/playlists", { json: { name, public: false, description } });
@@ -652,7 +662,7 @@ const spotifyService = {
     // one search per song on Spotify; gives {isrc: songId} for those found
     const found = {};
     for (const isrc of isrcs) {
-      const r = await spotify(`/search?type=track&limit=1&q=${encodeURIComponent("isrc:" + isrc)}`);
+      const r = await spotify(`/search?type=track&limit=1&market=from_token&q=${encodeURIComponent("isrc:" + isrc)}`);   // only what plays in the person's country
       const t = r && r.tracks && r.tracks.items && r.tracks.items[0];
       if (t && t.id) found[isrc] = t.id;
     }
