@@ -273,13 +273,13 @@ function makeFetch(options = {}) {
       }
       return json({ items: page, next });
     }
-    if (method === "GET" && /\/v1\/playlists\/\w+(\?|$)/.test(url) && options.descStore) {
-      const stored = options.descStore[url.match(/playlists\/(\w+)/)[1]] || "";
     if (method === "GET" && /\/v1\/playlists\/\w+\?fields=id,name,owner/.test(url) && url.includes("snapshot_id")) {   // one playlist in the list's shape (readListEntry)
       (options.entryReads = options.entryReads || []).push(url.match(/playlists\/(\w+)/)[1]);
       const p = MY_PLAYLISTS.concat(options.extraPlaylists || [], options.createdPlaylists || []).find((x) => x && x.id === url.match(/playlists\/(\w+)/)[1]);
       return p ? json({ ...p, snapshot_id: "snap-" + p.id }) : json({ error: { status: 404 } }, 404);
     }
+    if (method === "GET" && /\/v1\/playlists\/\w+(\?|$)/.test(url) && options.descStore) {
+      const stored = options.descStore[url.match(/playlists\/(\w+)/)[1]] || "";
       const kept = Array.from(stored).slice(0, options.descLimit || 300).join("");
       return json({ description: kept.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;") });
     }
@@ -741,9 +741,9 @@ print(json.dumps(out))
   check("it is marked as sent for this version, by its kind", JSON.parse(rp2.localStorage.getItem("autoReported")).v === rp2.eval("APP_VERSION") && JSON.parse(rp2.localStorage.getItem("autoReported")).kinds.length === 1);
   await rp2.eval("autoReport('Spotify returned 500 for 7 songs')"); await rp2.eval("autoReport('Spotify returned 500 for 9 songs')");
   check("the same kind of problem is sent once per version, whatever its numbers; an expected one never", oRp.sharing.messages.length === 2 && (await rp2.eval("autoReport('Could not reach Spotify')")) === false && oRp.sharing.messages.length === 2);
+  check("Python's script not arriving from the CDN is a network problem, never sent", (await rp2.eval("autoReport('Could not load Python from the internet. Check your connection, then reload. Details are in the browser console. (Could not load the Python runtime from https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js)')")) === false && oRp.sharing.messages.length === 2);
   rp2.localStorage.setItem("autoReported", JSON.stringify({ v: "2000-01-01a", kinds: JSON.parse(rp2.localStorage.getItem("autoReported")).kinds }));
   check("a new version reports it again", (await rp2.eval("autoReports.clear(); autoReport('Spotify returned 500 for 7 songs')")) === true && oRp.sharing.messages.length === 3);
-  check("Python's script not arriving from the CDN is a network problem, never sent", (await rp2.eval("autoReport('Could not load Python from the internet. Check your connection, then reload. Details are in the browser console. (Could not load the Python runtime from https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js)')")) === false && oRp.sharing.messages.length === 2);
   oRp.sharing.messages = [];
   rp2.eval("openReport()");
   check("Report this problem opens the report form in a popup, its box ready for typing", rp2.document.getElementById("infoOverlay").hidden === false && rp2.document.getElementById("infoSlot").contains(rp2.document.getElementById("reportForm")) && rp2.document.activeElement === rp2.document.getElementById("reportText"));
@@ -3335,10 +3335,10 @@ print(json.dumps(out))
   await waitFor(() => mg_w14.eval("connection") === "ready", 12000);
   await mg_settled(mg_w14);
   check("when all of it arrives the wait ends, the strip goes, it says so, and saving goes on with no question and no new save", !mg_w14.eval("limitWait.active") && mg_w14.document.getElementById("waitStrip").hidden && !mg_w14.document.getElementById("feSyncDialog") && mg_o14.writes.filter((x) => x.type === "create").length === 0 && /All your playlists arrived/.test(capText(mg_w14)), capText(mg_w14));
-
-  // Spotify sends null for playlists it will not show the app (its own), and its total counts them: the list is whole, Arc connects (937 of 941, 2026-11-15)
   var mg_m14 = (mg_o14.sharing && mg_o14.sharing.messages) || [];
   check("Arc reports by itself that the whole list arrived, how long after and after how many short reads, and forgets the mark", mg_m14.length === 2 && /^Sent by Arc after a short playlist list: the whole playlist list arrived \(\d+ of \d+\), 0 min after it first came short, with 2 short reads before; the same visit$/.test(mg_m14[1].message) && mg_m14[1].auto === true && !mg_w14.localStorage.getItem("shortListSince"), JSON.stringify(mg_m14.map((m) => m.message)));
+
+  // Spotify sends null for playlists it will not show the app (its own), and its total counts them: the list is whole, Arc connects (937 of 941, 2026-11-15)
   var mg_o15 = { descStore: {}, nameStore: {}, emptyFirstPages: 0, extraPlaylists: [null, ...mg_o13Saves, null] };
   var mg_w15 = await mg_go({ formats: mg_text(mg_item("f1", "Alpha", 2, 30), mg_item("f2", "Beta", 1, 40)), spotifySynced: JSON.stringify({ f1: { rev: 2, playlistId: "s1" }, f2: { rev: 1, playlistId: "s2" } }) }, mg_o15);
   await mg_settled(mg_w15);
@@ -3361,19 +3361,6 @@ print(json.dumps(out))
   await mg_settled(mg_w17);
   var mg_lr17 = JSON.parse(mg_w17.localStorage.getItem("listReads") || "[]").pop() || {};
   check("a page whose reads each miss a different playlist is joined from them: Arc connects with every playlist, none taken as left out", mg_w17.eval("connection") === "ready" && mg_lr17.count === mg_lr17.total && mg_lr17.leftOut === 0 && /joined from reads/.test(JSON.stringify(mg_lr17.pages)) && mg_o17.writes.filter((x) => x.type === "create").length === 0, JSON.stringify({ c: mg_w17.eval("connection"), lr: mg_lr17 }));
-  // Spotify sends the whole list as 0 of 0 (2026-11-16): with saves known here it counts as short, never as every save gone; with nothing known it is a new account
-  var mg_o20 = { descStore: {}, nameStore: {}, zeroList: true, extraPlaylists: [mg_o13Saves[0], mg_o13Saves[1]] };
-  var mg_w20 = await mg_go({ formats: mg_text(mg_item("f1", "Alpha", 2, 30), mg_item("f2", "Beta", 1, 40)), spotifySynced: JSON.stringify({ f1: { rev: 2, playlistId: "s1" }, f2: { rev: 1, playlistId: "s2" } }) }, mg_o20);
-  await waitFor(() => mg_w20.eval("limitWait.active"), 12000);
-  var mg_m20 = ((mg_o20.sharing && mg_o20.sharing.messages) || []).map((m) => m.message);
-  check("a list of 0 of 0 while saves are known here counts as short: Arc waits, asks nothing about the saves, writes nothing, and reports it", mg_w20.eval("connection") === "problem" && mg_w20.eval("limitWait.reason") === "short" && mg_o20.writes.length === 0 && JSON.parse(mg_w20.localStorage.getItem("syncAsks") || "[]").length === 0 && mg_m20.length === 1 && /listed 0 of 0 playlists, while this device knows 2 saves/.test(mg_m20[0]), JSON.stringify({ m: mg_m20, w: mg_o20.writes.length }));
-  var mg_o21 = { descStore: {}, nameStore: {}, zeroList: true, extraPlaylists: [] };
-  var mg_w21 = await mg_go({}, mg_o21);
-  await waitFor(() => mg_w21.eval("connection") !== "connecting", 12000);
-  check("a list of 0 of 0 with nothing known here is a new account's: Arc connects", mg_w21.eval("connection") === "ready" && !mg_w21.eval("limitWait.active"), mg_w21.eval("connection"));
-
-  // a list still short keeps its counts and short reads as the error a report carries, though the message is caught further up
-  mg_w14.eval("recordError('Spotify listed 5 of 9 playlists, after reading again; short reads [offset, items] [[0,0]]')");
   // Spotify cannot send certain slots for a while and empties every page holding one (2026-11-16): an empty page is read in pieces, a slot still empty
   // alone is left out, the save and the recipe playlist the list lacks are read by ID and put back, and Arc reports it once
   var mg_o18 = { descStore: {}, nameStore: {}, emptyFirstPages: 0, unreadableIds: ["p2", "s1"], extraPlaylists: [mg_o13Saves[0], mg_o13Saves[1]] };
@@ -3393,6 +3380,19 @@ print(json.dumps(out))
   var mg_m19 = ((mg_o19.sharing && mg_o19.sharing.messages) || []).map((m) => m.message);
   check("every page empty leaves the list short: Arc waits for all of it, and the report shows the pieces were tried", mg_w19.eval("connection") === "problem" && mg_w19.eval("limitWait.active && limitWait.reason") === "short" && mg_o19.writes.length === 0 && mg_m19.length === 1 && /empty pages read in pieces/.test(mg_m19[0]), JSON.stringify(mg_m19));
 
+  // Spotify sends the whole list as 0 of 0 (2026-11-16): with saves known here it counts as short, never as every save gone; with nothing known it is a new account
+  var mg_o20 = { descStore: {}, nameStore: {}, zeroList: true, extraPlaylists: [mg_o13Saves[0], mg_o13Saves[1]] };
+  var mg_w20 = await mg_go({ formats: mg_text(mg_item("f1", "Alpha", 2, 30), mg_item("f2", "Beta", 1, 40)), spotifySynced: JSON.stringify({ f1: { rev: 2, playlistId: "s1" }, f2: { rev: 1, playlistId: "s2" } }) }, mg_o20);
+  await waitFor(() => mg_w20.eval("limitWait.active"), 12000);
+  var mg_m20 = ((mg_o20.sharing && mg_o20.sharing.messages) || []).map((m) => m.message);
+  check("a list of 0 of 0 while saves are known here counts as short: Arc waits, asks nothing about the saves, writes nothing, and reports it", mg_w20.eval("connection") === "problem" && mg_w20.eval("limitWait.reason") === "short" && mg_o20.writes.length === 0 && JSON.parse(mg_w20.localStorage.getItem("syncAsks") || "[]").length === 0 && mg_m20.length === 1 && /listed 0 of 0 playlists, while this device knows 2 saves/.test(mg_m20[0]), JSON.stringify({ m: mg_m20, w: mg_o20.writes.length }));
+  var mg_o21 = { descStore: {}, nameStore: {}, zeroList: true, extraPlaylists: [] };
+  var mg_w21 = await mg_go({}, mg_o21);
+  await waitFor(() => mg_w21.eval("connection") !== "connecting", 12000);
+  check("a list of 0 of 0 with nothing known here is a new account's: Arc connects", mg_w21.eval("connection") === "ready" && !mg_w21.eval("limitWait.active"), mg_w21.eval("connection"));
+
+  // a list still short keeps its counts and short reads as the error a report carries, though the message is caught further up
+  mg_w14.eval("recordError('Spotify listed 5 of 9 playlists, after reading again; short reads [offset, items] [[0,0]]')");
   mg_w14.eval("recordError(\"Spotify didn\u2019t send all your playlists.\")");
   check("the bare short-list message does not replace the counted one in a report", /^Spotify listed 5 of 9/.test(mg_w14.eval("reportDetails().lastError")), mg_w14.eval("reportDetails().lastError"));
 

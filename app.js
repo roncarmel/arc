@@ -3082,10 +3082,10 @@ async function loadMyPlaylists(options = {}) {
   playlistPages = list.pages;
   playlistsHidden = list.hidden;
   playlistsLeftOut = list.leftOut;
+  playlistsUnreadable = list.unreadable || [];
   // Spotify once sent the whole list as 0 of 0 for an account of 81 (Ron, 2026-11-16): Arc took it as true, asked about both saves as gone and made
   // a new one. An empty list while this device knows playlists of this account (saves, the kept list, or this visit's) counts as short instead.
   if (!list.short && !list.length && knowsPlaylistsHere()) list.short = `${service.name} listed 0 of ${list.total || 0} playlists, while this device knows ${knownPlaylistsText()}`;
-  playlistsUnreadable = list.unreadable || [];
   if (list.short) {
     // Still short: the list is not used, so nothing works from a half-known state. Arc waits as if not connected (startLimitWait("short")) and keeps
     // the playlists it already had (or the kept list), and reads it again by itself (Ron, 2026-11-13).
