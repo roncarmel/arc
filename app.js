@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16l";
+const APP_VERSION = "2026-11-16m";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -499,6 +499,7 @@ function initToolMenu() {
 
 // Developer mode went on or off (setDevMode in editor.js): on, the owner's tools are asked for (sharing.js).
 function devModeChanged(on) {
+  markServiceTiles();
   if (on && connection === "ready" && typeof askOwner === "function") askOwner();
 }
 
@@ -619,7 +620,15 @@ function showWelcomeStep(step, push) {
 }
 // The music service chosen on the welcome page. The one in use goes on at once; the other is set up (switchService) and the page loads again under it,
 // opening on the next step (welcomeAt in sessionStorage, read by the <head> script and by startup), with the choice still one step back.
+// Only Spotify can be chosen outside developer mode: TIDAL says Coming soon, greyed (Ron, 2026-11-16). A browser already on TIDAL keeps it.
+function serviceOpen(key) { return key === "spotify" || key === service.key || document.documentElement.classList.contains("dev-mode"); }
+function markServiceTiles() {
+  for (const tile of document.querySelectorAll("#wpWhich [data-pick-service]")) {
+    if (serviceOpen(tile.dataset.pickService)) tile.removeAttribute("aria-disabled"); else tile.setAttribute("aria-disabled", "true");
+  }
+}
 function pickService(key) {
+  if (!serviceOpen(key)) return;
   if (key === service.key) { slideScreens(() => showWelcomeStep(3, true)); return; }
   if (!switchService(key)) return;
   try { sessionStorage.setItem("welcomeAt", "3"); } catch (err) { /* it opens on the tools */ }
@@ -3561,6 +3570,7 @@ async function main() {
   on("getStarted", "click", () => slideScreens(() => showWelcomeStep(2, true)));
   on("wpWhichBack", "click", welcomeStepBack);
   for (const tile of document.querySelectorAll("#wpWhich [data-pick-service]")) tile.addEventListener("click", () => pickService(tile.dataset.pickService));
+  markServiceTiles();
   on("wpSetupBack", "click", welcomeStepBack);
   for (const head of document.querySelectorAll("#welcomePage .wp-tool-head")) head.addEventListener("click", () => toggleWelcomeTool(head));
   watchTutorialRows();
