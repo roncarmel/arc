@@ -2,7 +2,7 @@
 // no server), the refresh token, requests with their limits and waits, and the record of those limits; at its end the `service` object, the only way the rest
 // of Arc talks to Spotify (work/tidal-plan.md, "The service layer"): every Spotify address, URI and quirk stays in this file. It shows nothing itself: each page
 // fills serviceHooks with what to do and say, so this file names no element of any page. Loaded before the page's own script.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-spotify.js"] = "2026-11-16ze";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-spotify.js"] = "2026-11-16zf";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The permissions Arc's sign-in asks for. Another page of this repository (the tagger) may set its own in serviceHooks (shared-service.js).
 const SCOPES = [
@@ -424,6 +424,7 @@ const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 let addChunk = ADD_CHUNK;   // lowered for the visit if Spotify refuses that many
 const LIST_RETRY_MS = 10000;   // reading short pages of the playlist list again stops after this, in all
 const SPLIT_MAX = 60;   // requests one reading of the list may spend reading empty pages in pieces
+const SPLIT_GAP_MS = 100;   // between those requests: a burst of them has never been refused, but a refusal can mean hours of waiting (Ron, 2026-11-16)
 const trackUri = (id) => "spotify:track:" + id;
 const playlistUri = (id) => "spotify:playlist:" + id;
 
@@ -497,6 +498,7 @@ async function listSpotifyPlaylists({ onPage } = {}) {
     const got = [];
     for (const [o, n] of pieces) {
       if (splitRequests >= SPLIT_MAX) { got.push({ o, n, items: null, skipped: true }); continue; }
+      await retrySleep(SPLIT_GAP_MS);
       splitRequests += 1; split.requests += 1;
       const q = await spotify(`/me/playlists?offset=${o}&limit=${n}`);
       got.push({ o, n, items: (q.items || []).length ? q.items : null });

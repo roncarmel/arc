@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16ze";
+const APP_VERSION = "2026-11-16zf";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2684,6 +2684,15 @@ function problemKind(message) {
   return service.problemKind(message) || "other";
 }
 
+// What this device knows of the account's playlists, for telling an empty list from a wrong one (loadMyPlaylists)
+function knownPlaylistCounts() {
+  let kept = 0;
+  try { const k = JSON.parse(localStorage.getItem(KEPT_PLAYLISTS_KEY) || "null"); if (k && me && k.user === me.id && Array.isArray(k.list)) kept = k.list.length; } catch (err) { /* none kept */ }
+  return { saves: Object.keys(readSynced()).length, kept, visit: playlists.length };
+}
+function knowsPlaylistsHere() { const k = knownPlaylistCounts(); return !!(k.saves || k.kept || k.visit); }
+function knownPlaylistsText() { const k = knownPlaylistCounts(); return `${k.saves} saves, ${k.kept} kept playlists, ${k.visit} read this visit`; }
+
 const KEPT_PLAYLISTS_KEY = "spotifyPlaylists";   // {user, list}: the playlist list from the last time Spotify answered, for the menus during a wait
 function keepPlaylists() {
   try {
@@ -3073,6 +3082,9 @@ async function loadMyPlaylists(options = {}) {
   playlistPages = list.pages;
   playlistsHidden = list.hidden;
   playlistsLeftOut = list.leftOut;
+  // Spotify once sent the whole list as 0 of 0 for an account of 81 (Ron, 2026-11-16): Arc took it as true, asked about both saves as gone and made
+  // a new one. An empty list while this device knows playlists of this account (saves, the kept list, or this visit's) counts as short instead.
+  if (!list.short && !list.length && knowsPlaylistsHere()) list.short = `${service.name} listed 0 of ${list.total || 0} playlists, while this device knows ${knownPlaylistsText()}`;
   playlistsUnreadable = list.unreadable || [];
   if (list.short) {
     // Still short: the list is not used, so nothing works from a half-known state. Arc waits as if not connected (startLimitWait("short")) and keeps
