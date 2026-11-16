@@ -2,7 +2,7 @@
 // no server), the refresh token, requests with their limits and waits, and the record of those limits; at its end the `service` object, the only way the rest
 // of Arc talks to Spotify (work/tidal-plan.md, "The service layer"): every Spotify address, URI and quirk stays in this file. It shows nothing itself: each page
 // fills serviceHooks with what to do and say, so this file names no element of any page. Loaded before the page's own script.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-spotify.js"] = "2026-11-16zd";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-spotify.js"] = "2026-11-16ze";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The permissions Arc's sign-in asks for. Another page of this repository (the tagger) may set its own in serviceHooks (shared-service.js).
 const SCOPES = [
@@ -376,7 +376,7 @@ async function spotifyRequest(method, path, { params, json, body, contentType, n
       let body = "";
       try { body = await response.text(); } catch (err) { /* no body */ }
       if (/premium/i.test(body)) throw new Error(PREMIUM_REQUIRED_MESSAGE);   // reconnecting cannot fix this, so it gets its own message
-      throw new Error(serviceHooks.refusedText(what));
+      throw Object.assign(new Error(serviceHooks.refusedText(what)), { status: 403 });
     }
     if (!response.ok) throw new Error(`Spotify returned ${response.status} for ${what}`);
     const text = await response.text();
@@ -571,6 +571,7 @@ function listEntry(p) {
   };
 }
 
+let spotifyIsrcRefused = false;   // Spotify refused the isrc: search filter this visit: songs are found by title and artist instead (findByIsrc)
 async function pagedItems(path, { gapMs = 0, stopped = null, onSongs = null } = {}) {
   // gapMs and stopped: read gently (Music sharing's slow reading), a rate limit an error at once; null when stopped partway. onSongs(n): n items read so far, after each page
   const slow = !!(gapMs || stopped);
@@ -718,16 +719,30 @@ const spotifyService = {
   },
 
   // songs
-  async findByIsrc(isrcs) {
-    // one search per song on Spotify; gives {isrc: songId} for those found
-    const found = {};
+  async findByIsrc(isrcs, { names = {} } = {}) {
+    // one search per song on Spotify; gives {isrc: songId} for those found, only what plays in the person's country (market=from_token).
+    // Spotify refuses the isrc: filter to apps like Arc's (Device checks, 2026-11-16: 403, a plain search allowed), so once refused, a song is
+    // searched by its title and artist (names: {ISRC: [title, artist]}) and only a result with the same ISRC is taken: the same recording, never a look-alike.
+    const found = {}, unsearched = [];
+    Object.defineProperty(found, "unsearched", { value: unsearched });   // songs it could not look for (no name once the isrc: filter is refused)
     for (const isrc of isrcs) {
-      const r = await spotify(`/search?type=track&limit=1&market=from_token&q=${encodeURIComponent("isrc:" + isrc)}`);   // only what plays in the person's country
-      const t = r && r.tracks && r.tracks.items && r.tracks.items[0];
-      if (t && t.id) found[isrc] = t.id;
+      let items = null;
+      if (!spotifyIsrcRefused) {
+        try { items = (await spotify(`/search?type=track&limit=1&market=from_token&q=${encodeURIComponent("isrc:" + isrc)}`)).tracks.items; }
+        catch (err) { if (err.status !== 403) throw err; spotifyIsrcRefused = true; }
+      }
+      if (!items) {
+        const [title, artist] = names[isrc] || [];
+        if (!title) { unsearched.push(isrc); continue; }   // not looked for, so never counted as not found
+        const q = `${title} ${artist || ""}`.replace(/[^\p{L}\p{N}' ]+/gu, " ").replace(/\s+/g, " ").trim().slice(0, 100);
+        items = ((await spotify(`/search?type=track&limit=10&market=from_token&q=${encodeURIComponent(q)}`)).tracks || {}).items || [];
+      }
+      const t = (items || []).find((x) => x && x.id && x.external_ids && String(x.external_ids.isrc || "").toUpperCase() === isrc);
+      if (t) found[isrc] = t.id;
     }
     return found;
   },
+
   // Device checks: whether a plain search (no isrc: filter) is allowed, when the search by ISRC was refused
   searchProbe: () => spotify("/search?type=track&limit=1&q=silence").then(() => "allowed", (err) => String(err && err.message || err)),
   async readSong(id) {

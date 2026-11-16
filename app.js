@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16zd";
+const APP_VERSION = "2026-11-16ze";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2847,8 +2847,15 @@ const DC_AUTO = [
   } },
   { key: "byisrc", name: "Finding songs by ISRC", what: "Looks up Arc's five silences by their ISRCs", run: async () => {
     const isrcs = ["DEAR41889211", "DEAR41877634", "DEAR41854451", "DEAR41825110", "DEAR41862465"];
+    // their titles and artists, as Music sharing has them for a share's songs, for a service that finds songs by name
+    const names = {};
+    for (const [secs, isrc] of [[30, isrcs[0]], [60, isrcs[1]], [180, isrcs[2]], [300, isrcs[3]], [600, isrcs[4]]]) {
+      const song = await service.readSong(service.silence[secs]);
+      const [artist, ...title] = String((song && song.label) || "").split(" - ");
+      names[isrc] = [title.join(" - "), artist];
+    }
     let found;
-    try { found = await service.findByIsrc(isrcs); }
+    try { found = await service.findByIsrc(isrcs, { names }); }
     catch (err) {   // refused: is it search itself, or only its isrc: filter?
       const plain = service.searchProbe ? await service.searchProbe() : "";
       return { ok: false, note: `${err && err.message || err}${plain ? ` A plain search: ${plain}.` : ""}` };
