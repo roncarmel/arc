@@ -473,7 +473,7 @@ print(json.dumps(out))
   var hid = (w, id) => w.document.getElementById(id).hidden;
   check("new visitors see neither flow, and nothing below the choices", hid(fresh, "flowNew") && hid(fresh, "flowExisting") && hid(fresh, "connectBlock") && hid(fresh, "spSteps") && !hid(fresh, "spAsk"));
   var returning = await boot({ url: "http://127.0.0.1:8000/", local: { clientId: "abc" } });
-  check("the existing-app screenshot is the phone one on a touch screen (Tap this) and the computer one otherwise (Click this), both with Create app greyed out", !!returning.document.querySelector('#flowExisting picture source[media="(pointer: coarse)"][srcset="step-open-app-phone.jpg"]') && returning.document.querySelector("#flowExisting picture img").getAttribute("src") === "step-open-app-computer.jpg" && fs.existsSync(ROOT + "step-open-app-phone.jpg") && fs.existsSync(ROOT + "step-open-app-computer.jpg"));
+  check("the existing-app steps show a close-up of the app on Spotify's dashboard, ringed, and the old screenshots are gone", returning.document.querySelector('#flowExisting img[src="setup-spotify/open-app.png"]') && returning.document.querySelector("#flowExisting .tx-ring") && !fs.existsSync(ROOT + "step-open-app-phone.jpg") && !fs.existsSync(ROOT + "step-create-app.jpg"));
   check("a saved Client ID opens the existing-app flow", !hid(returning, "flowExisting") && hid(returning, "flowNew") && !hid(returning, "connectBlock"));
   var sp_d = fresh.document;
   check("the answers are radio buttons with none chosen, Next beside Back waits for a choice (Ron, 2026-11-16, mockups/setup-radio V)", sp_d.querySelector("#spAsk .sp-choices").getAttribute("role") === "radiogroup" && [...sp_d.querySelectorAll("[data-flow]")].every((b) => b.getAttribute("role") === "radio" && b.getAttribute("aria-checked") === "false") && sp_d.getElementById("spNext").disabled && !sp_d.getElementById("spNext").hidden && sp_d.getElementById("spNext").parentElement === sp_d.getElementById("setupBack").parentElement && !sp_d.querySelector(".sp-choice-go"));
@@ -486,7 +486,7 @@ print(json.dumps(out))
   check("Next shows the steps, with Back alone under them", !hid(fresh, "spSteps") && sp_d.getElementById("spNext").hidden);
   check("choosing create shows the create flow and the connect block", !hid(fresh, "flowNew") && hid(fresh, "flowExisting") && !hid(fresh, "connectBlock"));
   var createText = fresh.document.getElementById("flowNew").textContent;
-  check("create flow gives exact form instructions", /App name:ArcCopy/.test(createText) && /App description:ArcCopy/.test(createText) && /Redirect URI:http:\/\/127\.0\.0\.1:8000\/Copy/.test(createText) && /Check Web API only/.test(createText) && /Website:leave it blank/.test(createText), createText);
+  check("create flow gives exact form instructions", /App name and App description, and leave Website blank:\s*ArcCopy/.test(createText) && /Redirect URIs, then (press|click|tap) Add:\s*http:\/\/127\.0\.0\.1:8000\/Copy/i.test(createText) && /check Web API only/.test(createText), createText);
   fresh.document.getElementById("setupBack").click();
   check("Back from the steps returns to the question with the answer still chosen and Next ready", !hid(fresh, "spAsk") && sp_d.querySelector('[data-flow="new"]').getAttribute("aria-checked") === "true" && !sp_d.getElementById("spNext").disabled && !sp_d.getElementById("spNext").hidden);
   fresh.document.querySelector('[data-flow="existing"]').click(); fresh.document.getElementById("spNext").click();
@@ -516,10 +516,10 @@ print(json.dumps(out))
   check("copy button says Copied", w1.document.getElementById("copyRedirect").textContent === "Copied", w1.document.getElementById("copyRedirect").textContent);
   var cfCopied = [];
   w1.navigator.clipboard = { writeText: async (t) => { cfCopied.push(t); } };
-  var cfButtons = w1.document.querySelectorAll("#flowNew .sp-field .copy-field");
+  var cfButtons = w1.document.querySelectorAll("#flowNew .tx-copy .copy-field");
   for (const b of cfButtons) b.click();
   await new Promise((r) => setTimeout(r, 100));
-  check("App name, App description and Redirect URI each have a Copy button that copies the text in its box", cfButtons.length === 3 && cfCopied.join("|") === "Arc|Arc|http://127.0.0.1:8000/", cfCopied.join("|"));
+  check("Arc (for App name and App description) and the Redirect URI each have a Copy button that copies the text in its box", cfButtons.length === 2 && cfCopied.join("|") === "Arc|http://127.0.0.1:8000/", cfCopied.join("|"));
 
   // 6h. clearing saved data forgets the Client ID, formats and sign-in, after asking
   var wClear = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { clientId: "keep-me", formats: MINI } });
@@ -686,10 +686,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly these seven, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16v" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16w" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16v/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16w/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -2197,7 +2197,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16v", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16w", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -2629,7 +2629,9 @@ print(json.dumps(out))
   await new Promise((r) => setTimeout(r, 50));
   pr_td.querySelector('[data-flow="new"]').click(); pr_td.getElementById("spNext").click();
   await new Promise((r) => setTimeout(r, 50));
-  check("TIDAL's setup shows its own steps (its dashboard, the redirect address, the five scopes) and its own note, not Spotify's", !pr_td.getElementById("flowNewTidal").hidden && pr_td.getElementById("flowNew").hidden && pr_td.getElementById("spStepsTitle").textContent === "Create an app inside your TIDAL account" && pr_td.querySelector('#flowNewTidal a[href="https://developer.tidal.com/dashboard"]') && pr_td.querySelector("#flowNewTidal .redirect-address").textContent === "http://127.0.0.1:8000/" && pr_td.querySelectorAll("#flowNewTidal li code").length >= 6 && !pr_td.getElementById("spWhatTidal").hidden && pr_td.getElementById("spWhat").hidden && pr_td.querySelector('.sp-agree[data-only="spotify"]').hidden && !pr_td.querySelector('.sp-agree[data-only="tidal"]').hidden && pr_td.getElementById("connect").textContent.includes("Connect to TIDAL"));
+  check("TIDAL's setup shows its own steps (its dashboard, the redirect address, the five scopes) and its own note, not Spotify's; the last step names Connect to TIDAL, which sits beside Back at the foot", !pr_td.getElementById("flowNewTidal").hidden && pr_td.getElementById("flowNew").hidden && pr_td.getElementById("spStepsTitle").textContent === "Create an app inside your TIDAL account" && pr_td.querySelector('#flowNewTidal a[href="https://developer.tidal.com/dashboard"]') && pr_td.querySelector("#flowNewTidal .redirect-address").textContent === "http://127.0.0.1:8000/" && pr_td.querySelectorAll("#flowNewTidal li code").length >= 6 && !pr_td.getElementById("spWhatTidal").hidden && pr_td.getElementById("spWhat").hidden && pr_td.querySelector('#connectStep [data-only="spotify"]').hidden && /^Press Connect to TIDAL below\. TIDAL will ask you to log in and to allow Arc access\.$/.test(pr_td.querySelector('#connectStep [data-only="tidal"]').textContent.replace(/Click|Tap/, "Press")) && !pr_td.getElementById("connect").hidden && pr_td.getElementById("connect").closest(".wp-pair").contains(pr_td.getElementById("setupBack")) && pr_td.getElementById("connect").textContent.includes("Connect to TIDAL") && pr_td.querySelector("#flowNewTidal .tx-nw").textContent === "Redirect URI 1");
+  var pr_shots = [...pr_td.querySelectorAll("#flowNewTidal .tx-shot img")];
+  check("TIDAL's steps show close-ups of its dashboard that exist, each with a pink ring on what to press (the typed name has nothing to press); each value to copy sits on one line with an icon-only Copy; the five scopes are a list", pr_shots.length === 10 && pr_shots.every((i) => fs.existsSync(ROOT + i.getAttribute("src")) && i.getAttribute("alt")) && [...pr_td.querySelectorAll("#flowNewTidal .tx-shot")].filter((s) => !s.querySelector(".tx-ring")).map((s) => s.querySelector("img").getAttribute("src")).join() === "setup-tidal/name.png" && [...pr_td.querySelectorAll("#flowNewTidal .tx-copy")].map((c) => c.querySelector("code").textContent + ":" + c.querySelector(".copy-field").getAttribute("aria-label")).join("|") === "Arc:Copy|http://127.0.0.1:8000/:Copy" && [...pr_td.querySelectorAll("#flowNewTidal .tx-scopes li")].map((l) => l.textContent).join(",") === "collection.read,playlists.read,playlists.write,search.read,user.read");
   pr_t.close();
   var pr_w2 = await boot({ url: "http://127.0.0.1:8000/", local: { clientId: "abc123" } });
   var pr_w3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, clientId: "abc123" } });
@@ -4531,7 +4533,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16v"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16w"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-16v">
-<script src="theme.js?v=2026-11-16v"></script>
+<meta name="app-version" content="2026-11-16w">
+<script src="theme.js?v=2026-11-16w"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -209,22 +209,22 @@
   ol { margin: 8px 0 0; padding-left: 22px; }
   li { margin: 0 0 12px; }
   li input[type=text] { margin-top: 6px; }
-  ul.fields { margin: 8px 0 0; padding-left: 20px; }
-  ul.fields li { margin: 0 0 8px; }
-  ul.fields li.sp-add { line-height: 32px; }
-  /* Spotify's own buttons, drawn (sharper than screenshots). Spotify's colors on every theme. */
-  .sp-spotify-btn { display: inline-block; vertical-align: middle; margin: 0 4px; padding: 9.5px 18px; border-radius: 999px; background: #3b06ea; color: #fff; font: 700 13px/1 -apple-system, "Helvetica Neue", Arial, sans-serif; white-space: nowrap; }
-  /* a field to type in Spotify's form: label, the text in a box, Copy. Wide: three aligned columns, every box as wide as the redirect address (32 characters) so the Copy buttons line up.
-     Narrow: three lines, label, box, Copy; the box's text shrinks to stay on one line (the narrowest screen is 320 px) */
-  .sp-field { display: flex; align-items: center; gap: 8px; }
-  .sp-field > .ui { flex: none; width: 8.5em; }
-  .sp-field code { flex: none; box-sizing: content-box; width: 32ch; white-space: nowrap; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
-  .sp-field button { flex: none; }
-  @media (max-width: 759px) {
-    .sp-field { flex-direction: column; align-items: flex-start; gap: 6px; }
-    .sp-field > .ui { width: auto; }
-    .sp-field code { width: auto; font-size: min(0.85em, calc((100vw - 132px) / 19.6)); }
-  }
+  /* the setup steps (Spotify's and TIDAL's): small close-ups of its dashboard with a pink ring on what to press, and each value to copy on one line with an icon-only Copy */
+  .tx-shots { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .tx-shot { position: relative; display: block; max-width: 100%; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); line-height: 0; }
+  .tx-shot img { display: block; width: 100%; height: auto; }
+  .tx-ring { position: absolute; box-sizing: content-box; margin: -5px 0 0 -5px; padding: 3px; border: 2px solid var(--accent); border-radius: 999px; box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 30%, transparent), 0 0 14px color-mix(in srgb, var(--accent) 60%, transparent); pointer-events: none; }
+  .tx-ring.tx-sq { border-radius: 10px; }
+  .tx-copy { display: flex; align-items: center; gap: 8px; margin-top: 8px; max-width: 100%; }
+  .tx-copy > .ui { flex: none; }
+  .tx-copy code { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
+  #loginSection .tx-copy .copy-field { flex: none; width: 36px; height: 36px; min-height: 0; margin: 0; padding: 0; display: grid; place-items: center; }
+  .tx-copy .copy-field .btn-icon { margin: 0; }
+  .tx-copy .copy-field .btn-label { display: none; }
+  .tx-nw { white-space: nowrap; }
+  #loginMessage:empty { display: none; }
+  .tx-scopes { margin: 6px 0 0; padding-left: 20px; list-style: disc; }
+  .tx-scopes li { margin: 2px 0; }
   a { color: var(--accent); }
   .toggle { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 4px; }
   .toggle label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
@@ -1454,6 +1454,11 @@
   .wp-note svg { flex: none; color: var(--accent); }
   .wp-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 22px; }
   .wp-pair button { width: 100%; margin: 0; justify-content: center; }
+  /* on the steps, Connect takes the room Next had and Back shrinks to its words, so Connect to Spotify keeps its icon on one line from 360 px; at 320 the icon goes */
+  #loginSection .wp-pair:has(> #connect:not([hidden])) { grid-template-columns: auto 1fr; gap: 10px; }
+  #loginSection .wp-pair:has(> #connect:not([hidden])) #setupBack { padding-inline: 14px; }
+  #loginSection #connect .btn-label { white-space: nowrap; }
+  @media (max-width: 340px) { #loginSection #connect { padding-inline: 10px; } #loginSection #connect .btn-icon { display: none; } }
   /* the setup page (decided by Ron, 2026-11-08, mockups/setup-question-c3.html): the welcome page's band, the same line to Spotify's mark with its link,
      Have you set up Arc before? and a card per answer with how long it takes; then a separate card with the steps for the answer. The band and line stay still as the screens slide. */
   html.page-setup main > h1.brand { display: none; }
@@ -1499,18 +1504,12 @@
   /* the answers are radio buttons in the service tiles' chosen look, and Next goes on with the chosen one (Ron, 2026-11-16, mockups/setup-radio V) */
   #loginSection .sp-choice[aria-checked="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--card)); box-shadow: 0 0 0 1px var(--accent); }
   @media (hover: hover) { #loginSection .sp-choice[aria-checked="true"]:hover { border-color: var(--accent); } }
-  .sp-agree { margin: 10px 0 0; }
   #spSteps { counter-reset: spstep; }
   .sp-list { list-style: none; padding: 0; margin: 12px 0 0; }
   .sp-item { counter-increment: spstep; position: relative; padding-left: 40px; margin: 0 0 18px; }
   .sp-item::before { content: counter(spstep); position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--button); color: var(--on-button, #fff); font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; }
   #connectBlock #clientId { margin: 8px 0; }
   #spWhat, #spWhatExisting { margin-top: 4px; }
-  .sp-shot { margin: 10px 0 0; }
-  /* the screenshots sit in a panel like the welcome page's, without the tilt */
-  .sp-frame { padding: 8px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.3); }
-  .sp-frame picture { display: block; }
-  .sp-frame img { display: block; width: 100%; height: auto; border-radius: 11px; }
   /* the popup that shows a block from the app menu (Remove built playlists, Feedback, Report a problem...), the silence ? or the DEV menu */
   #infoDialog details > summary { list-style: none; pointer-events: none; font-size: 1.25rem; font-weight: 700; color: var(--fg); margin: 0 0 6px; }
   #infoDialog details > summary::-webkit-details-marker { display: none; }
@@ -2377,84 +2376,58 @@
       <h2 id="spStepsTitle"></h2>
       <p id="loginReportHint" class="report-hint muted" hidden>Something unexpected happened. <a href="#" class="report-open">Report this problem</a></p>
 
+      <!-- Spotify's steps: close-ups of Spotify's dashboard (setup-spotify/, made by mockups/tidal-steps/crop_spotify.py from Ron's screenshots, the Client ID made up), as TIDAL's (Ron, 2026-11-16) -->
       <ol id="flowNew" class="sp-list" hidden>
-        <li class="sp-item">
-          Open the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify developer dashboard</a>
-          (it will open in <span data-home="Safari">a new tab</span>), log in with your Spotify Premium account, and <span data-act>press</span> the <span class="ui">Create app</span> button.
-          Switch back to this <span data-home="app">tab</span> any time you need to reference these instructions.
-          <figure class="sp-shot"><div class="sp-frame"><img src="step-create-app.jpg" alt="The top of the Spotify developer dashboard, with the Create app button at the right." width="1530" height="344"></div></figure>
-        </li>
-        <li class="sp-item">
-          Fill in the form:
-          <ul class="fields">
-            <li><div class="sp-field"><span class="ui">App name:</span><code>Arc</code><button class="copy-field" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div></li>
-            <li><div class="sp-field"><span class="ui">App description:</span><code>Arc</code><button class="copy-field" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div></li>
-            <li><div class="sp-field"><span class="ui">Website:</span><span>leave it blank</span></div></li>
-            <li><div class="sp-field"><span class="ui">Redirect URI:</span><code id="redirect" class="redirect-address"></code><button id="copyRedirect" class="copy-field" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div></li>
-            <li class="sp-add"><span class="ui" data-act>Press</span> the <span class="sp-spotify-btn">Add</span> button next to it.</li>
-            <li><span class="ui">Which API/SDKs are you planning to use?</span> Check <span class="ui">Web API</span> only. Leave the other boxes unchecked.</li>
-            <li class="sp-add">Check the box agreeing to Spotify's terms, then <span data-act>press</span> the <span class="sp-spotify-btn">Save</span> button.</li>
-          </ul>
-        </li>
-        <li class="sp-item">Copy the <span class="ui">Client ID</span> shown on your new app's page.
-          <figure class="sp-shot"><div class="sp-frame"><img src="step-client-id.jpg" alt="The new app's page on Spotify's site. Pink labels point to the Client ID line, which is the text to copy, and to the copy button at the right end of that line." width="1348" height="588"></div></figure>
-        </li>
+        <li class="sp-item">Open the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify developer dashboard</a> (it will open in <span data-home="Safari">a new tab</span>), log in with your Spotify Premium account, and <span data-act>press</span> the <span class="ui">Create app</span> button.
+          Switch back to this <span data-home="app">tab</span> any time you need to reference these instructions.<div class="tx-shots"><span class="tx-shot" style="width:179px"><img src="setup-spotify/create-app.png" alt="Create app, ringed, on the dashboard." width="397" height="202"><span class="tx-ring" style="left:13.35%;top:26.24%;width:73.30%;height:47.52%"></span></span></div></li>
+        <li class="sp-item">Put this in <span class="ui">App name</span> and <span class="ui">App description</span>, and leave <span class="ui">Website</span> blank:
+          <div class="tx-copy"><code>Arc</code><button class="copy-field" type="button" aria-label="Copy" title="Copy"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div><div class="tx-shots"><span class="tx-shot" style="width:289px"><img src="setup-spotify/name.png" alt="The App name and App description fields with Arc typed in each." width="642" height="500"></span></div></li>
+        <li class="sp-item">Put this in <span class="ui">Redirect URIs</span>, then <span data-act>press</span> <span class="ui">Add</span>:
+          <div class="tx-copy"><code id="redirect" class="redirect-address"></code><button id="copyRedirect" class="copy-field" type="button" aria-label="Copy" title="Copy"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div><div class="tx-shots"><span class="tx-shot" style="width:251px"><img src="setup-spotify/redirect.png" alt="The Redirect URIs field, with Add ringed." width="558" height="268"><span class="tx-ring" style="left:68.64%;top:38.43%;width:21.32%;height:23.88%"></span></span></div></li>
+        <li class="sp-item">Under <span class="ui">Which API/SDKs are you planning to use?</span>, check <span class="ui">Web API</span> only.<div class="tx-shots"><span class="tx-shot" style="width:285px"><img src="setup-spotify/web-api.png" alt="Web API, checked and ringed." width="633" height="171"><span class="tx-ring tx-sq" style="left:8.37%;top:38.60%;width:29.23%;height:30.41%"></span></span></div></li>
+        <li class="sp-item">Check the box agreeing to Spotify's terms, then <span data-act>press</span> <span class="ui">Save</span>.<div class="tx-shots"><span class="tx-shot" style="width:270px"><img src="setup-spotify/terms.png" alt="The box agreeing to Spotify's terms, checked and ringed." width="601" height="158"><span class="tx-ring tx-sq" style="left:8.82%;top:33.54%;width:7.99%;height:32.92%"></span></span><span class="tx-shot" style="width:219px"><img src="setup-spotify/save.png" alt="Save, ringed, beside Cancel." width="487" height="201"><span class="tx-ring" style="left:10.88%;top:26.37%;width:41.07%;height:47.26%"></span></span></div></li>
+        <li class="sp-item">Copy the <span class="ui">Client ID</span> shown on your new app's page.<div class="tx-shots"><span class="tx-shot" style="width:283px"><img src="setup-spotify/client-id.png" alt="The Client ID on the app's page, with its copy button ringed." width="787" height="209"><span class="tx-ring tx-sq" style="left:84.37%;top:39.23%;width:7.12%;height:28.71%"></span></span></div></li>
       </ol>
 
       <ol id="flowExisting" class="sp-list" hidden>
-        <li class="sp-item">
-          Open the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify developer dashboard</a>
-          (it will open in <span data-home="Safari">a new tab</span>), log in, and <span data-act>press</span> the app you made for Arc.
-          Switch back to this <span data-home="app">tab</span> any time you need to reference these instructions.
-          <figure class="sp-shot"><div class="sp-frame"><picture><source media="(pointer: coarse)" srcset="step-open-app-phone.jpg"><img src="step-open-app-computer.jpg" alt="The Spotify developer dashboard. A pink label points to the white box with your app's name, which is what to choose. The Create app button is greyed out." width="1398" height="564"></picture></div></figure>
-        </li>
-        <li class="sp-item">Copy the <span class="ui">Client ID</span> shown on its page.
-          <figure class="sp-shot"><div class="sp-frame"><img src="step-client-id.jpg" alt="The app's page on Spotify's site. Pink labels point to the Client ID line, which is the text to copy, and to the copy button at the right end of that line." width="1348" height="588"></div></figure>
-        </li>
+        <li class="sp-item">Open the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify developer dashboard</a> (it will open in <span data-home="Safari">a new tab</span>), log in, and <span data-act>press</span> the app you made for Arc.
+          Switch back to this <span data-home="app">tab</span> any time you need to reference these instructions.<div class="tx-shots"><span class="tx-shot" style="width:306px"><img src="setup-spotify/open-app.png" alt="The app Arc on the dashboard, ringed." width="680" height="261"><span class="tx-ring tx-sq" style="left:7.79%;top:20.31%;width:84.42%;height:59.38%"></span></span></div></li>
+        <li class="sp-item">Copy the <span class="ui">Client ID</span> shown on its page.<div class="tx-shots"><span class="tx-shot" style="width:283px"><img src="setup-spotify/client-id.png" alt="The Client ID on the app's page, with its copy button ringed." width="787" height="209"><span class="tx-ring tx-sq" style="left:84.37%;top:39.23%;width:7.12%;height:28.71%"></span></span></div></li>
       </ol>
 
-      <!-- TIDAL's steps (stage 5 of work/tidal-plan.md), from TIDAL's documentation (Manage apps): no screenshots yet -->
+      <!-- TIDAL's steps (stage 5 of work/tidal-plan.md): close-ups of TIDAL's dashboard (setup-tidal/, made by mockups/tidal-steps/crop.py from Ron's screenshots, the Client ID made up), a pink ring on what to press (Ron, 2026-11-16, A) -->
       <ol id="flowNewTidal" class="sp-list" hidden>
-        <li class="sp-item">
-          Open the <a href="https://developer.tidal.com/dashboard" target="_blank" rel="noopener noreferrer">TIDAL developer dashboard</a>
-          (it will open in <span data-home="Safari">a new tab</span>), log in with your TIDAL account, accept TIDAL's guidelines if it asks, and create a new app.
-          Switch back to this <span data-home="app">tab</span> any time you need to reference these instructions.
-        </li>
-        <li class="sp-item">
-          Name it:
-          <ul class="fields">
-            <li><div class="sp-field"><span class="ui">App name:</span><code>Arc</code><button class="copy-field" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div></li>
-          </ul>
-        </li>
-        <li class="sp-item">
-          On the app's <span class="ui">Settings</span> tab, <span data-act>press</span> <span class="ui">Edit</span>, then:
-          <ul class="fields">
-            <li><div class="sp-field"><span class="ui">Redirect URI:</span><code class="redirect-address"></code><button class="copy-field" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div></li>
-            <li><span class="ui">Scopes:</span> check <code>playlists.read</code> <code>playlists.write</code> <code>collection.read</code> <code>user.read</code> <code>search.read</code>. Leave the others unchecked.</li>
-            <li><span data-act>Press</span> <span class="ui">Save</span>.</li>
-          </ul>
-        </li>
-        <li class="sp-item">On the app's <span class="ui">Overview</span> tab, copy the <span class="ui">Client ID</span>. Arc doesn't need the Client Secret.</li>
+        <li class="sp-item">Open the <a href="https://developer.tidal.com/dashboard" target="_blank" rel="noopener noreferrer">TIDAL developer site</a> (it will open in <span data-home="Safari">a new tab</span>), log in with your TIDAL account, and <span data-act>press</span> <span class="ui">Dashboard</span> at the top.
+          Switch back to this <span data-home="app">tab</span> any time you need to reference these instructions.<div class="tx-shots"><span class="tx-shot" style="width:259px"><img src="setup-tidal/dashboard.png" alt="The top of TIDAL's developer site, with Dashboard ringed." width="575" height="168"><span class="tx-ring" style="left:32.52%;top:31.55%;width:30.09%;height:36.90%"></span></span></div></li>
+        <li class="sp-item"><span data-act>Press</span> <span class="ui">Create New App</span>.<div class="tx-shots"><span class="tx-shot" style="width:274px"><img src="setup-tidal/create.png" alt="The Dashboard, with Create New App ringed." width="609" height="263"><span class="tx-ring" style="left:8.70%;top:43.73%;width:57.80%;height:36.12%"></span></span></div></li>
+        <li class="sp-item">Name it, then <span data-act>press</span> <span class="ui">Create App</span>.
+          <div class="tx-copy"><span class="ui">App Name:</span><code>Arc</code><button class="copy-field" type="button" aria-label="Copy" title="Copy"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div><div class="tx-shots"><span class="tx-shot" style="width:238px"><img src="setup-tidal/name.png" alt="The App Name field with Arc typed in." width="530" height="144"></span><span class="tx-shot" style="width:232px"><img src="setup-tidal/create-app.png" alt="Create App, ringed, beside Cancel." width="515" height="200"><span class="tx-ring" style="left:10.29%;top:26.50%;width:47.38%;height:47.00%"></span></span></div></li>
+        <li class="sp-item"><span data-act>Press</span> <span class="ui">View App</span> on your new app.<div class="tx-shots"><span class="tx-shot" style="width:237px"><img src="setup-tidal/view-app.png" alt="The new app Arc on the Dashboard, with View App ringed." width="526" height="334"><span class="tx-ring" style="left:10.08%;top:57.78%;width:38.59%;height:26.35%"></span></span></div></li>
+        <li class="sp-item">Open the <span class="ui">Settings</span> tab, then <span data-act>press</span> <span class="ui">Edit</span> at its right.<div class="tx-shots"><span class="tx-shot" style="width:318px"><img src="setup-tidal/edit.png" alt="The app's page with the Settings tab and the Edit button ringed." width="707" height="311"><span class="tx-ring" style="left:28.15%;top:17.04%;width:23.19%;height:19.94%"></span><span class="tx-ring" style="left:72.84%;top:53.05%;width:19.66%;height:29.91%"></span></span></div></li>
+        <li class="sp-item">Under <span class="ui">OAuth</span>, put this in <span class="ui tx-nw">Redirect URI 1</span>:
+          <div class="tx-copy"><code class="redirect-address"></code><button class="copy-field" type="button" aria-label="Copy" title="Copy"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div><div class="tx-shots"><span class="tx-shot" style="width:294px"><img src="setup-tidal/redirect.png" alt="The OAuth section, with the Redirect URI 1 field ringed." width="460" height="222"><span class="tx-ring tx-sq" style="left:8.26%;top:45.05%;width:83.04%;height:37.83%"></span></span></div></li>
+        <li class="sp-item">Under <span class="ui">Scopes</span>, check these five and leave the rest unchecked:
+          <ul class="tx-scopes"><li><code>collection.read</code></li><li><code>playlists.read</code></li><li><code>playlists.write</code></li><li><code>search.read</code></li><li><code>user.read</code></li></ul><div class="tx-shots"><span class="tx-shot" style="width:294px"><img src="setup-tidal/scopes.png" alt="The Scopes section, with the checkbox of collection.read ticked and ringed." width="460" height="250"><span class="tx-ring tx-sq" style="left:8.26%;top:38.40%;width:83.04%;height:32.80%"></span></span></div></li>
+        <li class="sp-item"><span data-act>Press</span> <span class="ui">Save</span> at the top.<div class="tx-shots"><span class="tx-shot" style="width:200px"><img src="setup-tidal/save.png" alt="Save, ringed, beside Cancel." width="444" height="201"><span class="tx-ring" style="left:12.16%;top:26.37%;width:34.91%;height:47.26%"></span></span></div></li>
+        <li class="sp-item">Open the <span class="ui">Overview</span> tab and copy the <span class="ui">Client ID</span>. Arc doesn't need the Client Secret.<div class="tx-shots"><span class="tx-shot" style="width:279px"><img src="setup-tidal/client-id.png" alt="The Overview tab: the Client ID with its Copy link ringed." width="620" height="395"><span class="tx-ring" style="left:72.58%;top:74.68%;width:14.52%;height:11.90%"></span></span></div></li>
       </ol>
 
       <ol id="flowExistingTidal" class="sp-list" hidden>
-        <li class="sp-item">
-          Open the <a href="https://developer.tidal.com/dashboard" target="_blank" rel="noopener noreferrer">TIDAL developer dashboard</a>
-          (it will open in <span data-home="Safari">a new tab</span>), log in, and <span data-act>press</span> <span class="ui">View app</span> on the app you made for Arc.
-          Switch back to this <span data-home="app">tab</span> any time you need to reference these instructions.
-        </li>
-        <li class="sp-item">On its <span class="ui">Overview</span> tab, copy the <span class="ui">Client ID</span>.</li>
+        <li class="sp-item">Open the <a href="https://developer.tidal.com/dashboard" target="_blank" rel="noopener noreferrer">TIDAL developer site</a> (it will open in <span data-home="Safari">a new tab</span>), log in, and <span data-act>press</span> <span class="ui">Dashboard</span> at the top.
+          Switch back to this <span data-home="app">tab</span> any time you need to reference these instructions.<div class="tx-shots"><span class="tx-shot" style="width:259px"><img src="setup-tidal/dashboard.png" alt="The top of TIDAL's developer site, with Dashboard ringed." width="575" height="168"><span class="tx-ring" style="left:32.52%;top:31.55%;width:30.09%;height:36.90%"></span></span></div></li>
+        <li class="sp-item"><span data-act>Press</span> <span class="ui">View App</span> on the app you made for Arc.<div class="tx-shots"><span class="tx-shot" style="width:237px"><img src="setup-tidal/view-app.png" alt="The new app Arc on the Dashboard, with View App ringed." width="526" height="334"><span class="tx-ring" style="left:10.08%;top:57.78%;width:38.59%;height:26.35%"></span></span></div></li>
+        <li class="sp-item">On its <span class="ui">Overview</span> tab, copy the <span class="ui">Client ID</span>.<div class="tx-shots"><span class="tx-shot" style="width:279px"><img src="setup-tidal/client-id.png" alt="The Overview tab: the Client ID with its Copy link ringed." width="620" height="395"><span class="tx-ring" style="left:72.58%;top:74.68%;width:14.52%;height:11.90%"></span></span></div></li>
       </ol>
 
       <div id="connectBlock" class="sp-item" hidden>
-        <span class="ui">Paste your Client ID here, then connect:</span>
+        <span class="ui">Paste your Client ID here:</span>
         <input id="clientId" type="text" autocomplete="off" spellcheck="false" placeholder="Client ID">
-        <div class="row">
-          <button id="connect" class="primary" type="button"><img class="btn-icon" src="icons/connect.svg" alt="" width="20" height="20"><span class="btn-label">Connect to <span data-service>Spotify</span></span></button>
-          <span id="loginMessage" class="error"></span>
-        </div>
-        <p class="muted sp-agree" data-only="spotify">Spotify may ask you to log in or to <span data-act>press</span> <span class="ui">Agree</span>. If it does, <span data-act>press</span> <span class="ui">Agree</span> to let this page connect.</p>
-        <p class="muted sp-agree" data-only="tidal" hidden>TIDAL may ask you to log in and to allow Arc access. If it does, allow it to let this page connect.</p>
+      </div>
+      <!-- the last step names the button, which sits at the foot beside Back, where Next was (Ron, 2026-11-16) -->
+      <div id="connectStep" class="sp-item" hidden>
+        <span data-only="spotify"><span data-act>Press</span> <span class="ui">Connect to Spotify</span> below. Spotify may ask you to log in or to <span data-act>press</span> <span class="ui">Agree</span>. If it does, <span data-act>press</span> <span class="ui">Agree</span> to let this page connect.</span>
+        <span data-only="tidal" hidden><span data-act>Press</span> <span class="ui">Connect to TIDAL</span> below. TIDAL will ask you to log in and to allow Arc access.</span>
+        <p id="loginMessage" class="error"></p>
       </div>
 
       <details id="spWhat" class="wp-helps">
@@ -2478,7 +2451,7 @@
       </details>
     </div>
 
-    <div class="wp-pair"><button id="setupBack" type="button"><img class="btn-icon" src="icons/back.svg" alt="" width="20" height="20"><span class="btn-label">Back</span></button><button id="spNext" class="primary" type="button" disabled><span class="btn-label">Next</span><img class="btn-icon" src="icons/start.svg" alt="" width="20" height="20"></button></div>
+    <div class="wp-pair"><button id="setupBack" type="button"><img class="btn-icon" src="icons/back.svg" alt="" width="20" height="20"><span class="btn-label">Back</span></button><button id="spNext" class="primary" type="button" disabled><span class="btn-label">Next</span><img class="btn-icon" src="icons/start.svg" alt="" width="20" height="20"></button><button id="connect" class="primary" type="button" hidden><img class="btn-icon" src="icons/connect.svg" alt="" width="20" height="20"><span class="btn-label">Connect to <span data-service>Spotify</span></span></button></div>
   </section>
 
   <section id="connectedSection" hidden>
@@ -2727,12 +2700,12 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-16v"></script>
-<script src="editor.js?v=2026-11-16v"></script>
-<script src="shared-service.js?v=2026-11-16v"></script>
-<script src="service-spotify.js?v=2026-11-16v"></script>
-<script src="service-tidal.js?v=2026-11-16v"></script>
-<script src="app.js?v=2026-11-16v"></script>
-<script src="sharing.js?v=2026-11-16v"></script>
+<script src="formats.js?v=2026-11-16w"></script>
+<script src="editor.js?v=2026-11-16w"></script>
+<script src="shared-service.js?v=2026-11-16w"></script>
+<script src="service-spotify.js?v=2026-11-16w"></script>
+<script src="service-tidal.js?v=2026-11-16w"></script>
+<script src="app.js?v=2026-11-16w"></script>
+<script src="sharing.js?v=2026-11-16w"></script>
 </body>
 </html>
