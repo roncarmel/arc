@@ -1454,9 +1454,11 @@
   .wp-note svg { flex: none; color: var(--accent); }
   .wp-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 22px; }
   .wp-pair button { width: 100%; margin: 0; justify-content: center; }
-  /* on the steps, Connect takes the room Next had and Back shrinks to its words, so Connect to Spotify keeps its icon on one line from 360 px; at 320 the icon goes */
-  #loginSection .wp-pair:has(> #connect:not([hidden])) { grid-template-columns: auto 1fr; gap: 10px; }
-  #loginSection .wp-pair:has(> #connect:not([hidden])) #setupBack { padding-inline: 14px; }
+  /* on a phone's steps, Connect takes the room Next had and Back shrinks to its words, so Connect to Spotify keeps its icon on one line from 360 px; at 320 the icon goes. Wider, the two keep Back and Next's equal halves */
+  @media (max-width: 500px) {
+    #loginSection .wp-pair:has(> #connect:not([hidden])) { grid-template-columns: auto 1fr; gap: 10px; }
+    #loginSection .wp-pair:has(> #connect:not([hidden])) #setupBack { padding-inline: 14px; }
+  }
   #loginSection #connect .btn-label { white-space: nowrap; }
   @media (max-width: 340px) { #loginSection #connect { padding-inline: 10px; } #loginSection #connect .btn-icon { display: none; } }
   /* the setup page (decided by Ron, 2026-11-08, mockups/setup-question-c3.html): the welcome page's band, the same line to Spotify's mark with its link,
