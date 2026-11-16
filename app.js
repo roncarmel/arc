@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16m";
+const APP_VERSION = "2026-11-16n";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1907,7 +1907,7 @@ async function runSpotifySave() {
     const allIds = playlists.map((p) => p.id);
     // A backup playlist that has no cover yet is put in a queue for one. The covers are sent after the save is done and never make it wait (see uploadCovers).
     // A save written before the cover said SAVED RECIPE (its description began with the old note) is given the new cover once.
-    const putCover = (entry) => { if ((!entry.image || coverDue().includes(entry.id)) && !saveState.coverQueue.includes(entry)) saveState.coverQueue.push(entry); };
+    const putCover = (entry) => { if (service.can.covers && ((!entry.image || coverDue().includes(entry.id)) && !saveState.coverQueue.includes(entry))) saveState.coverQueue.push(entry); };   // a service with no covers (TIDAL) queues none
     const oldCover = (entry) => { if (String(entry.description || "").startsWith(OLD_SAVE_PREFIX)) markCoverDue(entry.id, true); };
     // when the cover changes (RECIPE_COVER_LOOK), every save that has a cover is given the new one once (sliders and RECIPE, Ron, 2026-11-13)
     const newLook = (() => { try { return localStorage.getItem("recipeCoverLook") !== RECIPE_COVER_LOOK; } catch (err) { return false; } })();
@@ -2052,6 +2052,7 @@ function markCoverDue(id, due) {
 // wrong with a cover is said in the line under the editor's bar.
 async function uploadCovers() {
   if (saveState.coverRunning) return;
+  if (!service.can.covers) saveState.coverQueue = [];   // TIDAL has no covers: nothing to send and nothing to say
   if (!saveState.coverQueue.length) {
     if (saveState.coverProblem) { saveState.coverProblem = null; renderSaveStatus(); }
     return;
@@ -2060,7 +2061,7 @@ async function uploadCovers() {
   let problem = null, stopped = false;
   try {
     if (saveState.coverBlocked || !service.coversAllowed()) {
-      problem = { key: "permission", text: `Your ${service.name} sign-in does not include permission to add cover art, so the recipe playlists have no cover. Sign in again with Change ${service.name} login in More options to allow it.` };
+      problem = { key: "permission", text: `Your ${service.name} sign-in does not include permission to add cover art, so the recipe playlists have no cover. Sign in again with Change ${service.name} login, under Everything else on Arc's home, to allow it.` };
     } else {
       let cover = null;
       try { cover = await loadCover("recipe-cover.jpg"); }
@@ -2453,7 +2454,7 @@ Object.assign(serviceHooks, {
   oldSignIn: () => { needsReconnect = true; },
   expiredText: () => `Your ${service.name} sign-in expired. ${actWord(true)} Connect again.`,
   signInExpired: (message) => { if (connection === "ready") setConnection("problem", message, "reconnect"); },   // from here on nothing that needs Spotify is offered
-  refusedText: (what) => `${service.name} did not allow this (${what}). Sign in again with Change ${service.name} login in More options, and approve every permission it asks for.`,
+  refusedText: (what) => `${service.name} did not allow this (${what}). Sign in again with Change ${service.name} login, under Everything else on Arc's home, and approve every permission it asks for.`,
   pauseStarted: (first) => {
     updateButtons();
     // when a wait starts, the popup explains; not over the build popup, which says it already
