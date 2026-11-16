@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-16p";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-16u";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -3118,7 +3118,7 @@ function askDeleteParticipant(code) {
   } },
     `Delete ${code} and ${n === 1 ? "1 playlist" : n + " playlists"}`);
   const list = feEl("div", { class: "bh-plist bh-del-list" }, ...person.playlists.map((p) => feEl("div", { class: "bh-pl" },
-    feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }),
+    feEl("span", { class: "bh-cover bh-arccover" }),
     feEl("span", { class: "bh-pl-name", text: nameWithoutCode(p.name, code) }),
     feEl("span", { class: "bh-pl-sub", text: shared.includes(p) ? "Shared" : p.count === null || p.count === undefined ? "" : `${p.count} songs` }))));
   const overlay = feEl("div", { class: "fe-overlay", id: "bhDeleteDialog", onClick: close },
@@ -3178,11 +3178,11 @@ function personPlaylists(person) {
     // with Share (Ron, 2026-11-14) the line is a link, then the button: a button can't sit inside a link
     if (share) box.appendChild(feEl("div", { class: "bh-pl bh-pl-split" + (isNew ? " pp-new" : "") },
       feEl("a", { class: "bh-pl-main", href, target: "_blank", rel: "noopener", "aria-label": `${p.name}, open in ${service.name}` },
-        feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }), ...name),
+        feEl("span", { class: "bh-cover bh-arccover" }), ...name),
       open ? feEl("a", { class: "bh-pl-end", href, target: "_blank", rel: "noopener", "aria-label": `Open in ${service.name}` }, open) : null,
       share));
     else box.appendChild(feEl("a", { class: "bh-pl" + (isNew ? " pp-new" : ""), href, target: "_blank", rel: "noopener", "aria-label": `${p.name}, open in ${service.name}` },
-      feEl("span", { class: "bh-cover", style: `background-image:url("${p.image || "playlist-cover.jpg"}")` }), ...name,
+      feEl("span", { class: "bh-cover bh-arccover" }), ...name,
       open ? feEl("span", { class: "bh-pl-end" }, open) : null));
   }
   // Heard before (Ron, 2026-11-13, mockups/earlier-playlists 4): under a small heading, faded covers and grey names, each linking to Spotify;
@@ -3257,7 +3257,7 @@ function openPersonPanel(code) {
 function personBuildRow(b) {
   const share = Math.round((b.progress || 0) * 1000) / 10;
   return feEl("div", { class: "bh-pl pp-live", id: "ppBuild", "aria-live": "polite" },
-    feEl("span", { class: "bh-cover pp-cover-wait", style: 'background-image:url("playlist-cover.jpg")' }),
+    feEl("span", { class: "bh-cover bh-arccover pp-cover-wait" }),
     feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-pl-name", text: nameWithoutCode(b.name, b.code) }),
       feEl("span", { class: "pp-step" }, feEl("span", { class: "pp-step-text", text: b.step })),
       feEl("span", { class: "pp-bar", "aria-hidden": "true" }, feEl("i", { style: `width:${share}%` }))));

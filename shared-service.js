@@ -1,6 +1,6 @@
 // shared-service.js: what every music service file uses (service-spotify.js, service-tidal.js), and the page with them: the hooks the page fills, the
 // sign-in's helpers (PKCE), this page's address and window, requests that give up when nothing answers, and the record kept in this browser. Loaded first.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["shared-service.js"] = "2026-11-16p";   // this file's version, checked against the app's at startup
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["shared-service.js"] = "2026-11-16u";   // this file's version, checked against the app's at startup
 
 const serviceHooks = {
   scopes: "",                  // the permissions the sign-in asks for, space separated; empty: the service's own
