@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16k";
+const APP_VERSION = "2026-11-16l";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -90,9 +90,12 @@ function fillActWords() {
 }
 // The music service's name in the markup's page text: <span data-service>Spotify</span>, filled in at startup (the markup's own word stays if scripts fail). Its
 // requirement (Spotify Premium; none on TIDAL, where every account pays): [data-requirement] holds what says so, hidden when the service has none; inside it,
-// [data-requirement-name] takes the requirement's name and [data-requirement-why] why it is needed.
+// [data-requirement-name] takes the requirement's name and [data-requirement-why] why it is needed. [data-service-mark] takes the service's mark, and
+// [data-only="tidal"] shows only under that service.
 function fillServiceWords() {
   for (const el of document.querySelectorAll("[data-service]")) el.textContent = service.name;
+  for (const el of document.querySelectorAll("[data-service-mark]")) el.innerHTML = service.mark();   // its mark, plain (the markup's is Spotify's)
+  for (const el of document.querySelectorAll("[data-only]")) el.hidden = el.dataset.only !== service.key;   // what only one service needs (its setup notes)
   const req = service.requirement;
   for (const el of document.querySelectorAll("[data-requirement]")) el.hidden = !req;
   if (!req) return;
@@ -126,7 +129,7 @@ document.addEventListener("touchend", (e) => {
 // text says "Safari" and "this app" (data-home). Elsewhere nothing changes. Decided by Ron, 2026-11-05: only the dashboard, not other links.
 function sendDashboardToSafari() {
   if (navigator.standalone !== true) return;
-  document.querySelectorAll('a[href^="https://developer.spotify.com"]').forEach((a) => {
+  document.querySelectorAll('a[href^="https://developer.spotify.com"], a[href^="https://developer.tidal.com"]').forEach((a) => {
     a.href = a.href.replace(/^https:/, "x-safari-https:");
     a.removeAttribute("target");
   });
@@ -585,12 +588,6 @@ async function copyLayoutLog() {
   showDevToast("Page position log copied");   // the DEV menu's own message: the line under the bar shows only in the builder
 }
 
-// The welcome page's Why? next to "Requires Spotify Premium" opens a small note under it.
-function showPremiumWhy(open) {
-  $("premiumWhyText").hidden = !open;
-  $("premiumWhy").setAttribute("aria-expanded", String(open));
-}
-
 // "recipe" in the welcome page's intro opens a note above the word (the text above it has been read), moved left if needed so it stays inside the paragraph.
 function showRecipeWhat(open) {
   const note = $("recipeWhatText"), word = $("recipeWhat");
@@ -606,17 +603,42 @@ function placeRecipeWhat() {
   note.style.left = Math.round(Math.max(0, Math.min(at.left - box.left, box.width - note.offsetWidth))) + "px";
 }
 
-// The welcome page has two steps: the tools, then what the one-time setup is. Get started adds a step to the browser's history, so back returns to the tools.
+// The welcome page has three steps: the tools, which music service, then what the one-time setup is. Each step forward adds a step to the browser's
+// history, so back returns to the one before.
+function welcomeStep() { return !$("wpSetup").hidden ? 3 : !$("wpWhich").hidden ? 2 : 1; }
 function showWelcomeStep(step, push) {
-  const second = step === 2;
-  if ($("wpSetup").hidden === !second) return;
-  $("wpFirst").hidden = second;
-  $("wpSetup").hidden = !second;
-  showPremiumWhy(false);
+  document.documentElement.classList.remove("wp-at-setup");   // set by the <head> script after choosing another service reloaded the page
+  if (welcomeStep() === step) return;
+  $("wpFirst").hidden = step !== 1;
+  $("wpWhich").hidden = step !== 2;
+  $("wpSetup").hidden = step !== 3;
   showRecipeWhat(false);
-  if (push) { try { history.pushState({ page: "welcome", step: 2 }, ""); } catch (err) { /* the back button just leaves the page */ } }
+  if (push) { try { history.pushState({ page: "welcome", step }, ""); } catch (err) { /* the back button just leaves the page */ } }
   window.scrollTo(0, 0);
-  if (second) drawSetupJoint();
+  if (step === 3) drawSetupJoint();
+}
+// The music service chosen on the welcome page. The one in use goes on at once; the other is set up (switchService) and the page loads again under it,
+// opening on the next step (welcomeAt in sessionStorage, read by the <head> script and by startup), with the choice still one step back.
+function pickService(key) {
+  if (key === service.key) { slideScreens(() => showWelcomeStep(3, true)); return; }
+  if (!switchService(key)) return;
+  try { sessionStorage.setItem("welcomeAt", "3"); } catch (err) { /* it opens on the tools */ }
+  pageWindow().location.reload();
+}
+// This browser moves to another music service (the welcome page's choice, the DEV menu's Music service). Each service keeps its own Client ID (clientId-spotify,
+// clientId-tidal), swapped in as `clientId`, and what this browser knows of the old one's saves is forgotten (as for another account, forgetOtherAccount), so the
+// merge does not ask about saves the new service never had. Recipes stay and are saved to the new service. The page must load again after it.
+function switchService(next) {
+  if (next === service.key || buildWriting()) return false;
+  try {
+    const current = localStorage.getItem("clientId");
+    if (current) localStorage.setItem("clientId-" + service.key, current); else localStorage.removeItem("clientId-" + service.key);
+    const theirs = localStorage.getItem("clientId-" + next);
+    if (theirs) localStorage.setItem("clientId", theirs); else localStorage.removeItem("clientId");
+    for (const key of ["spotifySynced", "spotifyPendingDeletes", "spotifySavedAt", "spotifyAccount", "spotifyPlaylists"]) localStorage.removeItem(key);
+    if (next === "spotify") localStorage.removeItem("arcService"); else localStorage.setItem("arcService", next);
+  } catch (e) { return false; }
+  return true;
 }
 // The setup step's line, on the welcome page and again over the setup question: down from just under the band's icon (white while over the band; it starts
 // past the icon's ring rather than behind it, since a slide's first and last frames can draw it over the icon), a turn, then right to
@@ -639,7 +661,10 @@ function drawSetupJoint() {
     rect.setAttribute("x", bb.left - jb.left); rect.setAttribute("y", bb.top - jb.top); rect.setAttribute("width", bb.width); rect.setAttribute("height", bb.height);
     Object.assign(joint.querySelector(".wp-ok").style, { left: (x0 + r + x1) / 2 + "px", top: y + "px" });
     Object.assign(joint.querySelector(".wp-spotify").style, { left: cx - size / 2 + "px", top: y - size / 2 + "px" });
-    Object.assign(joint.querySelector(".wp-spotify-name").style, { left: cx + "px", top: y + size / 2 + 6 + "px" });
+    // its name goes just under the mark's own drawing, which fills less of its box for some services (TIDAL's diamonds)
+    let foot = 24;
+    try { const g = joint.querySelector(".wp-spotify path").getBBox(); if (g.height > 0) foot = g.y + g.height; } catch (err) { /* not drawn yet: under the box */ }
+    Object.assign(joint.querySelector(".wp-spotify-name").style, { left: cx + "px", top: y - size / 2 + foot * size / 24 + 6 + "px" });
   }
   alignLoops();
 }
@@ -650,8 +675,9 @@ function alignLoops() {
   for (const a of document.getAnimations()) if ((a.animationName === "wp-flow" || a.animationName === "wp-drift") && a.startTime !== 0) a.startTime = 0;
 }
 function welcomeStepBack() {
-  if (history.state && history.state.page === "welcome" && history.state.step === 2) { history.back(); return; }   // the popstate that follows shows the tools
-  slideScreens(() => showWelcomeStep(1, false));
+  const step = welcomeStep();
+  if (history.state && history.state.page === "welcome" && history.state.step === step) { history.back(); return; }   // the popstate that follows shows the step before
+  slideScreens(() => showWelcomeStep(step - 1, false));
 }
 
 // Moving between the screens before the app (the tools, what setup is, the setup question, its steps) slides: forward, the screen leaves to the left as the next
@@ -659,8 +685,8 @@ function welcomeStepBack() {
 // index.html, vt-*; the setup line stays, fades in or fades out, wp-wire); a browser without them, reduced motion, or a back gesture the browser animates itself just changes the screen.
 function screenRank() {
   const page = pageName();
-  if (page === "welcome") return $("wpSetup").hidden ? 0 : 1;
-  if (page === "setup") return currentFlow() ? 3 : 2;
+  if (page === "welcome") return welcomeStep() - 1;
+  if (page === "setup") return currentFlow() ? 4 : 3;
   return -1;
 }
 function slideScreens(change, event) {
@@ -1134,7 +1160,7 @@ function historyMoved() {
   } else if (pageName() === "setup") {
     setupLeft();
   }
-  if (pageName() === "welcome") showWelcomeStep(state && state.page === "welcome" && state.step === 2 ? 2 : 1, false);
+  if (pageName() === "welcome") showWelcomeStep(state && state.page === "welcome" && state.step >= 2 ? state.step : 1, false);
 }
 
 // Blocks that open in a popup (the builder menu's tutorial, Feedback, Report a problem, the silence ?, the DEV menu's
@@ -1522,14 +1548,18 @@ function clearReportHints(...ids) {
 
 function showFlow(flow) {
   // flow is "new", "existing", or null (nothing chosen yet: show neither, and nothing below the choices).
-  $("flowNew").hidden = flow !== "new";
-  $("flowExisting").hidden = flow !== "existing";
-  $("spWhat").hidden = flow === "existing";
-  $("spWhatExisting").hidden = flow !== "existing";
+  const tidal = service.key === "tidal";   // each service has its own steps
+  $("flowNew").hidden = tidal || flow !== "new";
+  $("flowExisting").hidden = tidal || flow !== "existing";
+  $("flowNewTidal").hidden = !tidal || flow !== "new";
+  $("flowExistingTidal").hidden = !tidal || flow !== "existing";
+  $("spWhat").hidden = tidal || flow === "existing";
+  $("spWhatExisting").hidden = tidal || flow !== "existing";
+  $("spWhatTidal").hidden = !tidal;
   $("connectBlock").hidden = !flow;
   $("spAsk").hidden = !!flow;
   $("spSteps").hidden = !flow;
-  $("spStepsTitle").textContent = flow === "new" ? "Create an app inside your Spotify account" : "Find your Client ID";
+  $("spStepsTitle").textContent = flow === "new" ? `Create an app inside your ${service.name} account` : "Find your Client ID";
   currentFlowName = flow;
   if (!flow) { alignWelcomeIcons(); drawSetupJoint(); }
 }
@@ -1783,7 +1813,7 @@ async function recordSaveCreate(fmt, synced, saveRun) {
     listReadAt: playlistsLoadedAt ? new Date(playlistsLoadedAt).toISOString() : null, listReadBy: playlistsLoadedBy,
     playlistCount: playlists.length, listTotal: playlistsTotal, pages: playlistPages,
     saveStarted: new Date(saveRun.at).toISOString(), listReadAgainDuringSave: playlistLoads !== saveRun.loads, listReadBeforeSave: saveRun.listReadAt ? new Date(saveRun.listReadAt).toISOString() : null,
-    held: heldRecipeId(), pendingDeletes: pendingSaveDeletes(), account: (() => { try { return localStorage.getItem("spotifyAccount") === (me && me.id); } catch (e) { return null; } })(),
+    held: heldRecipeId(), pendingDeletes: pendingSaveDeletes(), account: (() => { try { return localStorage.getItem("spotifyAccount") === accountKey(); } catch (e) { return null; } })(),
     direct: null,
   };
   if (was && was.playlistId) entry.direct = await readSaveDirectly(was.playlistId);
@@ -2858,6 +2888,8 @@ async function loadCover(file = "playlist-cover.jpg") {
 
 // What this device knows of the recipe saves belongs to one Spotify account. Signed in to a different one (Change Spotify login), it is forgotten, so the new account's
 // saves are read as new and this device's recipes are saved there, instead of each old save looking removed. A device from before this record just starts it.
+// whose saves this browser knows (spotifyAccount): the account's ID, with the service before it for any but Spotify, so one service's account never passes for another's
+function accountKey() { return me && me.id ? (service.key === "spotify" ? me.id : service.key + ":" + me.id) : null; }
 function forgetOtherAccount(id) {
   try {
     const was = localStorage.getItem("spotifyAccount");
@@ -2871,7 +2903,7 @@ function forgetOtherAccount(id) {
 async function loadMyPlaylists(options = {}) {
   const by = callerTrail();   // before the first wait: after it Safari's stack no longer shows the caller (the record came out blank, 2026-11-13)
   me = await service.me();
-  forgetOtherAccount(me.id);
+  forgetOtherAccount(accountKey());
   playlistLoads += 1;
   // short and empty pages are read again by the service (service-spotify.js); what it found comes with the list
   const list = await service.listMyPlaylists({ onPage: options.onPage });
@@ -3518,24 +3550,17 @@ async function main() {
     });
   }
   // Music service (TIDAL plan, stage 4): this browser uses Spotify or TIDAL. Each keeps its own Client ID (clientId-spotify, clientId-tidal), swapped in as
-  // `clientId`; the page reloads under the other service. Until stage 5 TIDAL has no setup of its own: its Client ID goes in the usual field.
+  // `clientId` (switchService); the page reloads under the other service.
   for (const button of document.querySelectorAll("#devMenu [data-pick-service]")) {
     button.addEventListener("click", () => {
-      const next = button.dataset.pickService;
-      if (next === service.key || buildWriting()) return;
-      try {
-        const current = localStorage.getItem("clientId");
-        if (current) localStorage.setItem("clientId-" + service.key, current); else localStorage.removeItem("clientId-" + service.key);
-        const theirs = localStorage.getItem("clientId-" + next);
-        if (theirs) localStorage.setItem("clientId", theirs); else localStorage.removeItem("clientId");
-        if (next === "spotify") localStorage.removeItem("arcService"); else localStorage.setItem("arcService", next);
-      } catch (e) { return; }
-      pageWindow().location.reload();
+      if (switchService(button.dataset.pickService)) pageWindow().location.reload();
     });
   }
   on("connect", "click", startLogin);
   on("startSetup", "click", () => slideScreens(() => goToSetup(false)));
   on("getStarted", "click", () => slideScreens(() => showWelcomeStep(2, true)));
+  on("wpWhichBack", "click", welcomeStepBack);
+  for (const tile of document.querySelectorAll("#wpWhich [data-pick-service]")) tile.addEventListener("click", () => pickService(tile.dataset.pickService));
   on("wpSetupBack", "click", welcomeStepBack);
   for (const head of document.querySelectorAll("#welcomePage .wp-tool-head")) head.addEventListener("click", () => toggleWelcomeTool(head));
   watchTutorialRows();
@@ -3543,15 +3568,20 @@ async function main() {
   window.addEventListener("resize", () => { alignWelcomeIcons(); drawSetupJoint(); });
   if (connectingScreen) { alignWelcomeIcons(); drawSetupJoint(); }   // the connecting screen has the band and the line too
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(alignWelcomeIcons);
-  on("premiumWhy", "click", (event) => { event.stopPropagation(); showPremiumWhy($("premiumWhyText").hidden); });
-  document.addEventListener("click", (event) => { if (!$("premiumWhyText").hidden && !$("premiumWhyText").contains(event.target)) showPremiumWhy(false); });
   on("recipeWhat", "click", (event) => { event.stopPropagation(); showRecipeWhat($("recipeWhatText").hidden); });
   document.addEventListener("click", (event) => { if (!$("recipeWhatText").hidden && !$("recipeWhatText").contains(event.target)) showRecipeWhat(false); });
   window.addEventListener("resize", placeRecipeWhat);
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape") { showPremiumWhy(false); showRecipeWhat(false); } });
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape") showRecipeWhat(false); });
   on("setupBack", "click", setupBack);
   window.addEventListener("popstate", pageHistoryMoved);
   try { if (history.state && (history.state.view || history.state.step)) history.replaceState(null, ""); } catch (err) { /* nothing to forget */ }   // a reload keeps the step, but the page opens on home (and the welcome page on its first step)
+  // just moved to another music service from the welcome page's choice (pickService): on to its setup step, with the choice one step back
+  try {
+    if (sessionStorage.getItem("welcomeAt") === "3") {
+      sessionStorage.removeItem("welcomeAt");
+      if (pageName() === "welcome") { history.replaceState({ page: "welcome", step: 2 }, ""); showWelcomeStep(3, true); }
+    }
+  } catch (err) { /* it opens on the tools */ }
   initToolMenu();
   on("homeBuilder", "click", () => showView("builder"));
   // Everything else on home: each icon opens its panel in place

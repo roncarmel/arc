@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-16k">
-<script src="theme.js?v=2026-11-16k"></script>
+<meta name="app-version" content="2026-11-16l">
+<script src="theme.js?v=2026-11-16l"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -870,7 +870,6 @@
   /* Spotify's marks end flush right, on Build's right edge (Ron, 2026-11-13) */
   .bh-pl-end { flex: none; display: flex; justify-content: flex-end; }
   .bh-sp { flex: none; display: block; color: var(--button); }
-  .bh-sp-bars { fill: var(--on-button, #fff); }
   .pp-open .bh-sp { width: 18px; height: 18px; }
   @media (hover: hover) { a.bh-pl-end:hover .bh-sp, a.bh-pl:hover .bh-pl-end .bh-sp { filter: brightness(1.12); } }
   /* the trash (32 px) right under Share (32 px), flush right */
@@ -1250,6 +1249,8 @@
   /* Three pages in one: welcome (the first visit), the one-time setup, and the app. The class on <html> says which (see the script in <head> and showPage in app.js). */
   #welcomePage { display: none; }
   html.page-welcome #welcomePage { display: block; }
+  html.wp-at-setup #wpFirst, html.wp-at-setup #wpWhich { display: none; }
+  html.wp-at-setup #wpSetup { display: block !important; }
   html.page-welcome footer, html.page-welcome #about, html.page-welcome #loginSection, html.page-welcome #connectedSection, html.page-welcome #connectionProblem, html.page-welcome #appSection,
   html.page-welcome #supportBox,
   html.page-setup #about, html.page-setup #connectedSection, html.page-setup #connectionProblem, html.page-setup #appSection,
@@ -1335,11 +1336,9 @@
   .wp-band-text { min-width: 0; }
   .wp-band-name { margin: 0; font-size: 2.1rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
   .wp-band-tag { margin: 6px 0 0; font-size: 0.92rem; line-height: 1.25; white-space: nowrap; }   /* always the same two lines, so the band keeps its shape at any width */
-  /* the grey intro and the Premium line sit 16 px in from both sides, so the page is less of a block (Ron, 2026-11-08) */
+  /* the grey intro sits 16 px in from both sides, so the page is less of a block (Ron, 2026-11-08) */
   .wp-lead { margin: 0 0 12px; padding: 0 16px; color: var(--muted); }
-  .wp-req { position: relative; display: flex; align-items: center; gap: 10px; margin: 0 16px 20px; }
-  .wp-cap { padding: 3px 11px; border-radius: 999px; font-size: 0.85rem; font-weight: 600; border: 1px solid var(--line); background: var(--card); }
-  /* the answer to Why? floats over the text and closes on any tap elsewhere or Escape */
+  /* a note (recipe) floats over the text and closes on any tap elsewhere or Escape */
   .wp-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 5; max-width: 300px; margin: 0; padding: 10px 14px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35); font-size: 0.92rem; color: var(--fg); font-weight: 400; }
   #welcomePage .wp-sec { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; color: var(--muted); font-size: 0.76rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
   .wp-sec::after { content: ""; flex: 1; height: 1px; background: var(--line); }
@@ -1418,8 +1417,6 @@
   .wp-shot figcaption { color: var(--muted); font-size: 0.86rem; margin-top: 8px; }
   /* "recipe" in the builder's paragraph is a link that opens the same kind of note, placed above the word and kept inside the paragraph (placeRecipeWhat) */
   .wp-recipe-para { position: relative; }
-  /* Why? opens above the capsule, so the finger that tapped it does not cover the answer */
-  #premiumWhyText { top: auto; bottom: calc(100% + 8px); }
   #recipeWhat { font: inherit; color: var(--accent); }
   #recipeWhatText { display: block; width: min(300px, 100%); box-sizing: border-box; }
   #recipeWhatText[hidden] { display: none; }
@@ -1458,7 +1455,8 @@
      Have you set up Arc before? and a card per answer with how long it takes; then a separate card with the steps for the answer. The band and line stay still as the screens slide. */
   html.page-setup main > h1.brand { display: none; }
   #loginSection { margin-top: 8px; }
-  #welcomePage #wpSetup .wp-setup-title, #spAsk .wp-setup-title { margin: 0 0 8px; text-align: center; font-size: 1.35rem; }
+  #welcomePage :is(#wpSetup, #wpWhich) .wp-setup-title, #spAsk .wp-setup-title { margin: 0 0 8px; text-align: center; font-size: 1.35rem; }
+  #welcomePage #wpWhich .wp-setup-title { margin-top: 32px; }   /* no setup line above it */
   /* while the steps show, the band stays where it is as they scroll (Ron, 2026-11-08): sticky at its own place (main's 24 px and #loginSection's 8 px), the page's background above it and at its corners, so the steps pass under it unseen */
   html.page-setup #loginSection:has(#spSteps:not([hidden])) .sp-band { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 32px); z-index: 5; }
   html.page-setup #loginSection:has(#spSteps:not([hidden])) .sp-band::before { content: ""; position: absolute; z-index: -1; left: -16px; right: -16px; top: calc(-32px - env(safe-area-inset-top, 0px)); bottom: 0; background: var(--bg); }
@@ -2204,6 +2202,8 @@
     // (or from the DEV menu's Launch screen, in any tab: the launchTest mark, used once by app.js)
     try { var cls = document.documentElement.classList; if (page === "app" && (navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || sessionStorage.getItem("launchTest")) && !cls.contains("connecting") && !cls.contains("updating")) cls.add("launching"); } catch (err) { /* no launch screen */ }
     try { if (localStorage.getItem("devMode") === "1") document.documentElement.classList.add("dev-mode"); } catch (err) { /* no storage: regular mode */ }   // developer mode (devMode in editor.js)
+    // another music service was just chosen on the welcome page (pickService in app.js): it opens on the setup step, not the tools
+    try { if (page === "welcome" && sessionStorage.getItem("welcomeAt") === "3") document.documentElement.classList.add("wp-at-setup"); } catch (err) { /* no storage: the tools */ }
     document.documentElement.classList.add("page-" + page, "view-home");   // the app page always opens on Arc's home (showView in app.js)
   })();
 </script>
@@ -2397,14 +2397,48 @@
         </li>
       </ol>
 
+      <!-- TIDAL's steps (stage 5 of work/tidal-plan.md), from TIDAL's documentation (Manage apps): no screenshots yet -->
+      <ol id="flowNewTidal" class="sp-list" hidden>
+        <li class="sp-item">
+          Open the <a href="https://developer.tidal.com/dashboard" target="_blank" rel="noopener noreferrer">TIDAL developer dashboard</a>
+          (it will open in <span data-home="Safari">a new tab</span>), log in with your TIDAL account, accept TIDAL's guidelines if it asks, and create a new app.
+          Switch back to this <span data-home="app">tab</span> any time you need to reference these instructions.
+        </li>
+        <li class="sp-item">
+          Name it:
+          <ul class="fields">
+            <li><div class="sp-field"><span class="ui">App name:</span><code>Arc</code><button class="copy-field" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div></li>
+          </ul>
+        </li>
+        <li class="sp-item">
+          On the app's <span class="ui">Settings</span> tab, <span data-act>press</span> <span class="ui">Edit</span>, then:
+          <ul class="fields">
+            <li><div class="sp-field"><span class="ui">Redirect URI:</span><code class="redirect-address"></code><button class="copy-field" type="button"><img class="btn-icon" src="icons/copy.svg" alt="" width="20" height="20"><span class="btn-label">Copy</span></button></div></li>
+            <li><span class="ui">Scopes:</span> check <code>playlists.read</code> <code>playlists.write</code> <code>collection.read</code> <code>user.read</code> <code>search.read</code>. Leave the others unchecked.</li>
+            <li><span data-act>Press</span> <span class="ui">Save</span>.</li>
+          </ul>
+        </li>
+        <li class="sp-item">On the app's <span class="ui">Overview</span> tab, copy the <span class="ui">Client ID</span>. Arc doesn't need the Client Secret.</li>
+      </ol>
+
+      <ol id="flowExistingTidal" class="sp-list" hidden>
+        <li class="sp-item">
+          Open the <a href="https://developer.tidal.com/dashboard" target="_blank" rel="noopener noreferrer">TIDAL developer dashboard</a>
+          (it will open in <span data-home="Safari">a new tab</span>), log in, and <span data-act>press</span> <span class="ui">View app</span> on the app you made for Arc.
+          Switch back to this <span data-home="app">tab</span> any time you need to reference these instructions.
+        </li>
+        <li class="sp-item">On its <span class="ui">Overview</span> tab, copy the <span class="ui">Client ID</span>.</li>
+      </ol>
+
       <div id="connectBlock" class="sp-item" hidden>
         <span class="ui">Paste your Client ID here, then connect:</span>
         <input id="clientId" type="text" autocomplete="off" spellcheck="false" placeholder="Client ID">
         <div class="row">
-          <button id="connect" class="primary" type="button"><img class="btn-icon" src="icons/connect.svg" alt="" width="20" height="20"><span class="btn-label">Connect to Spotify</span></button>
+          <button id="connect" class="primary" type="button"><img class="btn-icon" src="icons/connect.svg" alt="" width="20" height="20"><span class="btn-label">Connect to <span data-service>Spotify</span></span></button>
           <span id="loginMessage" class="error"></span>
         </div>
-        <p class="muted sp-agree">Spotify may ask you to log in or to <span data-act>press</span> <span class="ui">Agree</span>. If it does, <span data-act>press</span> <span class="ui">Agree</span> to let this page connect.</p>
+        <p class="muted sp-agree" data-only="spotify">Spotify may ask you to log in or to <span data-act>press</span> <span class="ui">Agree</span>. If it does, <span data-act>press</span> <span class="ui">Agree</span> to let this page connect.</p>
+        <p class="muted sp-agree" data-only="tidal" hidden>TIDAL may ask you to log in and to allow Arc access. If it does, allow it to let this page connect.</p>
       </div>
 
       <details id="spWhat" class="wp-helps">
@@ -2419,6 +2453,12 @@
         <p>Spotify keeps your music private, so this page can only reach your playlists if you give it permission. The Spotify developer app you made previously is how you give this page that permission.</p>
         <p>The Client ID works like a name tag. It tells Spotify who is asking for access, and Spotify then asks you to approve it. After that, this page can look at your playlists and make new ones in your account. Only you can use the app you made inside your Spotify account.</p>
         <p>Your Client ID is not a secret. It stays in this browser and goes only to Spotify. To use Arc on another device, enter the same Client ID there. You won't need to create another app.</p>
+      </details>
+      <details id="spWhatTidal" class="wp-helps" hidden>
+        <summary>What does all this actually do?</summary>
+        <p>TIDAL keeps your music private, so this page can only reach your playlists if you give it permission. A TIDAL developer app is how you give this page that permission.</p>
+        <p>The Client ID works like a name tag. It tells TIDAL who is asking for access, and TIDAL then asks you to approve it. After that, this page can look at your playlists and make new ones in your account.</p>
+        <p>Your Client ID is not a secret. It stays in this browser and goes only to TIDAL. To use Arc on another device, enter the same Client ID there. You won't need to create another app.</p>
       </details>
     </div>
 
@@ -2471,7 +2511,7 @@
         <p class="muted pv-lead">Arc runs in your browser. What you make here stays between this browser and your own <span data-service>Spotify</span> account, unless you choose to share it. No accounts, no ads.</p>
         <ul class="muted pv-list">
           <li><b>In this browser:</b> your Client ID, sign-in, recipes, settings, and a copy of your playlists and their songs. <span class="ui">Sign out and clear data</span> erases it all.</li>
-          <li><b>In your <span data-service>Spotify</span>:</b> each recipe, in a private playlist's description. Arc changes your playlists only when you ask. Arc never sees your password.</li>
+          <li><b>In your <span data-service>Spotify</span>:</b> each recipe, in a <span data-only="spotify">private</span><span data-only="tidal" hidden>unlisted</span> playlist's description. Arc changes your playlists only when you ask. Arc never sees your password.<span data-only="tidal" hidden> TIDAL lets apps make playlists only unlisted: not on your profile or in search, but open to anyone with the link.</span></li>
           <li id="privacyParticipants"><b>Participants:</b> only a code you choose, in their playlists' descriptions.</li>
           <li id="privacyMusicSharing"><b>Shared playlist library:</b> what you share (name, cover, songs, your details, and your <span data-service>Spotify</span> name unless anonymous) is public in Arc and kept on Arc's server, which knows you only by a scrambled code. A song preview asks Deezer, sending only the song's code.</li>
           <li id="privacyTutorial"><b>Tutorial video:</b> comes from Arc's own server, which keeps nothing.</li>
@@ -2671,12 +2711,12 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-16k"></script>
-<script src="editor.js?v=2026-11-16k"></script>
-<script src="shared-service.js?v=2026-11-16k"></script>
-<script src="service-spotify.js?v=2026-11-16k"></script>
-<script src="service-tidal.js?v=2026-11-16k"></script>
-<script src="app.js?v=2026-11-16k"></script>
-<script src="sharing.js?v=2026-11-16k"></script>
+<script src="formats.js?v=2026-11-16l"></script>
+<script src="editor.js?v=2026-11-16l"></script>
+<script src="shared-service.js?v=2026-11-16l"></script>
+<script src="service-spotify.js?v=2026-11-16l"></script>
+<script src="service-tidal.js?v=2026-11-16l"></script>
+<script src="app.js?v=2026-11-16l"></script>
+<script src="sharing.js?v=2026-11-16l"></script>
 </body>
 </html>

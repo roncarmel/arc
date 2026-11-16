@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16k";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16l";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -1093,7 +1093,7 @@ function offerToShare(s) {
   const panel = feEl("div", { class: "ms-sheet", role: "dialog", "aria-modal": "true", "aria-label": `${s.name} is in your ${service.name}`, tabindex: "-1" },
     feEl("div", { class: "ms-grab" }),
     feEl("div", { class: "ms-gothead" }, shareCoverEl(s, "ms-cover"),
-      feEl("div", {}, feEl("div", { class: "ms-gottitle", text: `${named(s.name)} is in your ${service.name}` }), feEl("div", { class: "ms-sub" }, "Your own private copy"))),
+      feEl("div", {}, feEl("div", { class: "ms-gottitle", text: `${named(s.name)} is in your ${service.name}` }), feEl("div", { class: "ms-sub" }, service.can.privatePlaylists ? "Your own private copy" : "Your own unlisted copy"))),
     feEl("ul", { class: "ms-gotwhy" },
       feEl("li", {}, feEl("b", {}, "Yours to change."), " Add, remove or reorder songs."),
       feEl("li", {}, feEl("b", {}, "It stays as it is"), ` if ${who} changes theirs.`)),
@@ -1303,7 +1303,7 @@ function songMenu(s, i, label) {
       onClick: () => turnSongMenu(1, () => { m.view = "lists"; m.note = ""; }) }));
     menu.appendChild(feEl("div", { class: "ms-mi-rule" }));
     menu.appendChild(feEl("a", { role: "menuitem", class: "ms-mi", id: "msSongOpen", href: service.songUrl(id), target: "_blank", rel: "noopener noreferrer",
-      onClick: () => setTimeout(() => closeSongMenu(false)) }, feIcon("spotify"), feEl("span", { class: "ms-mi-text", text: `Open in ${service.name}` })));
+      onClick: () => setTimeout(() => closeSongMenu(false)) }, serviceIcon(), feEl("span", { class: "ms-mi-text", text: `Open in ${service.name}` })));
   }
   if (m.note) menu.appendChild(problemBox(m.note, "", [], true));
   return menu;

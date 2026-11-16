@@ -498,7 +498,7 @@ print(json.dumps(out))
   var hsLinks = [...hs.document.querySelectorAll('a[href*="developer.spotify.com"]')];
   check("opened from an iPhone's Home Screen, both dashboard links open in Safari, not a panel", hsLinks.length === 2 && hsLinks.every((a) => a.getAttribute("href") === "x-safari-https://developer.spotify.com/dashboard" && !a.hasAttribute("target")), hsLinks.map((a) => a.outerHTML).join(" "));
   check("and the setup text says Safari and this app", /it will open in Safari\), log in with your Spotify Premium account/.test(hs.document.getElementById("flowNew").textContent) && /Switch back to this app any time/.test(hs.document.getElementById("flowExisting").textContent));
-  check("other links are left alone there", [...hs.document.querySelectorAll("a[href]")].filter((a) => /^x-safari/.test(a.getAttribute("href"))).length === 2);
+  check("other links are left alone there (TIDAL's two dashboard links open in Safari too)", [...hs.document.querySelectorAll("a[href]")].filter((a) => /^x-safari/.test(a.getAttribute("href"))).length === 4 && [...hs.document.querySelectorAll('a[href*="developer.tidal.com"]')].every((a) => a.getAttribute("href") === "x-safari-https://developer.tidal.com/dashboard"));
 
   // 6f. copy button gives feedback
   w1.document.getElementById("copyRedirect").click();
@@ -609,7 +609,7 @@ print(json.dumps(out))
   // ---------------- the top of the page, the starting template, and the wording
   var pageHtml = fs.readFileSync(ROOT + "index.html", "utf8");
   check("the page is titled Arc, in pink", /<title>Arc<\/title>/.test(pageHtml) && t0.document.querySelector("h1").textContent === "Arc" && /\n  h1 \{[^}]*color: var\(--accent\)/.test(pageHtml), t0.document.querySelector("h1").textContent);
-  check("a one-line tagline opens the welcome page", /^Ceremony playlist tools for your Spotify library$/.test(t0.document.querySelector(".tagline").textContent) && t0.document.getElementById("welcomePage").contains(t0.document.querySelector(".tagline")));
+  check("a one-line tagline opens the welcome page", /^Ceremony playlist tools for your music library$/.test(t0.document.querySelector(".tagline").textContent) && t0.document.getElementById("welcomePage").contains(t0.document.querySelector(".tagline")));
   var aboutFresh = fresh.document.getElementById("about");
   var aboutText = aboutFresh.textContent;
   check("it starts closed once a Client ID is saved, and once connected", returning.document.getElementById("about").open === false && t0.document.getElementById("about").open === false);
@@ -676,10 +676,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly these seven, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16k" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16l" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16k/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16l/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -779,7 +779,7 @@ print(json.dumps(out))
   // ---------------- every numbered section title says what the person will do
   var verbs = ["Find", "Connect", "Edit", "Build", "Back up"];
   var allH2 = Array.from(t0.document.querySelectorAll("h2")).filter((h) => !h.closest("#msOverlay, #builderHome, #recipePanelWrap")).map((h) => h.textContent);
-  check("the welcome and setup pages have their own headings, and every numbered section title left is an action", JSON.stringify(allH2) === JSON.stringify(["Connecting to Spotify", "Setup complete!", "Unwrapping the update", "Tools", "Connect your Spotify account", "Have you set up Arc before?", "Find your Client ID", "1. Connect to Spotify", "1. Connect to Spotify", "2. Edit your recipes", "3. Build playlists"]) && allH2.slice(6).every((t) => verbs.some((v) => t.replace(/^\d\.\s/, "").startsWith(v))), JSON.stringify(allH2));
+  check("the welcome and setup pages have their own headings, and every numbered section title left is an action", JSON.stringify(allH2) === JSON.stringify(["Connecting to Spotify", "Setup complete!", "Unwrapping the update", "Tools", "Which music service do you use?", "Connect your Spotify account", "Have you set up Arc before?", "Find your Client ID", "1. Connect to Spotify", "1. Connect to Spotify", "2. Edit your recipes", "3. Build playlists"]) && allH2.slice(7).every((t) => verbs.some((v) => t.replace(/^\d\.\s/, "").startsWith(v))), JSON.stringify(allH2));
 
 
   // ---------------- What is this app? headings, and placeholder icons on the buttons
@@ -787,6 +787,7 @@ print(json.dumps(out))
   var leads = Array.from(ab.querySelectorAll("strong")).map((x) => x.textContent);
   check("the headings in What is this app? stand on their own line, without trailing periods", JSON.stringify(leads) === JSON.stringify(["What it does", "What it's good for", "How it works", "What you need", "Reporting problems", "Privacy"]) && Array.from(ab.querySelectorAll("p")).filter((p) => p.querySelector("strong + br")).length === 5, JSON.stringify(leads));
   var pill = Array.from(t0.document.querySelectorAll("button:not(.linklike):not(.theme-swatch):not(.mf-sent-toggle):not(#cnContinue):not(#usOk), a.button-link")).filter((b) => !b.closest("#formatEditor") && !b.closest("#startupProblem") && !b.closest("#createDialog") && !b.closest(".dlg-foot") && !b.closest("#devMenu") && b.id !== "infoClose" && b.id !== "msClose" && b.id !== "msCard" && b.id !== "homeBuilder" && !b.classList.contains("wp-tool-head") && !b.closest("#homeMore .hp-ee-bar") && !b.classList.contains("sp-choice") && b.id !== "waitStrip" && !b.closest("#appBar") && b.id !== "updateGet" && !b.classList.contains("tv-row") && !b.closest("#builderHome") && !b.closest("#recipePanelWrap"));   // the builder's landing and panel draw their icons inline; the tutorial rows have a frame   // the Music sharing card (covers, not an icon) and the update card's Get it (its gift is on the card)   // the Setup complete button has words only; the startup popup and the info popup's close draw their icons inline
+  pill = pill.filter((b) => !b.classList.contains("wp-svc"));   // the service tiles are cards, not pink buttons
   var pillsIn = pill.filter((b) => b.querySelector("img.btn-icon"));
   check("every pink button has an icon in front of its label", pill.length >= 15 && pillsIn.length === pill.length, `${pillsIn.length} of ${pill.length} ` + pill.filter((b) => !b.querySelector("img.btn-icon")).map((b) => b.id || b.outerHTML.slice(0, 60)).join(","));
   check("each icon is a small file, 20 by 20 (the Build sparkles 24 by 24), decorative, and the file exists", pill.every((b) => { const i = b.querySelector("img.btn-icon"); const size = i.getAttribute("src") === "icons/build.svg" ? "24" : "20"; return i.getAttribute("width") === size && i.getAttribute("height") === size && i.getAttribute("alt") === "" && /^icons\/[a-z]+\.svg$/.test(i.getAttribute("src")) && fs.existsSync(ROOT + i.getAttribute("src")); }));
@@ -912,8 +913,8 @@ print(json.dumps(out))
   var sv_allowed = ["Create an app inside your Spotify account", "save: covers wait, Spotify is limiting uploads", "Spotify refused the renewal, or did not answer.", "Spotify sent back ${got.length} characters, differing from character ${at + 1} on.", "Opens Spotify at the song", "Spotify should open the playlist with that song picked out.", "Spotify sent a short list. Read again, all there."];
   check("page text in the scripts names the service, not Spotify (Spotify's setup, Device checks and developer notes aside)", sv_left.every((t) => sv_allowed.includes(t) || /Spotify's own cover/.test(t)), JSON.stringify(sv_left.filter((t) => !sv_allowed.includes(t))));
   var sv_html = fs.readFileSync(ROOT + "index.html", "utf8");
-  check("the markup marks the service's name for filling in, and the requirement (Spotify Premium) where it is said", (sv_html.match(/<span data-service>Spotify<\/span>/g) || []).length >= 25 && (sv_html.match(/data-requirement-name>Spotify Premium</g) || []).length === 2 && (sv_html.match(/ data-requirement>/g) || []).length === 2);
-  check("only TIDAL's file names TIDAL's addresses", ["app.js", "editor.js", "sharing.js", "formats.js", "shared-service.js", "service-spotify.js"].every((f) => !/tidal\.com/.test(fs.readFileSync(ROOT + f, "utf8"))) && /openapi\.tidal\.com/.test(fs.readFileSync(ROOT + "service-tidal.js", "utf8")));
+  check("the markup marks the service's name for filling in, and the requirement (Spotify Premium) where it is said (the setup step; the welcome page's tiles name each)", (sv_html.match(/<span data-service>Spotify<\/span>/g) || []).length >= 25 && (sv_html.match(/data-requirement-name>Spotify Premium</g) || []).length === 1 && (sv_html.match(/ data-requirement>/g) || []).length === 1);
+  check("only TIDAL's file names TIDAL's addresses", ["app.js", "editor.js", "sharing.js", "formats.js", "shared-service.js", "service-spotify.js"].every((f) => !/tidal\.com/.test(fs.readFileSync(ROOT + f, "utf8").replace(/https:\/\/developer\.tidal\.com"\]/, ""))) && /openapi\.tidal\.com/.test(fs.readFileSync(ROOT + "service-tidal.js", "utf8")));
   check("only the service file talks to Spotify: no Spotify address, URI, request, sign-in token, wait, permission or ID packing elsewhere, and songs carry the service's id, not a URI", ["app.js", "editor.js", "sharing.js", "formats.js", "engine.py"].every((f) => !/api\.spotify\.com|spotify:(track|playlist):|spotifyRequest|\bspotify\(|spotifyPause\(|pausedSecondsLeft|spotifyIdToBytes|bytesToSpotifyId|\bSCOPES\b/.test(fs.readFileSync(ROOT + f, "utf8").replace(/(^|\s)\/\/.*$/gm, ""))) && ["app.js", "editor.js", "sharing.js"].every((f) => !/(^|[^\w.])token\b(?!\s*[:"])/.test(fs.readFileSync(ROOT + f, "utf8").replace(/(^|\s)\/\/.*$/gm, "").replace(/(["'`])(?:\\.|(?!\1).)*?\1/g, ""))) && /const spotifyService = \{/.test(fs.readFileSync(ROOT + "service-spotify.js", "utf8")) && !/\["uri"\]/.test(fs.readFileSync(ROOT + "engine.py", "utf8")));
   check("the page has eight scripts of its own, with the theme first, and nothing about embeds", finalHtml.match(/<script src="[^"]+"><\/script>/g).join("").replace(/\?v=[^"]+/g, "") === '<script src="theme.js"></script><script src="formats.js"></script><script src="editor.js"></script><script src="shared-service.js"></script><script src="service-spotify.js"></script><script src="service-tidal.js"></script><script src="app.js"></script><script src="sharing.js"></script>' && finalHtml.indexOf('<script src="theme.js">') < finalHtml.indexOf("</head>") && !/embeds/i.test(finalHtml) && !/embeds/i.test(appSource()) && !fs.existsSync(ROOT + "embeds.js"));
   check("the app never names an outside script, so no Ko-fi or Tally code can run in the page", !/tally\.so\/widgets|overlay-widget|storage\.ko-fi\.com\/cdn\/scripts/.test(appSource() + finalHtml));
@@ -2186,7 +2187,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16k", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16l", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -2502,7 +2503,7 @@ print(json.dumps(out))
   if (want("the tagline")) { try {
   // ================================================================ the tagline under the title
   var tg_w = await boot({ url: "http://127.0.0.1:8000/", local: { devMode: "1" } });   // developer mode: Music sharing opens
-  check("the tagline says Arc is ceremony playlist tools for a Spotify library", tg_w.document.querySelector(".tagline").textContent === "Ceremony playlist tools for your Spotify library");
+  check("the tagline says Arc is ceremony playlist tools for a Spotify library", tg_w.document.querySelector(".tagline").textContent === "Ceremony playlist tools for your music library");
   var tg_d = tg_w.document, tg_heads = Array.from(tg_d.querySelectorAll("#welcomePage .wp-tool-head"));
   check("under Tools, a card per tool: name, tagline, and the tool's own icon", tg_d.querySelector("#welcomePage .wp-sec").textContent === "Tools" && JSON.stringify(tg_heads.map((h) => [h.querySelector("b").textContent, h.querySelector(".wp-tool-tag").textContent])) === JSON.stringify([["Playlist builder", "Ceremony playlists, ready in seconds"], ["Shared playlist library", "Bring some, get some!"]]) && tg_heads.every((h) => !!h.querySelector(".tool-icon > svg.tool-glyph")));
   check("both cards start closed", tg_heads.every((h) => h.getAttribute("aria-expanded") === "false" && tg_d.getElementById(h.getAttribute("aria-controls")).hidden));
@@ -2514,6 +2515,7 @@ print(json.dumps(out))
   check("and a card closes again on its own head", tg_more1.hidden && tg_heads[1].getAttribute("aria-expanded") === "false");
   check("Get started is the first step's only button below the cards, and the setup step starts hidden", tg_d.getElementById("getStarted").textContent === "Get started" && tg_d.getElementById("wpSetup").hidden && !tg_d.getElementById("wpFirst").hidden && tg_d.getElementById("wpSetup").contains(tg_d.getElementById("startSetup")));
   tg_d.getElementById("getStarted").click();
+  tg_d.querySelector('#wpWhich [data-pick-service="spotify"]').click();   // the service choice comes first (its own checks are in the spotify premium area)
   check("Get started shows the band joined to Spotify's mark, Connect your Spotify account, the Premium note, Back and Start setup", !tg_d.getElementById("wpSetup").hidden && tg_d.getElementById("wpFirst").hidden && !!tg_d.querySelector("#welcomePage > .wp-band") && !!tg_d.querySelector("#wpJoint .wp-spotify") && tg_d.getElementById("wpSpotifyName").textContent === "Your Spotify" && /^M[\d.]+ /.test(tg_d.getElementById("wpWire").getAttribute("d") || "") && tg_d.querySelector("#wpSetup h2").textContent === "Connect your Spotify account" && !tg_d.querySelector("#wpSetup .wp-steps") && /^Spotify Premium is needed for the connection\.$/.test(tg_d.querySelector("#wpSetup .wp-note").textContent) && tg_d.getElementById("wpSetupBack").textContent === "Back" && tg_d.documentElement.classList.contains("page-welcome"));
   tg_w.eval("showWelcomeStep(1, false)");
   check("Back returns to the tools", tg_d.getElementById("wpSetup").hidden && !tg_d.getElementById("wpFirst").hidden);
@@ -2578,17 +2580,32 @@ print(json.dumps(out))
   // ================================================================ Spotify Premium: the tagline, the notice, the reminder, and the error
   var pr_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   var pr_w = await boot({ url: "http://127.0.0.1:8000/" });
-  var pr_req = pr_w.document.querySelector("#welcomePage .wp-req");
-  var pr_why = pr_w.document.getElementById("premiumWhy"), pr_pop = pr_w.document.getElementById("premiumWhyText");
-  check("a new visitor sees a Requires Spotify Premium capsule right under the intro, with Why? next to it", !!pr_req && pr_req.previousElementSibling === pr_w.document.querySelector(".wp-lead") && pr_req.querySelector(".wp-cap").textContent === "Requires Spotify Premium" && pr_why.textContent === "Why?" && pr_req.contains(pr_why));
-  check("Why? starts closed, and opens a note that uses Spotify's own name for free accounts", pr_pop.hidden === true && pr_why.getAttribute("aria-expanded") === "false" && (pr_why.click(), pr_pop.hidden === false) && pr_why.getAttribute("aria-expanded") === "true" && pr_pop.textContent === "Arc relies on a feature that is not available in Spotify Free accounts.");
-  pr_w.document.body.click();
-  check("a tap anywhere else closes it", pr_pop.hidden === true && pr_why.getAttribute("aria-expanded") === "false");
-  pr_why.click(); pr_pop.click();
-  check("a tap on the note itself leaves it open, Why? again closes it, and so does Escape", pr_pop.hidden === false && (pr_why.click(), pr_pop.hidden === true) && (pr_why.click(), pr_w.document.dispatchEvent(new pr_w.KeyboardEvent("keydown", { key: "Escape" })), pr_pop.hidden === true));
-  pr_w.eval('service.name = "TIDAL"; service.requirement = null; fillServiceWords()');
-  var pr_note = pr_w.document.querySelector("#welcomePage .wp-note");
-  check("a service with no requirement (TIDAL: every account pays) hides the capsule and the setup's note, and the page names that service", pr_req.hidden === true && !!pr_note && pr_note.hidden === true && /their own TIDAL playlists|your own TIDAL playlists/.test(pr_w.document.querySelector(".wp-lead").textContent) && pr_w.document.querySelector(".wp-band-tag").textContent.includes("for your TIDAL library"), JSON.stringify([pr_req.hidden, !!pr_note && pr_note.hidden, pr_w.document.querySelector(".wp-lead").textContent, pr_w.document.querySelector(".wp-band-tag").textContent]));
+  // the welcome page names no service until one is chosen; what each needs is on its tile (stage 5 of work/tidal-plan.md, 2026-11-16)
+  var pr_d = pr_w.document;
+  check("before a service is chosen, the welcome page names both and asks for nothing: no Premium capsule, the band says your music library", !pr_d.querySelector("#welcomePage .wp-req") && !pr_d.getElementById("premiumWhy") && /your own Spotify or TIDAL playlists/.test(pr_d.querySelector(".wp-lead").textContent) && pr_d.querySelector("#welcomePage .wp-band-tag").textContent.includes("for your music library"), pr_d.querySelector(".wp-lead").textContent);
+  pr_d.getElementById("getStarted").click();
+  await new Promise((r) => setTimeout(r, 50));
+  var pr_tiles = [...pr_d.querySelectorAll("#wpWhich .wp-svc")];
+  check("Get started asks Which music service do you use?, Spotify and TIDAL side by side, each saying what it needs", !pr_d.getElementById("wpWhich").hidden && pr_d.getElementById("wpFirst").hidden && pr_d.getElementById("wpSetup").hidden && pr_tiles.map((t) => t.dataset.pickService + ":" + t.querySelector(".wp-svc-name").textContent + ":" + t.querySelector(".wp-svc-req").textContent).join("|") === "spotify:Spotify:Spotify Premium is needed|tidal:TIDAL:Any TIDAL plan", pr_tiles.map((t) => t.textContent).join("|"));
+  check("each tile's mark is plain, one color in the text's color, with no circle of another color", pr_tiles.every((t) => !t.querySelector("circle") && t.querySelector("svg path").getAttribute("fill") === "currentColor"));
+  pr_tiles[0].click();
+  await new Promise((r) => setTimeout(r, 50));
+  check("Spotify, the service in use, goes straight on to Connect your Spotify account, with its Premium note and its own mark on the line", !pr_d.getElementById("wpSetup").hidden && pr_d.getElementById("wpWhich").hidden && !pr_d.querySelector("#wpSetup .wp-note").hidden && pr_d.querySelector("#wpSetup .wp-setup-title").textContent === "Connect your Spotify account" && pr_d.querySelector("#wpSetup .wp-spotify-name").textContent === "Your Spotify" && !!pr_d.querySelector("#wpSetup .wp-spotify path[fill-rule='evenodd']"));
+  pr_d.getElementById("wpSetupBack").click();
+  await new Promise((r) => setTimeout(r, 50));
+  check("Back from there returns to the choice", !pr_d.getElementById("wpWhich").hidden && pr_d.getElementById("wpSetup").hidden);
+  pr_w.eval('localStorage.setItem("clientId", "spotify-id"); localStorage.setItem("clientId-tidal", "tidal-id"); localStorage.setItem("spotifySynced", "{}"); localStorage.setItem("spotifyAccount", "me"); pageWindow = () => ({ location: { reload() { window.prReloaded = true; } } })');
+  pr_tiles[1].click();
+  check("TIDAL, another service, swaps in its Client ID, forgets the old service's save records, and loads the page again on the next step", pr_w.prReloaded === true && pr_w.localStorage.getItem("arcService") === "tidal" && pr_w.localStorage.getItem("clientId") === "tidal-id" && pr_w.localStorage.getItem("clientId-spotify") === "spotify-id" && pr_w.localStorage.getItem("spotifySynced") === null && pr_w.localStorage.getItem("spotifyAccount") === null && pr_w.sessionStorage.getItem("welcomeAt") === "3");
+  var pr_t = await boot({ url: "http://127.0.0.1:8000/", local: { arcService: "tidal" }, session: { welcomeAt: "3" } });
+  var pr_td = pr_t.document;
+  check("loaded again under TIDAL, it opens on Connect your TIDAL account, with no Premium note, TIDAL's mark and Your TIDAL on the line, and back goes to the choice", !pr_td.getElementById("wpSetup").hidden && pr_td.getElementById("wpFirst").hidden && pr_td.getElementById("wpWhich").hidden && pr_td.querySelector("#wpSetup .wp-note").hidden && pr_td.querySelector("#wpSetup .wp-setup-title").textContent === "Connect your TIDAL account" && pr_td.querySelector("#wpSetup .wp-spotify-name").textContent === "Your TIDAL" && !pr_td.querySelector("#wpSetup .wp-spotify path[fill-rule='evenodd']") && pr_t.history.state && pr_t.history.state.step === 3 && pr_t.sessionStorage.getItem("welcomeAt") === null);
+  pr_td.getElementById("startSetup").click();
+  await new Promise((r) => setTimeout(r, 50));
+  pr_td.querySelector('[data-flow="new"]').click();
+  await new Promise((r) => setTimeout(r, 50));
+  check("TIDAL's setup shows its own steps (its dashboard, the redirect address, the five scopes) and its own note, not Spotify's", !pr_td.getElementById("flowNewTidal").hidden && pr_td.getElementById("flowNew").hidden && pr_td.getElementById("spStepsTitle").textContent === "Create an app inside your TIDAL account" && pr_td.querySelector('#flowNewTidal a[href="https://developer.tidal.com/dashboard"]') && pr_td.querySelector("#flowNewTidal .redirect-address").textContent === "http://127.0.0.1:8000/" && pr_td.querySelectorAll("#flowNewTidal li code").length >= 6 && !pr_td.getElementById("spWhatTidal").hidden && pr_td.getElementById("spWhat").hidden && pr_td.querySelector('.sp-agree[data-only="spotify"]').hidden && !pr_td.querySelector('.sp-agree[data-only="tidal"]').hidden && pr_td.getElementById("connect").textContent.includes("Connect to TIDAL"));
+  pr_t.close();
   var pr_w2 = await boot({ url: "http://127.0.0.1:8000/", local: { clientId: "abc123" } });
   var pr_w3 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI, clientId: "abc123" } });
   check("when connected, the welcome page and its notice are not shown", pr_w3.document.documentElement.classList.contains("page-app"));
@@ -2610,7 +2627,7 @@ print(json.dumps(out))
   var rw_word = rw_w.document.getElementById("recipeWhat"), rw_note = rw_w.document.getElementById("recipeWhatText");
   var rw_para = rw_word && rw_word.closest("p");
   check("the intro says Describe this arc in a recipe, with recipe as a link-like button and no bracketed list after it", !!rw_word && rw_word.textContent === "recipe" && rw_word.classList.contains("linklike") && !!rw_para && /Describe this arc in a recipe and the builder follows it to make new ceremony playlists/.test(rw_para.textContent.replace(rw_note.textContent, "")) && !/\(which of your Spotify playlists/.test(rw_para.textContent));
-  check("the note starts closed, and recipe opens it with the agreed text", rw_note.hidden === true && rw_word.getAttribute("aria-expanded") === "false" && (rw_word.click(), rw_note.hidden === false) && rw_word.getAttribute("aria-expanded") === "true" && rw_note.textContent === "A recipe is a plan for one ceremony: which of your Spotify playlists to draw from, in what order, and for how many minutes each.");
+  check("the note starts closed, and recipe opens it with the agreed text", rw_note.hidden === true && rw_word.getAttribute("aria-expanded") === "false" && (rw_word.click(), rw_note.hidden === false) && rw_word.getAttribute("aria-expanded") === "true" && rw_note.textContent === "A recipe is a plan for one ceremony: which of your playlists to draw from, in what order, and for how many minutes each.");
   rw_note.click();
   check("a tap on the note leaves it open, a tap elsewhere closes it", rw_note.hidden === false && (rw_w.document.body.click(), rw_note.hidden === true) && rw_word.getAttribute("aria-expanded") === "false");
   check("recipe again closes it, and so does Escape", (rw_word.click(), rw_word.click(), rw_note.hidden === true) && (rw_word.click(), rw_w.document.dispatchEvent(new rw_w.KeyboardEvent("keydown", { key: "Escape" })), rw_note.hidden === true));
@@ -3325,7 +3342,7 @@ print(json.dumps(out))
   if (want("spotify wording")) { try {
   // ================================================================ the wording that depends on the way the formats are backed up
   var sw_html = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
-  check("the privacy text says that each recipe is kept in a private playlist's description in the person's own Spotify", /<b>In your <span data-service>Spotify<\/span>:<\/b> each recipe, in a private playlist's description\. /.test(sw_html) && !/back up by hand/.test(sw_html));
+  check("the privacy text says that each recipe is kept in a private playlist's description in the person's own Spotify", /<b>In your <span data-service>Spotify<\/span>:<\/b> each recipe, in a <span data-only="spotify">private<\/span><span data-only="tidal" hidden>unlisted<\/span> playlist's description\. /.test(sw_html) && !/back up by hand/.test(sw_html));
   var sw_s = await boot({ url: EDURL, session: signedIn(), local: { backupMode: "spotify" }, fetchOptions: {} });
   check("Sign out and clear data says the recipes stay in Spotify and come back when connecting again, and does not mention a file", /Your recipes stay in Spotify/.test(sw_s.document.getElementById("clearRestoreHelp").textContent) && /come back when you connect again/.test(sw_s.document.getElementById("clearConfirmHelp").textContent) && !/restore from a backup|Restore in/.test(sw_s.document.getElementById("clearRestoreHelp").textContent + sw_s.document.getElementById("clearConfirmHelp").textContent));
   } catch (err) { areaCrashed("spotify wording", err); } }
@@ -4487,7 +4504,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16k"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16l"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
