@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-15e";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-15f";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -108,13 +108,14 @@ function feEl(tag, props, ...children) {
 
 // An error, looking the same everywhere (er-* in index.html): the pink !, a bold title, what happened, and links that put it right ([{ label, run }]).
 // small: one sentence in a smaller box, as under a field. Names in title or text are marked with named().
-function problemBox(title, text = "", actions = [], small = false) {
+function problemBox(title, text = "", actions = [], small = false, extra = null) {
   if (small) return feEl("div", { class: "er-box er-small", role: "alert" }, feIcon("alert"), feEl("span", { text: title }));
   return feEl("div", { class: "er-box", role: "alert" }, feIcon("alert"),
     feEl("div", {},
       feEl("b", { class: "er-title", text: title }),
       text ? feEl("p", { text }) : null,
-      actions.length ? feEl("div", { class: "er-acts" }, ...actions.map((a) => feEl("button", { type: "button", class: "linklike", onClick: a.run }, a.label))) : null));
+      actions.length ? feEl("div", { class: "er-acts" }, ...actions.map((a) => feEl("button", { type: "button", class: "linklike", onClick: a.run }, a.label))) : null,
+      extra));
 }
 
 function feIcon(name) {
@@ -601,7 +602,8 @@ function askSyncChoice(title, text, choices, options = {}) {
         feEl("div", { class: "pb-buttons" },
           ...buttons.filter((b, i) => choices[i].main).map((b) => feEl("div", { class: "pb-row" }, b)),
           feEl("div", { class: "pb-row" }, ...buttons.filter((b, i) => !choices[i].main && !choices[i].link))),
-        ...buttons.filter((b, i) => choices[i].link)]
+        ...buttons.filter((b, i) => choices[i].link),
+        options.reported || null]
       : [feEl("h3", { text: title }),
         feEl("p", { text }),
         options.detail ? feEl("p", { class: "muted", id: "feSyncDetail", text: options.detail }) : null,
@@ -3265,7 +3267,21 @@ function personBuildProblem(b) {
   return problemBox("The playlist was not finished", b.id
     ? `${b.error} ${b.name} is in Spotify with only some of its songs. Delete it there, then build again.`
     : `${b.error} Nothing was made. Build again when you are ready.`,
-    [{ label: "Report this problem", run: () => openReport() }]);   // the report carries the failure (lastError) and the steps before it
+    [], false, reportedLine(b.error, "er-sent"));   // Arc sends the report itself (autoReport); the link is there only if that failed
+}
+
+// Under a problem: Arc sent the details to its developer, once the automatic report went (autoReport in app.js); if it could not go, or the problem is an
+// expected one, the Report this problem link as before (Ron, 2026-11-15). Known at once when it already went in this version.
+function reportedLine(text, cls = "pb-sent") {
+  const el = feEl("p", { class: cls });
+  const sent = () => el.replaceChildren(feIcon("check"), feEl("span", { text: "Arc sent the details to its developer." }));
+  const ask = () => el.replaceChildren(feEl("button", { type: "button", class: cls === "pb-sent" ? "pb-report" : "linklike", onClick: () => { const d = document.getElementById("feSyncDialog"); if (d) d.remove(); openReport(); } }, cls === "pb-sent" ? feIcon("flag") : null, "Report this problem"));
+  const known = typeof autoReportState === "function" ? autoReportState(text) : null;
+  if (known && known.ok === true) { sent(); return el; }
+  if (typeof autoReport !== "function") { ask(); return el; }
+  el.hidden = true;
+  autoReport(text).then((ok) => { el.hidden = false; if (ok) sent(); else ask(); });
+  return el;
 }
 // Built (Ron, 2026-11-12, mockups/build-one/fanfare.html C): over the new playlist's cover a pink check draws itself and three rings spread out, as Music sharing
 // does after Share; the cover lights up under it, Open pops in, and the participant's line comes in with its new count. Once; under reduced motion only the end shows.

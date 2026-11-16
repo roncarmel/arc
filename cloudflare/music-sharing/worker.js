@@ -20,7 +20,7 @@ import BLOCKED from "../../blocked-words/blocked-words.json";
 const LIMITS = {
   nameChars: 200, shownChars: 40, descChars: 300, moodsMax: 8, moodChars: 30, otherChars: 24, phases: 5, books: 6, maxSongs: 5000, artists: 5, songChars: 100,
   sharesPerDay: 60, reportsPerDay: 30, noteChars: 500, copyShare: 0.9, hideAfterReports: 3,
-  messagesPerDay: 10, messageChars: 3000, emailChars: 120, detailChars: 800,
+  messagesPerDay: 10, autoReportsPerDay: 50, messageChars: 3000, emailChars: 120, detailChars: 4000, logChars: 1000000,
 };
 const KINDS = ["ceremony", "phase", "mood", "other"];
 const REASONS = ["offensive", "spam", "not theirs", "other"];
@@ -285,9 +285,9 @@ async function emailReport(env, url, s, r) {
   } catch (err) { /* the report is kept either way, and shows in Developer options */ }
 }
 // ---------------------------------------------------------------- Arc's Report a problem and Feedback
-// What the person typed, an optional email for a reply, and for a problem the page's six details, emailed to the owner. Nothing is stored;
+// What the person typed, an optional email for a reply, and for a problem the page's details and its Spotify request log (a file), emailed to the owner. Nothing is stored;
 // only a count per day under an HMAC of the address it came from, so the form cannot be used to flood the inbox.
-const DETAIL_NAMES = { appVersion: "Version", browser: "Browser", windowSize: "Window size", python: "Python", lastError: "Last error", recentSteps: "Recent steps" };
+const DETAIL_NAMES = { appVersion: "Version", browser: "Browser", windowSize: "Window size", python: "Python", lastError: "Last error", earlierErrors: "Earlier errors", recentSteps: "Recent steps" };
 async function message(env, request, b) {
   const kind = b.kind === "problem" ? "problem" : b.kind === "feedback" ? "feedback" : "";
   if (!kind) throw new Refusal(400, "That request could not be read.");
@@ -300,13 +300,23 @@ async function message(env, request, b) {
     for (const [key, label] of Object.entries(DETAIL_NAMES)) { const v = text(b.details[key], LIMITS.detailChars); if (v) details.push([label, v]); }
   }
   if (!env.RESEND_KEY || !env.REPORT_TO) throw new Refusal(503, "Sending isn\u2019t set up yet.");
-  await countToday(env, await hmac(env, "message:" + (request.headers.get("CF-Connecting-IP") || "unknown")), "message", LIMITS.messagesPerDay);
+  // A report Arc sent by itself (an unexpected problem, once per kind per version) counts apart from what people write, so it never uses up their 10 (Ron, 2026-11-15)
+  const auto = kind === "problem" && b.auto === true;
+  await countToday(env, await hmac(env, (auto ? "auto:" : "message:") + (request.headers.get("CF-Connecting-IP") || "unknown")), auto ? "auto" : "message", auto ? LIMITS.autoReportsPerDay : LIMITS.messagesPerDay);
   const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const html = `<p style="white-space:pre-wrap">${esc(msg)}</p>` + (email ? `<p>From: ${esc(email)}</p>` : "<p>No email given.</p>") +
     (details.length ? `<p style="font-family:monospace;font-size:13px">${details.map(([k, v]) => `${esc(k)}: ${esc(v)}`).join("<br>")}</p>` : "");
   const first = msg.split("\n")[0].slice(0, 60);
-  const mail = { from: "Arc <onboarding@resend.dev>", to: [env.REPORT_TO], subject: `Arc ${kind === "problem" ? "problem" : "feedback"}: ${first}`, html };
+  const mail = { from: "Arc <onboarding@resend.dev>", to: [env.REPORT_TO], subject: `Arc ${auto ? "automatic report" : kind === "problem" ? "problem" : "feedback"}: ${first.replace(/^Sent by Arc when this happened: /, "")}`, html };
   if (email) mail.reply_to = email;
+  // A problem report's Spotify request log (names already taken out by the page) goes as a file; nothing of it is kept here.
+  const log = kind === "problem" && typeof b.log === "string" ? b.log.slice(0, LIMITS.logChars) : "";
+  if (log) {
+    const bytes = new TextEncoder().encode(log);
+    let bin = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    mail.attachments = [{ filename: `arc-log-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.json`, content: btoa(bin) }];
+  }
   let sent = false;
   try {
     const reply = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${env.RESEND_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify(mail) });

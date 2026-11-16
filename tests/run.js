@@ -616,7 +616,7 @@ print(json.dumps(out))
 
 
   // ---------------- problem reports
-  var REPORT_KEYS = ["appVersion", "browser", "windowSize", "python", "lastError", "recentSteps"];
+  var REPORT_KEYS = ["appVersion", "browser", "windowSize", "python", "lastError", "earlierErrors", "recentSteps"];
   var reportParams = (w) => JSON.parse(w.eval("JSON.stringify(reportDetails())"));
   var params = (href) => new URL(href).searchParams;
 
@@ -625,15 +625,15 @@ print(json.dumps(out))
   check("Report a problem has its own block, opened from the app menu, that explains what happens", !!rp.document.getElementById("reportBlock").closest("#homeMore #eeReport") && /Say what happened\. I \(Ron\) read every report and respond when I can\./.test(rp.document.getElementById("reportBlock").textContent));
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
-  check("the details sent are exactly six, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-15e" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && /^page opened > connected, 5 playlists found > python ready$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details sent are exactly these seven, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-15f" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-15e/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-15f/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
-  check("scrubbing hides quoted names but keeps normal apostrophes", rp.scrubError("Could not find a playlist named 'My Secret List'. It couldn't be read.") === "Could not find a playlist named .... It couldn't be read." && rp.scrubError('Got: ("Private Name", 20)') === "Got: (..., 20)" && rp.scrubError("'Lone Name' is not yours.") === "... is not yours." && rp.scrubError("x".repeat(500)).length === 160, rp.scrubError("Could not find a playlist named 'My Secret List'. It couldn't be read."));
+  check("scrubbing hides quoted names but keeps normal apostrophes", rp.scrubError("Could not find a playlist named 'My Secret List'. It couldn't be read.") === "Could not find a playlist named .... It couldn't be read." && rp.scrubError('Got: ("Private Name", 20)') === "Got: (..., 20)" && rp.scrubError("'Lone Name' is not yours.") === "... is not yours." && rp.scrubError("x".repeat(500)).length === 400, rp.scrubError("Could not find a playlist named 'My Secret List'. It couldn't be read."));
 
   // an unexpected failure offers a report with that failure filled in, and never leaks private data
   var oRp = { buildFailIn: "new1", buildFail: 500 };
@@ -643,10 +643,20 @@ print(json.dumps(out))
   check("an unexpected failure stops the build and says so in the participant's row", rp2_b.state === "fail" && /Spotify returned 500/.test(rp2_b.error), JSON.stringify(rp2_b));
   var q2 = reportParams(rp2);
   check("a report carries the failure, without any quoted text", /Spotify returned 500/.test(q2.lastError) && !/['"]/.test(q2.lastError), q2.lastError);
-  check("and the steps that led to it", /participant build started > .*participant build failed/.test(q2.recentSteps), q2.recentSteps);
-  var rp2_link = rp2.document.querySelector('#bhPeople [data-code="T"] .er-box .er-acts button');
-  check("the failure in the participant's row offers Report this problem", !!rp2_link && rp2_link.textContent === "Report this problem");
-  rp2_link.click();
+  check("and the steps that led to it", /participant build started \(0:\d\d\) > .*participant build failed \(0:\d\d\)/.test(q2.recentSteps), q2.recentSteps);
+  await waitFor(() => (oRp.sharing && oRp.sharing.messages || []).length === 1, 4000);
+  var auto2 = oRp.sharing.messages[0];
+  check("an unexpected failure is reported by Arc itself: the message says so, with the details and the request log", auto2.kind === "problem" && auto2.auto === true && /^Sent by Arc when this happened: .*Spotify returned 500/.test(auto2.message) && /Spotify returned 500/.test(auto2.details.lastError) && /"listReads"/.test(auto2.log) && !auto2.email, JSON.stringify(auto2).slice(0, 300));
+  await new Promise((r) => setTimeout(r, 50));
+  var rp2_row = rp2.document.querySelector('#bhPeople [data-code="T"] .er-box');
+  check("the participant's row says Arc sent the details, in place of Report this problem", /Arc sent the details to its developer\./.test(rp2_row.textContent) && !/Report this problem/.test(rp2_row.textContent), rp2_row.textContent);
+  check("it is marked as sent for this version, by its kind", JSON.parse(rp2.localStorage.getItem("autoReported")).v === rp2.eval("APP_VERSION") && JSON.parse(rp2.localStorage.getItem("autoReported")).kinds.length === 1);
+  await rp2.eval("autoReport('Spotify returned 500 for 7 songs')"); await rp2.eval("autoReport('Spotify returned 500 for 9 songs')");
+  check("the same kind of problem is sent once per version, whatever its numbers; an expected one never", oRp.sharing.messages.length === 2 && (await rp2.eval("autoReport('Could not reach Spotify')")) === false && oRp.sharing.messages.length === 2);
+  rp2.localStorage.setItem("autoReported", JSON.stringify({ v: "2000-01-01a", kinds: JSON.parse(rp2.localStorage.getItem("autoReported")).kinds }));
+  check("a new version reports it again", (await rp2.eval("autoReports.clear(); autoReport('Spotify returned 500 for 7 songs')")) === true && oRp.sharing.messages.length === 3);
+  oRp.sharing.messages = [];
+  rp2.eval("openReport()");
   check("Report this problem opens the report form in a popup, its box ready for typing", rp2.document.getElementById("infoOverlay").hidden === false && rp2.document.getElementById("infoSlot").contains(rp2.document.getElementById("reportForm")) && rp2.document.activeElement === rp2.document.getElementById("reportText"));
   var rp2_text = rp2.document.getElementById("reportText"), rp2_send = rp2.document.querySelector("#reportForm .mf-send");
   rp2_text.value = "It stopped."; rp2_text.dispatchEvent(new rp2.Event("input"));
@@ -654,12 +664,16 @@ print(json.dumps(out))
   rp2.document.getElementById("reportEmail").value = "not an address";
   rp2_send.click();
   await new Promise((r) => setTimeout(r, 30));
-  check("an email that is not one is said under the form, and nothing is sent", /doesn\u2019t look right/.test(rp2.document.querySelector("#reportForm .mf-error").textContent) && !(oRp.sharing && oRp.sharing.messages));
+  check("an email that is not one is said under the form, and nothing is sent", /doesn\u2019t look right/.test(rp2.document.querySelector("#reportForm .mf-error").textContent) && oRp.sharing.messages.length === 0);
   rp2.document.getElementById("reportEmail").value = "maya@example.com";
   rp2_send.click();
   await waitFor(() => !rp2.document.querySelector("#reportBlock .mf-done").hidden, 4000);
   var sent2 = oRp.sharing.messages[0];
   check("Send report sends what was typed, the email and the six details to the worker, then says Report sent", oRp.sharing.messages.length === 1 && sent2.kind === "problem" && sent2.message === "It stopped." && sent2.email === "maya@example.com" && /Spotify returned 500/.test(sent2.details.lastError) && rp2.document.getElementById("reportForm").hidden && /Report sent/.test(rp2.document.querySelector("#reportBlock .mf-done").textContent), JSON.stringify(sent2));
+  var sent2log = JSON.parse(sent2.log || "{}");
+  check("a report also sends the Spotify request log, with the report's details, its steps and errors, and the list reads", sent2log.report && /Spotify returned 500/.test(sent2log.report.lastError) && Array.isArray(sent2log.steps) && sent2log.steps.length >= 3 && Array.isArray(sent2log.errors) && Array.isArray(sent2log.listReads) && sent2log.listReads.length >= 1 && /Spotify request log: about \d+ KB, attached/.test(rp2.document.getElementById("reportPreview").textContent), Object.keys(sent2log).join());
+  rp2.eval("recordError('first'); recordError('second')");
+  check("earlier errors are kept beside the last one, each with its time", /^second/.test(reportParams(rp2).lastError) && /Spotify returned 500 .*\| first \(\d+:\d\d\)$/.test(reportParams(rp2).earlierErrors), reportParams(rp2).earlierErrors);
   var everything = JSON.stringify(sent2) + rp2.document.getElementById("reportPreview").textContent;
   check("the report never contains the sign-in, the Client ID, playlist names, or song titles", !/TOKEN-VALUE-XYZ|SECRET-CLIENT-ID-9|spacious|gentle|rest|mini \d|Song \d|Artist/.test(everything.replace(/Recent steps|restore|ready|recentSteps/g, "")), everything.slice(0, 200));
   rp2.document.querySelector("#reportBlock .mf-again").click();
@@ -812,7 +826,7 @@ print(json.dumps(out))
 
   // ---------------- the report's details name python
   var pyKeys = Object.keys(reportParams(rp));
-  check("the report fills a field named python, and no field named planner", JSON.stringify(pyKeys.sort()) === JSON.stringify(["appVersion", "browser", "lastError", "python", "recentSteps", "windowSize"]) && !pyKeys.includes("planner"), JSON.stringify(pyKeys));
+  check("the report fills a field named python, and no field named planner", JSON.stringify(pyKeys.sort()) === JSON.stringify(["appVersion", "browser", "earlierErrors", "lastError", "python", "recentSteps", "windowSize"]) && !pyKeys.includes("planner"), JSON.stringify(pyKeys));
 
   // ---------------- gray rounded boxes for the three collapsible sections
   var cardCss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
@@ -1876,7 +1890,8 @@ print(json.dumps(out))
     check(`${what} is a known problem, so no report link is offered`, w.eval("connection") === "problem" && w.document.getElementById("connectionReportHint").hidden === true);
   }
   var rr_odd = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { meStatus: 500 } });
-  check("an unexpected error from Spotify does offer one, with the usual wording", rr_odd.eval("connection") === "problem" && rr_odd.document.getElementById("connectionReportHint").hidden === false && /Something unexpected happened\. Report this problem/.test(rr_odd.document.getElementById("connectionReportHint").textContent) && /Spotify returned 500/.test(rr_odd.document.getElementById("connectionMessage").textContent));
+  await waitFor(() => /sent the details/.test(rr_odd.document.getElementById("connectionReportHint").textContent), 4000);
+  check("an unexpected error from Spotify is reported by Arc itself, and the line says so", rr_odd.eval("connection") === "problem" && rr_odd.document.getElementById("connectionReportHint").hidden === false && rr_odd.document.getElementById("connectionReportHint").textContent === "Something unexpected happened. Arc sent the details to its developer." && /Spotify returned 500/.test(rr_odd.document.getElementById("connectionMessage").textContent));
   var rr_q = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { meStatus: 429, meBody: { error: { reason: "QUOTA_EXCEEDED" } } } });
   check("the quota message names the developer account, so it is clear why nothing in the app can raise it", rr_q.document.getElementById("connectionMessage").textContent === "Spotify has reached the request quota for your developer account. Waiting is the only fix, and Spotify did not say how long to wait.");
   var rr_t = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: { meStatus: 429, retryAfter: 14689, meBody: { error: { reason: "QUOTA_EXCEEDED" } } } });
@@ -1892,7 +1907,7 @@ print(json.dumps(out))
   var pv_sec = pv_w.document.getElementById("privacySection");
   check("Privacy is a panel under Everything else on home, closed at first, behind its lock icon", !!pv_sec && pv_sec.hidden === true && pv_sec.closest("#homeMore") !== null && pv_w.document.getElementById("eeTabPrivacy").dataset.icon === "lock" && pv_w.document.getElementById("eeTabPrivacy").getAttribute("aria-controls") === "privacySection" && pv_sec.querySelector("h3").textContent === "Privacy");
   var pv_text = pv_sec.textContent.replace(/\s+/g, " ");
-  check("it opens with what Arc stands for, then one short line per topic", /^Arc runs in your browser\. What you make here stays between this browser and your own Spotify account, unless you choose to share it\. No accounts, no ads\.$/.test(pv_sec.querySelector(".pv-lead").textContent) && JSON.stringify(Array.from(pv_sec.querySelectorAll("li > b")).map((b) => b.textContent)) === JSON.stringify(["In this browser:", "In your Spotify:", "Participants:", "Shared playlist library:", "Tutorial video:", "Anonymous counts:", "Spotify waits:", "Reports and feedback:"]));
+  check("it opens with what Arc stands for, then one short line per topic", /^Arc runs in your browser\. What you make here stays between this browser and your own Spotify account, unless you choose to share it\. No accounts, no ads\.$/.test(pv_sec.querySelector(".pv-lead").textContent) && JSON.stringify(Array.from(pv_sec.querySelectorAll("li > b")).map((b) => b.textContent)) === JSON.stringify(["In this browser:", "In your Spotify:", "Participants:", "Shared playlist library:", "Tutorial video:", "Anonymous counts:", "Spotify waits:", "Problems and feedback:"]));
   check("it says the app never sees the Spotify password, that Arc changes the person's playlists only when asked, that Sign out and clear data erases what is kept, and what reports never hold", /never sees your password/.test(pv_text) && /Arc changes your playlists only when you ask/.test(pv_text) && /Sign out and clear data erases it all/.test(pv_text) && /Never your sign-in, Client ID, playlist names or songs/.test(pv_text) && /GoatCounter counts visits and a few actions, without cookies/.test(pv_text));
   var pv_click2 = new pv_w.MouseEvent("click", { bubbles: true, cancelable: true });
   pv_w.document.querySelector("#about a.privacy-link").dispatchEvent(pv_click2);
@@ -2071,7 +2086,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-15e", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-15f", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -2448,7 +2463,7 @@ print(json.dumps(out))
   await waitFor(() => !!qf_f.querySelector(".mf-error .er-box"), 4000);
   check("with no connection it says so", /Check the connection/.test(qf_f.querySelector(".mf-error").textContent));
   var qf_priv = qf_w.document.getElementById("privacySection").textContent.replace(/\s+/g, " ");
-  check("Privacy always names reports and feedback: emailed only when the person sends them", /Reports and feedback: emailed to Arc's developer only when you (tap|click) Send\./.test(qf_priv) && !qf_w.document.getElementById("privacyFeedback"), qf_priv);
+  check("Privacy always names reports and feedback: emailed only when the person sends them", /Problems and feedback: when something unexpected goes wrong, Arc sends its developer the technical details and a log of its requests to Spotify .*once for each kind of problem in each version\. What you write in Report a problem or Feedback is emailed only when you (tap|click) Send\./.test(qf_priv) && !qf_w.document.getElementById("privacyFeedback"), qf_priv);
   } catch (err) { areaCrashed("questions and feedback", err); } }
 
   if (want("python status at the bottom")) { try {
@@ -3130,7 +3145,7 @@ print(json.dumps(out))
   var mg_w14 = await mg_go({ formats: mg_text(mg_item("f1", "Alpha", 2, 30), mg_item("f2", "Beta", 1, 40)), spotifySynced: JSON.stringify({ f1: { rev: 2, playlistId: "s1" }, f2: { rev: 1, playlistId: "s2" } }), spotifyPendingDeletes: JSON.stringify(["f3"]) }, mg_o14);
   await waitFor(() => !!mg_w14.document.getElementById("feSyncDialog"), 12000);
   var mg_d14 = mg_w14.document.getElementById("feSyncDialog");
-  check("a list still short after reading again is not used: Arc is not connected, waits for all of it, and says so in a plain popup with OK and Report this problem", /Spotify didn’t send all your playlists/.test(mg_d14.textContent) && /Arc will keep trying/.test(mg_d14.textContent) && mg_w14.document.getElementById("feSyncChoice0").textContent.trim() === "OK" && /Report this problem/.test(mg_w14.document.getElementById("feSyncChoice1").textContent) && mg_w14.eval("connection") === "problem" && mg_w14.eval("limitWait.active && limitWait.reason") === "short" && !/no longer in Spotify/.test(mg_d14.textContent));
+  check("a list still short after reading again is not used: Arc is not connected, waits for all of it, and says so in a plain popup with OK alone, Arc reporting it by itself", /Spotify didn’t send all your playlists/.test(mg_d14.textContent) && /Arc will keep trying/.test(mg_d14.textContent) && mg_w14.document.getElementById("feSyncChoice0").textContent.trim() === "OK" && !mg_w14.document.getElementById("feSyncChoice1") && !!mg_d14.querySelector(".pb-sent") && mg_w14.eval("connection") === "problem" && mg_w14.eval("limitWait.active && limitWait.reason") === "short" && !/no longer in Spotify/.test(mg_d14.textContent));
   check("the strip says Arc is waiting for all the playlists, with the time to the next try", !mg_w14.document.getElementById("waitStrip").hidden && /^Waiting for all your playlists · 0:(2\d|30)$/.test(mg_w14.document.getElementById("waitStripText").textContent), mg_w14.document.getElementById("waitStripText").textContent);
   check("the first tries come after 30 s, 2 min and 10 min, then every 10 min", mg_w14.eval("SHORT_LIST_RETRY_MS").join() === "30000,120000,600000" && Math.abs(mg_w14.eval("limitWait.retryAt") - Date.now() - 30000) < 3000);
   mg_w14.document.getElementById("feSyncChoice0").click();
@@ -4312,10 +4327,17 @@ print(json.dumps(out))
   var b7_odd = await b7_go({ putStatus: 500 });
   await waitFor(() => !!b7_odd.w.document.getElementById("feSyncDialog"), 8000);
   var b7_od = b7_odd.w.document.getElementById("feSyncDialog");
-  check("a failure nobody expected opens the popup at once, with a Report this problem link under the buttons too", !!b7_od && Array.from(b7_od.querySelectorAll("button")).map((b) => b.textContent).join("|") === "Try again|Close|Report this problem" && b7_od.querySelector(".pb-buttons + .pb-report") !== null);
+  await waitFor(() => !b7_od.querySelector(".pb-sent").hidden, 4000);
+  check("a failure nobody expected opens the popup at once, Arc reporting it by itself, which the line under the buttons says", !!b7_od && Array.from(b7_od.querySelectorAll("button")).map((b) => b.textContent).join("|") === "Try again|Close" && b7_od.querySelector(".pb-buttons + .pb-sent").textContent === "Arc sent the details to its developer." && b7_odd.o.sharing.messages.some((m) => m.auto));
+  // when the report can't go (offline, the daily cap), the line is the Report this problem link
+  b7_odd.o.sharing.messageFail = "That is a lot for one day.";
+  var b7_line = b7_odd.w.eval("reportedLine('Spotify returned 502 for a test')");
+  b7_od.appendChild(b7_line);
+  await waitFor(() => !b7_line.hidden, 4000);
+  check("a report that could not go leaves Report this problem in its place", /Report this problem/.test(b7_line.textContent) && !/sent the details/.test(b7_line.textContent));
   var b7_opened = [];
   b7_odd.w.open = (url) => { b7_opened.push(url); };
-  Array.from(b7_od.querySelectorAll("button")).find((b) => b.textContent === "Report this problem").click();
+  Array.from(b7_line.querySelectorAll("button")).find((b) => /Report this problem/.test(b.textContent)).click();
   await new Promise((r) => setTimeout(r, 100));
   check("Report this problem opens the page's report form, not a new tab", b7_opened.length === 0 && b7_odd.w.document.getElementById("infoSlot").contains(b7_odd.w.document.getElementById("reportForm")));
   check("pressing Close, or outside the popup, does nothing else", (() => { return true; })());
@@ -4328,7 +4350,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-15e"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-15f"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

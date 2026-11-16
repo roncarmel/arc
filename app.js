@@ -14,7 +14,7 @@ const ADD_CHUNK = 100;     // songs added per request (Spotify's documented maxi
 const ADD_CHUNK_SMALL = 10; // what is tried instead if Spotify refuses 100
 const REMOVE_CHUNK = 40;   // playlists removed per request (Spotify's maximum)
 
-const APP_VERSION = "2026-11-15e";
+const APP_VERSION = "2026-11-15f";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1343,11 +1343,14 @@ function setIcon(button, name) {
 // song titles, or the formats text. Nothing is sent until the person submits the form in the new tab.
 let pythonVersion = "";
 let lastErrorText = "";
-const stepLog = [];   // the last few things that happened, in plain words, kept in memory only
+const stepLog = [];   // the last things that happened, in plain words, with the time since the page opened, kept in memory only
+const errorLog = [];   // the last errors, with their times, so one error cannot bury another in a report (a failed build did, 2026-11-15)
+const STEPS_KEPT = 30, ERRORS_KEPT = 10;
+function sincePageOpened() { const s = Math.round(performance.now() / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
 
 function logStep(text) {
-  stepLog.push(text);
-  if (stepLog.length > 10) stepLog.shift();
+  stepLog.push(`${text} (${sincePageOpened()})`);
+  if (stepLog.length > STEPS_KEPT) stepLog.shift();
 }
 
 function scrubError(text) {
@@ -1357,13 +1360,15 @@ function scrubError(text) {
     .replace(/"[^"]*"/g, "...")
     .replace(/\s+/g, " ")
     .trim()
-    .slice(0, 160);
+    .slice(0, 400);
 }
 
 function recordError(text) {
   // A short list was recorded with its counts where it was found; the bare message from a catch further up would hide them from a report (2026-11-15)
   if (String(text).startsWith(SHORT_LIST_MESSAGE) && /^Spotify listed /.test(lastErrorText || "")) return;
   lastErrorText = scrubError(text);
+  errorLog.push(`${lastErrorText} (${sincePageOpened()})`);
+  if (errorLog.length > ERRORS_KEPT) errorLog.shift();
 }
 
 function describeBrowser() {
@@ -1386,8 +1391,34 @@ function reportDetails() {
     windowSize: `${window.innerWidth}x${window.innerHeight}`,
     python: py ? `ready (Python ${pythonVersion})` : "not loaded",
     lastError: lastErrorText || "none",
+    earlierErrors: errorLog.length > 1 ? errorLog.slice(0, -1).join(" | ") : "none",
     recentSteps: stepLog.length ? stepLog.join(" > ") : "none",
   };
+}
+
+// The Spotify request log goes with every problem report, as a file attached to the email (Ron, 2026-11-15, with 10 errors and 30 steps: a report is often all there is, and the log
+// would have shown the short playlist list at once). Names are taken out: playlist and recipe names and descriptions become their length; IDs, counts and
+// Spotify's answers stay. The report's own details and the steps and errors go in too.
+const LOG_NAME_KEYS = new Set(["name", "title", "description", "names"]);
+const LOG_FIRST_IS_NAME = new Set(["saveNames", "recipes"]);   // arrays of entries whose first item is a name
+function reportLogText() {
+  const names = new Set();
+  try {
+    for (const p of playlists || []) if (p && p.name) names.add(p.name);
+    if (typeof editor !== "undefined" && editor.model) for (const f of editor.model.formats) if (f.title) { names.add(f.title); names.add(saveName(f.title)); }
+  } catch (err) { /* names only help */ }
+  const hidden = (v) => `[name, ${[...String(v)].length} chars]`;
+  const known = [...names].filter((n) => n.length >= 3).sort((a, b) => b.length - a.length);
+  const inText = (t) => { let out = t; for (const n of known) if (out.includes(n)) out = out.split(n).join("[name]"); return out; };
+  const walk = (v, key) => {
+    if (typeof v === "string") return LOG_NAME_KEYS.has(key) || names.has(v) || / \(recipe\)$/.test(v) ? hidden(v) : inText(v);
+    if (Array.isArray(v)) return v.map((x, i) => (LOG_FIRST_IS_NAME.has(key) && Array.isArray(x) ? x.map((y, j) => (j === 0 && typeof y === "string" ? hidden(y) : walk(y, ""))) : walk(x, key === "names" ? "names" : "")));
+    if (v && typeof v === "object") { const o = {}; for (const [k, x] of Object.entries(v)) o[k] = walk(x, k); return o; }
+    return v;
+  };
+  let record = {};
+  try { record = JSON.parse(limitRecordText()); } catch (err) { record = { unreadable: String(err && err.message || err) }; }
+  return JSON.stringify(walk({ report: reportDetails(), steps: stepLog, errors: errorLog, connection, playlistCount: (playlists || []).length, ...record }, ""), null, 1);
 }
 
 function reportUrl() {
@@ -1403,6 +1434,40 @@ function reportUrl() {
 }
 
 
+// Unexpected problems are reported by Arc itself, with the details and the request log (Ron, 2026-11-15: a report should not wait on a click). Once per kind of
+// problem (its text, numbers left out) in each version, kept in localStorage, so a problem that comes back does not flood the inbox, and a new version reports
+// it again, which shows whether a fix worked. Expected problems (a rate limit, no internet, a lapsed sign-in, no Premium) are never sent. The page says it
+// was sent (`reportedLine` in editor.js); a send that fails (offline, the worker's daily cap) leaves the Report this problem link instead.
+const AUTO_REPORTED_KEY = "autoReported";   // {v: version, kinds: [...]}
+var autoReports = new Map();   // kind -> {promise, ok}; var so the tests can clear it
+function autoReportKind(text) { return scrubError(text).replace(/\d+/g, "#").slice(0, 80); }
+function autoReportState(text) { return autoReports.get(autoReportKind(text)) || null; }
+function autoReport(text) {
+  const kind = autoReportKind(text);
+  if (autoReports.has(kind)) return autoReports.get(kind).promise;
+  if (problemKind(String(text)) !== "other") return Promise.resolve(false);
+  let before = false;
+  try { const r = JSON.parse(localStorage.getItem(AUTO_REPORTED_KEY) || "{}"); before = r.v === APP_VERSION && (r.kinds || []).includes(kind); } catch (err) { /* private browsing */ }
+  const entry = { ok: before ? true : undefined };
+  entry.promise = before ? Promise.resolve(true) : sendAutoReport(text, kind).then((ok) => { entry.ok = ok; if (!ok) autoReports.delete(kind); return ok; });
+  autoReports.set(kind, entry);
+  return entry.promise;
+}
+async function sendAutoReport(text, kind) {
+  try {
+    const body = { kind: "problem", auto: true, message: "Sent by Arc when this happened: " + scrubError(text), details: reportDetails(), log: reportLogText() };
+    const response = await fetchWithAnswerLimit(SHARING_URL + "/message", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!response.ok) { logStep(`problem not reported (${response.status})`); return false; }
+    try {
+      const r = JSON.parse(localStorage.getItem(AUTO_REPORTED_KEY) || "{}");
+      const kinds = r.v === APP_VERSION ? r.kinds || [] : [];
+      localStorage.setItem(AUTO_REPORTED_KEY, JSON.stringify({ v: APP_VERSION, kinds: [...kinds, kind].slice(-50) }));
+    } catch (err) { /* private browsing: it may be sent again next visit */ }
+    logStep("problem reported");
+    return true;
+  } catch (err) { logStep("problem not reported"); return false; }
+}
+
 function refreshReportBox() {
   const d = reportDetails();
   $("reportPreview").textContent = [
@@ -1411,7 +1476,9 @@ function refreshReportBox() {
     `Window size: ${d.windowSize}`,
     `Python: ${d.python.replace("(Python ", "(")}`,
     `Last error: ${d.lastError}`,
+    `Earlier errors: ${d.earlierErrors}`,
     `Recent steps: ${d.recentSteps}`,
+    `Spotify request log: about ${Math.max(1, Math.round(reportLogText().length / 1024))} KB, attached (counts, IDs and Spotify\u2019s answers, no names)`,
   ].join("\n");
 }
 
@@ -1439,7 +1506,7 @@ async function sendMessageForm(form) {
   if (address && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address)) { error.append(problemBox("That email address doesn\u2019t look right.", "", [], true)); email.focus(); return; }
   const kind = form.dataset.kind;
   const body = { kind, message, email: address };
-  if (kind === "problem") body.details = reportDetails();
+  if (kind === "problem") { body.details = reportDetails(); try { body.log = reportLogText(); } catch (err) { body.log = "The log could not be made: " + String(err && err.message || err); } }
   send.disabled = true;
   form.classList.add("mf-sending");
   try {
@@ -1488,7 +1555,11 @@ function offerReport(hintId, rawError) {
   // An unexpected problem: remember it and show a "Report this problem" link next to the message.
   recordError(rawError);
   logStep("problem: " + lastErrorText.slice(0, 60));
-  $(hintId).hidden = false;
+  const hint = $(hintId);
+  if (!hint.dataset.ask) hint.dataset.ask = hint.innerHTML;
+  hint.innerHTML = hint.dataset.ask;
+  hint.hidden = false;
+  autoReport(rawError).then((ok) => { if (ok) hint.textContent = "Something unexpected happened. Arc sent the details to its developer."; });
 }
 
 function clearReportHints(...ids) {
@@ -2030,9 +2101,8 @@ async function askSaveFailure(message) {
   const unexpected = problemKind(message) === "other";
   if (unexpected) recordError(message);
   const choices = [{ label: "Try again", value: "retry", main: true, icon: "retry" }, { label: "Close", value: "close" }];
-  if (unexpected) choices.push({ label: "Report this problem", value: "report", link: true, icon: "flag" });
   const choice = await askSyncChoice("Your recipes couldn\u2019t be saved to Spotify",
-    "Your latest changes haven\u2019t been saved to Spotify yet. They are kept in this browser until they are.", choices, { problem: "cloud", what: saveFailureDetail(message) });
+    "Your latest changes haven\u2019t been saved to Spotify yet. They are kept in this browser until they are.", choices, { problem: "cloud", what: saveFailureDetail(message), reported: unexpected ? reportedLine(message) : null });
   if (choice === "retry") { saveState.error = ""; runSpotifySave(); }
   else if (choice === "report") openReport();
 }
@@ -2896,6 +2966,7 @@ async function loadMyPlaylists() {
     // the short reads go into the report too ([offset, items], each read), since a report is often all there is (2026-11-15)
     const reads = pages.filter((x) => x[4] || (typeof x[2] === "number" && x[1] < Math.min(50, x[2] - x[0]))).map((x) => [x[0], x[1]]).slice(0, 12);
     recordError(`Spotify listed ${got} of ${total} playlists, after reading again${playlistsHidden.length ? ` (${playlistsHidden.length} of them hidden)` : ""}${steady ? ` (${steady} left out the same way twice)` : ""}; short reads [offset, items] ${JSON.stringify(reads)}`);
+    autoReport(lastErrorText);
     useKeptPlaylists();
     if (connection === "ready") { setConnection("problem", SHORT_LIST_MESSAGE); startLimitWait("short"); }
     throw new Error(SHORT_LIST_MESSAGE);
@@ -2930,8 +3001,7 @@ async function loadMyPlaylists() {
 function showShortListDialog() {
   askSyncChoice("Spotify didn\u2019t send all your playlists",
     "This happens now and then. Arc will keep trying. Until then you can edit your recipes, and building waits.",
-    [{ label: "OK", value: "ok", main: true }, { label: "Report this problem", value: "report", link: true, icon: "flag" }], { problem: "cloud" })
-    .then((choice) => { if (choice === "report") openReport(); });
+    [{ label: "OK", value: "ok", main: true }], { problem: "cloud", reported: reportedLine(lastErrorText) });
 }
 
 async function loadTracks(id) {
@@ -3316,6 +3386,7 @@ async function buildForParticipant(id, code, repeat = null) {
   } catch (err) {
     recordError(cleanError(err));
     logStep("participant build failed");
+    autoReport(lastErrorText);
     setPersonBuild({ state: "fail", error: cleanError(err), id: made ? made.id : null });
     try { await loadMyPlaylists(); } catch (ignore) { /* keep the error showing */ }
   } finally {

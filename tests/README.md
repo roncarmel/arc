@@ -4,7 +4,8 @@ About 1,500 checks against the real `index.html`, `app.js`, `shared-spotify.js`,
 the page runs in jsdom, Spotify is a pretend server written in `run.js` (`makeFetch`), and `engine.py` is the real file, run by `bridge.py` in place of Pyodide.
 
     cd tests && npm install
-    NODE_OPTIONS=--max-old-space-size=8192 node run.js   # everything, about 4 minutes (Node's usual memory runs out near the end)
+    ./run-all.sh                     # everything: each area in its own Node process, printing only failures and the totals
+    node run.js                      # everything in one process: runs out of memory on the 4 GB VM, so use run-all.sh
     node run.js "--only=newer version|spotify merge"   # only the areas whose names contain any of these
     node run.js --list               # the names of the areas
     APP_DIR=/path/to/app node run.js # if the app is not in the folder above this one
