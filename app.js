@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16zy";
+const APP_VERSION = "2026-11-16zz";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -488,7 +488,6 @@ function initToolMenu() {
 
 // Developer mode went on or off (setDevMode in editor.js): on, the owner's tools are asked for (sharing.js).
 function devModeChanged(on) {
-  markServiceTiles();
   paintTabTitle();
   if (on && connection === "ready" && typeof askOwner === "function") askOwner();
 }
@@ -610,38 +609,33 @@ function showWelcomeStep(step, push) {
 }
 // The music service chosen on the welcome page. The one in use goes on at once; the other is set up (switchService) and the page loads again under it,
 // opening on the next step (welcomeAt in sessionStorage, read by the <head> script and by startup), with the choice still one step back.
-// Only Spotify can be chosen outside developer mode: TIDAL says Coming soon, greyed (Ron, 2026-11-16). A browser already on TIDAL keeps it.
-function serviceOpen(key) { return key === "spotify" || key === service.key || document.documentElement.classList.contains("dev-mode"); }
+// TIDAL was Coming soon outside developer mode until Music sharing worked across services (Ron, 2026-11-16); open to everyone since.
 // The tiles are radio buttons (Ron, 2026-11-16): a tap chooses one, and Next goes on with it. Arrow keys move the choice; only the chosen tile (or the
-// first open one) is in the tab order. A tile closed again (developer mode turned off) loses its choice.
+// first) is in the tab order.
 function serviceTiles() { return [...document.querySelectorAll("#wpWhich [data-pick-service]")]; }
 function chosenService() { const t = serviceTiles().find((x) => x.getAttribute("aria-checked") === "true"); return t ? t.dataset.pickService : null; }
 function markServiceTiles(chosen = chosenService()) {
-  if (chosen && !serviceOpen(chosen)) chosen = null;
   const tiles = serviceTiles();
-  const focusable = chosen || (tiles.find((t) => serviceOpen(t.dataset.pickService)) || {}).dataset?.pickService;
+  const focusable = chosen || (tiles[0] && tiles[0].dataset.pickService);
   for (const tile of tiles) {
     const key = tile.dataset.pickService;
-    if (serviceOpen(key)) tile.removeAttribute("aria-disabled"); else tile.setAttribute("aria-disabled", "true");
     tile.setAttribute("aria-checked", String(key === chosen));
     tile.tabIndex = key === focusable ? 0 : -1;
   }
   if ($("wpWhichNext")) $("wpWhichNext").disabled = !chosen;
 }
 function chooseServiceTile(key, focus = false) {
-  if (!serviceOpen(key)) return;
   markServiceTiles(key);
   if (focus) { const t = serviceTiles().find((x) => x.dataset.pickService === key); if (t) t.focus(); }
 }
 function moveServiceChoice(step) {
-  const open = serviceTiles().map((t) => t.dataset.pickService).filter(serviceOpen);
+  const open = serviceTiles().map((t) => t.dataset.pickService);
   if (!open.length) return;
   const at = open.indexOf(chosenService());
   const next = at < 0 ? (step > 0 ? 0 : open.length - 1) : (at + step + open.length) % open.length;
   chooseServiceTile(open[next], true);
 }
 function pickService(key) {
-  if (!serviceOpen(key)) return;
   if (key === service.key) { slideScreens(() => showWelcomeStep(3, true)); return; }
   if (!switchService(key)) return;
   try { sessionStorage.setItem("welcomeAt", "3"); } catch (err) { /* it opens on the tools */ }
