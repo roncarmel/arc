@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16zze";
+const APP_VERSION = "2026-11-16zzf";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1124,7 +1124,7 @@ function closeInfo(quiet = false) {
   info.node = null;
   info.marker = null;
   $("infoOverlay").hidden = true;
-  const under = document.querySelector(".app-overlay:not([hidden])");   // a popup under it (the build popup, from a Report this problem link) stays open
+  const under = document.querySelector(".app-overlay:not([hidden]):not(#msOverlay)");   // Music sharing is a page, not a popup   // a popup under it (the build popup, from a Report this problem link) stays open
   if (!under) document.body.style.overflow = "";
   const opener = info.opener;
   info.opener = null;
