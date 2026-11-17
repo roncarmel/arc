@@ -716,10 +716,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly these seven, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16zw" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16zx" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16zw/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16zx/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -2224,7 +2224,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16zw", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16zx", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -3972,8 +3972,9 @@ print(json.dumps(out))
   var ms_made = log.filter((e) => e.url.endsWith("/v1/me/playlists") && (e.init.method || "") === "POST").map((e) => JSON.parse(e.init.body)).pop();
   check("Get makes a private copy with its name and description, and the device remembers it as a copy", ms_made && ms_made.name === "Deep water" && ms_made.public === false && ms_made.description === "Slow and spacious, almost no vocals. [origin: a]" && "a" in ms_w.eval("sharingCopies()"));
   var ms_card = ms_d.getElementById("msGet-a");
-  check("done, with nothing shared, the card says it is in Spotify, what a private copy is, and invites a share", /In your Spotify, your own private copy/.test(ms_card.textContent) && /It stays as it is if Maya changes theirs\./.test(ms_card.textContent) && /Maya shared this\. Share one of yours\?/.test(ms_card.textContent) && !!ms_d.getElementById("msShareOne") && !!ms_card.querySelector(".ms-gcheck"));
-  check("and its row says Gotten, with Open in Spotify and OK", !!ms_card.querySelector(".ms-row .ms-add.ms-done") && /Gotten/.test(ms_card.querySelector(".ms-row .ms-add.ms-done").textContent) && ms_card.querySelector(".ms-gopen").textContent === "Open in Spotify" && /^https:\/\/open\.spotify\.com\/playlist\//.test(ms_card.querySelector(".ms-gopen").href));
+  check("done, every song found, the card's one line says Now in your Spotify beside a check, and invites a share with a link", ms_card.querySelector(".ms-gline").textContent === "Now in your Spotify" && !!ms_card.querySelector(".ms-gline .ms-gcheck") && ms_d.getElementById("msShareOne").textContent === "Share one of yours?" && !ms_card.querySelector(".ms-gcover .ms-gcheck"));
+  check("songs missing, it says how many were found", ms_w.eval("const s = sharing.library.shares[0], keep = s.songs[0].slice(); s.songs[0][0] = ''; s.songs[0][1] = ''; renderSharing(); const t = document.querySelector('#msGet-a .ms-gline').textContent; s.songs[0][0] = keep[0]; s.songs[0][1] = keep[1]; renderSharing(); t") === `${ms_w.eval("musicCount(sharing.library.shares[0])") - 1} of ${ms_w.eval("musicCount(sharing.library.shares[0])")} songs found`);
+  check("and its row's button is Spotify's mark and Open, linking to the copy", ms_card.querySelector(".ms-row a.ms-add.ms-open").textContent === "Open" && !!ms_card.querySelector(".ms-row .ms-open .ms-open-mark") && ms_card.querySelector(".ms-row .ms-open").href === "https://open.spotify.com/playlist/" + ms_w.eval("sharingCopies()['a']") && ms_card.querySelector(".ms-row .ms-open").target === "_blank");
   ms_d.getElementById("msGotOk").click();
   await waitFor(() => !ms_d.getElementById("msGet-a"), 3000);
   check("OK folds it back into a plain row", !ms_d.getElementById("msGet-a") && !!ms_d.querySelector("#msResults .ms-row"));
@@ -3981,12 +3982,8 @@ print(json.dumps(out))
   ms_w.eval("closeDetail()");
   await waitFor(() => ms_w.eval("sharing.detail") === null, 3000);
   ms_tile("ceremony").click();
-  check("playlists the person has stay in the list, Gotten", ms_names().join() === "Deep water" && /Gotten/.test(ms_d.querySelector("#msResults .ms-add").textContent));
-  ms_d.querySelector("#msResults .ms-add.ms-done").click();
-  await waitFor(() => ms_w.eval("sharing.detail") !== null, 3000);
-  check("Gotten on a list row opens the playlist's page", !!ms_w.eval("sharing.detail") && !ms_d.querySelector("#msResults .ms-add.ms-done").disabled);
-  ms_w.eval("closeDetail()");
-  await waitFor(() => ms_w.eval("sharing.detail") === null, 3000);
+  check("playlists the person has stay in the list, with Open", ms_names().join() === "Deep water" && ms_d.querySelector("#msResults .ms-add").textContent === "Open");
+  check("Open on a list row opens the copy in Spotify, not the playlist's page", ms_d.querySelector("#msResults a.ms-add.ms-open").href.startsWith("https://open.spotify.com/playlist/") && ms_w.eval("sharing.detail") === null);
   ms_d.querySelector("#msBody .ms-ktile.ms-on").click();
   check("another device knows a copy by the [origin: ID] at the end of its description, with no record of its own, and a copy deleted in Spotify can be gotten again", ms_w.eval(`(() => {
     const keep = localStorage.getItem("sharingCopies"); localStorage.removeItem("sharingCopies");
@@ -4701,7 +4698,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16zw"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16zx"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
