@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-16zn";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-16zo";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -3254,10 +3254,15 @@ function openPersonPanel(code) {
   if (card) try { card.scrollIntoView({ block: "nearest", behavior: motionAllowed(card) ? "smooth" : "auto" }); } catch (err) { /* old browsers */ }
 }
 
+const PP_SWEEP_MS = 1800, PP_HEAD_MS = 1000;   // the loops of pp-sweep and pp-head in index.html
 // The playlist being built for a participant, as a row at the top of their playlists: its cover dimmed, its name, the step in pink and a bar that fills
 function personBuildRow(b) {
   const share = Math.round((b.progress || 0) * 1000) / 10;
-  return feEl("div", { class: "bh-pl pp-live", id: "ppBuild", "aria-live": "polite" },
+  // The row is drawn again whenever the list is (the playlist list read again, the buttons' state), and a new element would start the sweep and the pulse over,
+  // a jump in the middle of the light (Ron, 2026-11-16): each starts as far into its loop as the page's clock is, so a redrawn row carries on where the last one was.
+  const now = performance.now();
+  const phase = `--pp-sweep-at: -${Math.round(now % PP_SWEEP_MS)}ms; --pp-head-at: -${Math.round(now % PP_HEAD_MS)}ms`;
+  return feEl("div", { class: "bh-pl pp-live", id: "ppBuild", "aria-live": "polite", style: phase },
     feEl("span", { class: "bh-cover bh-arccover pp-cover-wait" }),
     feEl("span", { class: "bh-text" }, feEl("span", { class: "bh-pl-name", text: nameWithoutCode(b.name, b.code) }),
       feEl("span", { class: "pp-step" }, feEl("span", { class: "pp-step-text", text: b.step })),

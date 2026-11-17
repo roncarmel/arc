@@ -716,10 +716,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly these seven, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16zn" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16zo" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16zn/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16zo/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -2213,7 +2213,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16zn", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16zo", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4681,7 +4681,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16zn"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16zo"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -4991,6 +4991,7 @@ print(json.dumps(out))
   check("Build for a participant opens their row on Participants, where the playlist fills in at the top of their playlists, with no Keep this tab open", bl_steps.some((t) => /Gamma · .*Adding songs · \d+ of \d+$/.test(t)) && !bl_steps.some((t) => /Keep this tab/.test(t)) && !!bd4.document.querySelector('#bhPeople .bh-person.bh-open[data-code="ZQ9"]'), JSON.stringify(bl_steps));
   check("while it builds, leaving the page asks first, and Get it and Change Spotify login are greyed; after, they work again", bl_guard.length > 0 && bl_guard.every(Boolean) && (() => { const ev = new bd4.window.Event("beforeunload", { cancelable: true }); bd4.window.dispatchEvent(ev); return !ev.defaultPrevented && !bd4.document.getElementById("changeSpotifyLogin").disabled; })(), JSON.stringify(bl_guard));
   check("it is made private, for that participant, with its songs and the cover", !!bl_made && bl_made.public === false && /For participant ZQ9\./.test(bl_made.description) && bl_fo.writes.some((w) => w.type === "add" && w.id === bl_made.id) && bl_fo.writes.some((w) => w.type === "cover" && w.id === bl_made.id));
+  check("the sweep is one band, never a repeated copy showing as the loop ends, and a redrawn build row carries on its sweep and pulse where the page's clock is, not from the start", (() => { const t = bd4.eval("performance.now()"); const r = bd4.eval("personBuildRow({ name: 'MC · x · 1 Jan', code: 'MC', step: 's', progress: 0.5 })"); const at = (v) => -parseFloat(r.style.getPropertyValue(v)); const css = fs.readFileSync(ROOT + "index.html", "utf8"); return /background-size: 250% 100%; background-repeat: no-repeat; animation: pp-sweep/.test(css) && Math.abs(at("--pp-sweep-at") - t % 1800) < 50 && Math.abs(at("--pp-head-at") - t % 1000) < 50 && /animation: pp-sweep 1\.8s linear var\(--pp-sweep-at, 0s\) infinite/.test(css) && /animation: pp-head 1s ease-in-out var\(--pp-head-at, 0s\) infinite/.test(css); })());
   check("done, the new playlist is marked with Open, no song count, and no message pops up", (() => { const r = bd4.document.querySelector("#bhPeople .bh-pl.pp-new"); return !!r && /Open/.test(r.textContent) && !/\d+ songs/.test(r.textContent) && !/new to/.test(r.textContent) && !bd4.document.getElementById("ppBuild") && !bd4.document.getElementById("builtToast"); })());
   bd4.eval("setPersonOpen(null)");
   bd4.eval("openPersonPanel('ZQ9')");
