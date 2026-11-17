@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-16zo";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-16zq";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -871,28 +871,30 @@ function renderAppMenu() {
   const version = () => feEl("div", { class: "fe-menuver", id: "feMenuVersion" },
     feEl("span", { class: "fe-menuver-text", text: "Arc " + (typeof APP_VERSION === "string" ? APP_VERSION : "") }),
     feEl("button", { type: "button", class: "fe-menuver-check", id: "feCheckUpdate", role: "menuitem", onClick: checkFromMenu }, feIcon("refresh"), feEl("span", { text: "Check for update" })));
+  // Privacy last in every menu, right before the version (Ron, 2026-11-16, was a row under Everything else on home)
+  const privacy = () => [rule(), infoItem("fePrivacy", "privacySection", "lock", "Privacy")];
   // Spotify is the first thing in the menu, in whatever state it is in (connecting, not connected, a problem), so it is always found in the same place; connected needs nothing here
   const spotifyItems = connection === "ready" ? [] : connectItems;
   const panel = (...items) => slot.appendChild(feEl("div", { class: "fe-pop fe-appmenu", id: "feAppMenuPanel", role: "menu" }, ...items));
   // No title row: Arc's icon is in the bar right above the menu (Ron, 2026-11-10).
   // In Music sharing the menu has only what is not the builder's: Connect while not connected, then help
-  // On home: Color, help, then the account in a section of its own (Ron, 2026-11-16), and the version; Privacy is under Everything else
+  // On home: Color, help, then the account in a section of its own (Ron, 2026-11-16), Privacy and the version
   if (onHome) {
     const account = [infoItem("feLogin", "eeLogin", "user", `Change ${service.name} login`), infoItem("feClear", "eeClear", "logout", "Sign out and clear data")];
-    panel(colorItem, rule(), ...help, rule(), ...account, rule(), version());
+    panel(colorItem, rule(), ...help, rule(), ...account, ...privacy(), rule(), version());
     return;
   }
   if (typeof appView === "string" && appView === "sharing") {
-    panel(...spotifyItems, ...(spotifyItems.length ? [rule()] : []), colorItem, rule(), ...help, rule(), version());
+    panel(...spotifyItems, ...(spotifyItems.length ? [rule()] : []), colorItem, rule(), ...help, ...privacy(), rule(), version());
     return;
   }
   // The builder's (decided by Ron, 2026-11-10, mockups/app-menu-A.png, with help moved up under the tutorial): Connect when it applies,
   // Watch the tutorial, Color, Feedback and Report a problem, then the version (Build all recipes, Remove built playlists and Autosave or backup went, Ron, 2026-11-14). A guide for facilitators is gone; the ?
-  // beside the silence stepper has its own popup. What belongs to the account, and Privacy, are under Everything else on home.
+  // beside the silence stepper has its own popup. What belongs to the account is in home's menu.
   const tutorial = feEl("button", { type: "button", class: "fe-item fe-gditem", id: "feTutorial", role: "menuitem", onClick: choose(() => watchTutorial()) }, tutorialFrame(),
     feEl("span", { class: "fe-gditem-text" }, feEl("span", { text: "Watch the tutorial" }), feEl("span", { class: "fe-gditem-note", text: "2 minute walkthrough" })));
   panel(...spotifyItems, ...(spotifyItems.length ? [rule()] : []),
-    tutorial, rule(), colorItem, rule(), ...help, rule(),
+    tutorial, rule(), colorItem, rule(), ...help, ...privacy(), rule(),
     version());
 }
 

@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16zo";
+const APP_VERSION = "2026-11-16zq";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -423,20 +423,9 @@ function fitOnOneLine(all) {
   }
 }
 
-// Everything else on home (Ron, 2026-11-16, mockups/home-menu-move): a card of rows, each its icon and name, that open in place (<details>, unfolding with
-// toggleDetailsSmoothly in editor.js). Color, Feedback and Report a problem moved to home's ⋯ menu.
+// home's ⋯ goes into its band
 function initHomeMore() {
-  for (const ico of document.querySelectorAll("#homeMore .hp-ee-ico")) {
-    if (typeof feIcon === "function" && FE_ICONS[ico.dataset.icon]) ico.appendChild(feIcon(ico.dataset.icon));
-  }
-  if (typeof renderAppMenu === "function") renderAppMenu();   // home's ⋯ goes into its band
-}
-// opens one of Everything else's rows and brings it into view (a Privacy link elsewhere)
-function openHomeRow(rowId) {
-  const row = $(rowId);
-  if (!row) return;
-  row.open = true;
-  if (row.scrollIntoView) row.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (typeof renderAppMenu === "function") renderAppMenu();
 }
 
 // Back home: undoes the tool's step in the history when there is one, so the back button does not return to the tool
@@ -2180,7 +2169,7 @@ async function uploadCovers() {
   let problem = null, stopped = false;
   try {
     if (saveState.coverBlocked || !service.coversAllowed()) {
-      problem = { key: "permission", text: `Your ${service.name} sign-in does not include permission to add cover art, so the recipe playlists have no cover. Sign in again with Change ${service.name} login, under Everything else on Arc's home, to allow it.` };
+      problem = { key: "permission", text: `Your ${service.name} sign-in does not include permission to add cover art, so the recipe playlists have no cover. Sign in again with Change ${service.name} login, in the ⋯ menu on Arc's home, to allow it.` };
     } else {
       let cover = null;
       try { cover = await loadCover("recipe-cover.jpg"); }
@@ -2573,7 +2562,7 @@ Object.assign(serviceHooks, {
   oldSignIn: () => { needsReconnect = true; },
   expiredText: () => `Your ${service.name} sign-in expired. ${actWord(true)} Connect again.`,
   signInExpired: (message) => { if (connection === "ready") setConnection("problem", message, "reconnect"); },   // from here on nothing that needs Spotify is offered
-  refusedText: (what) => `${service.name} did not allow this (${what}). Sign in again with Change ${service.name} login, under Everything else on Arc's home, and approve every permission it asks for.`,
+  refusedText: (what) => `${service.name} did not allow this (${what}). Sign in again with Change ${service.name} login, in the ⋯ menu on Arc's home, and approve every permission it asks for.`,
   pauseStarted: (first) => {
     updateButtons();
     // when a wait starts, the popup explains; not over the build popup, which says it already
@@ -3789,12 +3778,10 @@ async function main() {
   on("connectionRetry", "click", connectToSpotify);
   on("connectionReconnect", "click", startLogin);
   on("reconnectButton", "click", startLogin);
-  $("privacyWaitRelay").hidden = !service.waitRelay();   // Privacy says what the relay sees only once there is one
   for (const link of document.querySelectorAll(".privacy-link")) {
     link.addEventListener("click", (event) => {
       event.preventDefault();
-      if (pageName() === "app" && typeof showView === "function") showView("home");   // Privacy is a row under Everything else on home
-      openHomeRow("eePrivacyRow");
+      openInfo("privacySection");   // Privacy is a popup from the ⋯ menu
     });
   }
   initMotion();

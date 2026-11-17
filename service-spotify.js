@@ -2,7 +2,7 @@
 // no server), the refresh token, requests with their limits and waits, and the record of those limits; at its end the `service` object, the only way the rest
 // of Arc talks to Spotify (work/tidal-plan.md, "The service layer"): every Spotify address, URI and quirk stays in this file. It shows nothing itself: each page
 // fills serviceHooks with what to do and say, so this file names no element of any page. Loaded before the page's own script.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-spotify.js"] = "2026-11-16zo";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-spotify.js"] = "2026-11-16zq";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The permissions Arc's sign-in asks for. Another page of this repository (the tagger) may set its own in serviceHooks (shared-service.js).
 const SCOPES = [
@@ -654,7 +654,7 @@ const spotifyService = {
   wait: () => spotifyPause(),
   waitLeft: () => pausedSecondsLeft(),
   tick: () => tickPause(),   // every second: counts a wait down, and notices its end
-  waitRelay: () => !!WAIT_RELAY_URL,   // a refusal with no readable wait is asked about through Arc's relay (Privacy says so)
+  waitRelay: () => !!WAIT_RELAY_URL,   // a refusal with no readable wait is asked about through Arc's relay
   requestLog: () => ({ limits: readRecord(LIMITS_KEY, []), callsPerMinute: readRecord(CALLS_KEY, {}) }),   // the record of requests and refusals, for reports
   authHeader: () => (token ? "Bearer " + token : null),   // for Arc's own worker, which asks Spotify who this is
   storedSignIn: () => (token = loadStoredToken()),   // this tab's sign-in, if it is still good
