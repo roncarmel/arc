@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "261116a";
+const APP_VERSION = "261117a";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -628,7 +628,7 @@ let slideCount = 0;
 // On the welcome page an icon spans exactly from the top of the letters of the name beside it to the bottom of the letters of the tagline under it (the band's
 // icon and each tool card's). The text is pulled up and down by the empty room above and below its letters, measured from the font, and the icon takes its height.
 function letterBounds(el) {
-  const cs = getComputedStyle(el), text = el.textContent;
+  const cs = getComputedStyle(el), ver = el.querySelector(".wp-band-ver"), text = ver ? el.textContent.slice(0, -ver.textContent.length || undefined) : el.textContent;   // the band's name without the version shown after it
   let ctx = letterBounds.ctx;
   if (!ctx) { try { ctx = letterBounds.ctx = document.createElement("canvas").getContext("2d"); } catch (err) { return null; } }
   if (!ctx || !text) return null;
@@ -652,7 +652,8 @@ function alignIconToText(icon, text, first, last) {
     text.style.marginBottom = -below + "px";
   }
 }
-// A tap on the icon in a pink band (welcome, setup, connecting, home) shows the version at the band's top right for a second, then fades it out over another second,
+// A tap on the icon in a pink band (welcome, setup, connecting, home) shows the version just after the word Arc, on its line, for a second, then fades it out over another second
+// (at the band's top right until 2026-11-17, when home's ⋯ moved there and covered it; Ron),
 // and asks at once whether a newer version is out (Ron, 2026-11-10): a card shows if so, as with any check.
 document.addEventListener("click", (event) => {
   const icon = event.target.closest && event.target.closest(".wp-band-icon");
@@ -663,7 +664,7 @@ document.addEventListener("click", (event) => {
 });
 function flashBandVersion(band) {
   let ver = band.querySelector(".wp-band-ver");
-  if (!ver) { ver = document.createElement("span"); ver.className = "wp-band-ver"; ver.setAttribute("aria-hidden", "true"); band.appendChild(ver); }
+  if (!ver) { ver = document.createElement("span"); ver.className = "wp-band-ver"; ver.setAttribute("aria-hidden", "true"); (band.querySelector(".wp-band-name") || band).appendChild(ver); }
   ver.textContent = APP_VERSION;
   if (!ver.animate) return;
   ver.getAnimations().forEach((a) => a.cancel());

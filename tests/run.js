@@ -720,10 +720,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly these seven, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "261116a" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "261117a" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 261116a/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 261117a/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -1634,7 +1634,7 @@ print(json.dumps(out))
 
 
   
-  check("a tap on a pink band's icon shows the version at the band's top right (for a second, then faded)", (() => { var bd = am_w.document.querySelector(".wp-band"); bd.querySelector(".wp-band-icon").dispatchEvent(new am_w.MouseEvent("click", { bubbles: true })); var v = bd.querySelector(".wp-band-ver"); return !!v && v.textContent === am_w.APP_VERSION; })());
+  check("a tap on a pink band's icon shows the version just after the word Arc (for a second, then faded), clear of home's ⋯", (() => { var bd = am_w.document.querySelector(".wp-band"); bd.querySelector(".wp-band-icon").dispatchEvent(new am_w.MouseEvent("click", { bubbles: true })); var v = bd.querySelector(".wp-band-ver"); return !!v && v.textContent === am_w.APP_VERSION && v.parentElement.classList.contains("wp-band-name") && !/\.wp-band-ver \{[^}]*position: absolute/.test(am_w.document.documentElement.outerHTML); })());
   } catch (err) { areaCrashed("the app menu, and minimalist mode", err); }
 }
   if (want('minimalist mode, part two')) { try {
@@ -2235,7 +2235,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=261116a", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=261117a", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -4703,7 +4703,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=261116a"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=261117a"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };

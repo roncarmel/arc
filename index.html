@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="261116a">
-<script src="theme.js?v=261116a"></script>
+<meta name="app-version" content="261117a">
+<script src="theme.js?v=261117a"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -1331,7 +1331,7 @@
   .wp-band { background: linear-gradient(120deg, var(--accent-deep, #c2177f), var(--accent) 45%, color-mix(in srgb, var(--accent) 60%, #fff 40%) 70%, var(--accent)); background-size: 220% 100%; animation: wp-drift 9s ease-in-out infinite alternate; }
   @keyframes wp-drift { from { background-position: 0% 50%; } to { background-position: 55% 50%; } }
   @media (prefers-reduced-motion: reduce) { .wp-band { animation: none; background-position: 0% 50%; } }
-  .wp-band-ver { position: absolute; top: 12px; right: 16px; font-size: 0.8rem; font-weight: 600; opacity: 0; pointer-events: none; font-variant-numeric: tabular-nums; }   /* the version, shown for a moment by a tap on the icon (flashBandVersion) */
+  .wp-band-ver { margin-left: 10px; font-size: 0.8rem; font-weight: 600; letter-spacing: normal; opacity: 0; pointer-events: none; font-variant-numeric: tabular-nums; }   /* the version, inside the name, on its baseline just after Arc, shown for a moment by a tap on the icon (flashBandVersion) */
   .wp-band-icon { cursor: default; -webkit-tap-highlight-color: transparent; }
   .wp-band-icon { --icon-shade: color-mix(in srgb, var(--accent-deep, #a8217c) 55%, #000); }   /* its shadow, a dark shade of the theme's color */
   .wp-band-icon { position: relative; z-index: 1; flex: none; width: 67px; height: 67px; border-radius: 22%; background: url(arc-mark.png) center / cover, var(--icon-bg, #ff1aa8); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.55), 0 2px 4px color-mix(in srgb, var(--icon-shade) 22%, transparent), 0 10px 22px color-mix(in srgb, var(--icon-shade) 32%, transparent), 0 0 0 0 rgba(255, 255, 255, 0); }
@@ -2712,12 +2712,12 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=261116a"></script>
-<script src="editor.js?v=261116a"></script>
-<script src="shared-service.js?v=261116a"></script>
-<script src="service-spotify.js?v=261116a"></script>
-<script src="service-tidal.js?v=261116a"></script>
-<script src="app.js?v=261116a"></script>
-<script src="sharing.js?v=261116a"></script>
+<script src="formats.js?v=261117a"></script>
+<script src="editor.js?v=261117a"></script>
+<script src="shared-service.js?v=261117a"></script>
+<script src="service-spotify.js?v=261117a"></script>
+<script src="service-tidal.js?v=261117a"></script>
+<script src="app.js?v=261117a"></script>
+<script src="sharing.js?v=261117a"></script>
 </body>
 </html>
