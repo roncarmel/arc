@@ -2,7 +2,7 @@ const { JSDOM } = require("jsdom");
 const { execFileSync } = require("child_process");
 // Run only some areas: node run.js --only=privacy|tabs   (matches part of an area's name; --list shows the names)
 const ONLY = (process.argv.find((a) => a.startsWith("--only=")) || "").slice(7).toLowerCase().split("|").filter(Boolean);
-const SECTION_NAMES = ["builder landing and participants", "launch screen", "sharing card in the editor", "music sharing", "tidal", "device checks", "sharing what arc built", "music sharing songs", "developer options", "menu popups and the silence help", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version line", "welcome recipe link", "spotify row", "notice line", "connecting state", "connecting screen", "save retry online", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "save packer", "playlist ids", "popups close only", "narrow more button", "the silence card", "spotify premium", "python status at the bottom", "questions and feedback", "settings below the segments, pink outline", "the tagline", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "scrolling home with the keyboard watch", "privacy section and anonymous counts", "report link on a connection problem", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', 'private playlists', 'cover art', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', 'the app menu, and minimalist mode', 'minimalist mode, part two', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
+const SECTION_NAMES = ["recipe checks", "builder landing and participants", "launch screen", "sharing card in the editor", "music sharing", "tidal", "device checks", "sharing what arc built", "music sharing songs", "developer options", "menu popups and the silence help", "first segment tip", "the play tip", "a wait from Spotify", "sign-in renewal", "newer version", "recipe session", "silence stepper width", "startup refresh", "batch seven", "spotify last", "version line", "welcome recipe link", "spotify row", "notice line", "connecting state", "connecting screen", "save retry online", "spotify wording", "spotify merge", "backup cover", "save pacing", "spotify saves", "size limit", "save packer", "playlist ids", "popups close only", "narrow more button", "the silence card", "spotify premium", "python status at the bottom", "questions and feedback", "settings below the segments, pink outline", "the tagline", "duplicate question, format names, empty note and equal widths", "reordering recipes", "card header, pencil and notch", "page start watchdog and version stamps", "startup that survives problems", "build button, big new format button and empty start", "confirming a new format", "scrolling home with the keyboard watch", "privacy section and anonymous counts", "report link on a connection problem", "who sees the editor, and what a rate limit says", 'core', 'the visual format editor', 'dragging rows', 'a format built entirely on screen', 'details', 'one pink look, and rows linked to the bar', 'small changes', 'the color theme', 'all the themes', 'silences, dragging and removing', "the page's styles for tags and phones", 'the title and the tip button on a phone', 'private playlists', 'cover art', 'the format menu fits its contents', 'the default silence goes up to 60 minutes', 'the app menu, and minimalist mode', 'minimalist mode, part two', 'when Spotify cannot be reached', 'saved songs', 'long waits from Spotify', 'a record of Spotify limits'];
 // areas that need another area's setup to have run first
 const NEEDS = {
   "the page's styles for tags and phones": ["silences, dragging and removing"],
@@ -304,7 +304,9 @@ function makeFetch(options = {}) {
       const u = new URL(url); const offset = Number(u.searchParams.get("offset") || 0);
       // a playlist made during the test holds the songs added to it, as in Spotify
       const added = () => (writes || []).filter((w) => w.type === "add" && w.id === m[1]).flatMap((w) => w.uris).map((uri) => { for (const list of Object.values(TRACKS)) { const it = list.find((x) => x.track && x.track.uri === uri); if (it) return it; } return { track: { uri, type: "track", duration_ms: 60000, name: "Silence", artists: [{ name: "Arc" }] } }; });
-      const all = (options.repeatIn === m[1] ? repeatList() : TRACKS[m[1]] || added()) || [];
+      // tracksOf: { playlist id: [song lengths in ms] }, for a playlist of a known length
+      const known = options.tracksOf && options.tracksOf[m[1]] && options.tracksOf[m[1]].map((ms, i) => ({ track: { uri: `spotify:track:${m[1]}-${i}`, id: `${m[1]}-${i}`, type: "track", duration_ms: ms, name: `Song ${i}`, artists: [{ name: "Artist" }] } }));
+      const all = (options.repeatIn === m[1] ? repeatList() : known || TRACKS[m[1]] || added()) || [];
       const page = all.slice(offset, offset + 50).map((it) => (options.uniqueSongNames && it.track && it.track.name ? { track: { ...it.track, name: `${it.track.name} of ${m[1]}` } } : it));
       const next = offset + 50 < all.length ? `https://api.spotify.com/v1/playlists/${m[1]}/items?limit=50&offset=${offset + 50}` : null;
       return json({ items: page, next });
@@ -370,7 +372,7 @@ async function boot({ url, session = {}, local = {}, fetchOptions = {}, before =
   w.document.documentElement.classList.add("view-" + view);   // as the <head> script would (it does not run here)
   if (savedLocal.devMode === "1") w.document.documentElement.classList.add("dev-mode");   // developer mode, as the <head> script would
   w.__scriptsRequested = [];
-  w.eval(appJs.replace("const sharing = {", "var sharing = {").replace("const service = (() => {", "var service = (() => {").replace("const previewUrls =", "var previewUrls =").replace("let answerLimitMs = 30000;", "var answerLimitMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const recipeEdit =", "var recipeEdit =").replace("const builderHome =", "var builderHome =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let SHORT_LIST_RETRY_MS =", "var SHORT_LIST_RETRY_MS =").replace("let playlistPages =", "var playlistPages =").replace("let busy =", "var busy =").replace("let token = null;", "var token = null;").replace("let py = null;", "var py = null;").replace("let formatsValid =", "var formatsValid =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let appView =", "var appView =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("let launchScreen =", "var launchScreen =").replace("const GAP_STEPS =", "var GAP_STEPS =").replace("let startupDone =", "var startupDone =").replace("const limitWait =", "var limitWait =").replace("const personBuild =", "var personBuild =").replace("let slowReadingMs = 10000;", "var slowReadingMs = " + (fetchOptions.slowReadingMs || 10000) + ";").replace("const SPLIT_STALL_MS = 15000;", "const SPLIT_STALL_MS = " + (fetchOptions.stallMs || 15000) + ";"));  // test harness only: lets a test replace the reload
+  w.eval(appJs.replace("const sharing = {", "var sharing = {").replace("const service = (() => {", "var service = (() => {").replace("const previewUrls =", "var previewUrls =").replace("let answerLimitMs = 30000;", "var answerLimitMs = " + (fetchOptions.answerMs || 30000) + ";").replace("let reloadPage =", "var reloadPage =").replace("const THEMES =", "var THEMES =").replace("const editor = {", "var editor = {").replace("const tabDrag =", "var tabDrag =").replace("const recipeEdit =", "var recipeEdit =").replace("const recipeCheck =", "var recipeCheck =").replace("const builderHome =", "var builderHome =").replace("const saveState =", "var saveState =").replace("let spotifySaveDelayMs =", "var spotifySaveDelayMs =").replace("let spotifySaveMaxWaitMs =", "var spotifySaveMaxWaitMs =").replace("let playlistsLoadedAt =", "var playlistsLoadedAt =").replace("let signingIn =", "var signingIn =").replace("const APP_VERSION =", "var APP_VERSION =").replace("const versionCheck =", "var versionCheck =").replace("const noticeTiming =", "var noticeTiming =").replace("const notices =", "var notices =").replace("let signInNote =", "var signInNote =").replace("let playlistRefreshMs =", "var playlistRefreshMs =").replace("let SHORT_LIST_RETRY_MS =", "var SHORT_LIST_RETRY_MS =").replace("let playlistPages =", "var playlistPages =").replace("let busy =", "var busy =").replace("let token = null;", "var token = null;").replace("let py = null;", "var py = null;").replace("let formatsValid =", "var formatsValid =").replace("const startupProblems =", "var startupProblems =").replace("let playlists =", "var playlists =").replace("let currentFormats =", "var currentFormats =").replace(/const FEEDBACK_FORM_URL = "[^"]*";/, "const FEEDBACK_FORM_URL = " + JSON.stringify(feedbackUrl) + ";").replace(/\nmain\(\)\.catch\(startupFailed\);\s*$/, "\nwindow.__main = main().catch(startupFailed);\n").replace("let connection =", "var connection =").replace("let appView =", "var appView =").replace(/const WAIT_RELAY_URL = "[^"]*";/, "var WAIT_RELAY_URL = \"\";").replace("let waitRelayMs =", "var waitRelayMs =").replace("const waitAsked =", "var waitAsked =").replace("let retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));", instantRetries ? "var retrySleep = () => Promise.resolve();" : "var retrySleep = (ms) => new Promise((r) => setTimeout(r, ms));").replace("const SILENCE_STEPS =", "var SILENCE_STEPS =").replace("let launchScreen =", "var launchScreen =").replace("const GAP_STEPS =", "var GAP_STEPS =").replace("let startupDone =", "var startupDone =").replace("const limitWait =", "var limitWait =").replace("const personBuild =", "var personBuild =").replace("let slowReadingMs = 10000;", "var slowReadingMs = " + (fetchOptions.slowReadingMs || 10000) + ";").replace("const SPLIT_STALL_MS = 15000;", "const SPLIT_STALL_MS = " + (fetchOptions.stallMs || 15000) + ";"));  // test harness only: lets a test replace the reload
   await Promise.race([w.__main, new Promise((r) => setTimeout(r, 1500))]);   // ready as soon as the page has finished starting up
   await new Promise((r) => setTimeout(r, 30));
   // Most tests were written when the editor was always on the page: the recipe being edited opens in its panel, as a tap on it would (panel: false leaves the landing)
@@ -404,6 +406,8 @@ async function waitFor(condition, ms = 15000) {
 const EVO = "FORMATS = {\n    \"b1-evocative\": {\n        \"name\": \"📕 evocative {n}\",\n        \"silence between segments\": \"30 sec\",\n        \"segments\": [\n            (\"☘️ intro / outro (soothing, familiar)\", 30),\n            (\"💗 spacious + gentle\", 60),\n            (\"💗💗 evocative\", 60),\n            (\"💗 spacious + gentle\", 60),\n            (\"☘️ intro / outro (soothing, familiar)\", 30),\n            (\"silence\", \"2 min\"),\n            (\"🛋 rest\", 60),\n        ],\n    },\n    # Add more formats here, following the same pattern.\n}";
 const SILENCE_30 = "spotify:track:5kiJ9x6eX37H5J9lyyXkua";
 const signedIn = () => ({ token: JSON.stringify({ value: "t", expires: Date.now() + 3600000, scope: SCOPE_ALL }) });
+// whether the open recipe's playlists have had their songs read (the recipe panel's checks read them as it opens)
+const songsKnown = (w) => w.eval(`(() => { const f = activeFormat(); return !f || f.items.every((it) => it.lists.every((l) => { const p = (l.id && playlists.find((x) => x.id === l.id)) || playlistInfo(l.name); return !p || playlistMinutes(p.id) !== null; })); })()`);
 const MINI = '{"mini": {"name": "mini {n}", "silence between segments": "30 sec", "segments": [("💗 spacious + gentle", 30), ("🛋 rest", 30)]}}';
 
 (async () => {
@@ -716,10 +720,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly these seven, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16zzh" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "261116a" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16zzh/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 261116a/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -1110,6 +1114,9 @@ print(json.dumps(out))
 
   // ---- the card's own menu, and deleting
   check("Duplicate is greyed while the recipe has changes not saved", ed1.document.getElementById("feDuplicate").disabled);
+  ed1.document.getElementById("rpSave").click();
+  check("Done does not close while a segment has no playlist: the box says so", ed1.eval("recipeEdit.open") && /Segment 3 has no playlist\./.test(ed1.document.getElementById("feChecks").textContent));
+  ed1.eval('(() => { const it = activeFormat().items[2]; it.lists = [{ name: "🛋 rest ", id: "p4", weight: 1 }]; commit(); renderRows(); })()');
   await saveRecipe(ed1);
   ed1.document.getElementById("feDuplicate").click();
   ed1.document.getElementById("feDuplicateConfirm").click();
@@ -1772,6 +1779,7 @@ print(json.dumps(out))
   // a short wait is still retried
   var lw_calls = [];
   var lw_w4 = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
+  await waitFor(() => lw_w4.eval('playlistMinutes("p2") !== null && playlistMinutes("p4") !== null'), 5000);   // the open recipe's songs are read first (its checks), so only the request below is counted
   var lw_n = 0;
   lw_w4.fetch = async (url, init) => { lw_calls.push(url); lw_n += 1; if (lw_n === 1) return { ok: false, status: 429, headers: { get: (h) => (h === "Retry-After" ? "1" : null) }, text: async () => "{}", json: async () => ({}) }; return { ok: true, status: 200, headers: { get: () => null }, text: async () => '{"id":"ron"}', json: async () => ({ id: "ron" }) }; };
   var lw_started = Date.now();
@@ -1911,6 +1919,7 @@ print(json.dumps(out))
     try { await w.eval(`spotifyRequest("POST", ${JSON.stringify(path)}, { json: { uris: [] }, noWait: ${noWait} })`); } catch (err) { message = err.message; }
     return { seen, message, entry: (sr_record(w, "spotifyLimits") || [])[0] || {} };
   };
+  await waitFor(() => songsKnown(sr_x), 5000);   // the open recipe's songs are read first (its checks), so only the requests below meet the refusals
   var sr_r = await sr_relayRun(sr_x);
   check("a rate limit with no readable wait asks the relay once, with only the sign-in", sr_r.seen.length === 1 && sr_r.seen[0].url === "https://relay.example.workers.dev/?path=%2Fplaylists%2F0123456789abcdefABCDEF%2Fitems" && sr_r.seen[0].auth === "Bearer t", JSON.stringify(sr_r.seen));
   check("the wait it gets back is in the message, and nothing is retried", sr_r.message === "Spotify has reached the request quota for your developer account. Waiting is the only fix: try again in about 4 hours and 5 minutes.", sr_r.message);
@@ -2226,7 +2235,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16zzh", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=261116a", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -2561,7 +2570,7 @@ print(json.dumps(out))
   var sb_css = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   var sb_w = await boot({ url: EDURL, session: signedIn(), local: { formats: 'FORMATS = {"a": {"name": "A {n}", "title": "Same", "segments": [("x", 10), ("y", 10)]}, "b": {"name": "B {n}", "title": "Other", "segments": [("x", 10)]}}' }, fetchOptions: {} });
   var sb_card = sb_w.document.getElementById("feCard");
-  check("the card holds, top to bottom: the name warning, the bar, the segments, the settings row, then the play tip's place", JSON.stringify(Array.from(sb_card.children).map((c) => c.id || c.className.split(" ")[0])) === JSON.stringify(["feClash", "fe-barwrap", "feRows", "feHead", "fePlayTipSlot"]));
+  check("the card holds, top to bottom: the name warning, the bar, the recipe's checks, the segments, the settings row, then the play tip's place", JSON.stringify(Array.from(sb_card.children).map((c) => c.id || c.className.split(" ")[0])) === JSON.stringify(["feClash", "fe-barwrap", "feChecks", "feRows", "feHead", "fePlayTipSlot"]));
   check("New segment is the last thing among the segments, so the settings row is below it", sb_w.document.getElementById("feRows").lastElementChild.id === "feAddSegment" && !!(sb_w.document.getElementById("feAddSegment").compareDocumentPosition(sb_w.document.getElementById("feHead")) & 4));
   check("the settings row still has the silence control, then Duplicate", JSON.stringify(Array.from(sb_w.document.querySelectorAll("#feHead .fe-headrow > .fe-silence, #feHead .fe-headtools > *")).map((el) => el.id || "silence")) === JSON.stringify(["silence", "feDuplicate"]) && !sb_w.document.getElementById("feHead").querySelector("#feClash"));
   sb_w.document.querySelectorAll("#feTabs .fe-tab")[1].click();
@@ -4694,7 +4703,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16zzh"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=261116a"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
@@ -4825,6 +4834,55 @@ print(json.dumps(out))
   var rs_adds = rs_or.writes.filter((x) => x.type === "add").flatMap((x) => x.uris.filter((u) => /p\d-/.test(u)));
   check("a source that lists a song twice still puts it in the playlist once", rs_adds.length > 0 && new Set(rs_adds).size === rs_adds.length);
   } catch (err) { areaCrashed("recipe session", err); } }
+
+  if (want("recipe checks")) { try {
+  // ================================================================ the recipe's checks: an empty segment or a playlist too short stops closing, with fixes (Ron, 2026-11-17)
+  var rc_min = (n) => Array.from({ length: n }, () => 240000);   // n songs of 4 min
+  var rc_fmt = 'FORMATS = {"f1": {"title": "Checks", "name": "Checks {n}", "silence between segments": "30 sec", "segments": [("Short one [id:s1]", 45), ("", 35), ("Shared [id:s2]", 20), ("Shared [id:s2]", 25), ("Tiny [id:s3]", 10), ("💗 spacious + gentle [id:p2]", 30)]}}';
+  var rc_o = { extraPlaylists: [{ id: "s1", name: "Short one", owner: { id: "ron" } }, { id: "s2", name: "Shared", owner: { id: "ron" } }, { id: "s3", name: "Tiny", owner: { id: "ron" } }],
+    tracksOf: { s1: rc_min(8), s2: rc_min(8), s3: [180000] } };
+  var rc_w = await boot({ url: EDURL, session: signedIn(), local: { formats: rc_fmt }, fetchOptions: rc_o });
+  var rc_d = rc_w.document;
+  await waitFor(() => ["s1", "s2", "s3", "p2"].every((id) => rc_w.eval(`playlistMinutes("${id}")`) !== null), 8000);
+  await new Promise((r) => setTimeout(r, 50));
+  var rc_rows = () => Array.from(rc_d.querySelectorAll("#feRows .fe-row"));
+  var rc_sub = (i) => (rc_rows()[i].querySelector(".fe-sub") || {}).textContent || "";
+  var rc_box = () => rc_d.getElementById("feChecks");
+  var rc_lines = () => Array.from(rc_box().querySelectorAll(".fe-ck-line")).map((l) => l.textContent.replace(/[⁨⁩]/g, ""));
+  var rc_fix = (label) => { const b = Array.from(rc_box().querySelectorAll(".fe-ck-fix")).find((x) => x.textContent === label); if (b) b.click(); return !!b; };
+  check("opening a recipe reads its playlists' songs, and a song listed once counts its minutes", rc_w.eval('playlistMinutes("s1")') === 32 && rc_o.trackRequests.includes("s1"));
+  check("a playlist too short for its segment is marked on its row at once: X min, needs Y in pink, the ! over its cover, its length pink",
+    rc_sub(0) === "32 min, needs 45" && rc_rows()[0].querySelector(".fe-sub-ck") && rc_rows()[0].querySelector(".fe-ck-cover") && rc_rows()[0].querySelector(".fe-ck-amount"));
+  check("a playlist in two segments marks only the one it can't fill, with what remains", !rc_rows()[2].querySelector(".fe-ck-cover") && rc_sub(3) === "12 min remain" && rc_rows()[3].querySelector(".fe-ck-amount"));
+  check("a playlist long enough is not marked", !rc_rows()[5].querySelector(".fe-ck-cover") && !rc_rows()[5].querySelector(".fe-ck-amount"));
+  check("an empty segment is not an error before closing is tried, and the box is not shown", !rc_rows()[1].querySelector(".fe-ck-cover") && !rc_d.querySelector(".fe-ck-empty") && rc_box().hidden);
+  check("an unchanged recipe with problems still closes (Build lists them)", (() => { rc_d.getElementById("rpClose").click(); return !rc_w.eval("recipeEdit.open"); })());
+  await rc_w.openRecipePanel("f1");
+  rc_rows()[5].querySelector(".fe-inc").click();
+  rc_d.getElementById("rpSave").click();
+  check("with changes, Done does not close: the box says how many segments to fix", rc_w.eval("recipeEdit.open") && !rc_box().hidden && /Fix 4 segments before Done/.test(rc_box().textContent));
+  check("and the empty segment is marked now: the ! in place of its cover, Choose a playlist in pink", !!rc_rows()[1].querySelector(".fe-ck-cover .fe-icon") && rc_rows()[1].querySelector(".fe-main").classList.contains("fe-ck-empty"));
+  check("each problem is a line with its fix", JSON.stringify(rc_lines()) === JSON.stringify([
+    "Short one is 32 minutes long, and segment 1 needs 45 min. Shorten to 30 min",
+    "Segment 2 has no playlist. Remove",
+    "Shared is 32 minutes long. Segment 3 uses 20 min of it, which leaves 12 min for segment 4. Shorten segment 4 to 10 min",
+    "Tiny is 3 minutes long, and segment 5 needs 10 min. Remove"]));
+  rc_d.dispatchEvent(new rc_w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  check("Escape does not close it either", rc_w.eval("recipeEdit.open"));
+  rc_d.getElementById("rpDim").click();
+  check("nor a tap outside", rc_w.eval("recipeEdit.open"));
+  check("Shorten to 30 min shortens it, and its line becomes Undo", rc_fix("Shorten to 30 min") && rc_w.eval("activeFormat().items[0].minutes") === 30 && rc_lines()[0] === "Short one shortened to 30 min. Undo" && /Fix 3 segments/.test(rc_box().textContent));
+  check("Undo puts it back", rc_fix("Undo") && rc_w.eval("activeFormat().items[0].minutes") === 45 && /Fix 4 segments/.test(rc_box().textContent));
+  rc_fix("Shorten to 30 min");
+  check("Remove removes the empty segment, and the fix before it can no longer be undone", rc_fix("Remove") && rc_w.eval("activeFormat().items.length") === 5 && rc_box().querySelectorAll(".fe-ck-fix").length === 3 && rc_lines().filter((l) => /Undo$/.test(l)).length === 1 && /^Segment 2 removed\. Undo$/.test(rc_lines()[1]));
+  rc_rows()[4].querySelector(".fe-inc").click();
+  check("any other change ends Undo: the fixed lines go", !rc_lines().some((l) => /removed|shortened/.test(l)) && rc_lines().length === 2);
+  check("a playlist in two segments shortens the one it can't fill", rc_fix("Shorten segment 3 to 10 min") && rc_w.eval("activeFormat().items[2].minutes") === 10);
+  check("a playlist under 5 minutes: Remove takes the segment out", rc_fix("Remove") && rc_w.eval("activeFormat().items.length") === 4);
+  check("with nothing left the box goes, and Done closes and saves", rc_box().hidden && (() => { rc_d.getElementById("rpSave").click(); return !rc_w.eval("recipeEdit.open"); })());
+  check("a playlist in a mix: its share decides, and the segment shortens until the share fits",
+    rc_w.eval(`(() => { const f = { items: [{ id: "m", kind: "seg", minutes: 80, lists: [{ name: "Short one", id: "s1", weight: 50 }, { name: "💗 spacious + gentle", id: "p2", weight: 50 }] }] }; const p = recipeProblems(f); return p.length === 1 && p[0].to === 60 && Math.round(p[0].need) === 40; })()`));
+  } catch (err) { areaCrashed("recipe checks", err); } }
 
   if (want("builder landing and participants")) { try {
   // ================================================================ the builder's landing, the recipe panel with explicit saving, and participants (Ron, 2026-11-12)

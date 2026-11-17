@@ -4,7 +4,7 @@
 // ($("formats")) in the form the engine reads, and the page is told with an ordinary "input" event, so
 // everything else (previews, backups, saving) works on that text exactly as before.
 // formats.js does the reading and writing of that text. This file draws and handles the screen.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "2026-11-16zzh";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["editor.js"] = "261116a";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The editor has one color, the theme's accent (--button), and a deeper shade of it (--accent-deep) for the second stripe of a mix.
 const FE_ROW_HEIGHT = 52;
@@ -756,6 +756,7 @@ function renderEditor() {
       feEl("div", { class: "fe-bar", id: "feBar", role: "img", "aria-label": "Shape of one playlist" }),
       feEl("div", { class: "fe-caption", id: "feCaption", onPointerDown: pauseNotices, onMouseEnter: pauseNotices }),
       feEl("span", { class: "fe-sr", id: "feNoticeLive", "aria-live": "polite" })),
+    feEl("div", { id: "feChecks", hidden: true }),   // what stops the recipe closing, with a fix for each (renderChecks)
     feEl("div", { class: "fe-rows", id: "feRows" }),
     feEl("div", { id: "feHead" }),
     feEl("div", { id: "fePlayTipSlot" }));   // the second tutorial tip, at the bottom of the card   // the silence between segments, Duplicate and Delete: settings for the whole format, below the segments
@@ -1717,7 +1718,9 @@ function renderRows(settle) {
   if (!f || !holder) return;
   editor.hover = null;   // the old elements are gone, so whatever was under the pointer no longer is
   holder.innerHTML = "";
+  editor.checks = recipeEdit.open ? recipeProblems(f) : [];
   f.items.forEach((item, index) => holder.appendChild(rowEl(f, item, index)));
+  renderChecks(f);
   const tip = firstSegmentTip(f);
   if (tip) { holder.firstChild.after(tip); editor.playTipDue = true; }
   equalizeAmounts();
@@ -1818,12 +1821,21 @@ function rowEl(f, item, index) {
     sub = playlistSub(name);
     warn = !!name && !playlistInfo(name) && playlists.length > 0;
   }
+  // the recipe's checks (renderChecks): an empty segment once closing was stopped, a playlist too short always
+  const checks = (editor.checks || []).filter((p) => p.item === item && (p.kind === "short" || recipeCheck.shown));
+  const short = checks.find((p) => p.kind === "short");
+  if (checks.length) {
+    cover.classList.add("fe-ck-cover");
+    if (!short || !cover.querySelector("img")) cover.textContent = "";
+    cover.appendChild(feIcon("alert"));
+  }
+  if (short) { sub = shortRowText(short); warn = false; }
   const main = feEl("button", {
-    type: "button", class: "fe-main fe-trigger" + (!item.lists[0].name && !mixed ? " fe-main-empty" : ""),
+    type: "button", class: "fe-main fe-trigger" + (!item.lists[0].name && !mixed ? " fe-main-empty" : "") + (checks.length && !short ? " fe-ck-empty" : ""),
     "aria-expanded": String(open === "list-a" || open === "mix"), "aria-label": `Playlist: ${title}`,
     onClick: () => setPanel(item.id, open ? null : (mixed ? "mix" : "list-a")),
   }, cover,
-  feEl("span", { class: "fe-text" }, feEl("span", { class: "fe-title", text: title }), feEl("span", { class: "fe-sub" + (warn ? " fe-sub-warn" : "") }, warn ? feIcon("alert") : null, sub)),
+  feEl("span", { class: "fe-text" }, feEl("span", { class: "fe-title", text: title }), feEl("span", { class: "fe-sub" + (warn ? " fe-sub-warn" : "") + (short ? " fe-sub-ck" : "") }, warn ? feIcon("alert") : null, sub)),
   feIcon("chevron"));
   card.appendChild(main);
 
@@ -1831,7 +1843,7 @@ function rowEl(f, item, index) {
   const minutes = Math.round(item.minutes * 10) / 10;
   card.appendChild(feEl("div", { class: "fe-stepper" },
     feEl("button", { type: "button", class: "fe-step fe-dec", "aria-label": "Shorter", onClick: () => stepItem(item, -1) }, feIcon("minus")),
-    feEl("span", { class: "fe-amount fe-rowamount", text: `${minutes} min`, "data-short": `${minutes}m` }),
+    feEl("span", { class: "fe-amount fe-rowamount" + (short ? " fe-ck-amount" : ""), text: `${minutes} min`, "data-short": `${minutes}m` }),
     feEl("button", { type: "button", class: "fe-step fe-inc", "aria-label": "Longer", onClick: () => stepItem(item, 1) }, feIcon("plus"))));
 
   card.appendChild(feEl("button", {
@@ -2348,6 +2360,148 @@ function applySettle(holder, settle) {
   };
   if (window.requestAnimationFrame) window.requestAnimationFrame(() => window.requestAnimationFrame(release));
   else setTimeout(release, 30);
+}
+
+// ---------------------------------------------------------------- the recipe's checks (Ron, 2026-11-17, mockups/recipe-checks H and I)
+// A recipe with changes does not close (Done, Escape, a tap outside) while a segment has no playlist or a playlist is too short for the minutes it is given.
+// Instead a box under the bar says what is wrong, one line each with a fix (Remove, or Shorten to the 5 minutes at or below what the playlist has), and shakes
+// when it is there already. A fix becomes Undo until the next change of any kind (another fix included). A playlist too short is marked on its row as soon as
+// its songs are known (readPlaylistMinutes in app.js); an empty segment only once closing was stopped, so a segment just added is not an error yet. A playlist
+// in several segments is given to them in order, so only the ones it can't fill are marked. Unchanged, a recipe closes as before: Build lists the same problems.
+const recipeCheck = { shown: false, fixes: [], sig: null };   // fixes: { n, text, before } in the order made; only the last keeps before (its Undo)
+
+function recipeProblems(f) {
+  const problems = [], left = new Map(), users = new Map(), want = [];
+  f.items.forEach((item, index) => {
+    const n = index + 1;
+    if (item.lists.some((l) => !l.name.trim())) { problems.push({ kind: "empty", item, n }); return; }
+    const weights = item.lists.reduce((sum, l) => sum + (l.weight || 1), 0);
+    for (const l of item.lists) {
+      const info = (l.id && playlists.find((p) => p.id === l.id)) || playlistInfo(l.name);
+      if (!info) continue;   // not among the playlists: its row says so already
+      want.push(info.id);
+      const has = typeof playlistMinutes === "function" ? playlistMinutes(info.id) : null;
+      if (has === null) continue;   // its songs are not read yet
+      const before = left.has(info.id) ? left.get(info.id) : has;
+      const share = (l.weight || 1) / weights, need = item.minutes * share;
+      const earlier = users.get(info.id) || [];
+      if (before + 1e-6 < need) {
+        const to = Math.floor(before / share / 5) * 5;
+        problems.push({ kind: "short", item, n, name: info.name, has, left: before, need, earlier, to: to >= 5 ? to : 0 });
+      }
+      left.set(info.id, Math.max(0, before - need));
+      users.set(info.id, earlier.concat([n]));
+    }
+  });
+  if (want.length && typeof readPlaylistMinutes === "function") readPlaylistMinutes(want);
+  return problems;
+}
+
+function wholeMinutes(m) { return Math.floor(m + 1e-6); }
+function shortRowText(p) {
+  return p.earlier.length ? `${wholeMinutes(p.left)} min remain` : `${wholeMinutes(p.has)} min, needs ${Math.round(p.need)}`;
+}
+function segmentsText(ns) {
+  return (ns.length === 1 ? "Segment " : "Segments ") + (ns.length === 1 ? ns[0] : ns.slice(0, -1).join(", ") + " and " + ns[ns.length - 1]);
+}
+function problemLine(p) {
+  if (p.kind === "empty") return `Segment ${p.n} has no playlist.`;
+  const long = wholeMinutes(p.has) === 1 ? "1 minute long" : `${wholeMinutes(p.has)} minutes long`;
+  if (!p.earlier.length) return p.has < 1e-6 ? `${named(p.name)} has no songs Arc can use, and segment ${p.n} needs ${Math.round(p.need)} min.`
+    : `${named(p.name)} is ${long}, and segment ${p.n} needs ${Math.round(p.need)} min.`;
+  const used = Math.round(p.has - p.left), rest = wholeMinutes(p.left);
+  return `${named(p.name)} is ${long}. ${segmentsText(p.earlier)} ${p.earlier.length === 1 ? "uses" : "use"} ${used} min of it, which leaves ${rest ? rest + " min" : "nothing"} for segment ${p.n}.`;
+}
+function fixLabel(p) {
+  if (p.kind === "empty" || !p.to) return "Remove";
+  return p.earlier.length ? `Shorten segment ${p.n} to ${p.to} min` : `Shorten to ${p.to} min`;
+}
+
+function renderChecks(f) {
+  const box = $("feChecks");
+  if (!box) return;
+  if (recipeCheck.fixes.length && formatSignature(f) !== recipeCheck.sig) recipeCheck.fixes = [];   // a change since the last fix: nothing left to undo
+  const open = editor.checks || [];
+  const show = recipeEdit.open && recipeCheck.shown && open.length > 0;
+  if (!show) { box.textContent = ""; box.hidden = true; return; }
+  const segments = new Set(open.map((p) => p.item)).size;
+  const lines = open.map((p) => ({ n: p.n, text: problemLine(p), label: fixLabel(p), run: () => fixProblem(f, p) }))
+    .concat(recipeCheck.fixes.map((x) => ({ n: x.n, text: x.text, done: true, label: x.before ? "Undo" : "", run: x.before ? () => undoFix(f) : null })));
+  lines.sort((a, b) => a.n - b.n);
+  const list = feEl("div", { class: "fe-ck-lines" }, ...lines.map((l) => {
+    const line = feEl("div", { class: "fe-ck-line" + (l.done ? " fe-ck-done" : "") });
+    putNamed(line, l.text);
+    if (l.label) { line.append(" "); line.appendChild(feEl("button", { type: "button", class: "linklike fe-ck-fix", onClick: l.run }, l.label)); }
+    return line;
+  }));
+  box.textContent = "";
+  box.appendChild(problemBox(`Fix ${segments} segment${segments === 1 ? "" : "s"} before Done`, "", [], false, list));
+  box.firstChild.classList.add("fe-ck-box");
+  box.hidden = false;
+}
+
+// Done, Escape or a tap outside with problems left: the box shows (shaking when it was there already) and the panel stays
+function stopClosing() {
+  const f = activeFormat();
+  if (!f) return false;
+  const problems = recipeProblems(f);
+  if (!problems.length) return false;
+  const wasShown = recipeCheck.shown && !$("feChecks").hidden;
+  recipeCheck.shown = true;
+  renderRows();
+  const box = $("feChecks");
+  if (box.hidden) return true;
+  const moving = motionAllowed(box);
+  if (box.scrollIntoView) { try { box.scrollIntoView({ block: "nearest", behavior: moving ? "smooth" : "auto" }); } catch (err) { box.scrollIntoView(); } }
+  if (moving && wasShown) {
+    box.animate([{ transform: "translateX(0)" }, { transform: "translateX(-8px)" }, { transform: "translateX(7px)" }, { transform: "translateX(-5px)" },
+      { transform: "translateX(3px)" }, { transform: "translateX(0)" }], { duration: 380, easing: EASE_OUT });
+  }
+  logStep(`recipe panel: closing stopped, ${plural(problems.length, "problem")}`);
+  return true;
+}
+
+function fixProblem(f, p) {
+  const index = f.items.indexOf(p.item);
+  if (index < 0) return;
+  ensureGaps(f);
+  const before = { items: copyItems(f.items), gaps: f.gaps.slice(), lead: f.lead };
+  let text;
+  if (p.kind === "empty" || !p.to) {
+    f.items.splice(index, 1);
+    f.gaps.splice(index, 1);   // the silence before it goes with it, as Remove segment does
+    if (!f.items.length) f.items.push({ id: `r${++ROW_SEQ}`, kind: "seg", lists: [{ name: "", weight: 1 }], minutes: 30 });
+    text = `Segment ${p.n} removed.`;
+  } else {
+    p.item.minutes = p.to;
+    text = p.earlier.length ? `Segment ${p.n} shortened to ${p.to} min.` : `${named(p.name)} shortened to ${p.to} min.`;
+  }
+  ensureGaps(f);
+  editor.panel = null; editor.gapPanel = null;
+  for (const x of recipeCheck.fixes) x.before = null;   // only the last fix can be undone
+  recipeCheck.fixes.push({ n: p.n, text, before });
+  commit();
+  recipeCheck.sig = formatSignature(f);
+  renderRows(); renderTimeline(); paintPanelHead();
+}
+
+function undoFix(f) {
+  const last = recipeCheck.fixes[recipeCheck.fixes.length - 1];
+  if (!last || !last.before) return;
+  f.items = copyItems(last.before.items);
+  f.gaps = last.before.gaps.slice();
+  f.lead = last.before.lead;
+  ensureGaps(f);
+  recipeCheck.fixes.pop();
+  commit();
+  recipeCheck.sig = formatSignature(f);
+  renderRows(); renderTimeline(); paintPanelHead();
+}
+
+// a playlist's songs arrived (app.js): the open recipe is drawn again, unless a list or menu is open in it (drawing would close it; the next drawing has them)
+function recipeMinutesArrived() {
+  if (!recipeEdit.open || editor.panel || editor.gapPanel !== null || editor.cardMenu) return;
+  renderRows();
 }
 
 // ---------------------------------------------------------------- what the rest of the page asks
@@ -2892,6 +3046,7 @@ async function openRecipePanel(id, options = {}) {
   }
   const f = editor.model && editor.model.formats.find((x) => x.id === id);
   if (!f) return;
+  Object.assign(recipeCheck, { shown: false, fixes: [], sig: null });
   if (recipeEdit.id !== id) Object.assign(recipeEdit, { id, before: options.isNew ? null : recipeText(f), dirty: !!options.isNew });
   recipeEdit.open = true;
   keepRecipeEditing();
@@ -2921,6 +3076,7 @@ function closeRecipePanel(how, quiet) {
   // a new recipe closed as it was made is dropped, not saved: the panel has no Delete (Ron, 2026-11-14)
   const made = recipeEdit.before === null && recipeEdit.blank && editor.model && editor.model.formats.find((x) => x.id === recipeEdit.id);
   if (how === "save" && made && contentSignature(made) === recipeEdit.blank) how = "cancel";
+  if (how === "save" && recipeEdit.dirty && !quiet && stopClosing()) return;
   const saved = how === "save" && recipeEdit.dirty;
   if (how === "cancel" && recipeEdit.dirty) {
     if (recipeEdit.before === null) removeLocalFormat(recipeEdit.id);
@@ -2928,6 +3084,7 @@ function closeRecipePanel(how, quiet) {
     writeAdopted();
   }
   Object.assign(recipeEdit, { id: null, before: null, dirty: false, open: false, blank: null });
+  Object.assign(recipeCheck, { shown: false, fixes: [], sig: null });
   keepRecipeEditing();
   if (saved) markRecipeSaving(editor.activeId);
   if (saved && typeof scheduleSpotifySave === "function") scheduleSpotifySave(0);

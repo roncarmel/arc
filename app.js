@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16zzh";
+const APP_VERSION = "261116a";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -2142,14 +2142,19 @@ let reloadPage = () => location.reload();   // a separate function so tests can 
 // does the same but puts the Client ID on the clipboard first (while the click still counts), so setting up again is a paste.
 function startOver() { return clearSavedData({ copyClientId: true }); }
 
+let clearingData = false;   // set as Sign out and clear data starts: nothing more is read or kept until the reload
 async function clearSavedData(options) {
   if (buildWriting()) return;
+  clearingData = true;
   const savedId = options && options.copyClientId === true ? localStorage.getItem("clientId") : null;
   if (savedId) { try { await Promise.race([navigator.clipboard.writeText(savedId), new Promise((r) => setTimeout(r, 1000))]); } catch (err) { /* no clipboard access: the reset goes on */ } }
   // Everything this page saves lives in this browser's storage for this address, so clearing it forgets it all.
   localStorage.clear();
   sessionStorage.clear();
   await Promise.race([forgetAllSongs(), new Promise((r) => setTimeout(r, 1500))]);
+  // a request still under way when it was cleared (the recipe panel's song reads, a save) records itself as it ends: cleared again just before the reload
+  localStorage.clear();
+  sessionStorage.clear();
   reloadPage();
 }
 
@@ -3045,6 +3050,36 @@ async function loadTracks(id) {
   songsRead(id, Infinity);
   await saveSongs({ id, snapshot, tracks, v: SONGS_VERSION, savedAt: Date.now() });
   return tracks;
+}
+
+// The minutes of music in a playlist a recipe uses, for the recipe panel's checks (recipeProblems in editor.js; Ron, 2026-11-17): the songs a build reads,
+// kept the same way (loadTracks), so a build after it reads nothing more. null until read. A song listed twice counts once, as the engine counts it.
+function playlistMinutes(id) {
+  const tracks = trackCache.get(id);
+  if (!tracks) return null;
+  const seen = new Set();
+  let ms = 0;
+  for (const t of tracks) { const k = t.key || t.id; if (seen.has(k)) continue; seen.add(k); ms += t.ms || 0; }
+  return ms / 60000;
+}
+// Read one playlist at a time while connected, never during a build or a wait; each one read draws the open recipe again. One that fails is not tried again
+// this visit (a build still reads it and says why).
+const minutesWanted = new Set(), minutesFailed = new Set();
+let minutesReading = false;
+async function readPlaylistMinutes(ids) {
+  for (const id of ids) if (id && !trackCache.has(id) && !minutesFailed.has(id)) minutesWanted.add(id);
+  if (minutesReading || !minutesWanted.size) return;
+  minutesReading = true;
+  try {
+    while (minutesWanted.size && connection === "ready" && !busy && !service.wait() && !clearingData) {
+      const id = minutesWanted.values().next().value;
+      minutesWanted.delete(id);
+      if (trackCache.has(id) || !playlists.some((p) => p.id === id)) continue;
+      try { await loadTracks(id); }
+      catch (err) { minutesFailed.add(id); logStep("recipe checks: a playlist's songs could not be read (" + (err && err.message) + ")"); continue; }
+      if (typeof recipeMinutesArrived === "function") recipeMinutesArrived();
+    }
+  } finally { minutesReading = false; }
 }
 
 // ---------------------------------------------------------------- Python (Pyodide)
