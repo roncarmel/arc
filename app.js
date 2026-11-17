@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16zzd";
+const APP_VERSION = "2026-11-16zze";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -137,14 +137,13 @@ function sendDashboardToSafari() {
 }
 
 // The Home Screen app's top strip (#topEdge in index.html): there only while the page rests at its top, and put in as a new element a quarter second after
-// scrolling stops there, because iOS notices a strip that is added but not one that comes back. The page scrolls the window, Music sharing its #msBody;
-// other scrolling (tabs sideways, lists in popups) is left alone.
+// scrolling stops there, because iOS notices a strip that is added but not one that comes back. Every view scrolls the window (Music sharing too, since
+// 2026-11-16); other scrolling (tabs sideways, lists in popups) is left alone.
 (function restStrip() {
   const standalone = navigator.standalone === true || !!(window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
   if (!standalone) return;
   let timer = 0;
-  const sharingBody = () => (document.documentElement.classList.contains("view-sharing") ? document.getElementById("msBody") : null);
-  const atTop = () => { const body = sharingBody(); return window.scrollY <= 2 && !(body && body.scrollTop > 2); };
+  const atTop = () => window.scrollY <= 2;
   const take = () => { const old = document.getElementById("topEdge"); if (old) old.remove(); };
   const put = () => {
     take();
@@ -155,8 +154,7 @@ function sendDashboardToSafari() {
     document.body.insertBefore(strip, document.body.firstChild);
   };
   document.addEventListener("scroll", (event) => {
-    const t = event.target;
-    if (t !== document && t !== sharingBody()) return;
+    if (event.target !== document) return;
     if (!atTop()) take();
     clearTimeout(timer);
     timer = setTimeout(put, 250);
@@ -331,9 +329,8 @@ function switchView(was, view, push, sharingTab = "find") {
   closeToolMenu(false);
   if (push && view !== "home") { try { history.pushState({ view }, ""); } catch (err) { /* the back button just leaves the page */ } }
   window.scrollTo(0, 0);
-  logLayout("view " + view, was);
   if (view === "builder" && typeof renderEditor === "function") renderEditor();   // drawn while hidden, the tabs and the welcome arrow measured nothing
-  if (view === "sharing") { placeSharingPage(); openSharing(sharingTab); }
+  if (view === "sharing") openSharing(sharingTab);
   if (view === "home") { renderHomeRecipes(); alignWelcomeIcons(); }   // drawn while hidden, the band's icon measured nothing
   placeDevPill();
   if (afterSwitch) { const then = afterSwitch; afterSwitch = null; then(); }
@@ -492,91 +489,9 @@ function devModeChanged(on) {
   if (on && connection === "ready" && typeof askOwner === "function") askOwner();
 }
 
-// Music sharing is a page under the bar: it starts where the bar ends
-function placeSharingPage() {
-  if (appView !== "sharing") return;
-  const bar = $("waitStrip") && !$("waitStrip").hidden ? $("waitStrip") : $("appBar");   // under the strip while Spotify asks Arc to wait
-  $("msOverlay").style.top = Math.max(0, Math.round(bar.getBoundingClientRect().bottom + 4)) + "px";
-  logLayout("page placed under " + (bar.id === "appBar" ? "the bar" : "the wait strip"));
-}
-
-// ---------------------------------------------------------------- page position log (the DEV menu's Copy page position log)
-// Music sharing's page once showed stuck with Arc's bar half under iOS's status bar and the tabs over it (Ron, 2026-11-15, cause unknown). Each event that can move
-// the page is logged with where things were (the last 150, layoutLog in localStorage); the first time a check finds it out of place, the log up to then is
-// kept apart (layoutStuck, the last 3), so what came before can be read. Logging only: nothing is put right here.
-const LAYOUT_LOG_KEY = "layoutLog", LAYOUT_STUCK_KEY = "layoutStuck", LAYOUT_LOG_MAX = 150;
-let layoutLast = "", layoutWasOff = false;
-function layoutSnap() {
-  const vv = window.visualViewport, r = (id) => { const el = $(id); if (!el || el.hidden || !el.getClientRects().length) return null; const b = el.getBoundingClientRect(); return [Math.round(b.top), Math.round(b.bottom)]; };
-  const a = document.activeElement, ov = $("msOverlay");
-  return {
-    view: typeof appView === "string" ? appView : "?", sY: Math.round(window.scrollY), iH: window.innerHeight, iW: window.innerWidth,
-    vvTop: vv ? Math.round(vv.offsetTop) : null, vvH: vv ? Math.round(vv.height) : null, vvScale: vv ? Math.round(vv.scale * 100) / 100 : null,
-    bar: r("appBar"), strip: r("waitStrip"), ovTop: ov ? ov.style.top : null, ovRect: r("msOverlay"), tabs: r("msTabsBar"),
-    typing: !!($("msDialog") && $("msDialog").classList.contains("ms-typing")), typingPage: !!(ov && ov.classList.contains("ms-typing-page")),
-    focus: a && a !== document.body ? (a.id || a.tagName.toLowerCase()) : null, hidden: document.hidden,
-    vt: [...document.documentElement.classList].filter((c) => c.startsWith("vt-")).join(" ") || null,
-  };
-}
-// out of place: in Music sharing, not typing, and the page panned or not under the bar
-function layoutOff(n) {
-  if (n.view !== "sharing" || n.typing || n.typingPage || n.hidden || n.vt) return null;
-  const under = n.strip || n.bar;
-  if (n.sY !== 0) return "window scrolled " + n.sY;
-  if (n.vvTop > 0) return "view panned " + n.vvTop;
-  if (under && n.ovRect && Math.abs(n.ovRect[0] - (under[1] + 4)) > 2) return `page top ${n.ovRect[0]}, bar foot ${under[1]}`;
-  if (n.bar && n.bar[0] < 0) return "bar above the screen " + n.bar[0];
-  return null;
-}
-function logLayout(event, detail) {
-  let n;
-  try { n = layoutSnap(); } catch (err) { return; }
-  const off = layoutOff(n);
-  const key = JSON.stringify([event, detail, n]);
-  if (key === layoutLast) return;   // the same again (a scroll that moved nothing)
-  layoutLast = key;
-  const entry = { at: new Date().toISOString().slice(11, 23), since: Math.round(performance.now()), event, ...(detail != null ? { detail: String(detail) } : {}), ...n, ...(off ? { OFF: off } : {}) };
-  let log = [];
-  try { log = JSON.parse(localStorage.getItem(LAYOUT_LOG_KEY) || "[]") || []; } catch (err) { log = []; }
-  log.push(entry);
-  if (log.length > LAYOUT_LOG_MAX) log = log.slice(-LAYOUT_LOG_MAX);
-  try { localStorage.setItem(LAYOUT_LOG_KEY, JSON.stringify(log)); } catch (err) { /* private browsing: nothing kept */ }
-  if (off && !layoutWasOff) {
-    let kept = [];
-    try { kept = JSON.parse(localStorage.getItem(LAYOUT_STUCK_KEY) || "[]") || []; } catch (err) { kept = []; }
-    kept.push({ found: new Date().toISOString(), version: APP_VERSION, browser: describeBrowser(), tab: TAB_ID, off, log });
-    try { localStorage.setItem(LAYOUT_STUCK_KEY, JSON.stringify(kept.slice(-3))); } catch (err) { /* too big or private browsing */ }
-  }
-  layoutWasOff = !!off;
-}
-function watchLayout() {
-  const vv = window.visualViewport;
-  let scrollLogged = 0;
-  const throttled = (name) => () => { const now = performance.now(); if (now - scrollLogged > 250) { scrollLogged = now; logLayout(name); } };
-  window.addEventListener("scroll", throttled("window scroll"), { passive: true });
-  window.addEventListener("resize", () => logLayout("window resize"));
-  if (vv) { vv.addEventListener("resize", () => logLayout("viewport resize")); vv.addEventListener("scroll", throttled("viewport scroll")); }
-  window.addEventListener("orientationchange", () => logLayout("orientation"));
-  window.addEventListener("pageshow", (e) => logLayout("pageshow", e.persisted ? "from the back-forward cache" : "fresh"));
-  window.addEventListener("pagehide", () => logLayout("pagehide"));
-  document.addEventListener("visibilitychange", () => logLayout(document.hidden ? "tab hidden" : "tab shown"));
-  document.addEventListener("focusin", (e) => logLayout("focus in", e.target && (e.target.id || e.target.tagName)));
-  document.addEventListener("focusout", (e) => logLayout("focus out", e.target && (e.target.id || e.target.tagName)));
-  // the list scrolling only checks (once a second): it is how a stuck page is noticed while nothing else happens
-  let listChecked = 0;
-  document.addEventListener("scroll", (e) => { if (e.target && e.target.id === "msBody") { const now = performance.now(); if (now - listChecked > 1000) { listChecked = now; logLayout("list scroll"); } } }, { capture: true, passive: true });
-}
-function layoutLogText() {
-  let log = [], stuck = [];
-  try { log = JSON.parse(localStorage.getItem(LAYOUT_LOG_KEY) || "[]"); } catch (err) { /* unreadable */ }
-  try { stuck = JSON.parse(localStorage.getItem(LAYOUT_STUCK_KEY) || "[]"); } catch (err) { /* unreadable */ }
-  return "Arc page position log\n" + JSON.stringify({ version: APP_VERSION, browser: describeBrowser(), copied: new Date().toISOString(), now: layoutSnap(), stuck, log });
-}
-async function copyLayoutLog() {
-  try { await navigator.clipboard.writeText(layoutLogText()); }
-  catch (err) { showDevToast("Could not copy the log"); return; }
-  showDevToast("Page position log copied");   // the DEV menu's own message: the line under the bar shows only in the builder
-}
+// Music sharing's page scrolled its own list under a fixed bar until 2026-11-16, and its page position log (Copy page position log) watched for it stuck
+// half under iOS's status bar; now it scrolls the window like every view, and what that log kept is forgotten
+try { localStorage.removeItem("layoutLog"); localStorage.removeItem("layoutStuck"); } catch (err) { /* private browsing */ }
 
 // "recipe" in the welcome page's intro opens a note above the word (the text above it has been read), moved left if needed so it stays inside the paragraph.
 function showRecipeWhat(open) {
@@ -2600,11 +2515,9 @@ function paintWaitStrip() {
   const strip = $("waitStrip");
   if (!strip) return;
   const state = waitStripState();
-  const was = !strip.hidden;
   strip.hidden = !state;
   document.documentElement.classList.toggle("spotify-waiting", !!state);
   if (state) { $("waitStripText").textContent = state.text; strip.onclick = state.open; }
-  if (was !== !!state && typeof placeSharingPage === "function") placeSharingPage();   // Music sharing's page starts under the strip
 }
 
 // ---------------------------------------------------------------- anonymous counts (see Privacy)
@@ -3676,7 +3589,6 @@ async function main() {
   });
   on("devChecks", "click", () => { showDevMenu(false); openInfo("deviceChecks"); });
   on("devCopyRecord", "click", () => { showDevMenu(false); copyLimitRecord(); });
-  on("devCopyLayout", "click", () => { showDevMenu(false); copyLayoutLog(); });
   // Launch screen: the page again with the launch screen, as a Home Screen app starts (Slow: a third of the speed)
   for (const button of document.querySelectorAll("#devMenu [data-launch]")) {
     button.addEventListener("click", () => {
@@ -3728,8 +3640,6 @@ async function main() {
   // Everything else on home: each icon opens its panel in place
   initHomeMore();
   window.addEventListener("resize", fitHomeLines);
-  window.addEventListener("resize", placeSharingPage);
-  watchLayout();
   on("infoClose", "click", () => closeInfo());
   on("infoOverlay", "click", (event) => { if (event.target === $("infoOverlay")) closeInfo(); });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && info.node && !event.defaultPrevented) { event.preventDefault(); closeInfo(); } });   // an Escape that closed something inside it (the color list) is not for the popup

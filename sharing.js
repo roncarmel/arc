@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16zzd";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16zze";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -831,7 +831,7 @@ function switchTab(tab, drift) {
     sharing.flow = null;
     if (tab === "find") sharing.overlapShown = sharing.overlap;
     renderSharing();
-    $("msBody").scrollTop = 0;
+    window.scrollTo(0, 0);
   };
   // By you sits to the right of By others, as the capsule shows
   if (tab !== sharing.tab && !$("msOverlay").hidden) shiftPage($("msBody"), tab === "share" ? 1 : -1, change, drift);
@@ -845,7 +845,7 @@ function renderSharing() {
   if (sharing.player && sharing.player.share !== sharing.detail) stopPreview();   // a preview plays only on its playlist's page
   if (sharing.songMenu && (sharing.songMenu.share !== sharing.detail || sharing.flow)) dropSongMenu();   // and a song's menu only stays on it
   if (sharing.flow) closeSortMenu();
-  const keepScroll = body.scrollTop;
+  const keepScroll = window.scrollY;
   body.textContent = "";
   const foot = $("msFoot");
   foot.textContent = "";
@@ -853,7 +853,7 @@ function renderSharing() {
   renderSharingTabs();
   if (sharing.tab === "find") renderFind(body);
   else renderShareYours(body, foot);
-  body.scrollTop = keepScroll;
+  if (window.scrollY !== keepScroll) window.scrollTo(0, keepScroll);   // emptied for a moment, the page was shorter and the window scrolled up
   renderFlowPopup();
 }
 // the popup that holds Share a playlist, Edit details and the page after a share (its title with Close, then the form, then its buttons),
@@ -976,7 +976,7 @@ function setType(type) {
     sharing.phases.clear();
     sharing.moods.clear();
     renderSharing();
-    if ($("msBody")) $("msBody").scrollTop = 0;   // another type's list starts from its first playlist
+    window.scrollTo(0, 0);   // another type's list starts from its first playlist
   });
   moveTypeCapsule(from, type);
   showTypeHint(hinting, hintWas);
@@ -1079,15 +1079,15 @@ function slideFind(id, dir, change) {
   for (const g of body.querySelectorAll(".ms-find-ghost")) g.remove();
   // where it is in the page, to the fraction of a pixel (offsetTop rounds, and the copy then jumped a little)
   const r = old.getBoundingClientRect(), b = body.getBoundingClientRect();
-  const scroll0 = body.scrollTop, top = r.top - b.top - body.clientTop + scroll0, left = r.left - b.left - body.clientLeft, width = r.width;
+  const left = r.left - b.left - body.clientLeft, width = r.width;
   const copy = old.cloneNode(true);
   for (const el of [copy, ...copy.querySelectorAll("[id]")]) el.removeAttribute("id");
   copy.style.margin = "0";
   const first = old.firstElementChild, firstTop = first && first.getBoundingClientRect().top;
   change();
   const now = $(id);
-  // the copy stays where it was seen, cut at the foot of what shows (so the page does not grow); the sticky tiles cover its top
-  const at = top - scroll0 + body.scrollTop, height = body.scrollTop + body.clientHeight - at;
+  // the copy stays where it was seen on the screen (the page scrolls the window, which a shorter page may have moved), cut at the screen's foot so the page does not grow
+  const at = r.top - body.getBoundingClientRect().top - body.clientTop, height = window.innerHeight - r.top;
   if (height > 0) {
     const ghost = feEl("div", { class: "ms-find-ghost", "aria-hidden": "true" }, copy);
     ghost.inert = true;
@@ -2476,22 +2476,16 @@ function watchKeyboard() {
   const fit = () => {
     const field = document.activeElement;
     const typing = !$("msOverlay").hidden && field && dialog.contains(field) && field.matches("input[type=text], input[type=search], textarea") && window.innerHeight - vv.height > 120;
-    if (!!typing !== dialog.classList.contains("ms-typing") && typeof logLayout === "function") logLayout(typing ? "typing starts" : "typing ends", field && (field.id || field.tagName));
     dialog.classList.toggle("ms-typing", !!typing);
-    dialog.style.height = typing ? vv.height + "px" : "";
-    dialog.style.transform = typing && vv.offsetTop ? `translateY(${vv.offsetTop}px)` : "";
-    // as a page it starts under Arc's bar; while typing it starts at the top, so its foot is the keyboard's top and the bar's space is not left blank
-    // (only when typing starts or ends: this runs on every scroll of the visible area, on every view, and must leave the page alone otherwise)
-    const ov = $("msOverlay");
-    if (document.documentElement.classList.contains("page-app") && !!typing !== ov.classList.contains("ms-typing-page")) {
-      ov.classList.toggle("ms-typing-page", !!typing);
-      if (typing) ov.style.top = "0px"; else placeAfterTyping();
-    }
+    // the page scrolls the window, so the browser keeps the field in view; the popup (fixed) fills what the keyboard leaves
+    const wrap = $("msFlowWrap"), inPopup = typing && $("msFlow").contains(field);
+    wrap.style.top = inPopup ? vv.offsetTop + "px" : "";
+    wrap.style.height = inPopup ? vv.height + "px" : "";
   };
   vv.addEventListener("resize", fit);
   vv.addEventListener("scroll", fit);
   dialog.addEventListener("focusin", () => setTimeout(fit, 50));
-  dialog.addEventListener("focusout", () => { setTimeout(fit, 50); setTimeout(fit, 400); });   // again once the keyboard has gone: iOS can leave the page panned up
+  dialog.addEventListener("focusout", () => { setTimeout(fit, 50); setTimeout(fit, 400); });   // again once the keyboard has gone
   for (const box of [$("msBody"), $("msFlowBody")]) box && box.addEventListener("pointerdown", (e) => {
     const a = document.activeElement;
     // a playlist's row is left alone too: putting the keyboard away moved the list under the finger, so the tap missed the row (it opens its page, which ends the typing)
@@ -2507,16 +2501,8 @@ function watchKeyboard() {
 function endTyping() {
   const a = document.activeElement;
   if (a && $("msDialog") && $("msDialog").contains(a) && a.matches("input, textarea")) a.blur();
-  if ($("msDialog")) { $("msDialog").classList.remove("ms-typing"); $("msDialog").style.height = ""; $("msDialog").style.transform = ""; }
-  if ($("msOverlay") && $("msOverlay").classList.contains("ms-typing-page")) { $("msOverlay").classList.remove("ms-typing-page"); placeAfterTyping(); }
-}
-// Typing ended: the page goes back under Arc's bar. iOS Safari can leave the page panned up as the keyboard goes (Arc's bar half under the status bar and the
-// tabs over it, Ron, 2026-11-15, cause not yet known); that is only logged, not scrolled back, so the page position log can show why (scrolling back here
-// once ran on every scroll of every view and threw Home back to its top).
-function placeAfterTyping() {
-  const vv = window.visualViewport;
-  if (typeof logLayout === "function" && (window.scrollY !== 0 || (vv && vv.offsetTop > 0.5))) logLayout("panned after the keyboard");
-  if (typeof placeSharingPage === "function") placeSharingPage();
+  if ($("msDialog")) $("msDialog").classList.remove("ms-typing");
+  if ($("msFlowWrap")) { $("msFlowWrap").style.top = ""; $("msFlowWrap").style.height = ""; }
 }
 
 // ---------------------------------------------------------------- what this device remembers about refusals

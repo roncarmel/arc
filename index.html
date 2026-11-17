@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-16zzd">
-<script src="theme.js?v=2026-11-16zzd"></script>
+<meta name="app-version" content="2026-11-16zze">
+<script src="theme.js?v=2026-11-16zze"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -616,14 +616,6 @@
   @media (prefers-reduced-motion: reduce) { html.page-app #appBar { animation: none; background-position: 0% 50%; } }
   #appBar .ab-left { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
   html.view-home #appBar .ab-left { visibility: hidden; }
-  /* Music sharing's page is fixed under Arc's bar and only its list scrolls, so the document itself must not move: on an iPhone it bounced, taking the bar up over the tabs (Ron, 2026-11-10) */
-  html.page-app.view-sharing, html.page-app.view-sharing body { overflow: hidden; overscroll-behavior: none; }
-  html.page-app.view-sharing body { position: fixed; left: 0; right: 0; top: 0; bottom: 0; }
-  html.page-app.view-sharing #msBody { overscroll-behavior: contain; }
-  /* A short list (Shared by you) did not scroll, so iOS passed the drag on to the document and the page still slid up under Arc's bar (Ron, 2026-11-10): the list is always
-     1 px taller than its box, so it always takes the drag itself, and nothing above it (the tab switch, its bar) moves anything when dragged up or down */
-  html.page-app.view-sharing #msBody::before { content: ""; float: left; width: 0; height: calc(100% + 1px); }
-  html.page-app.view-sharing #msTabsBar, html.page-app.view-sharing .ms-tabs { touch-action: none; }
   /* From one tool to the other (slideTools in app.js; Ron, 2026-11-08, mockups/tool-motion.html B): Arc's bar stays, its name crossfading; the tool below it leaves half a
      screen up as it fades and the other rises half a screen into place (going to the builder, the other way) */
   html.vt-tools #appBar { view-transition-name: arc-bar; }
@@ -971,8 +963,9 @@
   .rp-sheet .rp-pen:focus:not(:focus-visible), .rp-sheet .rp-x:focus:not(:focus-visible) { outline: none; }
   .rp-body { padding: 14px 22px 0 16px; }
   @media (min-width: 501px) { .rp-body { padding-right: 40px; } }
-  /* no frame inside the panel's frame (Ron, 2026-11-13): the editor's card is bare, its silence markers hanging into the room on the right */
-  @media (min-width: 501px) { #recipePanel #formatEditor .fe-card { background: none; border: 0; padding: 0; } .rp-body { padding-right: 54px; } }
+  /* the panel scrolls with no scroll bar, at every width (Ron, 2026-11-16): the editor's pink frame running off its foot says there is more */
+  .rp-sheet { scrollbar-width: none; }
+  .rp-sheet::-webkit-scrollbar { display: none; }
   #recipePanel #formatEditor .fe-toprow { display: none; }   /* the name is the panel's title; recipes are chosen from the landing */
   /* the X turns into Done once the recipe has a change, and Done saves (Ron, 2026-11-13, mockups/panel-buttons F): no buttons under the recipe, so more of the page shows */
   .rp-body { padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
@@ -1159,9 +1152,14 @@
   #privacySection .pv-list { padding-left: 1.3em; margin: 0; }
   #privacySection .pv-list li { margin-bottom: 8px; }
   #privacySection .pv-list b { color: var(--fg); font-weight: 600; }
-  /* Music sharing is a page of its own under the bar (its top is set by placeSharingPage in app.js) */
-  html.page-app #msOverlay { background: var(--bg); padding: 0; z-index: 50; align-items: stretch; }
-  html.page-app #msDialog { width: 100%; height: 100%; max-height: none; border-radius: 0; border: 0; box-shadow: none; }
+  /* Music sharing is a page of its own under the bar, scrolling the window as the builder does (Ron, 2026-11-16; until then it was fixed under the bar and only its
+     list scrolled, which put the scroll bar inside the column and once left the page stuck half under iOS's status bar): it follows <main> in the page's flow,
+     main's foot and the bar's margin taken back so it starts 4 px under the bar */
+  html.page-app.view-sharing main { padding-bottom: 0; }
+  html.page-app.view-sharing #appSection > :not(#appBar, #devWrap, #waitStrip, #devToast, #supportBox, #recipePanelWrap) { display: none !important; }   /* the builder's lines, which the fixed page used to cover */
+  html.page-app #msOverlay { position: relative; inset: auto; display: block; margin-top: -10px; background: none; padding: 0; z-index: 50; }
+  html.page-app #msDialog { width: 100%; height: auto; max-height: none; overflow: visible; margin: 0 auto; border-radius: 0; border: 0; box-shadow: none; background: none; }
+  html.page-app #msBody { flex: none; overflow: visible; }
   /* the builder's width and edges (600 px of content, 16 px in from the screen's edge), so switching tools moves nothing sideways (Ron, 2026-11-12; 600 since 2026-11-13) */
   html.page-app #msDialog { max-width: 664px; }
   @media (min-width: 760px) { html.page-app #msTabsBar { justify-content: center; } html.page-app .ms-tabs { flex: 0 0 360px; } }   /* the switch 360 px and centered, as the builder's */
@@ -1171,7 +1169,7 @@
   html.page-app .ms-findhead { margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; }
   html.page-app #msClose { display: none; }
   /* the update card shows here too, since it is a page now; not over its popups or while typing (their own z-index is under the card's) */
-  html.view-sharing:has(#msOverlay.ms-flow-open) #supportBox, html.view-sharing:has(#msOverlay.ms-typing-page) #supportBox { display: none; }
+  html.view-sharing:has(#msOverlay.ms-flow-open) #supportBox { display: none; }
   @media (max-width: 1183px) { html.page-app.update-ready #msBody { padding-bottom: calc(var(--tip-h, 96px) + 4px); } }   /* the strip's own height, so the last row sits just above it, as in the builder */
   /* Music sharing's card on Arc's home (sharing.js, renderSharingCard): three covers fanned out, the name and a line, opens Music sharing */
   /* Developer mode (html.dev-mode, devMode in editor.js; decided by Ron, 2026-11-08, mockups/dev-mode.html): on and off by holding Arc's icon for 3 seconds. */
@@ -2017,7 +2015,7 @@
   /* a playlist's page is long (its songs), so on a phone it rises to near the top, a strip of the dimmed page showing it is a popup (Ron, 2026-11-10) */
   @media (max-width: 500px) { .ms-pop-detail#msFlow { height: calc(100% - 14px - env(safe-area-inset-top, 0px)); } }
   @media (min-width: 501px) { .ms-flowwrap { align-items: center; } }
-  .ms-typing .ms-flowwrap { position: absolute; padding: 0; }   /* typing on a phone: it fills what the keyboard leaves */
+  .ms-typing .ms-flowwrap { bottom: auto; padding: 0; }   /* typing on a phone: it fills what the keyboard leaves (its top and height set by watchKeyboard) */
   .ms-typing #msFlow { height: 100%; max-width: none; border: 0; border-radius: 0; }
   .ms-flowtitle { margin: 0; text-align: center; font-weight: 700; font-size: 1.05rem; padding: 15px 0 12px; }
   .ms-q { margin: 16px 0 10px; font-size: 1.2rem; line-height: 1.3; }
@@ -2143,8 +2141,6 @@
   /* typing a search in Shared by others: only the search, the count and the list (the tabs, type tiles and filters come back when the keyboard goes) */
   .ms-typing:has(#msSearch:focus) #msTabsBar, .ms-typing:has(#msSearch:focus) .ms-ktiles, .ms-typing #msTools, .ms-typing .ms-searchrow > .ms-sortbtn { display: none; }
   .ms-typing #msTools { margin-top: 0; }
-  html.page-app #msOverlay.ms-typing-page { z-index: 70; }   /* over Arc's bar, which the page leaves room for otherwise */
-  html.page-app #msOverlay.ms-typing-page #msDialog { padding-top: env(safe-area-inset-top, 0px); box-sizing: border-box; }
   .ms-radios { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 12px; }
   .ms-radio { display: flex; gap: 10px; align-items: center; }
   .msd-cloud { line-height: 2; margin: 4px 0 10px; }
@@ -2484,7 +2480,7 @@
   <div id="appBar">
     <span class="ab-left"><button id="appTool" class="ab-tool" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="appToolMenu"><span id="appToolIcon" class="ab-ticon" aria-hidden="true"></span><span id="appToolName" class="ab-tool-name"></span><svg class="ab-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></span>
     <div id="appToolMenu" class="ab-menu" role="menu" aria-label="Tools" hidden><button type="button" class="ab-mi" role="menuitemradio" aria-checked="false" data-view="builder"><span class="tool-icon ab-icon" aria-hidden="true"><svg class="tool-glyph" viewBox="0 0 24 24"><path d="M10.2 1.8Q10.62 9.78 18.6 10.2Q10.62 10.62 10.2 18.6Q9.78 10.62 1.8 10.2Q9.78 9.78 10.2 1.8Z"/><path d="M18.8 14.7Q18.995 18.405 22.7 18.6Q18.995 18.795 18.8 22.5Q18.605 18.795 14.9 18.6Q18.605 18.405 18.8 14.7Z"/></svg></span><span class="ab-mi-text"><b>Playlist builder</b><small>Ceremony playlists, ready in seconds.</small></span><svg class="ab-tick" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><button type="button" class="ab-mi" role="menuitemradio" aria-checked="false" data-view="sharing"><span class="tool-icon ab-icon" aria-hidden="true"><svg class="tool-glyph tool-glyph-soft" viewBox="0 0 24 24"><rect x="3" y="4.2" width="3.3" height="14.4" rx="1.2"/><rect x="7.5" y="6.6" width="3.3" height="12" rx="1.2"/><rect x="12" y="5.2" width="3.3" height="13.4" rx="1.2"/><rect x="16.9" y="6.2" width="3.3" height="12.4" rx="1.2" transform="rotate(14 18.55 18.6)"/><rect x="2.5" y="19.6" width="19" height="2" rx="1"/></svg></span><span class="ab-mi-text"><b>Shared playlist library</b><small>Bring some, get some!</small></span><svg class="ab-tick" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><div class="ab-rule" aria-hidden="true"></div><button type="button" class="ab-mi ab-mi-home" role="menuitem" data-view="home"><img class="ab-homeic" src="arc-mark.png" alt="" aria-hidden="true"><span class="ab-mi-text"><b>Arc home</b></span></button><div class="ab-rule ab-dev-only" aria-hidden="true"></div><button id="appDevRow" type="button" class="ab-mi ab-mi-home ab-dev-only" role="menuitem"><span class="ab-devic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 4.5l-3 15"/></svg></span><span class="ab-mi-text"><b>Developer</b></span><svg class="ab-more" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>
-<span id="devWrap" class="dm-wrap"><div id="devMenu" class="dm-menu" role="menu" hidden><button id="devMenuBack" class="dm-back" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg><span>Developer</span></button><button id="devMenuOff" class="dm-head" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.3 7.5a8 8 0 1 0 11.4 0"/></svg><span>Turn off developer mode</span></button><button id="devMenuMoods" class="dm-item" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/></svg><span>Manage mood words</span><span id="devMoodsCount" class="dm-end"></span></button><button id="devMenuReports" class="dm-item" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Review reports</span><span id="devReportsCount" class="dm-end"></span></button><div class="dm-item dm-width" role="group" aria-label="Phone width"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/></svg><span>Phone width</span><span class="dm-seg"><button type="button" data-width="" aria-pressed="false">Off</button><button type="button" data-width="360" aria-pressed="false">360</button><button type="button" data-width="320" aria-pressed="false">320</button></span></div><div class="dm-item dm-width" role="group" aria-label="Launch screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg><span>Launch screen</span><span class="dm-seg"><button type="button" data-launch="1">Play</button><button type="button" data-launch="slow">Slow</button></span></div><div class="dm-item dm-width" role="group" aria-label="Music service"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg><span>Music service</span><span class="dm-seg"><button type="button" data-pick-service="spotify" aria-pressed="false">Spotify</button><button type="button" data-pick-service="tidal" aria-pressed="false">TIDAL</button></span></div><button id="devChecks" class="dm-item" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="2.5"/><path d="M8.5 9l1.5 1.5L13 7.5M8.5 15l1.5 1.5L13 13.5M15.5 9.5h1M15.5 15.5h1"/></svg><span>Device checks</span></button><button id="devCopyRecord" class="dm-item" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span>Copy <span data-service>Spotify</span> request log</span></button><button id="devCopyLayout" class="dm-item" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span>Copy page position log</span></button><button id="devStartOver" class="dm-item dm-red" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span>Clear data and start over</span></button><div id="pythonStatus" class="dm-foot">Starting Python...</div></div></span>
+<span id="devWrap" class="dm-wrap"><div id="devMenu" class="dm-menu" role="menu" hidden><button id="devMenuBack" class="dm-back" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg><span>Developer</span></button><button id="devMenuOff" class="dm-head" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.3 7.5a8 8 0 1 0 11.4 0"/></svg><span>Turn off developer mode</span></button><button id="devMenuMoods" class="dm-item" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/></svg><span>Manage mood words</span><span id="devMoodsCount" class="dm-end"></span></button><button id="devMenuReports" class="dm-item" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span>Review reports</span><span id="devReportsCount" class="dm-end"></span></button><div class="dm-item dm-width" role="group" aria-label="Phone width"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/></svg><span>Phone width</span><span class="dm-seg"><button type="button" data-width="" aria-pressed="false">Off</button><button type="button" data-width="360" aria-pressed="false">360</button><button type="button" data-width="320" aria-pressed="false">320</button></span></div><div class="dm-item dm-width" role="group" aria-label="Launch screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg><span>Launch screen</span><span class="dm-seg"><button type="button" data-launch="1">Play</button><button type="button" data-launch="slow">Slow</button></span></div><div class="dm-item dm-width" role="group" aria-label="Music service"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg><span>Music service</span><span class="dm-seg"><button type="button" data-pick-service="spotify" aria-pressed="false">Spotify</button><button type="button" data-pick-service="tidal" aria-pressed="false">TIDAL</button></span></div><button id="devChecks" class="dm-item" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="2.5"/><path d="M8.5 9l1.5 1.5L13 7.5M8.5 15l1.5 1.5L13 13.5M15.5 9.5h1M15.5 15.5h1"/></svg><span>Device checks</span></button><button id="devCopyRecord" class="dm-item" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span>Copy <span data-service>Spotify</span> request log</span></button><button id="devStartOver" class="dm-item dm-red" type="button" role="menuitem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span>Clear data and start over</span></button><div id="pythonStatus" class="dm-foot">Starting Python...</div></div></span>
     <div class="fe-appmenuwrap" id="feAppMenu"></div>
   </div>
   <!-- Spotify asked Arc to wait: under Arc's bar on every view, until it is over (app.js paintWaitStrip; Ron, 2026-11-12, mockups/rate-limit B solid) -->
@@ -2692,12 +2688,12 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-16zzd"></script>
-<script src="editor.js?v=2026-11-16zzd"></script>
-<script src="shared-service.js?v=2026-11-16zzd"></script>
-<script src="service-spotify.js?v=2026-11-16zzd"></script>
-<script src="service-tidal.js?v=2026-11-16zzd"></script>
-<script src="app.js?v=2026-11-16zzd"></script>
-<script src="sharing.js?v=2026-11-16zzd"></script>
+<script src="formats.js?v=2026-11-16zze"></script>
+<script src="editor.js?v=2026-11-16zze"></script>
+<script src="shared-service.js?v=2026-11-16zze"></script>
+<script src="service-spotify.js?v=2026-11-16zze"></script>
+<script src="service-tidal.js?v=2026-11-16zze"></script>
+<script src="app.js?v=2026-11-16zze"></script>
+<script src="sharing.js?v=2026-11-16zze"></script>
 </body>
 </html>
