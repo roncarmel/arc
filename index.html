@@ -17,8 +17,8 @@
     document.querySelector("#devPhoneBar button").onclick = function () { try { localStorage.removeItem("devPhoneWidth"); } catch (e) {} location.reload(); };
   })();
 </script>
-<meta name="app-version" content="2026-11-16zzg">
-<script src="theme.js?v=2026-11-16zzg"></script>
+<meta name="app-version" content="2026-11-16zzh">
+<script src="theme.js?v=2026-11-16zzh"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Arc</title>
@@ -972,6 +972,15 @@
   .rp-body { padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
   .rp-sheet .rp-done { flex: none; align-self: center; margin: 0 0 0 auto; min-height: 0; padding: 8px 18px; border-radius: 999px; font-weight: 700; justify-content: center; }
   .rp-sheet:not(.rp-clean) .rp-x, .rp-sheet.rp-clean .rp-done { display: none; }
+  /* the X (or Done) floats at the panel's top right while the recipe scrolls under it, as on a playlist's page in Music sharing (.ms-popx; Ron, 2026-11-16):
+     a corner of no height, stuck to the top of what scrolls, the button 8 px in from the corner; gone while renaming, which has its own Cancel */
+  #recipePanel .rp-corner { position: sticky; top: 0; height: 0; z-index: 25; }   /* over the rows and silence tags, under a row's open menu */
+  #recipePanel .rp-corner > button { position: absolute; right: 8px; top: 8px; }
+  #recipePanel .rp-x { margin: 0; background: color-mix(in srgb, var(--fg) 10%, var(--bg)); color: var(--fg); }
+  @media (hover: hover) { #recipePanel .rp-x:hover { background: color-mix(in srgb, var(--fg) 16%, var(--bg)); } }
+  #recipePanel.rp-renaming .rp-corner { display: none; }
+  #recipePanel .rp-show { padding-right: 28px; }   /* the name stops short of the X */
+  #recipePanel:not(.rp-clean) .rp-show { padding-right: 76px; }   /* and of Done */
   html.rp-open.view-builder { overflow: hidden; }
   .bh-build[hidden], .bh-wide[hidden] { display: none; }
   .bh-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -2516,8 +2525,9 @@
   <div id="recipePanelWrap" class="rp-wrap" hidden>
     <div class="rp-dim" id="rpDim"></div>
     <div id="recipePanel" class="rp-sheet" role="dialog" aria-modal="true" aria-labelledby="rpTitle">
+      <div class="rp-corner" id="rpCorner"><button id="rpSave" class="primary rp-done" type="button">Done</button><button id="rpClose" class="rp-x" type="button" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
       <div class="rp-head" id="rpHead">
-        <div class="rp-show" id="rpShow"><span class="rp-icon" id="rpIcon"><svg viewBox="0 0 100 100" aria-hidden="true"><g stroke="currentColor" stroke-linecap="round"><path d="M18 26H82M18 50H82M18 74H82" stroke-width="3" opacity=".4"/><path d="M18 26H34M18 50H69M18 74H47" stroke-width="5"/></g><g fill="currentColor"><rect x="29.5" y="17" width="9" height="18" rx="4.5"/><rect x="64.5" y="41" width="9" height="18" rx="4.5"/><rect x="42.5" y="65" width="9" height="18" rx="4.5"/></g></svg></span><div class="rp-col"><span class="rp-kick">Recipe</span><div class="rp-row"><h2 id="rpTitle" class="rp-title"></h2><button id="rpRename" class="rp-pen" type="button" aria-label="Rename recipe" title="Rename recipe"></button></div><span class="rp-meta" id="rpMeta"></span></div><button id="rpSave" class="primary rp-done" type="button">Done</button><button id="rpClose" class="rp-x" type="button" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+        <div class="rp-show" id="rpShow"><span class="rp-icon" id="rpIcon"><svg viewBox="0 0 100 100" aria-hidden="true"><g stroke="currentColor" stroke-linecap="round"><path d="M18 26H82M18 50H82M18 74H82" stroke-width="3" opacity=".4"/><path d="M18 26H34M18 50H69M18 74H47" stroke-width="5"/></g><g fill="currentColor"><rect x="29.5" y="17" width="9" height="18" rx="4.5"/><rect x="64.5" y="41" width="9" height="18" rx="4.5"/><rect x="42.5" y="65" width="9" height="18" rx="4.5"/></g></svg></span><div class="rp-col"><span class="rp-kick">Recipe</span><div class="rp-row"><h2 id="rpTitle" class="rp-title"></h2><button id="rpRename" class="rp-pen" type="button" aria-label="Rename recipe" title="Rename recipe"></button></div><span class="rp-meta" id="rpMeta"></span></div></div>
         <div class="rp-naming" id="rpNaming" hidden><label class="rp-kick" for="rpName">Rename recipe</label><input type="text" id="rpName" class="rp-name-input" autocomplete="off" enterkeyhint="done"><p class="error rp-name-clash" id="rpNameClash" hidden>Another recipe has this name.</p><div class="rp-name-btns"><button type="button" id="rpNameCancel" class="rp-name-cancel">Cancel</button><button type="button" id="rpNameOk" class="primary rp-name-ok">Rename</button></div></div>
       </div>
       <div id="rpBody" class="rp-body">
@@ -2689,12 +2699,12 @@
     <div id="msFlowWrap" class="ms-flowwrap" hidden><div id="msFlow" role="dialog" aria-modal="true" aria-labelledby="msFlowTitle" tabindex="-1"><div id="msFlowHead"></div><div id="msFlowBody"></div><div id="msFlowFoot" hidden></div></div></div>
   </div>
 </div>
-<script src="formats.js?v=2026-11-16zzg"></script>
-<script src="editor.js?v=2026-11-16zzg"></script>
-<script src="shared-service.js?v=2026-11-16zzg"></script>
-<script src="service-spotify.js?v=2026-11-16zzg"></script>
-<script src="service-tidal.js?v=2026-11-16zzg"></script>
-<script src="app.js?v=2026-11-16zzg"></script>
-<script src="sharing.js?v=2026-11-16zzg"></script>
+<script src="formats.js?v=2026-11-16zzh"></script>
+<script src="editor.js?v=2026-11-16zzh"></script>
+<script src="shared-service.js?v=2026-11-16zzh"></script>
+<script src="service-spotify.js?v=2026-11-16zzh"></script>
+<script src="service-tidal.js?v=2026-11-16zzh"></script>
+<script src="app.js?v=2026-11-16zzh"></script>
+<script src="sharing.js?v=2026-11-16zzh"></script>
 </body>
 </html>
