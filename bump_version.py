@@ -8,8 +8,8 @@ The site has no build step, so the stamp is written out in each place that needs
   version.txt  what a running page asks for, to find out a newer version is on the site
   tests/run.js the checks that hold the stamp as text
 
-  python3 bump_version.py            next stamp: today's date and the next letter (2026-10-31d -> 2026-10-31e)
-  python3 bump_version.py 2026-11-02a  that stamp
+  python3 bump_version.py            next stamp: today's date as YYMMDD and the next letter (261031d -> 261031e)
+  python3 bump_version.py 261102a    that stamp
   python3 bump_version.py --check    only says whether the three files agree
 """
 import datetime
@@ -40,8 +40,8 @@ def found():
 
 
 def next_stamp(current):
-    today = datetime.date.today().isoformat()
-    m = re.fullmatch(r"(\d{4}-\d{2}-\d{2})([a-z]*)", current)
+    today = datetime.date.today().strftime("%y%m%d")   # short, so the update card's old -> new fits on a phone
+    m = re.fullmatch(r"(\d{6})([a-z]*)", current)
     if not m or m.group(1) != today:
         return today + "a"
     letters = m.group(2) or "`"
