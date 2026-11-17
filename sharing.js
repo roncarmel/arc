@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16zv";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16zw";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -2022,7 +2022,7 @@ function playlistCard(p, d) {
   const tracks = trackCache.get(p.id);
   const ms = tracks ? tracks.reduce((n, t) => n + (t.ms || 0), 0) : (f.share && f.share.ms) || 0;
   const look = { kind: d.kind, books: [...d.books], bookOther: d.bookOther, phases: [...d.phases], moods: d.moods, other: cleanWord(d.other, SHARE_OTHER_MAX) };
-  const by = d.anon ? "Anonymous" : (me && me.name) || "";
+  const by = d.anon ? "Anonymous" : (me && me.name) || "Anonymous";
   const label = kindLabel(look);
   const shown = shareName(p, d);
   // one Arc built has a title of its own: the pencil (a grey circle) turns the name into a field (Ron, 2026-11-14, mockups/share-title B)

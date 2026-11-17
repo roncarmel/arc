@@ -2,7 +2,7 @@
 // (openapi.tidal.com/v2, JSON:API). Sign-in is PKCE from the page, with a refresh token; requests are paced at about 2 a second, and a refusal (429)
 // is tried again after 2, 4, 8... seconds, since TIDAL's refusals clear in about 2 s (tested on Ron's account, 2026-11-16). Every TIDAL address and quirk
 // stays in this file. TIDAL lets an app read covers but not set them, and has no private playlists: what Arc makes is Unlisted (anyone with the link can open it).
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-tidal.js"] = "2026-11-16zv";   // this file's version, checked against the app's at startup
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-tidal.js"] = "2026-11-16zw";   // this file's version, checked against the app's at startup
 
 const TIDAL_API = "https://openapi.tidal.com/v2";
 const TIDAL_AUTH_URL = "https://login.tidal.com/authorize";
@@ -252,6 +252,13 @@ function tidalPlaylist(p, byKey = {}) {
 }
 
 // ---------------------------------------------------------------- the service
+// The name others see on a share: the first name only (no last name), else the username, which is often the account's email, so nothing
+// holding an @ is used; with no safe name it is "" and the share shows as Anonymous.
+function tidalShownName(a) {
+  const safe = (v) => { const t = String(v || "").trim(); return t && !t.includes("@") ? t : ""; };
+  return safe(a.firstName) || safe(a.username);
+}
+
 const tidalService = {
   key: "tidal",
   name: "TIDAL",
@@ -300,7 +307,7 @@ const tidalService = {
     const a = (r.data && r.data.attributes) || {};
     tidalUserId = String((r.data && r.data.id) || "");
     tidalCountry = a.country || tidalCountry || "US";
-    return { id: tidalUserId, name: a.username || tidalUserId, country: tidalCountry };
+    return { id: tidalUserId, name: tidalShownName(a), country: tidalCountry };
   },
 
   // playlists

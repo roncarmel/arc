@@ -258,7 +258,7 @@ async function share(env, { service, who: whoId }, d) {
   const names = Array.isArray(d.names) ? sent.map(([, n]) => Array.isArray(n) ? [text(n[0], LIMITS.songChars), text(n[1], LIMITS.songChars), Math.max(0, Math.round(Number(n[2]) || 0))] : ["", "", 0]) : null;
   const ms = Math.round(Number(d.ms) || 0);
   if (!songs.length) throw new Refusal(400, "That playlist has no songs.", "empty");
-  const shown = d.by === null ? null : text(d.by, LIMITS.shownChars) || null;
+  const shown = d.by === null || String(d.by).includes("@") ? null : text(d.by, LIMITS.shownChars) || null;   // an email is never shown (TIDAL's username can be one)
   const cover = typeof d.cover === "string" && /^https:\/\/([a-z0-9-]+\.)*(scdn\.co|spotifycdn\.com|resources\.tidal\.com)\/[\w/.-]+$/.test(d.cover) ? d.cover : null;
   const artists = Array.isArray(d.artists) ? d.artists.slice(0, LIMITS.artists).map((a) => text(a, 100)).filter(Boolean) : [];
   const avg = Math.round(ms / songs.length);
