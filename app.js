@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16zzc";
+const APP_VERSION = "2026-11-16zzd";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -998,23 +998,6 @@ if (launchScreen) {
   $("launchScreen").style.setProperty("--ls-x", launchSlow);
 }
 
-// The band over home's own band (left, width, top), moved down to the middle of the screen, a little above it so the step line under it is in the middle too
-function placeLaunchBand() {
-  const mid = $("launchScreen").querySelector(".ls-mid"), home = $("homePage").querySelector(".hp-band");
-  const rect = home.getBoundingClientRect();
-  if (!rect.width) return;   // home is not shown: the band stays in the middle by CSS
-  mid.classList.add("ls-placed");
-  mid.style.left = rect.left + "px";
-  mid.style.width = rect.width + "px";
-  mid.style.top = rect.top + "px";
-  mid.style.transform = `translateY(${Math.max(0, Math.round((window.innerHeight - rect.height) / 2 - 20 - rect.top))}px)`;
-}
-if (launchScreen) {
-  placeLaunchBand();
-  window.addEventListener("resize", () => { if (launchScreen) placeLaunchBand(); });
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(placeLaunchBand);
-}
-
 function endLaunchScreen() {
   if (!launchScreen) return;
   launchScreen = false;
@@ -1034,7 +1017,13 @@ async function glideLaunchScreen() {
   if (!document.documentElement.classList.contains("view-home") || still) return endLaunchScreen();
   launchScreen = false;
   const screen = $("launchScreen"), root = document.documentElement;
-  placeLaunchBand();   // measured again, in case the page moved under it
+  // The band rests where CSS puts it, a little above the middle, whatever home is doing; home's band is measured only here, as the glide starts,
+  // so the glide carries the band from wherever it rests to wherever home's band is, on any screen, and nothing moves the band while it rests
+  // (Ron, 2026-11-16: measuring home at rest moved it 20 px up mid-launch, since home is not laid out until the app page shows).
+  const mid = screen.querySelector(".ls-mid"), from = mid.getBoundingClientRect(), to = $("homePage").querySelector(".hp-band").getBoundingClientRect();
+  Object.assign(mid.style, { left: to.left + "px", top: to.top + "px", width: to.width + "px", right: "auto", margin: "0", transform: "none" });
+  mid.animate([{ transform: `translate(${from.left - to.left}px, ${from.top - to.top}px)`, width: from.width + "px" }, { transform: "none", width: to.width + "px" }],
+    { duration: 700 * launchSlow, easing: EASE_OUT });
   let i = 0;
   for (const part of launchParts()) part.style.setProperty("--ls-i", i++);
   root.style.setProperty("--ls-x", launchSlow);
@@ -1044,6 +1033,7 @@ async function glideLaunchScreen() {
   await new Promise((r) => setTimeout(r, 750 * launchSlow));
   root.classList.remove("launching");
   screen.classList.remove("ls-glide", "ls-ready");
+  mid.removeAttribute("style");   // back to its resting place for a next launch screen
   await new Promise((r) => setTimeout(r, (350 + i * 70 + 520) * launchSlow));   // the last part has risen
   root.classList.remove("ls-arrive");
   root.style.removeProperty("--ls-x");
