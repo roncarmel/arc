@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16zz";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16zza";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -1213,7 +1213,8 @@ function filteredShares() {
     && (!sharing.phases.size || (s.phases || []).some((i) => sharing.phases.has(i)))
     && (!sharing.moods.size || (s.moods || []).some((m) => sharing.moods.has(cleanMood(m)))));
 }
-function ofType() { return sharing.library.shares.filter((s) => sharing.type === "all" || s.kind === sharing.type); }
+// the person's own shares are left out: they are on Shared by you (Ron, 2026-11-16, after showing them with Yours)
+function ofType() { return sharing.library.shares.filter((s) => !isMine(s) && (sharing.type === "all" || s.kind === sharing.type)); }
 function emptyState(icon, title, text, button) {
   return feEl("div", { class: "ms-empty" }, feEl("span", { class: "ms-empty-icon" }, typeof icon === "string" ? feIcon(icon) : icon), feEl("h3", {}, title), feEl("p", {}, text), button);
 }
