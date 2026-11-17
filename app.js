@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16zl";
+const APP_VERSION = "2026-11-16zn";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1006,6 +1006,15 @@ function setupComplete() {
 // ready, so the Build button greying and the page settling happen out of sight. Then "All set!" with confetti and OK. Anything that needs the page (a question, the pause
 // popup, a startup problem) or a start that did not end ready (no sign-in, no Python) takes it down quietly, and the app shows the problem as usual. Decided by Ron, 2026-11-07.
 let updateScreen = document.documentElement.classList.contains("updating");
+
+// Reading the playlists taking longer than usual (Spotify answering slowly, or its empty pages read in pieces: 34 s once, 2026-11-16) says so on whichever
+// screen shows the steps, so the wait does not look stuck (Ron, 2026-11-16)
+let slowReadingMs = 10000;
+function slowReading(on) {
+  const text = `${service.name} is slow to answer. Still working.`;
+  if (connectingScreen && $("cnSlow")) $("cnSlow").textContent = on ? text : "";
+  if (on) { updateStep(text); logStep("reading the playlists is slow"); }
+}
 
 function updateStep(text) {
   if (updateScreen) $("usStep").textContent = text;
@@ -3835,7 +3844,9 @@ async function main() {
     document.body.classList.add("connected");
     connectingStep("Playlists", "active");
     updateStep("Reading your playlists");
-    await connectToSpotify();   // and the app only calls itself connected, and offers Create, once Spotify has answered
+    const slowTimer = setTimeout(() => slowReading(true), slowReadingMs);
+    try { await connectToSpotify(); }   // and the app only calls itself connected, and offers Create, once Spotify has answered
+    finally { clearTimeout(slowTimer); slowReading(false); }
     if (connection === "ready") connectingStep("Playlists", "done");
     else await connectingStepFailed("Playlists");   // the connection problem shows in the app
   }
