@@ -2,7 +2,7 @@
 // no server), the refresh token, requests with their limits and waits, and the record of those limits; at its end the `service` object, the only way the rest
 // of Arc talks to Spotify (work/tidal-plan.md, "The service layer"): every Spotify address, URI and quirk stays in this file. It shows nothing itself: each page
 // fills serviceHooks with what to do and say, so this file names no element of any page. Loaded before the page's own script.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-spotify.js"] = "2026-11-16zq";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["service-spotify.js"] = "2026-11-16zr";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 // The permissions Arc's sign-in asks for. Another page of this repository (the tagger) may set its own in serviceHooks (shared-service.js).
 const SCOPES = [
@@ -507,6 +507,7 @@ async function listSpotifyPlaylists({ onPage } = {}) {
       split.slowestMs = Math.max(split.slowestMs, Date.now() - t0);
       if (Date.now() - t0 > SPLIT_STALL_MS) { split.stalled = true; splitRequests = SPLIT_MAX; }   // slow answers go on; a stalled one ends the reading in pieces
       got.push({ o, n, items: (q.items || []).length ? q.items : null });
+      if ((q.items || []).length === n) q.items.forEach((p, k) => { slotIds[o + k] = p ? p.id : null; });
     }
     if (size > 1 && pieces.length > 1 && got.every((g) => !g.items)) return { items: [], unread: got.reduce((a, g) => a + g.n, 0) };   // all empty: stop here
     const items = [];
@@ -534,8 +535,11 @@ async function listSpotifyPlaylists({ onPage } = {}) {
     split.ms = Date.now() - t0;
     splits.push(split);
     pages.push([pg.offset, 0, pg.total, !!pg.next, `empty, split: ${r.items.length} arrived in ${split.requests} requests, ${split.unreadable.length} unreadable, ${split.leftOut} left out, ${r.unread} unread, ${split.ms} ms, slowest request ${split.slowestMs} ms${split.stalled ? ", stalled" : ""}`]);
-    return { ...pg, items: r.items };
+    return { ...pg, items: r.items, split: true };
   };
+  // Which playlist sat in each slot, where a read showed it whole, so the records can name the playlists on either side of an unreadable run: whether the
+  // same playlists fail each time (IDs only, never names; Ron, 2026-11-17)
+  const slotIds = {};
   const pages = [];
   let page = await readPage("/me/playlists?limit=50");
   const total = typeof page.total === "number" ? page.total : null;
@@ -543,6 +547,7 @@ async function listSpotifyPlaylists({ onPage } = {}) {
   for (let n = 1; ; n++) {
     pages.push([page.offset, (page.items || []).length, page.total, !!page.next]);
     raw.push(...(page.items || []));
+    if (!page.split && typeof page.offset === "number" && (page.items || []).length === expected(page)) page.items.forEach((p, k) => { slotIds[page.offset + k] = p ? p.id : null; });
     if (onPage) onPage(n, pageCount);
     if (!page.next) break;
     page = await readPage(page.next);
@@ -556,14 +561,21 @@ async function listSpotifyPlaylists({ onPage } = {}) {
   const got = raw.length;
   let shortError = "";
   if (total !== null && raw.length !== total) recordNote(`playlist list: ${raw.length} items, Spotify's total ${total}, in ${Date.now() - startedAt} ms, pages [offset, items, total, next] ${JSON.stringify(pages)}`);
-  if (unreadable.length) recordNote(`playlist list: ${unreadable.length} unreadable by Spotify at ${JSON.stringify(unreadable.slice(0, 20))}, splits ${JSON.stringify(splits)}`);
+  // each run of unreadable slots, with the playlists right before and after it ([first, last, before, after])
+  const around = [];
+  for (const o of [...unreadable].sort((a, b) => a - b)) {
+    const run = around[around.length - 1];
+    if (run && run[1] === o - 1) run[1] = o; else around.push([o, o]);
+  }
+  for (const run of around) run.push(slotIds[run[0] - 1] || null, slotIds[run[1] + 1] || null);
+  if (unreadable.length) recordNote(`playlist list: ${unreadable.length} unreadable by Spotify at ${JSON.stringify(unreadable.slice(0, 20))}, around them [first, last, before, after] ${JSON.stringify(around.slice(0, 10))}, splits ${JSON.stringify(splits)}`);
   if (total !== null && got + steady + unreadable.length < total) {
     // the short reads go into the report too ([offset, items], each read), since a report is often all there is (2026-11-15)
     const reads = pages.filter((x) => x[4] || (typeof x[2] === "number" && x[1] < Math.min(50, x[2] - x[0]))).map((x) => [x[0], x[1]]).slice(0, 12);
     shortError = `Spotify listed ${got} of ${total} playlists, after reading again${hidden.length ? ` (${hidden.length} of them hidden)` : ""}${steady ? ` (${steady} left out the same way twice)` : ""}; short reads [offset, items] ${JSON.stringify(reads)}${splits.length ? `; empty pages read in pieces ${JSON.stringify(splits)}` : ""}`;
   }
   const list = raw.filter(Boolean).map(listEntry);
-  return Object.assign(list, { total, ms: Date.now() - startedAt, pages, hidden, leftOut: steady, unreadable, splits, reread: pages.some((x) => x[4] && !/^empty, split/.test(x[4])), short: shortError });
+  return Object.assign(list, { total, ms: Date.now() - startedAt, pages, hidden, leftOut: steady, unreadable, unreadableAround: around, splits, reread: pages.some((x) => x[4] && !/^empty, split/.test(x[4])), short: shortError });
 }
 // A playlist as the list gives it to Arc, from the list or read on its own (`readListEntry`)
 function listEntry(p) {

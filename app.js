@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16zq";
+const APP_VERSION = "2026-11-16zr";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -1740,7 +1740,8 @@ function pageState() {
 }
 let playlistPages = [];   // the last list's pages as Spotify sent them: [offset, items, total, whether there was a next], for the records below   // how many times the list has started being read in this tab, so a record can tell whether it was read again during a save
 let playlistsUnreadable = [];
-let playlistsReadMs = null;   // how long the last reading of the list took   // where the last list had slots Spotify sent empty even one at a time (offsets), for the records
+let playlistsReadMs = null;
+let playlistsAround = [];   // each run of unreadable slots with the IDs of the playlists before and after it (for the records)   // how long the last reading of the list took   // where the last list had slots Spotify sent empty even one at a time (offsets), for the records
 let playlistsLeftOut = 0;   // how many the last list's pages left out the same way twice (taken as Spotify's answer), for the records
 let playlistsHidden = [];   // where the last list had null items (playlists Spotify will not show this app), for the records
 let playlistsLoadedBy = "";   // which code last read the playlist list, for the record kept when a save question is asked (recordSyncAsk)
@@ -1965,7 +1966,7 @@ const LIST_READS_KEY = "listReads";
 function recordListRead(by) {
   const saves = playlists.filter((p) => p.save).map((p) => [p.save.kind === "save" ? p.save.format.id : p.save.kind, p.save.format ? p.save.format.rev || 0 : null, playlists.indexOf(p)]);
   const named = playlists.filter((p) => p.name.endsWith(SAVE_SUFFIX)).map((p) => [p.name, p.id, p.save ? p.save.kind : "none", p.description == null ? null : String(p.description).length]);
-  const entry = { at: new Date().toISOString(), tab: TAB_ID, tabStarted: TAB_STARTED, page: pageState(), by, count: playlists.length, total: playlistsTotal, hidden: playlistsHidden.length, leftOut: playlistsLeftOut, unreadable: playlistsUnreadable.length, ms: playlistsReadMs, pages: playlistPages, saves, saveNames: named,
+  const entry = { at: new Date().toISOString(), tab: TAB_ID, tabStarted: TAB_STARTED, page: pageState(), by, count: playlists.length, total: playlistsTotal, hidden: playlistsHidden.length, leftOut: playlistsLeftOut, unreadable: playlistsUnreadable.length, unreadableAround: playlistsAround, ms: playlistsReadMs, pages: playlistPages, saves, saveNames: named,
     recipes: typeof editor !== "undefined" && editor.model ? editor.model.formats.length : null, visible: document.visibilityState };
   writeRecord(LIST_READS_KEY, [...readRecord(LIST_READS_KEY, []), entry].slice(-30));
 }
@@ -3083,6 +3084,7 @@ async function loadMyPlaylists(options = {}) {
   playlistsLeftOut = list.leftOut;
   playlistsUnreadable = list.unreadable || [];
   playlistsReadMs = list.ms;
+  playlistsAround = list.unreadableAround || [];
   // Spotify once sent the whole list as 0 of 0 for an account of 81 (Ron, 2026-11-16): Arc took it as true, asked about both saves as gone and made
   // a new one. An empty list while this device knows playlists of this account (saves, the kept list, or this visit's) counts as short instead.
   if (!list.short && !list.length && knowsPlaylistsHere()) list.short = `${service.name} listed 0 of ${list.total || 0} playlists, while this device knows ${knownPlaylistsText()}`;
