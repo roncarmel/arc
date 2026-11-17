@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16zza";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16zzb";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -1266,9 +1266,13 @@ function addButton(s, onPage = false) {
   // a playlist the person has: the service's mark and Open, which opens their copy there (Ron, 2026-11-17, mockups/get-progress G4, was Gotten)
   if (isAdded(s)) {
     const copy = copiesInSpotify().get(s.id) || sharingCopies()[s.id];
-    return feEl("a", { id, class: "ms-add ms-done ms-open", href: service.playlistUrl(copy), target: "_blank", rel: "noopener", "aria-label": `Open in ${service.name}`, html: service.mark("ms-open-mark") + "Open", onClick: (e) => e.stopPropagation() });
+    return openButton(copy, id);
   }
   return feEl("button", { type: "button", id, class: "ms-add", disabled: connection !== "ready", onClick: (e) => { e.stopPropagation(); if (onPage) getFromPage(s); else addShared(s); } }, "Get");
+}
+// Open with the service's mark: the person's playlist there, in a new tab (a gotten copy, or a share of their own)
+function openButton(playlistId, id = null) {
+  return feEl("a", { id, class: "ms-add ms-done ms-open", href: service.playlistUrl(playlistId), target: "_blank", rel: "noopener", "aria-label": `Open in ${service.name}`, html: service.mark("ms-open-mark") + "Open", onClick: (e) => e.stopPropagation() });
 }
 function getFromPage(s) {
   closeDetail();
@@ -1821,7 +1825,8 @@ function yourRow(m) {
       feEl("div", { class: "ms-klabel" }, kindLabel(m)),
       feEl("div", { class: "ms-name", text: m.name }),
       feEl("div", { class: "ms-sub" }, [m.by || "Anonymous", m.ms ? lengthText(m.ms / 60000) : ""].filter(Boolean).join(" · ")),
-      m.hidden ? feEl("div", {}, feEl("span", { class: "ms-hiddentag" }, feIcon("eyeoff"), "Hidden after reports")) : null));
+      m.hidden ? feEl("div", {}, feEl("span", { class: "ms-hiddentag" }, feIcon("eyeoff"), "Hidden after reports")) : null),
+    p ? openButton(p.id) : null);   // Open as on a gotten playlist, while the playlist is still in the library (Ron, 2026-11-16)
   row.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === row) { e.preventDefault(); row.click(); } });
   if (!changed) return row;
   const busy = sharing.updating === m.id;
