@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16zx";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16zy";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -1279,7 +1279,9 @@ function getFromPage(s) {
 function shareRow(s, ov) {
   const per = ov && ov.per[s.id], g = sharing.got.get(s.id);
   const cover = g ? feEl("span", { class: "ms-gcover" }, shareCoverEl(s)) : shareCoverEl(s);
-  const row = feEl("div", { class: "ms-row", role: "button", tabindex: "0", onClick: () => openDetail(s.id) },
+  // while a Get works the row does nothing: no page, no hover (Ron, 2026-11-17)
+  const working = g && g.state === "working";
+  const row = feEl("div", working ? { class: "ms-row ms-row-busy" } : { class: "ms-row", role: "button", tabindex: "0", onClick: () => openDetail(s.id) },
     cover,
     feEl("div", { class: "ms-text" },
       feEl("div", { class: "ms-klabel" }, kindLabel(s)),
@@ -1287,7 +1289,7 @@ function shareRow(s, ov) {
       feEl("div", { class: "ms-sub" }, `${isMine(s) ? "You" : s.by || "Anonymous"} · ${lengthText(s.ms / 60000)}`),
       per ? feEl("div", { class: "ms-ov" }, `${per.pct}% already in your recipes`) : null,
       null),
-    g && g.state === "working" ? feEl("span", { class: "ms-getting" }, feEl("span", { class: "ms-play-spin" }), "Getting...") : addButton(s));
+    working ? feEl("span", { class: "ms-getting" }, feEl("span", { class: "ms-play-spin" }), "Getting...") : addButton(s));
   row.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === row) { e.preventDefault(); row.click(); } });
   if (g) return getCard(s, row, g);
   if (sharing.addErrors[s.id]) return feEl("div", { class: "ms-roww" }, row, getError(s));
