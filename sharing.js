@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16zt";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16zu";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -41,6 +41,7 @@ const sharing = {
   tab: "find", detail: null, flow: null, library: null, libraryAt: 0, loading: false, error: "",
   type: "all", search: "", sort: "newest", book: null, phases: new Set(), moods: new Set(),
   mine: null, mineError: "", adding: new Set(), addErrors: {},
+  got: new Map(),   // a Get under way or just done, shown as its row opened into a card (getCard): share ID: {state: "working"|"done", ...}
   overlap: null, overlapShown: null, reading: false, readStop: false, showOverlapSongs: false,
   songNames: new Map(), player: null, previewNote: "",
   songMenu: null, songMenuClose: null, liked: new Set(), addedTo: new Map(),   // a song's menu, and what it did this visit
@@ -494,7 +495,7 @@ async function lookUpSongs(s) {
   delete sharing.lookupErrors[s.id];
   renderSharing();
   const names = await songNamesReady(s);
-  const found = await service.findByIsrc(need, { names, gapMs: LOOKUP_GAP_MS, onEach: (done) => { progress.done = done; paintChecking(s); } });
+  const found = await service.findByIsrc(need, { names, gapMs: LOOKUP_GAP_MS, onEach: (done) => { progress.done = done; paintChecking(s); getProgress(s, done / need.length); } });
   const unsearched = new Set(found.unsearched || []);
   const none = (found.searched || []).filter((x) => !found[x] && !unsearched.has(x));
   for (const isrc of found.searched || []) sharing.foundHere.set(isrc, found[isrc] || null);
@@ -517,7 +518,7 @@ function missingBox(s) {
   if (isMine(s) || isAdded(s)) return null;
   const here = songsHere(s), p = sharing.lookingUp.get(s.id);
   if (p) return feEl("div", { class: "ms-checking", id: "msChecking" }, feEl("span", { class: "ms-play-spin" }), feEl("span", { id: "msCheckingText" }, checkingText(p)));
-  if (sharing.lookupErrors[s.id]) return problemBox(`Couldn\u2019t check every song on ${service.name}`, sharing.lookupErrors[s.id], [{ label: "Try again", run: () => addShared(s) }]);
+  if (sharing.lookupErrors[s.id]) return lookupError(s);
   if (!here.missing.size && !here.need.length) return null;
   const n = here.missing.size, total = musicCount(s) + [...here.missing].filter((i) => isSilence(s.songs[i])).length;
   const names = sharing.songNames.get(s.id);
@@ -588,37 +589,194 @@ async function copyCover(s, id) {
 }
 
 // ---------------------------------------------------------------- copying a shared playlist into the person's library
+// A Get shows on its row, which opens into a card (Ron, 2026-11-16, mockups/get-progress B): while it works, the cover dimmed, Getting... in
+// grey where Get was (not a button), the step and a bar weighed by how long each step takes; done, a check over the cover, what the copy is,
+// the songs not on this service, the invite to share, Open in Spotify and OK, which folds it back into a plain row.
 async function addShared(s) {
-  if (sharing.adding.has(s.id) || sharing.lookingUp.has(s.id) || connection !== "ready") return;
-  // Get on a list row copies at once, songs missing or not (Ron, 2026-11-16: the person finds out soon enough); only a lookup that stopped
-  // opens the page, where its Try again is
-  if (!(await lookUpSongs(s))) { if (sharing.lookupErrors[s.id] && sharing.detail !== s.id) openDetail(s.id); return; }
-  const ids = s.songs.map(([id]) => id).filter(Boolean);
-  if (!ids.length) { sharing.addErrors[s.id] = `None of its songs are on ${service.name}.`; renderSharing(); return; }
-  sharing.adding.add(s.id);
+  try { await getShared(s); }
+  catch (err) {   // anything unexpected leaves no card spinning: the row shows what went wrong, with Try again
+    sharing.adding.delete(s.id);
+    sharing.lookingUp.delete(s.id);
+    sharing.addErrors[s.id] = String(err && err.message || err).replace(/\.?$/, ".");
+    endGet(s);
+  }
+}
+async function getShared(s) {
+  if (sharing.adding.has(s.id) || sharing.lookingUp.has(s.id) || sharing.got.has(s.id) && sharing.got.get(s.id).state === "working" || connection !== "ready") return;
   delete sharing.addErrors[s.id];
+  startGet(s, songsHere(s).need.length);
   renderSharing();
+  // a lookup that stopped shows its problem on the row, with Try again
+  if (!(await lookUpSongs(s))) { endGet(s); return; }
+  songsHere(s);   // puts what the lookup found into the share's songs
+  const ids = s.songs.map(([id]) => id).filter(Boolean);
+  if (!ids.length) { sharing.addErrors[s.id] = `None of its songs are on ${service.name}.`; endGet(s); return; }
+  sharing.adding.add(s.id);
+  getStep(s, "make");
   let made = null;
   try {
     made = await service.createPlaylist({ name: s.name, description: copyDescription(s) });
     if (!made.private) logStep("shared copy: could not make it private");
+    getStep(s, "add", ids.length);
     await service.addSongs(made.id, ids);
+    getStep(s, "cover");
     await copyCover(s, made.id);
   } catch (err) {
     if (made) { try { await service.deletePlaylist(made.id); } catch (e) { logStep("shared copy: half-made copy not removed"); } }   // all or nothing
     made = null;
     sharing.addErrors[s.id] = String(err && err.message || err).replace(/\.?$/, ".");   // what went wrong, shown in the usual error box (getError)
   }
-  if (made) made = await fixCopy(s, made, ids);
-  sharing.adding.delete(s.id);
+  if (made) { getStep(s, "check"); made = await fixCopy(s, made, ids); }
   if (made) {
+    getStep(s, "finish");
     countEvent("playlist-gotten", s.kind);   // the type only
     rememberCopy(s.id, made.id);
     try { await loadMyPlaylists(); }
     catch (err) { playlists.push({ id: made.id, name: s.name, owner: me.id, collaborative: false, image: null, cover: null, count: s.songs.length, description: copyDescription(s), snapshot: null, madeByApp: false, save: null, isSave: false }); keepPlaylists(); }
   }
+  sharing.adding.delete(s.id);
+  if (made) finishGet(s, made.id); else endGet(s);
+}
+
+// ---------------------------------------------------------------- a Get's progress
+// Each step's share of the bar is how long it takes, roughly: on Spotify the lookup (one search each, LOOKUP_GAP_MS apart) is most of it.
+// Within a step with no count of its own the bar creeps toward its end, never past 90% of it, so it never sits still and then jumps.
+function getStepMs(key, n) {
+  const tidal = service.key === "tidal";
+  return { find: tidal ? Math.ceil(n / 20) * 700 : n * (LOOKUP_GAP_MS + 200), make: 900, add: Math.ceil(n / (tidal ? 50 : 100)) * 900,
+    cover: 1500, check: Math.ceil(n / (tidal ? 20 : 50)) * 700 + 300, finish: 1200 }[key];
+}
+// the done card invites a share while the person shares fewer than 1 playlist for every SHARE_GET_RATIO they get
+function inviteToShare() { return mineCount() * SHARE_GET_RATIO < addedCount(); }
+function startGet(s, need) {
+  const n = s.songs.length, keys = [...(need ? ["find"] : []), "make", "add", ...(s.cover && service.coversAllowed() ? ["cover"] : []), "check", "finish"];
+  const steps = keys.map((key) => ({ key, ms: getStepMs(key, key === "find" ? need : n) }));
+  sharing.got.set(s.id, { state: "working", steps, at: 0, since: Date.now(), part: null, need, count: n, fresh: true });
+  if (!sharing.getTimer) sharing.getTimer = setInterval(tickGets, 250);
+}
+function getStep(s, key, count) {
+  const g = sharing.got.get(s.id);
+  if (!g || g.state !== "working") return;
+  const at = g.steps.findIndex((t) => t.key === key);
+  if (at < 0) return;
+  Object.assign(g, { at, since: Date.now(), part: null });
+  if (count) g.count = count;
+  paintGet(s.id);
+}
+function getProgress(s, part) {
+  const g = sharing.got.get(s.id);
+  if (g && g.state === "working") { g.part = part; paintGet(s.id); }
+}
+function getFraction(g) {
+  const total = g.steps.reduce((sum, t) => sum + t.ms, 0), cur = g.steps[g.at];
+  const before = g.steps.slice(0, g.at).reduce((sum, t) => sum + t.ms, 0);
+  const part = g.part !== null ? g.part : Math.min(0.9, (Date.now() - g.since) / cur.ms);
+  return Math.min(1, (before + cur.ms * part) / total);
+}
+function getStepText(g) {
+  const key = g.steps[g.at].key, p = sharing.lookingUp.get(g.id);
+  if (key === "find") return p ? checkingText(p) : `Finding the songs on ${service.name}`;
+  return { make: "Making your copy", add: `Adding ${songCountText(g.count)}`, cover: "Adding the cover", check: "Checking every song plays", finish: "Finishing up" }[key];
+}
+function paintGet(id) {
+  const g = sharing.got.get(id), card = $("msGet-" + id);
+  if (!g || g.state !== "working" || !card) return;
+  g.id = id;
+  card.querySelector(".ms-gstep").textContent = getStepText(g);
+  card.querySelector(".pp-bar i").style.width = `${Math.round(getFraction(g) * 1000) / 10}%`;
+}
+function tickGets() {
+  let any = false;
+  for (const [id, g] of sharing.got) if (g.state === "working") { any = true; paintGet(id); }
+  if (!any) { clearInterval(sharing.getTimer); sharing.getTimer = null; }
+}
+// a Get that failed or stopped: the card folds, and the row shows the problem with Try again
+function endGet(s) {
+  sharing.got.delete(s.id);
   renderSharing();
-  if (made) offerToShare(s);
+}
+function finishGet(s, playlistId) {
+  const before = $("msGet-" + s.id), from = before ? before.getBoundingClientRect().height : 0;
+  sharing.got.set(s.id, { state: "done", playlistId, invite: inviteToShare() });
+  renderSharing();
+  const card = $("msGet-" + s.id);
+  if (!card || typeof motionAllowed !== "function" || !motionAllowed(card)) return;
+  // the card eases to its new height as the done part fades in, then the check draws itself over the cover and rings spread out
+  if (from) card.animate([{ height: from + "px", overflow: "clip" }, { height: card.getBoundingClientRect().height + "px", overflow: "clip" }], { duration: 380, easing: EASE_OUT });
+  const more = card.querySelector(".ms-gmore");
+  if (more) more.animate([{ opacity: 0, transform: "translateY(-6px)" }, { opacity: 1, transform: "none" }], { duration: 320, delay: 120, easing: EASE_OUT, fill: "backwards" });
+  celebrateGot(card);
+}
+function celebrateGot(card) {
+  const wrap = card.querySelector(".ms-gcover"), cover = wrap && wrap.querySelector(".ms-cover"), check = wrap && wrap.querySelector(".ms-gcheck");
+  if (!wrap) return;
+  cover.animate([{ filter: "grayscale(0.6) brightness(0.55)" }, { filter: "none" }], { duration: 400, delay: 300, easing: EASE_OUT, fill: "backwards" });
+  for (let i = 0; i < 3; i++) {
+    const ring = feEl("span", { class: "pp-ring", "aria-hidden": "true" });
+    Object.assign(ring.style, { left: "0", top: "0", width: "100%", height: "100%" });
+    wrap.appendChild(ring);
+    ring.animate([{ transform: "scale(1)", opacity: 0.9, borderWidth: "3px" }, { transform: "scale(4)", opacity: 0, borderWidth: "1px" }], { duration: 1100, delay: 150 + i * 180, easing: EASE_OUT, fill: "both" }).onfinish = () => ring.remove();
+  }
+  if (check) {
+    check.animate([{ opacity: 0, transform: "scale(0.6)" }, { opacity: 1, transform: "scale(1.15)", offset: 0.5 }, { opacity: 1, transform: "none" }], { duration: 400, easing: EASE_OUT, fill: "backwards" });
+    const path = check.querySelector("path");
+    if (path) path.animate([{ strokeDashoffset: 24 }, { strokeDashoffset: 0 }], { duration: 350, delay: 150, easing: EASE_OUT, fill: "backwards" });
+  }
+}
+// OK folds the done card back into a plain row
+function closeGot(id) {
+  const card = $("msGet-" + id), more = card && card.querySelector(".ms-gmore");
+  const done = () => { sharing.got.delete(id); renderSharing(); };
+  if (!more || typeof motionAllowed !== "function" || !motionAllowed(card)) { done(); return; }
+  const from = card.getBoundingClientRect().height, to = card.querySelector(".ms-row").getBoundingClientRect().height;
+  more.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: EASE_IN, fill: "forwards" });
+  card.animate([{ height: from + "px", overflow: "clip" }, { height: to + "px", overflow: "clip" }], { duration: 260, easing: EASE_IN, fill: "forwards" }).onfinish = done;
+}
+const GOT_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" stroke-dasharray="24"/></svg>';
+// songs of a share not on this service: how many, of how many (silences counted only when missing, as on its page)
+function missingCount(s) {
+  const here = songsHere(s);
+  return { n: here.missing.size, total: musicCount(s) + [...here.missing].filter((i) => isSilence(s.songs[i])).length, missing: here.missing };
+}
+// the row opened into a card: the row with Getting... (or Gotten) and the cover dimmed (or checked), then the step and bar, or what was gotten
+function getCard(s, row, g) {
+  const parts = [];
+  if (g.state === "working") {
+    parts.push(feEl("div", { class: "ms-gmore" }, feEl("div", { class: "ms-gstep" }, ""), feEl("span", { class: "pp-bar" }, feEl("i", {}))));
+  } else {
+    const { n, total } = missingCount(s);
+    const who = s.by || "the sharer";
+    parts.push(feEl("div", { class: "ms-gmore" },
+      feEl("div", { class: "ms-gline" }, `In your ${service.name}, your own ${service.can.privatePlaylists ? "private" : "unlisted"} copy`),
+      feEl("ul", { class: "ms-gotwhy" },
+        feEl("li", {}, feEl("b", {}, "Yours to change."), " Add, remove or reorder songs."),
+        feEl("li", {}, feEl("b", {}, "It stays as it is"), ` if ${who} changes theirs.`)),
+      n ? feEl("div", { class: "ms-missing ms-gmiss" }, feIcon("info"), feEl("span", {}, feEl("b", {}, `${total - n} of ${total} songs.`), ` ${n} ${n === 1 ? "isn’t" : "aren’t"} on ${service.name}.`)) : null,
+      g.invite ? feEl("p", { class: "ms-ginvite" }, s.by ? `${s.by} shared this. ` : "Someone shared this. ",
+        feEl("button", { type: "button", class: "linklike", id: "msShareOne", onClick: (e) => { e.stopPropagation(); sharing.got.delete(s.id); switchTab("share"); startShare(); } }, "Share one of yours?")) : null,
+      feEl("div", { class: "ms-gfoot" },
+        feEl("a", { class: "ms-gopen", href: service.playlistUrl(g.playlistId), target: "_blank", rel: "noopener", onClick: (e) => e.stopPropagation() }, `Open in ${service.name}`),
+        feEl("button", { type: "button", class: "ms-gok", id: "msGotOk", onClick: (e) => { e.stopPropagation(); closeGot(s.id); } }, "OK"))));
+  }
+  const card = feEl("div", { class: "ms-gcard " + (g.state === "working" ? "ms-gwork" : "ms-gdone"), id: "msGet-" + s.id }, row, ...parts);
+  if (g.state === "working") {
+    // a redrawn card carries on its sweep and pulse from the page's clock, as a participant's build row does
+    const t = performance.now();
+    card.style.setProperty("--pp-sweep-at", `-${Math.round(t % 1800)}ms`);
+    card.style.setProperty("--pp-head-at", `-${Math.round(t % 1000)}ms`);
+    card.querySelector(".ms-gstep").textContent = getStepText(Object.assign(g, { id: s.id }));
+    card.querySelector(".pp-bar i").style.width = `${Math.round(getFraction(g) * 1000) / 10}%`;
+    // the first time, the card unfolds from the row
+    if (g.fresh) requestAnimationFrame(() => {
+      if (!g.fresh) return;
+      g.fresh = false;
+      const now = $("msGet-" + s.id), more = now && now.querySelector(".ms-gmore");
+      if (!more || typeof motionAllowed !== "function" || !motionAllowed(now)) return;
+      const full = more.getBoundingClientRect().height;
+      more.animate([{ height: "0px", opacity: 0, overflow: "clip" }, { height: full + "px", opacity: 1, overflow: "clip" }], { duration: 300, easing: EASE_OUT });
+    });
+  }
+  return card;
 }
 
 // the copy's description in Spotify: the sharer's description, else what it is, ending in [origin: <share ID>]
@@ -662,7 +820,6 @@ function closeSharing() {
   sharing.readStop = true;
   stopPreview();
   closeSortMenu();
-  closeSheet(true);
   sharing.search = "";
   sharing.flow = null;
   sharing.detail = null;
@@ -1105,27 +1262,42 @@ function renderResults() {
 function shareCoverEl(s, cls = "ms-cover") {
   return s.cover ? feEl("img", { class: cls, src: s.cover, alt: "", loading: "lazy" }) : feEl("span", { class: cls + " ms-nocover" }, feIcon("notes"));
 }
-function addButton(s, big = false) {
-  if (isMine(s)) return big ? null : feEl("span", { class: "ms-add ms-yours" }, "Yours");
-  if (sharing.adding.has(s.id) || (!big && sharing.lookingUp.has(s.id))) return feEl("button", { type: "button", id: big ? "msMain" : null, class: big ? "ms-mainbtn ms-grey" : "ms-add ms-busy", disabled: true }, "Getting...");
+// onPage: the small Get at the right of a playlist's page header, which closes the page and gets it on its row (Ron, 2026-11-16, mockups/get-progress B5)
+function addButton(s, onPage = false) {
+  if (isMine(s)) return onPage ? null : feEl("span", { class: "ms-add ms-yours" }, "Yours");
+  const id = onPage ? "msMain" : null;
+  if (sharing.adding.has(s.id) || sharing.lookingUp.has(s.id) || (sharing.got.get(s.id) || {}).state === "working") return feEl("span", { id, class: "ms-getting" }, feEl("span", { class: "ms-play-spin" }), "Getting...");
   // on a list row Gotten opens the playlist's page like the row itself (a disabled button swallowed the tap; Ron, 2026-11-16)
-  if (isAdded(s)) return feEl("button", { type: "button", id: big ? "msMain" : null, class: big ? "ms-mainbtn ms-grey" : "ms-add ms-done", disabled: big, onClick: big ? null : (e) => { e.stopPropagation(); openDetail(s.id); } }, feIcon("check"), "Gotten");
-  return feEl("button", { type: "button", id: big ? "msMain" : null, class: big ? "ms-mainbtn" : "ms-add", disabled: connection !== "ready" || sharing.lookingUp.has(s.id), onClick: (e) => { e.stopPropagation(); addShared(s); } }, big ? feIcon("plus") : null, big ? "Get this playlist" : "Get");
+  if (isAdded(s)) return feEl("button", { type: "button", id, class: "ms-add ms-done", disabled: onPage, onClick: onPage ? null : (e) => { e.stopPropagation(); openDetail(s.id); } }, feIcon("check"), "Gotten");
+  return feEl("button", { type: "button", id, class: "ms-add", disabled: connection !== "ready", onClick: (e) => { e.stopPropagation(); if (onPage) getFromPage(s); else addShared(s); } }, "Get");
+}
+function getFromPage(s) {
+  closeDetail();
+  addShared(s);
+  const card = $("msGet-" + s.id);
+  if (card && card.scrollIntoView) card.scrollIntoView({ block: "nearest" });
 }
 // a row: the cover, the type's line in pink small capitals, the name, who and how long, and Get
 function shareRow(s, ov) {
-  const per = ov && ov.per[s.id];
+  const per = ov && ov.per[s.id], g = sharing.got.get(s.id);
+  const cover = g ? feEl("span", { class: "ms-gcover" }, shareCoverEl(s), g.state === "done" ? feEl("span", { class: "ms-gcheck", "aria-hidden": "true", html: GOT_CHECK }) : null) : shareCoverEl(s);
   const row = feEl("div", { class: "ms-row", role: "button", tabindex: "0", onClick: () => openDetail(s.id) },
-    shareCoverEl(s),
+    cover,
     feEl("div", { class: "ms-text" },
       feEl("div", { class: "ms-klabel" }, kindLabel(s)),
       feEl("div", { class: "ms-name", text: s.name, title: s.name }),
       feEl("div", { class: "ms-sub" }, `${isMine(s) ? "You" : s.by || "Anonymous"} · ${lengthText(s.ms / 60000)}`),
       per ? feEl("div", { class: "ms-ov" }, `${per.pct}% already in your recipes`) : null,
       null),
-    addButton(s));
+    g && g.state === "working" ? feEl("span", { class: "ms-getting" }, feEl("span", { class: "ms-play-spin" }), "Getting...") : addButton(s));
   row.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === row) { e.preventDefault(); row.click(); } });
-  return sharing.addErrors[s.id] ? feEl("div", { class: "ms-roww" }, row, getError(s)) : row;
+  if (g) return getCard(s, row, g);
+  if (sharing.addErrors[s.id]) return feEl("div", { class: "ms-roww" }, row, getError(s));
+  if (sharing.lookupErrors[s.id]) return feEl("div", { class: "ms-roww" }, row, lookupError(s));
+  return row;
+}
+function lookupError(s) {
+  return problemBox(`Couldn’t check every song on ${service.name}`, sharing.lookupErrors[s.id], [{ label: "Try again", run: (e) => { if (e) e.stopPropagation(); addShared(s); } }]);
 }
 // a Get that failed: the usual error box, with Try again
 function getError(s) {
@@ -1172,7 +1344,7 @@ function menuLeaves(menu, rect) {
   host.appendChild(menu);
   playMotion(menu, "menu", false).onfinish = () => menu.remove();
 }
-// where a leaving menu or the sheet after a Get is drawn: the popup while it is open, else the page
+// where a leaving menu is drawn: the popup while it is open, else the page
 const popupHost = () => ($("msFlowWrap") && !$("msFlowWrap").hidden ? $("msFlow") : $("msDialog"));
 function isMine(s) {
   if (sharing.mine) return sharing.mine.some((m) => m.id === s.id);
@@ -1186,7 +1358,7 @@ function phaseLine(s) {
   return feEl("div", { class: "ms-phase-line" }, who, ...names);
 }
 // A playlist's page: its cover, type, name, who and how long; what its type says; the description, with Report right under what the sharer typed
-// (none when nothing was typed); the songs with previews. Get this playlist wide under the header (B), or on the person's own,
+// (none when nothing was typed); the songs with previews. A small Get at the header's right (gets it on its row), or on the person's own,
 // a Details card with Edit details (A). No bottom row, so it does not look like a step of the wizard (decided by Ron, 2026-11-08).
 // It is drawn in the popup (#msFlowBody), closed with its X.
 function renderDetail(body) {
@@ -1198,8 +1370,7 @@ function renderDetail(body) {
       feEl("div", { class: "ms-klabel" }, kindName(s.kind) === "Other" ? s.other : kindName(s.kind)),
       feEl("h3", { id: "msDetailTitle", title: s.name, text: s.name }),
       feEl("div", { class: "ms-sub" }, isMine(s) ? "Shared by you" : s.by ? `Shared by ${s.by}` : "Shared anonymously"),
-      feEl("div", { class: "ms-sub" }, `${songCountText(musicCount(s))} · ${lengthText(s.ms / 60000)}`))));
-  if (!isMine(s)) { const get = addButton(s, true); get.classList.add("ms-getwide"); body.appendChild(get); }
+      feEl("div", { class: "ms-sub" }, `${songCountText(musicCount(s))} · ${lengthText(s.ms / 60000)}`)), addButton(s, true)));
   const missing = missingBox(s);
   if (missing) body.appendChild(missing);
   if (sharing.addErrors[s.id]) body.appendChild(getError(s));
@@ -1230,47 +1401,6 @@ function renderDetail(body) {
 
 // ---------------------------------------------------------------- after every Get: a sheet says what the copy is (D1); while the person shares
 // fewer than 1 playlist for every 4 they get, it also invites a share (D2). Decided by Ron, 2026-11-08.
-function offerToShare(s) {
-  if ($("msSheet")) return;
-  const invite = mineCount() * SHARE_GET_RATIO < addedCount();
-  const sheet = feEl("div", { id: "msSheet", class: "ms-sheet-wrap" });
-  const who = s.by || "the sharer";
-  const panel = feEl("div", { class: "ms-sheet", role: "dialog", "aria-modal": "true", "aria-label": `${s.name} is in your ${service.name}`, tabindex: "-1" },
-    feEl("div", { class: "ms-grab" }),
-    feEl("div", { class: "ms-gothead" }, shareCoverEl(s, "ms-cover"),
-      feEl("div", {}, feEl("div", { class: "ms-gottitle", text: `${named(s.name)} is in your ${service.name}` }), feEl("div", { class: "ms-sub" }, service.can.privatePlaylists ? "Your own private copy" : "Your own unlisted copy"))),
-    feEl("ul", { class: "ms-gotwhy" },
-      feEl("li", {}, feEl("b", {}, "Yours to change."), " Add, remove or reorder songs."),
-      feEl("li", {}, feEl("b", {}, "It stays as it is"), ` if ${who} changes theirs.`)),
-    invite ? feEl("div", { class: "ms-invitebox" },
-      feEl("p", { class: "ms-invite" }, s.by ? `${s.by} shared this. Share one of yours?` : "Someone shared this. Share one of yours?"),
-      feEl("p", { class: "ms-sub" }, "It takes about a minute.")) : null,
-    feEl("div", { class: "ms-footrow" + (invite ? " ms-wizrow" : "") },
-      invite ? feEl("button", { type: "button", class: "ms-backbtn ms-greybtn", id: "msNotNow", onClick: () => closeSheet() }, "Not now") : null,
-      invite ? mainButton("Share a playlist", () => { closeSheet(true); switchTab("share"); startShare(); }, { id: "msShareOne" })
-        : mainButton("OK", () => closeSheet(), { id: "msGotOk" })));
-  sheet.appendChild(panel);
-  sheet.addEventListener("click", (e) => { if (e.target === sheet) closeSheet(); });
-  popupHost().appendChild(sheet);   // inside the popup when it is open, so it rises over the playlist's page
-  if (typeof motionAllowed === "function" && motionAllowed(panel)) {
-    sheet.animate([{ backgroundColor: "rgba(0,0,0,0)" }, { backgroundColor: "rgba(0,0,0,0.55)" }], { duration: 220, easing: EASE_OUT });
-    sheetMotion(panel, true);
-  }
-  panel.focus({ preventScroll: true });
-}
-function closeSheet(now = false) {
-  const sheet = $("msSheet");
-  if (!sheet) return;
-  sheet.removeAttribute("id");
-  for (const el of sheet.querySelectorAll("[id]")) el.removeAttribute("id");
-  sheet.inert = true;
-  const panel = sheet.querySelector(".ms-sheet");
-  if (!now && typeof motionAllowed === "function" && motionAllowed(panel)) {
-    sheet.animate([{ backgroundColor: "rgba(0,0,0,0.55)" }, { backgroundColor: "rgba(0,0,0,0)" }], { duration: 180, easing: EASE_IN, fill: "forwards" });
-    sheetMotion(panel, false).onfinish = () => sheet.remove();
-  } else sheet.remove();
-}
-
 // ---------------------------------------------------------------- a playlist's songs and their previews
 // The names come from the worker one playlist at a time, when its page opens (never with the library). A preview is looked up at Deezer
 // by the song's ISRC only when its play button is pressed: one request, nothing before (decided by Ron, 2026-11-07).
@@ -2519,6 +2649,6 @@ async function loadDevReports() {
   watchKeyboard();
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" || !$("msOverlay") || $("msOverlay").hidden || document.querySelector(".fe-overlay:not([hidden])")) return;
-    if ($("msSheet")) closeSheet(); else if (sharing.flow) flowBack(); else if (sharing.detail) closeDetail();   // a page of its own now (Arc's home): Escape does not leave it
+    if (sharing.flow) flowBack(); else if (sharing.detail) closeDetail();   // a page of its own now (Arc's home): Escape does not leave it
   });
 })();
