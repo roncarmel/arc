@@ -10,7 +10,7 @@ const service = (() => {
 
 // Python runtime versions to try, newest first. If one is not available, the next is used.
 const PYODIDE_VERSIONS = ["v0.29.3", "v0.29.2", "v0.29.1", "v0.29.0", "v0.28.3", "v0.27.7"];
-const APP_VERSION = "2026-11-16zzb";
+const APP_VERSION = "2026-11-16zzc";
 
 // Every playlist this app creates gets this at the start of its description. That is the one way the app tells its
 // own playlists from ones you made by hand, so it works on any device, and nothing is stored in this browser for it.
@@ -602,41 +602,22 @@ function showWelcomeStep(step, push) {
   $("wpFirst").hidden = step !== 1;
   $("wpWhich").hidden = step !== 2;
   $("wpSetup").hidden = step !== 3;
+  if (step === 2) for (const tile of serviceTiles()) tile.classList.remove("wp-svc-on");   // lit by the last tap (pickService)
   showRecipeWhat(false);
-  if (push) { try { history.pushState({ page: "welcome", step }, ""); } catch (err) { /* the back button just leaves the page */ } }
+  if (push) { try { history[push === "replace" ? "replaceState" : "pushState"]({ page: "welcome", step }, ""); } catch (err) { /* the back button just leaves the page */ } }
   window.scrollTo(0, 0);
   if (step === 3) drawSetupJoint();
 }
 // The music service chosen on the welcome page. The one in use goes on at once; the other is set up (switchService) and the page loads again under it,
-// opening on the next step (welcomeAt in sessionStorage, read by the <head> script and by startup), with the choice still one step back.
+// opening on the next step (welcomeAt in sessionStorage, read by the <head> script and by startup).
 // TIDAL was Coming soon outside developer mode until Music sharing worked across services (Ron, 2026-11-16); open to everyone since.
-// The tiles are radio buttons (Ron, 2026-11-16): a tap chooses one, and Next goes on with it. Arrow keys move the choice; only the chosen tile (or the
-// first) is in the tab order.
+// A tap on a tile goes on with it: no Back or Next under the tiles, which made a grid pairing Back with Spotify and Next with TIDAL (Ron, 2026-11-16,
+// mockups/service-layout 4, replacing radio tiles and Next). The choice takes no place in the history (the next step replaces it), so Back there, or the
+// browser's back, returns to the first step.
 function serviceTiles() { return [...document.querySelectorAll("#wpWhich [data-pick-service]")]; }
-function chosenService() { const t = serviceTiles().find((x) => x.getAttribute("aria-checked") === "true"); return t ? t.dataset.pickService : null; }
-function markServiceTiles(chosen = chosenService()) {
-  const tiles = serviceTiles();
-  const focusable = chosen || (tiles[0] && tiles[0].dataset.pickService);
-  for (const tile of tiles) {
-    const key = tile.dataset.pickService;
-    tile.setAttribute("aria-checked", String(key === chosen));
-    tile.tabIndex = key === focusable ? 0 : -1;
-  }
-  if ($("wpWhichNext")) $("wpWhichNext").disabled = !chosen;
-}
-function chooseServiceTile(key, focus = false) {
-  markServiceTiles(key);
-  if (focus) { const t = serviceTiles().find((x) => x.dataset.pickService === key); if (t) t.focus(); }
-}
-function moveServiceChoice(step) {
-  const open = serviceTiles().map((t) => t.dataset.pickService);
-  if (!open.length) return;
-  const at = open.indexOf(chosenService());
-  const next = at < 0 ? (step > 0 ? 0 : open.length - 1) : (at + step + open.length) % open.length;
-  chooseServiceTile(open[next], true);
-}
 function pickService(key) {
-  if (key === service.key) { slideScreens(() => showWelcomeStep(3, true)); return; }
+  for (const tile of serviceTiles()) tile.classList.toggle("wp-svc-on", tile.dataset.pickService === key);   // the tapped tile lights as the screen leaves
+  if (key === service.key) { slideScreens(() => showWelcomeStep(3, "replace")); return; }
   if (!switchService(key)) return;
   try { sessionStorage.setItem("welcomeAt", "3"); } catch (err) { /* it opens on the tools */ }
   pageWindow().location.reload();
@@ -693,7 +674,7 @@ function alignLoops() {
 function welcomeStepBack() {
   const step = welcomeStep();
   if (history.state && history.state.page === "welcome" && history.state.step === step) { history.back(); return; }   // the popstate that follows shows the step before
-  slideScreens(() => showWelcomeStep(step - 1, false));
+  slideScreens(() => showWelcomeStep(step === 3 ? 1 : step - 1, false));   // the service choice is never gone back to (pickService)
 }
 
 // Moving between the screens before the app (the tools, what setup is, the setup question, its steps) slides: forward, the screen leaves to the left as the next
@@ -1185,7 +1166,7 @@ function historyMoved() {
   } else if (pageName() === "setup") {
     setupLeft();
   }
-  if (pageName() === "welcome") showWelcomeStep(state && state.page === "welcome" && state.step >= 2 ? state.step : 1, false);
+  if (pageName() === "welcome") showWelcomeStep(state && state.page === "welcome" && state.step >= 2 ? state.step : 1, false);   // forward to a choice made before reloading lands on the step after it
 }
 
 // Blocks that open in a popup (the builder menu's tutorial, Feedback, Report a problem, the silence ?, the DEV menu's
@@ -3730,16 +3711,7 @@ async function main() {
   on("connect", "click", startLogin);
   on("startSetup", "click", () => slideScreens(() => goToSetup(false)));
   on("getStarted", "click", () => slideScreens(() => showWelcomeStep(2, true)));
-  on("wpWhichBack", "click", welcomeStepBack);
-  for (const tile of serviceTiles()) {
-    tile.addEventListener("click", () => chooseServiceTile(tile.dataset.pickService));
-    tile.addEventListener("keydown", (e) => {
-      const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
-      if (step) { e.preventDefault(); moveServiceChoice(step); }
-    });
-  }
-  on("wpWhichNext", "click", () => { const key = chosenService(); if (key) pickService(key); });
-  markServiceTiles(service.key !== "spotify" ? service.key : null);   // back from a service chosen before the page loaded again, it is still chosen
+  for (const tile of serviceTiles()) tile.addEventListener("click", () => pickService(tile.dataset.pickService));
   on("wpSetupBack", "click", welcomeStepBack);
   for (const head of document.querySelectorAll("#welcomePage .wp-tool-head")) head.addEventListener("click", () => toggleWelcomeTool(head));
   watchTutorialRows();
@@ -3758,7 +3730,7 @@ async function main() {
   try {
     if (sessionStorage.getItem("welcomeAt") === "3") {
       sessionStorage.removeItem("welcomeAt");
-      if (pageName() === "welcome") { history.replaceState({ page: "welcome", step: 2 }, ""); showWelcomeStep(3, true); }
+      if (pageName() === "welcome") showWelcomeStep(3, "replace");   // in place of the choice, so back returns to the first step
     }
   } catch (err) { /* it opens on the tools */ }
   initToolMenu();

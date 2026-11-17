@@ -716,10 +716,10 @@ print(json.dumps(out))
   var rf = rp.document.getElementById("reportForm"), rq = reportParams(rp);
   check("the report is written in the page: a box for what happened, an optional email, and Send report, pale until something is typed", !!rf && rf.querySelector("#reportText") && rf.querySelector("#reportEmail").type === "email" && rf.querySelector(".mf-send").disabled === true && /Send report/.test(rf.querySelector(".mf-send").textContent) && !rp.document.getElementById("reportLink"));
   check("the details sent are exactly these seven, and nothing else", JSON.stringify(Object.keys(rq).sort()) === JSON.stringify([...REPORT_KEYS].sort()), JSON.stringify(Object.keys(rq)));
-  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16zzb" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
+  check("the details are real: version, browser, window size, python, last error, steps", rq.appVersion === "2026-11-16zzc" && / on /.test(rq.browser) && /^\d+x\d+$/.test(rq.windowSize) && /^ready \(Python v[\d.]+\)$/.test(rq.python) && rq.lastError === "none" && rq.earlierErrors === "none" && /^page opened \(0:\d\d\) > connected, 5 playlists found \(0:\d\d\) > python ready \(0:\d\d\)$/.test(rq.recentSteps), JSON.stringify(rq));
   rp.document.getElementById("reportSentToggle").click();
   var shown = rp.document.getElementById("reportPreview").textContent;
-  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16zzb/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
+  check("Sent with your message opens to show people exactly what goes with it", rp.document.getElementById("reportSent").hidden === false && /Version: 2026-11-16zzc/.test(shown) && /Browser: .* on /.test(shown) && /Window size: \d+x\d+/.test(shown) && /Python: ready \(v/.test(shown) && /Last error: none/.test(shown) && /Recent steps: page opened \(0:\d\d\) > connected/.test(shown), shown);
   check("every Report this problem link opens the page's report form, not another site", ["mainReportHint", "loginReportHint", "connectionReportHint"].every((id) => { const a = rp.document.getElementById(id).querySelector("a"); return a.classList.contains("report-open") && a.getAttribute("href") === "#"; }));
 
   // scrubbing: anything in quotation marks is a name that could be private
@@ -832,7 +832,7 @@ print(json.dumps(out))
   check("every pink button has an icon in front of its label", pill.length >= 15 && pillsIn.length === pill.length, `${pillsIn.length} of ${pill.length} ` + pill.filter((b) => !b.querySelector("img.btn-icon")).map((b) => b.id || b.outerHTML.slice(0, 60)).join(","));
   check("each icon is a small file, 20 by 20 (the Build sparkles 24 by 24), decorative, and the file exists", pill.every((b) => { const i = b.querySelector("img.btn-icon"); const size = i.getAttribute("src") === "icons/build.svg" ? "24" : "20"; return i.getAttribute("width") === size && i.getAttribute("height") === size && i.getAttribute("alt") === "" && /^icons\/[a-z]+\.svg$/.test(i.getAttribute("src")) && fs.existsSync(ROOT + i.getAttribute("src")); }));
   check("text-style links (Restore, Reset, Undo) have no icons", Array.from(t0.document.querySelectorAll("button.linklike")).every((b) => !b.querySelector("img")));
-  check("each icon sits left of a label (a forward button such as Get started, right of it), and the label is its own element", pill.every((b) => { const i = b.querySelector("img.btn-icon, img"); return i === (["getStarted", "startSetup", "wpWhichNext", "spNext"].includes(b.id) ? b.lastElementChild : b.firstElementChild) && !!b.querySelector(".btn-label, span"); }));
+  check("each icon sits left of a label (a forward button such as Get started, right of it), and the label is its own element", pill.every((b) => { const i = b.querySelector("img.btn-icon, img"); return i === (["getStarted", "startSetup", "spNext"].includes(b.id) ? b.lastElementChild : b.firstElementChild) && !!b.querySelector(".btn-label, span"); }));
   var icss = fs.readFileSync(ROOT + "index.html", "utf8").replace(/\s+/g, " ");
   // changing a label must not remove the icon
   var ic = await boot({ url: "http://127.0.0.1:8000/", session: signedIn(), local: { formats: MINI }, fetchOptions: {} });
@@ -2224,7 +2224,7 @@ print(json.dumps(out))
   ws_w.eval("window.__delays = []; window.setTimeout = function (f, ms) { window.__delays.push(ms); f(); return 0; };");
   ws_w.eval(ws_src);
   ws_w.sessionStorage.setItem("startupRefreshed", "1");   // a fresh load has already been tried this visit, so the popup shows at once
-  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16zzb", lineno: 12 }));
+  ws_w.dispatchEvent(new ws_w.ErrorEvent("error", { message: "Unexpected token", filename: "http://127.0.0.1:8000/app.js?v=2026-11-16zzc", lineno: 12 }));
   ws_w.dispatchEvent(new ws_w.Event("load"));
   var ws_box = ws_w.document.getElementById("startupProblem");
   check("the watchdog marks the page as not started until the script says so", ws_w.pageStart.started === false);
@@ -2548,7 +2548,7 @@ print(json.dumps(out))
   check("and a card closes again on its own head", tg_more1.hidden && tg_heads[1].getAttribute("aria-expanded") === "false");
   check("Get started is the first step's only button below the cards, and the setup step starts hidden", tg_d.getElementById("getStarted").textContent === "Get started" && tg_d.getElementById("wpSetup").hidden && !tg_d.getElementById("wpFirst").hidden && tg_d.getElementById("wpSetup").contains(tg_d.getElementById("startSetup")));
   tg_d.getElementById("getStarted").click();
-  tg_d.querySelector('#wpWhich [data-pick-service="spotify"]').click(); tg_d.getElementById("wpWhichNext").click();   // the service choice comes first (its own checks are in the spotify premium area)
+  tg_d.querySelector('#wpWhich [data-pick-service="spotify"]').click();   // the service choice comes first (its own checks are in the spotify premium area)
   check("Get started shows the band joined to Spotify's mark, Connect your Spotify account, the Premium note, Back and Start setup", !tg_d.getElementById("wpSetup").hidden && tg_d.getElementById("wpFirst").hidden && !!tg_d.querySelector("#welcomePage > .wp-band") && !!tg_d.querySelector("#wpJoint .wp-spotify") && tg_d.getElementById("wpSpotifyName").textContent === "Your Spotify" && /^M[\d.]+ /.test(tg_d.getElementById("wpWire").getAttribute("d") || "") && tg_d.querySelector("#wpSetup h2").textContent === "Connect your Spotify account" && !tg_d.querySelector("#wpSetup .wp-steps") && /^Spotify Premium is needed for the connection\.$/.test(tg_d.querySelector("#wpSetup .wp-note").textContent) && tg_d.getElementById("wpSetupBack").textContent === "Back" && tg_d.documentElement.classList.contains("page-welcome"));
   tg_w.eval("showWelcomeStep(1, false)");
   check("Back returns to the tools", tg_d.getElementById("wpSetup").hidden && !tg_d.getElementById("wpFirst").hidden);
@@ -2620,27 +2620,22 @@ print(json.dumps(out))
   var pr_tiles = [...pr_d.querySelectorAll("#wpWhich .wp-svc")];
   check("Get started asks Which music service do you use?, Spotify and TIDAL side by side, each saying what it needs", !pr_d.getElementById("wpWhich").hidden && pr_d.getElementById("wpFirst").hidden && pr_d.getElementById("wpSetup").hidden && pr_tiles.map((t) => t.dataset.pickService + ":" + t.querySelector(".wp-svc-name").textContent + ":" + t.querySelector(".wp-svc-req").textContent).join("|") === "spotify:Spotify:Spotify Premium is needed|tidal:TIDAL:Any TIDAL plan", pr_tiles.map((t) => t.textContent).join("|"));
   check("each tile's mark is plain, one color in the text's color, with no circle of another color", pr_tiles.every((t) => !t.querySelector("circle") && t.querySelector("svg path").getAttribute("fill") === "currentColor"));
-  check("the tiles are radio buttons with none chosen, and Next waits for a choice (Ron, 2026-11-16)", pr_d.querySelector("#wpWhich .wp-svcs").getAttribute("role") === "radiogroup" && pr_tiles.every((t) => t.getAttribute("role") === "radio" && t.getAttribute("aria-checked") === "false") && pr_d.getElementById("wpWhichNext").disabled && pr_tiles[0].tabIndex === 0 && pr_tiles[1].tabIndex === -1);
+  check("no Back or Next under the tiles, which are plain buttons, none lit (Ron, 2026-11-16, mockups/service-layout 4)", !pr_d.getElementById("wpWhichBack") && !pr_d.getElementById("wpWhichNext") && !pr_d.querySelector("#wpWhich .wp-pair") && pr_tiles.every((t) => t.tagName === "BUTTON" && !t.hasAttribute("role") && !t.classList.contains("wp-svc-on")) && !/Coming soon/.test(pr_d.getElementById("wpWhich").textContent));
   pr_tiles[0].click();
-  check("a tap chooses Spotify without going on, and Next is ready", pr_tiles[0].getAttribute("aria-checked") === "true" && !pr_d.getElementById("wpWhichNext").disabled && !pr_d.getElementById("wpWhich").hidden);
-  pr_tiles[0].dispatchEvent(new pr_w.KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
-  var pr_toTidal = pr_tiles[1].getAttribute("aria-checked") === "true";
-  pr_tiles[1].dispatchEvent(new pr_w.KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
-  check("arrow keys move the choice round the tiles, TIDAL included, with no Coming soon anywhere", pr_toTidal && pr_tiles[0].getAttribute("aria-checked") === "true" && pr_tiles[1].getAttribute("aria-checked") === "false" && !pr_tiles.some((t) => t.hasAttribute("aria-disabled")) && !/Coming soon/.test(pr_d.getElementById("wpWhich").textContent));
-  pr_d.getElementById("wpWhichNext").click();
   await new Promise((r) => setTimeout(r, 50));
-  check("Spotify, the service in use, goes straight on to Connect your Spotify account, with its Premium note and its own mark on the line", !pr_d.getElementById("wpSetup").hidden && pr_d.getElementById("wpWhich").hidden && !pr_d.querySelector("#wpSetup .wp-note").hidden && pr_d.querySelector("#wpSetup .wp-setup-title").textContent === "Connect your Spotify account" && pr_d.querySelector("#wpSetup .wp-spotify-name").textContent === "Your Spotify" && !!pr_d.querySelector("#wpSetup .wp-spotify path[fill-rule='evenodd']"));
+  check("a tap on Spotify, the service in use, goes straight on to Connect your Spotify account, with its Premium note and its own mark on the line, in place of the choice in the history", !pr_d.getElementById("wpSetup").hidden && pr_d.getElementById("wpWhich").hidden && !pr_d.querySelector("#wpSetup .wp-note").hidden && pr_d.querySelector("#wpSetup .wp-setup-title").textContent === "Connect your Spotify account" && pr_d.querySelector("#wpSetup .wp-spotify-name").textContent === "Your Spotify" && !!pr_d.querySelector("#wpSetup .wp-spotify path[fill-rule='evenodd']") && pr_w.history.state && pr_w.history.state.step === 3);
   pr_d.getElementById("wpSetupBack").click();
   await new Promise((r) => setTimeout(r, 50));
-  check("Back from there returns to the choice", !pr_d.getElementById("wpWhich").hidden && pr_d.getElementById("wpSetup").hidden);
+  check("Back from there returns to the first step, not the choice", !pr_d.getElementById("wpFirst").hidden && pr_d.getElementById("wpWhich").hidden && pr_d.getElementById("wpSetup").hidden);
+  pr_d.getElementById("getStarted").click();
+  await new Promise((r) => setTimeout(r, 50));
+  check("Get started again shows the choice with no tile lit", !pr_d.getElementById("wpWhich").hidden && pr_tiles.every((t) => !t.classList.contains("wp-svc-on")));
   pr_w.eval('localStorage.setItem("clientId", "spotify-id"); localStorage.setItem("clientId-tidal", "tidal-id"); localStorage.setItem("spotifySynced", "{}"); localStorage.setItem("spotifyAccount", "me"); pageWindow = () => ({ location: { reload() { window.prReloaded = true; } } })');
   pr_tiles[1].click();
-  check("outside developer mode TIDAL can be chosen like Spotify, a tap choosing it without going on (open to everyone, Ron, 2026-11-16)", pr_tiles[1].getAttribute("aria-checked") === "true" && pr_tiles[0].getAttribute("aria-checked") === "false" && pr_tiles[1].tabIndex === 0 && !pr_d.getElementById("wpWhichNext").disabled && !pr_w.prReloaded);
-  pr_d.getElementById("wpWhichNext").click();
   check("TIDAL, another service, swaps in its Client ID, forgets the old service's save records, and loads the page again on the next step", pr_w.prReloaded === true && pr_w.localStorage.getItem("arcService") === "tidal" && pr_w.localStorage.getItem("clientId") === "tidal-id" && pr_w.localStorage.getItem("clientId-spotify") === "spotify-id" && pr_w.localStorage.getItem("spotifySynced") === null && pr_w.localStorage.getItem("spotifyAccount") === null && pr_w.sessionStorage.getItem("welcomeAt") === "3");
   var pr_t = await boot({ url: "http://127.0.0.1:8000/", local: { arcService: "tidal" }, session: { welcomeAt: "3" } });
   var pr_td = pr_t.document;
-  check("loaded again under TIDAL, it opens on Connect your TIDAL account, with no Premium note, TIDAL's mark and Your TIDAL on the line, and back goes to the choice", !pr_td.getElementById("wpSetup").hidden && pr_td.getElementById("wpFirst").hidden && pr_td.getElementById("wpWhich").hidden && pr_td.querySelector("#wpSetup .wp-note").hidden && pr_td.querySelector("#wpSetup .wp-setup-title").textContent === "Connect your TIDAL account" && pr_td.querySelector("#wpSetup .wp-spotify-name").textContent === "Your TIDAL" && !pr_td.querySelector("#wpSetup .wp-spotify path[fill-rule='evenodd']") && pr_t.history.state && pr_t.history.state.step === 3 && pr_t.sessionStorage.getItem("welcomeAt") === null);
+  check("loaded again under TIDAL, it opens on Connect your TIDAL account, with no Premium note, TIDAL's mark and Your TIDAL on the line, and its step is in place of the choice in the history", !pr_td.getElementById("wpSetup").hidden && pr_td.getElementById("wpFirst").hidden && pr_td.getElementById("wpWhich").hidden && pr_td.querySelector("#wpSetup .wp-note").hidden && pr_td.querySelector("#wpSetup .wp-setup-title").textContent === "Connect your TIDAL account" && pr_td.querySelector("#wpSetup .wp-spotify-name").textContent === "Your TIDAL" && !pr_td.querySelector("#wpSetup .wp-spotify path[fill-rule='evenodd']") && pr_t.history.state && pr_t.history.state.step === 3 && pr_t.sessionStorage.getItem("welcomeAt") === null);
   pr_td.getElementById("startSetup").click();
   await new Promise((r) => setTimeout(r, 50));
   pr_td.querySelector('[data-flow="new"]').click(); pr_td.getElementById("spNext").click();
@@ -4696,7 +4691,7 @@ print(json.dumps(out))
   var sr_make = async (opts = {}) => {
     const w = await boot({ url: "http://127.0.0.1:8000/", session: opts.session || {} });
     w.eval(sr_src);
-    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16zzb"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
+    w.document.head.insertAdjacentHTML("beforeend", ["theme.js", "formats.js", "editor.js", "app.js"].map((f) => `<script src="${f}?v=2026-11-16zzc"></script>`).join(""));   // the page's own script tags, as a browser has them (added as text, since the checks' page treats a script added by code as a file to load)
     w.__fetched = []; w.__reloaded = 0;
     w.fetch = (url, init) => { w.__fetched.push({ url: String(url), cache: init && init.cache }); return Promise.resolve({ ok: opts.fetchOk !== false && !(opts.failPage && /\/$|index/.test(String(url).replace("http://127.0.0.1:8000", "") || "/")) }); };
     w.pageStart.reload = () => { w.__reloaded += 1; };
