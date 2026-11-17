@@ -6,7 +6,7 @@
 // and ISRCs, and a short summary made on the sharer's device; who someone is comes from their Spotify sign-in, checked by the worker.
 // The page does the rest itself: search, sorting, filters, mood words (the ones used on more than one shared playlist) and overlap with the person's recipes.
 // Classic script, loaded after app.js; it uses app.js and editor.js names at run time.
-(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16zr";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
+(globalThis.scriptVersions = globalThis.scriptVersions || {})["sharing.js"] = "2026-11-16zs";   // this file's version, checked against the app's at startup (checkScriptVersions in app.js)
 
 const SHARING_URL = "https://music-sharing.roncarmel.workers.dev";
 const SHARE_DESC_MAX = 300, SHARE_OTHER_MAX = 24, SHARE_MOOD_CHARS = 30, SHARE_MOODS_MAX = 8;   // the worker checks the same
@@ -590,10 +590,9 @@ async function copyCover(s, id) {
 // ---------------------------------------------------------------- copying a shared playlist into the person's library
 async function addShared(s) {
   if (sharing.adding.has(s.id) || sharing.lookingUp.has(s.id) || connection !== "ready") return;
-  // from the list, a share with songs missing or not checked yet opens its page first, where the person sees how many and decides
-  const here = songsHere(s);
-  if ((here.need.length || here.missing.size) && sharing.detail !== s.id) { openDetail(s.id); return; }
-  if (!(await lookUpSongs(s))) return;
+  // Get on a list row copies at once, songs missing or not (Ron, 2026-11-16: the person finds out soon enough); only a lookup that stopped
+  // opens the page, where its Try again is
+  if (!(await lookUpSongs(s))) { if (sharing.lookupErrors[s.id] && sharing.detail !== s.id) openDetail(s.id); return; }
   const ids = s.songs.map(([id]) => id).filter(Boolean);
   if (!ids.length) { sharing.addErrors[s.id] = `None of its songs are on ${service.name}.`; renderSharing(); return; }
   sharing.adding.add(s.id);
@@ -1108,7 +1107,7 @@ function shareCoverEl(s, cls = "ms-cover") {
 }
 function addButton(s, big = false) {
   if (isMine(s)) return big ? null : feEl("span", { class: "ms-add ms-yours" }, "Yours");
-  if (sharing.adding.has(s.id)) return feEl("button", { type: "button", id: big ? "msMain" : null, class: big ? "ms-mainbtn ms-grey" : "ms-add ms-busy", disabled: true }, "Getting...");
+  if (sharing.adding.has(s.id) || (!big && sharing.lookingUp.has(s.id))) return feEl("button", { type: "button", id: big ? "msMain" : null, class: big ? "ms-mainbtn ms-grey" : "ms-add ms-busy", disabled: true }, "Getting...");
   if (isAdded(s)) return feEl("button", { type: "button", id: big ? "msMain" : null, class: big ? "ms-mainbtn ms-grey" : "ms-add ms-done", disabled: true }, feIcon("check"), "Gotten");
   return feEl("button", { type: "button", id: big ? "msMain" : null, class: big ? "ms-mainbtn" : "ms-add", disabled: connection !== "ready" || sharing.lookingUp.has(s.id), onClick: (e) => { e.stopPropagation(); addShared(s); } }, big ? feIcon("plus") : null, big ? "Get this playlist" : "Get");
 }
